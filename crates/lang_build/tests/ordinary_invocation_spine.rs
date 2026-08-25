@@ -6,7 +6,7 @@ use lang_build::{
     MetaInvocationValue, OrdinaryInvocationContext, PatternComponentPolicy, PolicyMode, PolicyPair,
     PolicyStage, PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticOwnerKind,
     SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy,
-    ValueMutability, ValuePresence, WritableContext,
+    ValuePresence, WritableContext,
 };
 
 use support::{build_single_fixture_world, fixture_root, initializer_from_source};
@@ -39,12 +39,11 @@ fn stages(items: &[PolicyStage]) -> StageSet {
 fn pair(
     value_stages: &[PolicyStage],
     pattern_stages: &[PolicyStage],
-    mutability: &[ValueMutability],
+    _mode: &[PolicyMode],
 ) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: stages(value_stages),
-            mutability: mutability.iter().copied().collect(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
@@ -246,12 +245,12 @@ fn i9_slot0_is_selected_callable_function_object() {
     let source_policy = pair(
         &[PolicyStage::Compile],
         &[PolicyStage::Compile],
-        &[ValueMutability::Const],
+        &[PolicyMode::Const],
     );
     let target_policy = pair(
         &[PolicyStage::Runtime],
         &[PolicyStage::Compile],
-        &[ValueMutability::Mut],
+        &[PolicyMode::Mut],
     );
     let uint8_type = match &world
         .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
@@ -269,8 +268,14 @@ fn i9_slot0_is_selected_callable_function_object() {
         )
         .expect("installed source value");
     let request = PolicyTransitionRequest::new(
-        source_policy,
-        target_policy,
+        lang_build::PolicyView {
+            pair: source_policy,
+            mode: PolicyMode::Const,
+        },
+        lang_build::ResultPolicyDemand {
+            pair_query: lang_build::P1Projection::Pair(target_policy),
+            mode: PolicyMode::Mut,
+        },
         uint8_type,
         source,
         Provenance::new("I9 const compile -> mut runtime demand"),
@@ -537,7 +542,7 @@ fn mut_policy_mode_does_not_grant_writable() {
     let writable = WritableContext::default();
     let mut context =
         OrdinaryInvocationContext::open_static(&actual).requiring_target_writable(&writable);
-    context.caller_mutability = PolicyMode::Mut;
+    context.caller_mode = PolicyMode::Mut;
     let failure = world
         .invoke_ordinary_call(
             world.package_root_node(),
@@ -998,7 +1003,7 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
             .expect("core semantic world builds");
     let initializer = initializer_from_source("let result = uint8 IdentityType;");
     let call_site = extract_single_call_site(&initializer).expect("normalized core call");
-    let actual_mutability = [ValueMutability::Const];
+    let actual_mutability = [PolicyMode::Const];
     let result = world
         .invoke_ordinary_call(
             world.package_root_node(),
@@ -1050,7 +1055,7 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("type-value-not-carrier regression"),
         )
         .expect("IdentityType accepts the value read through U");
@@ -1123,7 +1128,7 @@ fn bare_call_target_searches_near_then_outer_then_core_without_shadowing() {
         .invoke_ordinary_call(
             inner_namespace,
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("near outer core bare-name chain"),
         )
         .expect("near non-callable falls through to outer callable");
@@ -1150,7 +1155,7 @@ fn explicit_call_target_is_one_symbol_and_never_falls_back() {
         .invoke_ordinary_call(
             outer_namespace,
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("explicit target no-fallback"),
         )
         .expect_err("explicit inner f is non-callable and must fail");
@@ -1171,7 +1176,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
             .expect("core semantic world builds");
     let initializer = initializer_from_source("let T: type = (uint8 a) struct;");
     let call_site = extract_single_call_site(&initializer).expect("normalized struct call");
-    let actual_mutability = [ValueMutability::Const];
+    let actual_mutability = [PolicyMode::Const];
     let result = world
         .invoke_ordinary_call(
             world.package_root_node(),
@@ -1370,7 +1375,7 @@ fn alias_expression_spelling_cannot_restore_retired_forwarding_semantics() {
         let result = world.invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("bare alias convergence regression"),
         );
         let Err(lang_build::OrdinaryInvocationFailure::SelectedBody { failure, .. }) = result
@@ -1410,7 +1415,7 @@ fn source_meta_body_contribution_stream_returns_cluster_construction() {
     let mut world = build_single_fixture_world("s4_return_ontology", "app");
     let initializer = initializer_from_source("let R: type = uint8 make_type;");
     let call_site = extract_single_call_site(&initializer).expect("normalized meta call");
-    let actual_mutability = [ValueMutability::Const];
+    let actual_mutability = [PolicyMode::Const];
     let result = world
         .invoke_ordinary_call(
             world.package_root_node(),

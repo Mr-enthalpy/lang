@@ -404,7 +404,6 @@ pub fn compile_literal_policy() -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: StageSet::from([PolicyStage::Compile]),
-            mutability: Default::default(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {

@@ -34,13 +34,19 @@ use lang_build::{
     CanonicalValueAddr, ClusterConstructionId, ClusterSymbolResult, CompilationWorld,
     ConstructionAuthority, ConstructionEvaluationContext, ConstructionState, ConstructionWindow,
     Diagnostic, InvocationOutcome, MetaCallableIdentity, MetaInstanceKey, MetaInstanceRoot,
-    NamespaceNodeId, OrdinaryInvocationContext, PatternComponentPolicy, Phase, PolicyPair,
-    PolicyResultEntry, PolicyStage, Provenance, ReturnShape, SemanticValueId, SemanticValuePayload,
-    SemanticWorld, StageSet, SymbolId, TypeValueId, ValueComponentPolicy, ValueMutability,
-    ValuePresence, WritableContext,
+    NamespaceNodeId, OrdinaryInvocationContext, PatternComponentPolicy, Phase, PolicyMode,
+    PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, Provenance, ReturnShape,
+    SemanticValueId, SemanticValuePayload, SemanticWorld, StageSet, SymbolId, TypeValueId,
+    ValueComponentPolicy, ValuePresence, WritableContext,
 };
-use std::collections::BTreeSet;
 use support::{build_single_fixture_world, initializer_from_source};
+
+fn plain_view(pair: &PolicyPair) -> PolicyView {
+    PolicyView {
+        pair: pair.clone(),
+        mode: PolicyMode::Plain,
+    }
+}
 
 fn invoke_make(
     world: &mut CompilationWorld,
@@ -53,7 +59,7 @@ fn invoke_make(
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new(provenance),
         )
         .expect("source meta callable is selected through the ordinary spine");
@@ -162,8 +168,8 @@ impl ConstructionTestAdapter for SemanticWorld {
             backing_declaration,
             closure,
             outer_p1_explicit,
-            function_policy,
-            complete_result_policy,
+            &plain_view(function_policy),
+            plain_view(&complete_result_policy),
             return_shape,
             provenance,
         )
@@ -499,7 +505,6 @@ fn static_type_pair() -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: stages.clone(),
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy { stages },
@@ -514,9 +519,8 @@ fn pure_p_view(
 ) -> PolicyResultEntry<SemanticValueId, lang_build::PatternValueId> {
     PolicyResultEntry {
         value: None,
-        value_policy: policy.value.clone(),
         pattern,
-        pattern_policy: policy.pattern.clone(),
+        view: plain_view(policy),
     }
 }
 
@@ -547,9 +551,8 @@ fn use_for_val1_freezes_and_only_boundary_delivery_finalizes() {
         .owner;
     let pure_p_view = || PolicyResultEntry {
         value: None,
-        value_policy: policy.value.clone(),
         pattern,
-        pattern_policy: policy.pattern.clone(),
+        view: plain_view(&policy),
     };
 
     let cid = world.begin_cluster_construction(
@@ -840,9 +843,8 @@ fn open_self_typed_construction(
             cid,
             PolicyResultEntry {
                 value: None,
-                value_policy: policy.value.clone(),
                 pattern,
-                pattern_policy: policy.pattern.clone(),
+                view: plain_view(&policy),
             },
         )
         .expect("an open construction accepts its pure-P member");
@@ -912,9 +914,8 @@ fn real_val1_production_freezes_the_open_construction_automatically() {
                 cid,
                 PolicyResultEntry {
                     value: None,
-                    value_policy: policy.value.clone(),
                     pattern: self_pattern,
-                    pattern_policy: policy.pattern.clone(),
+                    view: plain_view(&policy),
                 },
             )
             .is_none(),
@@ -960,7 +961,7 @@ fn invocation_result_production_freezes_the_open_construction_automatically() {
         None,
         self_type,
         self_pattern,
-        policy.clone(),
+        plain_view(&policy),
         provenance.clone(),
     );
     let construction = world.open_cluster(cid).expect("construction");
@@ -1275,9 +1276,8 @@ fn ordinary_window_closes_on_first_semantic_use() {
                 cid,
                 PolicyResultEntry {
                     value: None,
-                    value_policy: policy.value.clone(),
                     pattern: target_pattern,
-                    pattern_policy: policy.pattern.clone(),
+                    view: plain_view(&policy),
                 },
             )
             .is_none(),
@@ -1456,9 +1456,8 @@ fn associated_value_injection_keeps_target_pattern_norm_unchanged() {
             "inner",
             PolicyResultEntry {
                 value: Some(value),
-                value_policy: policy.value.clone(),
                 pattern: member_pattern,
-                pattern_policy: policy.pattern.clone(),
+                view: plain_view(&policy),
             },
             provenance.clone(),
         )
@@ -1605,9 +1604,8 @@ fn associated_type_is_the_pure_p_member_of_its_val2_symbol() {
         .expect("a plain value of the member material type installs");
     let sibling_view = PolicyResultEntry {
         value: Some(sibling),
-        value_policy: policy.value.clone(),
         pattern: member_pattern,
-        pattern_policy: policy.pattern.clone(),
+        view: plain_view(&policy),
     };
     world
         .inject_associated_existing_value_member(
@@ -1658,7 +1656,6 @@ fn associated_type_is_the_pure_p_member_of_its_val2_symbol() {
     let narrow = PolicyPair {
         value: ValueComponentPolicy {
             stages: narrow_stages.clone(),
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
@@ -1730,9 +1727,8 @@ fn associated_type_is_the_pure_p_member_of_its_val2_symbol() {
         "h",
         PolicyResultEntry {
             value: Some(SemanticValueId(9)),
-            value_policy: policy.value.clone(),
             pattern: member_pattern,
-            pattern_policy: policy.pattern.clone(),
+            view: plain_view(&policy),
         },
         TypeValueId(1),
         provenance,
@@ -1766,12 +1762,9 @@ fn cluster_policy_disjunction_is_derived_not_authoritative() {
     let static_policy = static_type_pair(); // Meta + Compile, unconstrained mutability
     let mut runtime_stages = StageSet::new();
     runtime_stages.insert(PolicyStage::Runtime);
-    let mut mut_only = BTreeSet::new();
-    mut_only.insert(ValueMutability::Mut);
     let runtime_policy = PolicyPair {
         value: ValueComponentPolicy {
             stages: runtime_stages.clone(),
-            mutability: mut_only,
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
@@ -1782,15 +1775,16 @@ fn cluster_policy_disjunction_is_derived_not_authoritative() {
     let views = vec![
         PolicyResultEntry {
             value: None,
-            value_policy: static_policy.value.clone(),
             pattern: lang_build::PatternValueId(0),
-            pattern_policy: static_policy.pattern.clone(),
+            view: plain_view(&static_policy),
         },
         PolicyResultEntry {
             value: Some(SemanticValueId(1)),
-            value_policy: runtime_policy.value.clone(),
             pattern: lang_build::PatternValueId(1),
-            pattern_policy: runtime_policy.pattern.clone(),
+            view: PolicyView {
+                pair: runtime_policy.clone(),
+                mode: PolicyMode::Mut,
+            },
         },
     ];
 
@@ -1810,17 +1804,13 @@ fn cluster_policy_disjunction_is_derived_not_authoritative() {
             "the disjunction admits every member stage: missing {stage:?}"
         );
     }
-    assert!(
-        derived.value.mutability.is_empty(),
-        "an unconstrained member domain absorbs the disjunction"
-    );
 
     // The aggregate admits Runtime, but exposure filters per member: only
     // the runtime member is exposed at the Runtime phase.
     assert!(derived.value.stages.visible_at(Phase::Runtime));
     let exposed: Vec<_> = views
         .iter()
-        .filter(|view| view.value_policy.stages.visible_at(Phase::Runtime))
+        .filter(|view| view.view.pair.value.stages.visible_at(Phase::Runtime))
         .collect();
     assert_eq!(
         exposed.len(),
@@ -1833,7 +1823,6 @@ fn cluster_policy_disjunction_is_derived_not_authoritative() {
     let absent_policy = PolicyPair {
         value: ValueComponentPolicy {
             stages: StageSet::new(),
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Absent,
         },
         pattern: static_policy.pattern.clone(),
@@ -1854,7 +1843,6 @@ fn stage_pair(stages: &[PolicyStage]) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: set.clone(),
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy { stages: set },
@@ -2057,7 +2045,7 @@ fn layered_exposure_gates_val2_navigation_on_the_host_member() {
     assert!(
         member_views
             .iter()
-            .all(|view| view.pattern_policy.stages.visible_at(Phase::SealStatic)),
+            .all(|view| view.view.pair.pattern.stages.visible_at(Phase::SealStatic)),
         "the member factor itself is compile-visible at SealStatic"
     );
 

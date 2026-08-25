@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use crate::{
     model::{
         CoreMetaFunction, MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
@@ -8,8 +6,8 @@ use crate::{
     },
     policy_metadata,
     policy_pair::{
-        PatternComponentPolicy, PolicyPair, PolicyStage, StageSet, ValueComponentPolicy,
-        ValuePresence,
+        PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyView, StageSet,
+        ValueComponentPolicy, ValuePresence,
     },
     policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
     policy_set_meta_runtime,
@@ -29,8 +27,8 @@ pub(crate) struct CoreCallableRegistration {
     pub(crate) name: String,
     pub(crate) backing: SymbolId,
     pub(crate) primitive: CoreMetaFunction,
-    pub(crate) function_policy: PolicyPair,
-    pub(crate) result_policy: PolicyPair,
+    pub(crate) function_view: PolicyView,
+    pub(crate) result_view: PolicyView,
     pub(crate) return_shape: crate::ReturnShape,
     pub(crate) visibility: Option<crate::NamespaceVisibility>,
     pub(crate) provenance: Provenance,
@@ -154,8 +152,8 @@ pub(crate) fn install_core_bootstrap(
 
 /// Declared canonical PolicyPair coordinate for a core built-in: the value
 /// stage set is spelled directly and the Pattern stage set is its static
-/// projection.  Core built-ins carry no mutability restriction and are
-/// always present.
+/// projection. Core built-ins are always present; their whole-slot mode is
+/// carried separately by the callable's `PolicyView`.
 pub(crate) fn core_declared_pair(stages: &[PolicyStage], _export_root: bool) -> PolicyPair {
     let mut value_stages = StageSet::new();
     let mut pattern_stages = StageSet::new();
@@ -168,7 +166,6 @@ pub(crate) fn core_declared_pair(stages: &[PolicyStage], _export_root: bool) -> 
     PolicyPair {
         value: ValueComponentPolicy {
             stages: value_stages,
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
@@ -255,22 +252,28 @@ fn insert_meta_function(
         name: name.to_string(),
         backing: symbol_id,
         primitive,
-        function_policy: match primitive {
-            CoreMetaFunction::Struct => {
-                core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true)
-            }
-            _ => core_declared_pair(&[PolicyStage::Meta], true),
+        function_view: PolicyView {
+            pair: match primitive {
+                CoreMetaFunction::Struct => {
+                    core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true)
+                }
+                _ => core_declared_pair(&[PolicyStage::Meta], true),
+            },
+            mode: PolicyMode::Plain,
         },
-        result_policy: match primitive {
-            CoreMetaFunction::Struct => {
-                core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], false)
-            }
-            CoreMetaFunction::Assert
-            | CoreMetaFunction::Verify(_)
-            | CoreMetaFunction::IdentityType
-            | CoreMetaFunction::UnaryConstructionPrototype => {
-                core_declared_pair(&[PolicyStage::Meta], false)
-            }
+        result_view: PolicyView {
+            pair: match primitive {
+                CoreMetaFunction::Struct => {
+                    core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], false)
+                }
+                CoreMetaFunction::Assert
+                | CoreMetaFunction::Verify(_)
+                | CoreMetaFunction::IdentityType
+                | CoreMetaFunction::UnaryConstructionPrototype => {
+                    core_declared_pair(&[PolicyStage::Meta], false)
+                }
+            },
+            mode: PolicyMode::Plain,
         },
         return_shape,
         visibility: Some(crate::NamespaceVisibility::Public),

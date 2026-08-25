@@ -23,7 +23,7 @@ use lang_build::{
     extract_single_call_site, BuildManifest, CanonicalFullNavigation, CanonicalPatternAtom,
     CanonicalPatternBuilder, CanonicalPatternValue, CanonicalTypeObservation, CompilationWorld,
     InvocationOutcome, OrdinaryInvocationContext, OrdinaryInvocationFailure,
-    PatternNavigationInput, Provenance, SemanticTypeEnv, TypeResolutionEnv, ValueMutability,
+    PatternNavigationInput, PolicyMode, Provenance, SemanticTypeEnv, TypeResolutionEnv,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -37,7 +37,7 @@ fn invoke_struct(
     world.invoke_ordinary_call(
         world.package_root_node(),
         &call_site,
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         Provenance::new(provenance),
     )
 }

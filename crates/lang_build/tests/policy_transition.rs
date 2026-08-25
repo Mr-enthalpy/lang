@@ -16,9 +16,9 @@ use lang_build::{
     PhaseOverloadCandidate, PolicyBridgeBody, PolicyBridgeResolution, PolicyMode,
     PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair, PolicyPartialOrdering,
     PolicyResultEntry, PolicyStage, PolicyTransitionCallable, PolicyTransitionFailure,
-    PolicyTransitionRequest, PolicyTransitionRequestFailure, Provenance, SemanticValueId,
-    SemanticValueRef, StageSet, SymbolPayload, TransitionTypeExpectation, TypeValueId,
-    ValueComponentPolicy, ValueMutability, ValuePresence,
+    PolicyTransitionRequest, PolicyTransitionRequestFailure, PolicyView, Provenance,
+    ResultPolicyDemand, SemanticValueId, SemanticValueRef, StageSet, SymbolPayload,
+    TransitionTypeExpectation, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
 use support::{empty_app_manifest, initializer_from_source};
 
@@ -33,12 +33,11 @@ fn stages(items: &[PolicyStage]) -> StageSet {
 fn pair(
     value_stages: &[PolicyStage],
     pattern_stages: &[PolicyStage],
-    mutability: &[ValueMutability],
+    _mode: &[PolicyMode],
 ) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: stages(value_stages),
-            mutability: mutability.iter().copied().collect(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
@@ -51,7 +50,6 @@ fn absent_pair(pattern_stages: &[PolicyStage]) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: StageSet::new(),
-            mutability: Default::default(),
             presence: ValuePresence::Absent,
         },
         pattern: PatternComponentPolicy {
@@ -90,7 +88,7 @@ fn compile_runtime_pair() -> PolicyPair {
     )
 }
 
-fn runtime_pair_with(mutability: ValueMutability) -> PolicyPair {
+fn runtime_pair_with(mutability: PolicyMode) -> PolicyPair {
     pair(
         &[PolicyStage::Runtime],
         &[PolicyStage::Compile],
@@ -98,7 +96,7 @@ fn runtime_pair_with(mutability: ValueMutability) -> PolicyPair {
     )
 }
 
-fn compile_pair_with(mutability: ValueMutability) -> PolicyPair {
+fn compile_pair_with(mutability: PolicyMode) -> PolicyPair {
     pair(
         &[PolicyStage::Compile],
         &[PolicyStage::Compile],
@@ -106,7 +104,7 @@ fn compile_pair_with(mutability: ValueMutability) -> PolicyPair {
     )
 }
 
-fn compile_runtime_pair_with(mutability: ValueMutability) -> PolicyPair {
+fn compile_runtime_pair_with(mutability: PolicyMode) -> PolicyPair {
     pair(
         &[PolicyStage::Compile, PolicyStage::Runtime],
         &[PolicyStage::Compile],
@@ -146,9 +144,11 @@ fn value_entry(
             id: SemanticValueId(id),
             type_value: TypeValueId(type_value),
         }),
-        value_policy: policy.value,
         pattern: "pattern",
-        pattern_policy: policy.pattern,
+        view: PolicyView {
+            pair: policy,
+            mode: PolicyMode::Plain,
+        },
     }
 }
 
@@ -156,16 +156,38 @@ fn pure_entry(pattern_stages: &[PolicyStage]) -> PolicyResultEntry<Infallible, &
     let policy = absent_pair(pattern_stages);
     PolicyResultEntry {
         value: None,
-        value_policy: policy.value,
         pattern: "type-pattern",
-        pattern_policy: policy.pattern,
+        view: PolicyView {
+            pair: policy,
+            mode: PolicyMode::Plain,
+        },
     }
 }
 
 fn request(source_policy: PolicyPair, target_policy: PolicyPair) -> PolicyTransitionRequest {
-    PolicyTransitionRequest::new(
+    request_with_modes(
         source_policy,
+        PolicyMode::Plain,
         target_policy,
+        PolicyMode::Plain,
+    )
+}
+
+fn request_with_modes(
+    source_policy: PolicyPair,
+    source_mode: PolicyMode,
+    target_policy: PolicyPair,
+    target_mode: PolicyMode,
+) -> PolicyTransitionRequest {
+    PolicyTransitionRequest::new(
+        PolicyView {
+            pair: source_policy,
+            mode: source_mode,
+        },
+        ResultPolicyDemand {
+            pair_query: P1Projection::Pair(target_policy),
+            mode: target_mode,
+        },
         TypeValueId(10),
         SemanticValueId(20),
         Provenance::new("transition request"),
@@ -182,12 +204,39 @@ fn callable(
     is_delete: bool,
     body: PolicyBridgeBody,
 ) -> PolicyTransitionCallable<&'static str> {
+    callable_with_modes(
+        id,
+        input_type,
+        output_type,
+        input_policy,
+        PolicyMode::Plain,
+        output_policy,
+        PolicyMode::Plain,
+        is_delete,
+        body,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn callable_with_modes(
+    id: &'static str,
+    input_type: OrdinaryCallableTypeInput,
+    output_type: OrdinaryCallableTypeOutput,
+    input_policy: PolicyPair,
+    input_mode: PolicyMode,
+    output_policy: PolicyPair,
+    output_mode: PolicyMode,
+    is_delete: bool,
+    body: PolicyBridgeBody,
+) -> PolicyTransitionCallable<&'static str> {
     PolicyTransitionCallable {
         id,
         input_type,
         output_type,
         input_policy,
         output_policy,
+        input_mode,
+        output_mode,
         ordinary_fully_admissible: true,
         prototype_is_fallback: false,
         prototype_pattern_specificity: 0,
@@ -230,7 +279,7 @@ fn omitted_ordinary_p1_preserves_complete_rhs_without_stage_lift() {
     assert_eq!(requested, None);
     assert_eq!(selected, result);
     assert_eq!(
-        selected[0].value_policy.stages,
+        selected[0].view.pair.value.stages,
         StageSet::from([PolicyStage::Runtime]),
         "ordinary binding must not copy the function-object P1 stage lift"
     );
@@ -242,9 +291,11 @@ fn omitted_p1_preserves_a_mixed_result_collection_exactly() {
         value_entry(1, 10, &[PolicyStage::Runtime], &[PolicyStage::Compile]),
         PolicyResultEntry {
             value: None,
-            value_policy: absent_pair(&[PolicyStage::Compile]).value,
             pattern: "type-pattern",
-            pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
+            view: PolicyView {
+                pair: absent_pair(&[PolicyStage::Compile]),
+                mode: PolicyMode::Plain,
+            },
         },
     ];
     let P1Elaboration::Projected { selected, .. } =
@@ -310,7 +361,7 @@ fn meta_or_runtime_query_over_meta_only_source_selects_meta_without_transition()
     assert_eq!(selected.len(), 1);
     assert_eq!(selected[0].value.unwrap().id, SemanticValueId(1));
     assert_eq!(
-        selected[0].value_policy.stages,
+        selected[0].view.pair.value.stages,
         StageSet::from([PolicyStage::Meta])
     );
 }
@@ -336,7 +387,7 @@ fn compile_or_runtime_query_over_compile_source_selects_compile_without_transiti
     assert_eq!(selected.len(), 1);
     assert_eq!(selected[0].value.unwrap().id, SemanticValueId(20));
     assert_eq!(
-        selected[0].value_policy.stages,
+        selected[0].view.pair.value.stages,
         StageSet::from([PolicyStage::Compile])
     );
 }
@@ -363,7 +414,7 @@ fn existing_runtime_slice_dominates_migration_and_preserves_identity() {
     assert_eq!(selected.len(), 1);
     assert_eq!(selected[0].value.unwrap().id, SemanticValueId(20));
     assert_eq!(
-        selected[0].value_policy.stages,
+        selected[0].view.pair.value.stages,
         StageSet::from([PolicyStage::Runtime])
     );
 
@@ -545,7 +596,7 @@ fn pure_type_can_project_pattern_slice_without_value_identity_or_transition_api(
     assert_eq!(elaboration.selected.len(), 1);
     assert_eq!(elaboration.selected[0].value, None);
     assert_eq!(
-        elaboration.selected[0].pattern_policy.stages,
+        elaboration.selected[0].view.pair.pattern.stages,
         StageSet::from([PolicyStage::Compile])
     );
 }
@@ -566,9 +617,11 @@ fn mixed_result_preserves_old_projection_before_absent_entries_are_considered() 
         value_entry(30, 10, &[PolicyStage::Runtime], &[PolicyStage::Compile]),
         PolicyResultEntry {
             value: None,
-            value_policy: absent_pair(&[PolicyStage::Compile]).value,
             pattern: "type-pattern",
-            pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
+            view: PolicyView {
+                pair: absent_pair(&[PolicyStage::Compile]),
+                mode: PolicyMode::Plain,
+            },
         },
     ];
     let target = P1Projection::ValueDominant {
@@ -590,9 +643,11 @@ fn mixed_result_preserves_old_projection_before_absent_entries_are_considered() 
 fn all_absent_general_result_fails_only_after_projection_is_empty() {
     let result = vec![PolicyResultEntry {
         value: None,
-        value_policy: absent_pair(&[PolicyStage::Compile]).value,
         pattern: "type-pattern",
-        pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
+        view: PolicyView {
+            pair: absent_pair(&[PolicyStage::Compile]),
+            mode: PolicyMode::Plain,
+        },
     }];
     let target = P1Projection::Pair(runtime_pair());
     assert!(matches!(
@@ -605,8 +660,14 @@ fn all_absent_general_result_fails_only_after_projection_is_empty() {
 fn absent_source_cannot_construct_or_validate_a_transition() {
     assert_eq!(
         PolicyTransitionRequest::new(
-            absent_pair(&[PolicyStage::Compile]),
-            runtime_pair(),
+            PolicyView {
+                pair: absent_pair(&[PolicyStage::Compile]),
+                mode: PolicyMode::Plain,
+            },
+            ResultPolicyDemand {
+                pair_query: P1Projection::Pair(runtime_pair()),
+                mode: PolicyMode::Plain,
+            },
             TypeValueId(10),
             SemanticValueId(20),
             Provenance::new("absent source"),
@@ -631,7 +692,6 @@ fn transition_policy_domain_projection_preserves_presence_intersection() {
         .expect("absent intersects optional");
     assert_eq!(absent.value.presence, ValuePresence::Absent);
     assert!(absent.value.stages.is_empty());
-    assert!(absent.value.mutability.is_empty());
 
     assert!(
         project_transition_policy_domain(&compile_pair(), &absent_pair(&[PolicyStage::Compile]))
@@ -665,8 +725,14 @@ fn selected_atomic_runtime_migration_keeps_pattern_policy_unchanged() {
 fn atomic_runtime_migration_rejects_runtime_in_the_selected_input_endpoint() {
     assert_eq!(
         PolicyTransitionRequest::new(
-            compile_runtime_pair(),
-            runtime_pair(),
+            PolicyView {
+                pair: compile_runtime_pair(),
+                mode: PolicyMode::Plain,
+            },
+            ResultPolicyDemand {
+                pair_query: P1Projection::Pair(runtime_pair()),
+                mode: PolicyMode::Plain,
+            },
             TypeValueId(10),
             SemanticValueId(20),
             Provenance::new("selected input contains runtime"),
@@ -677,16 +743,23 @@ fn atomic_runtime_migration_rejects_runtime_in_the_selected_input_endpoint() {
 
 #[test]
 fn const_compile_can_materialize_a_fresh_mut_runtime_value() {
-    let source = compile_pair_with(ValueMutability::Const);
-    let target = runtime_pair_with(ValueMutability::Mut);
+    let source = compile_pair_with(PolicyMode::Const);
+    let target = runtime_pair_with(PolicyMode::Mut);
     assert_eq!(validate_runtime_transition(&source, &target), Ok(()));
-    let request = request(source.clone(), target.clone());
-    let candidate = callable(
+    let request = request_with_modes(
+        source.clone(),
+        PolicyMode::Const,
+        target.clone(),
+        PolicyMode::Mut,
+    );
+    let candidate = callable_with_modes(
         "const-compile-to-mut-runtime",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
         source,
+        PolicyMode::Const,
         target,
+        PolicyMode::Mut,
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
@@ -696,31 +769,26 @@ fn const_compile_can_materialize_a_fresh_mut_runtime_value() {
         panic!("callable-owned mutability endpoints should be admissible");
     };
     assert_eq!(selected.callable.id, "const-compile-to-mut-runtime");
-    assert_eq!(
-        selected.validated_output_endpoint.value.mutability,
-        [ValueMutability::Mut].into_iter().collect()
-    );
+    assert_eq!(selected.complete_result_view.mode, PolicyMode::Mut);
 }
 
 fn mutability_transport_candidates() -> Vec<PolicyTransitionCallable<&'static str>> {
     [
-        (
-            "const<-const",
-            ValueMutability::Const,
-            ValueMutability::Const,
-        ),
-        ("const<-mut", ValueMutability::Mut, ValueMutability::Const),
-        ("mut<-const", ValueMutability::Const, ValueMutability::Mut),
-        ("mut<-mut", ValueMutability::Mut, ValueMutability::Mut),
+        ("const<-const", PolicyMode::Const, PolicyMode::Const),
+        ("const<-mut", PolicyMode::Mut, PolicyMode::Const),
+        ("mut<-const", PolicyMode::Const, PolicyMode::Mut),
+        ("mut<-mut", PolicyMode::Mut, PolicyMode::Mut),
     ]
     .into_iter()
     .map(|(id, input, output)| {
-        callable(
+        callable_with_modes(
             id,
             OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
             OrdinaryCallableTypeOutput::SameAsInput,
-            compile_runtime_pair_with(input),
-            compile_runtime_pair_with(output),
+            compile_runtime_pair(),
+            input,
+            compile_runtime_pair(),
+            output,
             false,
             PolicyBridgeBody::BuiltinValueCopy,
         )
@@ -732,16 +800,12 @@ fn mutability_transport_candidates() -> Vec<PolicyTransitionCallable<&'static st
 fn four_member_mutability_transport_uses_ordinary_actual_relative_preference() {
     let candidates = mutability_transport_candidates();
     for (source, target, expected) in [
-        (
-            ValueMutability::Const,
-            ValueMutability::Const,
-            "const<-const",
-        ),
-        (ValueMutability::Const, ValueMutability::Mut, "mut<-const"),
-        (ValueMutability::Mut, ValueMutability::Const, "const<-mut"),
-        (ValueMutability::Mut, ValueMutability::Mut, "mut<-mut"),
+        (PolicyMode::Const, PolicyMode::Const, "const<-const"),
+        (PolicyMode::Const, PolicyMode::Mut, "mut<-const"),
+        (PolicyMode::Mut, PolicyMode::Const, "const<-mut"),
+        (PolicyMode::Mut, PolicyMode::Mut, "mut<-mut"),
     ] {
-        let request = request(compile_pair_with(source), runtime_pair_with(target));
+        let request = request_with_modes(compile_pair(), source, runtime_pair(), target);
         let PolicyBridgeResolution::Selected(selected) =
             resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default())
         else {
@@ -750,17 +814,17 @@ fn four_member_mutability_transport_uses_ordinary_actual_relative_preference() {
         assert_eq!(selected.callable.id, expected);
         assert_eq!(
             selected.callable.input_policy,
-            compile_runtime_pair_with(source),
+            compile_runtime_pair(),
             "ordinary formal keeps its complete compile||runtime P2 while Project_in selects compile"
         );
         assert_eq!(
-            selected.complete_result_policy,
-            compile_runtime_pair_with(target),
+            selected.complete_result_view.pair,
+            compile_runtime_pair(),
             "ordinary transport declares its complete compile||runtime P2"
         );
         assert_eq!(
             selected.validated_output_endpoint,
-            runtime_pair_with(target),
+            runtime_pair(),
             "the demand selects the runtime Project_out view"
         );
 
@@ -773,8 +837,8 @@ fn four_member_mutability_transport_uses_ordinary_actual_relative_preference() {
         .expect("ordinary transport fixture")
         .result;
         assert_eq!(
-            produced.entry.value_policy.stages,
-            compile_runtime_pair_with(target).value.stages,
+            produced.entry.view.pair.value.stages,
+            compile_runtime_pair().value.stages,
             "the invocation fixture must preserve the complete ordinary result"
         );
         let assembled = assemble_transition_results(
@@ -784,22 +848,27 @@ fn four_member_mutability_transport_uses_ordinary_actual_relative_preference() {
             &[produced],
         )
         .expect("Project_out must expose the demanded runtime view");
-        assert_eq!(assembled[0].value_policy, runtime_pair_with(target).value);
+        assert_eq!(assembled[0].view.pair.value, runtime_pair().value);
+        assert_eq!(assembled[0].view.mode, target);
     }
 }
 
 #[test]
 fn opposite_mutability_endpoints_are_not_hard_inadmissible() {
-    let request = request(
-        compile_pair_with(ValueMutability::Const),
-        runtime_pair_with(ValueMutability::Const),
+    let request = request_with_modes(
+        compile_pair(),
+        PolicyMode::Const,
+        runtime_pair(),
+        PolicyMode::Const,
     );
-    let opposite = callable(
+    let opposite = callable_with_modes(
         "opposite-both-endpoints",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
-        compile_pair_with(ValueMutability::Mut),
-        runtime_pair_with(ValueMutability::Mut),
+        compile_pair(),
+        PolicyMode::Mut,
+        runtime_pair(),
+        PolicyMode::Mut,
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
@@ -809,50 +878,55 @@ fn opposite_mutability_endpoints_are_not_hard_inadmissible() {
         panic!("opposite mutability Patterns belong to Bp preference, not hard applicability");
     };
     assert_eq!(selected.callable.id, "opposite-both-endpoints");
-    assert_eq!(
-        selected.validated_output_endpoint.value.mutability,
-        [ValueMutability::Mut].into_iter().collect()
-    );
+    assert_eq!(selected.complete_result_view.mode, PolicyMode::Mut);
 }
 
 #[test]
 fn endpoint_mutability_orders_exact_then_unspecified_then_opposite() {
-    let request = request(
-        compile_pair_with(ValueMutability::Const),
-        runtime_pair_with(ValueMutability::Const),
+    let request = request_with_modes(
+        compile_pair(),
+        PolicyMode::Const,
+        runtime_pair(),
+        PolicyMode::Const,
     );
-    let exact = callable(
+    let exact = callable_with_modes(
         "exact",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
-        compile_pair_with(ValueMutability::Const),
-        runtime_pair_with(ValueMutability::Const),
+        compile_pair(),
+        PolicyMode::Const,
+        runtime_pair(),
+        PolicyMode::Const,
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
-    let unspecified = callable(
+    let unspecified = callable_with_modes(
         "unspecified",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
         compile_pair(),
+        PolicyMode::Plain,
         runtime_pair(),
+        PolicyMode::Plain,
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
-    let opposite = callable(
+    let opposite = callable_with_modes(
         "opposite",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
-        compile_pair_with(ValueMutability::Mut),
-        runtime_pair_with(ValueMutability::Mut),
+        compile_pair(),
+        PolicyMode::Mut,
+        runtime_pair(),
+        PolicyMode::Mut,
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
 
     assert_eq!(
         compare_policy_transition_candidates(
-            request.source_policy(),
-            request.target_query(),
+            request.source_view(),
+            request.target_demand(),
             &exact,
             &unspecified,
         ),
@@ -860,8 +934,8 @@ fn endpoint_mutability_orders_exact_then_unspecified_then_opposite() {
     );
     assert_eq!(
         compare_policy_transition_candidates(
-            request.source_policy(),
-            request.target_query(),
+            request.source_view(),
+            request.target_demand(),
             &unspecified,
             &opposite,
         ),
@@ -870,51 +944,26 @@ fn endpoint_mutability_orders_exact_then_unspecified_then_opposite() {
 }
 
 #[test]
-fn incompatible_existing_runtime_view_can_rematerialize_from_static_view() {
-    let source_policy = compile_runtime_pair_with(ValueMutability::Const);
-    let result = vec![PolicyResultEntry {
-        value: Some(SemanticValueRef {
-            id: SemanticValueId(20),
-            type_value: TypeValueId(10),
-        }),
-        value_policy: source_policy.value,
-        pattern: "pattern",
-        pattern_policy: source_policy.pattern,
-    }];
-    let query = P1Projection::Pair(runtime_pair_with(ValueMutability::Mut));
-    let P1Elaboration::AtomicRuntimeMigration { demands, .. } = elaborate_value_binding_p1(
-        &result,
-        Some(&query),
-        Provenance::new("const runtime view cannot satisfy mut runtime demand"),
-    )
-    .expect("the static const view remains eligible for rematerialization") else {
-        panic!("the incompatible existing runtime branch must not block static migration");
-    };
-    assert_eq!(demands.len(), 1);
-    assert_eq!(
-        demands[0].request.source_policy(),
-        &compile_pair_with(ValueMutability::Const)
+fn explicit_mode_mismatch_requires_a_selected_migration() {
+    let request = request_with_modes(
+        compile_pair(),
+        PolicyMode::Const,
+        runtime_pair(),
+        PolicyMode::Mut,
     );
-    assert_eq!(
-        demands[0].request.target_query(),
-        &runtime_pair_with(ValueMutability::Mut)
-    );
-
-    let candidate = callable(
+    let candidate = callable_with_modes(
         "fresh-mut-runtime",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
-        compile_pair_with(ValueMutability::Const),
-        runtime_pair_with(ValueMutability::Mut),
+        compile_pair(),
+        PolicyMode::Const,
+        runtime_pair(),
+        PolicyMode::Mut,
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
     assert!(matches!(
-        resolve_policy_bridge(
-            &demands[0].request,
-            &[candidate],
-            TransitionTypeExpectation::default(),
-        ),
+        resolve_policy_bridge(&request, &[candidate], TransitionTypeExpectation::default(),),
         PolicyBridgeResolution::Selected(_)
     ));
 }
@@ -1092,9 +1141,11 @@ fn explicit_ref_mechanical_operation_remains_a_separate_structure_change_fixture
             id: SemanticValueId(21),
             type_value: TypeValueId(90),
         }),
-        value_policy: runtime_pair_with(ValueMutability::Const).value,
         pattern: "ordinary-ref-result-pattern",
-        pattern_policy: runtime_pair_with(ValueMutability::Const).pattern,
+        view: PolicyView {
+            pair: runtime_pair(),
+            mode: PolicyMode::Const,
+        },
     };
     assert_ne!(
         explicit_ref_result.value.unwrap().type_value,
@@ -1134,14 +1185,14 @@ fn prototype_migration_result_carrier_preserves_the_supplied_complete_entry() {
     let assembled =
         assemble_transition_results(&[demand], &[produced]).expect("project output view");
     assert_eq!(
-        assembled[0].value_policy.stages,
+        assembled[0].view.pair.value.stages,
         runtime_pair().value.stages
     );
 }
 
 #[test]
 fn atomic_mut_runtime_migration_keeps_delete_as_selected_rejection() {
-    let target = runtime_pair_with(ValueMutability::Mut);
+    let target = runtime_pair_with(PolicyMode::Mut);
     let request = request(compile_pair(), target.clone());
     let candidates = vec![callable(
         "mut-runtime-delete",
@@ -1160,11 +1211,17 @@ fn atomic_mut_runtime_migration_keeps_delete_as_selected_rejection() {
 
 #[test]
 fn ref_specific_delete_uses_b3_after_equal_policy_endpoints() {
-    let source = compile_pair_with(ValueMutability::Const);
-    let target = runtime_pair_with(ValueMutability::Mut);
+    let source = compile_pair_with(PolicyMode::Const);
+    let target = runtime_pair_with(PolicyMode::Mut);
     let request = PolicyTransitionRequest::new(
-        source.clone(),
-        target.clone(),
+        PolicyView {
+            pair: source.clone(),
+            mode: PolicyMode::Const,
+        },
+        ResultPolicyDemand {
+            pair_query: P1Projection::Pair(target.clone()),
+            mode: PolicyMode::Mut,
+        },
         TypeValueId(90),
         SemanticValueId(20),
         Provenance::new("ref materialization safety overload"),
@@ -1204,15 +1261,15 @@ fn ref_specific_delete_uses_b3_after_equal_policy_endpoints() {
 #[test]
 fn fallback_survives_only_when_no_admissible_non_fallback_exists() {
     let request = request(
-        compile_pair_with(ValueMutability::Const),
-        runtime_pair_with(ValueMutability::Mut),
+        compile_pair_with(PolicyMode::Const),
+        runtime_pair_with(PolicyMode::Mut),
     );
     let mut fallback = callable(
         "default-transport",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
-        compile_runtime_pair_with(ValueMutability::Const),
-        compile_runtime_pair_with(ValueMutability::Mut),
+        compile_runtime_pair_with(PolicyMode::Const),
+        compile_runtime_pair_with(PolicyMode::Mut),
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
@@ -1229,15 +1286,15 @@ fn fallback_survives_only_when_no_admissible_non_fallback_exists() {
 #[test]
 fn admissible_delete_suppresses_fallback_before_endpoint_policy_order() {
     let request = request(
-        compile_pair_with(ValueMutability::Const),
-        runtime_pair_with(ValueMutability::Mut),
+        compile_pair_with(PolicyMode::Const),
+        runtime_pair_with(PolicyMode::Mut),
     );
     let mut better_policy_fallback = callable(
         "better-policy-fallback",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
-        compile_runtime_pair_with(ValueMutability::Const),
-        compile_runtime_pair_with(ValueMutability::Mut),
+        compile_runtime_pair_with(PolicyMode::Const),
+        compile_runtime_pair_with(PolicyMode::Mut),
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
@@ -1247,8 +1304,8 @@ fn admissible_delete_suppresses_fallback_before_endpoint_policy_order() {
         "ordinary-delete",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
-        compile_runtime_pair_with(ValueMutability::Mut),
-        compile_runtime_pair_with(ValueMutability::Const),
+        compile_runtime_pair_with(PolicyMode::Mut),
+        compile_runtime_pair_with(PolicyMode::Const),
         true,
         PolicyBridgeBody::IntrinsicStub("delete suppresses fallback".to_string()),
     );
@@ -1267,28 +1324,25 @@ fn admissible_delete_suppresses_fallback_before_endpoint_policy_order() {
 #[test]
 fn fine_delete_refines_one_cell_of_the_fallback_transport_quartet() {
     for (source, target, expected_default) in [
-        (
-            ValueMutability::Const,
-            ValueMutability::Const,
-            "const<-const",
-        ),
-        (ValueMutability::Const, ValueMutability::Mut, "mut<-const"),
-        (ValueMutability::Mut, ValueMutability::Const, "const<-mut"),
-        (ValueMutability::Mut, ValueMutability::Mut, "mut<-mut"),
+        (PolicyMode::Const, PolicyMode::Const, "const<-const"),
+        (PolicyMode::Const, PolicyMode::Mut, "mut<-const"),
+        (PolicyMode::Mut, PolicyMode::Const, "const<-mut"),
+        (PolicyMode::Mut, PolicyMode::Mut, "mut<-mut"),
     ] {
         let mut candidates = mutability_transport_candidates();
         for candidate in &mut candidates {
             candidate.prototype_is_fallback = true;
         }
 
-        let fine_delete_applies =
-            source == ValueMutability::Const && target == ValueMutability::Mut;
-        let mut fine_delete = callable(
+        let fine_delete_applies = source == PolicyMode::Const && target == PolicyMode::Mut;
+        let mut fine_delete = callable_with_modes(
             "fine-const-to-mut-delete",
             OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
             OrdinaryCallableTypeOutput::SameAsInput,
-            compile_runtime_pair_with(ValueMutability::Const),
-            compile_runtime_pair_with(ValueMutability::Mut),
+            compile_runtime_pair(),
+            PolicyMode::Const,
+            compile_runtime_pair(),
+            PolicyMode::Mut,
             true,
             PolicyBridgeBody::IntrinsicStub(
                 "fine structural region rejects const-to-mut materialization".to_string(),
@@ -1300,7 +1354,7 @@ fn fine_delete_refines_one_cell_of_the_fallback_transport_quartet() {
         fine_delete.ordinary_fully_admissible = fine_delete_applies;
         candidates.push(fine_delete);
 
-        let request = request(compile_pair_with(source), runtime_pair_with(target));
+        let request = request_with_modes(compile_pair(), source, runtime_pair(), target);
         let resolution =
             resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default());
 
@@ -1389,8 +1443,8 @@ fn output_policy_participates_in_transition_preference() {
     );
     assert_eq!(
         compare_policy_transition_candidates(
-            request.source_policy(),
-            request.target_query(),
+            request.source_view(),
+            request.target_demand(),
             &exact,
             &wide,
         ),
@@ -1429,7 +1483,7 @@ fn output_policy_participates_in_transition_preference() {
         lang_build::select_by_mutability_product(
             &input_only,
             &MutabilityActualFrame {
-                caller_value: ValueMutability::Const,
+                caller_value: PolicyMode::Const,
                 explicit_arguments: vec![],
             },
             OutputModeDemand::default(),
@@ -1500,8 +1554,8 @@ fn input_output_policy_tradeoff_is_incomparable_ambiguity() {
     let candidates = crossed_policy_candidates();
     assert_eq!(
         compare_policy_transition_candidates(
-            request.source_policy(),
-            request.target_query(),
+            request.source_view(),
+            request.target_demand(),
             &candidates[0],
             &candidates[1],
         ),
@@ -1595,7 +1649,7 @@ fn bridge_existence_is_checked_before_outer_winner_and_failure_cannot_backtrack(
         select_policy_overload(
             &outer,
             &MutabilityActualFrame {
-                caller_value: ValueMutability::Const,
+                caller_value: PolicyMode::Const,
                 explicit_arguments: vec![],
             },
             OutputModeDemand::default(),
@@ -1637,13 +1691,13 @@ fn bridge_existence_is_checked_before_outer_winner_and_failure_cannot_backtrack(
 
 #[test]
 fn selected_delete_bridge_rejects_outer_candidate_instead_of_qualifying_it() {
-    let request = request(compile_pair(), runtime_pair_with(ValueMutability::Mut));
+    let request = request(compile_pair(), runtime_pair_with(PolicyMode::Mut));
     let deleted = vec![callable(
         "deleted-transition",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
         compile_pair(),
-        runtime_pair_with(ValueMutability::Mut),
+        runtime_pair_with(PolicyMode::Mut),
         true,
         PolicyBridgeBody::IntrinsicStub("deleted".to_string()),
     )];
@@ -1652,7 +1706,7 @@ fn selected_delete_bridge_rejects_outer_candidate_instead_of_qualifying_it() {
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
         compile_pair(),
-        runtime_pair_with(ValueMutability::Mut),
+        runtime_pair_with(PolicyMode::Mut),
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     )];
@@ -1680,7 +1734,7 @@ fn selected_delete_bridge_rejects_outer_candidate_instead_of_qualifying_it() {
         select_policy_overload(
             &outer,
             &MutabilityActualFrame {
-                caller_value: ValueMutability::Const,
+                caller_value: PolicyMode::Const,
                 explicit_arguments: vec![],
             },
             OutputModeDemand::default(),

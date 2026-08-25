@@ -14,8 +14,8 @@ use lang_build::{
     extract_single_call_site, BuildManifest, CanonicalFullNavigation, CanonicalPatternAtom,
     CanonicalPatternBuilder, CanonicalPatternValue, CanonicalTypeObservation, CompilationWorld,
     InvocationOutcome, OrdinaryInvocationContext, OrdinaryInvocationFailure,
-    PatternNavigationInput, PatternValueId, Provenance, SemanticOwnerId, SemanticValuePayload,
-    TypeValueId, ValueMutability,
+    PatternNavigationInput, PatternValueId, PolicyMode, Provenance, SemanticOwnerId,
+    SemanticValuePayload, TypeValueId,
 };
 use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
 
@@ -29,7 +29,7 @@ fn invoke_struct(
     world.invoke_ordinary_call(
         world.package_root_node(),
         &call_site,
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         Provenance::new(provenance),
     )
 }
@@ -293,7 +293,7 @@ fn invoke_struct_under_owner(
     world.invoke_ordinary_call(
         world.package_root_node(),
         &call_site,
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const])
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const])
             .with_ambient_construction_owner(owner),
         Provenance::new(provenance),
     )

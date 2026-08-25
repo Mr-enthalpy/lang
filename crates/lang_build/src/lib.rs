@@ -231,9 +231,9 @@ pub use policy_overload::{
 };
 pub use policy_pair::{
     body_entry_allows_execution, compute_export_retention_closure, compute_wpre,
-    concrete_policy_mode, derive_function_object_p1, elaborate_binding_p1_projection,
-    elaborate_explicit_p1, elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
-    externally_visible, function_object_declaration_policy, normalize_p2_policy, policy_or,
+    derive_function_object_view, elaborate_binding_result_demand, elaborate_explicit_p1,
+    elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy, externally_visible,
+    function_object_declaration_policy, normalize_p2_policy, policy_or,
     project_export_overload_sets, project_export_root_preview, project_p1,
     project_resolved_export_view, publicly_reachable, validate_return_shape,
     BuiltinPrivilegedSealFunction, CallablePrivilege, CapabilityRealization,
@@ -243,8 +243,9 @@ pub use policy_pair::{
     NamespaceCandidateSetRef, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
     NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
     OutputModeDemand, P1Projection, PatternComponentPolicy, PatternConstraint, Phase, PolicyMode,
-    PolicyPair, PolicyResultEntry, PolicyStage, ResolvedCandidatePolicy, ReturnShape,
-    SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
+    PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, ResolvedCandidatePolicy,
+    ResultPolicyDemand, ReturnShape, SealWorldSnapshot, StageSet, ValueComponentPolicy,
+    ValuePresence, WpreRoots,
 };
 pub use policy_transition::{
     assemble_transition_results, compare_policy_transition_candidates,
@@ -282,7 +283,7 @@ pub use semantic_owner::{
     SemanticSymbolIdentity,
 };
 pub use semantic_world::{
-    canonical_function_object_p1, derived_cluster_policy, AmbientTypeBinder, BindConflict,
+    canonical_function_object_view, derived_cluster_policy, AmbientTypeBinder, BindConflict,
     BorrowFormationFailure, BorrowKind, BorrowOperand, BorrowView, BorrowViewId,
     ClusterConstructionId, CompleteTypeValue, ConstructionAuthority, ConstructionEvaluationContext,
     ConstructionState, ConstructionWindow, ImmutableTypeCallSpace, InjectedValueIdentity,

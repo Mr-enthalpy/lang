@@ -926,9 +926,9 @@ fn semantic_symbol_is_open_static(world: &SemanticWorld, identity: SemanticSymbo
     if !symbol.member_views.is_empty() {
         return symbol.member_views.iter().any(|view| {
             let stages = if view.value.is_some() {
-                &view.value_policy.stages
+                &view.view.pair.value.stages
             } else {
-                &view.pattern_policy.stages
+                &view.view.pair.pattern.stages
             };
             stages
                 .iter()
@@ -965,7 +965,7 @@ fn semantic_symbol_contains_policy(
         PolicyFlag::Export => unreachable!("handled above"),
     };
     Some(symbol.member_views.iter().any(|view| {
-        view.value_policy.stages.contains(stage) || view.pattern_policy.stages.contains(stage)
+        view.view.pair.value.stages.contains(stage) || view.view.pair.pattern.stages.contains(stage)
     }))
 }
 

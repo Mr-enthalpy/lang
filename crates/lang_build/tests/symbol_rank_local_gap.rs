@@ -7,8 +7,8 @@
 mod support;
 
 use lang_build::{
-    extract_single_call_site, OrdinaryInvocationContext, OrdinaryInvocationFailure, Provenance,
-    ValueMutability,
+    extract_single_call_site, OrdinaryInvocationContext, OrdinaryInvocationFailure, PolicyMode,
+    Provenance,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -20,7 +20,7 @@ fn non_return_slot_symbol_local_is_rejected_explicitly() {
     let result = world.invoke_ordinary_call(
         world.package_root_node(),
         &call_site,
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         Provenance::new("symbol-rank local execution gap"),
     );
     let Err(OrdinaryInvocationFailure::SelectedBody { failure, .. }) = result else {

@@ -14,15 +14,13 @@
 
 mod support;
 
-use std::collections::BTreeSet;
-
 use lang_build::{
     compute_canonical_meta_instance_key, extract_single_call_site, CanonicalValueAddr,
     ClusterSymbolResult, CompilationWorld, InvocationOutcome, MetaCallableIdentity,
     MetaInstanceKey, MetaInstanceRoot, NamespaceNodeId, OrdinaryInvocationContext,
-    PatternComponentPolicy, PolicyPair, PolicyStage, Provenance, SemanticOwnerKind,
+    PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, Provenance, SemanticOwnerKind,
     SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeDefinitionInstanceId, TypeValueId,
-    ValueComponentPolicy, ValueMutability, ValuePresence,
+    ValueComponentPolicy, ValuePresence,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -37,7 +35,7 @@ fn invoke_meta(
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new(provenance),
         )
         .expect("source meta callable is selected through the ordinary spine");
@@ -164,7 +162,6 @@ fn static_type_pair() -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: stages.clone(),
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy { stages },
@@ -479,7 +476,7 @@ fn materialized_simple_literals_normalize_by_content_not_identity() {
         let atom = ProductAtom::SemanticValue {
             value,
             type_value: TypeValueId(0),
-            mutability: ValueMutability::Const,
+            mode: PolicyMode::Const,
             provenance: provenance.clone(),
         };
         let raw = RawArgShape::from_product_atom(0, &atom);
@@ -546,7 +543,7 @@ fn materialized_simple_literals_normalize_by_content_not_identity() {
     let plain_atom = ProductAtom::SemanticValue {
         value: plain_a,
         type_value: TypeValueId(0),
-        mutability: ValueMutability::Const,
+        mode: PolicyMode::Const,
         provenance: provenance.clone(),
     };
     let plain_raw = RawArgShape::from_product_atom(0, &plain_atom);

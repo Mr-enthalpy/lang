@@ -27,7 +27,7 @@ mod support;
 
 use lang_build::{
     extract_single_call_site, CompilationWorld, InvocationOutcome, OrdinaryInvocationContext,
-    OrdinaryInvocationFailure, Provenance, ValueMutability,
+    OrdinaryInvocationFailure, PolicyMode, Provenance,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -41,7 +41,7 @@ fn try_invoke(
     world.invoke_ordinary_call(
         world.package_root_node(),
         &call_site,
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         Provenance::new(provenance),
     )
 }

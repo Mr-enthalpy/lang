@@ -26,7 +26,7 @@ use crate::{
     identity::{SemanticValueId, TypeValueId},
     model::Provenance,
     model::SymbolId,
-    policy_pair::{PolicyResultEntry, ValueMutability},
+    policy_pair::{PolicyMode, PolicyResultEntry},
     semantic_world::{ObjectPlaceId, PatternValueId},
 };
 
@@ -111,7 +111,7 @@ pub enum ProductAtom {
     SemanticValue {
         value: SemanticValueId,
         type_value: TypeValueId,
-        mutability: ValueMutability,
+        mode: PolicyMode,
         provenance: Provenance,
     },
     Unsupported {
@@ -229,7 +229,7 @@ pub struct RawArgShape {
     /// semantic value.  Policy slicing remains on the Symbol/value-view edge;
     /// this field never becomes a substitute for Symbol or Pattern identity.
     pub known_semantic_value: Option<SemanticValueId>,
-    pub known_value_mutability: Option<ValueMutability>,
+    pub known_value_mode: Option<PolicyMode>,
     pub provenance: Provenance,
 }
 
@@ -243,16 +243,15 @@ impl RawArgShape {
                 summary: summary.clone(),
             },
         };
-        let (known_first_order_type_value, known_semantic_value, known_value_mutability) =
-            match atom {
-                ProductAtom::SemanticValue {
-                    value,
-                    type_value,
-                    mutability,
-                    ..
-                } => (Some(*type_value), Some(*value), Some(*mutability)),
-                _ => (None, None, None),
-            };
+        let (known_first_order_type_value, known_semantic_value, known_value_mode) = match atom {
+            ProductAtom::SemanticValue {
+                value,
+                type_value,
+                mode,
+                ..
+            } => (Some(*type_value), Some(*value), Some(*mode)),
+            _ => (None, None, None),
+        };
         Self {
             index,
             value_class,
@@ -265,7 +264,7 @@ impl RawArgShape {
             known_complete_type_observation: None,
             known_type_observation: None,
             known_semantic_value,
-            known_value_mutability,
+            known_value_mode,
             provenance: atom.provenance().clone(),
         }
     }
@@ -412,11 +411,11 @@ impl RawArgShape {
         self,
         value: SemanticValueId,
         type_value: TypeValueId,
-        mutability: ValueMutability,
+        mode: PolicyMode,
     ) -> Self {
         Self {
             known_semantic_value: Some(value),
-            known_value_mutability: Some(mutability),
+            known_value_mode: Some(mode),
             ..self.as_resolved_value_with_value_type(type_value)
         }
     }

@@ -46,12 +46,11 @@ use lang_build::{
     extract_single_call_site, invoke_host_member_symbol_ordinary, CanonicalValueAddr,
     MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
-    Phase, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
-    RawArgValueClass, ResolverContext, ReturnShape, SemanticSymbolIdentity, SemanticTypeEnv,
-    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeMaterializationState,
-    TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
+    Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
+    RawArgShape, RawArgValueClass, ResolverContext, ReturnShape, SemanticSymbolIdentity,
+    SemanticTypeEnv, SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeMaterializationState,
+    TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
-use std::collections::BTreeSet;
 use support::initializer_from_source;
 
 fn stage_pair(stages: &[PolicyStage]) -> PolicyPair {
@@ -62,7 +61,6 @@ fn stage_pair(stages: &[PolicyStage]) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: set.clone(),
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy { stages: set },
@@ -348,8 +346,14 @@ fn unit_is_terminal_leaf() {
             SymbolId(90),
             &closure,
             None,
-            stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
-            stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
+            lang_build::PolicyView {
+                pair: stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
+                mode: PolicyMode::Plain,
+            },
+            lang_build::PolicyView {
+                pair: stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
+                mode: PolicyMode::Plain,
+            },
             None,
             ReturnShape::SingleVal(lang_build::PatternConstraint::Constrained),
             provenance.clone(),
@@ -371,7 +375,7 @@ fn unit_is_terminal_leaf() {
     let atom = ProductAtom::SemanticValue {
         value: registered.call_entry,
         type_value: entry_type,
-        mutability: ValueMutability::Const,
+        mode: PolicyMode::Const,
         provenance: provenance.clone(),
     };
     let raw = RawArgShape::from_product_atom(0, &atom);
@@ -746,7 +750,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         g,
         &call_site,
         &resolver,
-        sealed,
+        sealed.clone(),
         provenance.clone(),
     );
     assert!(

@@ -121,10 +121,6 @@ pub enum PolicyMode {
     Mut,
 }
 
-/// Compatibility spelling for older APIs. The aliased carrier is the real
-/// three-point [`PolicyMode`]; it has no `Unspecified` state.
-pub type ValueMutability = PolicyMode;
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct OutputModeDemand(pub PolicyMode);
 
@@ -287,11 +283,6 @@ pub enum ValuePresence {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValueComponentPolicy {
     pub stages: StageSet,
-    /// An empty domain is the unconstrained `const || mut` domain. A
-    /// singleton is an explicit restriction to that mutability view. This
-    /// interpretation applies only when `presence` is not `Absent`; absent Pv
-    /// must carry neither stages nor mutability.
-    pub mutability: BTreeSet<ValueMutability>,
     pub presence: ValuePresence,
 }
 
@@ -306,18 +297,12 @@ pub struct PolicyPair {
     pub pattern: PatternComponentPolicy,
 }
 
-/// Form the concrete mode carried by an evaluated view. A singleton domain
-/// keeps its explicit point; an omitted/wider declaration forms `plain` at
-/// the evaluation boundary instead of an unspecified carrier.
-pub fn concrete_policy_mode(value: &ValueComponentPolicy) -> PolicyMode {
-    if value.mutability.len() == 1 {
-        return *value
-            .mutability
-            .iter()
-            .next()
-            .expect("singleton mode domain");
-    }
-    PolicyMode::Plain
+/// One complete observation edge. The pair and the whole-slot mode are
+/// orthogonal semantic facts: neither may be reconstructed from the other.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyView {
+    pub pair: PolicyPair,
+    pub mode: PolicyMode,
 }
 
 /// Policy disjunction: the least Policy admitting everything either
@@ -342,21 +327,11 @@ pub fn concrete_policy_mode(value: &ValueComponentPolicy) -> PolicyMode {
 ///
 /// Component rules:
 /// * stages — set union on both the value and pattern components;
-/// * mutability — an empty domain is the unconstrained `const || mut`
-///   domain, so if either side is unconstrained the disjunction is
-///   unconstrained; otherwise the union of the explicit restrictions;
 /// * presence — `Present || Present = Present`,
 ///   `Absent || Absent = Absent`, any mix is `Optional`.
+/// Whole-slot PolicyMode is deliberately absent: callers combine complete
+/// [`PolicyView`] values without inventing a mode disjunction.
 pub fn policy_or(a: &PolicyPair, b: &PolicyPair) -> PolicyPair {
-    let mutability = if a.value.mutability.is_empty() || b.value.mutability.is_empty() {
-        BTreeSet::new()
-    } else {
-        a.value
-            .mutability
-            .union(&b.value.mutability)
-            .copied()
-            .collect()
-    };
     let presence = match (a.value.presence, b.value.presence) {
         (ValuePresence::Present, ValuePresence::Present) => ValuePresence::Present,
         (ValuePresence::Absent, ValuePresence::Absent) => ValuePresence::Absent,
@@ -365,7 +340,6 @@ pub fn policy_or(a: &PolicyPair, b: &PolicyPair) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: a.value.stages.union(&b.value.stages),
-            mutability,
             presence,
         },
         pattern: PatternComponentPolicy {
@@ -417,6 +391,24 @@ pub enum P1Projection {
     Pair(PolicyPair),
 }
 
+/// Candidate-independent result demand formed before root-call maxima.
+/// `Infer` is the candidate-local default pair query; `mode` is always one
+/// concrete point and is never inferred from the pair.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResultPolicyDemand {
+    pub pair_query: P1Projection,
+    pub mode: PolicyMode,
+}
+
+impl Default for ResultPolicyDemand {
+    fn default() -> Self {
+        Self {
+            pair_query: P1Projection::Infer,
+            mode: PolicyMode::Plain,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FormalPolicyPattern {
     /// The parameter policy after inheriting its callable P2 and applying the
@@ -438,6 +430,8 @@ pub struct NamespaceDeclarationPolicy {
     /// The complete namespace-internal declaration view. Export never crops
     /// this projection.
     pub projection: P1Projection,
+    /// Whole-slot declaration mode, factored before `projection` is formed.
+    pub mode: PolicyMode,
     /// Root-local external projection derived when this declaration directly
     /// writes `export`. This is an early validation/preview only:
     /// `None` does not prove that the declaration is absent from the eventual
@@ -452,16 +446,14 @@ pub struct NamespaceDeclarationPolicy {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionObjectDeclarationPolicy {
-    /// Empty is the default unrestricted `const || mut` function-object
-    /// domain. This is the complete namespace-internal declaration view;
-    /// export const-projection is represented separately and never crops it.
-    pub mutability: BTreeSet<ValueMutability>,
+    /// Concrete whole-slot mode. Omitted source syntax forms `plain`.
+    pub mode: PolicyMode,
 }
 
 impl Default for FunctionObjectDeclarationPolicy {
     fn default() -> Self {
         Self {
-            mutability: BTreeSet::new(),
+            mode: PolicyMode::Plain,
         }
     }
 }
@@ -469,9 +461,8 @@ impl Default for FunctionObjectDeclarationPolicy {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyResultEntry<V, P> {
     pub value: Option<V>,
-    pub value_policy: ValueComponentPolicy,
     pub pattern: P,
-    pub pattern_policy: PatternComponentPolicy,
+    pub view: PolicyView,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -812,7 +803,7 @@ pub fn externally_visible<I: Ord>(
 #[derive(Clone, Debug, Default)]
 struct ComponentAtoms {
     stages: StageSet,
-    mutability: BTreeSet<ValueMutability>,
+    mode_atoms: BTreeSet<PolicyMode>,
     namespace: BTreeSet<NamespaceVisibility>,
     export_root: bool,
     absent_value: bool,
@@ -821,7 +812,7 @@ struct ComponentAtoms {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum PolicyDimension {
     Stage,
-    Mutability,
+    Mode,
     NamespaceVisibility,
     ExportRoot,
     ValuePresence,
@@ -833,8 +824,8 @@ impl ComponentAtoms {
         if !self.stages.is_empty() {
             result.insert(PolicyDimension::Stage);
         }
-        if !self.mutability.is_empty() {
-            result.insert(PolicyDimension::Mutability);
+        if !self.mode_atoms.is_empty() {
+            result.insert(PolicyDimension::Mode);
         }
         if !self.namespace.is_empty() {
             result.insert(PolicyDimension::NamespaceVisibility);
@@ -860,11 +851,12 @@ impl ComponentAtoms {
 pub fn normalize_p2_policy(
     policy: &NormPolicySpec,
     provenance: Provenance,
-) -> Result<PolicyPair, Diagnostic> {
+) -> Result<PolicyView, Diagnostic> {
     match (&policy.value_policy, &policy.pattern_policy) {
         (NormValuePolicyPattern::Conjunction(value), None) => {
             let atoms = parse_component(value, true, provenance.clone())?;
             reject_namespace_attributes(&atoms, "P2", provenance.clone())?;
+            let mode = concrete_mode_atom(&atoms, "P2", provenance.clone())?;
             let presence = atoms.presence();
             let static_stages = atoms.stages.static_stages();
             let pattern_stages = if static_stages.is_empty() {
@@ -878,11 +870,10 @@ pub fn normalize_p2_policy(
             } else {
                 static_stages
             };
-            validate_p2_pair(
+            let pair = validate_p2_pair(
                 PolicyPair {
                     value: ValueComponentPolicy {
                         stages: atoms.stages,
-                        mutability: atoms.mutability,
                         presence,
                     },
                     pattern: PatternComponentPolicy {
@@ -890,7 +881,8 @@ pub fn normalize_p2_policy(
                     },
                 },
                 provenance,
-            )
+            )?;
+            Ok(PolicyView { pair, mode })
         }
         (value_pattern, Some(pattern)) => {
             let value_atoms = match value_pattern {
@@ -906,17 +898,17 @@ pub fn normalize_p2_policy(
             reject_namespace_attributes(&value_atoms, "P2", provenance.clone())?;
             reject_namespace_attributes(&pattern_atoms, "P2", provenance.clone())?;
             let value_presence = value_atoms.presence();
-            if !pattern_atoms.mutability.is_empty() {
+            if !pattern_atoms.mode_atoms.is_empty() {
                 return Err(policy_error(
-                    "const/mut policy is valid only in the P2 value component",
+                    "PolicyMode is a whole-slot coordinate and may not appear in Pp",
                     provenance,
                 ));
             }
-            validate_p2_pair(
+            let mode = concrete_mode_atom(&value_atoms, "P2", provenance.clone())?;
+            let pair = validate_p2_pair(
                 PolicyPair {
                     value: ValueComponentPolicy {
                         stages: value_atoms.stages,
-                        mutability: value_atoms.mutability,
                         presence: value_presence,
                     },
                     pattern: PatternComponentPolicy {
@@ -924,7 +916,8 @@ pub fn normalize_p2_policy(
                     },
                 },
                 provenance,
-            )
+            )?;
+            Ok(PolicyView { pair, mode })
         }
         (NormValuePolicyPattern::Absent { .. }, None) => Err(policy_error(
             "an absent P2 value component requires an explicit Pattern component",
@@ -933,21 +926,22 @@ pub fn normalize_p2_policy(
     }
 }
 
-pub fn elaborate_binding_p1_projection(
+pub fn elaborate_binding_result_demand(
     policy: Option<&NormPolicySpec>,
     provenance: Provenance,
-) -> Result<P1Projection, Diagnostic> {
+) -> Result<ResultPolicyDemand, Diagnostic> {
     let Some(policy) = policy else {
-        return Ok(P1Projection::Infer);
+        return Ok(ResultPolicyDemand::default());
     };
-    let (projection, namespace, export_root) = elaborate_p1_components(policy, provenance.clone())?;
+    let (pair_query, mode, namespace, export_root) =
+        elaborate_p1_components(policy, provenance.clone())?;
     if !namespace.is_empty() || export_root {
         return Err(policy_error(
             "public/private/export are valid only on namespace declarations",
             provenance,
         ));
     }
-    Ok(projection)
+    Ok(ResultPolicyDemand { pair_query, mode })
 }
 
 pub fn elaborate_formal_policy_pattern(
@@ -990,30 +984,9 @@ pub fn elaborate_formal_policy_pattern(
             provenance,
         ));
     }
-    if atoms.mutability.len() != 1 {
-        return Err(policy_error(
-            "an explicit formal parameter policy must select exactly one of const or mut",
-            provenance,
-        ));
-    }
-    let selected = atoms
-        .mutability
-        .iter()
-        .next()
-        .copied()
-        .expect("one formal mutability after validation");
-    if !inherited_p2.value.mutability.is_empty()
-        && !inherited_p2.value.mutability.contains(&selected)
-    {
-        return Err(policy_error(
-            "formal parameter const/mut slice is outside the mutability domain inherited from P2",
-            provenance,
-        ));
-    }
-    let mut effective_pair = inherited_p2.clone();
-    effective_pair.value.mutability = BTreeSet::from([selected]);
+    let selected = explicit_mode_atom(&atoms, "formal parameter", provenance)?;
     Ok(FormalPolicyPattern {
-        effective_pair,
+        effective_pair: inherited_p2.clone(),
         mode: selected,
     })
 }
@@ -1032,37 +1005,37 @@ pub enum ExplicitP1Position {
 /// The per-dimension explicit P1 selection extracted from one spelling
 /// site (outer binding prefix or written-self slot policy).
 ///
-/// The explicit P1 is the complete `Pv:Pp` coordinate,
-/// not just the const/mut axis: value stage, value mutability, value
-/// presence, and Pattern stage are each independently selectable.  A
+/// The explicit selection keeps the complete `Pv:Pp` coordinates and its
+/// orthogonal whole-slot mode separate. Value stage, value presence, Pattern
+/// stage, and mode are independently selectable. A
 /// dimension that was not written stays `None` and falls back to
 /// `Derive(P2)` in `canonical_function_object_p1`; a dimension written at
 /// BOTH spelling sites must agree there or the canonicalizer hard-errors.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ExplicitP1Selection {
     pub value_stages: Option<StageSet>,
-    pub mutability: Option<BTreeSet<ValueMutability>>,
     pub presence: Option<ValuePresence>,
     pub pattern_stages: Option<StageSet>,
+    pub mode: Option<PolicyMode>,
 }
 
 impl ExplicitP1Selection {
     pub fn is_empty(&self) -> bool {
         self.value_stages.is_none()
-            && self.mutability.is_none()
             && self.presence.is_none()
             && self.pattern_stages.is_none()
+            && self.mode.is_none()
     }
 
     /// A fully explicit selection carrying every dimension of `pair`.
     /// Used by core-callable registration, whose declared function policy
     /// is explicit by construction (there is no source spelling to parse).
-    pub fn from_complete_pair(pair: &PolicyPair) -> Self {
+    pub fn from_complete_view(view: &PolicyView) -> Self {
         Self {
-            value_stages: Some(pair.value.stages.clone()),
-            mutability: Some(pair.value.mutability.clone()),
-            presence: Some(pair.value.presence),
-            pattern_stages: Some(pair.pattern.stages.clone()),
+            value_stages: Some(view.pair.value.stages.clone()),
+            presence: Some(view.pair.value.presence),
+            pattern_stages: Some(view.pair.pattern.stages.clone()),
+            mode: Some(view.mode),
         }
     }
 }
@@ -1075,7 +1048,7 @@ impl ExplicitP1Selection {
 /// policy must never be treated as "no explicit P1".
 pub fn elaborate_explicit_p1(
     policy: Option<&NormPolicySpec>,
-    inherited_p2: &PolicyPair,
+    _inherited_p2: &PolicyPair,
     position: ExplicitP1Position,
     provenance: Provenance,
 ) -> Result<Option<ExplicitP1Selection>, Diagnostic> {
@@ -1092,9 +1065,9 @@ pub fn elaborate_explicit_p1(
             "explicit P1 Pattern component",
             provenance.clone(),
         )?;
-        if !pattern_atoms.mutability.is_empty() {
+        if !pattern_atoms.mode_atoms.is_empty() {
             return Err(policy_error(
-                "const/mut policy is valid only in the explicit P1 value component",
+                "PolicyMode is a whole-slot coordinate and may not appear in Pp",
                 provenance,
             ));
         }
@@ -1140,28 +1113,8 @@ pub fn elaborate_explicit_p1(
     if value_atoms.absent_value {
         selection.presence = Some(value_atoms.presence());
     }
-    if !value_atoms.mutability.is_empty() {
-        if value_atoms.mutability.len() != 1 {
-            return Err(policy_error(
-                "an explicit P1 policy must select exactly one of const or mut",
-                provenance,
-            ));
-        }
-        let selected = value_atoms
-            .mutability
-            .iter()
-            .next()
-            .copied()
-            .expect("one explicit P1 mutability after validation");
-        if !inherited_p2.value.mutability.is_empty()
-            && !inherited_p2.value.mutability.contains(&selected)
-        {
-            return Err(policy_error(
-                "explicit P1 const/mut slice is outside the mutability domain inherited from P2",
-                provenance,
-            ));
-        }
-        selection.mutability = Some(BTreeSet::from([selected]));
+    if !value_atoms.mode_atoms.is_empty() {
+        selection.mode = Some(explicit_mode_atom(&value_atoms, "explicit P1", provenance)?);
     }
     if selection.is_empty() {
         Ok(None)
@@ -1178,12 +1131,14 @@ pub fn elaborate_namespace_declaration_policy(
     let Some(policy) = policy else {
         return Ok(NamespaceDeclarationPolicy {
             projection: P1Projection::Infer,
+            mode: PolicyMode::Plain,
             external_projection: None,
             visibility: None,
             export_root: false,
         });
     };
-    let (projection, namespace, export_root) = elaborate_p1_components(policy, provenance.clone())?;
+    let (projection, mode, namespace, export_root) =
+        elaborate_p1_components(policy, provenance.clone())?;
     let visibility = one_namespace(&namespace, provenance.clone())?;
     if export_root && position != NamespaceDeclarationPosition::DirectTopLevel {
         return Err(policy_error(
@@ -1196,6 +1151,7 @@ pub fn elaborate_namespace_declaration_policy(
         .transpose()?;
     Ok(NamespaceDeclarationPolicy {
         projection,
+        mode,
         external_projection,
         visibility,
         export_root,
@@ -1232,18 +1188,26 @@ pub fn project_export_root_preview(
 fn elaborate_p1_components(
     policy: &NormPolicySpec,
     provenance: Provenance,
-) -> Result<(P1Projection, BTreeSet<NamespaceVisibility>, bool), Diagnostic> {
+) -> Result<
+    (
+        P1Projection,
+        PolicyMode,
+        BTreeSet<NamespaceVisibility>,
+        bool,
+    ),
+    Diagnostic,
+> {
     match (&policy.value_policy, &policy.pattern_policy) {
         (NormValuePolicyPattern::Conjunction(value), None) => {
             let atoms = parse_component(value, true, provenance.clone())?;
+            let mode = concrete_mode_atom(&atoms, "P1", provenance.clone())?;
             let value = ValueComponentPolicy {
                 stages: atoms.stages.clone(),
-                mutability: atoms.mutability.clone(),
                 presence: atoms.presence(),
             };
             validate_value_component_invariant(&value, "P1 value component", provenance)?;
             let projection = P1Projection::ValueDominant { value };
-            Ok((projection, atoms.namespace, atoms.export_root))
+            Ok((projection, mode, atoms.namespace, atoms.export_root))
         }
         (value_pattern, Some(pattern)) => {
             let value_atoms = match value_pattern {
@@ -1256,9 +1220,9 @@ fn elaborate_p1_components(
                 },
             };
             let pattern_atoms = parse_component(pattern, false, provenance.clone())?;
-            if !pattern_atoms.mutability.is_empty() {
+            if !pattern_atoms.mode_atoms.is_empty() {
                 return Err(policy_error(
-                    "const/mut policy is valid only in the P1 value component",
+                    "PolicyMode is a whole-slot coordinate and may not appear in Pp",
                     provenance,
                 ));
             }
@@ -1271,11 +1235,11 @@ fn elaborate_p1_components(
             let mut namespace = value_atoms.namespace.clone();
             namespace.extend(pattern_atoms.namespace.iter().copied());
             let export_root = value_atoms.export_root || pattern_atoms.export_root;
+            let mode = concrete_mode_atom(&value_atoms, "P1", provenance.clone())?;
             one_namespace(&namespace, provenance.clone())?;
             let value_presence = value_atoms.presence();
             let value = ValueComponentPolicy {
                 stages: value_atoms.stages,
-                mutability: value_atoms.mutability,
                 presence: value_presence,
             };
             validate_value_component_invariant(&value, "P1 value component", provenance.clone())?;
@@ -1286,6 +1250,7 @@ fn elaborate_p1_components(
                         stages: pattern_atoms.stages,
                     },
                 }),
+                mode,
                 namespace,
                 export_root,
             ))
@@ -1300,33 +1265,36 @@ fn elaborate_p1_components(
 pub fn function_object_declaration_policy(
     declaration: &NamespaceDeclarationPolicy,
 ) -> FunctionObjectDeclarationPolicy {
-    let mutability = match &declaration.projection {
-        P1Projection::Infer => BTreeSet::new(),
-        P1Projection::ValueDominant { value } => value.mutability.clone(),
-        P1Projection::Pair(pair) => pair.value.mutability.clone(),
-    };
-    FunctionObjectDeclarationPolicy { mutability }
+    FunctionObjectDeclarationPolicy {
+        mode: declaration.mode,
+    }
 }
 
-pub fn derive_function_object_p1(
-    result_p2: &PolicyPair,
+pub fn derive_function_object_view(
+    result_p2: &PolicyView,
     declaration: &FunctionObjectDeclarationPolicy,
-) -> PolicyPair {
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: result_p2.value.stages.union(&result_p2.pattern.stages),
-            mutability: declaration.mutability.clone(),
-            presence: ValuePresence::Present,
+) -> PolicyView {
+    PolicyView {
+        pair: PolicyPair {
+            value: ValueComponentPolicy {
+                stages: result_p2
+                    .pair
+                    .value
+                    .stages
+                    .union(&result_p2.pair.pattern.stages),
+                presence: ValuePresence::Present,
+            },
+            pattern: PatternComponentPolicy {
+                stages: result_p2.pair.pattern.stages.clone(),
+            },
         },
-        pattern: PatternComponentPolicy {
-            stages: result_p2.pattern.stages.clone(),
-        },
+        mode: declaration.mode,
     }
 }
 
 /// Apply a P1 projection as a real slice restriction. The returned entries are
-/// owned views whose stage/mutability sets are cropped; associated value and
-/// Pattern identities are cloned unchanged.
+/// owned views whose pair stage/presence coordinates are cropped; whole-slot
+/// mode and associated value/Pattern identities are cloned unchanged.
 pub fn project_p1<V: Clone, P: Clone>(
     projection: &P1Projection,
     result: &[PolicyResultEntry<V, P>],
@@ -1339,21 +1307,31 @@ pub fn project_p1<V: Clone, P: Clone>(
                 let value_policy = restrict_value_policy(value, entry)?;
                 Some(PolicyResultEntry {
                     value: entry.value.clone(),
-                    value_policy,
                     pattern: entry.pattern.clone(),
-                    pattern_policy: entry.pattern_policy.clone(),
+                    view: PolicyView {
+                        pair: PolicyPair {
+                            value: value_policy,
+                            pattern: entry.view.pair.pattern.clone(),
+                        },
+                        mode: entry.view.mode,
+                    },
                 })
             }
             P1Projection::Pair(pair) => {
                 let value_policy = restrict_value_policy(&pair.value, entry)?;
                 let pattern_stages =
-                    restrict_stages(&pair.pattern.stages, &entry.pattern_policy.stages)?;
+                    restrict_stages(&pair.pattern.stages, &entry.view.pair.pattern.stages)?;
                 Some(PolicyResultEntry {
                     value: entry.value.clone(),
-                    value_policy,
                     pattern: entry.pattern.clone(),
-                    pattern_policy: PatternComponentPolicy {
-                        stages: pattern_stages,
+                    view: PolicyView {
+                        pair: PolicyPair {
+                            value: value_policy,
+                            pattern: PatternComponentPolicy {
+                                stages: pattern_stages,
+                            },
+                        },
+                        mode: entry.view.mode,
                     },
                 })
             }
@@ -1374,35 +1352,16 @@ fn restrict_value_policy<V, P>(
         // A pure-P entry still answers a stage slice: the visible policy is
         // the requested restriction of the entry policy (P1 is the visible
         // policy authority), never the entry policy verbatim.
-        let stages = restrict_stages(&query.stages, &entry.value_policy.stages)?;
+        let stages = restrict_stages(&query.stages, &entry.view.pair.value.stages)?;
         return Some(ValueComponentPolicy {
             stages,
-            mutability: entry.value_policy.mutability.clone(),
-            presence: entry.value_policy.presence,
+            presence: entry.view.pair.value.presence,
         });
     }
-    let stages = restrict_stages(&query.stages, &entry.value_policy.stages)?;
-    let mutability = if query.mutability.is_empty() {
-        entry.value_policy.mutability.clone()
-    } else if entry.value_policy.mutability.is_empty() {
-        // Empty is the unconstrained `const || mut` domain, so an explicit
-        // query crops it to the requested singleton/domain.
-        query.mutability.clone()
-    } else {
-        let selected = query
-            .mutability
-            .intersection(&entry.value_policy.mutability)
-            .copied()
-            .collect::<BTreeSet<_>>();
-        if selected.is_empty() {
-            return None;
-        }
-        selected
-    };
+    let stages = restrict_stages(&query.stages, &entry.view.pair.value.stages)?;
     Some(ValueComponentPolicy {
         stages,
-        mutability,
-        presence: entry.value_policy.presence,
+        presence: entry.view.pair.value.presence,
     })
 }
 
@@ -1449,11 +1408,9 @@ fn validate_value_component_invariant(
     context: &str,
     provenance: Provenance,
 ) -> Result<(), Diagnostic> {
-    if value.presence == ValuePresence::Absent
-        && (!value.stages.is_empty() || !value.mutability.is_empty())
-    {
+    if value.presence == ValuePresence::Absent && !value.stages.is_empty() {
         return Err(policy_error(
-            format!("{context}: `Pv = absent` cannot carry value stages or const/mutability"),
+            format!("{context}: `Pv = absent` cannot carry value stages"),
             provenance,
         ));
     }
@@ -1572,10 +1529,13 @@ fn parse_atom(
             "seal" => atoms.stages.insert(PolicyStage::Seal),
             "runtime" => atoms.stages.insert(PolicyStage::Runtime),
             "const" => {
-                atoms.mutability.insert(ValueMutability::Const);
+                atoms.mode_atoms.insert(PolicyMode::Const);
+            }
+            "plain" => {
+                atoms.mode_atoms.insert(PolicyMode::Plain);
             }
             "mut" => {
-                atoms.mutability.insert(ValueMutability::Mut);
+                atoms.mode_atoms.insert(PolicyMode::Mut);
             }
             "public" => {
                 atoms.namespace.insert(NamespaceVisibility::Public);
@@ -1641,7 +1601,7 @@ fn merge_conjunction(
         ));
     }
     result.stages = result.stages.union(&next.stages);
-    result.mutability.extend(next.mutability);
+    result.mode_atoms.extend(next.mode_atoms);
     result.namespace.extend(next.namespace);
     result.export_root |= next.export_root;
     result.absent_value |= next.absent_value;
@@ -1655,11 +1615,42 @@ fn merge_same_dimension(
 ) {
     match dimension {
         PolicyDimension::Stage => result.stages = result.stages.union(&next.stages),
-        PolicyDimension::Mutability => result.mutability.extend(next.mutability),
+        PolicyDimension::Mode => result.mode_atoms.extend(next.mode_atoms),
         PolicyDimension::NamespaceVisibility => result.namespace.extend(next.namespace),
         PolicyDimension::ExportRoot => result.export_root |= next.export_root,
         PolicyDimension::ValuePresence => result.absent_value |= next.absent_value,
     }
+}
+
+fn concrete_mode_atom(
+    atoms: &ComponentAtoms,
+    context: &str,
+    provenance: Provenance,
+) -> Result<PolicyMode, Diagnostic> {
+    match atoms.mode_atoms.len() {
+        0 => Ok(PolicyMode::Plain),
+        1 => Ok(*atoms.mode_atoms.iter().next().expect("one mode atom")),
+        _ => Err(policy_error(
+            format!(
+                "{context} must select exactly one whole-slot PolicyMode; mode choices are not a PolicyPair domain"
+            ),
+            provenance,
+        )),
+    }
+}
+
+fn explicit_mode_atom(
+    atoms: &ComponentAtoms,
+    context: &str,
+    provenance: Provenance,
+) -> Result<PolicyMode, Diagnostic> {
+    if atoms.mode_atoms.is_empty() {
+        return Err(policy_error(
+            format!("{context} must select one of const, plain, or mut"),
+            provenance,
+        ));
+    }
+    concrete_mode_atom(atoms, context, provenance)
 }
 
 fn policy_error(message: impl Into<String>, provenance: Provenance) -> Diagnostic {

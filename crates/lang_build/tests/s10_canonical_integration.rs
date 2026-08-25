@@ -12,10 +12,10 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CompilationWorld, ExecutionEnv, InvocationOutcome,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
-    PatternClusterOwner, PatternComponentPolicy, Phase, PolicyEnv, PolicyPair, PolicyStage,
-    PolicyTransitionRequest, Provenance, ResolveExpectation, ResolverCode, ReturnShape,
-    SemanticOwnerKind, SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot,
-    ValueComponentPolicy, ValueMutability, ValuePresence,
+    PatternClusterOwner, PatternComponentPolicy, Phase, PolicyEnv, PolicyMode, PolicyPair,
+    PolicyStage, PolicyTransitionRequest, Provenance, ResolveExpectation, ResolverCode,
+    ReturnShape, SemanticOwnerKind, SemanticValuePayload, StageSet, SymbolPayload,
+    ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
 };
 
 use support::{
@@ -64,7 +64,7 @@ fn invoke(
     )
 }
 
-fn seal_static(explicit_argument_mutability: &[ValueMutability]) -> OrdinaryInvocationContext<'_> {
+fn seal_static(explicit_argument_mutability: &[PolicyMode]) -> OrdinaryInvocationContext<'_> {
     let mut context = OrdinaryInvocationContext::open_static(explicit_argument_mutability);
     context.phase = Phase::SealStatic;
     context.policy_env = PolicyEnv::SealStatic;
@@ -141,7 +141,7 @@ fn s10_01_type_binding_is_fresh_symbol_no_alias_no_reroot() {
 #[test]
 fn s10_02_cluster_exposure_filters_per_member_view_by_phase() {
     let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
-    let muts = [ValueMutability::Const];
+    let muts = [PolicyMode::Const];
 
     // OpenStatic: both the meta-P2 member and the compile-P2 member are
     // visible, so both enter C2.
@@ -205,7 +205,9 @@ fn s10_02_cluster_exposure_filters_per_member_view_by_phase() {
         .expect("surviving C2 value is a member view of the cluster");
     assert!(
         surviving_view
-            .value_policy
+            .view
+            .pair
+            .value
             .stages
             .visible_at(Phase::SealStatic),
         "the surviving member is exactly the one whose own view Policy is visible"
@@ -230,12 +232,12 @@ fn s10_03_member_view_policies_do_not_union_across_members() {
     let a = &pick.member_views[0];
     let b = &pick.member_views[1];
     assert_ne!(
-        a.value_policy.stages, b.value_policy.stages,
+        a.view.pair.value.stages, b.view.pair.value.stages,
         "fixture must keep two members with genuinely different P1 stages"
     );
-    let union = a.value_policy.stages.union(&b.value_policy.stages);
-    assert_ne!(a.value_policy.stages, union, "member A carries no union");
-    assert_ne!(b.value_policy.stages, union, "member B carries no union");
+    let union = a.view.pair.value.stages.union(&b.view.pair.value.stages);
+    assert_ne!(a.view.pair.value.stages, union, "member A carries no union");
+    assert_ne!(b.view.pair.value.stages, union, "member B carries no union");
 
     // Each view's coordinates are its own member's canonical P1 — the same
     // PolicyPair carried by the member's function-object value.
@@ -245,8 +247,8 @@ fn s10_03_member_view_policies_do_not_union_across_members() {
             .semantic_world()
             .value(value)
             .expect("member value exists");
-        assert_eq!(object.policy.value, view.value_policy);
-        assert_eq!(object.policy.pattern, view.pattern_policy);
+        assert_eq!(object.policy.value, view.view.pair.value);
+        assert_eq!(object.policy.pattern, view.view.pair.pattern);
     }
 }
 
@@ -275,7 +277,7 @@ fn s10_04_non_callable_member_is_no_candidate_but_stays_legal_member() {
     let result = invoke(
         &mut world,
         "let X = uint8 T;",
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         "S10 ④ non-callable target",
     );
     assert!(result.is_err(), "a pure-P-only cluster is not callable");
@@ -351,7 +353,7 @@ fn s10_06_privileged_struct_uses_the_normal_overload_path() {
     let result = invoke(
         &mut world,
         "let T: type = (uint8 a) struct;",
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         "S10 ⑥ privileged struct",
     )
     .expect("struct is selected through the ordinary spine");
@@ -426,7 +428,7 @@ fn s10_07_source_meta_constructs_self_rooted_cluster() {
     let result = invoke(
         &mut world,
         "let R: type = (uint8, uint8) make_two;",
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const, ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const, PolicyMode::Const]),
         "S10 ⑦ self-rooted construction",
     )
     .expect("source meta callable is selected through the ordinary spine");
@@ -549,18 +551,17 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
         }
         set
     };
-    let policy = |value_stages: &[PolicyStage], mutability: ValueMutability| PolicyPair {
+    let policy = |value_stages: &[PolicyStage], _mode: PolicyMode| PolicyPair {
         value: ValueComponentPolicy {
             stages: stage_set(value_stages),
-            mutability: [mutability].into_iter().collect(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
             stages: stage_set(&[PolicyStage::Compile]),
         },
     };
-    let source_policy = policy(&[PolicyStage::Compile], ValueMutability::Const);
-    let target_policy = policy(&[PolicyStage::Runtime], ValueMutability::Mut);
+    let source_policy = policy(&[PolicyStage::Compile], PolicyMode::Const);
+    let target_policy = policy(&[PolicyStage::Runtime], PolicyMode::Mut);
 
     let source = world
         .install_semantic_value(
@@ -570,8 +571,14 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
         )
         .expect("installed value reuses the uint8 PatternValue");
     let request = PolicyTransitionRequest::new(
-        source_policy,
-        target_policy.clone(),
+        lang_build::PolicyView {
+            pair: source_policy,
+            mode: PolicyMode::Const,
+        },
+        lang_build::ResultPolicyDemand {
+            pair_query: lang_build::P1Projection::Pair(target_policy.clone()),
+            mode: PolicyMode::Mut,
+        },
         type_value,
         source,
         Provenance::new("const compile -> mut runtime demand"),
@@ -590,7 +597,10 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
         "selected transport carries the single migration output authority"
     );
     assert_eq!(migration.demanded_view.len(), 1);
-    assert_eq!(migration.demanded_view[0].value_policy, target_policy.value);
+    assert_eq!(
+        migration.demanded_view[0].view.pair.value,
+        target_policy.value
+    );
     assert_eq!(
         migration.demanded_view[0]
             .value
@@ -619,11 +629,11 @@ fn s10_10_flat_symbol_policy_cannot_express_member_level_exposure() {
 
     let visible: Vec<_> = views
         .iter()
-        .filter(|view| view.value_policy.stages.visible_at(Phase::SealStatic))
+        .filter(|view| view.view.pair.value.stages.visible_at(Phase::SealStatic))
         .collect();
     let hidden: Vec<_> = views
         .iter()
-        .filter(|view| !view.value_policy.stages.visible_at(Phase::SealStatic))
+        .filter(|view| !view.view.pair.value.stages.visible_at(Phase::SealStatic))
         .collect();
     assert_eq!(visible.len(), 1);
     assert_eq!(hidden.len(), 1);
@@ -631,14 +641,16 @@ fn s10_10_flat_symbol_policy_cannot_express_member_level_exposure() {
     // The flat union coordinate WOULD be visible at SealStatic — a flat
     // symbol-level Policy cannot express the member-level distinction.
     let union = visible[0]
-        .value_policy
+        .view
+        .pair
+        .value
         .stages
-        .union(&hidden[0].value_policy.stages);
+        .union(&hidden[0].view.pair.value.stages);
     assert!(union.visible_at(Phase::SealStatic));
 
     // The canonical pipeline reads the per-member view Policy: the hidden
     // member is dropped at C2 even though the flat union would keep it.
-    let muts = [ValueMutability::Const];
+    let muts = [PolicyMode::Const];
     let seal = invoke(
         &mut world,
         "let R: type = uint8 pick;",
@@ -666,7 +678,7 @@ fn s10_11_direct_type_forward_fails_self_root_check() {
     let result = invoke(
         &mut world,
         "let R: type = uint8 forward_type;",
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         "S10 ⑪ illegal direct type forward",
     );
     assert!(
@@ -696,7 +708,7 @@ fn s10_12_meta_body_without_terminal_does_not_deliver() {
     let result = invoke(
         &mut world,
         "let R: type = uint8 no_terminal;",
-        OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
         "S10 ⑫ missing delivery terminal",
     );
     assert!(

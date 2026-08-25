@@ -312,7 +312,7 @@ fn raw_arg(index: usize, value_class: RawArgValueClass) -> RawArgShape {
         known_complete_type_observation: None,
         known_type_observation: None,
         known_semantic_value: None,
-        known_value_mutability: None,
+        known_value_mode: None,
         provenance: Provenance::new("object-boundary placeholder"),
     }
 }
@@ -387,7 +387,7 @@ fn shape_with_class(value_class: RawArgValueClass) -> ArgProductShape {
         known_complete_type_observation: None,
         known_type_observation: None,
         known_semantic_value: None,
-        known_value_mutability: None,
+        known_value_mode: None,
         provenance: Provenance::new("rejection test shape"),
     }];
     let atoms = vec![ProductAtom::Unit {
@@ -670,7 +670,7 @@ fn digest_raw_arg(
         known_complete_type_observation: None,
         known_type_observation: None,
         known_semantic_value: None,
-        known_value_mutability: None,
+        known_value_mode: None,
         provenance: Provenance::new(provenance_desc),
     }
 }

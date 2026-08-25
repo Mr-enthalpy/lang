@@ -7,8 +7,6 @@
 
 mod support;
 
-use std::collections::BTreeSet;
-
 use lang_build::{
     declared_return_shape_from_closure, validate_return_shape, PatternComponentPolicy,
     PatternConstraint, PolicyPair, PolicyStage, Provenance, ReturnShape, StageSet,
@@ -51,7 +49,6 @@ fn p2(value_stages: &[PolicyStage], pattern_stages: &[PolicyStage]) -> PolicyPai
     PolicyPair {
         value: ValueComponentPolicy {
             stages: stage_set(value_stages),
-            mutability: BTreeSet::new(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {

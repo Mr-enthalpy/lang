@@ -24,10 +24,10 @@ use std::{collections::BTreeSet, convert::Infallible};
 use crate::{
     identity::{SemanticValueId, TypeValueId},
     model::{Provenance, SymbolId},
-    policy_overload::{maximal_candidates, mutability_preference_rank, MutabilityPattern},
+    policy_overload::{maximal_candidates, mutability_preference_rank},
     policy_pair::{
         project_p1, P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair,
-        PolicyResultEntry, PolicyStage, StageSet, ValueMutability, ValuePresence,
+        PolicyResultEntry, PolicyStage, PolicyView, ResultPolicyDemand, StageSet, ValuePresence,
     },
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -103,8 +103,8 @@ pub enum P1ElaborationFailure {
 /// from the complete consumer query after that complete query projected no
 /// existing view.
 pub struct PolicyTransitionRequest {
-    source_policy: PolicyPair,
-    target_query: PolicyPair,
+    source_view: PolicyView,
+    target_demand: ResultPolicyDemand,
     source_type: TypeValueId,
     source_value: SemanticValueId,
     provenance: Provenance,
@@ -118,8 +118,8 @@ pub struct PolicyTransitionRequest {
 /// construct it while old binding P1 callers migrate.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyMigrationRequest {
-    source_policy: PolicyPair,
-    target_demand: PolicyPair,
+    source_view: PolicyView,
+    target_demand: ResultPolicyDemand,
     source_type: TypeValueId,
     source_value: SemanticValueId,
     provenance: Provenance,
@@ -139,39 +139,41 @@ pub enum PolicyMigrationRequestFailure {
 
 impl PolicyMigrationRequest {
     pub fn new(
-        source_policy: PolicyPair,
-        target_demand: PolicyPair,
+        source_view: PolicyView,
+        target_demand: ResultPolicyDemand,
         source_type: TypeValueId,
         source_value: SemanticValueId,
         provenance: Provenance,
     ) -> Result<Self, PolicyMigrationRequestFailure> {
-        if source_policy.value.presence == ValuePresence::Absent {
+        let target_pair = concrete_target_pair(&target_demand)
+            .ok_or(PolicyMigrationRequestFailure::TargetValueStageDomainEmpty)?;
+        if source_view.pair.value.presence == ValuePresence::Absent {
             return Err(PolicyMigrationRequestFailure::SourceValueAbsent);
         }
-        if source_policy.value.stages.is_empty() {
+        if source_view.pair.value.stages.is_empty() {
             return Err(PolicyMigrationRequestFailure::SourceValueStageDomainEmpty);
         }
-        if target_demand.value.presence == ValuePresence::Absent {
+        if target_pair.value.presence == ValuePresence::Absent {
             return Err(PolicyMigrationRequestFailure::TargetValueAbsent);
         }
-        if target_demand.value.stages.is_empty() {
+        if target_pair.value.stages.is_empty() {
             return Err(PolicyMigrationRequestFailure::TargetValueStageDomainEmpty);
         }
-        if target_demand.pattern.stages.is_empty()
-            || !target_demand
+        if target_pair.pattern.stages.is_empty()
+            || !target_pair
                 .pattern
                 .stages
-                .is_subset(&source_policy.pattern.stages)
+                .is_subset(&source_view.pair.pattern.stages)
         {
             return Err(
                 PolicyMigrationRequestFailure::TargetPatternPolicyUnavailable {
-                    source: source_policy.pattern.clone(),
-                    target: target_demand.pattern.clone(),
+                    source: source_view.pair.pattern.clone(),
+                    target: target_pair.pattern.clone(),
                 },
             );
         }
         Ok(Self {
-            source_policy,
+            source_view,
             target_demand,
             source_type,
             source_value,
@@ -181,20 +183,33 @@ impl PolicyMigrationRequest {
 
     pub fn from_atomic_runtime(request: &PolicyTransitionRequest) -> Self {
         Self {
-            source_policy: request.source_policy.clone(),
-            target_demand: request.target_query.clone(),
+            source_view: request.source_view.clone(),
+            target_demand: request.target_demand.clone(),
             source_type: request.source_type,
             source_value: request.source_value,
             provenance: request.provenance.clone(),
         }
     }
 
-    pub fn source_policy(&self) -> &PolicyPair {
-        &self.source_policy
+    pub fn source_view(&self) -> &PolicyView {
+        &self.source_view
     }
 
-    pub fn target_demand(&self) -> &PolicyPair {
+    pub fn source_policy(&self) -> &PolicyPair {
+        &self.source_view.pair
+    }
+
+    pub fn target_demand(&self) -> &ResultPolicyDemand {
         &self.target_demand
+    }
+
+    pub fn target_pair(&self) -> &PolicyPair {
+        concrete_target_pair(&self.target_demand)
+            .expect("validated migration requests carry a concrete pair query")
+    }
+
+    pub fn target_query(&self) -> &PolicyPair {
+        self.target_pair()
     }
 
     pub fn source_type(&self) -> TypeValueId {
@@ -231,12 +246,15 @@ pub enum PolicyTransitionRequestFailure {
 
 impl PolicyTransitionRequest {
     pub fn new(
-        source_policy: PolicyPair,
-        target_query: PolicyPair,
+        source_view: PolicyView,
+        target_demand: ResultPolicyDemand,
         source_type: TypeValueId,
         source_value: SemanticValueId,
         provenance: Provenance,
     ) -> Result<Self, PolicyTransitionRequestFailure> {
+        let target_query = concrete_target_pair(&target_demand)
+            .expect("atomic runtime transition requires a concrete pair query");
+        let source_policy = &source_view.pair;
         if source_policy.value.presence == ValuePresence::Absent {
             return Err(PolicyTransitionRequestFailure::SourceValueAbsent);
         }
@@ -280,20 +298,33 @@ impl PolicyTransitionRequest {
             );
         }
         Ok(Self {
-            source_policy,
-            target_query,
+            source_view,
+            target_demand,
             source_type,
             source_value,
             provenance,
         })
     }
 
+    pub fn source_view(&self) -> &PolicyView {
+        &self.source_view
+    }
+
     pub fn source_policy(&self) -> &PolicyPair {
-        &self.source_policy
+        &self.source_view.pair
+    }
+
+    pub fn target_demand(&self) -> &ResultPolicyDemand {
+        &self.target_demand
+    }
+
+    pub fn target_pair(&self) -> &PolicyPair {
+        concrete_target_pair(&self.target_demand)
+            .expect("validated atomic migration carries a concrete pair query")
     }
 
     pub fn target_query(&self) -> &PolicyPair {
-        &self.target_query
+        self.target_pair()
     }
 
     pub fn source_type(&self) -> TypeValueId {
@@ -306,6 +337,13 @@ impl PolicyTransitionRequest {
 
     pub fn provenance(&self) -> &Provenance {
         &self.provenance
+    }
+}
+
+fn concrete_target_pair(demand: &ResultPolicyDemand) -> Option<&PolicyPair> {
+    match &demand.pair_query {
+        P1Projection::Pair(pair) => Some(pair),
+        P1Projection::Infer | P1Projection::ValueDominant { .. } => None,
     }
 }
 
@@ -355,14 +393,14 @@ pub fn elaborate_value_binding_p1<P: Clone>(
         if projection_accepts_runtime_branch(projection) {
             saw_runtime_migration_shape = true;
         }
-        let Some((source_policy, target_query)) =
+        let Some((source_view, target_demand)) =
             atomic_runtime_migration_endpoints(projection, entry)
         else {
             continue;
         };
         let request = PolicyTransitionRequest::new(
-            source_policy,
-            target_query,
+            source_view,
+            target_demand,
             source.type_value,
             source.id,
             provenance.clone(),
@@ -469,7 +507,7 @@ fn relax_projection_presence(projection: &P1Projection) -> P1Projection {
 fn atomic_runtime_migration_endpoints<V, P>(
     projection: &P1Projection,
     entry: &PolicyResultEntry<V, P>,
-) -> Option<(PolicyPair, PolicyPair)> {
+) -> Option<(PolicyView, ResultPolicyDemand)> {
     let accepted_value = match projection {
         P1Projection::Pair(pair) => pair.value.clone(),
         P1Projection::ValueDominant { value } => value.clone(),
@@ -482,33 +520,32 @@ fn atomic_runtime_migration_endpoints<V, P>(
     }
     let target_value = crate::policy_pair::ValueComponentPolicy {
         stages: StageSet::from([PolicyStage::Runtime]),
-        mutability: accepted_value.mutability,
         presence: ValuePresence::Present,
     };
 
     let selected_pattern_stages = match projection {
         P1Projection::Pair(pair) => {
             if pair.pattern.stages.is_empty() {
-                entry.pattern_policy.stages.clone()
+                entry.view.pair.pattern.stages.clone()
             } else {
                 let selected = pair
                     .pattern
                     .stages
-                    .intersection(&entry.pattern_policy.stages);
+                    .intersection(&entry.view.pair.pattern.stages);
                 if selected.is_empty() {
                     return None;
                 }
                 selected
             }
         }
-        P1Projection::ValueDominant { .. } => entry.pattern_policy.stages.clone(),
+        P1Projection::ValueDominant { .. } => entry.view.pair.pattern.stages.clone(),
         P1Projection::Infer => return None,
     };
 
-    let source_static = entry.value_policy.stages.static_stages();
+    let source_static = entry.view.pair.value.stages.static_stages();
     if selected_pattern_stages.is_empty()
         || !selected_pattern_stages.is_subset(&source_static)
-        || source_static != entry.pattern_policy.stages
+        || source_static != entry.view.pair.pattern.stages
     {
         return None;
     }
@@ -516,19 +553,27 @@ fn atomic_runtime_migration_endpoints<V, P>(
     let selected_pattern = PatternComponentPolicy {
         stages: selected_pattern_stages.clone(),
     };
-    let source_policy = PolicyPair {
-        value: crate::policy_pair::ValueComponentPolicy {
-            stages: selected_pattern_stages,
-            mutability: entry.value_policy.mutability.clone(),
-            presence: ValuePresence::Present,
+    let source_view = PolicyView {
+        pair: PolicyPair {
+            value: crate::policy_pair::ValueComponentPolicy {
+                stages: selected_pattern_stages,
+                presence: ValuePresence::Present,
+            },
+            pattern: selected_pattern.clone(),
         },
-        pattern: selected_pattern.clone(),
+        mode: entry.view.mode,
     };
     let target_query = PolicyPair {
         value: target_value,
         pattern: selected_pattern,
     };
-    Some((source_policy, target_query))
+    Some((
+        source_view,
+        ResultPolicyDemand {
+            pair_query: P1Projection::Pair(target_query),
+            mode: entry.view.mode,
+        },
+    ))
 }
 
 fn projection_accepts_runtime_branch(projection: &P1Projection) -> bool {
@@ -546,72 +591,11 @@ fn projection_accepts_runtime_branch(projection: &P1Projection) -> bool {
 /// concrete `PolicyResultEntry`. It therefore preserves present/optional/
 /// absent alternatives without fabricating a `Some(value)` solely to borrow
 /// the ordinary result projector. This general capability-projection helper is
-/// not migration-candidate admissibility: candidate endpoint mutability uses
-/// ordinary actual-relative Bp preference instead of this function's domain
-/// intersection.
+/// not migration-candidate admissibility. Whole-slot mode is intentionally
+/// absent and is compared only by the ordinary Bp product.
 pub fn project_transition_policy_domain(
     query: &PolicyPair,
     available: &PolicyPair,
-) -> Option<PolicyPair> {
-    let presence = intersect_presence(query.value.presence, available.value.presence)?;
-    let (value_stages, value_mutability) = if presence == ValuePresence::Absent {
-        (StageSet::new(), BTreeSet::new())
-    } else {
-        (
-            project_non_empty_stages(&query.value.stages, &available.value.stages)?,
-            project_mutability_domain(&query.value.mutability, &available.value.mutability)?,
-        )
-    };
-    let pattern_stages =
-        project_non_empty_stages(&query.pattern.stages, &available.pattern.stages)?;
-
-    Some(PolicyPair {
-        value: crate::policy_pair::ValueComponentPolicy {
-            stages: value_stages,
-            mutability: value_mutability,
-            presence,
-        },
-        pattern: PatternComponentPolicy {
-            stages: pattern_stages,
-        },
-    })
-}
-
-/// Project the hard, capability-shaped coordinates of a migration input
-/// endpoint while preserving the selected actual value mutability.
-///
-/// Candidate input mutability is a formal Pattern consumed by ordinary Bp
-/// preference. An opposite const/mut Pattern therefore does not make the
-/// candidate hard-inadmissible.
-pub(crate) fn project_migration_input_endpoint(
-    candidate: &PolicyPair,
-    actual: &PolicyPair,
-) -> Option<PolicyPair> {
-    project_migration_endpoint_hard_coordinates(candidate, actual, actual.value.mutability.clone())
-}
-
-/// Project the hard, capability-shaped coordinates of a migration output
-/// endpoint while retaining the callable-declared result mutability.
-///
-/// An unspecified output endpoint accepts the requested mutability view. A
-/// declared const or mut endpoint remains that declared result even when it is
-/// the opposite, lower-preference Pattern for the consumer demand.
-pub(crate) fn project_migration_output_endpoint(
-    required: &PolicyPair,
-    candidate: &PolicyPair,
-) -> Option<PolicyPair> {
-    let selected_mutability = if candidate.value.mutability.is_empty() {
-        required.value.mutability.clone()
-    } else {
-        candidate.value.mutability.clone()
-    };
-    project_migration_endpoint_hard_coordinates(required, candidate, selected_mutability)
-}
-
-fn project_migration_endpoint_hard_coordinates(
-    query: &PolicyPair,
-    available: &PolicyPair,
-    selected_mutability: BTreeSet<ValueMutability>,
 ) -> Option<PolicyPair> {
     let presence = intersect_presence(query.value.presence, available.value.presence)?;
     let value_stages = if presence == ValuePresence::Absent {
@@ -625,11 +609,48 @@ fn project_migration_endpoint_hard_coordinates(
     Some(PolicyPair {
         value: crate::policy_pair::ValueComponentPolicy {
             stages: value_stages,
-            mutability: if presence == ValuePresence::Absent {
-                BTreeSet::new()
-            } else {
-                selected_mutability
-            },
+            presence,
+        },
+        pattern: PatternComponentPolicy {
+            stages: pattern_stages,
+        },
+    })
+}
+
+/// Project the hard pair-shaped coordinates of a migration input endpoint.
+/// Whole-slot mode is consumed independently by ordinary Bp preference.
+pub(crate) fn project_migration_input_endpoint(
+    candidate: &PolicyPair,
+    actual: &PolicyPair,
+) -> Option<PolicyPair> {
+    project_migration_endpoint_hard_coordinates(candidate, actual)
+}
+
+/// Project the hard pair-shaped coordinates of a migration output endpoint.
+/// Whole-slot mode remains an independent concrete coordinate.
+pub(crate) fn project_migration_output_endpoint(
+    required: &PolicyPair,
+    candidate: &PolicyPair,
+) -> Option<PolicyPair> {
+    project_migration_endpoint_hard_coordinates(required, candidate)
+}
+
+fn project_migration_endpoint_hard_coordinates(
+    query: &PolicyPair,
+    available: &PolicyPair,
+) -> Option<PolicyPair> {
+    let presence = intersect_presence(query.value.presence, available.value.presence)?;
+    let value_stages = if presence == ValuePresence::Absent {
+        StageSet::new()
+    } else {
+        project_non_empty_stages(&query.value.stages, &available.value.stages)?
+    };
+    let pattern_stages =
+        project_non_empty_stages(&query.pattern.stages, &available.pattern.stages)?;
+
+    Some(PolicyPair {
+        value: crate::policy_pair::ValueComponentPolicy {
+            stages: value_stages,
             presence,
         },
         pattern: PatternComponentPolicy {
@@ -654,23 +675,6 @@ fn project_non_empty_stages(query: &StageSet, available: &StageSet) -> Option<St
     } else {
         query.intersection(available)
     };
-    (!selected.is_empty()).then_some(selected)
-}
-
-fn project_mutability_domain(
-    query: &BTreeSet<ValueMutability>,
-    available: &BTreeSet<ValueMutability>,
-) -> Option<BTreeSet<ValueMutability>> {
-    if query.is_empty() {
-        return Some(available.clone());
-    }
-    if available.is_empty() {
-        return Some(query.clone());
-    }
-    let selected = query
-        .intersection(available)
-        .copied()
-        .collect::<BTreeSet<_>>();
     (!selected.is_empty()).then_some(selected)
 }
 
@@ -796,6 +800,8 @@ pub struct PolicyTransitionCallable<I> {
     pub output_type: OrdinaryCallableTypeOutput,
     pub input_policy: PolicyPair,
     pub output_policy: PolicyPair,
+    pub input_mode: PolicyMode,
+    pub output_mode: PolicyMode,
     /// Hard conditions owned by ordinary candidate preparation (shape,
     /// require/concept checks, body availability, and similar facts).
     pub ordinary_fully_admissible: bool,
@@ -832,7 +838,7 @@ pub struct ResolvedPolicyBridge<I> {
     pub callable: PolicyTransitionCallable<I>,
     pub result_type: TypeValueId,
     /// Complete ordinary result Policy declared by the selected callable.
-    pub complete_result_policy: PolicyPair,
+    pub complete_result_view: PolicyView,
     /// Runtime-stage endpoint used by prototype validation and Bp comparison.
     /// Final ordinary `Project_out` still occurs after invocation and may fail
     /// without reopening selection.
@@ -864,14 +870,18 @@ pub enum BridgeQualification<I> {
 /// Input and output are composed as one Pareto/product order. Crossed
 /// advantages are therefore `Incomparable`.
 pub fn compare_policy_transition_candidates<I>(
-    required_source: &PolicyPair,
-    target_query: &PolicyPair,
+    required_source: &PolicyView,
+    target_demand: &ResultPolicyDemand,
     a: &PolicyTransitionCallable<I>,
     b: &PolicyTransitionCallable<I>,
 ) -> PolicyPartialOrdering {
+    let target_query = concrete_target_pair(target_demand)
+        .expect("migration comparison requires a concrete target pair query");
     compose_orders([
-        compare_input_policy_fit(required_source, &a.input_policy, &b.input_policy),
+        compare_input_policy_fit(&required_source.pair, &a.input_policy, &b.input_policy),
         compare_output_policy_fit(target_query, &a.output_policy, &b.output_policy),
+        compare_mode_fit(required_source.mode, a.input_mode, b.input_mode),
+        compare_mode_fit(target_demand.mode, a.output_mode, b.output_mode),
     ])
 }
 
@@ -914,9 +924,12 @@ pub fn resolve_policy_bridge<I: Clone>(
         [candidate] => PolicyBridgeResolution::Selected(ResolvedPolicyBridge {
             callable: (*candidate).clone(),
             result_type: candidate.output_type.resolve(request.source_type()),
-            complete_result_policy: candidate.output_policy.clone(),
+            complete_result_view: PolicyView {
+                pair: candidate.output_policy.clone(),
+                mode: candidate.output_mode,
+            },
             validated_output_endpoint: project_migration_output_endpoint(
-                request.target_query(),
+                request.target_pair(),
                 &candidate.output_policy,
             )
             .expect("selected candidate output was projected during admissibility"),
@@ -968,8 +981,8 @@ fn prototype_endpoint_policy_maxima<'a, I>(
     maximal_candidates(fully_admissible, |better, worse| {
         matches!(
             compare_policy_transition_candidates(
-                request.source_policy(),
-                request.target_query(),
+                request.source_view(),
+                request.target_demand(),
                 better,
                 worse,
             ),
@@ -1032,7 +1045,7 @@ pub fn assemble_transition_results<P: Clone>(
             return Err(P1AssemblyFailure::ProducedValueDoesNotMatchDemand { demand_index });
         }
         let projected = project_p1(
-            &P1Projection::Pair(demand.request.target_query().clone()),
+            &demand.request.target_demand().pair_query,
             std::slice::from_ref(&produced_result.entry),
         );
         if projected.is_empty() {
@@ -1098,9 +1111,8 @@ pub fn invoke_resolved_policy_bridge<I: Clone, P>(
                     id: result_value,
                     type_value: selected.result_type,
                 }),
-                value_policy: selected.complete_result_policy.value.clone(),
                 pattern: result_pattern,
-                pattern_policy: selected.complete_result_policy.pattern.clone(),
+                view: selected.complete_result_view.clone(),
             },
             source_value: request.source_value(),
             provenance: request.provenance().clone(),
@@ -1120,12 +1132,12 @@ fn candidate_is_fully_admissible<I>(
         return false;
     }
     let Some(input_view) =
-        project_migration_input_endpoint(&candidate.input_policy, request.source_policy())
+        project_migration_input_endpoint(&candidate.input_policy, &request.source_view().pair)
     else {
         return false;
     };
     let Some(result_policy) =
-        project_migration_output_endpoint(request.target_query(), &candidate.output_policy)
+        project_migration_output_endpoint(request.target_pair(), &candidate.output_policy)
     else {
         return false;
     };
@@ -1209,6 +1221,18 @@ fn compare_output_policy_fit(
     compare_policy_endpoint_fit(required, left, right)
 }
 
+fn compare_mode_fit(
+    demand: PolicyMode,
+    left: PolicyMode,
+    right: PolicyMode,
+) -> PolicyPartialOrdering {
+    match mutability_preference_rank(left, demand).cmp(&mutability_preference_rank(right, demand)) {
+        std::cmp::Ordering::Less => PolicyPartialOrdering::Less,
+        std::cmp::Ordering::Equal => PolicyPartialOrdering::Equal,
+        std::cmp::Ordering::Greater => PolicyPartialOrdering::Greater,
+    }
+}
+
 /// Endpoint-coordinate comparison used by the connected ordinary Bp' carrier.
 ///
 /// This returns only the migration input/output portion of the product.  The
@@ -1229,17 +1253,12 @@ pub(crate) fn compare_migration_endpoint_coordinates(
 }
 
 fn compare_policy_endpoint_fit(
-    required: &PolicyPair,
+    _required: &PolicyPair,
     left: &PolicyPair,
     right: &PolicyPair,
 ) -> PolicyPartialOrdering {
     compose_orders([
         compare_stage_domains(&left.value.stages, &right.value.stages),
-        compare_endpoint_mutability(
-            &left.value.mutability,
-            &right.value.mutability,
-            &required.value.mutability,
-        ),
         // Presence ordering is a coordinate of this prototype's endpoint Bp
         // extension. It is not asserted as a general ordinary-call order.
         compare_presence_domains(left.value.presence, right.value.presence),
@@ -1249,38 +1268,6 @@ fn compare_policy_endpoint_fit(
 
 fn compare_stage_domains(left: &StageSet, right: &StageSet) -> PolicyPartialOrdering {
     compare_subsets(left.is_subset(right), right.is_subset(left))
-}
-
-fn compare_endpoint_mutability(
-    left: &BTreeSet<ValueMutability>,
-    right: &BTreeSet<ValueMutability>,
-    required: &BTreeSet<ValueMutability>,
-) -> PolicyPartialOrdering {
-    let Some(actual) = singleton_mutability(required) else {
-        return PolicyPartialOrdering::Equal;
-    };
-    let left_rank = mutability_preference_rank(mutability_pattern(left), actual);
-    let right_rank = mutability_preference_rank(mutability_pattern(right), actual);
-    match left_rank.cmp(&right_rank) {
-        std::cmp::Ordering::Greater => PolicyPartialOrdering::Greater,
-        std::cmp::Ordering::Equal => PolicyPartialOrdering::Equal,
-        std::cmp::Ordering::Less => PolicyPartialOrdering::Less,
-    }
-}
-
-fn singleton_mutability(mutability: &BTreeSet<ValueMutability>) -> Option<ValueMutability> {
-    (mutability.len() == 1)
-        .then(|| mutability.iter().next().copied())
-        .flatten()
-}
-
-fn mutability_pattern(mutability: &BTreeSet<ValueMutability>) -> MutabilityPattern {
-    match singleton_mutability(mutability) {
-        Some(ValueMutability::Const) => MutabilityPattern::Const,
-        Some(ValueMutability::Plain) => PolicyMode::Plain,
-        Some(ValueMutability::Mut) => MutabilityPattern::Mut,
-        None => PolicyMode::Plain,
-    }
 }
 
 fn presence_domain(presence: ValuePresence) -> BTreeSet<bool> {

@@ -27,7 +27,7 @@
 //! The currently implemented B1/B2/B4/B5/B6 dimensions are identities.  They
 //! are kept as explicit trace boundaries rather than invented ranking rules.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use lang_syntax::{
     NormClosure, NormClosureBody, NormExpr, NormForm, NormOverloadStrategy, NormPattern,
@@ -61,11 +61,11 @@ use crate::{
         MutabilityFormalFrame, MutabilityPattern,
     },
     policy_pair::{
-        concrete_policy_mode, derive_function_object_p1, elaborate_binding_p1_projection,
-        elaborate_explicit_p1, elaborate_formal_policy_pattern, normalize_p2_policy, project_p1,
-        CapabilityRealization, ExplicitP1Position, FunctionObjectDeclarationPolicy,
-        OutputModeDemand, P1Projection, PatternComponentPolicy, Phase, PolicyMode, PolicyPair,
-        PolicyResultEntry, PolicyStage, ValueComponentPolicy, ValueMutability,
+        derive_function_object_view, elaborate_binding_result_demand, elaborate_explicit_p1,
+        elaborate_formal_policy_pattern, normalize_p2_policy, project_p1, CapabilityRealization,
+        ExplicitP1Position, FunctionObjectDeclarationPolicy, OutputModeDemand, P1Projection,
+        PatternComponentPolicy, Phase, PolicyMode, PolicyPair, PolicyResultEntry, PolicyStage,
+        PolicyView, ResultPolicyDemand, ValueComponentPolicy,
     },
     policy_transition::{
         compare_migration_endpoint_coordinates, project_migration_input_endpoint,
@@ -95,16 +95,16 @@ pub struct MigrationInvocationContext<'a> {
     pub source_value: SemanticValueId,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct OrdinaryInvocationContext<'a> {
     pub policy_env: PolicyEnv,
     pub execution_env: ExecutionEnv,
     pub phase: Phase,
-    pub caller_mutability: ValueMutability,
-    pub explicit_argument_mutability: &'a [ValueMutability],
-    /// Total before candidate maxima. Omitted evaluation context means the
-    /// concrete `plain` demand, never an unspecified state.
-    pub output_mode_demand: OutputModeDemand,
+    pub caller_mode: PolicyMode,
+    pub explicit_argument_modes: &'a [PolicyMode],
+    /// Total before candidate maxima. Pair/stage coordinates are hard
+    /// admissibility; the concrete mode coordinate participates in Bp.
+    pub result_policy_demand: ResultPolicyDemand,
     pub visibility: VisibilityView,
     pub migration: Option<MigrationInvocationContext<'a>>,
     /// Post-selection capability/place demand. This coordinate never
@@ -120,14 +120,14 @@ pub struct OrdinaryInvocationContext<'a> {
 }
 
 impl<'a> OrdinaryInvocationContext<'a> {
-    pub fn open_static(explicit_argument_mutability: &'a [ValueMutability]) -> Self {
+    pub fn open_static(explicit_argument_modes: &'a [PolicyMode]) -> Self {
         Self {
             policy_env: PolicyEnv::OpenStatic,
             execution_env: ExecutionEnv::OpenStatic,
             phase: Phase::OpenStatic,
-            caller_mutability: PolicyMode::Plain,
-            explicit_argument_mutability,
-            output_mode_demand: OutputModeDemand::default(),
+            caller_mode: PolicyMode::Plain,
+            explicit_argument_modes,
+            result_policy_demand: ResultPolicyDemand::default(),
             visibility: VisibilityView::Internal,
             migration: None,
             dynamic_legality: DynamicLegalityDemand::default(),
@@ -143,7 +143,12 @@ impl<'a> OrdinaryInvocationContext<'a> {
     }
 
     pub fn with_output_mode_demand(mut self, demand: PolicyMode) -> Self {
-        self.output_mode_demand = OutputModeDemand(demand);
+        self.result_policy_demand.mode = demand;
+        self
+    }
+
+    pub fn with_result_policy_demand(mut self, demand: ResultPolicyDemand) -> Self {
+        self.result_policy_demand = demand;
         self
     }
 
@@ -196,12 +201,11 @@ pub struct PreparedCallCandidate {
     pub backing_declaration: SymbolId,
     pub frame: InvocationFrame,
     /// P2 — the complete result policy returned by the callable.
-    pub complete_result_policy: PolicyPair,
+    pub complete_result_view: PolicyView,
     /// P1 of the function object — the single policy degree of freedom.
     /// P1(function object) = P1(slot0/self) = P1(let ()).
     /// If omitted, P1 is derived from P2.
-    pub function_object_p1: PolicyPair,
-    pub output_mode: PolicyMode,
+    pub function_object_view: PolicyView,
     pub capability_realization: CapabilityRealization,
     pub formal_policy_frame: MutabilityFormalFrame,
     pub(crate) source_shape: Option<ApplicableCandidate>,
@@ -276,7 +280,7 @@ impl std::ops::Deref for SealedSelectedInvocation {
 fn validate_dynamic_legality(
     semantic_world: &SemanticWorld,
     selected: &PreparedCallCandidate,
-    context: OrdinaryInvocationContext<'_>,
+    context: &OrdinaryInvocationContext<'_>,
     provenance: &Provenance,
 ) -> Result<DynamicLegalityProof, Diagnostic> {
     let capability_cell = context
@@ -399,7 +403,7 @@ impl SingleMemberResult {
     /// ```
     pub fn exposed(&self) -> ExposedInvocationResult {
         ExposedInvocationResult::expose(
-            self.selected.function_object_p1.clone(),
+            self.selected.function_object_view.pair.clone(),
             &self.complete_result,
         )
     }
@@ -468,31 +472,18 @@ fn expose_result_entry(
     outward: &PolicyPair,
     entry: &PolicyResultEntry<SemanticValueRef, PatternValueId>,
 ) -> Option<PolicyResultEntry<SemanticValueRef, PatternValueId>> {
-    let pattern_stages =
-        crate::policy_pair::restrict_stages(&outward.pattern.stages, &entry.pattern_policy.stages)?;
+    let pattern_stages = crate::policy_pair::restrict_stages(
+        &outward.pattern.stages,
+        &entry.view.pair.pattern.stages,
+    )?;
     let value_policy = if entry.value.is_some() {
-        let stages =
-            crate::policy_pair::restrict_stages(&outward.value.stages, &entry.value_policy.stages)?;
-        let mutability = if outward.value.mutability.is_empty() {
-            entry.value_policy.mutability.clone()
-        } else if entry.value_policy.mutability.is_empty() {
-            outward.value.mutability.clone()
-        } else {
-            let selected = outward
-                .value
-                .mutability
-                .intersection(&entry.value_policy.mutability)
-                .copied()
-                .collect::<BTreeSet<_>>();
-            if selected.is_empty() {
-                return None;
-            }
-            selected
-        };
+        let stages = crate::policy_pair::restrict_stages(
+            &outward.value.stages,
+            &entry.view.pair.value.stages,
+        )?;
         ValueComponentPolicy {
             stages,
-            mutability,
-            presence: entry.value_policy.presence,
+            presence: entry.view.pair.value.presence,
         }
     } else {
         // Pure-P entry: the recorded static source stages are still
@@ -502,19 +493,23 @@ fn expose_result_entry(
         ValueComponentPolicy {
             stages: crate::policy_pair::restrict_stages(
                 &outward.value.stages,
-                &entry.value_policy.stages,
+                &entry.view.pair.value.stages,
             )
             .unwrap_or_default(),
-            mutability: entry.value_policy.mutability.clone(),
-            presence: entry.value_policy.presence,
+            presence: entry.view.pair.value.presence,
         }
     };
     Some(PolicyResultEntry {
         value: entry.value.clone(),
-        value_policy,
         pattern: entry.pattern,
-        pattern_policy: PatternComponentPolicy {
-            stages: pattern_stages,
+        view: PolicyView {
+            pair: PolicyPair {
+                value: value_policy,
+                pattern: PatternComponentPolicy {
+                    stages: pattern_stages,
+                },
+            },
+            mode: entry.view.mode,
         },
     })
 }
@@ -1322,13 +1317,11 @@ pub fn invoke_policy_migration(
             trace: OrdinaryPipelineTrace::default(),
         });
     }
-    let source_mutability = singleton_mutability(&request.source_policy().value.mutability)
-        .unwrap_or(PolicyMode::Plain);
     let migration_args = ArgProductShape::from_flattened(FlattenedProductObject {
         atoms: vec![ProductAtom::SemanticValue {
             value: request.source_value(),
             type_value: request.source_type(),
-            mutability: source_mutability,
+            mode: request.source_view().mode,
             provenance: request.provenance().clone(),
         }],
         provenance: request.provenance().clone(),
@@ -1356,7 +1349,7 @@ pub fn invoke_policy_migration(
         .map(|cell| cell.member_views.clone())
         .unwrap_or_default();
 
-    let no_explicit_mutability = [];
+    let no_explicit_modes = [];
     let trace = OrdinaryPipelineTrace {
         c0_target_values: target_members
             .iter()
@@ -1381,11 +1374,9 @@ pub fn invoke_policy_migration(
             policy_env: PolicyEnv::OpenStatic,
             execution_env: ExecutionEnv::OpenStatic,
             phase: Phase::OpenStatic,
-            caller_mutability: PolicyMode::Plain,
-            explicit_argument_mutability: &no_explicit_mutability,
-            output_mode_demand: OutputModeDemand(concrete_policy_mode(
-                &request.target_demand().value,
-            )),
+            caller_mode: PolicyMode::Plain,
+            explicit_argument_modes: &no_explicit_modes,
+            result_policy_demand: request.target_demand().clone(),
             visibility: VisibilityView::Internal,
             migration: Some(MigrationInvocationContext {
                 request,
@@ -1407,14 +1398,18 @@ pub fn invoke_policy_migration(
             trace: OrdinaryPipelineTrace::default(),
         });
     };
-    let demanded_view = project_p1(
-        &P1Projection::Pair(request.target_demand().clone()),
+    let mut demanded_view = project_p1(
+        &request.target_demand().pair_query,
         &invocation.complete_result,
     );
     if demanded_view.is_empty() {
         return Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed {
             trace: invocation.trace,
         });
+    }
+    let realized_mode = invocation.selected.function_object_view.mode;
+    for entry in &mut demanded_view {
+        entry.view.mode = realized_mode;
     }
     Ok(PolicyMigrationResult {
         invocation,
@@ -1568,13 +1563,12 @@ pub fn invoke_pattern_associated_value_ordinary(
             trace: OrdinaryPipelineTrace::default(),
         });
     };
-    let receiver_mutability =
-        singleton_mutability(&receiver.policy.value.mutability).unwrap_or(PolicyMode::Plain);
+    let receiver_mode = receiver.mode;
     let mut atoms = Vec::with_capacity(1 + explicit_arg_product.flattened.atoms.len());
     atoms.push(ProductAtom::SemanticValue {
         value: receiver_value,
         type_value: receiver.type_value,
-        mutability: receiver_mutability,
+        mode: receiver_mode,
         provenance: provenance.clone(),
     });
     atoms.append(&mut explicit_arg_product.flattened.atoms);
@@ -1695,7 +1689,7 @@ pub(crate) fn invoke_target_values(
     // PolicyPair and not any cluster-level union.
     let c2_views = c1_views
         .into_iter()
-        .filter(|view| view.value_policy.stages.visible_at(context.phase))
+        .filter(|view| view.view.pair.value.stages.visible_at(context.phase))
         .collect::<Vec<_>>();
     let mut c2 = Vec::new();
     for view in &c2_views {
@@ -1782,6 +1776,15 @@ pub(crate) fn invoke_target_values(
         let SemanticValuePayload::CallEntry(entry) = &entry_value.payload else {
             continue;
         };
+        // C2 result-demand hard projection. Every pair/stage coordinate that
+        // can affect producer selection is present before maxima; whole-slot
+        // mode remains the independent Bp coordinate below.
+        if !result_pair_demand_admits(
+            &entry.complete_result_view.pair,
+            &context.result_policy_demand.pair_query,
+        ) {
+            continue;
+        }
         // The call entry carries its own declaration
         // environment (`declaration_name` / `declaration_namespace`); the
         // A-stage never looks the backing declaration up in the name index.
@@ -1789,7 +1792,7 @@ pub(crate) fn invoke_target_values(
         // complete result P2; the declaration identity below is rebuilt
         // from the entry's declared facts for the shared candidate and
         // body-evaluator carriers.
-        if !body_entry_allows_execution(&entry.complete_result_policy, context.execution_env) {
+        if !body_entry_allows_execution(&entry.complete_result_view.pair, context.execution_env) {
             continue;
         }
         let declaration_identity = SymbolObject::placeholder(
@@ -1894,7 +1897,7 @@ pub(crate) fn invoke_target_values(
             // boundary by `canonical_function_object_p1`.  P1(function
             // object) = P1(slot0/self) = P1(let ()).  Do not re-derive from
             // the closure AST at invocation time.
-            let self_policy = entry.callable_value_policy.clone();
+            let self_policy = entry.callable_view.pair.clone();
             let strategy = source_shape.overload_strategy.clone();
             (
                 Some(source_shape),
@@ -1944,7 +1947,7 @@ pub(crate) fn invoke_target_values(
                 // S7 — same canonical P1 authority as the source arm.  The
                 // core candidate's function-object P1 is the declared
                 // canonical P1 (`callable_value_policy`), NOT the result P2.
-                entry.callable_value_policy.clone(),
+                entry.callable_view.pair.clone(),
                 NormOverloadStrategy::Ordinary,
                 frame_args,
             )
@@ -1974,21 +1977,21 @@ pub(crate) fn invoke_target_values(
                     .map(|spec| {
                         elaborate_formal_policy_pattern(
                             Some(&spec),
-                            &entry.complete_result_policy,
+                            &entry.complete_result_view.pair,
                             provenance.clone(),
                         )
                         .ok()
                         .map(|elab| elab.effective_pair)
                     })
                     .flatten()
-                    .unwrap_or_else(|| entry.complete_result_policy.clone());
+                    .unwrap_or_else(|| entry.complete_result_view.pair.clone());
                 let input = project_migration_input_endpoint(
                     &source_formal_p1,
-                    migration.request.source_policy(),
+                    &migration.request.source_view().pair,
                 );
                 let output = project_migration_output_endpoint(
-                    migration.request.target_demand(),
-                    &entry.callable_value_policy,
+                    migration.request.target_pair(),
+                    &entry.callable_view.pair,
                 );
                 if input.is_none() || output.is_none() {
                     continue;
@@ -2023,9 +2026,11 @@ pub(crate) fn invoke_target_values(
             call_entry_value,
             backing_declaration: entry.backing_declaration,
             frame,
-            complete_result_policy: entry.complete_result_policy.clone(),
-            function_object_p1: self_policy,
-            output_mode: entry.output_mode,
+            complete_result_view: entry.complete_result_view.clone(),
+            function_object_view: PolicyView {
+                pair: self_policy,
+                mode: entry.callable_view.mode,
+            },
             capability_realization: entry.capability_realization.clone(),
             formal_policy_frame,
             candidate_role: entry.candidate_role,
@@ -2066,16 +2071,16 @@ pub(crate) fn invoke_target_values(
         .collect();
 
     let actual_frame = MutabilityActualFrame {
-        caller_value: context.caller_mutability,
+        caller_value: context.caller_mode,
         explicit_arguments: classified
             .classified_shape
             .raw_args
             .iter()
             .enumerate()
             .map(|(index, argument)| {
-                argument.known_value_mutability.unwrap_or_else(|| {
+                argument.known_value_mode.unwrap_or_else(|| {
                     context
-                        .explicit_argument_mutability
+                        .explicit_argument_modes
                         .get(index)
                         .copied()
                         .unwrap_or(PolicyMode::Plain)
@@ -2092,7 +2097,7 @@ pub(crate) fn invoke_target_values(
             worse,
             &actual_frame,
             context.phase,
-            context.output_mode_demand,
+            OutputModeDemand(context.result_policy_demand.mode),
             context.migration,
         )
     });
@@ -2129,7 +2134,7 @@ pub(crate) fn invoke_target_values(
     };
     trace.selected = Some(selected_candidate.call_entry_value);
     let legality =
-        validate_dynamic_legality(semantic_world, &selected_candidate, context, &provenance)
+        validate_dynamic_legality(semantic_world, &selected_candidate, &context, &provenance)
             .map_err(|diagnostic| OrdinaryInvocationFailure::DynamicLegality {
                 selected: selected_candidate.call_entry_value,
                 diagnostic,
@@ -2276,9 +2281,8 @@ pub(crate) fn invoke_target_values(
         // PatternValueId.
         let pure_p_member_view = |pattern| PolicyResultEntry {
             value: None,
-            value_policy: selected.complete_result_policy.value.clone(),
             pattern,
-            pattern_policy: selected.complete_result_policy.pattern.clone(),
+            view: selected.complete_result_view.clone(),
         };
 
         if let Some(core) = &selected.core_invocation {
@@ -2348,7 +2352,7 @@ pub(crate) fn invoke_target_values(
                                 ambient_owner,
                                 value.type_definition_id,
                                 value.canonical_pattern_value(),
-                                selected.complete_result_policy.clone(),
+                                selected.complete_result_view.pair.clone(),
                                 value.provenance.clone(),
                             )
                         }
@@ -2360,7 +2364,7 @@ pub(crate) fn invoke_target_values(
                                 .clone(),
                             value.type_definition_id,
                             value.canonical_pattern_value(),
-                            selected.complete_result_policy.clone(),
+                            selected.complete_result_view.pair.clone(),
                             value.provenance.clone(),
                         ) {
                             Ok(installed) => installed,
@@ -2460,7 +2464,7 @@ pub(crate) fn invoke_target_values(
                             canonical_instance_key
                                 .as_ref()
                                 .expect("source meta construction has an instance key"),
-                            &selected.complete_result_policy,
+                            &selected.complete_result_view.pair,
                             initializer,
                             &provenance,
                             &trace,
@@ -2468,7 +2472,7 @@ pub(crate) fn invoke_target_values(
                         // B6 — the member's own written P1 projects over
                         // the RHS complete member views; members never
                         // collapse onto the function P2.
-                        let projection = elaborate_binding_p1_projection(
+                        let demand = elaborate_binding_result_demand(
                             binding_p1.as_ref(),
                             provenance.clone(),
                         )
@@ -2478,6 +2482,7 @@ pub(crate) fn invoke_target_values(
                                 trace: trace.clone(),
                             }
                         })?;
+                        let projection = demand.pair_query.clone();
                         let Some(view) = project_p1(&projection, &[pure_p_member_view(pattern)])
                             .into_iter()
                             .next()
@@ -2505,7 +2510,7 @@ pub(crate) fn invoke_target_values(
                             canonical_instance_key
                                 .as_ref()
                                 .expect("source meta construction has an instance key"),
-                            &selected.complete_result_policy,
+                            &selected.complete_result_view.pair,
                             initializer,
                             &provenance,
                             &trace,
@@ -2613,11 +2618,12 @@ pub(crate) fn invoke_target_values(
                                 // for lacking a Val1. The projected pure-P
                                 // view is what gets installed as the
                                 // associated Symbol's member view.
-                                let projection = elaborate_binding_p1_projection(
+                                let demand = elaborate_binding_result_demand(
                                     binding_p1.as_ref(),
                                     provenance.clone(),
                                 )
                                 .map_err(selected_core_body)?;
+                                let projection = demand.pair_query;
                                 let Some(view) =
                                     project_p1(&projection, std::slice::from_ref(&complete_view))
                                         .into_iter()
@@ -2667,16 +2673,16 @@ pub(crate) fn invoke_target_values(
                                     .value(value)
                                     .expect("evaluated injection value is installed")
                                     .clone();
-                                let projection = elaborate_binding_p1_projection(
+                                let demand = elaborate_binding_result_demand(
                                     binding_p1.as_ref(),
                                     provenance.clone(),
                                 )
                                 .map_err(selected_core_body)?;
+                                let projection = demand.pair_query;
                                 let complete = PolicyResultEntry {
                                     value: Some(value),
-                                    value_policy: object.policy.value,
                                     pattern: object.pattern,
-                                    pattern_policy: object.policy.pattern,
+                                    view: object.policy_view(),
                                 };
                                 let Some(view) =
                                     project_p1(&projection, &[complete]).into_iter().next()
@@ -2725,12 +2731,12 @@ pub(crate) fn invoke_target_values(
                                     .map_err(selected_core_body)?;
                                 let outer_p1_explicit = elaborate_explicit_p1(
                                     binding_p1.as_ref(),
-                                    &result_p2,
+                                    &result_p2.pair,
                                     ExplicitP1Position::OuterBinding,
                                     provenance.clone(),
                                 )
                                 .map_err(selected_core_body)?;
-                                let function_policy = derive_function_object_p1(
+                                let function_view = derive_function_object_view(
                                     &result_p2,
                                     &FunctionObjectDeclarationPolicy::default(),
                                 );
@@ -2743,7 +2749,7 @@ pub(crate) fn invoke_target_values(
                                         construction_event,
                                         &closure,
                                         outer_p1_explicit.as_ref(),
-                                        &function_policy,
+                                        &function_view,
                                         &result_p2,
                                         provenance.clone(),
                                     )
@@ -2763,7 +2769,7 @@ pub(crate) fn invoke_target_values(
                                             selected.backing_declaration,
                                             &closure,
                                             outer_p1_explicit.as_ref(),
-                                            &function_policy,
+                                            &function_view,
                                             result_p2,
                                             return_shape,
                                             provenance.clone(),
@@ -2796,7 +2802,7 @@ pub(crate) fn invoke_target_values(
         Some(ClusterSymbolResult {
             construction,
             generated_types,
-            result_p2: selected.complete_result_policy.clone(),
+            result_p2: selected.complete_result_view.pair.clone(),
             trace: trace.clone(),
         })
     } else {
@@ -2945,9 +2951,8 @@ pub(crate) fn invoke_target_values(
             id,
             type_value: result_type,
         }),
-        value_policy: selected.complete_result_policy.value.clone(),
         pattern,
-        pattern_policy: selected.complete_result_policy.pattern.clone(),
+        view: selected.complete_result_view.clone(),
     }];
 
     Ok(InvocationOutcome::SingleMember(SingleMemberResult {
@@ -3050,26 +3055,26 @@ fn classify_semantic_value_arguments(
                 // reject it rather than depend on it.
                 if matches!(object.payload, SemanticValuePayload::TypeObject { .. })
                     || !view
-                        .value_policy
+                        .view
+                        .pair
+                        .value
                         .stages
                         .iter()
                         .any(|stage| stage.visible_at(phase))
                 {
                     return None;
                 }
-                let mutability = singleton_mutability(&view.value_policy.mutability)
-                    .unwrap_or(PolicyMode::Plain);
-                Some((value, object.type_value, mutability))
+                Some((value, object.type_value, view.view.mode))
             })
             .collect::<Vec<_>>();
         readable.sort_by_key(|(value, _, _)| *value);
         readable.dedup_by_key(|(value, _, _)| *value);
-        let [(value, type_value, mutability)] = readable.as_slice() else {
+        let [(value, type_value, mode)] = readable.as_slice() else {
             continue;
         };
         *raw_arg = raw_arg
             .clone()
-            .as_resolved_semantic_value(*value, *type_value, *mutability);
+            .as_resolved_semantic_value(*value, *type_value, *mode);
     }
 }
 
@@ -3095,18 +3100,14 @@ fn formal_mutability_frame(
         // The Bₚ' mutability frame only consumes the const/mut dimension.
         Some(element) => match elaborate_explicit_p1(
             element_policy(element),
-            &entry.complete_result_policy,
+            &entry.complete_result_view.pair,
             ExplicitP1Position::WrittenSelf,
             provenance.clone(),
         )?
-        .and_then(|selection| selection.mutability)
+        .and_then(|selection| selection.mode)
         {
-            Some(mutability) if mutability.contains(&ValueMutability::Const) => {
-                MutabilityPattern::Const
-            }
-            Some(mutability) if mutability.contains(&ValueMutability::Mut) => {
-                MutabilityPattern::Mut
-            }
+            Some(PolicyMode::Const) => MutabilityPattern::Const,
+            Some(PolicyMode::Mut) => MutabilityPattern::Mut,
             _ => PolicyMode::Plain,
         },
         None => PolicyMode::Plain,
@@ -3117,7 +3118,7 @@ fn formal_mutability_frame(
         .map(|element| {
             formal_mutability_pattern(
                 element_policy(element),
-                &entry.complete_result_policy,
+                &entry.complete_result_view.pair,
                 provenance.clone(),
             )
         })
@@ -3334,14 +3335,18 @@ fn bp_prime_dominates(
         PolicyPartialOrdering::Equal => {}
     }
 
-    match compare_phase_view(&better.function_object_p1, &worse.function_object_p1, phase) {
+    match compare_phase_view(
+        &better.function_object_view.pair,
+        &worse.function_object_view.pair,
+        phase,
+    ) {
         PolicyPartialOrdering::Less | PolicyPartialOrdering::Incomparable => return false,
         PolicyPartialOrdering::Greater => strictly_better = true,
         PolicyPartialOrdering::Equal => {}
     }
 
-    match mutability_preference_rank(better.output_mode, output_demand.mode()).cmp(
-        &mutability_preference_rank(worse.output_mode, output_demand.mode()),
+    match mutability_preference_rank(better.function_object_view.mode, output_demand.mode()).cmp(
+        &mutability_preference_rank(worse.function_object_view.mode, output_demand.mode()),
     ) {
         std::cmp::Ordering::Less => return false,
         std::cmp::Ordering::Greater => strictly_better = true,
@@ -3370,8 +3375,8 @@ fn bp_prime_dominates(
             .as_ref()
             .expect("migration candidates store output endpoint at A-stage");
         match compare_migration_endpoint_coordinates(
-            migration.request.source_policy(),
-            migration.request.target_demand(),
+            &migration.request.source_view().pair,
+            migration.request.target_pair(),
             better_input,
             better_output,
             worse_input,
@@ -3418,7 +3423,7 @@ fn compare_mutability_frames(
 fn compare_mutability_position(
     left: MutabilityPattern,
     right: MutabilityPattern,
-    actual: ValueMutability,
+    actual: PolicyMode,
     left_better: &mut bool,
     right_better: &mut bool,
 ) {
@@ -3438,6 +3443,31 @@ fn compare_phase_view(
         std::cmp::Ordering::Greater => PolicyPartialOrdering::Greater,
         std::cmp::Ordering::Equal => PolicyPartialOrdering::Equal,
         std::cmp::Ordering::Less => PolicyPartialOrdering::Less,
+    }
+}
+
+fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> bool {
+    let value_admits = |required: &ValueComponentPolicy| {
+        let presence = matches!(required.presence, crate::ValuePresence::Optional)
+            || matches!(candidate.value.presence, crate::ValuePresence::Optional)
+            || required.presence == candidate.value.presence;
+        let stages = required.stages.is_empty()
+            || (required.presence == crate::ValuePresence::Absent
+                && candidate.value.presence == crate::ValuePresence::Absent)
+            || required.stages.intersects(&candidate.value.stages);
+        presence && stages
+    };
+    match demand {
+        P1Projection::Infer => true,
+        P1Projection::ValueDominant { value } => value_admits(value),
+        P1Projection::Pair(required) => {
+            value_admits(&required.value)
+                && (required.pattern.stages.is_empty()
+                    || required
+                        .pattern
+                        .stages
+                        .intersects(&candidate.pattern.stages))
+        }
     }
 }
 
@@ -3465,12 +3495,6 @@ fn ordering_from_advantages(left: bool, right: bool) -> PolicyPartialOrdering {
         (false, false) => PolicyPartialOrdering::Equal,
         (true, true) => PolicyPartialOrdering::Incomparable,
     }
-}
-
-fn singleton_mutability(mutability: &BTreeSet<ValueMutability>) -> Option<ValueMutability> {
-    (mutability.len() == 1)
-        .then(|| mutability.iter().next().copied())
-        .flatten()
 }
 
 fn ordinary_result_identity(
@@ -3506,7 +3530,7 @@ fn ordinary_result_identity(
                     ambient_owner,
                     value.type_definition_id,
                     value.canonical_pattern_value(),
-                    selected.complete_result_policy.clone(),
+                    selected.complete_result_view.pair.clone(),
                     value.provenance.clone(),
                 )
             } else {
@@ -3526,7 +3550,7 @@ fn ordinary_result_identity(
                     canonical_key.clone(),
                     value.type_definition_id,
                     value.canonical_pattern_value(),
-                    selected.complete_result_policy.clone(),
+                    selected.complete_result_view.pair.clone(),
                     value.provenance.clone(),
                 )?
             };

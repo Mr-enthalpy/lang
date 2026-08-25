@@ -1,14 +1,12 @@
 mod support;
 
-use std::collections::BTreeSet;
-
 use lang_build::{
     extract_single_call_site, ArgProductShape, BuildManifest, CompilationWorld,
     FlattenedProductInvariant, FlattenedProductObject, InvocationOutcome,
-    OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PolicyPair,
-    PolicyStage, PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticValuePayload,
-    SourceRoot, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy,
-    ValueMutability, ValuePresence,
+    OrdinaryInvocationContext, OrdinaryInvocationFailure, P1Projection, PatternComponentPolicy,
+    PolicyMode, PolicyPair, PolicyStage, PolicyTransitionRequest, PolicyView, Provenance,
+    ResolveExpectation, ResultPolicyDemand, SemanticValuePayload, SourceRoot, StageSet,
+    SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
 };
 
 use support::{fixture_root, fixture_source_root, initializer_from_source};
@@ -54,12 +52,11 @@ fn stages(items: &[PolicyStage]) -> StageSet {
 fn pair(
     value_stages: &[PolicyStage],
     pattern_stages: &[PolicyStage],
-    mutability: &[ValueMutability],
+    _mode: &[PolicyMode],
 ) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: stages(value_stages),
-            mutability: mutability.iter().copied().collect(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
@@ -116,7 +113,7 @@ fn toolchain_global_source_is_parsed_installed_and_invoked_through_ordinary_spin
 
     let bare_initializer = initializer_from_source("let x = local global_identity;");
     let bare_call = extract_single_call_site(&bare_initializer).expect("normalized bare-name call");
-    let actual_mutability = [ValueMutability::Const];
+    let actual_mutability = [PolicyMode::Const];
     assert!(matches!(
         world.invoke_ordinary_call(
             world.package_root_node(),
@@ -285,12 +282,12 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
     let source_policy = pair(
         &[PolicyStage::Compile],
         &[PolicyStage::Compile],
-        &[ValueMutability::Const],
+        &[PolicyMode::Const],
     );
     let target_policy = pair(
         &[PolicyStage::Runtime],
         &[PolicyStage::Compile],
-        &[ValueMutability::Mut],
+        &[PolicyMode::Mut],
     );
     let source = world
         .install_semantic_value(
@@ -300,8 +297,14 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
         )
         .expect("installed value reuses uint8 PatternValue");
     let request = PolicyTransitionRequest::new(
-        source_policy,
-        target_policy.clone(),
+        PolicyView {
+            pair: source_policy,
+            mode: PolicyMode::Const,
+        },
+        ResultPolicyDemand {
+            pair_query: P1Projection::Pair(target_policy.clone()),
+            mode: PolicyMode::Mut,
+        },
         type_value,
         source,
         Provenance::new("const compile -> mut runtime demand"),
@@ -335,12 +338,19 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
     );
     assert_eq!(migration.invocation.complete_result.len(), 1);
     assert_eq!(
-        migration.invocation.complete_result[0].value_policy.stages,
+        migration.invocation.complete_result[0]
+            .view
+            .pair
+            .value
+            .stages,
         stages(&[PolicyStage::Compile, PolicyStage::Runtime]),
         "ordinary invocation retains its complete P2 before Project_out"
     );
     assert_eq!(migration.demanded_view.len(), 1);
-    assert_eq!(migration.demanded_view[0].value_policy, target_policy.value);
+    assert_eq!(
+        migration.demanded_view[0].view.pair.value,
+        target_policy.value
+    );
     assert_eq!(
         migration.demanded_view[0]
             .value
@@ -414,7 +424,7 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
     assert_eq!(existing.member_views.len(), 1);
     let existing_view = &existing.member_views[0];
     assert_eq!(
-        existing_view.value_policy.stages,
+        existing_view.view.pair.value.stages,
         stages(&[PolicyStage::Compile])
     );
     assert!(
@@ -504,12 +514,12 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
     assert_eq!(binding.sibling_vals.len(), 1);
     assert_eq!(binding.member_views.len(), 1);
     let view = &binding.member_views[0];
-    assert_eq!(view.value_policy.stages, stages(&[PolicyStage::Runtime]));
+    assert_eq!(view.view.pair.value.stages, stages(&[PolicyStage::Runtime]));
+    assert_eq!(view.view.mode, PolicyMode::Mut);
     assert_eq!(
-        view.value_policy.mutability,
-        BTreeSet::from([ValueMutability::Mut])
+        view.view.pair.pattern.stages,
+        stages(&[PolicyStage::Compile])
     );
-    assert_eq!(view.pattern_policy.stages, stages(&[PolicyStage::Compile]));
 
     let result_id = view.value.expect("runtime binding carries Val1");
     let result = world
@@ -538,12 +548,12 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
         panic!("migration winner must be an ordinary associated call entry");
     };
     assert_eq!(
-        entry.callable_value_policy.value.mutability,
-        BTreeSet::from([ValueMutability::Mut]),
+        entry.callable_view.mode,
+        PolicyMode::Mut,
         "Project_out mutability is owned by the ordinary member endpoint"
     );
     assert_eq!(
-        entry.complete_result_policy.value.stages,
+        entry.complete_result_view.pair.value.stages,
         stages(&[PolicyStage::Compile, PolicyStage::Runtime]),
         "the selected member retains complete ordinary P2 before Project_out"
     );
@@ -586,8 +596,8 @@ fn policy_let_forms_inward_mode_before_selection_and_returns_a_completed_view() 
         panic!("PolicyLet exposes exactly one completed result view");
     };
     assert_eq!(
-        view.value_policy.mutability,
-        BTreeSet::from([ValueMutability::Mut]),
+        view.view.mode,
+        PolicyMode::Mut,
         "the explicit inward/outward demand is the real mut Policy point"
     );
     let result = world
@@ -609,10 +619,7 @@ fn policy_let_forms_inward_mode_before_selection_and_returns_a_completed_view() 
     let [outer_view] = outer.member_views.as_slice() else {
         panic!("outer binding has one completed view");
     };
-    assert_eq!(
-        outer_view.value_policy.mutability,
-        BTreeSet::from([ValueMutability::Const])
-    );
+    assert_eq!(outer_view.view.mode, PolicyMode::Const);
     let outer_result = world
         .semantic_world()
         .value(outer_view.value.expect("outer completed value"))
@@ -643,16 +650,16 @@ fn policy_let_forms_inward_mode_before_selection_and_returns_a_completed_view() 
         let SemanticValuePayload::CallEntry(entry) = &entry.payload else {
             panic!("migration selection is an ordinary call entry");
         };
-        entry.callable_value_policy.value.mutability.clone()
+        entry.callable_view.mode
     };
     assert_eq!(
         endpoint_mode(inner_selected),
-        BTreeSet::from([ValueMutability::Mut]),
+        PolicyMode::Mut,
         "the inner PolicyLet winner remains sealed under its inward mut demand"
     );
     assert_eq!(
         endpoint_mode(outer_selected),
-        BTreeSet::from([ValueMutability::Const]),
+        PolicyMode::Const,
         "the outer consumer performs a later direct satisfaction operation instead of reopening the inner call"
     );
 }

@@ -1,5 +1,6 @@
 use crate::policy_pair::{
-    PatternComponentPolicy, Phase, PolicyResultEntry, PolicyStage, StageSet, ValueComponentPolicy,
+    PatternComponentPolicy, Phase, PolicyMode, PolicyResultEntry, PolicyStage, StageSet,
+    ValueComponentPolicy,
 };
 
 /// A symbol is resolved by identity/path before any phase visibility is
@@ -40,6 +41,7 @@ pub struct ExposedPolicyEntry<V, P> {
     pub value_policy: ValueComponentPolicy,
     pub pattern: FacetView<P>,
     pub pattern_policy: PatternComponentPolicy,
+    pub mode: PolicyMode,
     /// A runtime value with an exposed static Pattern/type view can supply its
     /// derived compile companion without consuming the runtime computation.
     pub derived_compile_companion: bool,
@@ -49,8 +51,8 @@ pub fn expose_policy_slice<V: Clone, P: Clone>(
     entry: &PolicyResultEntry<V, P>,
     phase: Phase,
 ) -> ExposedPolicyEntry<V, P> {
-    let exposed_value_stages = entry.value_policy.stages.exposed_at(phase);
-    let exposed_pattern_stages = entry.pattern_policy.stages.exposed_at(phase);
+    let exposed_value_stages = entry.view.pair.value.stages.exposed_at(phase);
+    let exposed_pattern_stages = entry.view.pair.pattern.stages.exposed_at(phase);
     let value = match (&entry.value, exposed_value_stages.is_empty()) {
         (None, _) => FacetView::Absent,
         (Some(_), true) => FacetView::HiddenInPhase,
@@ -62,20 +64,20 @@ pub fn expose_policy_slice<V: Clone, P: Clone>(
         FacetView::Exposed(entry.pattern.clone())
     };
     let derived_compile_companion = phase != Phase::Runtime
-        && entry.value_policy.stages.contains(PolicyStage::Runtime)
+        && entry.view.pair.value.stages.contains(PolicyStage::Runtime)
         && matches!(pattern, FacetView::Exposed(_));
 
     ExposedPolicyEntry {
         value,
         value_policy: ValueComponentPolicy {
             stages: exposed_value_stages,
-            mutability: entry.value_policy.mutability.clone(),
-            presence: entry.value_policy.presence,
+            presence: entry.view.pair.value.presence,
         },
         pattern,
         pattern_policy: PatternComponentPolicy {
             stages: exposed_pattern_stages,
         },
+        mode: entry.view.mode,
         derived_compile_companion,
     }
 }

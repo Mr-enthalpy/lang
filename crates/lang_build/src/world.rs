@@ -20,10 +20,11 @@ use crate::{
     policy_expr::{elaborate_declaration_policy_expr, legacy_policy_set_from_pair},
     policy_metadata,
     policy_pair::{
-        concrete_policy_mode, derive_function_object_p1, elaborate_binding_p1_projection,
+        derive_function_object_view, elaborate_binding_result_demand,
         elaborate_namespace_declaration_policy, function_object_declaration_policy,
         normalize_p2_policy, ExplicitP1Selection, NamespaceDeclarationPolicy,
-        NamespaceDeclarationPosition, P1Projection, PolicyMode, ValueComponentPolicy,
+        NamespaceDeclarationPosition, P1Projection, PolicyMode, PolicyView, ResultPolicyDemand,
+        ValueComponentPolicy,
     },
     policy_pair::{PatternComponentPolicy, PolicyPair, PolicyStage, ValuePresence},
     policy_set_meta_runtime, policy_set_runtime,
@@ -65,46 +66,31 @@ enum ConnectedInitializerOutcome {
     Diagnostic(Diagnostic),
 }
 
-fn policy_let_mode(projection: &P1Projection) -> PolicyMode {
-    let value = match projection {
-        P1Projection::Infer => return PolicyMode::Plain,
-        P1Projection::ValueDominant { value } => value,
-        P1Projection::Pair(pair) => &pair.value,
-    };
-    concrete_policy_mode(value)
-}
-
-fn policy_let_target_demand(
-    projection: &P1Projection,
-    mode: PolicyMode,
-    source: &PolicyPair,
-) -> PolicyPair {
-    let (value_query, pattern_query) = match projection {
+fn policy_let_target_demand(demand: &ResultPolicyDemand, source: &PolicyPair) -> PolicyView {
+    let (value_query, pattern_query) = match &demand.pair_query {
         P1Projection::Infer => (None, None),
         P1Projection::ValueDominant { value } => (Some(value), None),
         P1Projection::Pair(pair) => (Some(&pair.value), Some(&pair.pattern)),
     };
     let value_stages = value_query
         .filter(|query| !query.stages.is_empty())
-        .map(|query| query.stages.intersection(&source.value.stages))
+        .map(|query| query.stages.clone())
         .unwrap_or_else(|| source.value.stages.clone());
     let pattern_stages = pattern_query
         .filter(|query| !query.stages.is_empty())
-        .map(|query| query.stages.intersection(&source.pattern.stages))
+        .map(|query| query.stages.clone())
         .unwrap_or_else(|| source.pattern.stages.clone());
-    let mutability = match mode {
-        PolicyMode::Plain => std::collections::BTreeSet::new(),
-        PolicyMode::Const | PolicyMode::Mut => std::iter::once(mode).collect(),
-    };
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: value_stages,
-            mutability,
-            presence: ValuePresence::Present,
+    PolicyView {
+        pair: PolicyPair {
+            value: ValueComponentPolicy {
+                stages: value_stages,
+                presence: ValuePresence::Present,
+            },
+            pattern: PatternComponentPolicy {
+                stages: pattern_stages,
+            },
         },
-        pattern: PatternComponentPolicy {
-            stages: pattern_stages,
-        },
+        mode: demand.mode,
     }
 }
 
@@ -228,12 +214,12 @@ impl CompilationWorld {
                 &registration.name,
                 registration.backing,
                 registration.primitive,
-                Some(ExplicitP1Selection::from_complete_pair(
-                    &registration.function_policy,
+                Some(ExplicitP1Selection::from_complete_view(
+                    &registration.function_view,
                 )),
                 registration.return_shape,
-                registration.function_policy,
-                registration.result_policy,
+                registration.function_view,
+                registration.result_view,
                 registration.visibility,
                 registration.provenance,
             )?;
@@ -407,12 +393,11 @@ impl CompilationWorld {
                 provenance,
             )
         } else {
-            let mut explicit_mutability =
-                Vec::with_capacity(1 + context.explicit_argument_mutability.len());
-            explicit_mutability.push(crate::PolicyMode::Plain);
-            explicit_mutability.extend_from_slice(context.explicit_argument_mutability);
+            let mut explicit_modes = Vec::with_capacity(1 + context.explicit_argument_modes.len());
+            explicit_modes.push(crate::PolicyMode::Plain);
+            explicit_modes.extend_from_slice(context.explicit_argument_modes);
             let named_context = crate::OrdinaryInvocationContext {
-                explicit_argument_mutability: &explicit_mutability,
+                explicit_argument_modes: &explicit_modes,
                 ..context
             };
             crate::invoke_pattern_associated_value_ordinary(
@@ -626,7 +611,7 @@ impl CompilationWorld {
         let mut last_failure = None;
         for candidate in candidates {
             let symbol = candidate.symbol;
-            let mut attempt_context = context;
+            let mut attempt_context = context.clone();
             let target_package = self.semantic_world.symbol(symbol).map(|symbol| {
                 self.semantic_world
                     .owners()
@@ -1082,8 +1067,8 @@ impl CompilationWorld {
                         backing_declaration: callable.symbol_id,
                         closure: closure.clone(),
                         outer_p1_explicit: callable.outer_p1_explicit.clone(),
-                        callable_value_policy: callable.function_policy,
-                        complete_result_policy: callable.result_policy,
+                        callable_view: callable.function_view,
+                        complete_result_view: callable.result_view,
                         namespace_visibility: callable.namespace_visibility,
                         candidate_role: crate::OrdinaryCandidateRole::Ordinary,
                         return_shape: callable.return_shape,
@@ -1174,8 +1159,8 @@ impl CompilationWorld {
                         backing_declaration: callable.symbol_id,
                         closure: closure.clone(),
                         outer_p1_explicit: callable.outer_p1_explicit.clone(),
-                        function_policy: callable.function_policy,
-                        complete_result_policy: callable.result_policy,
+                        function_view: callable.function_view,
+                        complete_result_view: callable.result_view,
                         namespace_visibility: callable.namespace_visibility,
                         return_shape: callable.return_shape,
                         provenance: declaration_provenance,
@@ -1186,8 +1171,8 @@ impl CompilationWorld {
                         backing_declaration: callable.symbol_id,
                         closure: closure.clone(),
                         outer_p1_explicit: callable.outer_p1_explicit.clone(),
-                        function_policy: callable.function_policy,
-                        complete_result_policy: callable.result_policy,
+                        function_view: callable.function_view,
+                        complete_result_view: callable.result_view,
                         namespace_visibility: callable.namespace_visibility,
                         return_shape: callable.return_shape,
                         provenance: declaration_provenance,
@@ -1423,13 +1408,12 @@ impl CompilationWorld {
                         continue;
                     };
                     let source_value_policy = crate::ValueComponentPolicy {
-                        stages: entry.value_policy.stages.static_stages(),
-                        mutability: entry.value_policy.mutability.clone(),
+                        stages: entry.view.pair.value.stages.static_stages(),
                         presence: ValuePresence::Present,
                     };
                     let source_policy = PolicyPair {
                         value: source_value_policy.clone(),
-                        pattern: entry.pattern_policy.clone(),
+                        pattern: entry.view.pair.pattern.clone(),
                     };
                     let Some(source) = self.semantic_world.install_plain_value(
                         type_value,
@@ -1442,7 +1426,7 @@ impl CompilationWorld {
                         id: source,
                         type_value,
                     });
-                    entry.value_policy = source_value_policy;
+                    entry.view.pair.value = source_value_policy;
                 }
             }
         }
@@ -1622,9 +1606,8 @@ impl CompilationWorld {
                         type_value: value.type_value,
                     }
                 }),
-                value_policy: entry.value_policy.clone(),
                 pattern: entry.pattern,
-                pattern_policy: entry.pattern_policy.clone(),
+                view: entry.view.clone(),
             })
             .collect::<Vec<_>>();
         assert_semantic_result_satisfies_annotation(
@@ -1728,42 +1711,27 @@ impl CompilationWorld {
             provenance.clone(),
         )?;
 
-        let explicit_p1 = slot
-            .policy
-            .as_ref()
-            .map(|_| &namespace_declaration.projection);
-        let selected = match crate::elaborate_value_binding_p1(
-            &result,
-            explicit_p1,
-            provenance.clone(),
-        ) {
-            Ok(crate::P1Elaboration::Projected { selected, .. }) => selected,
-            Ok(crate::P1Elaboration::AtomicRuntimeMigration { demands, .. }) => {
-                self.invoke_binding_migration_demands(demands, &provenance)?
+        let demand = if slot.policy.is_some() {
+            ResultPolicyDemand {
+                pair_query: namespace_declaration.projection.clone(),
+                mode: namespace_declaration.mode,
             }
-            Err(failure) => {
-                let Some(projection) = explicit_p1 else {
-                    return Err(BuildError::single(Diagnostic::hard_error(
-                        format!(
-                            "ExplicitPolicyProjectionFailed: existing semantic value cannot satisfy binding P1 ({failure:?})"
-                        ),
-                        Some(provenance),
-                    )));
-                };
-                self.invoke_general_binding_migration(&result, projection, &provenance)
-                    .map_err(|migration_failure| {
-                        BuildError::single(
-                            Diagnostic::hard_error(
-                                format!(
-                                    "ExplicitPolicyProjectionFailed: existing semantic value cannot satisfy binding P1 ({failure:?}); direct same-Type migration failed ({migration_failure})"
-                                ),
-                                Some(provenance.clone()),
-                            )
-                            .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
-                        )
-                    })?
-            }
+        } else {
+            ResultPolicyDemand::default()
         };
+        let selected = self
+            .satisfy_binding_result_demand(&result, &demand, &provenance)
+            .map_err(|failure| {
+                BuildError::single(
+                    Diagnostic::hard_error(
+                        format!(
+                            "ExplicitPolicyProjectionFailed: existing semantic value cannot satisfy complete result demand ({failure})"
+                        ),
+                        Some(provenance.clone()),
+                    )
+                    .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
+                )
+            })?;
         self.install_connected_semantic_binding(
             namespace,
             binder_name,
@@ -1833,10 +1801,7 @@ impl CompilationWorld {
                     Some(provenance.clone()),
                 )));
             }
-            let policy = PolicyPair {
-                value: entry.value_policy.clone(),
-                pattern: entry.pattern_policy.clone(),
-            };
+            let policy = entry.view.pair.clone();
             let constructed = self
                 .semantic_world
                 .construct_abstract_literal_value(
@@ -1894,16 +1859,12 @@ impl CompilationWorld {
             let selected_call_entry = migration.invocation.selected.call_entry_value;
             for mut entry in migration.demanded_view {
                 if let Some(source) = entry.value {
-                    let result_policy = PolicyPair {
-                        value: entry.value_policy.clone(),
-                        pattern: entry.pattern_policy.clone(),
-                    };
                     let result_value = self.semantic_world.install_invocation_result(
                         selected_call_entry,
                         Some(source.id),
                         source.type_value,
                         entry.pattern,
-                        result_policy,
+                        entry.view.clone(),
                         provenance.clone(),
                     );
                     entry.value = Some(crate::SemanticValueRef {
@@ -1923,23 +1884,23 @@ impl CompilationWorld {
     fn invoke_general_binding_migration(
         &mut self,
         result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        projection: &P1Projection,
+        demand: &ResultPolicyDemand,
         provenance: &Provenance,
     ) -> Result<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>, String>
     {
-        let mode = policy_let_mode(projection);
         let mut completed = Vec::new();
         for entry in result {
             let Some(source) = entry.value else {
                 return Err("a pure-P entry has no value realization to migrate".into());
             };
-            let source_policy = PolicyPair {
-                value: entry.value_policy.clone(),
-                pattern: entry.pattern_policy.clone(),
+            let source_view = entry.view.clone();
+            let target_view = policy_let_target_demand(demand, &source_view.pair);
+            let target_demand = ResultPolicyDemand {
+                pair_query: P1Projection::Pair(target_view.pair),
+                mode: target_view.mode,
             };
-            let target_demand = policy_let_target_demand(projection, mode, &source_policy);
             let request = crate::PolicyMigrationRequest::new(
-                source_policy,
+                source_view,
                 target_demand,
                 source.type_value,
                 source.id,
@@ -1952,16 +1913,12 @@ impl CompilationWorld {
             let selected_call_entry = migration.invocation.selected.call_entry_value;
             for mut view in migration.demanded_view {
                 if let Some(source) = view.value {
-                    let policy = PolicyPair {
-                        value: view.value_policy.clone(),
-                        pattern: view.pattern_policy.clone(),
-                    };
                     let result_value = self.semantic_world.install_invocation_result(
                         selected_call_entry,
                         Some(source.id),
                         source.type_value,
                         view.pattern,
-                        policy,
+                        view.view.clone(),
                         provenance.clone(),
                     );
                     view.value = Some(crate::SemanticValueRef {
@@ -1977,6 +1934,26 @@ impl CompilationWorld {
         } else {
             Ok(completed)
         }
+    }
+
+    /// Satisfy a binding result demand existing-view-first. Identity is legal
+    /// only when both the pair projection and the explicit whole-slot mode
+    /// match; otherwise exactly one direct same-Type migration is selected.
+    fn satisfy_binding_result_demand(
+        &mut self,
+        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        demand: &ResultPolicyDemand,
+        provenance: &Provenance,
+    ) -> Result<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>, String>
+    {
+        let projected = crate::project_p1(&demand.pair_query, result)
+            .into_iter()
+            .filter(|entry| entry.view.mode == demand.mode)
+            .collect::<Vec<_>>();
+        if !projected.is_empty() {
+            return Ok(projected);
+        }
+        self.invoke_general_binding_migration(result, demand, provenance)
     }
 
     /// Installs the selected connected result views under a fresh
@@ -2035,9 +2012,8 @@ impl CompilationWorld {
                 .iter()
                 .map(|entry| crate::PolicyResultEntry {
                     value: None,
-                    value_policy: entry.value_policy.clone(),
                     pattern: entry.pattern,
-                    pattern_policy: entry.pattern_policy.clone(),
+                    view: entry.view.clone(),
                 })
                 .collect();
             let destination = self
@@ -2247,9 +2223,11 @@ impl CompilationWorld {
                             id: value,
                             type_value,
                         }),
-                        value_policy: policy.value,
                         pattern,
-                        pattern_policy: policy.pattern,
+                        view: PolicyView {
+                            pair: policy,
+                            mode: PolicyMode::Plain,
+                        },
                     }])
                 }
                 Err(crate::AbstractLiteralFormationFailure::CharacterSpellingOpen) => {
@@ -2269,15 +2247,14 @@ impl CompilationWorld {
                 .resolve_semantic_call_target(namespace, &call_site.target)
                 .is_some()
             {
-                let explicit_mutability =
-                    vec![crate::ValueMutability::Const; call_site.source_product.elements.len()];
+                let explicit_modes =
+                    vec![crate::PolicyMode::Const; call_site.source_product.elements.len()];
                 // B8: a world-level connected declaration's environment is the
                 // namespace level itself (no enclosing callable), so the
                 // ambient construction owner is supplied explicitly here.  A
                 // future callable-body evaluator must supply the enclosing
                 // anonymous function object's Self scope owner instead.
-                let mut context =
-                    crate::OrdinaryInvocationContext::open_static(&explicit_mutability);
+                let mut context = crate::OrdinaryInvocationContext::open_static(&explicit_modes);
                 context.ambient_construction_owner = self.semantic_world.namespace_owner(namespace);
                 return match self.invoke_ordinary_call(
                     namespace,
@@ -2341,11 +2318,10 @@ impl CompilationWorld {
         mode: EvalMode,
         provenance: Provenance,
     ) -> ConnectedInitializerOutcome {
-        let projection = match elaborate_binding_p1_projection(Some(policy), provenance.clone()) {
-            Ok(projection) => projection,
+        let demand = match elaborate_binding_result_demand(Some(policy), provenance.clone()) {
+            Ok(demand) => demand,
             Err(diagnostic) => return ConnectedInitializerOutcome::Diagnostic(diagnostic),
         };
-        let inward_mode = policy_let_mode(&projection);
 
         let inner = if let Ok(call_site) = crate::extract_single_call_site(operand) {
             if self
@@ -2355,7 +2331,7 @@ impl CompilationWorld {
                 let explicit_modes =
                     vec![PolicyMode::Plain; call_site.source_product.elements.len()];
                 let mut context = crate::OrdinaryInvocationContext::open_static(&explicit_modes)
-                    .with_output_mode_demand(inward_mode);
+                    .with_result_policy_demand(demand.clone());
                 context.ambient_construction_owner = self.semantic_world.namespace_owner(namespace);
                 match self.invoke_ordinary_call(namespace, &call_site, context, provenance.clone())
                 {
@@ -2417,9 +2393,8 @@ impl CompilationWorld {
                             type_value: value.type_value,
                         }
                     }),
-                    value_policy: entry.value_policy,
                     pattern: entry.pattern,
-                    pattern_policy: entry.pattern_policy,
+                    view: entry.view,
                 })
                 .collect(),
             ConnectedInitializerOutcome::Ordinary(crate::InvocationOutcome::Unit(_)) => {
@@ -2437,22 +2412,17 @@ impl CompilationWorld {
             }
         };
 
-        let already_satisfied = material
-            .iter()
-            .filter(|entry| concrete_policy_mode(&entry.value_policy) == inward_mode)
-            .cloned()
+        let projected = crate::project_p1(&demand.pair_query, &material)
+            .into_iter()
+            .filter(|entry| entry.view.mode == demand.mode)
             .collect::<Vec<_>>();
-        let projected = crate::project_p1(&projection, &already_satisfied);
         if !projected.is_empty() {
             return ConnectedInitializerOutcome::Existing(projected);
         }
 
         let mut migrated = Vec::new();
         for entry in material {
-            let mut source_policy = PolicyPair {
-                value: entry.value_policy,
-                pattern: entry.pattern_policy,
-            };
+            let mut source_view = entry.view;
             let source = match entry.value {
                 Some(source) => source,
                 None => {
@@ -2463,13 +2433,13 @@ impl CompilationWorld {
                             Some(provenance),
                         ));
                     };
-                    source_policy.value.presence = ValuePresence::Present;
-                    if source_policy.value.stages.is_empty() {
-                        source_policy.value.stages = source_policy.pattern.stages.clone();
+                    source_view.pair.value.presence = ValuePresence::Present;
+                    if source_view.pair.value.stages.is_empty() {
+                        source_view.pair.value.stages = source_view.pair.pattern.stages.clone();
                     }
                     let Some(id) = self.semantic_world.install_plain_value(
                         type_value,
-                        source_policy.clone(),
+                        source_view.pair.clone(),
                         provenance.clone(),
                     ) else {
                         return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
@@ -2480,9 +2450,13 @@ impl CompilationWorld {
                     crate::SemanticValueRef { id, type_value }
                 }
             };
-            let target_demand = policy_let_target_demand(&projection, inward_mode, &source_policy);
+            let target_view = policy_let_target_demand(&demand, &source_view.pair);
+            let target_demand = ResultPolicyDemand {
+                pair_query: P1Projection::Pair(target_view.pair),
+                mode: target_view.mode,
+            };
             let request = match crate::PolicyMigrationRequest::new(
-                source_policy,
+                source_view,
                 target_demand,
                 source.type_value,
                 source.id,
@@ -2509,16 +2483,12 @@ impl CompilationWorld {
             let selected_call_entry = migration.invocation.selected.call_entry_value;
             for mut view in migration.demanded_view {
                 if let Some(source) = view.value {
-                    let result_policy = PolicyPair {
-                        value: view.value_policy.clone(),
-                        pattern: view.pattern_policy.clone(),
-                    };
                     let result_value = self.semantic_world.install_invocation_result(
                         selected_call_entry,
                         Some(source.id),
                         source.type_value,
                         view.pattern,
-                        result_policy,
+                        view.view.clone(),
                         provenance.clone(),
                     );
                     view.value = Some(crate::SemanticValueRef {
@@ -2565,9 +2535,8 @@ impl CompilationWorld {
                         })
                     })
                     .unwrap_or_default(),
-                value_policy: entry.value_policy.clone(),
                 pattern: entry.pattern,
-                pattern_policy: entry.pattern_policy.clone(),
+                view: entry.view.clone(),
             })
             .collect::<Vec<_>>();
         if entries.is_empty() {
@@ -2871,10 +2840,7 @@ fn declared_pair_from_result_entry<V, P>(
     entry: &crate::PolicyResultEntry<V, P>,
     _namespace_declaration: &NamespaceDeclarationPolicy,
 ) -> PolicyPair {
-    PolicyPair {
-        value: entry.value_policy.clone(),
-        pattern: entry.pattern_policy.clone(),
-    }
+    entry.view.pair.clone()
 }
 
 struct SourceCallableDelta {
@@ -2887,8 +2853,8 @@ struct SourceCallableDelta {
     /// distinguish "outer explicit" from "outer derived" and apply the
     /// canonical-P1 conflict rule.
     outer_p1_explicit: Option<ExplicitP1Selection>,
-    function_policy: PolicyPair,
-    result_policy: PolicyPair,
+    function_view: PolicyView,
+    result_view: PolicyView,
     namespace_visibility: Option<crate::NamespaceVisibility>,
     /// Independent declared return-shape coordinate, elaborated once from
     /// the return-slot annotation (`declared_return_shape_from_closure`)
@@ -2913,7 +2879,7 @@ fn source_callable_delta(
     // (`let r: type`) declares a member with no value dimension, so the
     // declared runtime value slice could never be filled: the declaration
     // itself is a hard error at this elaboration boundary.
-    ensure_runtime_result_slice_has_value_dimension(closure, &result_p2, provenance.clone())
+    ensure_runtime_result_slice_has_value_dimension(closure, &result_p2.pair, provenance.clone())
         .map_err(BuildError::single)?;
     // Elaborate the declared return shape once at this boundary from the
     // return-slot annotation: `-> r: symbol` declares a ClusterSymbol
@@ -2928,7 +2894,7 @@ fn source_callable_delta(
     // exactly one position.
     let return_shape = crate::overload_set::declared_return_shape_from_closure(closure)
         .map_err(BuildError::single)?;
-    crate::policy_pair::validate_return_shape(return_shape, &result_p2, &provenance)
+    crate::policy_pair::validate_return_shape(return_shape, &result_p2.pair, &provenance)
         .map_err(BuildError::single)?;
     let namespace_declaration = elaborate_namespace_declaration_policy(
         policy_expr,
@@ -2937,8 +2903,8 @@ fn source_callable_delta(
     )
     .map_err(BuildError::single)?;
     let declaration_policy = function_object_declaration_policy(&namespace_declaration);
-    let derived_function_p1 = derive_function_object_p1(&result_p2, &declaration_policy);
-    let derived_symbol_policy = legacy_policy_set_from_pair(&derived_function_p1);
+    let derived_function_view = derive_function_object_view(&result_p2, &declaration_policy);
+    let derived_symbol_policy = legacy_policy_set_from_pair(&derived_function_view.pair);
     let explicit_symbol_policy = policy_expr
         .map(|policy| elaborate_declaration_policy_expr(Some(policy), provenance.clone()))
         .transpose()
@@ -2950,7 +2916,7 @@ fn source_callable_delta(
     )?;
     let symbol_policy =
         final_binding_policy(explicit_symbol_policy.as_ref(), &derived_symbol_policy);
-    let body_entry_policy = legacy_policy_set_from_pair(&result_p2);
+    let body_entry_policy = legacy_policy_set_from_pair(&result_p2.pair);
     ensure_return_policy_supported(closure, provenance.clone()).map_err(BuildError::single)?;
 
     // Preserve explicitness information at the
@@ -2972,7 +2938,7 @@ fn source_callable_delta(
     // never enter the P1.
     let outer_p1_explicit: Option<ExplicitP1Selection> = crate::policy_pair::elaborate_explicit_p1(
         policy_expr,
-        &result_p2,
+        &result_p2.pair,
         crate::policy_pair::ExplicitP1Position::OuterBinding,
         provenance.clone(),
     )
@@ -3026,8 +2992,8 @@ fn source_callable_delta(
         delta,
         symbol_id,
         outer_p1_explicit,
-        function_policy: derived_function_p1,
-        result_policy: result_p2,
+        function_view: derived_function_view,
+        result_view: result_p2,
         namespace_visibility: namespace_declaration.visibility,
         return_shape,
     })
@@ -3038,10 +3004,7 @@ fn legacy_policy_set_from_result_entries<V, P>(
 ) -> PolicySet {
     let mut policy = PolicySet::new();
     for entry in entries {
-        let projected = legacy_policy_set_from_pair(&PolicyPair {
-            value: entry.value_policy.clone(),
-            pattern: entry.pattern_policy.clone(),
-        });
+        let projected = legacy_policy_set_from_pair(&entry.view.pair);
         policy.flags.extend(projected.flags);
     }
     policy
@@ -3119,7 +3082,7 @@ fn ordinary_invocation_failure_diagnostic(
 fn result_policy_from_closure(
     closure: &NormClosure,
     provenance: Provenance,
-) -> Result<crate::PolicyPair, Diagnostic> {
+) -> Result<crate::PolicyView, Diagnostic> {
     let Some(head) = &closure.head else {
         return Err(Diagnostic::hard_error(
             "source callable declaration requires an explicit closure head",

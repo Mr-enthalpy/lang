@@ -42,8 +42,8 @@ use crate::{
         ExtractionMemberVisibility, NamespaceSymbolEntry, OwnerNamespaceGraph, OwnerNamespaceNodeId,
     },
     policy_pair::{
-        concrete_policy_mode, CapabilityRealization, ExplicitP1Selection, NamespaceVisibility,
-        PolicyMode, PolicyPair, PolicyResultEntry,
+        CapabilityRealization, ExplicitP1Selection, NamespaceVisibility, PolicyMode, PolicyPair,
+        PolicyResultEntry, PolicyView,
     },
     product_shape::{NonValueArgKind, ProductAtom, RawArgShape, RawArgValueClass},
     semantic_name_index::{BuildError, SemanticNameIndex},
@@ -444,8 +444,8 @@ impl PatternHostMember {
     /// Pattern stage carries no exposure fact to compose.
     pub fn exposed_at(&self, phase: crate::Phase) -> bool {
         match &self.view {
-            Some(view) if !view.pattern_policy.stages.is_empty() => {
-                view.pattern_policy.stages.visible_at(phase)
+            Some(view) if !view.view.pair.pattern.stages.is_empty() => {
+                view.view.pair.pattern.stages.visible_at(phase)
             }
             _ => true,
         }
@@ -475,8 +475,8 @@ pub enum SemanticDeclarationEntry {
         backing_declaration: SymbolId,
         closure: NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
-        callable_value_policy: PolicyPair,
-        complete_result_policy: PolicyPair,
+        callable_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         candidate_role: OrdinaryCandidateRole,
         return_shape: ReturnShape,
@@ -488,8 +488,8 @@ pub enum SemanticDeclarationEntry {
         backing_declaration: SymbolId,
         closure: NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
-        function_policy: PolicyPair,
-        complete_result_policy: PolicyPair,
+        function_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -501,8 +501,8 @@ pub enum SemanticDeclarationEntry {
         backing_declaration: SymbolId,
         closure: NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
-        function_policy: PolicyPair,
-        complete_result_policy: PolicyPair,
+        function_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -634,9 +634,19 @@ pub struct SemanticValueObject {
     /// of other values sharing the same Pattern.
     pub place: ObjectPlaceId,
     pub policy: PolicyPair,
+    pub mode: PolicyMode,
     pub namespace_visibility: Option<NamespaceVisibility>,
     pub payload: SemanticValuePayload,
     pub provenance: Provenance,
+}
+
+impl SemanticValueObject {
+    pub fn policy_view(&self) -> PolicyView {
+        PolicyView {
+            pair: self.policy.clone(),
+            mode: self.mode,
+        }
+    }
 }
 
 /// Declaration-event identity of a meta-injected value.
@@ -665,7 +675,7 @@ struct InjectedMemberRecord {
     value: SemanticValueId,
     member_name: String,
     declaration: NormClosure,
-    canonical_p1: PolicyPair,
+    canonical_view: PolicyView,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -744,7 +754,7 @@ pub struct OrdinaryCallEntry {
     /// This call entry is a terminal FunctionItem: `Type(c) = FunctionItem(Self, Args...) -> R`
     /// and `c.Val2 = ∅`.  There is no recursive callable lookup from a
     /// CallEntry — the invocation spine terminates here.
-    pub complete_result_policy: PolicyPair,
+    pub complete_result_view: PolicyView,
     /// Policy view declared by the ordinary callable value/member itself.
     ///
     /// For an authorized migration call this supplies the candidate's output
@@ -752,9 +762,7 @@ pub struct OrdinaryCallEntry {
     /// result P2: the latter keeps the ordinary `(compile || runtime):compile`
     /// result domain, while the member declaration may select `const` or
     /// `mut` for overload comparison.
-    pub callable_value_policy: PolicyPair,
-    /// Concrete result preference point; omitted syntax forms `plain`.
-    pub output_mode: PolicyMode,
+    pub callable_view: PolicyView,
     /// Orthogonal 3x3 realization facts. Policy comparison never derives or
     /// modifies these cells.
     pub capability_realization: CapabilityRealization,
@@ -794,13 +802,13 @@ pub struct OrdinaryCallEntry {
 /// `public/private/export` remain namespace declaration attributes and
 /// never enter the P1; visibility/export of the canonical pair always
 /// come from `outer_derived`.
-pub fn canonical_function_object_p1(
+pub fn canonical_function_object_view(
     outer_explicit: Option<&ExplicitP1Selection>,
-    outer_derived: &PolicyPair,
-    p2: &PolicyPair,
+    outer_derived: &crate::PolicyView,
+    p2: &crate::PolicyView,
     closure: Option<&NormClosure>,
     provenance: &Provenance,
-) -> Result<PolicyPair, crate::Diagnostic> {
+) -> Result<crate::PolicyView, crate::Diagnostic> {
     // Extract the raw written-self policy spec from the closure head, if any.
     let written_self_spec: Option<&NormPolicySpec> = closure
         .and_then(|c| c.head.as_ref())
@@ -815,26 +823,26 @@ pub fn canonical_function_object_p1(
     let self_explicit: Option<ExplicitP1Selection> = match written_self_spec {
         Some(spec) => crate::policy_pair::elaborate_explicit_p1(
             Some(spec),
-            p2,
+            &p2.pair,
             crate::policy_pair::ExplicitP1Position::WrittenSelf,
             provenance.clone(),
         )?,
         None => None,
     };
 
-    fn complete(selection: &ExplicitP1Selection, derived: &PolicyPair) -> PolicyPair {
+    fn complete(selection: &ExplicitP1Selection, derived: &crate::PolicyView) -> crate::PolicyView {
         let mut complete = derived.clone();
         if let Some(stages) = &selection.value_stages {
-            complete.value.stages = stages.clone();
-        }
-        if let Some(mutability) = &selection.mutability {
-            complete.value.mutability = mutability.clone();
+            complete.pair.value.stages = stages.clone();
         }
         if let Some(presence) = selection.presence {
-            complete.value.presence = presence;
+            complete.pair.value.presence = presence;
         }
         if let Some(stages) = &selection.pattern_stages {
-            complete.pattern.stages = stages.clone();
+            complete.pair.pattern.stages = stages.clone();
+        }
+        if let Some(mode) = selection.mode {
+            complete.mode = mode;
         }
         complete
     }
@@ -860,11 +868,11 @@ pub fn canonical_function_object_p1(
     };
     // Cross-site dimension fallback must not assemble an inconsistent
     // value component: `Pv = absent` carries neither stages nor const/mut.
-    if canonical.value.presence == crate::policy_pair::ValuePresence::Absent
-        && (!canonical.value.stages.is_empty() || !canonical.value.mutability.is_empty())
+    if canonical.pair.value.presence == crate::policy_pair::ValuePresence::Absent
+        && !canonical.pair.value.stages.is_empty()
     {
         return Err(crate::Diagnostic::hard_error(
-            "canonical P1: `Pv = absent` cannot carry value stages or const/mutability",
+            "canonical P1: `Pv = absent` cannot carry value stages",
             Some(provenance.clone()),
         ));
     }
@@ -1276,10 +1284,7 @@ pub fn derived_cluster_policy(
 ) -> Option<PolicyPair> {
     let mut folded: Option<PolicyPair> = None;
     for view in views {
-        let member = PolicyPair {
-            value: view.value_policy.clone(),
-            pattern: view.pattern_policy.clone(),
-        };
+        let member = view.view.pair.clone();
         folded = Some(match folded {
             None => member,
             Some(current) => crate::policy_pair::policy_or(&current, &member),
@@ -3065,20 +3070,26 @@ impl SemanticWorld {
         match recorded {
             Some(policy) => PolicyResultEntry {
                 value: None,
-                value_policy: policy.value,
                 pattern,
-                pattern_policy: policy.pattern,
+                view: PolicyView {
+                    pair: policy,
+                    mode: PolicyMode::Plain,
+                },
             },
             None => PolicyResultEntry {
                 value: None,
-                value_policy: crate::ValueComponentPolicy {
-                    stages: crate::StageSet::new(),
-                    mutability: BTreeSet::new(),
-                    presence: crate::ValuePresence::Absent,
-                },
                 pattern,
-                pattern_policy: crate::PatternComponentPolicy {
-                    stages: crate::StageSet::new(),
+                view: PolicyView {
+                    pair: PolicyPair {
+                        value: crate::ValueComponentPolicy {
+                            stages: crate::StageSet::new(),
+                            presence: crate::ValuePresence::Absent,
+                        },
+                        pattern: crate::PatternComponentPolicy {
+                            stages: crate::StageSet::new(),
+                        },
+                    },
+                    mode: PolicyMode::Plain,
                 },
             },
         }
@@ -3663,9 +3674,11 @@ impl SemanticWorld {
                 let value = self.values.get(id)?;
                 Some(PolicyResultEntry {
                     value: Some(*id),
-                    value_policy: value.policy.value.clone(),
                     pattern: value.pattern,
-                    pattern_policy: value.policy.pattern.clone(),
+                    view: PolicyView {
+                        pair: value.policy.clone(),
+                        mode: PolicyMode::Plain,
+                    },
                 })
             })
             .collect()
@@ -3870,6 +3883,7 @@ impl SemanticWorld {
                     pattern: represented_pattern,
                     place,
                     policy: policy.clone(),
+                    mode: PolicyMode::Plain,
                     namespace_visibility: None,
                     payload: SemanticValuePayload::TypeObject {
                         represented_type,
@@ -3912,9 +3926,11 @@ impl SemanticWorld {
         }
         let pure_p_view = PolicyResultEntry {
             value: None,
-            value_policy: policy.value,
             pattern: represented_pattern,
-            pattern_policy: policy.pattern,
+            view: PolicyView {
+                pair: policy,
+                mode: PolicyMode::Plain,
+            },
         };
         if !cell.member_views.contains(&pure_p_view) {
             cell.member_views.push(pure_p_view);
@@ -4011,6 +4027,7 @@ impl SemanticWorld {
                 pattern,
                 place,
                 policy: policy.clone(),
+                mode: PolicyMode::Plain,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::TypeObject {
                     represented_type: canonical_type,
@@ -4095,6 +4112,7 @@ impl SemanticWorld {
                 pattern,
                 place,
                 policy,
+                mode: PolicyMode::Plain,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::TypeObject {
                     represented_type: canonical_type,
@@ -4192,8 +4210,8 @@ impl SemanticWorld {
         core_primitive: Option<CoreMetaFunction>,
         callable_owner: SemanticOwnerId,
         receiver_type: TypeValueId,
-        canonical_p1: PolicyPair,
-        complete_result_policy: PolicyPair,
+        canonical_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         candidate_role: OrdinaryCandidateRole,
         return_shape: ReturnShape,
@@ -4233,13 +4251,13 @@ impl SemanticWorld {
             .insert(function_item_pattern, function_item_type);
 
         let call_entry = self.allocate_value_id();
-        let output_mode = concrete_policy_mode(&canonical_p1.value);
         self.materialize_val1_object(SemanticValueObject {
             id: call_entry,
             type_value: function_item_type,
             pattern: function_item_pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy: canonical_p1.clone(),
+            policy: canonical_view.pair.clone(),
+            mode: canonical_view.mode,
             namespace_visibility,
             payload: SemanticValuePayload::CallEntry(OrdinaryCallEntry {
                 backing_declaration,
@@ -4249,9 +4267,8 @@ impl SemanticWorld {
                 receiver_type,
                 closure: closure.cloned(),
                 core_primitive,
-                complete_result_policy,
-                callable_value_policy: canonical_p1,
-                output_mode,
+                complete_result_view,
+                callable_view: canonical_view,
                 capability_realization: CapabilityRealization::default(),
                 candidate_role,
                 return_shape,
@@ -4310,8 +4327,8 @@ impl SemanticWorld {
                     backing_declaration,
                     closure,
                     outer_p1_explicit,
-                    callable_value_policy,
-                    complete_result_policy,
+                    callable_view,
+                    complete_result_view,
                     namespace_visibility,
                     candidate_role,
                     return_shape,
@@ -4323,8 +4340,8 @@ impl SemanticWorld {
                         backing_declaration,
                         &closure,
                         outer_p1_explicit,
-                        callable_value_policy,
-                        complete_result_policy,
+                        callable_view,
+                        complete_result_view,
                         namespace_visibility,
                         candidate_role,
                         return_shape,
@@ -4336,8 +4353,8 @@ impl SemanticWorld {
                     backing_declaration,
                     closure,
                     outer_p1_explicit,
-                    function_policy,
-                    complete_result_policy,
+                    function_view,
+                    complete_result_view,
                     namespace_visibility,
                     return_shape,
                     provenance,
@@ -4348,8 +4365,8 @@ impl SemanticWorld {
                         backing_declaration,
                         &closure,
                         outer_p1_explicit,
-                        function_policy,
-                        complete_result_policy,
+                        function_view,
+                        complete_result_view,
                         namespace_visibility,
                         return_shape,
                         provenance,
@@ -4369,8 +4386,8 @@ impl SemanticWorld {
                     backing_declaration,
                     closure,
                     outer_p1_explicit,
-                    function_policy,
-                    complete_result_policy,
+                    function_view,
+                    complete_result_view,
                     namespace_visibility,
                     return_shape,
                     provenance,
@@ -4391,8 +4408,8 @@ impl SemanticWorld {
                             backing_declaration,
                             &closure,
                             outer_p1_explicit,
-                            function_policy,
-                            complete_result_policy,
+                            function_view,
+                            complete_result_view,
                             namespace_visibility,
                             return_shape,
                             provenance,
@@ -4487,8 +4504,8 @@ impl SemanticWorld {
         backing_declaration: SymbolId,
         closure: &NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
-        callable_value_policy: PolicyPair,
-        complete_result_policy: PolicyPair,
+        callable_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         candidate_role: OrdinaryCandidateRole,
         return_shape: ReturnShape,
@@ -4507,10 +4524,10 @@ impl SemanticWorld {
         // OrdinaryCallEntry.callable_value_policy, and member_views.value_policy
         // all read the same canonical_p1. Mismatch between explicit outer
         // and explicit self is a hard diagnostic.
-        let canonical_p1 = canonical_function_object_p1(
+        let canonical_view = canonical_function_object_view(
             outer_p1_explicit.as_ref(),
-            &callable_value_policy,
-            &complete_result_policy,
+            &callable_view,
+            &complete_result_view,
             Some(closure),
             &provenance,
         )
@@ -4533,8 +4550,8 @@ impl SemanticWorld {
                 .root
                 .owner,
             receiver_type,
-            canonical_p1,
-            complete_result_policy,
+            canonical_view,
+            complete_result_view,
             namespace_visibility,
             candidate_role,
             return_shape,
@@ -4551,8 +4568,8 @@ impl SemanticWorld {
         backing_declaration: SymbolId,
         closure: &NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
-        function_policy: PolicyPair,
-        complete_result_policy: PolicyPair,
+        function_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -4583,10 +4600,10 @@ impl SemanticWorld {
 
         // Canonical P1 normalization. The canonical P1 is
         // the single authority — see register_associated_call_entry doc.
-        let canonical_p1 = canonical_function_object_p1(
+        let canonical_view = canonical_function_object_view(
             outer_p1_explicit.as_ref(),
-            &function_policy,
-            &complete_result_policy,
+            &function_view,
+            &complete_result_view,
             Some(closure),
             &provenance,
         )
@@ -4611,7 +4628,8 @@ impl SemanticWorld {
             type_value: function_type,
             pattern: function_pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy: canonical_p1.clone(),
+            policy: canonical_view.pair.clone(),
+            mode: canonical_view.mode,
             namespace_visibility,
             payload: SemanticValuePayload::FunctionObject {
                 backing_declaration,
@@ -4632,8 +4650,8 @@ impl SemanticWorld {
             None,
             callable_owner,
             function_type,
-            canonical_p1.clone(),
-            complete_result_policy,
+            canonical_view.clone(),
+            complete_result_view,
             namespace_visibility,
             OrdinaryCandidateRole::Ordinary,
             return_shape,
@@ -4656,9 +4674,8 @@ impl SemanticWorld {
             .member_views
             .push(PolicyResultEntry {
                 value: Some(function_value),
-                value_policy: canonical_p1.value.clone(),
                 pattern: function_pattern,
-                pattern_policy: canonical_p1.pattern.clone(),
+                view: canonical_view,
             });
         self.backing_to_function_value
             .insert(backing_declaration, function_value);
@@ -4682,8 +4699,8 @@ impl SemanticWorld {
         primitive: CoreMetaFunction,
         outer_p1_explicit: Option<ExplicitP1Selection>,
         return_shape: ReturnShape,
-        function_policy: PolicyPair,
-        complete_result_policy: PolicyPair,
+        function_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         provenance: Provenance,
     ) -> Result<RegisteredCallable, BuildError> {
@@ -4713,10 +4730,10 @@ impl SemanticWorld {
         // always have an explicit outer P1; the canonical P1 is therefore
         // the outer P1. Errors from the canonicalizer propagate rather
         // than being swallowed.
-        let canonical_p1 = canonical_function_object_p1(
+        let canonical_view = canonical_function_object_view(
             outer_p1_explicit.as_ref(),
-            &function_policy,
-            &complete_result_policy,
+            &function_view,
+            &complete_result_view,
             None,
             &provenance,
         )
@@ -4741,7 +4758,8 @@ impl SemanticWorld {
             type_value: function_type,
             pattern: function_pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy: canonical_p1.clone(),
+            policy: canonical_view.pair.clone(),
+            mode: canonical_view.mode,
             namespace_visibility,
             payload: SemanticValuePayload::FunctionObject {
                 backing_declaration,
@@ -4762,8 +4780,8 @@ impl SemanticWorld {
             Some(primitive),
             callable_owner,
             function_type,
-            canonical_p1.clone(),
-            complete_result_policy,
+            canonical_view.clone(),
+            complete_result_view,
             namespace_visibility,
             OrdinaryCandidateRole::Ordinary,
             return_shape,
@@ -4779,9 +4797,8 @@ impl SemanticWorld {
         // SemanticValueObject.policy and OrdinaryCallEntry.callable_value_policy.
         cell.member_views.push(PolicyResultEntry {
             value: Some(function_value),
-            value_policy: canonical_p1.value.clone(),
             pattern: function_pattern,
-            pattern_policy: canonical_p1.pattern.clone(),
+            view: canonical_view,
         });
         self.backing_to_function_value
             .insert(backing_declaration, function_value);
@@ -4816,8 +4833,8 @@ impl SemanticWorld {
         backing_declaration: SymbolId,
         closure: &NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
-        function_policy: PolicyPair,
-        complete_result_policy: PolicyPair,
+        function_view: PolicyView,
+        complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -4842,10 +4859,10 @@ impl SemanticWorld {
 
         // Canonical P1 normalization. The canonical P1 is the
         // single authority — see register_associated_call_entry doc.
-        let canonical_p1 = canonical_function_object_p1(
+        let canonical_view = canonical_function_object_view(
             outer_p1_explicit.as_ref(),
-            &function_policy,
-            &complete_result_policy,
+            &function_view,
+            &complete_result_view,
             Some(closure),
             &provenance,
         )
@@ -4870,7 +4887,8 @@ impl SemanticWorld {
             type_value: function_type,
             pattern: function_pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy: canonical_p1.clone(),
+            policy: canonical_view.pair.clone(),
+            mode: canonical_view.mode,
             namespace_visibility,
             payload: SemanticValuePayload::FunctionObject {
                 backing_declaration,
@@ -4891,8 +4909,8 @@ impl SemanticWorld {
             None,
             callable_owner,
             function_type,
-            canonical_p1.clone(),
-            complete_result_policy,
+            canonical_view.clone(),
+            complete_result_view,
             namespace_visibility,
             OrdinaryCandidateRole::Ordinary,
             return_shape,
@@ -4909,9 +4927,8 @@ impl SemanticWorld {
         // SemanticValueObject.policy and OrdinaryCallEntry.callable_value_policy.
         cell.member_views.push(PolicyResultEntry {
             value: Some(function_value),
-            value_policy: canonical_p1.value.clone(),
             pattern: function_pattern,
-            pattern_policy: canonical_p1.pattern.clone(),
+            view: canonical_view,
         });
         self.backing_to_function_value
             .insert(backing_declaration, function_value);
@@ -4925,7 +4942,7 @@ impl SemanticWorld {
         source_value: Option<SemanticValueId>,
         type_value: TypeValueId,
         pattern: PatternValueId,
-        policy: PolicyPair,
+        view: PolicyView,
         provenance: Provenance,
     ) -> SemanticValueId {
         let id = self.allocate_value_id();
@@ -4934,7 +4951,8 @@ impl SemanticWorld {
             type_value,
             pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy,
+            policy: view.pair,
+            mode: view.mode,
             namespace_visibility: None,
             payload: SemanticValuePayload::InvocationResult {
                 selected_call_entry,
@@ -4958,6 +4976,7 @@ impl SemanticWorld {
             pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
             policy,
+            mode: PolicyMode::Plain,
             namespace_visibility: None,
             payload: SemanticValuePayload::PlainValue,
             provenance,
@@ -4995,6 +5014,7 @@ impl SemanticWorld {
             pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
             policy,
+            mode: PolicyMode::Plain,
             namespace_visibility: None,
             payload: SemanticValuePayload::SimpleLiteral { family, normalized },
             provenance,
@@ -5035,6 +5055,7 @@ impl SemanticWorld {
             pattern,
             place: ObjectPlaceId(0),
             policy,
+            mode: PolicyMode::Plain,
             namespace_visibility: None,
             payload: SemanticValuePayload::AbstractLiteral {
                 family,
@@ -5065,6 +5086,7 @@ impl SemanticWorld {
             pattern,
             place: ObjectPlaceId(0),
             policy,
+            mode: PolicyMode::Plain,
             namespace_visibility: None,
             payload: SemanticValuePayload::LifetimeValue(lifetime),
             provenance,
@@ -5100,6 +5122,7 @@ impl SemanticWorld {
             pattern,
             place: ObjectPlaceId(0),
             policy,
+            mode: PolicyMode::Plain,
             namespace_visibility: None,
             payload: SemanticValuePayload::ConstructedLiteral {
                 source_abstract,
@@ -5189,9 +5212,8 @@ impl SemanticWorld {
                 .or_insert(PatternClusterOwner::Installed(symbol));
             let binding_view = PolicyResultEntry {
                 value,
-                value_policy: view.value_policy.clone(),
                 pattern: view.pattern,
-                pattern_policy: view.pattern_policy.clone(),
+                view: view.view.clone(),
             };
             if !cell.member_views.contains(&binding_view) {
                 cell.member_views.push(binding_view);
@@ -5216,9 +5238,8 @@ impl SemanticWorld {
                 cluster,
                 PolicyResultEntry {
                     value: view.value.map(|value| value.id),
-                    value_policy: view.value_policy.clone(),
                     pattern: view.pattern,
-                    pattern_policy: view.pattern_policy.clone(),
+                    view: view.view.clone(),
                 },
             )?;
         }
@@ -5346,9 +5367,8 @@ impl SemanticWorld {
             }
             let binding_view = PolicyResultEntry {
                 value,
-                value_policy: view.value_policy.clone(),
                 pattern: view.pattern,
-                pattern_policy: view.pattern_policy.clone(),
+                view: view.view.clone(),
             };
             if !cell.member_views.contains(&binding_view) {
                 cell.member_views.push(binding_view);
@@ -5922,10 +5942,7 @@ impl SemanticWorld {
         let type_value_id = self.find_or_install_type_object_value(
             member_type_value,
             member_pattern,
-            PolicyPair {
-                value: view.value_policy.clone(),
-                pattern: view.pattern_policy.clone(),
-            },
+            view.view.pair.clone(),
             provenance.clone(),
         );
 
@@ -6113,8 +6130,8 @@ impl SemanticWorld {
         construction_event: u32,
         closure: &NormClosure,
         outer_p1_explicit: Option<&ExplicitP1Selection>,
-        function_policy: &PolicyPair,
-        complete_result_policy: &PolicyPair,
+        function_view: &PolicyView,
+        complete_result_view: &PolicyView,
         provenance: Provenance,
     ) -> Result<Option<SemanticValueId>, crate::Diagnostic> {
         let Some(construction) = self.open_clusters.get(&cluster) else {
@@ -6132,16 +6149,16 @@ impl SemanticWorld {
         let Some(record) = self.injected_members.get(&identity) else {
             return Ok(None);
         };
-        let canonical_p1 = canonical_function_object_p1(
+        let canonical_view = canonical_function_object_view(
             outer_p1_explicit,
-            function_policy,
-            complete_result_policy,
+            function_view,
+            complete_result_view,
             Some(closure),
             &provenance,
         )?;
         if record.member_name == member_name
             && record.declaration == *closure
-            && record.canonical_p1 == canonical_p1
+            && record.canonical_view == canonical_view
         {
             Ok(Some(record.value))
         } else {
@@ -6163,8 +6180,8 @@ impl SemanticWorld {
         backing_declaration: SymbolId,
         closure: &NormClosure,
         outer_p1_explicit: Option<&ExplicitP1Selection>,
-        function_policy: &PolicyPair,
-        complete_result_policy: PolicyPair,
+        function_view: &PolicyView,
+        complete_result_view: PolicyView,
         return_shape: ReturnShape,
         provenance: Provenance,
     ) -> Result<SemanticValueId, crate::Diagnostic> {
@@ -6206,10 +6223,10 @@ impl SemanticWorld {
         // P1, exactly like a namespace-level function object declaration.
         // Computed before the replay check so the replay comparison covers
         // the complete declaration material.
-        let canonical_p1 = canonical_function_object_p1(
+        let canonical_view = canonical_function_object_view(
             outer_p1_explicit,
-            function_policy,
-            &complete_result_policy,
+            function_view,
+            &complete_result_view,
             Some(closure),
             &provenance,
         )?;
@@ -6224,7 +6241,7 @@ impl SemanticWorld {
         if let Some(record) = self.injected_members.get(&identity) {
             if record.member_name == member_name
                 && record.declaration == *closure
-                && record.canonical_p1 == canonical_p1
+                && record.canonical_view == canonical_view
             {
                 return Ok(record.value);
             }
@@ -6302,12 +6319,13 @@ impl SemanticWorld {
             type_value: function_type,
             pattern: function_pattern,
             place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy: canonical_p1.clone(),
+            policy: canonical_view.pair.clone(),
+            mode: canonical_view.mode,
             namespace_visibility: None,
             payload: SemanticValuePayload::InjectedFunctionObject { identity },
             provenance: provenance.clone(),
         });
-        let record_p1 = canonical_p1.clone();
+        let record_view = canonical_view.clone();
         self.allocate_terminal_call_entry(
             function_pattern,
             backing_declaration,
@@ -6317,8 +6335,8 @@ impl SemanticWorld {
             None,
             callable_owner,
             function_type,
-            canonical_p1,
-            complete_result_policy,
+            canonical_view,
+            complete_result_view,
             None,
             OrdinaryCandidateRole::Ordinary,
             return_shape,
@@ -6345,9 +6363,8 @@ impl SemanticWorld {
         cell.sibling_vals.push(function_value);
         cell.member_views.push(PolicyResultEntry {
             value: Some(function_value),
-            value_policy: record_p1.value.clone(),
             pattern: function_pattern,
-            pattern_policy: record_p1.pattern.clone(),
+            view: record_view.clone(),
         });
         self.places
             .get_mut(
@@ -6366,7 +6383,7 @@ impl SemanticWorld {
                 value: function_value,
                 member_name: member_name.to_string(),
                 declaration: closure.clone(),
-                canonical_p1: record_p1,
+                canonical_view: record_view,
             },
         );
         self.admit_direct_type_member(
@@ -6628,6 +6645,7 @@ impl SemanticWorld {
                 pattern: represented_pattern,
                 place,
                 policy: transport_policy,
+                mode: PolicyMode::Plain,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::TypeObject {
                     represented_type,
@@ -7149,7 +7167,6 @@ mod tests {
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy {
                 stages: crate::StageSet::new(),
-                mutability: BTreeSet::new(),
                 presence: crate::ValuePresence::Absent,
             },
             pattern: crate::PatternComponentPolicy {
@@ -7164,6 +7181,7 @@ mod tests {
                 pattern,
                 place: value_place,
                 policy: policy.clone(),
+                mode: PolicyMode::Plain,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::TypeObject {
                     represented_type,
@@ -7187,7 +7205,7 @@ mod tests {
             known_complete_type_observation: None,
             known_type_observation: None,
             known_semantic_value: Some(value_id),
-            known_value_mutability: None,
+            known_value_mode: None,
             provenance: Provenance::new("val2 test arg"),
         };
         let atom = lang_syntax::NormExpr::Literal {
@@ -7216,6 +7234,7 @@ mod tests {
             pattern: leaf_pattern,
             place: ObjectPlaceId(0),
             policy: policy.clone(),
+            mode: PolicyMode::Plain,
             namespace_visibility: None,
             payload: SemanticValuePayload::SimpleLiteral {
                 family: CanonicalLiteralFamily::Int,
@@ -7273,7 +7292,6 @@ mod tests {
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy {
                 stages: crate::StageSet::new(),
-                mutability: BTreeSet::new(),
                 presence: crate::ValuePresence::Present,
             },
             pattern: crate::PatternComponentPolicy {
@@ -7288,6 +7306,7 @@ mod tests {
                 pattern,
                 place: ObjectPlaceId(0),
                 policy: policy.clone(),
+                mode: PolicyMode::Plain,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::SimpleLiteral {
                     family: CanonicalLiteralFamily::Int,
@@ -7315,6 +7334,7 @@ mod tests {
             pattern: leaf_pattern,
             place: ObjectPlaceId(0),
             policy,
+            mode: PolicyMode::Plain,
             namespace_visibility: None,
             payload: SemanticValuePayload::SimpleLiteral {
                 family: CanonicalLiteralFamily::Int,
@@ -7426,10 +7446,10 @@ mod tests {
             Provenance::new("atomic semantic delta P2"),
         )
         .expect("test P2 normalizes");
-        let function_p1 = crate::policy_pair::derive_function_object_p1(
+        let function_view = crate::policy_pair::derive_function_object_view(
             &result_p2,
             &crate::policy_pair::FunctionObjectDeclarationPolicy {
-                mutability: BTreeSet::new(),
+                mode: PolicyMode::Plain,
             },
         );
         let missing_cluster = SemanticSymbolIdentity {
@@ -7444,8 +7464,8 @@ mod tests {
                     backing_declaration: SymbolId(900),
                     closure: closure.clone(),
                     outer_p1_explicit: None,
-                    function_policy: function_p1.clone(),
-                    complete_result_policy: result_p2.clone(),
+                    function_view: function_view.clone(),
+                    complete_result_view: result_p2.clone(),
                     namespace_visibility: None,
                     return_shape: crate::policy_pair::ReturnShape::SingleVal(
                         crate::policy_pair::PatternConstraint::Unconstrained,
@@ -7457,8 +7477,8 @@ mod tests {
                     backing_declaration: SymbolId(901),
                     closure,
                     outer_p1_explicit: None,
-                    function_policy: function_p1,
-                    complete_result_policy: result_p2,
+                    function_view,
+                    complete_result_view: result_p2,
                     namespace_visibility: None,
                     return_shape: crate::policy_pair::ReturnShape::SingleVal(
                         crate::policy_pair::PatternConstraint::Unconstrained,
@@ -7503,7 +7523,6 @@ mod tests {
             PolicyPair {
                 value: crate::ValueComponentPolicy {
                     stages: crate::StageSet::new(),
-                    mutability: BTreeSet::new(),
                     presence: crate::ValuePresence::Present,
                 },
                 pattern: crate::PatternComponentPolicy {
@@ -7620,7 +7639,6 @@ mod tests {
         let empty_policy = PolicyPair {
             value: crate::ValueComponentPolicy {
                 stages: crate::StageSet::new(),
-                mutability: BTreeSet::new(),
                 presence: crate::ValuePresence::Present,
             },
             pattern: crate::PatternComponentPolicy {
@@ -7687,7 +7705,6 @@ mod tests {
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy {
                 stages: crate::StageSet::new(),
-                mutability: BTreeSet::new(),
                 presence: crate::ValuePresence::Present,
             },
             pattern: crate::PatternComponentPolicy {
@@ -7726,9 +7743,11 @@ mod tests {
         cell.sibling_vals.push(local);
         cell.member_views.push(PolicyResultEntry {
             value: Some(local),
-            value_policy: policy.value.clone(),
             pattern,
-            pattern_policy: policy.pattern.clone(),
+            view: PolicyView {
+                pair: policy.clone(),
+                mode: PolicyMode::Plain,
+            },
         });
         world
             .associate_existing_symbol(pattern, "()", local_cluster)
@@ -7777,7 +7796,6 @@ mod tests {
                 PolicyPair {
                     value: crate::ValueComponentPolicy {
                         stages: crate::StageSet::new(),
-                        mutability: BTreeSet::new(),
                         presence: crate::ValuePresence::Present,
                     },
                     pattern: crate::PatternComponentPolicy {
