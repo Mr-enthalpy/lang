@@ -12,7 +12,8 @@ use lang_build::{
     BuildManifest, BuildSession, BuildWorkspace, CallableCandidateKind, CandidatePrepResult,
     CandidatePreparationContext, CompilationWorld, NamespaceNodeId, NormalizedCallSite,
     PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance, SourceCategory, SourceRoot,
-    StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
+    StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, ToolchainGlobalSourceRoot,
+    TypeObject,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
@@ -218,6 +219,35 @@ pub fn build_single_fixture_world(workspace: &str, package: &str) -> Compilation
         .world
 }
 
+/// Build a committed single-package fixture with the canonical uint8
+/// same-Type migration family mounted.  Tests that demand runtime
+/// materialization from an abstract compile-time literal must opt in; the
+/// compiler never invents this capability from the target Policy.
+pub fn build_single_fixture_world_with_uint8_transport(
+    workspace: &str,
+    package: &str,
+) -> CompilationWorld {
+    let mut spec = fixture_package_spec(workspace, package);
+    spec.global_implementation_roots
+        .push(ToolchainGlobalSourceRoot::under(
+            fixture_root()
+                .join("global_implementation")
+                .join("uint8_transport"),
+            vec!["core".to_string(), "uint8".to_string()],
+        ));
+    let mut session = BuildSession::new();
+    session
+        .build_workspace(&BuildWorkspace {
+            packages: vec![spec],
+        })
+        .expect("build fixture workspace with uint8 migration")
+        .artifacts
+        .into_iter()
+        .next()
+        .expect("one fixture artifact")
+        .world
+}
+
 /// Build a single-package committed fixture workspace that is expected to FAIL,
 /// returning the resulting `BuildError`. Used by malformed-source /
 /// diagnostic-boundary fixture tests whose source trees intentionally do not
@@ -312,7 +342,9 @@ pub fn type_with_namespace(
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::Type(TypeObject {
         carrier_symbol_id: type_id,
-        represented_type: lang_build::type_value_projection_from_type_symbol(type_id),
+        // Synthetic compatibility fixture: Symbol and type lookup identities
+        // are intentionally independent.
+        represented_type: lang_build::TypeValueId(type_id.0 ^ 0x4000_0000_0000_0000),
         owner_pattern_head: None,
         fields: Vec::new(),
         field_names: Vec::new(),

@@ -160,6 +160,7 @@ fn type_arg(type_value: TypeValueId, place: Option<ObjectPlaceId>) -> (RawArgSha
         None,
         None,
         place,
+        None,
     );
     (raw, atom)
 }

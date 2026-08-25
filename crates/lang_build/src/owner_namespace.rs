@@ -157,17 +157,39 @@ impl OwnerNamespaceGraph {
         name: impl Into<String>,
         entry: NamespaceSymbolEntry,
     ) {
-        self.nodes
+        let entries = self
+            .nodes
             .get_mut(&node)
             .unwrap_or_else(|| panic!("unknown namespace node {node:?}"))
             .symbols
             .entry(name.into())
-            .or_default()
-            .push(entry);
+            .or_default();
+        if !entries
+            .iter()
+            .any(|existing| existing.identity == entry.identity)
+        {
+            entries.push(entry);
+        }
     }
 
     pub fn node(&self, node: OwnerNamespaceNodeId) -> Option<&OwnerNamespaceNode> {
         self.nodes.get(&node)
+    }
+
+    pub fn child(
+        &self,
+        parent: OwnerNamespaceNodeId,
+        local_name: &str,
+    ) -> Option<OwnerNamespaceNodeId> {
+        self.node(parent)?.children.get(local_name).copied()
+    }
+
+    pub fn symbol_entries(
+        &self,
+        node: OwnerNamespaceNodeId,
+        name: &str,
+    ) -> Option<&[NamespaceSymbolEntry]> {
+        self.node(node)?.symbols.get(name).map(Vec::as_slice)
     }
 
     pub fn package_of(&self, node: OwnerNamespaceNodeId) -> Option<PackageId> {

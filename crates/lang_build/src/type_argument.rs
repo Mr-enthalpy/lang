@@ -65,10 +65,7 @@ pub fn classify_type_arguments(
             SymbolPayload::Type(type_object) => {
                 (type_object.carrier_symbol_id, type_object.represented_type)
             }
-            _ => (
-                type_symbol.id,
-                crate::type_value_projection_from_type_symbol(type_symbol.id),
-            ),
+            _ => continue,
         };
         *raw_arg = raw_arg
             .clone()
@@ -121,10 +118,10 @@ pub fn classify_type_arguments_with_report(
                     SymbolPayload::Type(type_object) => {
                         (type_object.carrier_symbol_id, type_object.represented_type)
                     }
-                    _ => (
-                        type_symbol.id,
-                        crate::type_value_projection_from_type_symbol(type_symbol.id),
-                    ),
+                    _ => {
+                        unresolved.push(name);
+                        continue;
+                    }
                 };
                 *raw_arg = raw_arg
                     .clone()
@@ -172,6 +169,7 @@ pub struct NamedTypeResolution {
     pub represented_type: TypeValueId,
     pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
     pub carrier_place: Option<ObjectPlaceId>,
+    pub complete_type_observation: Option<crate::CanonicalValueAddr>,
 }
 
 /// Outcome of checking a restricted-body local `let` initializer against
@@ -271,16 +269,14 @@ impl<'a> SemanticTypeEnv<'a> {
         let cell = self.world.symbol(navigation.terminal_symbol)?;
         let pattern = cell.pure_p_pattern()?;
         Some(NamedTypeResolution {
-            carrier_symbol: None,
+            carrier_symbol: self
+                .world
+                .backing_declaration_for_symbol(navigation.terminal_symbol),
             represented_type: self.world.type_for_pattern(pattern)?,
             effective_view: cell.pure_p_view().cloned(),
             carrier_place: cell.pure_p_place(),
+            complete_type_observation: cell.pure_p.and_then(|member| member.complete_type),
         })
-    }
-
-    fn resolve_path_type(&self, path: &[String], context: &ResolverContext) -> Option<TypeValueId> {
-        self.resolve_path_carrier(path, context)
-            .map(|resolution| resolution.represented_type)
     }
 }
 
@@ -308,7 +304,7 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
         provenance: &Provenance,
     ) -> Result<(SymbolId, TypeValueId), Diagnostic> {
         let type_path_str = path.join("::");
-        let represented_type = self.resolve_path_type(path, context).ok_or_else(|| {
+        let resolution = self.resolve_path_carrier(path, context).ok_or_else(|| {
             Diagnostic::hard_error(
                 format!("unknown struct field type `{type_path_str}`"),
                 Some(provenance.clone()),
@@ -317,7 +313,15 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
         // Compatibility field-type carrier for current PatternHead/field
         // installation only; it is non-identity material (see
         // `FieldSignatureMaterial::field_type_carrier_symbol`).
-        Ok((SymbolId(represented_type.0), represented_type))
+        Ok((
+            resolution.carrier_symbol.ok_or_else(|| {
+                Diagnostic::hard_error(
+                    "resolved struct field type has no compatibility declaration carrier",
+                    Some(provenance.clone()),
+                )
+            })?,
+            resolution.represented_type,
+        ))
     }
 
     fn check_body_local_initializer(
@@ -377,6 +381,7 @@ pub fn classify_type_arguments_env_with_report(
                     resolution.carrier_symbol,
                     resolution.effective_view,
                     resolution.carrier_place,
+                    resolution.complete_type_observation,
                 );
             }
             None => {

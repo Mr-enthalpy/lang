@@ -4,20 +4,44 @@ use support::*;
 
 use lang_build::{
     bind_meta_invocation_value_result, classify_type_arguments,
-    classify_type_arguments_with_report, compute_type_definition_instance_id,
-    extract_single_call_site, invoke_meta_callable, invoke_meta_callable_cached,
-    invoke_meta_callable_cached_with_materialization_state,
-    invoke_meta_callable_with_materialization_state, resolve_call_target,
-    type_value_projection_from_type_symbol, AliasChain, AliasQueryDisposition, AliasQueryMode,
-    CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
-    ExecutionEnv, FieldProjection, GeneratedTypeDefinitionValue, MetaInstanceCache,
-    MetaInvocationInput, MetaInvocationResult, MetaInvocationValue, NamespaceNode,
-    NamespaceNodeKind, NonValueArgKind, ParameterShape, PatternHeadId, PlaceId, PolicyEnv,
-    PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
-    SemanticNameIndex, SourceCategory, SymbolId, SymbolPayload, TypeMaterializationState,
-    TypeValueBindingPlaceholder, TypeValueId,
+    classify_type_arguments_with_report, compute_canonical_meta_instance_key,
+    compute_type_definition_instance_id, extract_single_call_site, invoke_meta_callable,
+    invoke_meta_callable_cached, invoke_meta_callable_cached_with_materialization_state,
+    invoke_meta_callable_with_materialization_state, CandidateBuildIdentityPlaceholder,
+    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, CanonicalValueAddr, ExecutionEnv,
+    FieldProjection, GeneratedTypeDefinitionValue, InvocationResult, MetaCallableIdentity,
+    MetaInstanceCache, MetaInvocationInput, MetaInvocationValue, NamespaceNode, NamespaceNodeKind,
+    NonValueArgKind, ParameterShape, PatternHeadId, PlaceId, PolicyEnv, PolicyFlag,
+    ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape, SemanticNameIndex,
+    SemanticValueId, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
+    TypeMaterializationState, TypeValueBindingPlaceholder, TypeValueId,
 };
+
+fn structural_cache_key(seed: u64) -> lang_build::MetaInstanceKey {
+    compute_canonical_meta_instance_key(
+        MetaCallableIdentity {
+            selected_function_value: SemanticValueId(seed),
+            selected_call_entry: SemanticValueId(seed + 1),
+        },
+        CanonicalValueAddr(seed + 2),
+        Provenance::new("structural cache key"),
+    )
+}
+
+fn fixture_meta_target(
+    world: &lang_build::CompilationWorld,
+    target: &lang_syntax::NormExpr,
+) -> SymbolObject {
+    let lang_syntax::NormExpr::Name { text, .. } = target else {
+        panic!("fixture meta target must be a bare semantic name");
+    };
+    world
+        .namespace_projection()
+        .capability()
+        .resolve_meta_function_with_policy(text, &world.package_context(), PolicyEnv::OpenStatic)
+        .expect("fixture target resolves through the typed namespace graph")
+}
 
 #[test]
 fn type_value_binding_placeholder_object_boundary_keeps_symbol_place_and_type_value_distinct() {
@@ -35,32 +59,6 @@ fn type_value_binding_placeholder_object_boundary_keeps_symbol_place_and_type_va
         std::any::type_name::<PlaceId>(),
         std::any::type_name::<TypeValueId>(),
         "TypeValueId equality cannot imply PlaceId equality or writable permission"
-    );
-}
-
-#[test]
-fn alias_chain_placeholder_object_boundary_distinguishes_query_modes() {
-    let alias = AliasChain::new(
-        SymbolId(2),
-        SymbolId(3),
-        Provenance::new("alias chain placeholder object boundary"),
-    );
-
-    assert_eq!(alias.source_symbol, SymbolId(2));
-    assert_eq!(alias.forwarded_target, SymbolId(3));
-    assert_eq!(alias.final_place, None);
-    assert!(!alias.creates_fresh_writable_place());
-    assert_eq!(
-        alias.query_disposition(AliasQueryMode::TypeValueEvaluation),
-        AliasQueryDisposition::FollowValueChain
-    );
-    assert_eq!(
-        alias.query_disposition(AliasQueryMode::CallableLookup),
-        AliasQueryDisposition::PolicyAwareSymbolResolution
-    );
-    assert_eq!(
-        alias.query_disposition(AliasQueryMode::InjectionPlaceTarget),
-        AliasQueryDisposition::FollowPlaceWithBoundary
     );
 }
 
@@ -414,26 +412,20 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     assert_eq!(identity.name, "IdentityType");
     assert_eq!(identity.kind, lang_build::SymbolKind::MetaFunction);
 
-    // --- Substrate path: call_target ---
+    // --- Source target shape; semantic invocation uses the ordinary spine. ---
     let expr = parse_and_normalize_fixture_let_initializer(
         fixture_source_root("v08_identity_type", "app").join("main.lang"),
     );
     let site = extract_single_call_site(&expr)
         .expect("v08_identity_type fixture initializer must be a call");
     let context = world.package_context();
-    let resolved = resolve_call_target(
-        &site.target,
-        &world.namespace_projection().capability(),
-        &context,
-        PolicyEnv::OpenStatic,
-    )
-    .expect("resolve_call_target should succeed")
-    .expect("IdentityType target should resolve through namespace graph");
-    assert!(
-        resolved.temporary_direct_callable_shortcut,
-        "resolved call target must carry the v0.8 shortcut flag"
+    assert_eq!(
+        fixture_meta_target(&world, &site.target).name,
+        "IdentityType"
     );
-    assert_eq!(resolved.callee.name, "IdentityType");
+    let SymbolPayload::Type(uint8_type) = &uint8.payload else {
+        panic!("uint8 carries an explicit type projection");
+    };
 
     // --- Substrate path: ProductObject → ArgProductShape → classify_type_arguments ---
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
@@ -455,8 +447,8 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     );
     assert_eq!(
         classified.raw_args[0].known_first_order_type_value,
-        Some(type_value_projection_from_type_symbol(uint8.id)),
-        "classified type argument TypeValueId must match uint8's SymbolId"
+        Some(uint8_type.represented_type),
+        "classified type argument uses uint8's explicit core lookup index"
     );
     assert!(
         !classified.raw_args[0].receives_automatic_pass_action(),
@@ -470,7 +462,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     assert_eq!(material.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
     assert_eq!(
         material.known_type_values[0],
-        Some(type_value_projection_from_type_symbol(uint8.id)),
+        Some(uint8_type.represented_type),
         "canonical material must record the type value read through uint8"
     );
 }
@@ -567,21 +559,14 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
     );
     let site = extract_single_call_site(&expr).expect("fixture must be a call");
     let context = world.package_context();
-    let resolved = resolve_call_target(
-        &site.target,
-        &world.namespace_projection().capability(),
-        &context,
-        PolicyEnv::OpenStatic,
-    )
-    .expect("resolve_call_target should succeed")
-    .expect("IdentityType target should resolve");
+    let callee = fixture_meta_target(&world, &site.target);
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let classified =
         classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     let prep = prepare_candidate_from_fixture_symbol(
-        &resolved.callee,
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("IdentityType param")),
         CandidatePreparationContext {
@@ -598,11 +583,17 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("formal invocation"));
-    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        declared_result_class,
+        value: MetaInvocationValue::ForwardedValue(fv),
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("invoke_meta_callable should yield ForwardedValue");
     };
+    assert_eq!(
+        declared_result_class,
+        lang_build::DeclaredResultClass::CompleteType
+    );
     assert_eq!(fv.return_view, ReturnViewShape::Leaf);
     let forwarded_type = fv.type_value;
     // Verify the result is the value obtained through the argument carrier.
@@ -628,21 +619,14 @@ fn identity_type_binding_uses_invocation_value_boundary() {
     );
     let site = extract_single_call_site(&expr).expect("fixture must be a call");
     let context = world.package_context();
-    let resolved = resolve_call_target(
-        &site.target,
-        &world.namespace_projection().capability(),
-        &context,
-        PolicyEnv::OpenStatic,
-    )
-    .expect("resolve_call_target should succeed")
-    .expect("IdentityType target should resolve");
+    let callee = fixture_meta_target(&world, &site.target);
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let classified =
         classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     let prep = prepare_candidate_from_fixture_symbol(
-        &resolved.callee,
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("binding boundary test")),
         CandidatePreparationContext {
@@ -659,7 +643,10 @@ fn identity_type_binding_uses_invocation_value_boundary() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("binding boundary"));
-    let MetaInvocationResult::Value(invocation_value) = invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        value: invocation_value,
+        ..
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("IdentityType should yield invocation value");
     };
@@ -705,10 +692,10 @@ fn identity_type_unresolved_type_argument_reports_resolution_failure() {
 }
 
 #[test]
-fn type_value_id_projection_is_derived_from_type_symbol() {
-    let tv = type_value_projection_from_type_symbol(SymbolId(42));
-    assert_eq!(tv, TypeValueId(42));
-    assert_eq!(tv.as_u64(), 42);
+fn type_lookup_index_is_not_derived_from_symbol_identity() {
+    let symbol = SymbolId(42);
+    let lookup = TypeValueId(9001);
+    assert_ne!(symbol.as_u64(), lookup.as_u64());
 }
 
 #[test]
@@ -719,21 +706,14 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     );
     let site = extract_single_call_site(&expr).expect("fixture must be a call");
     let context = world.package_context();
-    let resolved = resolve_call_target(
-        &site.target,
-        &world.namespace_projection().capability(),
-        &context,
-        PolicyEnv::OpenStatic,
-    )
-    .expect("resolve_call_target should succeed")
-    .expect("IdentityType target should resolve");
+    let callee = fixture_meta_target(&world, &site.target);
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let classified0 =
         classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     let prep = prepare_candidate_from_fixture_symbol(
-        &resolved.callee,
+        &callee,
         classified0.clone(),
         ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
         CandidatePreparationContext {
@@ -748,13 +728,17 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     };
 
     let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("cache test"));
-    let key = invocation_input.compute_key();
+    let key = structural_cache_key(700);
 
     let mut cache = MetaInstanceCache::new();
     assert!(cache.lookup(&key).is_none(), "cache should be empty");
 
-    let result1 = invoke_meta_callable_cached(invocation_input, &mut cache);
-    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv1)) = result1 else {
+    let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::ForwardedValue(fv1),
+        ..
+    } = result1
+    else {
         panic!("invocation should yield ForwardedValue");
     };
 
@@ -770,7 +754,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     // Second invocation with same material (new candidate from same input)
     let CandidatePrepResult::ApplicablePlaceholder(candidate2) =
         prepare_candidate_from_fixture_symbol(
-            &resolved.callee,
+            &callee,
             classified0,
             ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
             CandidatePreparationContext {
@@ -784,8 +768,13 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
         panic!("second candidate-prep should yield ApplicablePlaceholder");
     };
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("cache test 2"));
-    let result2 = lang_build::invoke_meta_callable_cached(invocation_input2, &mut cache);
-    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv2)) = result2 else {
+    let result2 =
+        lang_build::invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::ForwardedValue(fv2),
+        ..
+    } = result2
+    else {
         panic!("second invocation should yield ForwardedValue");
     };
     assert_eq!(
@@ -803,21 +792,14 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
     );
     let site = extract_single_call_site(&expr).expect("fixture must be a call");
     let context = world.package_context();
-    let resolved = resolve_call_target(
-        &site.target,
-        &world.namespace_projection().capability(),
-        &context,
-        PolicyEnv::OpenStatic,
-    )
-    .expect("resolve_call_target should succeed")
-    .expect("IdentityType target should resolve");
+    let callee = fixture_meta_target(&world, &site.target);
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let classified =
         classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     let prep = prepare_candidate_from_fixture_symbol(
-        &resolved.callee,
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("forwarded binding boundary")),
         CandidatePreparationContext {
@@ -834,8 +816,10 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("forwarded binding"));
-    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::ForwardedValue(fv),
+        ..
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("IdentityType must yield ForwardedValue");
     };
@@ -985,14 +969,16 @@ fn meta_instance_cache_reuses_generated_construction_value() {
         panic!("should yield ApplicablePlaceholder");
     };
     let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("GCV cache"));
-    let key = invocation_input.compute_key();
+    let key = structural_cache_key(930);
 
     let mut cache = MetaInstanceCache::new();
     assert!(cache.lookup(&key).is_none());
 
-    let result1 = invoke_meta_callable_cached(invocation_input, &mut cache);
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv1)) =
-        result1
+    let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedConstructionValue(gcv1),
+        ..
+    } = result1
     else {
         panic!("first invocation should yield GCV");
     };
@@ -1020,9 +1006,11 @@ fn meta_instance_cache_reuses_generated_construction_value() {
         panic!("second candidate-prep should yield ApplicablePlaceholder");
     };
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("GCV cache 2"));
-    let result2 = invoke_meta_callable_cached(invocation_input2, &mut cache);
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv2)) =
-        result2
+    let result2 = invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedConstructionValue(gcv2),
+        ..
+    } = result2
     else {
         panic!("second invocation should yield GCV");
     };
@@ -1039,15 +1027,6 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
     );
     let site = extract_single_call_site(&expr).expect("fixture must be a call");
     let context = world.package_context();
-    let _resolved = resolve_call_target(
-        &site.target,
-        &world.namespace_projection().capability(),
-        &context,
-        PolicyEnv::OpenStatic,
-    )
-    .expect("resolve_call_target should succeed")
-    .expect("target should resolve");
-
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let classified =
         classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
@@ -1084,8 +1063,10 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("UCPrototype invocation"));
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
+        ..
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("UCPrototype should yield GeneratedConstructionValue");
     };
@@ -1137,14 +1118,24 @@ fn generated_construction_value_carries_construction_instance_identity() {
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("GCV identity invocation"));
     let gcv = match invoke_meta_callable(invocation_input) {
-        MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) => gcv,
-        MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(_)) => {
+        InvocationResult::SemanticResult {
+            value: MetaInvocationValue::GeneratedConstructionValue(gcv),
+            ..
+        } => gcv,
+        InvocationResult::SemanticResult {
+            value: MetaInvocationValue::ForwardedValue(_),
+            ..
+        } => {
             panic!("UCPrototype must NOT return a forwarded TypeValue")
         }
-        MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(_)) => {
+        InvocationResult::SemanticResult {
+            value: MetaInvocationValue::GeneratedTypeDefinitionValue(_),
+            ..
+        } => {
             panic!("UCPrototype must NOT return GeneratedTypeDefinitionValue")
         }
-        MetaInvocationResult::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
+        InvocationResult::Residual(residual) => panic!("unexpected residual: {residual:?}"),
+        InvocationResult::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
     };
 
     assert!(
@@ -1194,8 +1185,10 @@ fn binding_layer_materializes_generated_construction_value() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("binding materialization"));
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
+        ..
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
     };
@@ -1215,12 +1208,16 @@ fn binding_layer_materializes_generated_construction_value() {
         "GCV binding must install a NamespaceDelta"
     );
 
-    // TypeValueId projection must be derived from declared symbol after binding,
-    // not from the construction instance identity.
+    // The bound carrier explicitly stores its represented type lookup; neither
+    // its Symbol identity nor the construction digest defines that type.
     let declared = &result.replacement_object;
     assert_eq!(declared.kind, lang_build::SymbolKind::Type);
     assert_eq!(declared.name, "T");
-    let tv = type_value_projection_from_type_symbol(declared.id);
+    let SymbolPayload::Type(type_object) = &declared.payload else {
+        panic!("generated construction binding carries a type projection");
+    };
+    let tv = type_object.represented_type;
+    assert_ne!(tv.as_u64(), declared.id.as_u64());
     assert_ne!(
         tv.as_u64(),
         cid.as_u64(),
@@ -1265,8 +1262,10 @@ fn generated_construction_identity_is_independent_of_binding_name() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("identity independence"));
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
+        ..
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
     };
@@ -1357,12 +1356,17 @@ fn produce_classified_shape(
     _context: &lang_build::ResolverContext,
     role: lang_build::ProductMaterialRole,
 ) -> lang_build::ArgProductShape {
+    let SymbolPayload::Type(type_object) = &type_symbol.payload else {
+        panic!("fixture type symbol must carry an explicit represented type");
+    };
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(role);
     let mut classified = shape.clone();
     for raw in &mut classified.raw_args {
         if matches!(raw.value_class, RawArgValueClass::UnknownExpression) {
-            *raw = raw.clone().as_type_object_with_type_symbol(type_symbol.id);
+            *raw = raw
+                .clone()
+                .as_type_object_with_identity(type_symbol.id, type_object.represented_type);
         }
     }
     classified
@@ -1396,8 +1400,10 @@ fn produce_gcv(
     };
 
     let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("GCV production"));
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
+        ..
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
     };
@@ -1477,11 +1483,17 @@ fn struct_formal_invocation_produces_value_not_namespace_delta() {
     let invocation_input =
         struct_invocation_input(&world, &initializer, "uint8", "pure struct invocation");
 
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        declared_result_class,
+        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
     };
+    assert_eq!(
+        declared_result_class,
+        lang_build::DeclaredResultClass::CompleteType
+    );
 
     assert_ne!(gtdv.type_definition_id.as_u64(), 0);
     assert_eq!(gtdv.fields.len(), 1);
@@ -1502,11 +1514,13 @@ fn materialized_struct_type_definition_records_pattern_heads() {
     );
     let mut materialization_state = TypeMaterializationState::default();
 
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
-        invoke_meta_callable_with_materialization_state(
-            invocation_input,
-            &mut materialization_state,
-        )
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
+        ..
+    } = invoke_meta_callable_with_materialization_state(
+        invocation_input,
+        &mut materialization_state,
+    )
     else {
         panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
     };
@@ -1711,12 +1725,14 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
         "uint8",
         "generated type definition cache",
     );
-    let key = invocation_input.compute_key();
+    let key = structural_cache_key(1660);
     let mut cache = MetaInstanceCache::new();
 
-    let result1 = invoke_meta_callable_cached(invocation_input, &mut cache);
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
-        result1
+    let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1),
+        ..
+    } = result1
     else {
         panic!("first invocation should yield GeneratedTypeDefinitionValue");
     };
@@ -1733,9 +1749,11 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
         "uint8",
         "generated type definition cache hit",
     );
-    let result2 = invoke_meta_callable_cached(invocation_input2, &mut cache);
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
-        result2
+    let result2 = invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2),
+        ..
+    } = result2
     else {
         panic!("second invocation should yield GeneratedTypeDefinitionValue");
     };
@@ -1757,16 +1775,19 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
         "uint8",
         "generated type definition cache state miss",
     );
-    let key = invocation_input.compute_key();
+    let key = structural_cache_key(1710);
     let mut cache = MetaInstanceCache::new();
     let mut miss_state = TypeMaterializationState::default();
 
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
-        invoke_meta_callable_cached_with_materialization_state(
-            invocation_input,
-            &mut cache,
-            &mut miss_state,
-        )
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1),
+        ..
+    } = invoke_meta_callable_cached_with_materialization_state(
+        invocation_input,
+        key.clone(),
+        &mut cache,
+        &mut miss_state,
+    )
     else {
         panic!("first invocation should yield GeneratedTypeDefinitionValue");
     };
@@ -1801,12 +1822,15 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
         Provenance::new("preexisting pattern head"),
     );
 
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
-        invoke_meta_callable_cached_with_materialization_state(
-            invocation_input2,
-            &mut cache,
-            &mut hit_state,
-        )
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2),
+        ..
+    } = invoke_meta_callable_cached_with_materialization_state(
+        invocation_input2,
+        key.clone(),
+        &mut cache,
+        &mut hit_state,
+    )
     else {
         panic!("cache hit should yield GeneratedTypeDefinitionValue");
     };
@@ -1837,30 +1861,26 @@ fn struct_invocation_input(
 ) -> MetaInvocationInput {
     let site = extract_single_call_site(initializer).expect("struct initializer must be a call");
     let context = world.package_context();
-    let resolved = resolve_call_target(
-        &site.target,
-        &world.namespace_projection().capability(),
-        &context,
-        PolicyEnv::OpenStatic,
-    )
-    .expect("resolve_call_target should succeed")
-    .expect("struct target should resolve");
+    let callee = fixture_meta_target(world, &site.target);
     let type_symbol = world
         .namespace_projection()
         .capability()
         .resolve_type_object(field_type_name, &context)
         .expect("field type resolves");
+    let SymbolPayload::Type(type_object) = &type_symbol.payload else {
+        panic!("field type fixture must carry an explicit represented type");
+    };
     let mut classified =
         site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     for raw_arg in &mut classified.raw_args {
         if matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
             *raw_arg = raw_arg
                 .clone()
-                .as_type_object_with_type_symbol(type_symbol.id);
+                .as_type_object_with_identity(type_symbol.id, type_object.represented_type);
         }
     }
     let prep = prepare_candidate_from_fixture_symbol(
-        &resolved.callee,
+        &callee,
         classified.clone(),
         ParameterShape::type_parameter_sequence(
             classified.arity,
@@ -1886,8 +1906,10 @@ fn produce_gtdv_from_struct_initializer(
 ) -> GeneratedTypeDefinitionValue {
     let invocation_input =
         struct_invocation_input(world, initializer, field_type_name, "produce GTDV");
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
-        invoke_meta_callable(invocation_input)
+    let InvocationResult::SemanticResult {
+        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
+        ..
+    } = invoke_meta_callable(invocation_input)
     else {
         panic!("struct invocation should yield GeneratedTypeDefinitionValue");
     };

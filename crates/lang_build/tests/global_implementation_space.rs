@@ -182,7 +182,7 @@ fn global_source_cannot_enter_a_package_owned_namespace_boundary() {
 }
 
 #[test]
-fn source_backed_four_member_transport_uses_pattern_owner_and_ordinary_spine() {
+fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
     let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
     manifest
         .global_implementation_roots
@@ -206,13 +206,14 @@ fn source_backed_four_member_transport_uses_pattern_owner_and_ordinary_spine() {
         .semantic_world()
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8 cluster symbol");
-    // Exactly 4 sibling vals (the 4 transports named `uint8`).
+    // Exactly 5 sibling vals (const/mut transport endpoints plus the real
+    // plain-input member).
     // `identity` and `type_identity` must NOT be cluster siblings; they are
     // registered as ordinary source callables under their own Val2 names.
     assert_eq!(
         uint8_cluster.sibling_vals.len(),
-        4,
-        "exactly 4 transports named `uint8` are cluster sibling vals: got {} siblings",
+        5,
+        "exactly 5 transports named `uint8` are cluster sibling vals: got {} siblings",
         uint8_cluster.sibling_vals.len()
     );
     // Transports must NOT live in uint8's associated Val2["()"].
@@ -310,7 +311,7 @@ fn source_backed_four_member_transport_uses_pattern_owner_and_ordinary_spine() {
     let migration = world
         .invoke_atomic_runtime_migration(&request)
         .expect("ordinary source-backed transport is selected and invoked");
-    assert_eq!(migration.invocation.trace.a_fully_admissible.len(), 4);
+    assert_eq!(migration.invocation.trace.a_fully_admissible.len(), 5);
     assert_eq!(migration.invocation.trace.bp_prime.len(), 1);
     // Test F — A and Bp' consume the same prepared migration endpoint
     // coordinates.  The selected candidate stores endpoints computed
@@ -559,4 +560,188 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
         rebound.member_views, binding.member_views,
         "the identity-preserving binding also retains the selected Policy/Pattern views"
     );
+}
+
+#[test]
+fn policy_let_forms_inward_mode_before_selection_and_returns_a_completed_view() {
+    let mut manifest = BuildManifest::single_source_root(
+        "app",
+        vec!["app".to_string()],
+        fixture_source_root("policy_let_boundary", "app"),
+    );
+    manifest
+        .global_implementation_roots
+        .push(compile_identity_bundle());
+    manifest
+        .global_implementation_roots
+        .push(transport_bundle());
+
+    let world = CompilationWorld::from_manifest(&manifest)
+        .expect("PolicyLet resolves its operand once and completes the requested outward view");
+    let completed = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "completed")
+        .expect("completed PolicyLet result is bound as ordinary semantic material");
+    let [view] = completed.member_views.as_slice() else {
+        panic!("PolicyLet exposes exactly one completed result view");
+    };
+    assert_eq!(
+        view.value_policy.mutability,
+        BTreeSet::from([ValueMutability::Mut]),
+        "the explicit inward/outward demand is the real mut Policy point"
+    );
+    let result = world
+        .semantic_world()
+        .value(view.value.expect("PolicyLet completed view carries Val1"))
+        .expect("completed result is installed");
+    assert!(
+        matches!(
+            result.payload,
+            SemanticValuePayload::InvocationResult { .. }
+        ),
+        "outward satisfaction produces the sealed selected migration result"
+    );
+
+    let outer = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "outer")
+        .expect("outer binding consumes the already completed PolicyLet view");
+    let [outer_view] = outer.member_views.as_slice() else {
+        panic!("outer binding has one completed view");
+    };
+    assert_eq!(
+        outer_view.value_policy.mutability,
+        BTreeSet::from([ValueMutability::Const])
+    );
+    let outer_result = world
+        .semantic_world()
+        .value(outer_view.value.expect("outer completed value"))
+        .expect("outer migration result exists");
+    let SemanticValuePayload::InvocationResult {
+        selected_call_entry: outer_selected,
+        source_value: Some(inner_result),
+    } = outer_result.payload
+    else {
+        panic!("outer satisfaction is one direct migration over the sealed inner result");
+    };
+    let inner_result = world
+        .semantic_world()
+        .value(inner_result)
+        .expect("PolicyLet inner result remains a first-class value");
+    let SemanticValuePayload::InvocationResult {
+        selected_call_entry: inner_selected,
+        ..
+    } = inner_result.payload
+    else {
+        panic!("the outer binding did not rewrite or reopen the PolicyLet inner selection");
+    };
+    let endpoint_mode = |entry_id| {
+        let entry = world
+            .semantic_world()
+            .value(entry_id)
+            .expect("selected call entry exists");
+        let SemanticValuePayload::CallEntry(entry) = &entry.payload else {
+            panic!("migration selection is an ordinary call entry");
+        };
+        entry.callable_value_policy.value.mutability.clone()
+    };
+    assert_eq!(
+        endpoint_mode(inner_selected),
+        BTreeSet::from([ValueMutability::Mut]),
+        "the inner PolicyLet winner remains sealed under its inward mut demand"
+    );
+    assert_eq!(
+        endpoint_mode(outer_selected),
+        BTreeSet::from([ValueMutability::Const]),
+        "the outer consumer performs a later direct satisfaction operation instead of reopening the inner call"
+    );
+}
+
+#[test]
+fn literals_form_abstract_values_before_construction_and_same_type_migration() {
+    let mut manifest = BuildManifest::single_source_root(
+        "app",
+        vec!["app".to_string()],
+        fixture_source_root("abstract_literal_pipeline", "app"),
+    );
+    manifest
+        .global_implementation_roots
+        .push(transport_bundle());
+    let world = CompilationWorld::from_manifest(&manifest)
+        .expect("abstract literal, concrete construction, and migration remain separate");
+
+    let integer_type = world
+        .resolve_type_value("integer")
+        .expect("abstract integer Type");
+    let real_type = world
+        .resolve_type_value("real")
+        .expect("abstract real Type");
+    let uint16_type = world
+        .resolve_type_value("uint16")
+        .expect("concrete uint16 Type");
+    let uint8_type = world
+        .resolve_type_value("uint8")
+        .expect("concrete uint8 Type");
+
+    let bound_value = |name: &str| {
+        let symbol = world
+            .semantic_world()
+            .symbol_in_namespace(world.package_root_node(), name)
+            .unwrap_or_else(|| panic!("binding `{name}` exists"));
+        let id = symbol.member_views[0]
+            .value
+            .unwrap_or_else(|| panic!("binding `{name}` carries Val1"));
+        world
+            .semantic_world()
+            .value(id)
+            .expect("bound value exists")
+    };
+
+    let abstract_value = bound_value("abstract_value");
+    assert_eq!(abstract_value.type_value, integer_type);
+    assert!(matches!(
+        abstract_value.payload,
+        SemanticValuePayload::AbstractLiteral {
+            family: lang_build::AbstractLiteralFamily::Integer,
+            ..
+        }
+    ));
+    let exact_real = bound_value("exact_real");
+    assert_eq!(exact_real.type_value, real_type);
+
+    let concrete = bound_value("concrete_value");
+    assert_eq!(concrete.type_value, uint16_type);
+    let SemanticValuePayload::ConstructedLiteral {
+        source_abstract, ..
+    } = concrete.payload
+    else {
+        panic!("concrete annotation runs a later construction operation");
+    };
+    let original = world
+        .semantic_world()
+        .value(source_abstract)
+        .expect("construction retains its abstract source value");
+    assert_eq!(
+        original.type_value, integer_type,
+        "expected uint16 never rewrites the literal's initial integer Type"
+    );
+
+    let runtime = bound_value("runtime_value");
+    assert_eq!(runtime.type_value, uint8_type);
+    let SemanticValuePayload::InvocationResult {
+        source_value: Some(concrete_source),
+        ..
+    } = runtime.payload
+    else {
+        panic!("runtime materialization is a later same-Type migration");
+    };
+    let concrete_source = world
+        .semantic_world()
+        .value(concrete_source)
+        .expect("migration source exists");
+    assert_eq!(concrete_source.type_value, uint8_type);
+    assert!(matches!(
+        concrete_source.payload,
+        SemanticValuePayload::ConstructedLiteral { .. }
+    ));
 }

@@ -7,17 +7,18 @@ use lang_build::{
     elaborate_pure_type_binding_p1, elaborate_value_binding_p1, expose_policy_slice,
     invoke_resolved_policy_bridge, materialize_literal_value, project_transition_policy_domain,
     qualify_policy_bridge, read_pattern, read_value, resolve_policy_bridge, select_policy_overload,
-    type_value_projection_from_type_symbol, validate_runtime_transition, AtomicBuiltinType,
-    AtomicBuiltinTypeRegistry, AtomicBuiltinTypeRegistryFailure, BridgeQualification,
-    CompilationWorld, LiteralFamily, LiteralMaterializationFailure, LiteralTypeSelection,
-    MutabilityActualFrame, MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey,
-    NumericTypeRegistry, OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1Elaboration,
+    validate_runtime_transition, AtomicBuiltinType, AtomicBuiltinTypeRegistry,
+    AtomicBuiltinTypeRegistryFailure, BridgeQualification, CompilationWorld, LiteralFamily,
+    LiteralMaterializationFailure, LiteralTypeSelection, MutabilityActualFrame,
+    MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey, NumericTypeRegistry,
+    OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, OutputModeDemand, P1Elaboration,
     P1ElaborationFailure, P1Origin, P1Projection, PatternComponentPolicy, Phase,
-    PhaseOverloadCandidate, PolicyBridgeBody, PolicyBridgeResolution, PolicyOverloadCandidate,
-    PolicyOverloadSelection, PolicyPair, PolicyPartialOrdering, PolicyResultEntry, PolicyStage,
-    PolicyTransitionCallable, PolicyTransitionFailure, PolicyTransitionRequest,
-    PolicyTransitionRequestFailure, Provenance, SemanticValueId, SemanticValueRef, StageSet,
-    TransitionTypeExpectation, TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
+    PhaseOverloadCandidate, PolicyBridgeBody, PolicyBridgeResolution, PolicyMode,
+    PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair, PolicyPartialOrdering,
+    PolicyResultEntry, PolicyStage, PolicyTransitionCallable, PolicyTransitionFailure,
+    PolicyTransitionRequest, PolicyTransitionRequestFailure, Provenance, SemanticValueId,
+    SemanticValueRef, StageSet, SymbolPayload, TransitionTypeExpectation, TypeValueId,
+    ValueComponentPolicy, ValueMutability, ValuePresence,
 };
 use support::{empty_app_manifest, initializer_from_source};
 
@@ -958,7 +959,7 @@ fn runtime_transition_reports_value_pattern_overlap() {
 }
 
 #[test]
-fn core_numeric_registry_uses_first_order_projections_of_installed_type_symbols() {
+fn core_numeric_registry_uses_explicit_type_values_carried_by_installed_symbols() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
     let registry = NumericTypeRegistry::from_core_world(&world).expect("core numeric registry");
     for (key, name) in [
@@ -968,10 +969,10 @@ fn core_numeric_registry_uses_first_order_projections_of_installed_type_symbols(
         (NumericTypeKey::new(NumericFamily::Float, 32), "float32"),
     ] {
         let symbol = world.resolve(name).expect("core numeric Type symbol");
-        assert_eq!(
-            registry.get(key),
-            Some(type_value_projection_from_type_symbol(symbol.id))
-        );
+        let SymbolPayload::Type(type_object) = &symbol.payload else {
+            panic!("core numeric binding carries a type projection");
+        };
+        assert_eq!(registry.get(key), Some(type_object.represented_type));
     }
 }
 
@@ -1408,19 +1409,19 @@ fn output_policy_participates_in_transition_preference() {
         PolicyOverloadCandidate {
             id: "wide-output",
             formal_frame: MutabilityFormalFrame {
-                self_pattern: MutabilityPattern::Unspecified,
+                self_pattern: MutabilityPattern::Plain,
                 explicit_parameter_patterns: vec![],
             },
-            result_policy: None,
+            result_policy: PolicyMode::Plain,
             is_delete: false,
         },
         PolicyOverloadCandidate {
             id: "exact-output",
             formal_frame: MutabilityFormalFrame {
-                self_pattern: MutabilityPattern::Unspecified,
+                self_pattern: MutabilityPattern::Plain,
                 explicit_parameter_patterns: vec![],
             },
-            result_policy: None,
+            result_policy: PolicyMode::Plain,
             is_delete: false,
         },
     ];
@@ -1431,7 +1432,7 @@ fn output_policy_participates_in_transition_preference() {
                 caller_value: ValueMutability::Const,
                 explicit_arguments: vec![],
             },
-            None,
+            OutputModeDemand::default(),
         ),
         PolicyOverloadSelection::Ambiguous(_)
     ));
@@ -1560,10 +1561,10 @@ fn outer_candidate(
         candidate: PolicyOverloadCandidate {
             id,
             formal_frame: MutabilityFormalFrame {
-                self_pattern: MutabilityPattern::Unspecified,
+                self_pattern: MutabilityPattern::Plain,
                 explicit_parameter_patterns: vec![],
             },
-            result_policy: None,
+            result_policy: PolicyMode::Plain,
             is_delete: false,
         },
         stage: PolicyStage::Compile,
@@ -1597,7 +1598,7 @@ fn bridge_existence_is_checked_before_outer_winner_and_failure_cannot_backtrack(
                 caller_value: ValueMutability::Const,
                 explicit_arguments: vec![],
             },
-            None,
+            OutputModeDemand::default(),
             Phase::OpenStatic,
         ),
         PolicyOverloadSelection::Selected("has-bridge")
@@ -1682,7 +1683,7 @@ fn selected_delete_bridge_rejects_outer_candidate_instead_of_qualifying_it() {
                 caller_value: ValueMutability::Const,
                 explicit_arguments: vec![],
             },
-            None,
+            OutputModeDemand::default(),
             Phase::OpenStatic,
         ),
         PolicyOverloadSelection::Selected("requires-available-transition")

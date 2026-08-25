@@ -4,7 +4,6 @@ use crate::model::{
     ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceNode,
     NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, Provenance,
     ResolverCode, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
-    SymbolPayload,
 };
 
 /// Immutable revision of the SemanticWorld-owned namespace-name index.
@@ -819,7 +818,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// LEGACY (demoted) — flat `SymbolObject.policy_metadata.policy_set`
     /// gate used only by not-yet-migrated legacy resolution paths
     /// (`resolve_with_policy` callers: early-meta expansion, verify entry,
-    /// call_target shortcut).  The flat PolicySet is transport/mirror
+    /// early-meta expansion and verify entry). The flat PolicySet is transport/mirror
     /// metadata; it is NOT the canonical cluster/member visibility
     /// authority.  Canonical exposure is decided per member view by the
     /// connected ordinary pipeline (`invoke_target_values` C1/C2 over
@@ -880,28 +879,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     ) -> SemanticNameDelta {
         let mut delta = self.snapshot.empty_delta();
         delta.insert_symbol(parent, object);
-        delta
-    }
-
-    pub fn alias(
-        &self,
-        parent: NamespaceNodeId,
-        name: impl Into<String>,
-        target: SymbolId,
-        provenance: Provenance,
-    ) -> SemanticNameDelta {
-        let mut delta = self.snapshot.empty_delta();
-        let id = delta.allocate_symbol_id();
-        let mut symbol = SymbolObject::placeholder(
-            id,
-            name,
-            SymbolKind::Alias,
-            SourceCategory::Alias,
-            Some(parent),
-            provenance,
-        );
-        symbol.payload = SymbolPayload::Alias { target };
-        delta.insert_symbol(parent, symbol);
         delta
     }
 

@@ -111,10 +111,71 @@ impl<const N: usize> From<[PolicyStage; N]> for StageSet {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ValueMutability {
+/// Concrete overload-visible Policy point. `Plain` is neither omission nor an
+/// unconstrained set; every evaluated object/call context carries one point.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PolicyMode {
     Const,
+    #[default]
+    Plain,
     Mut,
+}
+
+/// Compatibility spelling for older APIs. The aliased carrier is the real
+/// three-point [`PolicyMode`]; it has no `Unspecified` state.
+pub type ValueMutability = PolicyMode;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct OutputModeDemand(pub PolicyMode);
+
+impl OutputModeDemand {
+    pub const fn mode(self) -> PolicyMode {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CapabilityRealizationCell {
+    Absent,
+    Default,
+    Delete,
+    Custom,
+}
+
+/// Candidate-local, Policy-orthogonal input-mode x output-mode realization.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CapabilityRealization {
+    cells: BTreeMap<(PolicyMode, PolicyMode), CapabilityRealizationCell>,
+}
+
+impl Default for CapabilityRealization {
+    fn default() -> Self {
+        let mut cells = BTreeMap::new();
+        for input in [PolicyMode::Const, PolicyMode::Plain, PolicyMode::Mut] {
+            for output in [PolicyMode::Const, PolicyMode::Plain, PolicyMode::Mut] {
+                cells.insert((input, output), CapabilityRealizationCell::Absent);
+            }
+        }
+        Self { cells }
+    }
+}
+
+impl CapabilityRealization {
+    pub fn set(&mut self, input: PolicyMode, output: PolicyMode, cell: CapabilityRealizationCell) {
+        self.cells.insert((input, output), cell);
+    }
+
+    pub fn cell(&self, input: PolicyMode, output: PolicyMode) -> CapabilityRealizationCell {
+        self.cells[&(input, output)]
+    }
+
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = ((PolicyMode, PolicyMode), CapabilityRealizationCell)> + '_ {
+        self.cells
+            .iter()
+            .map(|(coordinate, cell)| (*coordinate, *cell))
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -245,6 +306,20 @@ pub struct PolicyPair {
     pub pattern: PatternComponentPolicy,
 }
 
+/// Form the concrete mode carried by an evaluated view. A singleton domain
+/// keeps its explicit point; an omitted/wider declaration forms `plain` at
+/// the evaluation boundary instead of an unspecified carrier.
+pub fn concrete_policy_mode(value: &ValueComponentPolicy) -> PolicyMode {
+    if value.mutability.len() == 1 {
+        return *value
+            .mutability
+            .iter()
+            .next()
+            .expect("singleton mode domain");
+    }
+    PolicyMode::Plain
+}
+
 /// Policy disjunction: the least Policy admitting everything either
 /// operand admits.
 ///
@@ -347,10 +422,9 @@ pub struct FormalPolicyPattern {
     /// The parameter policy after inheriting its callable P2 and applying the
     /// optional const/mut-only formal slice.
     pub effective_pair: PolicyPair,
-    /// The written overload-preference qualifier. `None` means unspecified;
-    /// it does not erase or rebuild any inherited P2 dimension. Candidate
-    /// formation must copy this field into the external policy product order.
-    pub mutability: Option<ValueMutability>,
+    /// Total overload-preference point. Omitted syntax forms concrete
+    /// `PolicyMode::Plain`; it is never represented by `None`.
+    pub mode: PolicyMode,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -535,14 +609,16 @@ pub struct NamespaceExportNode<I> {
 /// One externally exposed view of an existing internal candidate.
 ///
 /// `identity` and `internal_candidate` preserve the candidate's symbol-world
-/// identity. `external_policy` is the const-projected namespace interface
-/// policy; external resolution must consume this field rather than the
-/// candidate's complete internal policy.
+/// identity. Export admission does not rewrite the candidate's Policy mode or
+/// capability realization; external resolution consumes the same stable facts
+/// that were fixed for the internal candidate.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExportCandidateView<I, C> {
     pub identity: I,
     pub internal_candidate: C,
     pub external_policy: PolicyPair,
+    pub mode: PolicyMode,
+    pub capability_realization: CapabilityRealization,
 }
 
 /// Resolved internal candidate view after its declaration-side `P1Projection`
@@ -550,6 +626,8 @@ pub struct ExportCandidateView<I, C> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedCandidatePolicy {
     pub pair: PolicyPair,
+    pub mode: PolicyMode,
+    pub capability_realization: CapabilityRealization,
     pub provenance: Provenance,
 }
 
@@ -622,11 +700,9 @@ impl<N: Ord, I, C> NamespaceOverloadSets<N, I, C> {
 ///
 /// `ExportAdmission` combines export-retention-closure membership with public
 /// path reachability. Only externally exposed symbols are considered.
-/// Candidate policy eligibility is then a separate operation over each
-/// resolved internal `PolicyPair`: candidates without a const value slice
-/// remain in `full` but are omitted from `exported`. Direct source declarations
-/// that explicitly write `export + mut` are rejected earlier by
-/// `project_export_root_preview`.
+/// Candidate Policy validation is then a separate operation over each resolved
+/// internal `PolicyPair`. Export is an admission/view boundary, never a
+/// const-cropping operation.
 pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
     full: BTreeMap<N, Vec<C>>,
     mut external_admission: impl FnMut(&N) -> ExportAdmission,
@@ -640,13 +716,13 @@ pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
         let mut projected = Vec::new();
         for candidate in candidates {
             let (identity, internal_policy) = resolve_candidate(candidate);
-            let Some(external_policy) = project_resolved_export_view(&internal_policy)? else {
-                continue;
-            };
+            let external_policy = project_resolved_export_view(&internal_policy)?;
             projected.push(ExportCandidateView {
                 identity,
                 internal_candidate: candidate.clone(),
                 external_policy,
+                mode: internal_policy.mode,
+                capability_realization: internal_policy.capability_realization,
             });
         }
         if !projected.is_empty() {
@@ -660,27 +736,18 @@ pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
 /// candidate view.
 ///
 /// This function never accepts `P1Projection`: declaration projection has
-/// already happened. The Pattern component is preserved exactly. A
-/// value-bearing candidate without a const slice is not externally eligible.
+/// already happened. Every component is preserved exactly; external admission
+/// is orthogonal to Policy preference and capability realization.
 pub fn project_resolved_export_view(
     internal_policy: &ResolvedCandidatePolicy,
-) -> Result<Option<PolicyPair>, Diagnostic> {
-    let mut projected = internal_policy.pair.clone();
+) -> Result<PolicyPair, Diagnostic> {
+    let projected = internal_policy.pair.clone();
     validate_value_component_invariant(
         &projected.value,
         "resolved export candidate",
         internal_policy.provenance.clone(),
     )?;
-    if projected.value.presence == ValuePresence::Absent {
-        return Ok(Some(projected));
-    }
-    if !projected.value.mutability.is_empty()
-        && !projected.value.mutability.contains(&ValueMutability::Const)
-    {
-        return Ok(None);
-    }
-    projected.value.mutability = BTreeSet::from([ValueMutability::Const]);
-    Ok(Some(projected))
+    Ok(projected)
 }
 
 /// Compute `PathAncestors(root) ∪ Subtree(root)` for every export root.
@@ -896,7 +963,7 @@ pub fn elaborate_formal_policy_pattern(
     let Some(policy) = policy else {
         return Ok(FormalPolicyPattern {
             effective_pair: inherited_p2.clone(),
-            mutability: None,
+            mode: PolicyMode::Plain,
         });
     };
     if policy.pattern_policy.is_some() {
@@ -947,7 +1014,7 @@ pub fn elaborate_formal_policy_pattern(
     effective_pair.value.mutability = BTreeSet::from([selected]);
     Ok(FormalPolicyPattern {
         effective_pair,
-        mutability: Some(selected),
+        mode: selected,
     })
 }
 
@@ -1146,10 +1213,10 @@ pub fn project_export_root_preview(
     projection: &P1Projection,
     provenance: Provenance,
 ) -> Result<P1Projection, Diagnostic> {
-    let mut projected = projection.clone();
-    let value = match &mut projected {
+    let projected = projection.clone();
+    let value = match &projected {
         P1Projection::ValueDominant { value } => value,
-        P1Projection::Pair(pair) => &mut pair.value,
+        P1Projection::Pair(pair) => &pair.value,
         P1Projection::Infer => {
             return Err(policy_error(
                 "an export root requires an explicit namespace declaration policy",
@@ -1159,16 +1226,6 @@ pub fn project_export_root_preview(
     };
 
     validate_value_component_invariant(value, "export-root P1", provenance.clone())?;
-    if value.presence == ValuePresence::Absent {
-        return Ok(projected);
-    }
-    if !value.mutability.is_empty() && !value.mutability.contains(&ValueMutability::Const) {
-        return Err(policy_error(
-            "a value-bearing export requires a non-empty const projection",
-            provenance,
-        ));
-    }
-    value.mutability = BTreeSet::from([ValueMutability::Const]);
     Ok(projected)
 }
 

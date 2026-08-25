@@ -4,7 +4,6 @@
 //! normalized source fragments, but does not add parser or normalizer rules.
 
 pub mod build;
-pub mod call_target;
 pub mod canonical_value;
 pub mod construction_value;
 pub mod control_flow_end;
@@ -16,6 +15,8 @@ pub mod fingerprint;
 pub mod identity;
 pub mod initializer_eval;
 pub mod invocation_frame;
+pub mod invocation_result;
+pub mod lifecycle;
 pub mod literal_semantics;
 pub mod manifest;
 pub mod meta;
@@ -31,6 +32,7 @@ pub mod overload_pattern;
 pub mod overload_set;
 pub mod owner_namespace;
 pub mod pattern_head;
+pub mod pattern_relation;
 pub mod pattern_space;
 pub mod phase_flow;
 pub mod policy_expr;
@@ -54,13 +56,13 @@ pub use build::{
     PackageBuildMetadata, PackageBuildSpec, SourceRootMetadata, SourceUnitBuildMetadata,
     StaticDependencySpec, SyntheticSymbolBuildMetadata,
 };
-pub use call_target::{resolve_call_target, ResolvedCallTarget};
 pub use canonical_value::{
     canonical_literal_content, canonical_literal_norm, expand_extraction_navigation,
-    CanonicalClusterNorm, CanonicalFullNavigation, CanonicalLiteralFamily, CanonicalNormForm,
-    CanonicalOrderedPatternEntry, CanonicalPatternAtom, CanonicalPatternBuilder,
-    CanonicalPatternNorm, CanonicalPatternValue, CanonicalProductConstructor,
-    CanonicalTypeObservation, CanonicalVal2Norm, CanonicalValueAddr, DuplicatePatternNavigation,
+    CanonicalClusterNorm, CanonicalCompleteTypeNorm, CanonicalFullNavigation,
+    CanonicalLiteralFamily, CanonicalNormForm, CanonicalObjectNorm, CanonicalOrderedPatternEntry,
+    CanonicalPatternAtom, CanonicalPatternBuilder, CanonicalPatternNorm, CanonicalPatternValue,
+    CanonicalProductConstructor, CanonicalTypeCallSpaceNorm, CanonicalTypeObservation,
+    CanonicalVal1Norm, CanonicalVal2Norm, CanonicalValueAddr, DuplicatePatternNavigation,
     ExtractionPatternParent, MissingExtractionNavigationAnchor, PatternChildInput,
     PatternLayerContext, PatternNavigationInput, PatternOwnNavigation,
 };
@@ -95,10 +97,7 @@ pub use extraction_view::{
 };
 pub use fingerprint::{fnv1a64_hex, Fnv1a64};
 pub use identity::{
-    type_value_projection_from_type_symbol, AliasChain, AliasCycleDetectionState,
-    AliasQueryDisposition, AliasQueryMode, AliasQueryRequest, AliasQueryResult,
-    AliasWritableBoundary, MetaCallableIdentity, PlaceId, SemanticValueId,
-    TypeValueBindingPlaceholder, TypeValueId,
+    MetaCallableIdentity, PlaceId, SemanticValueId, TypeValueBindingPlaceholder, TypeValueId,
 };
 pub use initializer_eval::{
     binding_assertion_annotation_context, residual_diagnostic, AnnotationContext, EvalMode,
@@ -109,10 +108,21 @@ pub use invocation_frame::{
     InvocationFrame, InvocationLookupEnv, ReceiverTypeRef, ReturnTargetShape, SelfPosition,
     SelfPositionSource, SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
 };
+pub use invocation_result::{DeclaredResultClass, InvocationResidual, InvocationResult};
+pub use lifecycle::{
+    AccessPath, AccessRelationProvider, AccessSnapshot, CleanupPlacement, ColorAlgebra, ColorId,
+    LifeName, LifecycleAction, LifecycleEvent, LifecycleEventKind, LifecycleFailure,
+    LifecycleMachine, LifecyclePost, LifecyclePrecondition, LifecycleSnapshot,
+    LifecycleValidationContext, LifecycleValidationProof, LifetimeValue, NameView, Region,
+    SemanticContinuation, SemanticPosition,
+};
 pub use literal_semantics::{
-    materialize_literal_value, AtomicBuiltinType, AtomicBuiltinTypeRegistry,
-    AtomicBuiltinTypeRegistryFailure, LiteralFamily, LiteralMaterializationFailure,
-    LiteralTypeSelection, LiteralValue, NumericFamily, NumericTypeKey, NumericTypeRegistry,
+    abstract_character_value, compile_literal_policy, form_abstract_literal_value,
+    materialize_literal_value, AbstractLiteralExactValue, AbstractLiteralFamily,
+    AbstractLiteralFormationFailure, AbstractLiteralValue, AtomicBuiltinType,
+    AtomicBuiltinTypeRegistry, AtomicBuiltinTypeRegistryFailure, LiteralFamily,
+    LiteralMaterializationFailure, LiteralTypeSelection, LiteralValue, NumericFamily,
+    NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
 pub use meta::{
@@ -138,9 +148,8 @@ pub use meta_invocation::{
     invoke_meta_callable_with_materialization_state, ConstructionIdentityMaterial,
     ConstructionInstanceId, FieldSignatureMaterial, ForwardedValue, GeneratedConstructionValue,
     GeneratedFieldDefinition, GeneratedFieldPatternHead, GeneratedTypeDefinitionValue,
-    MetaInvocationInput, MetaInvocationResult, MetaInvocationValue, ReturnSlotSemantics,
-    ReturnViewShape, TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId,
-    TypeDefinitionPatternHeads,
+    MetaInvocationInput, MetaInvocationValue, ReturnSlotSemantics, ReturnViewShape,
+    TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId, TypeDefinitionPatternHeads,
 };
 pub use meta_key::{
     compute_canonical_meta_instance_key, compute_legacy_meta_instance_digest, CanonicalFingerprint,
@@ -161,17 +170,16 @@ pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{
     invoke_atomic_runtime_migration, invoke_host_member_symbol_ordinary,
     invoke_pattern_associated_ordinary, invoke_pattern_associated_value_ordinary,
-    invoke_symbol_ordinary, AtomicRuntimeMigrationResult, CallableTarget, ClusterSymbolResult,
-    ExposedInvocationResult, InvocationOutcome, MigrationInvocationContext,
-    OrdinaryCandidateOrigin, OrdinaryInvocationContext, OrdinaryInvocationFailure,
-    OrdinaryPipelineTrace, OrdinaryReturnedValue, PreparedCallCandidate, SingleMemberResult,
-    UnitInvocationResult,
+    invoke_policy_migration, invoke_symbol_ordinary, AtomicRuntimeMigrationResult, CallableTarget,
+    ClusterSymbolResult, DynamicLegalityDemand, DynamicLegalityProof, ExposedInvocationResult,
+    InvocationOutcome, MigrationInvocationContext, OrdinaryCandidateOrigin,
+    OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
+    OrdinaryReturnedValue, PolicyMigrationResult, PreparedCallCandidate, ReturnedCompleteType,
+    SealedSelectedInvocation, SingleMemberResult, UnitInvocationResult,
 };
 pub use overload_pattern::{
-    decode_param_pattern, match_pack_param_pattern, match_param_pattern,
     overload_args_from_classified_shape, pack_operand_is_admissible, OverloadArgShape,
-    PackOperandClass, PatternLayerOrder, PatternMatchOutcome, RestrictedParamPattern,
-    SpecificityTuple,
+    PackOperandClass, PatternLayerOrder, SpecificityTuple,
 };
 pub use semantic_name_index::{
     BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex, SemanticNameInstallError,
@@ -196,6 +204,13 @@ pub use pattern_head::{
     PatternHeadRegistry, PatternLookupInput, PatternMaterializationContext,
     TypeMaterializationState,
 };
+pub use pattern_relation::{
+    direct_pattern_child_from_canonical_value, solve_parameter_product_relation,
+    DirectPatternChildEvidence, ExtractedTypeObservation, NamedPatternObservation,
+    PatternApplicabilityProof, PatternLocalBinding, PatternPackBinding, PatternRelationContext,
+    PatternRelationDerivation, PatternRelationFailure, PatternSelector, ResolvedPatternBinderId,
+    StructuralDefault,
+};
 pub use pattern_space::{
     bool_branch_space_for_tests, bool_pattern_aliases_for_tests, derive_sum_pattern_space,
     PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, StructuralMemberVisibility,
@@ -216,20 +231,20 @@ pub use policy_overload::{
 };
 pub use policy_pair::{
     body_entry_allows_execution, compute_export_retention_closure, compute_wpre,
-    derive_function_object_p1, elaborate_binding_p1_projection, elaborate_explicit_p1,
-    elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy, externally_visible,
-    function_object_declaration_policy, normalize_p2_policy, policy_or,
+    concrete_policy_mode, derive_function_object_p1, elaborate_binding_p1_projection,
+    elaborate_explicit_p1, elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
+    externally_visible, function_object_declaration_policy, normalize_p2_policy, policy_or,
     project_export_overload_sets, project_export_root_preview, project_p1,
     project_resolved_export_view, publicly_reachable, validate_return_shape,
-    BuiltinPrivilegedSealFunction, CallablePrivilege, DeclarationVisibility, ExplicitP1Position,
-    ExplicitP1Selection, ExportAdmission, ExportCandidateView, FormalPolicyPattern, FunctionMember,
-    FunctionMemberKind, FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView,
-    FunctionSliceStage, NamespaceCandidateSetRef, NamespaceDeclarationPolicy,
-    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceOverloadSets,
-    NamespaceResolveAuthority, NamespaceVisibility, P1Projection, PatternComponentPolicy,
-    PatternConstraint, Phase, PolicyPair, PolicyResultEntry, PolicyStage, ResolvedCandidatePolicy,
-    ReturnShape, SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability, ValuePresence,
-    WpreRoots,
+    BuiltinPrivilegedSealFunction, CallablePrivilege, CapabilityRealization,
+    CapabilityRealizationCell, DeclarationVisibility, ExplicitP1Position, ExplicitP1Selection,
+    ExportAdmission, ExportCandidateView, FormalPolicyPattern, FunctionMember, FunctionMemberKind,
+    FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView, FunctionSliceStage,
+    NamespaceCandidateSetRef, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
+    NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
+    OutputModeDemand, P1Projection, PatternComponentPolicy, PatternConstraint, Phase, PolicyMode,
+    PolicyPair, PolicyResultEntry, PolicyStage, ResolvedCandidatePolicy, ReturnShape,
+    SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
 };
 pub use policy_transition::{
     assemble_transition_results, compare_policy_transition_candidates,
@@ -238,10 +253,11 @@ pub use policy_transition::{
     validate_runtime_transition, BridgeQualification, OrdinaryCallableTypeInput,
     OrdinaryCallableTypeOutput, P1AssemblyFailure, P1Elaboration, P1ElaborationFailure, P1Origin,
     PolicyBridgeBody, PolicyBridgeEffect, PolicyBridgeInvocationFailure,
-    PolicyBridgeInvocationResult, PolicyBridgeResolution, PolicyPartialOrdering,
-    PolicyTransitionCallable, PolicyTransitionDemand, PolicyTransitionFailure,
-    PolicyTransitionRequest, PolicyTransitionRequestFailure, PrototypeTransitionResultCarrier,
-    PureTypeP1Elaboration, ResolvedPolicyBridge, SemanticValueRef, TransitionTypeExpectation,
+    PolicyBridgeInvocationResult, PolicyBridgeResolution, PolicyMigrationRequest,
+    PolicyMigrationRequestFailure, PolicyPartialOrdering, PolicyTransitionCallable,
+    PolicyTransitionDemand, PolicyTransitionFailure, PolicyTransitionRequest,
+    PolicyTransitionRequestFailure, PrototypeTransitionResultCarrier, PureTypeP1Elaboration,
+    ResolvedPolicyBridge, SemanticValueRef, TransitionTypeExpectation,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
@@ -250,8 +266,10 @@ pub use product_shape::{
 };
 pub use return_target::{
     elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
-    BoundReturnEvent, PreservedReturnReason, PreservedUnboundReturnEvent, ResolvedReturnTarget,
-    ReturnFrameId, ReturnFrameOwner, ReturnSelfIdentity, ReturnSlotRef, ReturnTargetBinder,
+    elaborate_return_targets_in_returnable_closure_with_resolver, BoundReturnEvent,
+    ExplicitReturnTargetResolution, ExplicitReturnTargetResolver, PreservedReturnReason,
+    PreservedUnboundReturnEvent, ResolvedReturnTarget, ReturnFrameId, ReturnFrameOwner,
+    ReturnSelfIdentity, ReturnSlotIdentity, ReturnSlotRef, ReturnTargetBinder,
     ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetStack, UnboundReturnEvent,
     UnresolvedReturnTargetForm,
 };
@@ -265,14 +283,19 @@ pub use semantic_owner::{
 };
 pub use semantic_world::{
     canonical_function_object_p1, derived_cluster_policy, AmbientTypeBinder, BindConflict,
-    ClusterConstructionId, ConstructionAuthority, ConstructionState, ConstructionWindow,
-    InjectedValueIdentity, MetaInstanceRoot, MetaTypeKey, ObjectPlace, ObjectPlaceId,
-    OpenClusterConstruction, OrdinaryCallEntry, OrdinaryCandidateRole, OrdinaryOpenWindow,
-    OwnerStrategy, PatternClusterOwner, PatternHostMember, PatternValueId, PurePMember,
-    RegisteredCallable, ResidualRuntimeEpoch, ResolvedExtractionTarget, ResolvedPatternScope,
-    ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticPatternValue, SemanticSymbolCell,
-    SemanticTypeValue, SemanticValueObject, SemanticValuePayload, SemanticWorld,
-    SymbolConstructionValue,
+    BorrowFormationFailure, BorrowKind, BorrowOperand, BorrowView, BorrowViewId,
+    ClusterConstructionId, CompleteTypeValue, ConstructionAuthority, ConstructionEvaluationContext,
+    ConstructionState, ConstructionWindow, ImmutableTypeCallSpace, InjectedValueIdentity,
+    MemberCreationProof, MetaInstanceRoot, MetaTypeKey, ObjectPlace, ObjectPlaceId,
+    OpenClusterConstruction, OpenHereFailure, OpenHereProof, OrdinaryCallEntry,
+    OrdinaryCandidateRole, OrdinaryOpenWindow, OwnerStrategy, PatternClusterOwner,
+    PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector, ProjectionSlot,
+    ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
+    ResidentGeneration, ResidentIdentity, ResidualRuntimeEpoch, ResolvedExtractionTarget,
+    ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticPatternValue,
+    SemanticSymbolCell, SemanticTypeValue, SemanticValueObject, SemanticValuePayload,
+    SemanticWorld, StableBorrowTarget, SymbolConstructionValue, TypeMemberFacet,
+    TypeMemberSnapshotEntry, WritableContext,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{

@@ -128,13 +128,17 @@ pub(crate) fn install_core_bootstrap(
         "uint8",
         "ref",
         "share",
+        "integer",
+        "real",
+        "character",
+        "lifetime",
         "uint16",
         "uint32",
         "float32",
     ] {
         insert_core_type(
             &mut delta,
-            Some(&mut core_types),
+            &mut core_types,
             core_node,
             name,
             Provenance::new(format!("core type symbol `{name}`")),
@@ -205,15 +209,13 @@ fn insert_meta_function(
     let symbol_id = delta.allocate_symbol_id();
     let (body_entry_policy, return_object_policy) = core_primitive_callable_planes(primitive);
     // Independent declared shape/privilege coordinates for each built-in:
-    // `struct` returns a Symbol cluster (plural values under one name at
-    // one position); `identity_type` returns a single pure-P type;
+    // `struct` and `identity_type` return complete type values;
     // `assert` / `verify` / `UnaryConstructionPrototype` return a single
     // ordinary value.  All core primitives are privileged built-ins (they
     // may consume raw/meta material); privilege implies nothing about the
     // shape and neither coordinate is re-derived at call time.
     let return_shape = match primitive {
-        CoreMetaFunction::Struct => crate::ReturnShape::ClusterSymbol,
-        CoreMetaFunction::IdentityType => crate::ReturnShape::SingleType,
+        CoreMetaFunction::Struct | CoreMetaFunction::IdentityType => crate::ReturnShape::SingleType,
         CoreMetaFunction::Assert
         | CoreMetaFunction::Verify(_)
         | CoreMetaFunction::UnaryConstructionPrototype => {
@@ -245,14 +247,20 @@ fn insert_meta_function(
         privilege: crate::CallablePrivilege::BuiltinPrivileged,
     });
     // Declared semantic registration fact, spelled once next to the graph
-    // payload: function P1 = export meta; result P2 = meta (plus runtime
-    // for `struct`, whose cluster survives into the runtime world).
+    // payload. `struct` exposes the completed type value at meta and runtime
+    // while its independent body-entry plane remains meta-only; execution
+    // authority is never inferred from the result view.
     core_callables.push(CoreCallableRegistration {
         namespace: parent,
         name: name.to_string(),
         backing: symbol_id,
         primitive,
-        function_policy: core_declared_pair(&[PolicyStage::Meta], true),
+        function_policy: match primitive {
+            CoreMetaFunction::Struct => {
+                core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true)
+            }
+            _ => core_declared_pair(&[PolicyStage::Meta], true),
+        },
         result_policy: match primitive {
             CoreMetaFunction::Struct => {
                 core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], false)
@@ -337,7 +345,7 @@ fn insert_verification_namespace(
 
 pub(crate) fn insert_core_type(
     delta: &mut SemanticNameDelta,
-    core_types: Option<&mut Vec<CoreTypeRegistration>>,
+    core_types: &mut Vec<CoreTypeRegistration>,
     parent: NamespaceNodeId,
     name: &str,
     provenance: Provenance,
@@ -368,20 +376,22 @@ pub(crate) fn insert_core_type(
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
-    let represented_type = crate::type_value_projection_from_type_symbol(symbol_id);
+    // Core lookup indices come from a type registry namespace disjoint from
+    // graph Symbol allocation.  Their opaque representation is provisional;
+    // the only hard property here is that no SymbolId conversion defines type
+    // identity.
+    let represented_type = crate::TypeValueId((1u64 << 62) | core_types.len() as u64);
     // Declared semantic registration fact: core type carriers are declared
     // `export meta runtime`, spelled as the canonical pair directly.
-    if let Some(core_types) = core_types {
-        core_types.push(CoreTypeRegistration {
-            namespace: parent,
-            name: name.to_string(),
-            binding: symbol_id,
-            represented_type,
-            associated_namespace: associated_node,
-            policy: core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true),
-            provenance: provenance.clone(),
-        });
-    }
+    core_types.push(CoreTypeRegistration {
+        namespace: parent,
+        name: name.to_string(),
+        binding: symbol_id,
+        represented_type,
+        associated_namespace: associated_node,
+        policy: core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true),
+        provenance: provenance.clone(),
+    });
     symbol.payload = SymbolPayload::Type(TypeObject {
         carrier_symbol_id: symbol_id,
         represented_type,

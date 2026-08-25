@@ -13,11 +13,13 @@ use crate::{
         Diagnostic, DiagnosticSeverity, ExecutionEnv, Provenance, ResolverCode,
         SourceCallableObject, SymbolObject,
     },
-    overload_pattern::{
-        decode_param_pattern, match_pack_param_pattern, match_param_pattern, OverloadArgShape,
-        RestrictedParamPattern, SpecificityTuple,
+    overload_pattern::{OverloadArgShape, SpecificityTuple},
+    pattern_relation::{
+        solve_parameter_product_relation, NamedPatternObservation, PatternApplicabilityProof,
+        PatternRelationContext, PatternRelationFailure,
     },
     semantic_name_index::ResolverContext,
+    semantic_owner::SemanticOwnerId,
     type_argument::{BodyLocalInitializerCheck, TypeResolutionEnv},
 };
 
@@ -77,6 +79,7 @@ pub enum RestrictedOverloadFailureKind {
     UnsupportedCanonicalSumPatternValue,
     UnsupportedSelectedMetaBody,
     UnsupportedSelectedMetaBodyLocalBinding,
+    RetiredAliasSemantics,
     SelectedDeleteBodyDiagnostic,
 }
 
@@ -99,6 +102,7 @@ impl RestrictedOverloadFailureKind {
             Self::UnsupportedSelectedMetaBodyLocalBinding => {
                 ResolverCode::UnsupportedSelectedMetaBodyLocalBinding
             }
+            Self::RetiredAliasSemantics => ResolverCode::RetiredAliasSemantics,
             Self::SelectedDeleteBodyDiagnostic => ResolverCode::UnsupportedSelectedMetaBody,
         }
     }
@@ -117,6 +121,10 @@ pub(crate) struct ApplicableCandidate {
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub(crate) specificity: SpecificityTuple,
+    /// Proof-relevant result of the canonical Pattern relation.  The legacy
+    /// name-keyed maps above are one-way body-evaluator transport derived from
+    /// this proof and never participate in applicability.
+    pub(crate) pattern_proof: PatternApplicabilityProof,
     pub(crate) overload_strategy: NormOverloadStrategy,
     pub(crate) return_slot_name: String,
 }
@@ -137,7 +145,8 @@ pub(crate) fn applicable_candidate_from_closure(
     provenance: &Provenance,
     args: &[OverloadArgShape],
     demanded_execution: ExecutionEnv,
-    resolve_named_pattern: Option<&dyn Fn(&str) -> Option<crate::TypeValueId>>,
+    callable_owner: SemanticOwnerId,
+    resolve_named_pattern: Option<&dyn Fn(&str) -> Option<NamedPatternObservation>>,
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
     applicable_candidate_from_source_callable(
         symbol,
@@ -147,6 +156,7 @@ pub(crate) fn applicable_candidate_from_closure(
         },
         args,
         demanded_execution,
+        callable_owner,
         resolve_named_pattern,
     )
 }
@@ -156,7 +166,8 @@ fn applicable_candidate_from_source_callable(
     source_callable: SourceCallableObject,
     args: &[OverloadArgShape],
     _demanded_execution: ExecutionEnv,
-    resolve_named_pattern: Option<&dyn Fn(&str) -> Option<crate::TypeValueId>>,
+    callable_owner: SemanticOwnerId,
+    resolve_named_pattern: Option<&dyn Fn(&str) -> Option<NamedPatternObservation>>,
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
     let head = source_callable.closure.head.as_ref().ok_or_else(|| {
         CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
@@ -182,43 +193,31 @@ fn applicable_candidate_from_source_callable(
 
     let return_slot_name = return_slot_name(&source_callable.closure)
         .map_err(CandidateApplicabilityFailure::UnsupportedCandidateShape)?;
-    let mut specificity = SpecificityTuple::default();
-    let mut bindings = BTreeMap::new();
-    let mut pack_bindings = BTreeMap::new();
-    let pack_index = explicit_params.iter().position(param_is_pack);
-    let fixed_suffix = pack_index.map_or(0, |index| explicit_params.len() - index - 1);
-
-    for (index, param) in explicit_params.iter().enumerate() {
-        let pattern = decode_param_pattern(param);
-        if let RestrictedParamPattern::Unsupported { reason, provenance } = &pattern {
-            return Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(
-                Diagnostic::hard_error(
-                    format!("unsupported parameter extraction pattern: {reason}"),
-                    Some(provenance.clone()),
-                ),
-            ));
+    let relation_context = PatternRelationContext::for_source_callable(
+        &source_callable.closure,
+        callable_owner,
+        resolve_named_pattern,
+    )
+    .map_err(|failure| match failure {
+        PatternRelationFailure::Inapplicable(diagnostic) => {
+            CandidateApplicabilityFailure::Inapplicable(diagnostic)
         }
-        let outcome = if Some(index) == pack_index {
-            let remainder_end = args.len() - fixed_suffix;
-            match_pack_param_pattern(&pattern, &args[index..remainder_end])
-                .map_err(CandidateApplicabilityFailure::Inapplicable)?
-        } else {
-            let arg_index = if let Some(pack_index) = pack_index {
-                if index < pack_index {
-                    index
-                } else {
-                    args.len() - (explicit_params.len() - index)
-                }
-            } else {
-                index
-            };
-            match_param_pattern(&pattern, &args[arg_index], resolve_named_pattern)
-                .map_err(CandidateApplicabilityFailure::Inapplicable)?
-        };
-        specificity = specificity.add(outcome.specificity);
-        bindings.extend(outcome.bindings);
-        pack_bindings.extend(outcome.pack_bindings);
-    }
+        PatternRelationFailure::Unsupported(diagnostic) => {
+            CandidateApplicabilityFailure::UnsupportedParameterPattern(diagnostic)
+        }
+    })?;
+    let pattern_proof = solve_parameter_product_relation(explicit_params, args, &relation_context)
+        .map_err(|failure| match failure {
+            PatternRelationFailure::Inapplicable(diagnostic) => {
+                CandidateApplicabilityFailure::Inapplicable(diagnostic)
+            }
+            PatternRelationFailure::Unsupported(diagnostic) => {
+                CandidateApplicabilityFailure::UnsupportedParameterPattern(diagnostic)
+            }
+        })?;
+    let specificity = pattern_proof.specificity;
+    let bindings = pattern_proof.named_bindings();
+    let pack_bindings = pattern_proof.named_pack_bindings();
 
     let overload_strategy = source_callable.closure.body.overload_strategy();
     Ok(ApplicableCandidate {
@@ -227,6 +226,7 @@ fn applicable_candidate_from_source_callable(
         bindings,
         pack_bindings,
         specificity,
+        pattern_proof,
         overload_strategy,
         return_slot_name,
     })
@@ -426,9 +426,9 @@ pub(crate) fn evaluate_selected_source_meta_body(
 /// * `let r = expr;`   → `AddMember` — fresh member creation (the
 ///   return-slot spelling reading is the current compatibility
 ///   encoding; see the variant doc).
-/// * `let r === path;` → `AddAliasMember` — alias member creation; the
-///   member forwards the target's Val2 identity instead of creating a
-///   fresh value.
+/// Alias declarations are deliberately absent: the frontend preserves their
+/// shape, but the canonical evaluator rejects them instead of producing a
+/// construction effect.
 /// * `r = expr;`       → `PlaceholderOverwrite` — the current-stage
 ///   placeholder encoding of a write to an existing target (see the
 ///   variant doc; it does not define the final `=` write algebra).
@@ -453,12 +453,6 @@ pub(crate) enum MetaConstructionEffect {
     /// reading is removed and `let r` may shadow the return slot.
     AddMember {
         initializer: NormExpr,
-        binding_p1: Option<NormPolicySpec>,
-    },
-    /// `let r === path;` — alias member creation forwarding the target,
-    /// carrying the alias declaration's own written P1 (if any).
-    AddAliasMember {
-        target_name: String,
         binding_p1: Option<NormPolicySpec>,
     },
     /// `r = expr;` — CURRENT PLACEHOLDER, not the final write rule.
@@ -622,45 +616,9 @@ fn collect_block_body_execution(
                     local_names.insert(name);
                 }
             }
-            NormForm::Let(lang_syntax::NormDecl::Alias {
-                policy,
-                binder,
-                target,
-                ..
-            })
-            | NormForm::Alias(lang_syntax::NormDecl::Alias {
-                policy,
-                binder,
-                target,
-                ..
-            }) => {
-                // `let r === path;` where `r` is the return target: alias
-                // member creation.  Same substrate as a namespace-level
-                // alias declaration — the member forwards the target's
-                // Val2 identity; nothing fresh is created.
-                let binder_is_return_target = matches!(
-                    binder,
-                    lang_syntax::NormAliasBinder::Name { name, .. }
-                        if name == &selected.return_slot_name
-                );
-                if !binder_is_return_target {
-                    return Err(unsupported_body(
-                        selected,
-                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                        "selected meta body contains unsupported non-terminal form before terminal",
-                    ));
-                }
-                let Some(target_name) = entity_ref_single_name(target) else {
-                    return Err(unsupported_body(
-                        selected,
-                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                        "alias member creation target is outside the restricted evaluator (single-name targets only)",
-                    ));
-                };
-                effects.push(MetaConstructionEffect::AddAliasMember {
-                    target_name,
-                    binding_p1: policy.clone(),
-                });
+            NormForm::Let(lang_syntax::NormDecl::Alias { .. })
+            | NormForm::Alias(lang_syntax::NormDecl::Alias { .. }) => {
+                return Err(retired_alias_failure(selected));
             }
             NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
@@ -899,15 +857,6 @@ fn evaluate_contribution_rhs_name(
     }
 }
 
-/// Extract the single-name target of an alias contribution
-/// (`let r === X;`).
-fn entity_ref_single_name(target: &lang_syntax::NormEntityRef) -> Option<String> {
-    match target.components.as_slice() {
-        [lang_syntax::NormNavComponent::Name { name, .. }] => Some(name.clone()),
-        _ => None,
-    }
-}
-
 fn evaluate_block_body(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
@@ -919,7 +868,6 @@ fn evaluate_block_body(
     // helpers with the clustered contributions evaluator so both read the
     // same body-shape rules.
     let mut local_names = BTreeSet::new();
-    let mut local_aliases: BTreeMap<String, String> = BTreeMap::new();
 
     for form in &program.forms {
         match form {
@@ -940,27 +888,9 @@ fn evaluate_block_body(
                     "selected meta body contains ordinary expression form; expected explicit TailValue terminal",
                 ));
             }
-            NormForm::Let(lang_syntax::NormDecl::Alias { binder, target, .. })
-            | NormForm::Alias(lang_syntax::NormDecl::Alias { binder, target, .. }) => {
-                // `let r === t;` — a body-local alias declaration: the
-                // binder forwards the target's identity instead of
-                // creating a fresh value.  The terminal name is later
-                // resolved through this forwarding chain.
-                let lang_syntax::NormAliasBinder::Name { name, .. } = binder else {
-                    return Err(unsupported_body(
-                        selected,
-                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                        "body-local alias binder must be a single name in the restricted evaluator",
-                    ));
-                };
-                let Some(target_name) = entity_ref_single_name(target) else {
-                    return Err(unsupported_body(
-                        selected,
-                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                        "body-local alias target is outside the restricted evaluator (single-name targets only)",
-                    ));
-                };
-                local_aliases.insert(name.clone(), target_name);
+            NormForm::Let(lang_syntax::NormDecl::Alias { .. })
+            | NormForm::Alias(lang_syntax::NormDecl::Alias { .. }) => {
+                return Err(retired_alias_failure(selected));
             }
             NormForm::Let(lang_syntax::NormDecl::Error(_))
             | NormForm::Alias(lang_syntax::NormDecl::Let { .. })
@@ -1007,22 +937,7 @@ fn evaluate_block_body(
     // the direct outer layer.  This is the ordinary `expr;` terminal form,
     // not a member event.
     if let NormExpr::Name { text, .. } = &expr {
-        // Follow the body-local alias chain first: `let r === t;`
-        // forwards `t`'s identity, so the terminal `r;` delivers the
-        // chain target, not a fresh value.
-        let mut terminal_name = text.clone();
-        let mut visited = BTreeSet::new();
-        visited.insert(terminal_name.clone());
-        while let Some(next) = local_aliases.get(&terminal_name) {
-            terminal_name = next.clone();
-            if !visited.insert(terminal_name.clone()) {
-                return Err(unsupported_body(
-                    selected,
-                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                    "body-local alias chain does not terminate (cyclic alias)",
-                ));
-            }
-        }
+        let terminal_name = text.clone();
         if local_names.contains(&terminal_name) {
             return Err(selected_body_failure(
                 selected,
@@ -1087,16 +1002,17 @@ fn bare_alias_equality_shape(expr: &NormExpr, return_slot_name: &str) -> bool {
     )
 }
 
-/// Convergence hard error for the bare `r === X;` expression spelling:
-/// alias forwarding is the `let r === X;` declaration form only.
+/// Alias-looking expression spellings cannot become a back door to the
+/// retired declaration-alias semantic mechanism.
 fn bare_alias_spelling_failure(selected: &SelectedOverloadCandidate) -> RestrictedOverloadFailure {
-    unsupported_body(
+    retired_alias_failure(selected)
+}
+
+fn retired_alias_failure(selected: &SelectedOverloadCandidate) -> RestrictedOverloadFailure {
+    selected_body_failure(
         selected,
-        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-        format!(
-            "bare `{r} === X;` is illegal; alias forwarding must be spelled as the declaration `let {r} === X;`",
-            r = selected.return_slot_name
-        ),
+        RestrictedOverloadFailureKind::RetiredAliasSemantics,
+        "declaration alias semantics are retired; `===` syntax does not create or forward a semantic identity",
     )
 }
 

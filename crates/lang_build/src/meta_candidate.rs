@@ -219,7 +219,7 @@ pub enum CanonicalArgAtomKind {
 ///
 /// `ApplicablePlaceholder` means the candidate passed the current placeholder
 /// arity and body-entry checks. It is not a completed invocation result and it
-/// does not produce a `MetaInvocationResult`, `MetaExpansionResult`, or
+/// does not produce an `InvocationResult`, `MetaExpansionResult`, or
 /// `NamespaceDelta`.
 ///
 /// `Deferred` means later pattern/type/policy/meta-invocation machinery must

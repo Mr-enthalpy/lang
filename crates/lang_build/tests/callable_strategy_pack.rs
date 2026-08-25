@@ -1,6 +1,7 @@
 use lang_build::{
-    decode_param_pattern, match_pack_param_pattern, pack_operand_is_admissible, OverloadArgShape,
-    PackOperandClass, PatternLayerOrder, RestrictedParamPattern, SpecificityTuple,
+    pack_operand_is_admissible, solve_parameter_product_relation, CallableOwnerPlacement,
+    LocalCallableIdentity, OverloadArgShape, PackOperandClass, PackageId, PatternLayerOrder,
+    PatternRelationContext, SemanticOwnerGraph, SpecificityTuple,
 };
 use lang_syntax::{
     normalize_program, validate_pack_pattern_element_level, NormBindingSlot, NormDecl, NormExpr,
@@ -40,6 +41,8 @@ fn arg(index: usize) -> OverloadArgShape {
         type_symbol_id: None,
         value_type: None,
         pattern_value: None,
+        type_core_observation: None,
+        complete_type_observation: None,
         effective_view: None,
         semantic_value: None,
         is_value: false,
@@ -48,6 +51,16 @@ fn arg(index: usize) -> OverloadArgShape {
 }
 
 fn source_parameter(source: &str) -> NormPatternElem {
+    source_closure(source)
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters[0]
+        .clone()
+}
+
+fn source_closure(source: &str) -> lang_syntax::NormClosure {
     let parsed = lang_syntax::parse(source);
     assert!(
         parsed.diagnostics.is_empty(),
@@ -61,13 +74,19 @@ fn source_parameter(source: &str) -> NormPatternElem {
     let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() else {
         panic!("expected closure initializer");
     };
-    closure
-        .head
-        .as_ref()
-        .unwrap()
-        .formal_frame()
-        .explicit_parameters[0]
-        .clone()
+    closure.clone()
+}
+
+fn relation_context<'a>(closure: &lang_syntax::NormClosure) -> PatternRelationContext<'a> {
+    let mut owners = SemanticOwnerGraph::new();
+    let package = owners.package_root(PackageId(1), "pack-test");
+    let callable = owners.callable(
+        package,
+        LocalCallableIdentity(1),
+        CallableOwnerPlacement::Ordinary,
+    );
+    PatternRelationContext::for_source_callable(closure, callable, None)
+        .expect("normalized source callable has a Pattern root")
 }
 
 #[test]
@@ -110,30 +129,28 @@ fn normalized_pack_validation_is_per_structural_level() {
 
 #[test]
 fn pack_binding_captures_the_remainder_without_counting_its_length() {
-    let pattern = decode_param_pattern(&pack("args"));
-    assert!(matches!(
-        pattern,
-        RestrictedParamPattern::PackBinder { ref name, .. } if name == "args"
-    ));
-
-    let two = match_pack_param_pattern(&pattern, &[arg(0), arg(1)]).unwrap();
+    let closure = source_closure("let f = (self, ...args) -> r => { r };");
+    let params = closure
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters;
+    let context = relation_context(&closure);
+    let two = solve_parameter_product_relation(params, &[arg(0), arg(1)], &context).unwrap();
+    let two_hundred_args = (0..200).map(arg).collect::<Vec<_>>();
     let two_hundred =
-        match_pack_param_pattern(&pattern, &(0..200).map(arg).collect::<Vec<_>>()).unwrap();
+        solve_parameter_product_relation(params, &two_hundred_args, &context).unwrap();
     assert_eq!(two.specificity, two_hundred.specificity);
     assert_eq!(two.specificity.explicit_pack_match_count, 1);
-    assert_eq!(two.pack_bindings["args"].len(), 2);
-    assert_eq!(two_hundred.pack_bindings["args"].len(), 200);
+    assert_eq!(two.named_pack_bindings()["args"].len(), 2);
+    assert_eq!(two_hundred.named_pack_bindings()["args"].len(), 200);
 }
 
 #[test]
 fn bare_product_pack_is_not_a_restricted_structured_match() {
     let source = source_parameter("let f = (self, ...(a, b)) -> r => { r };");
-    let pattern = decode_param_pattern(&source);
-    assert!(matches!(
-        pattern,
-        RestrictedParamPattern::Unsupported { ref reason, .. }
-            if reason.contains("non-canonical")
-    ));
+    let _ = source;
 
     let parsed = lang_syntax::parse("let f = (self, ...(a, b)) -> r => { r };");
     let invalid = lang_syntax::normalize_and_validate_patterns(&parsed.program)

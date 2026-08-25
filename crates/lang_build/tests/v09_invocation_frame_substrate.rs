@@ -1,10 +1,9 @@
+use lang_build::SemanticValueId;
 use lang_build::{
-    ArgProductShape, CallableCandidateKind, CallableFrameShape, CandidateBuildIdentityPlaceholder,
-    CandidatePolicyPlanes, CoreMetaFunction, ExecutionEnv, FlattenedProductInvariant,
+    ArgProductShape, CallableFrameShape, ExecutionEnv, FlattenedProductInvariant,
     FlattenedProductObject, InvocationCallableRef, InvocationExecutionEnv, InvocationFrame,
-    InvocationLookupEnv, MetaInvocationInput, ParameterShape, PolicyEnv, PreparedCallableCandidate,
-    ProductAtom, Provenance, ReceiverTypeRef, ReturnTargetShape, SelfPosition, SelfPositionSource,
-    SelfSlotKind, SymbolId,
+    InvocationLookupEnv, PolicyEnv, ProductAtom, Provenance, ReceiverTypeRef, ReturnTargetShape,
+    SelfPosition, SelfPositionSource, SelfSlotKind, SymbolId, TypeValueId,
 };
 
 fn empty_arg_product_shape() -> ArgProductShape {
@@ -27,26 +26,6 @@ fn unit_arg_product_shape() -> ArgProductShape {
             no_direct_product_atom_remains: true,
         },
     })
-}
-
-fn candidate_with_arg_product(arg_product_shape: ArgProductShape) -> PreparedCallableCandidate {
-    PreparedCallableCandidate {
-        callee_symbol_id: SymbolId(42),
-        callee_name: "callable".to_string(),
-        callee_primitive: Some(CoreMetaFunction::IdentityType),
-        callable_kind: CallableCandidateKind::MetaFunction,
-        arg_product_shape,
-        parameter_shape: ParameterShape::deferred(Provenance::new("test parameter shape")),
-        policy_planes: CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::OpenStatic,
-            symbol_visibility_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
-            demanded_execution: ExecutionEnv::OpenStatic,
-            body_entry_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
-            return_object_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
-        },
-        build_identity: CandidateBuildIdentityPlaceholder::default(),
-        provenance: Provenance::new("prepared callable candidate"),
-    }
 }
 
 #[test]
@@ -90,9 +69,10 @@ fn self_is_not_counted_in_explicit_argument_product() {
     let original_user_arity = explicit_user_product.arity;
 
     let frame = InvocationFrame::new(
-        InvocationCallableRef::Symbol(SymbolId(7)),
-        SelfPosition::placeholder_from_callable_symbol(
-            SymbolId(7),
+        InvocationCallableRef::SemanticValue(SemanticValueId(7)),
+        SelfPosition::from_semantic_associated_call_entry(
+            SemanticValueId(70),
+            TypeValueId(71),
             Provenance::new("resolved callable self"),
         ),
         explicit_user_product,
@@ -156,30 +136,13 @@ fn associated_call_entry_binds_slot_zero_to_the_invoked_object_type() {
 }
 
 #[test]
-fn meta_invocation_helper_preserves_candidate_arg_shape() {
-    let candidate = candidate_with_arg_product(unit_arg_product_shape());
-    let input = MetaInvocationInput::new(candidate.clone(), Provenance::new("meta input"));
-
-    let frame = input
-        .placeholder_invocation_frame()
-        .expect("placeholder invocation frame");
-
-    assert_eq!(frame.explicit_arg_product, candidate.arg_product_shape);
-    assert_eq!(frame.self_position.slot_index, 0);
-    assert_eq!(
-        frame.self_position.source,
-        SelfPositionSource::PlaceholderFromCallableSymbol(candidate.callee_symbol_id)
-    );
-}
-
-#[test]
 fn invocation_frame_rejects_nonzero_self_position() {
     let result = InvocationFrame::new(
-        InvocationCallableRef::Symbol(SymbolId(9)),
+        InvocationCallableRef::SemanticValue(SemanticValueId(9)),
         SelfPosition {
             slot_index: 1,
-            source: SelfPositionSource::PlaceholderFromCallableSymbol(SymbolId(9)),
-            receiver_type: ReceiverTypeRef::UnresolvedFromCaller,
+            source: SelfPositionSource::SemanticAssociatedValue(SemanticValueId(90)),
+            receiver_type: ReceiverTypeRef::TypeValue(TypeValueId(91)),
             provenance: Provenance::new("invalid self position"),
         },
         empty_arg_product_shape(),
@@ -198,9 +161,10 @@ fn invocation_frame_rejects_arg_shape_arity_atom_mismatch() {
     mismatched_product.arity = 1;
 
     let result = InvocationFrame::new(
-        InvocationCallableRef::Symbol(SymbolId(10)),
-        SelfPosition::placeholder_from_callable_symbol(
-            SymbolId(10),
+        InvocationCallableRef::SemanticValue(SemanticValueId(10)),
+        SelfPosition::from_semantic_associated_call_entry(
+            SemanticValueId(100),
+            TypeValueId(101),
             Provenance::new("resolved callable self"),
         ),
         mismatched_product,

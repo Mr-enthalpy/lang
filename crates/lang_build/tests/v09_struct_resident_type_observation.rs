@@ -1,5 +1,5 @@
 //! Struct resident type atoms consume the type OBSERVATION
-//! `Addr(Norm_type(type_value, place))`, never the bare `TypeValueId`
+//! `Addr(Norm(Core(tau)))` at the resident place, never the bare `TypeValueId`
 //! projection.
 //!
 //! The two boundary directions of the observation identity:
@@ -48,10 +48,15 @@ fn generated_struct(
     provenance: &str,
 ) -> lang_build::GeneratedTypeDefinitionValue {
     let outcome = invoke_struct(world, spelling, provenance).expect("struct invocation succeeds");
-    let InvocationOutcome::ClusterSymbol(result) = outcome else {
-        panic!("struct returns one cluster construction");
+    let InvocationOutcome::SingleMember(result) = outcome else {
+        panic!("struct returns one complete type value");
     };
-    result.generated_types[0].clone()
+    let lang_build::OrdinaryReturnedValue::CompleteType(returned) = result.returned else {
+        panic!("struct semantic result is complete tau");
+    };
+    returned
+        .construction_material
+        .expect("compatibility projection retains replayable struct material")
 }
 
 /// One resident pattern `((<field type> <binder>) <top>) |> struct` expressed
@@ -107,7 +112,7 @@ fn same_type_value_with_different_observed_val2_separates_struct_resident_atoms(
 
     // First observation: the resident's Val2 is still empty.
     let before = world
-        .canonical_type_observation_address(resident_type, Some(uint8_place))
+        .canonical_type_core_observation_address(resident_type, Some(uint8_place))
         .expect("acyclic Val2 normalizes");
     let a = generated_struct(
         &mut world,
@@ -117,7 +122,7 @@ fn same_type_value_with_different_observed_val2_separates_struct_resident_atoms(
     assert_eq!(
         a.fields[0].type_observation,
         CanonicalTypeObservation::Observed(before),
-        "the generated field consumes the observed Addr(Norm_type), not the bare TypeValueId"
+        "the generated field consumes the observed Core(tau), not the bare TypeValueId"
     );
     assert_eq!(
         a.canonical_pattern_value(),
@@ -130,7 +135,7 @@ fn same_type_value_with_different_observed_val2_separates_struct_resident_atoms(
         .associate_existing_symbol_in_place(uint8_place, "f", injected_member)
         .expect("the injection records a Val2 name on the resident's own object");
     let after = world
-        .canonical_type_observation_address(resident_type, Some(uint8_place))
+        .canonical_type_core_observation_address(resident_type, Some(uint8_place))
         .expect("acyclic Val2 normalizes");
     assert_ne!(
         before, after,

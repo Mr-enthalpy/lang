@@ -1,17 +1,14 @@
-use crate::policy_pair::{FormalPolicyPattern, Phase, PolicyStage, ValueMutability};
+use crate::policy_pair::{FormalPolicyPattern, OutputModeDemand, Phase, PolicyMode, PolicyStage};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MutabilityPattern {
-    Const,
-    Unspecified,
-    Mut,
-}
+/// Compatibility type name. The semantic carrier is the concrete three-point
+/// PolicyMode and has no unspecified state.
+pub type MutabilityPattern = PolicyMode;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyOverloadCandidate<I> {
     pub id: I,
     pub formal_frame: MutabilityFormalFrame,
-    pub result_policy: Option<MutabilityPattern>,
+    pub result_policy: PolicyMode,
     pub is_delete: bool,
 }
 
@@ -31,9 +28,9 @@ pub struct MutabilityActualFrame {
     /// Mutability view of the caller object injected into invocation-frame
     /// slot 0. For a standalone function this is the function object; for an
     /// associated `()` entry it is the object whose type supplied that entry.
-    pub caller_value: ValueMutability,
+    pub caller_value: PolicyMode,
     /// Mutability views supplied by the explicit call-site Product.
-    pub explicit_arguments: Vec<ValueMutability>,
+    pub explicit_arguments: Vec<PolicyMode>,
 }
 
 impl<I> PolicyOverloadCandidate<I> {
@@ -44,11 +41,11 @@ impl<I> PolicyOverloadCandidate<I> {
     pub fn from_formal_patterns(
         id: I,
         parameters: &[FormalPolicyPattern],
-        result_policy: Option<MutabilityPattern>,
+        result_policy: PolicyMode,
         is_delete: bool,
     ) -> Self {
         let mut patterns = parameters.iter().map(formal_mutability_pattern);
-        let self_pattern = patterns.next().unwrap_or(MutabilityPattern::Unspecified);
+        let self_pattern = patterns.next().unwrap_or(PolicyMode::Plain);
         Self {
             id,
             formal_frame: MutabilityFormalFrame {
@@ -62,11 +59,7 @@ impl<I> PolicyOverloadCandidate<I> {
 }
 
 fn formal_mutability_pattern(formal: &FormalPolicyPattern) -> MutabilityPattern {
-    match formal.mutability {
-        Some(ValueMutability::Const) => MutabilityPattern::Const,
-        Some(ValueMutability::Mut) => MutabilityPattern::Mut,
-        None => MutabilityPattern::Unspecified,
-    }
+    formal.mode
 }
 
 /// A candidate after heterogeneous entry enumeration. The phase-aware selector
@@ -91,7 +84,7 @@ pub enum PolicyOverloadSelection<I> {
 pub fn select_by_mutability_product<I: Clone>(
     candidates: &[PolicyOverloadCandidate<I>],
     actual_frame: &MutabilityActualFrame,
-    target_result: Option<ValueMutability>,
+    target_result: OutputModeDemand,
 ) -> PolicyOverloadSelection<I> {
     let admissible = candidates
         .iter()
@@ -123,7 +116,7 @@ pub fn select_by_mutability_product<I: Clone>(
 pub fn select_policy_overload<I: Clone>(
     candidates: &[PhaseOverloadCandidate<I>],
     actual_frame: &MutabilityActualFrame,
-    target_result: Option<ValueMutability>,
+    target_result: OutputModeDemand,
     phase: Phase,
 ) -> PolicyOverloadSelection<I> {
     let admissible = candidates
@@ -161,7 +154,7 @@ fn phase_dominates<I>(
     better: &PhaseOverloadCandidate<I>,
     worse: &PhaseOverloadCandidate<I>,
     actual_frame: &MutabilityActualFrame,
-    target_result: Option<ValueMutability>,
+    target_result: OutputModeDemand,
     phase: Phase,
 ) -> bool {
     let Some(mut strictly_better) = compare_frames(
@@ -172,20 +165,14 @@ fn phase_dominates<I>(
         return false;
     };
 
-    if let Some(target_result) = target_result {
-        let better_result = better
-            .candidate
-            .result_policy
-            .unwrap_or(MutabilityPattern::Unspecified);
-        let worse_result = worse
-            .candidate
-            .result_policy
-            .unwrap_or(MutabilityPattern::Unspecified);
-        match compare_position(better_result, worse_result, target_result) {
-            PositionPreference::Worse => return false,
-            PositionPreference::Better => strictly_better = true,
-            PositionPreference::Equal => {}
-        }
+    match compare_position(
+        better.candidate.result_policy,
+        worse.candidate.result_policy,
+        target_result.mode(),
+    ) {
+        PositionPreference::Worse => return false,
+        PositionPreference::Better => strictly_better = true,
+        PositionPreference::Equal => {}
     }
 
     match compare_stage_specificity(better.stage, worse.stage, phase) {
@@ -221,7 +208,7 @@ fn dominates<I>(
     better: &PolicyOverloadCandidate<I>,
     worse: &PolicyOverloadCandidate<I>,
     actual_frame: &MutabilityActualFrame,
-    target_result: Option<ValueMutability>,
+    target_result: OutputModeDemand,
 ) -> bool {
     let Some(mut strictly_better) =
         compare_frames(&better.formal_frame, &worse.formal_frame, actual_frame)
@@ -229,18 +216,14 @@ fn dominates<I>(
         return false;
     };
 
-    if let Some(target_result) = target_result {
-        let better_result = better
-            .result_policy
-            .unwrap_or(MutabilityPattern::Unspecified);
-        let worse_result = worse
-            .result_policy
-            .unwrap_or(MutabilityPattern::Unspecified);
-        match compare_position(better_result, worse_result, target_result) {
-            PositionPreference::Worse => return false,
-            PositionPreference::Better => strictly_better = true,
-            PositionPreference::Equal => {}
-        }
+    match compare_position(
+        better.result_policy,
+        worse.result_policy,
+        target_result.mode(),
+    ) {
+        PositionPreference::Worse => return false,
+        PositionPreference::Better => strictly_better = true,
+        PositionPreference::Equal => {}
     }
 
     strictly_better
@@ -290,7 +273,7 @@ enum PositionPreference {
 fn compare_position(
     left: MutabilityPattern,
     right: MutabilityPattern,
-    actual: ValueMutability,
+    actual: PolicyMode,
 ) -> PositionPreference {
     let left_rank = mutability_preference_rank(left, actual);
     let right_rank = mutability_preference_rank(right, actual);
@@ -305,16 +288,14 @@ fn compare_position(
 ///
 /// Migration endpoint adapters must reuse this relation rather than treating
 /// opposite const/mut Patterns as hard-incompatible Policy domains.
-pub(crate) fn mutability_preference_rank(
-    pattern: MutabilityPattern,
-    actual: ValueMutability,
-) -> u8 {
-    match (pattern, actual) {
-        (MutabilityPattern::Const, ValueMutability::Const)
-        | (MutabilityPattern::Mut, ValueMutability::Mut) => 2,
-        (MutabilityPattern::Unspecified, _) => 1,
-        (MutabilityPattern::Const, ValueMutability::Mut)
-        | (MutabilityPattern::Mut, ValueMutability::Const) => 0,
+pub(crate) fn mutability_preference_rank(pattern: PolicyMode, demand: PolicyMode) -> u8 {
+    match (pattern, demand) {
+        (PolicyMode::Const, PolicyMode::Const)
+        | (PolicyMode::Plain, PolicyMode::Plain)
+        | (PolicyMode::Mut, PolicyMode::Mut) => 2,
+        (PolicyMode::Plain, PolicyMode::Const | PolicyMode::Mut)
+        | (PolicyMode::Const | PolicyMode::Mut, PolicyMode::Plain) => 1,
+        (PolicyMode::Const, PolicyMode::Mut) | (PolicyMode::Mut, PolicyMode::Const) => 0,
     }
 }
 

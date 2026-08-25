@@ -3,16 +3,19 @@ use lang_syntax::{NormExpr, NormForm, NormNavComponent, NormOrigin, NormProductE
 use crate::{
     model::{
         CoreMetaFunction, Diagnostic, FieldProjection, NamespaceNodeId, NamespaceNodeKind,
-        PolicyEnv, PolicyFlag, Provenance, ResolverCode, SymbolKind, SymbolObject, SymbolPayload,
+        PolicyFlag, Provenance, ResolverCode, SymbolKind, SymbolObject, SymbolPayload,
         VerificationPrimitive,
     },
-    semantic_name_index::{BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex},
+    semantic_name_index::{BuildError, ResolverContext},
+    semantic_owner::SemanticSymbolIdentity,
+    semantic_world::SemanticWorld,
+    PolicyStage,
 };
 
 const VERIFY_ERROR_PREFIX: &str = "source verification error:";
 
 pub fn evaluate_source_verifications(
-    snapshot: &SemanticNameIndex,
+    world: &SemanticWorld,
     namespace: NamespaceNodeId,
     program: &NormProgram,
     context: &ResolverContext,
@@ -25,12 +28,12 @@ pub fn evaluate_source_verifications(
             NormForm::Expr(expr) | NormForm::TailValue(expr) => expr,
             _ => continue,
         };
-        let Some(invocation) = VerificationInvocation::from_expr(snapshot, context, expr) else {
+        let Some(invocation) = VerificationInvocation::from_expr(world, context, expr) else {
             continue;
         };
         match invocation {
             Ok(invocation) => {
-                if let Err(diagnostic) = invocation.evaluate(snapshot, context) {
+                if let Err(diagnostic) = invocation.evaluate(world, context) {
                     diagnostics.push(diagnostic);
                 }
             }
@@ -50,7 +53,7 @@ struct VerificationInvocation {
 
 impl VerificationInvocation {
     fn from_expr(
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
         expr: &NormExpr,
     ) -> Option<Result<Self, Diagnostic>> {
@@ -61,12 +64,7 @@ impl VerificationInvocation {
         }
 
         let entry_path = terms.first()?.as_path()?;
-        let entry_symbol = match snapshot.capability().resolve_with_policy(
-            &entry_path.components,
-            context,
-            ResolveExpectation::AnyUnique,
-            PolicyEnv::OpenStatic,
-        ) {
+        let entry_symbol = match resolve_open_static_projected(world, context, &entry_path) {
             Ok(symbol) => symbol,
             Err(diagnostic) => match diagnostic.code {
                 Some(ResolverCode::Unresolved) | None => return None,
@@ -112,24 +110,20 @@ impl VerificationInvocation {
             .unwrap_or_else(|| expr_origin(expr))
             .clone();
         let operation_context = ResolverContext::new(node);
-        let operation_symbol = match snapshot.capability().resolve_with_policy(
-            &operation_path.components,
-            &operation_context,
-            ResolveExpectation::MetaFunction,
-            PolicyEnv::OpenStatic,
-        ) {
-            Ok(symbol) => symbol,
-            Err(diagnostic) => {
-                return Some(Err(source_verification_error(
-                    &operation_origin,
-                    format!(
-                        "unknown verification operation `{}`: {}",
-                        operation_path.source_order_display(),
-                        diagnostic.message
-                    ),
-                )));
-            }
-        };
+        let operation_symbol =
+            match resolve_open_static_projected(world, &operation_context, &operation_path) {
+                Ok(symbol) => symbol,
+                Err(diagnostic) => {
+                    return Some(Err(source_verification_error(
+                        &operation_origin,
+                        format!(
+                            "unknown verification operation `{}`: {}",
+                            operation_path.source_order_display(),
+                            diagnostic.message
+                        ),
+                    )));
+                }
+            };
 
         let SymbolPayload::MetaFunction(meta_function) = &operation_symbol.payload else {
             return Some(Err(source_verification_error(
@@ -158,59 +152,51 @@ impl VerificationInvocation {
         }))
     }
 
-    fn evaluate(
-        &self,
-        snapshot: &SemanticNameIndex,
-        context: &ResolverContext,
-    ) -> Result<(), Diagnostic> {
+    fn evaluate(&self, world: &SemanticWorld, context: &ResolverContext) -> Result<(), Diagnostic> {
         match self.primitive {
-            VerificationPrimitive::Exists => self.expect_exists(snapshot, context, true),
-            VerificationPrimitive::NotExists => self.expect_exists(snapshot, context, false),
+            VerificationPrimitive::Exists => self.expect_exists(world, context, true),
+            VerificationPrimitive::NotExists => self.expect_exists(world, context, false),
             VerificationPrimitive::ResolvesAs | VerificationPrimitive::Kind => {
-                self.expect_kind(snapshot, context)
+                self.expect_kind(world, context)
             }
-            VerificationPrimitive::NotResolves => self.expect_not_resolves(snapshot, context),
-            VerificationPrimitive::NamespaceKind => self.expect_namespace_kind(snapshot, context),
-            VerificationPrimitive::FieldNames => self.expect_field_names(snapshot, context),
-            VerificationPrimitive::HasField => self.expect_has_field(snapshot, context),
-            VerificationPrimitive::FieldProjection => {
-                self.expect_field_projection(snapshot, context)
-            }
-            VerificationPrimitive::FieldOwner => self.expect_field_owner(snapshot, context),
-            VerificationPrimitive::FieldType => self.expect_field_type(snapshot, context),
+            VerificationPrimitive::NotResolves => self.expect_not_resolves(world, context),
+            VerificationPrimitive::NamespaceKind => self.expect_namespace_kind(world, context),
+            VerificationPrimitive::FieldNames => self.expect_field_names(world, context),
+            VerificationPrimitive::HasField => self.expect_has_field(world, context),
+            VerificationPrimitive::FieldProjection => self.expect_field_projection(world, context),
+            VerificationPrimitive::FieldOwner => self.expect_field_owner(world, context),
+            VerificationPrimitive::FieldType => self.expect_field_type(world, context),
             VerificationPrimitive::Policy => {
-                self.expect_policy(snapshot, context, PolicyCheck::Present)
+                self.expect_policy(world, context, PolicyCheck::Present)
             }
             VerificationPrimitive::NotPolicy => {
-                self.expect_policy(snapshot, context, PolicyCheck::Absent)
+                self.expect_policy(world, context, PolicyCheck::Absent)
             }
             VerificationPrimitive::BodyEntryPolicy => {
-                self.expect_callable_policy(snapshot, context, CallablePolicyPlane::BodyEntry, true)
+                self.expect_callable_policy(world, context, CallablePolicyPlane::BodyEntry, true)
             }
-            VerificationPrimitive::NotBodyEntryPolicy => self.expect_callable_policy(
-                snapshot,
-                context,
-                CallablePolicyPlane::BodyEntry,
-                false,
-            ),
+            VerificationPrimitive::NotBodyEntryPolicy => {
+                self.expect_callable_policy(world, context, CallablePolicyPlane::BodyEntry, false)
+            }
             VerificationPrimitive::ReturnPolicy => {
-                self.expect_callable_policy(snapshot, context, CallablePolicyPlane::Return, true)
+                self.expect_callable_policy(world, context, CallablePolicyPlane::Return, true)
             }
             VerificationPrimitive::NotReturnPolicy => {
-                self.expect_callable_policy(snapshot, context, CallablePolicyPlane::Return, false)
+                self.expect_callable_policy(world, context, CallablePolicyPlane::Return, false)
             }
         }
     }
 
     fn expect_exists(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
         should_exist: bool,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(1)?;
         let path = self.arg_path(0)?;
-        let exists = resolve_any_role(snapshot, context, &path).is_ok();
+        let exists = resolve_any_role(world, context, &path).is_ok()
+            || resolve_semantic_namespace(world, context, &path).is_ok();
         match (should_exist, exists) {
             (true, true) | (false, false) => Ok(()),
             (true, false) => Err(self.error(format!(
@@ -226,16 +212,15 @@ impl VerificationInvocation {
 
     fn expect_not_resolves(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(1)?;
         let path = self.arg_path(0)?;
-        match snapshot.capability().resolve_with_expectation(
-            &path.components,
-            context,
-            ResolveExpectation::AnyUnique,
-        ) {
+        match resolve_semantic_identity(world, context, &path)
+            .map(|_| ())
+            .or_else(|_| resolve_semantic_namespace(world, context, &path).map(|_| ()))
+        {
             Ok(_) => Err(self.error(format!(
                 "expected `{}` not to resolve",
                 path.source_order_display()
@@ -246,13 +231,23 @@ impl VerificationInvocation {
 
     fn expect_kind(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let expected = self.arg_symbol_kind(1)?;
-        let symbol = resolve_expected_kind(snapshot, context, &path, expected).map_err(|_| {
+        if expected == SymbolKind::Namespace {
+            return resolve_semantic_namespace(world, context, &path)
+                .map(|_| ())
+                .map_err(|_| {
+                    self.error(format!(
+                        "expected `{}` to resolve as namespace",
+                        path.source_order_display()
+                    ))
+                });
+        }
+        let symbol = resolve_expected_kind(world, context, &path, expected).map_err(|_| {
             self.error(format!(
                 "expected `{}` to resolve as {}",
                 path.source_order_display(),
@@ -273,31 +268,28 @@ impl VerificationInvocation {
 
     fn expect_namespace_kind(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let expected = self.arg_namespace_kind(1)?;
-        let symbol = snapshot
-            .capability()
-            .resolve_with_expectation(
-                &path.components,
-                context,
-                ResolveExpectation::NamespaceSubspace,
-            )
-            .map_err(|_| {
-                self.error(format!(
-                    "expected `{}` to resolve as namespace",
-                    path.source_order_display()
-                ))
-            })?;
-        let actual = symbol.node_kind.ok_or_else(|| {
+        let namespace = resolve_semantic_namespace(world, context, &path).map_err(|_| {
             self.error(format!(
-                "expected `{}` to carry a namespace node kind",
+                "expected `{}` to resolve as namespace",
                 path.source_order_display()
             ))
         })?;
+        let actual = world
+            .namespace_index()
+            .node(namespace)
+            .map(|node| node.kind)
+            .ok_or_else(|| {
+                self.error(format!(
+                    "expected `{}` to carry a namespace node kind",
+                    path.source_order_display()
+                ))
+            })?;
         if actual == expected {
             Ok(())
         } else {
@@ -312,12 +304,12 @@ impl VerificationInvocation {
 
     fn expect_field_names(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_min_arity(1)?;
         let path = self.arg_path(0)?;
-        let type_object = self.resolve_type_payload(snapshot, context, &path)?;
+        let type_object = self.resolve_type_payload(world, context, &path)?;
         let expected = self
             .args
             .iter()
@@ -339,13 +331,13 @@ impl VerificationInvocation {
 
     fn expect_has_field(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let field_name = self.arg_name(1)?;
-        let type_object = self.resolve_type_payload(snapshot, context, &path)?;
+        let type_object = self.resolve_type_payload(world, context, &path)?;
         if type_object
             .field_names
             .iter()
@@ -362,13 +354,13 @@ impl VerificationInvocation {
 
     fn expect_field_projection(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let expected = self.arg_field_projection(1)?;
-        let field = self.resolve_field_payload(snapshot, context, &path)?;
+        let field = self.resolve_field_payload(world, context, &path)?;
         if field.projection == expected {
             Ok(())
         } else {
@@ -383,21 +375,22 @@ impl VerificationInvocation {
 
     fn expect_field_owner(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
         let field_path = self.arg_path(0)?;
         let owner_path = self.arg_path(1)?;
-        let field = self.resolve_field_payload(snapshot, context, &field_path)?;
-        let owner = resolve_expected_kind(snapshot, context, &owner_path, SymbolKind::Type)
-            .map_err(|_| {
+        let field = self.resolve_field_payload(world, context, &field_path)?;
+        let owner =
+            resolve_expected_kind(world, context, &owner_path, SymbolKind::Type).map_err(|_| {
                 self.error(format!(
                     "expected `{}` to resolve as type",
                     owner_path.source_order_display()
                 ))
             })?;
-        let field_owner_type = snapshot
+        let field_owner_type = world
+            .namespace_index()
             .symbol(field.owner_type_symbol_id)
             .and_then(|symbol| match &symbol.payload {
                 SymbolPayload::Type(type_object) => Some(type_object.represented_type),
@@ -431,14 +424,14 @@ impl VerificationInvocation {
 
     fn expect_field_type(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
         let field_path = self.arg_path(0)?;
         let type_path = self.arg_path(1)?;
-        let field = self.resolve_field_payload(snapshot, context, &field_path)?;
-        let field_type = resolve_expected_kind(snapshot, context, &type_path, SymbolKind::Type)
+        let field = self.resolve_field_payload(world, context, &field_path)?;
+        let field_type = resolve_expected_kind(world, context, &type_path, SymbolKind::Type)
             .map_err(|_| {
                 self.error(format!(
                     "expected `{}` to resolve as type",
@@ -467,20 +460,25 @@ impl VerificationInvocation {
 
     fn expect_policy(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
         check: PolicyCheck,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let flag = self.arg_policy_flag(1)?;
-        let symbol = resolve_any_role(snapshot, context, &path).map_err(|_| {
+        let identity = resolve_semantic_identity(world, context, &path).map_err(|_| {
             self.error(format!(
                 "expected `{}` to resolve for policy verification",
                 path.source_order_display()
             ))
         })?;
-        let contains = symbol.policy_metadata.policy_set.contains(flag);
+        let contains = semantic_symbol_contains_policy(world, identity, flag).ok_or_else(|| {
+            self.error(format!(
+                "expected `{}` to carry a semantic Policy view",
+                path.source_order_display()
+            ))
+        })?;
         match (check, contains) {
             (PolicyCheck::Present, true) | (PolicyCheck::Absent, false) => Ok(()),
             (PolicyCheck::Present, false) => Err(self.error(format!(
@@ -498,7 +496,7 @@ impl VerificationInvocation {
 
     fn expect_callable_policy(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
         plane: CallablePolicyPlane,
         should_contain: bool,
@@ -506,7 +504,7 @@ impl VerificationInvocation {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let flag = self.arg_policy_flag(1)?;
-        let symbol = resolve_callable_symbol(snapshot, context, &path).map_err(|_| {
+        let symbol = resolve_callable_symbol(world, context, &path).map_err(|_| {
             self.error(format!(
                 "expected `{}` to resolve as callable",
                 path.source_order_display()
@@ -552,12 +550,12 @@ impl VerificationInvocation {
 
     fn resolve_type_payload(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
         path: &SourcePath,
     ) -> Result<crate::model::TypeObject, Diagnostic> {
         let symbol =
-            resolve_expected_kind(snapshot, context, path, SymbolKind::Type).map_err(|_| {
+            resolve_expected_kind(world, context, path, SymbolKind::Type).map_err(|_| {
                 self.error(format!(
                     "expected `{}` to resolve as type",
                     path.source_order_display()
@@ -574,11 +572,11 @@ impl VerificationInvocation {
 
     fn resolve_field_payload(
         &self,
-        snapshot: &SemanticNameIndex,
+        world: &SemanticWorld,
         context: &ResolverContext,
         path: &SourcePath,
     ) -> Result<crate::model::FieldObject, Diagnostic> {
-        let symbol = resolve_expected_kind(snapshot, context, path, SymbolKind::FieldFunction)
+        let symbol = resolve_expected_kind(world, context, path, SymbolKind::FieldFunction)
             .map_err(|_| {
                 self.error(format!(
                     "expected `{}` to resolve as field_function",
@@ -793,41 +791,29 @@ fn components_to_path(components: &[NormNavComponent]) -> Option<SourcePath> {
 }
 
 fn resolve_any_role(
-    snapshot: &SemanticNameIndex,
+    world: &SemanticWorld,
     context: &ResolverContext,
     path: &SourcePath,
 ) -> Result<SymbolObject, Diagnostic> {
-    let capability = snapshot.capability();
-    match capability.resolve_with_expectation(&path.components, context, ResolveExpectation::Object)
-    {
-        Ok(symbol) => Ok(symbol),
-        Err(object_error) => capability
-            .resolve_with_expectation(
-                &path.components,
-                context,
-                ResolveExpectation::NamespaceSubspace,
+    let identity = resolve_semantic_identity(world, context, path)?;
+    world
+        .projected_symbol_object(identity)
+        .cloned()
+        .ok_or_else(|| {
+            Diagnostic::hard_error(
+                "selected semantic Symbol has no declaration projection",
+                None,
             )
-            .map_err(|_| object_error),
-    }
+        })
 }
 
 fn resolve_expected_kind(
-    snapshot: &SemanticNameIndex,
+    world: &SemanticWorld,
     context: &ResolverContext,
     path: &SourcePath,
     kind: SymbolKind,
 ) -> Result<SymbolObject, Diagnostic> {
-    let expectation = match kind {
-        SymbolKind::Namespace => ResolveExpectation::NamespaceSubspace,
-        SymbolKind::Type => ResolveExpectation::TypeObject,
-        SymbolKind::MetaFunction => ResolveExpectation::MetaFunction,
-        SymbolKind::FieldFunction => ResolveExpectation::FieldFunction,
-        SymbolKind::Alias | SymbolKind::Placeholder => ResolveExpectation::Object,
-    };
-    let symbol =
-        snapshot
-            .capability()
-            .resolve_with_expectation(&path.components, context, expectation)?;
+    let symbol = resolve_any_role(world, context, path)?;
     if symbol.kind == kind {
         Ok(symbol)
     } else {
@@ -839,20 +825,148 @@ fn resolve_expected_kind(
 }
 
 fn resolve_callable_symbol(
-    snapshot: &SemanticNameIndex,
+    world: &SemanticWorld,
     context: &ResolverContext,
     path: &SourcePath,
 ) -> Result<SymbolObject, Diagnostic> {
-    snapshot
-        .capability()
-        .resolve_with_expectation(&path.components, context, ResolveExpectation::FieldFunction)
-        .or_else(|_| {
-            snapshot.capability().resolve_with_expectation(
-                &path.components,
-                context,
-                ResolveExpectation::MetaFunction,
+    let symbol = resolve_any_role(world, context, path)?;
+    if matches!(
+        symbol.kind,
+        SymbolKind::FieldFunction | SymbolKind::MetaFunction
+    ) {
+        Ok(symbol)
+    } else {
+        Err(Diagnostic::hard_error(
+            "resolved semantic Symbol is not callable",
+            Some(symbol.provenance),
+        ))
+    }
+}
+
+fn resolve_semantic_identity(
+    world: &SemanticWorld,
+    context: &ResolverContext,
+    path: &SourcePath,
+) -> Result<SemanticSymbolIdentity, Diagnostic> {
+    world.resolve_symbol_path(
+        &path.components,
+        context.current_namespace,
+        &context.explicit_mount_roots,
+        &context.default_mounts,
+    )
+}
+
+fn resolve_semantic_namespace(
+    world: &SemanticWorld,
+    context: &ResolverContext,
+    path: &SourcePath,
+) -> Result<NamespaceNodeId, Diagnostic> {
+    world.resolve_namespace_path(
+        &path.components,
+        context.current_namespace,
+        &context.explicit_mount_roots,
+        &context.default_mounts,
+    )
+}
+
+/// Resolve the compiler-owned verification entry and operations using typed
+/// Symbol identity, while filtering each bare-name scope by its semantic
+/// member views. A runtime-only local binding therefore cannot shadow the
+/// static core verification namespace. The compatibility SymbolObject is
+/// projected only after identity selection.
+fn resolve_open_static_projected(
+    world: &SemanticWorld,
+    context: &ResolverContext,
+    path: &SourcePath,
+) -> Result<SymbolObject, Diagnostic> {
+    let identity = if path.components.len() == 1 {
+        let name = &path.components[0];
+        world
+            .bare_name_scope_chain(context.current_namespace, &context.default_mounts)
+            .into_iter()
+            .filter_map(|scope| world.symbol_in_namespace(scope, name))
+            .find(|symbol| semantic_symbol_is_open_static(world, symbol.identity))
+            .map(|symbol| symbol.identity)
+            .ok_or_else(|| {
+                Diagnostic::hard_error(
+                    format!("resolver error: unresolved static symbol `{name}`"),
+                    None,
+                )
+                .with_code(ResolverCode::Unresolved)
+            })?
+    } else {
+        let identity = resolve_semantic_identity(world, context, path)?;
+        if !semantic_symbol_is_open_static(world, identity) {
+            return Err(Diagnostic::hard_error(
+                format!(
+                    "resolver error: symbol `{}` is not visible in open-static evaluation",
+                    path.source_order_display()
+                ),
+                None,
+            )
+            .with_code(ResolverCode::Unresolved));
+        }
+        identity
+    };
+    world
+        .projected_symbol_object(identity)
+        .cloned()
+        .ok_or_else(|| {
+            Diagnostic::hard_error(
+                "selected semantic Symbol has no declaration projection",
+                None,
             )
         })
+}
+
+fn semantic_symbol_is_open_static(world: &SemanticWorld, identity: SemanticSymbolIdentity) -> bool {
+    let Some(symbol) = world.symbol(identity) else {
+        return false;
+    };
+    if !symbol.member_views.is_empty() {
+        return symbol.member_views.iter().any(|view| {
+            let stages = if view.value.is_some() {
+                &view.value_policy.stages
+            } else {
+                &view.pattern_policy.stages
+            };
+            stages
+                .iter()
+                .any(|stage| matches!(stage, PolicyStage::Meta | PolicyStage::Compile))
+        });
+    }
+    world
+        .projected_symbol_object(identity)
+        .is_some_and(|symbol| {
+            symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta)
+                || symbol
+                    .policy_metadata
+                    .policy_set
+                    .contains(PolicyFlag::Compile)
+        })
+}
+
+fn semantic_symbol_contains_policy(
+    world: &SemanticWorld,
+    identity: SemanticSymbolIdentity,
+    flag: PolicyFlag,
+) -> Option<bool> {
+    let symbol = world.symbol(identity)?;
+    if flag == PolicyFlag::Export || symbol.member_views.is_empty() {
+        return world
+            .projected_symbol_object(identity)
+            .map(|projection| projection.policy_metadata.policy_set.contains(flag));
+    }
+    let stage = match flag {
+        PolicyFlag::Meta => PolicyStage::Meta,
+        PolicyFlag::Compile => PolicyStage::Compile,
+        PolicyFlag::Seal => PolicyStage::Seal,
+        PolicyFlag::Runtime => PolicyStage::Runtime,
+        PolicyFlag::Export => unreachable!("handled above"),
+    };
+    Some(symbol.member_views.iter().any(|view| {
+        view.value_policy.stages.contains(stage) || view.pattern_policy.stages.contains(stage)
+    }))
 }
 
 fn parse_symbol_kind(name: &str) -> Option<SymbolKind> {
@@ -861,7 +975,6 @@ fn parse_symbol_kind(name: &str) -> Option<SymbolKind> {
         "type" => Some(SymbolKind::Type),
         "meta_function" => Some(SymbolKind::MetaFunction),
         "field_function" => Some(SymbolKind::FieldFunction),
-        "alias" => Some(SymbolKind::Alias),
         "placeholder" => Some(SymbolKind::Placeholder),
         _ => None,
     }
@@ -873,7 +986,6 @@ fn symbol_kind_label(kind: SymbolKind) -> &'static str {
         SymbolKind::Type => "type",
         SymbolKind::MetaFunction => "meta_function",
         SymbolKind::FieldFunction => "field_function",
-        SymbolKind::Alias => "alias",
         SymbolKind::Placeholder => "placeholder",
     }
 }
@@ -993,10 +1105,13 @@ mod tests {
         delta.insert_symbol(verify_node, operation);
 
         let snapshot = snapshot.install_delta(delta).expect("install test graph");
+        let mut world = SemanticWorld::new("test");
+        world.bind_toolchain_root(root);
+        world.replace_namespace_index(snapshot);
         let parsed = lang_syntax::parse("verify exists T;");
         let program = lang_syntax::normalize_program(&parsed.program);
         let diagnostics =
-            evaluate_source_verifications(&snapshot, root, &program, &ResolverContext::new(root))
+            evaluate_source_verifications(&world, root, &program, &ResolverContext::new(root))
                 .expect("verification evaluation");
 
         assert!(diagnostics.iter().any(|diagnostic| diagnostic

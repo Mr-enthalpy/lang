@@ -561,9 +561,13 @@ fn bind_generated_type_definition_value(
     // Root, NormalizedStructBody)`); the raw definition-id projection is a
     // standalone-binding fallback for unregistered expansion, never a root
     // shared across meta functions.
-    let represented_type = value
-        .canonical_type
-        .unwrap_or(crate::TypeValueId(value.type_definition_id.0));
+    // Migration-only lookup material for the legacy private meta result.
+    // This is deliberately domain-separated from both TypeDefinition identity
+    // and Symbol identity.  Whole semantic type identity is the complete tau
+    // observation installed by SemanticWorld, never this lookup key.
+    let represented_type = value.canonical_type.unwrap_or(crate::TypeValueId(
+        value.type_definition_id.0 ^ 0x6f2d_79b9_a341_c8d5,
+    ));
     let type_namespace_id = delta.allocate_node_id();
     let value = if value.pattern_heads.is_some() {
         value
@@ -785,7 +789,11 @@ fn bind_generated_construction_value(
         )),
         payload: SymbolPayload::Type(TypeObject {
             carrier_symbol_id: declared_id,
-            represented_type: crate::TypeValueId(gcv.construction_instance_id.0),
+            // Migration-only lookup material for this legacy private result.
+            // Construction identity and type lookup identity must not collapse.
+            represented_type: crate::TypeValueId(
+                gcv.construction_instance_id.0 ^ 0x38c4_15ea_d792_b60f,
+            ),
             owner_pattern_head: None,
             fields: Vec::new(),
             field_names: Vec::new(),

@@ -31,12 +31,13 @@ mod support;
 use lang_build::{
     derived_cluster_policy, extract_single_call_site, policy_or, CanonicalFullNavigation,
     CanonicalPatternAtom, CanonicalPatternNorm, CanonicalPatternValue, CanonicalTypeObservation,
-    CanonicalValueAddr, ClusterSymbolResult, CompilationWorld, ConstructionAuthority,
-    ConstructionState, ConstructionWindow, InvocationOutcome, MetaCallableIdentity,
-    MetaInstanceKey, MetaInstanceRoot, NamespaceNodeId, OrdinaryInvocationContext,
-    PatternComponentPolicy, Phase, PolicyPair, PolicyResultEntry, PolicyStage, Provenance,
-    ReturnShape, SemanticValueId, SemanticValuePayload, SemanticWorld, StageSet, SymbolId,
-    TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
+    CanonicalValueAddr, ClusterConstructionId, ClusterSymbolResult, CompilationWorld,
+    ConstructionAuthority, ConstructionEvaluationContext, ConstructionState, ConstructionWindow,
+    Diagnostic, InvocationOutcome, MetaCallableIdentity, MetaInstanceKey, MetaInstanceRoot,
+    NamespaceNodeId, OrdinaryInvocationContext, PatternComponentPolicy, Phase, PolicyPair,
+    PolicyResultEntry, PolicyStage, Provenance, ReturnShape, SemanticValueId, SemanticValuePayload,
+    SemanticWorld, StageSet, SymbolId, TypeValueId, ValueComponentPolicy, ValueMutability,
+    ValuePresence, WritableContext,
 };
 use std::collections::BTreeSet;
 use support::{build_single_fixture_world, initializer_from_source};
@@ -60,6 +61,189 @@ fn invoke_make(
         panic!("meta-declared source callable returns a cluster construction");
     };
     meta
+}
+
+/// Test-only source-compatibility facade.  Production APIs deliberately no
+/// longer expose state-only `inject_associated_*` entry points: this adapter
+/// builds the explicit evaluation context and then calls the canonical
+/// member-creation/OpenHere boundaries.
+trait ConstructionTestAdapter {
+    #[allow(clippy::too_many_arguments)]
+    fn inject_associated_function_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        member_name: &str,
+        construction_event: u32,
+        backing_declaration: SymbolId,
+        closure: &lang_syntax::NormClosure,
+        outer_p1_explicit: Option<&lang_build::ExplicitP1Selection>,
+        function_policy: &PolicyPair,
+        complete_result_policy: PolicyPair,
+        return_shape: ReturnShape,
+        provenance: Provenance,
+    ) -> Result<SemanticValueId, Diagnostic>;
+
+    fn inject_associated_type_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        member_name: &str,
+        view: PolicyResultEntry<SemanticValueId, lang_build::PatternValueId>,
+        member_type_value: TypeValueId,
+        provenance: Provenance,
+    ) -> Result<(), Diagnostic>;
+
+    fn inject_associated_existing_value_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        member_name: &str,
+        view: PolicyResultEntry<SemanticValueId, lang_build::PatternValueId>,
+        provenance: Provenance,
+    ) -> Result<(), Diagnostic>;
+
+    fn inject_pattern_value_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        local_navigation: CanonicalFullNavigation,
+        resident: CanonicalPatternValue,
+        provenance: Provenance,
+    ) -> Result<CanonicalPatternValue, Diagnostic>;
+}
+
+fn open_here_test_diagnostic(
+    failure: lang_build::OpenHereFailure,
+    provenance: Provenance,
+) -> Diagnostic {
+    let message = match failure {
+        lang_build::OpenHereFailure::WindowClosed(_) => {
+            "construction is frozen or already delivered at its construction boundary".to_string()
+        }
+        lang_build::OpenHereFailure::UnknownPattern(_)
+        | lang_build::OpenHereFailure::NoLiveConstruction(_) => {
+            "target is not owned by the current construction authority".to_string()
+        }
+        lang_build::OpenHereFailure::AuthorityMismatch(_) => {
+            "current construction authority does not own the target".to_string()
+        }
+    };
+    Diagnostic::hard_error(message, Some(provenance))
+}
+
+impl ConstructionTestAdapter for SemanticWorld {
+    fn inject_associated_function_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        member_name: &str,
+        construction_event: u32,
+        backing_declaration: SymbolId,
+        closure: &lang_syntax::NormClosure,
+        outer_p1_explicit: Option<&lang_build::ExplicitP1Selection>,
+        function_policy: &PolicyPair,
+        complete_result_policy: PolicyPair,
+        return_shape: ReturnShape,
+        provenance: Provenance,
+    ) -> Result<SemanticValueId, Diagnostic> {
+        let authority = self
+            .open_cluster(cluster)
+            .map(|construction| construction.authority.clone())
+            .ok_or_else(|| Diagnostic::hard_error("construction does not exist", None))?;
+        let context = ConstructionEvaluationContext::current(authority);
+        let creation = self
+            .can_create_member_here(target_pattern, &context)
+            .map_err(|failure| open_here_test_diagnostic(failure, provenance.clone()))?;
+        self.create_associated_function_member(
+            &creation,
+            member_name,
+            construction_event,
+            backing_declaration,
+            closure,
+            outer_p1_explicit,
+            function_policy,
+            complete_result_policy,
+            return_shape,
+            provenance,
+        )
+    }
+
+    fn inject_associated_type_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        member_name: &str,
+        view: PolicyResultEntry<SemanticValueId, lang_build::PatternValueId>,
+        member_type_value: TypeValueId,
+        provenance: Provenance,
+    ) -> Result<(), Diagnostic> {
+        let authority = self
+            .open_cluster(cluster)
+            .map(|construction| construction.authority.clone())
+            .ok_or_else(|| Diagnostic::hard_error("construction does not exist", None))?;
+        let context = ConstructionEvaluationContext::current(authority);
+        let creation = self
+            .can_create_member_here(target_pattern, &context)
+            .map_err(|failure| open_here_test_diagnostic(failure, provenance.clone()))?;
+        self.create_associated_type_member(
+            &creation,
+            member_name,
+            view,
+            member_type_value,
+            provenance,
+        )
+    }
+
+    fn inject_associated_existing_value_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        member_name: &str,
+        view: PolicyResultEntry<SemanticValueId, lang_build::PatternValueId>,
+        provenance: Provenance,
+    ) -> Result<(), Diagnostic> {
+        let authority = self
+            .open_cluster(cluster)
+            .map(|construction| construction.authority.clone())
+            .ok_or_else(|| Diagnostic::hard_error("construction does not exist", None))?;
+        let context = ConstructionEvaluationContext::current(authority);
+        let creation = self
+            .can_create_member_here(target_pattern, &context)
+            .map_err(|failure| open_here_test_diagnostic(failure, provenance.clone()))?;
+        self.create_associated_existing_value_member(&creation, member_name, view, provenance)
+    }
+
+    fn inject_pattern_value_member(
+        &mut self,
+        cluster: ClusterConstructionId,
+        target_pattern: lang_build::PatternValueId,
+        local_navigation: CanonicalFullNavigation,
+        resident: CanonicalPatternValue,
+        provenance: Provenance,
+    ) -> Result<CanonicalPatternValue, Diagnostic> {
+        let authority = self
+            .open_cluster(cluster)
+            .map(|construction| construction.authority.clone())
+            .ok_or_else(|| Diagnostic::hard_error("construction does not exist", None))?;
+        let context = ConstructionEvaluationContext::current(authority);
+        let open_here = self
+            .open_here(target_pattern, &context)
+            .map_err(|failure| open_here_test_diagnostic(failure, provenance.clone()))?;
+        let place = self
+            .pattern_place(target_pattern)
+            .expect("test Pattern has a carrier place");
+        let mut writable = WritableContext::default();
+        writable.grant_place(place);
+        SemanticWorld::inject_extended_pattern_value(
+            self,
+            &open_here,
+            local_navigation,
+            resident,
+            &writable,
+            provenance,
+        )
+    }
 }
 
 /// End-to-end acceptance shape: local binding, Pattern material, and the
@@ -373,6 +557,7 @@ fn use_for_val1_freezes_and_only_boundary_delivery_finalizes() {
         owner,
         provenance.clone(),
     );
+    world.force_pattern_cluster_ownership(pattern, cid);
     assert!(
         world
             .contribute_cluster_member_view(cid, pure_p_view())

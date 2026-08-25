@@ -51,7 +51,7 @@ fn runtime_only_value_compatibility_filter_does_not_define_symbol_existence() {
     // The unfiltered resolver establishes symbol identity first. The legacy
     // PolicyEnv adapter can still return a filtered diagnostic, but canonical
     // phase exposure must not reinterpret that adapter result as nonexistence.
-    let world = build_single_fixture_world("user_runtime_values", "app");
+    let world = build_single_fixture_world_with_uint8_transport("user_runtime_values", "app");
     let context = world.package_context();
     let capability = world.namespace_projection().capability();
 

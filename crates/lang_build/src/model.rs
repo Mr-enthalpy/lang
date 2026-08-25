@@ -64,7 +64,6 @@ pub enum SourceCategory {
     TypeAssociatedNamespace,
     MetaInstantiationVirtualLayer,
     GeneratedChild,
-    Alias,
     CoreBootstrap,
     DependencyMount,
 }
@@ -76,7 +75,6 @@ pub enum SymbolKind {
     Type,
     MetaFunction,
     FieldFunction,
-    Alias,
     Placeholder,
 }
 
@@ -364,6 +362,10 @@ pub enum ResolverCode {
     UnsupportedOverloadTarget,
     UnsupportedCandidateShape,
     UnsupportedParameterPattern,
+    /// Alias syntax is preserved by the frontend, but declaration aliases
+    /// are not part of the canonical semantic model.  A semantic evaluator
+    /// must reject the form instead of installing a forwarding identity.
+    RetiredAliasSemantics,
     ReturnOutsideReturnableContext,
     ReturnTargetNotActive,
     AmbiguousReturnTarget,
@@ -549,7 +551,6 @@ impl SymbolObject {
             SymbolKind::Type
             | SymbolKind::MetaFunction
             | SymbolKind::FieldFunction
-            | SymbolKind::Alias
             | SymbolKind::Placeholder => ChildNameRole::Object,
         }
     }
@@ -571,7 +572,6 @@ pub enum SymbolPayload {
     Type(TypeObject),
     MetaFunction(MetaFunctionObject),
     FieldFunction(FieldObject),
-    Alias { target: SymbolId },
     Placeholder,
 }
 

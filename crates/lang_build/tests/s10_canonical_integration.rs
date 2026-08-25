@@ -13,12 +13,14 @@ use lang_build::{
     extract_single_call_site, BuildManifest, CompilationWorld, ExecutionEnv, InvocationOutcome,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
     PatternClusterOwner, PatternComponentPolicy, Phase, PolicyEnv, PolicyPair, PolicyStage,
-    PolicyTransitionRequest, Provenance, ResolveExpectation, ReturnShape, SemanticOwnerKind,
-    SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy,
-    ValueMutability, ValuePresence,
+    PolicyTransitionRequest, Provenance, ResolveExpectation, ResolverCode, ReturnShape,
+    SemanticOwnerKind, SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot,
+    ValueComponentPolicy, ValueMutability, ValuePresence,
 };
 
-use support::{build_single_fixture_world, fixture_root, initializer_from_source};
+use support::{
+    build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
+};
 
 /// Extract the pipeline trace from an invocation result, success or failure.
 /// Exposure regressions are trace facts and must stay observable even when
@@ -33,6 +35,7 @@ fn trace_of<'a>(
         Err(OrdinaryInvocationFailure::NoTargetValues { trace })
         | Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { trace, .. })
         | Err(OrdinaryInvocationFailure::Ambiguous { trace, .. })
+        | Err(OrdinaryInvocationFailure::DynamicLegality { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedDelete { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedBody { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedCoreBody { trace, .. })
@@ -40,6 +43,7 @@ fn trace_of<'a>(
         | Err(OrdinaryInvocationFailure::ResultTypeHasNoPattern { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationResultTypeChanged { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed { trace })
+        | Err(OrdinaryInvocationFailure::Residual { trace, .. })
         | Err(OrdinaryInvocationFailure::CyclicVal2 { trace, .. }) => trace,
     }
 }
@@ -247,10 +251,8 @@ fn s10_03_member_view_policies_do_not_union_across_members() {
 }
 
 // ---------------------------------------------------------------------------
-// ④ A pure-P (non-callable) member is a legal cluster member but never an
-// invocation candidate: it is dropped from C0, so Cc finds no callable.
-// (Value-bearing non-callable members are filtered at Cc by the same
-// per-member walk — `callable_values ⊆ c2` is pinned in test ②.)
+// ④ A complete type is an ordinary first-class value but is not callable
+// unless its complete callspace contains associated `()`.
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -265,10 +267,10 @@ fn s10_04_non_callable_member_is_no_candidate_but_stays_legal_member() {
         "T carries a legal pure-P member"
     );
     assert!(
-        t.member_views.iter().all(|view| view.value.is_none()),
-        "T's members are pure-P views (no callable value)"
+        t.member_views.iter().any(|view| view.value.is_some()),
+        "T carries its complete type value in addition to compatibility pure-P projection"
     );
-    assert!(t.sibling_vals.is_empty());
+    assert_eq!(t.sibling_vals.len(), 1);
 
     let result = invoke(
         &mut world,
@@ -279,8 +281,8 @@ fn s10_04_non_callable_member_is_no_candidate_but_stays_legal_member() {
     assert!(result.is_err(), "a pure-P-only cluster is not callable");
     let trace = trace_of(&result);
     assert!(
-        trace.c0_target_values.is_empty(),
-        "pure-P member views are legal members but never invocation candidates"
+        !trace.c0_target_values.is_empty(),
+        "the complete type is enumerated as an ordinary target value"
     );
     assert!(trace.callable_values.is_empty());
 }
@@ -353,22 +355,26 @@ fn s10_06_privileged_struct_uses_the_normal_overload_path() {
         "S10 ⑥ privileged struct",
     )
     .expect("struct is selected through the ordinary spine");
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
-        panic!("struct declares a cluster-symbol return shape");
+    let InvocationOutcome::SingleMember(result) = result else {
+        panic!("struct declares one complete-type result");
     };
-    assert_eq!(meta.trace.c0_target_values.len(), 1);
-    assert_eq!(meta.trace.c1_visible_values, meta.trace.c0_target_values);
-    assert_eq!(meta.trace.c3_call_entries.len(), 1);
+    assert_eq!(result.trace.c0_target_values.len(), 1);
+    assert_eq!(
+        result.trace.c1_visible_values,
+        result.trace.c0_target_values
+    );
+    assert_eq!(result.trace.c3_call_entries.len(), 1);
     assert!(
-        meta.trace.selected.is_some(),
+        result.trace.selected.is_some(),
         "privilege applies only after ordinary selection"
     );
-    assert_eq!(meta.construction.member_views.len(), 1);
-    let view = &meta.construction.member_views[0];
-    assert!(view.value.is_none());
+    let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
+        panic!("struct semantic result is complete tau");
+    };
+    assert!(result.complete_result[0].value.is_some());
     let owner = world
         .semantic_world()
-        .pattern_owner(view.pattern)
+        .pattern_owner(returned.pattern)
         .expect("generated pattern owner")
         .owner;
     // Direct `struct` never creates a `MetaInstance(struct, arguments)`
@@ -411,7 +417,7 @@ fn s10_07_source_meta_constructs_self_rooted_cluster() {
         function.return_shape
     };
     assert_eq!(shape_of(&world, "make_two"), ReturnShape::ClusterSymbol);
-    assert_eq!(shape_of(&world, "struct"), ReturnShape::ClusterSymbol);
+    assert_eq!(shape_of(&world, "struct"), ReturnShape::SingleType);
 
     // The legal meta body constructs its type member under its own
     // meta-instance root (`let r = (t first, u second) |> struct; r;`).
@@ -701,34 +707,19 @@ fn s10_12_meta_body_without_terminal_does_not_deliver() {
 }
 
 // ---------------------------------------------------------------------------
-// ⑬ `let A === uint8;` is an alias declaration: lookup forwards to the
-// original target symbol, unlike the fresh-Symbol `let T: type = uint8;`
-// binding pinned in ①.
+// ⑬ Alias syntax remains available to Raw/Normalized AST consumers, but it
+// has no semantic forwarding authority.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_13_alias_declaration_forwards_lookup_to_target() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
-    let uint8 = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8");
-    let t = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "T")
-        .expect("fresh binding T");
-    let a = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "A")
-        .expect("alias A resolves through forwarding");
-
-    // Alias member binding: lookup lands on the original target identity.
+fn s10_13_alias_declaration_is_rejected_without_installing_forwarding_authority() {
+    let error = build_fixture_error("alias_semantics_retired", "app");
+    assert_eq!(error.diagnostics.len(), 1);
     assert_eq!(
-        a.identity, uint8.identity,
-        "alias lookup forwards to the original target symbol \
-         (structural writes act on the target, not on a copy)"
+        error.diagnostics[0].code,
+        Some(ResolverCode::RetiredAliasSemantics)
     );
-    // Fresh binding: `T` is its own Symbol carrying the same type value.
-    assert_ne!(t.identity, uint8.identity);
-    assert_eq!(t.pure_p_pattern(), uint8.pure_p_pattern());
+    assert!(error.diagnostics[0]
+        .message
+        .contains("does not install or forward a semantic Symbol"));
 }

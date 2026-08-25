@@ -356,7 +356,10 @@ fn distinct_meta_callables_under_one_carrier_symbol_get_distinct_roots() {
 /// SymbolId can enter it.
 #[test]
 fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
-    use lang_build::{canonical_literal_norm, CanonicalNormForm, CanonicalProductConstructor};
+    use lang_build::{
+        canonical_literal_norm, CanonicalNormForm, CanonicalObjectNorm, CanonicalPatternNorm,
+        CanonicalProductConstructor, CanonicalVal1Norm,
+    };
     use lang_syntax::NormLiteralKind;
 
     let mut world = SemanticWorld::new("unit");
@@ -365,20 +368,23 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
         selected_call_entry: SemanticValueId(70),
     };
     let provenance = Provenance::new("norm key");
+    let product = |members| {
+        CanonicalNormForm::Object(CanonicalObjectNorm {
+            val1: Some(CanonicalVal1Norm::Product { members }),
+            pattern: CanonicalPatternNorm::Product {
+                constructor: CanonicalProductConstructor::CallParentheses,
+            },
+            val2: Default::default(),
+        })
+    };
 
     // Normalization-equivalent spellings intern to one address …
     let dec = world.intern_canonical_value(canonical_literal_norm(NormLiteralKind::Int, "4096"));
     let hex = world.intern_canonical_value(canonical_literal_norm(NormLiteralKind::Int, "0x1000"));
     assert_eq!(dec, hex, "Addr(4096) = Addr(0x1000)");
     // … so the argument Products — and the instance keys — agree as well.
-    let args_dec = world.intern_canonical_value(CanonicalNormForm::Product {
-        constructor: CanonicalProductConstructor::CallParentheses,
-        members: vec![dec],
-    });
-    let args_hex = world.intern_canonical_value(CanonicalNormForm::Product {
-        constructor: CanonicalProductConstructor::CallParentheses,
-        members: vec![hex],
-    });
+    let args_dec = world.intern_canonical_value(product(vec![dec]));
+    let args_hex = world.intern_canonical_value(product(vec![hex]));
     assert_eq!(
         args_dec, args_hex,
         "Addr(Product(4096)) = Addr(Product(0x1000))"
@@ -389,10 +395,7 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
 
     // A different normalized argument changes the key.
     let other = world.intern_canonical_value(canonical_literal_norm(NormLiteralKind::Int, "2"));
-    let args_other = world.intern_canonical_value(CanonicalNormForm::Product {
-        constructor: CanonicalProductConstructor::CallParentheses,
-        members: vec![other],
-    });
+    let args_other = world.intern_canonical_value(product(vec![other]));
     assert_ne!(
         key_dec,
         compute_canonical_meta_instance_key(selected, args_other, provenance.clone())
@@ -401,14 +404,8 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
     // The invocation parentheses are a Product, so the argument tuple is
     // order-sensitive at the top level: swapping two distinct arguments
     // produces a different Product address and a different key.
-    let ab = world.intern_canonical_value(CanonicalNormForm::Product {
-        constructor: CanonicalProductConstructor::CallParentheses,
-        members: vec![dec, other],
-    });
-    let ba = world.intern_canonical_value(CanonicalNormForm::Product {
-        constructor: CanonicalProductConstructor::CallParentheses,
-        members: vec![other, dec],
-    });
+    let ab = world.intern_canonical_value(product(vec![dec, other]));
+    let ba = world.intern_canonical_value(product(vec![other, dec]));
     assert_ne!(ab, ba, "Product argument order is positional identity");
     assert_ne!(
         compute_canonical_meta_instance_key(selected, ab, provenance.clone()),
@@ -448,31 +445,14 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
     // defined on them, never through a digest.
     assert_eq!(key_dec.callable, selected);
     assert_eq!(key_dec.arguments, args_dec);
-
-    // Opaque fresh addresses never merge: material without a stable normal
-    // form can only under-merge.
-    let fresh_a = world.fresh_opaque_canonical_address();
-    let fresh_b = world.fresh_opaque_canonical_address();
-    assert_ne!(fresh_a, fresh_b);
-    let args_fresh_a = world.intern_canonical_value(CanonicalNormForm::Product {
-        constructor: CanonicalProductConstructor::CallParentheses,
-        members: vec![fresh_a],
-    });
-    let args_fresh_b = world.intern_canonical_value(CanonicalNormForm::Product {
-        constructor: CanonicalProductConstructor::CallParentheses,
-        members: vec![fresh_b],
-    });
-    assert_ne!(
-        compute_canonical_meta_instance_key(selected, args_fresh_a, provenance.clone()),
-        compute_canonical_meta_instance_key(selected, args_fresh_b, provenance)
-    );
 }
 
 /// Already-materialized simple literal values normalize by
 /// CONTENT, not by value identity: two distinct `SimpleLiteral` semantic
 /// values with normalization-equivalent spellings share one canonical
 /// argument address (and merge with the un-materialized literal spelling),
-/// while content-free `PlainValue` material stays identity-opaque.
+/// while content-free `PlainValue` material is rejected rather than using an
+/// allocation identity as semantic content.
 #[test]
 fn materialized_simple_literals_normalize_by_content_not_identity() {
     use lang_build::{canonical_literal_norm, ProductAtom, RawArgShape};
@@ -533,7 +513,7 @@ fn materialized_simple_literals_normalize_by_content_not_identity() {
     let hex_addr = address_of(&mut world, hex);
     assert_eq!(
         dec_addr, hex_addr,
-        "Norm(Val1, P) is content normalization, never OpaqueValue(id)"
+        "complete Object Norm is content normalization, never allocation identity"
     );
 
     // The materialized content stays SEPARATE from the un-materialized
@@ -557,15 +537,21 @@ fn materialized_simple_literals_normalize_by_content_not_identity() {
         .expect("literal value installs against the registered type");
     assert_ne!(dec_addr, address_of(&mut world, other));
 
-    // Content-free plain values keep the identity-stable opaque form: one
-    // value re-normalizes to one address, two values never merge.
+    // Content-free plain values cannot form complete Norm_Val1.  The
+    // normalizer fails explicitly rather than turning allocation identity
+    // into a fourth Object axis.
     let plain_a = world
         .install_plain_value(TypeValueId(0), policy.clone(), provenance.clone())
         .expect("plain value installs against the registered type");
-    let plain_b = world
-        .install_plain_value(TypeValueId(0), policy, provenance.clone())
-        .expect("plain value installs against the registered type");
-    let plain_a_addr = address_of(&mut world, plain_a);
-    assert_eq!(plain_a_addr, address_of(&mut world, plain_a));
-    assert_ne!(plain_a_addr, address_of(&mut world, plain_b));
+    let plain_atom = ProductAtom::SemanticValue {
+        value: plain_a,
+        type_value: TypeValueId(0),
+        mutability: ValueMutability::Const,
+        provenance: provenance.clone(),
+    };
+    let plain_raw = RawArgShape::from_product_atom(0, &plain_atom);
+    let diagnostic = world
+        .canonical_argument_address(&plain_raw, &plain_atom)
+        .expect_err("unobservable Val1 must not acquire an opaque canonical address");
+    assert!(diagnostic.message.contains("PlainValue"));
 }

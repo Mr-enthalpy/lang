@@ -1,7 +1,8 @@
 use lang_build::{
     elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
-    BoundReturnEvent, PreservedReturnReason, ResolvedReturnTarget, ResolverCode, ReturnFrameOwner,
-    ReturnTargetBindingReport,
+    elaborate_return_targets_in_returnable_closure_with_resolver, BoundReturnEvent,
+    ExplicitReturnTargetResolution, PreservedReturnReason, ResolvedReturnTarget, ResolverCode,
+    ReturnFrameOwner, ReturnTargetBindingReport,
 };
 use lang_syntax::{
     NormClosure, NormDecl, NormExpr, NormForm, NormLiteralKind, NormOrigin, NormPattern,
@@ -42,6 +43,22 @@ fn bind_closure(source: &str) -> ReturnTargetBindingReport {
     )
 }
 
+fn bind_closure_with_own_self_identity(source: &str) -> ReturnTargetBindingReport {
+    let closure = closure_initializer(source);
+    let callable_owner = closure
+        .semantic_owner
+        .expect("normalized closure has callable owner")
+        .id;
+    elaborate_return_targets_in_returnable_closure_with_resolver(
+        &closure,
+        ReturnFrameOwner::SourceCallable {
+            symbol_id: None,
+            name: Some("f".to_string()),
+        },
+        &move |_target: &NormExpr| ExplicitReturnTargetResolution::CallableSelf(callable_owner),
+    )
+}
+
 fn active_frame_id(event: &BoundReturnEvent) -> usize {
     match event.resolved_target {
         ResolvedReturnTarget::ActiveFrame(frame_id) => frame_id.0,
@@ -78,8 +95,13 @@ let f = (self, x: int): runtime -> r: int => {
         "return Self is anchored to the callable-local lexical owner"
     );
     assert_eq!(
-        report.frames[0].self_identity.as_ref().unwrap().name,
-        "self"
+        report.frames[0]
+            .self_identity
+            .as_ref()
+            .unwrap()
+            .display_name
+            .as_deref(),
+        Some("self")
     );
     assert_eq!(report.bound_events.len(), 1);
     assert_eq!(
@@ -207,7 +229,7 @@ let f = (self): runtime -> r: _ => {
 
 #[test]
 fn explicit_self_return_matches_active_self_frame() {
-    let report = bind_closure(
+    let report = bind_closure_with_own_self_identity(
         r#"
 let f = (self): runtime -> r: int => {
     1 |> (self return);
@@ -230,7 +252,7 @@ let f = (self): runtime -> r: int => {
 
 #[test]
 fn first_written_formal_is_self_even_when_its_name_is_not_self() {
-    let report = bind_closure(
+    let report = bind_closure_with_own_self_identity(
         r#"
 let f = (callable, x): runtime -> r: int => {
     x |> (callable return);
@@ -240,8 +262,13 @@ let f = (callable, x): runtime -> r: int => {
 
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
     assert_eq!(
-        report.frames[0].self_identity.as_ref().unwrap().name,
-        "callable"
+        report.frames[0]
+            .self_identity
+            .as_ref()
+            .unwrap()
+            .display_name
+            .as_deref(),
+        Some("callable")
     );
     assert_eq!(report.bound_events.len(), 1);
     assert_eq!(
@@ -252,12 +279,17 @@ let f = (callable, x): runtime -> r: int => {
 
 #[test]
 fn explicit_self_return_does_not_fall_back_to_nearest_without_matching_self() {
-    let report = bind_closure(
+    let closure = closure_initializer(
         r#"
 let f = (): runtime -> r: int => {
     1 |> (self return);
 };
 "#,
+    );
+    let report = elaborate_return_targets_in_returnable_closure_with_resolver(
+        &closure,
+        ReturnFrameOwner::AnonymousClosure,
+        &|_target: &NormExpr| ExplicitReturnTargetResolution::NotActive,
     );
 
     assert!(report.bound_events.is_empty());
@@ -294,7 +326,21 @@ fn unsupported_explicit_return_target_form_is_diagnostic() {
         },
     };
 
-    let report = elaborate_return_targets_in_program(&normalized);
+    let closure = NormClosure {
+        semantic_owner: None,
+        placement: lang_syntax::NormClosurePlacement::Ordinary,
+        head: None,
+        body: lang_syntax::NormClosureBody::Block(normalized),
+        origin: NormOrigin::Generated {
+            rule: NormRule::Unsupported,
+            span: Span::at(0, 1, 1),
+        },
+    };
+    let report = elaborate_return_targets_in_returnable_closure_with_resolver(
+        &closure,
+        ReturnFrameOwner::AnonymousClosure,
+        &|_target: &NormExpr| ExplicitReturnTargetResolution::Unsupported,
+    );
 
     assert!(report.bound_events.is_empty());
     assert_eq!(report.diagnostics.len(), 1);
@@ -303,6 +349,43 @@ fn unsupported_explicit_return_target_form_is_diagnostic() {
         Some(ResolverCode::UnsupportedReturnTargetForm)
     );
     assert!(report.diagnostics[0].provenance.is_some());
+}
+
+#[test]
+fn unresolved_explicit_target_is_preserved_instead_of_matched_by_spelling() {
+    let report = bind_closure(
+        r#"
+let f = (self): runtime -> r: int => {
+    1 |> (self return);
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty());
+    assert!(report.bound_events.is_empty());
+    assert_eq!(report.preserved_unbound_events.len(), 1);
+    assert_eq!(
+        report.preserved_unbound_events[0].reason,
+        PreservedReturnReason::SemanticTargetResolutionRequired
+    );
+}
+
+#[test]
+fn resolved_callable_owner_not_target_spelling_selects_the_frame() {
+    let report = bind_closure_with_own_self_identity(
+        r#"
+let f = (written_self): runtime -> r: int => {
+    1 |> (completely_different_text return);
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty());
+    assert_eq!(report.bound_events.len(), 1);
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
 }
 
 #[test]

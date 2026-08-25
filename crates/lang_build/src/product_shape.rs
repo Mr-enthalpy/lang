@@ -209,6 +209,10 @@ pub struct RawArgShape {
     /// place(x)     ↦ Val2_x                (observation only)
     /// ```
     pub known_type_carrier_place: Option<ObjectPlaceId>,
+    /// Complete immutable `tau` snapshot carried by the resolved binding.
+    /// This is distinct from `known_type_observation`, which is the core-only
+    /// coordinate used by Pattern structural identity.
+    pub known_complete_type_observation: Option<CanonicalValueAddr>,
     /// The interned `Addr(Norm_type)` of this type argument's observation —
     /// the recursive P + Val2 normal form read at the carrier place — attached
     /// at a world-connected invocation boundary.
@@ -258,6 +262,7 @@ impl RawArgShape {
             known_first_order_type_value,
             known_type_member_view: None,
             known_type_carrier_place: None,
+            known_complete_type_observation: None,
             known_type_observation: None,
             known_semantic_value,
             known_value_mutability,
@@ -340,13 +345,6 @@ impl RawArgShape {
         self.with_value_class(RawArgValueClass::NonValue(kind))
     }
 
-    /// Compatibility constructor for a defining Type Symbol whose current
-    /// first-order value projection is derived directly from that Symbol.
-    pub fn as_type_object_with_type_symbol(self, symbol_id: SymbolId) -> Self {
-        let type_value = crate::identity::type_value_projection_from_type_symbol(symbol_id);
-        self.as_type_object_with_identity(symbol_id, type_value)
-    }
-
     /// Refine into `NonValue(TypeObject)` while keeping carrier Symbol and
     /// represented type value independent.
     ///
@@ -384,6 +382,7 @@ impl RawArgShape {
         carrier_symbol: Option<SymbolId>,
         member_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
         carrier_place: Option<ObjectPlaceId>,
+        complete_type_observation: Option<CanonicalValueAddr>,
     ) -> Self {
         let refined = self
             .with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
@@ -393,6 +392,7 @@ impl RawArgShape {
             known_type_symbol_id: carrier_symbol,
             known_type_member_view: member_view,
             known_type_carrier_place: carrier_place,
+            known_complete_type_observation: complete_type_observation,
             ..refined
         }
     }

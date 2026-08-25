@@ -34,6 +34,25 @@ fn invoke_struct(
     )
 }
 
+fn returned_struct_material(
+    outcome: &InvocationOutcome,
+) -> (
+    &lang_build::ReturnedCompleteType,
+    &lang_build::GeneratedTypeDefinitionValue,
+) {
+    let InvocationOutcome::SingleMember(result) = outcome else {
+        panic!("direct struct invocation returns one complete tau value");
+    };
+    let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
+        panic!("struct result must not expose private meta construction material as its value");
+    };
+    let material = returned
+        .construction_material
+        .as_ref()
+        .expect("the compatibility namespace installer retains replayable struct material");
+    (returned, material)
+}
+
 /// Declaration-path collision: meta evaluation is strictly left-to-right,
 /// so when the second `struct` generation collides, the first generation's
 /// binding symbol is already known and the hard error points at it.
@@ -70,7 +89,7 @@ fn second_direct_struct_invocation_collides_in_the_same_world() {
         "ambient collision: first generation",
     )
     .expect("first generation attaches to the ambient declaration environment");
-    assert!(matches!(first, InvocationOutcome::ClusterSymbol(_)));
+    assert!(matches!(first, InvocationOutcome::SingleMember(_)));
 
     let second = invoke_struct(
         &mut world,
@@ -121,10 +140,9 @@ fn canonical_struct_pattern(spelling: &str) -> CanonicalPatternValue {
             .expect("core semantic world builds");
     let outcome =
         invoke_struct(&mut world, spelling, "Pattern layer order").expect("struct invocation");
-    let InvocationOutcome::ClusterSymbol(result) = outcome else {
-        panic!("struct returns one cluster construction");
-    };
-    result.generated_types[0].canonical_pattern_value()
+    returned_struct_material(&outcome)
+        .1
+        .canonical_pattern_value()
 }
 
 #[test]
@@ -165,12 +183,10 @@ fn struct_accepts_a_named_empty_pattern_and_keeps_its_root_identity() {
         "named empty struct Pattern",
     )
     .expect("a named empty Pattern is a valid struct result");
-    let InvocationOutcome::ClusterSymbol(result) = outcome else {
-        panic!("struct returns one cluster construction");
-    };
-    assert!(result.generated_types[0].fields.is_empty());
+    let (_returned, generated) = returned_struct_material(&outcome);
+    assert!(generated.fields.is_empty());
     assert_eq!(
-        result.generated_types[0].canonical_pattern_value(),
+        generated.canonical_pattern_value(),
         lang_build::CanonicalPatternBuilder::named_root(
             lang_build::CanonicalFullNavigation::from_component("t")
         )
@@ -190,10 +206,7 @@ fn struct_treats_bare_sum_names_as_pure_patterns_not_fields() {
         "pure no-value sum Pattern",
     )
     .expect("a sum of pure Pattern names is valid struct input");
-    let InvocationOutcome::ClusterSymbol(result) = outcome else {
-        panic!("struct returns one cluster construction");
-    };
-    let generated = &result.generated_types[0];
+    let (_returned, generated) = returned_struct_material(&outcome);
     assert!(
         generated.fields.is_empty(),
         "pure Pattern names do not become value-bearing fields"
@@ -242,19 +255,16 @@ fn one_shot_inner_field_and_later_explicit_navigation_have_one_pattern_value() {
         "one-shot inherited inner navigation",
     )
     .expect("the one-shot named Pattern is a valid struct result");
-    let InvocationOutcome::ClusterSymbol(result) = outcome else {
-        panic!("struct returns one cluster construction");
-    };
-
-    let one_shot = result.generated_types[0].canonical_pattern_value();
+    let one_shot = returned_struct_material(&outcome)
+        .1
+        .canonical_pattern_value();
     // The one-shot struct crossed a world-connected invocation boundary, so
     // its resident leaf is an OBSERVED `Addr(Norm_type)`; interning is
     // content-idempotent, so replaying the observation yields that address.
-    let resident_observation = CanonicalTypeObservation::Observed(
-        world
-            .canonical_type_observation_address(resident_type, None)
-            .expect("uint8 type observation normalizes"),
-    );
+    let later_addr = world
+        .canonical_type_core_observation_address(resident_type, None)
+        .expect("uint8 type observation normalizes");
+    let resident_observation = CanonicalTypeObservation::Observed(later_addr);
     let mut later_injection =
         CanonicalPatternBuilder::named_root(CanonicalFullNavigation::from_component("t"));
     later_injection
@@ -316,11 +326,8 @@ fn generated_root(
     world: &CompilationWorld,
     outcome: &InvocationOutcome,
 ) -> (PatternValueId, TypeValueId) {
-    let InvocationOutcome::ClusterSymbol(meta) = outcome else {
-        panic!("direct struct invocation returns a cluster construction");
-    };
-    assert_eq!(meta.construction.member_views.len(), 1);
-    let pattern = meta.construction.member_views[0].pattern;
+    let (returned, _material) = returned_struct_material(outcome);
+    let pattern = returned.pattern;
     let type_value = world
         .semantic_world()
         .type_for_pattern(pattern)

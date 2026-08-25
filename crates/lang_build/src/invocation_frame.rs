@@ -177,7 +177,6 @@ impl InvocationFrame {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InvocationCallableRef {
-    Symbol(SymbolId),
     /// Ordinary associated `()` value selected from semantic Val2.
     SemanticValue(SemanticValueId),
     Placeholder,
@@ -192,15 +191,6 @@ pub struct SelfPosition {
 }
 
 impl SelfPosition {
-    pub fn placeholder_from_callable_symbol(symbol_id: SymbolId, provenance: Provenance) -> Self {
-        Self {
-            slot_index: SELF_SLOT_INDEX,
-            source: SelfPositionSource::PlaceholderFromCallableSymbol(symbol_id),
-            receiver_type: ReceiverTypeRef::UnresolvedFromCaller,
-            provenance,
-        }
-    }
-
     pub fn placeholder_from_call_entry(provenance: Provenance) -> Self {
         Self {
             slot_index: SELF_SLOT_INDEX,
@@ -257,7 +247,6 @@ pub enum ReceiverTypeRef {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelfPositionSource {
-    PlaceholderFromCallableSymbol(SymbolId),
     PlaceholderFromCallEntry,
     SemanticAssociatedValue(SemanticValueId),
     PrimitiveCoreObject,

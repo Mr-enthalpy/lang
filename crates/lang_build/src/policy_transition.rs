@@ -1,13 +1,11 @@
-//! Existing-view-first atomic runtime Policy-migration substrate.
+//! Existing-view-first same-Type Policy-migration substrate.
 //!
-//! This module is deliberately narrower than a generic conversion or
-//! demand-repair system. Ordinary Policy projection always runs first. Only a
-//! missing demand which accepts a runtime value branch may prepare one direct
-//! atomic migration from an existing static value view. The compiler mandates
-//! only the static-to-runtime stage edge. Other legal endpoint Policy
-//! coordinates, including value mutability, belong to the ordinary callable
-//! and its overload ordering; migration still cannot repair failed
-//! Type/Pattern applicability.
+//! Ordinary Policy projection always runs first.  An unmet, already-total
+//! target demand may prepare one direct authorized migration family.  The
+//! migration is selected by the ordinary overload pipeline; it never performs
+//! graph search, transitive chaining, or Type-changing conversion.  The
+//! bounded compile-to-runtime request remains only a compatibility constructor
+//! and the first connected family implementation.
 //!
 //! The candidate/result carriers below remain prototype algebra fixtures. The
 //! connected path lives in `semantic_world` + `ordinary_invocation`: it
@@ -28,8 +26,8 @@ use crate::{
     model::{Provenance, SymbolId},
     policy_overload::{maximal_candidates, mutability_preference_rank, MutabilityPattern},
     policy_pair::{
-        project_p1, P1Projection, PatternComponentPolicy, PolicyPair, PolicyResultEntry,
-        PolicyStage, StageSet, ValueMutability, ValuePresence,
+        project_p1, P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair,
+        PolicyResultEntry, PolicyStage, StageSet, ValueMutability, ValuePresence,
     },
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -110,6 +108,106 @@ pub struct PolicyTransitionRequest {
     source_type: TypeValueId,
     source_value: SemanticValueId,
     provenance: Provenance,
+}
+
+/// Consumer-neutral request for one direct same-Type Policy migration.
+///
+/// This carrier is the production semantic authority.  It does not encode a
+/// compile-to-runtime edge, perform graph search, or permit a result Type
+/// change.  Legacy `PolicyTransitionRequest` values are one bounded way to
+/// construct it while old binding P1 callers migrate.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyMigrationRequest {
+    source_policy: PolicyPair,
+    target_demand: PolicyPair,
+    source_type: TypeValueId,
+    source_value: SemanticValueId,
+    provenance: Provenance,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PolicyMigrationRequestFailure {
+    SourceValueAbsent,
+    SourceValueStageDomainEmpty,
+    TargetValueAbsent,
+    TargetValueStageDomainEmpty,
+    TargetPatternPolicyUnavailable {
+        source: PatternComponentPolicy,
+        target: PatternComponentPolicy,
+    },
+}
+
+impl PolicyMigrationRequest {
+    pub fn new(
+        source_policy: PolicyPair,
+        target_demand: PolicyPair,
+        source_type: TypeValueId,
+        source_value: SemanticValueId,
+        provenance: Provenance,
+    ) -> Result<Self, PolicyMigrationRequestFailure> {
+        if source_policy.value.presence == ValuePresence::Absent {
+            return Err(PolicyMigrationRequestFailure::SourceValueAbsent);
+        }
+        if source_policy.value.stages.is_empty() {
+            return Err(PolicyMigrationRequestFailure::SourceValueStageDomainEmpty);
+        }
+        if target_demand.value.presence == ValuePresence::Absent {
+            return Err(PolicyMigrationRequestFailure::TargetValueAbsent);
+        }
+        if target_demand.value.stages.is_empty() {
+            return Err(PolicyMigrationRequestFailure::TargetValueStageDomainEmpty);
+        }
+        if target_demand.pattern.stages.is_empty()
+            || !target_demand
+                .pattern
+                .stages
+                .is_subset(&source_policy.pattern.stages)
+        {
+            return Err(
+                PolicyMigrationRequestFailure::TargetPatternPolicyUnavailable {
+                    source: source_policy.pattern.clone(),
+                    target: target_demand.pattern.clone(),
+                },
+            );
+        }
+        Ok(Self {
+            source_policy,
+            target_demand,
+            source_type,
+            source_value,
+            provenance,
+        })
+    }
+
+    pub fn from_atomic_runtime(request: &PolicyTransitionRequest) -> Self {
+        Self {
+            source_policy: request.source_policy.clone(),
+            target_demand: request.target_query.clone(),
+            source_type: request.source_type,
+            source_value: request.source_value,
+            provenance: request.provenance.clone(),
+        }
+    }
+
+    pub fn source_policy(&self) -> &PolicyPair {
+        &self.source_policy
+    }
+
+    pub fn target_demand(&self) -> &PolicyPair {
+        &self.target_demand
+    }
+
+    pub fn source_type(&self) -> TypeValueId {
+        self.source_type
+    }
+
+    pub fn source_value(&self) -> SemanticValueId {
+        self.source_value
+    }
+
+    pub fn provenance(&self) -> &Provenance {
+        &self.provenance
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1179,8 +1277,9 @@ fn singleton_mutability(mutability: &BTreeSet<ValueMutability>) -> Option<ValueM
 fn mutability_pattern(mutability: &BTreeSet<ValueMutability>) -> MutabilityPattern {
     match singleton_mutability(mutability) {
         Some(ValueMutability::Const) => MutabilityPattern::Const,
+        Some(ValueMutability::Plain) => PolicyMode::Plain,
         Some(ValueMutability::Mut) => MutabilityPattern::Mut,
-        None => MutabilityPattern::Unspecified,
+        None => PolicyMode::Plain,
     }
 }
 

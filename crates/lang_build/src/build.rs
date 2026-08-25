@@ -508,7 +508,6 @@ fn symbol_kind_fingerprint_tag(kind: SymbolKind) -> &'static str {
         SymbolKind::Type => "type",
         SymbolKind::MetaFunction => "meta_function",
         SymbolKind::FieldFunction => "field_function",
-        SymbolKind::Alias => "alias",
         SymbolKind::Placeholder => "placeholder",
     }
 }

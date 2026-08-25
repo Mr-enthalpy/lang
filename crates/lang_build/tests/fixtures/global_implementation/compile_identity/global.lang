@@ -1,8 +1,7 @@
 public + compile let compile_identity =
   (self, t: type): compile -> let r: type =>
 {
-  let r === t;
-  r;
+  t;
 };
 
 public + compile let forward_type_value =

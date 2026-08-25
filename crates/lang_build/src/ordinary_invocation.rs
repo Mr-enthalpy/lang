@@ -18,6 +18,7 @@
 //!   -> Pattern extraction specificity                      (B3)
 //!   -> B4/B5/B6
 //!   -> unique candidate
+//!   -> DynamicLegality (capability / Place / lifecycle Pre)
 //!   -> InvocationFrame
 //!   -> ordinary body
 //!   -> complete ordinary result
@@ -41,8 +42,7 @@ use crate::{
         SelfPosition,
     },
     meta_candidate::CandidateBuildIdentityPlaceholder,
-    meta_invocation::MetaInvocationValue,
-    meta_invocation::{MetaInvocationInput, MetaInvocationResult},
+    meta_invocation::{MetaInvocationInput, MetaInvocationValue},
     model::{
         Diagnostic, ExecutionEnv, PolicyEnv, Provenance, ResolverCode, SourceCategory, SymbolId,
         SymbolKind, SymbolObject,
@@ -61,15 +61,16 @@ use crate::{
         MutabilityFormalFrame, MutabilityPattern,
     },
     policy_pair::{
-        derive_function_object_p1, elaborate_binding_p1_projection, elaborate_explicit_p1,
-        elaborate_formal_policy_pattern, normalize_p2_policy, project_p1, ExplicitP1Position,
-        FunctionObjectDeclarationPolicy, P1Projection, PatternComponentPolicy, Phase, PolicyPair,
+        concrete_policy_mode, derive_function_object_p1, elaborate_binding_p1_projection,
+        elaborate_explicit_p1, elaborate_formal_policy_pattern, normalize_p2_policy, project_p1,
+        CapabilityRealization, ExplicitP1Position, FunctionObjectDeclarationPolicy,
+        OutputModeDemand, P1Projection, PatternComponentPolicy, Phase, PolicyMode, PolicyPair,
         PolicyResultEntry, PolicyStage, ValueComponentPolicy, ValueMutability,
     },
     policy_transition::{
         compare_migration_endpoint_coordinates, project_migration_input_endpoint,
-        project_migration_output_endpoint, PolicyPartialOrdering, PolicyTransitionRequest,
-        SemanticValueRef,
+        project_migration_output_endpoint, PolicyMigrationRequest, PolicyPartialOrdering,
+        PolicyTransitionRequest, SemanticValueRef,
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
@@ -78,16 +79,16 @@ use crate::{
     semantic_name_index::ResolverContext,
     semantic_owner::{SemanticOwnerId, SemanticSymbolIdentity},
     semantic_world::{
-        OrdinaryCallEntry, OrdinaryCandidateRole, PatternValueId, ReturnShape,
-        SemanticValuePayload, SemanticWorld,
+        ObjectPlaceId, OrdinaryCallEntry, OrdinaryCandidateRole, PatternValueId, ReturnShape,
+        SemanticValuePayload, SemanticWorld, WritableContext,
     },
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
-    NormalizedCallSite,
+    InvocationResidual, InvocationResult, NormalizedCallSite,
 };
 
 #[derive(Clone, Copy, Debug)]
 pub struct MigrationInvocationContext<'a> {
-    pub request: &'a PolicyTransitionRequest,
+    pub request: &'a PolicyMigrationRequest,
     /// The source value is bound as the first explicit argument (slot 1) in
     /// the invocation frame.  Slot 0 is the receiver (`self`), which is bound
     /// separately by the associated-call machinery — see `semantic_owner.rs`.
@@ -101,8 +102,14 @@ pub struct OrdinaryInvocationContext<'a> {
     pub phase: Phase,
     pub caller_mutability: ValueMutability,
     pub explicit_argument_mutability: &'a [ValueMutability],
+    /// Total before candidate maxima. Omitted evaluation context means the
+    /// concrete `plain` demand, never an unspecified state.
+    pub output_mode_demand: OutputModeDemand,
     pub visibility: VisibilityView,
     pub migration: Option<MigrationInvocationContext<'a>>,
+    /// Post-selection capability/place demand. This coordinate never
+    /// participates in candidate ordering and therefore cannot reopen maxima.
+    pub dynamic_legality: DynamicLegalityDemand<'a>,
     /// Semantic owner of the declaration environment that constructed
     /// results attach to.  When the declaration sits
     /// inside a callable body this must be the innermost enclosing
@@ -118,10 +125,12 @@ impl<'a> OrdinaryInvocationContext<'a> {
             policy_env: PolicyEnv::OpenStatic,
             execution_env: ExecutionEnv::OpenStatic,
             phase: Phase::OpenStatic,
-            caller_mutability: ValueMutability::Const,
+            caller_mutability: PolicyMode::Plain,
             explicit_argument_mutability,
+            output_mode_demand: OutputModeDemand::default(),
             visibility: VisibilityView::Internal,
             migration: None,
+            dynamic_legality: DynamicLegalityDemand::default(),
             ambient_construction_owner: None,
         }
     }
@@ -132,6 +141,44 @@ impl<'a> OrdinaryInvocationContext<'a> {
         self.ambient_construction_owner = Some(owner);
         self
     }
+
+    pub fn with_output_mode_demand(mut self, demand: PolicyMode) -> Self {
+        self.output_mode_demand = OutputModeDemand(demand);
+        self
+    }
+
+    pub fn with_capability_demand(mut self, input: PolicyMode, output: PolicyMode) -> Self {
+        self.dynamic_legality.capability = Some((input, output));
+        self
+    }
+
+    pub fn requiring_target_writable(mut self, writable: &'a WritableContext) -> Self {
+        self.dynamic_legality.require_target_writable = true;
+        self.dynamic_legality.writable = Some(writable);
+        self
+    }
+
+    /// Add continuation-relative lifecycle Pre facts. They are deliberately
+    /// attached to DynamicLegality, after unique selection, so failure seals
+    /// the selected invocation instead of reopening overload resolution.
+    pub fn with_lifecycle_preconditions(
+        mut self,
+        lifecycle: &'a crate::LifecycleValidationContext,
+    ) -> Self {
+        self.dynamic_legality.lifecycle = Some(lifecycle);
+        self
+    }
+}
+
+/// Context-indexed facts checked only after a unique candidate has been
+/// selected. Absence of a demand means the current operation does not require
+/// that capability; it is not an implicit grant.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DynamicLegalityDemand<'a> {
+    pub capability: Option<(PolicyMode, PolicyMode)>,
+    pub require_target_writable: bool,
+    pub writable: Option<&'a WritableContext>,
+    pub lifecycle: Option<&'a crate::LifecycleValidationContext>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -154,6 +201,8 @@ pub struct PreparedCallCandidate {
     /// P1(function object) = P1(slot0/self) = P1(let ()).
     /// If omitted, P1 is derived from P2.
     pub function_object_p1: PolicyPair,
+    pub output_mode: PolicyMode,
+    pub capability_realization: CapabilityRealization,
     pub formal_policy_frame: MutabilityFormalFrame,
     pub(crate) source_shape: Option<ApplicableCandidate>,
     pub(crate) core_invocation: Option<MetaInvocationInput>,
@@ -188,6 +237,112 @@ impl PreparedCallCandidate {
             )
         })
     }
+
+    /// Proof-relevant Pattern applicability result for source candidates.
+    /// Core/compiler candidates have no source Pattern query in this slice.
+    pub fn pattern_applicability(&self) -> Option<&crate::PatternApplicabilityProof> {
+        self.source_shape
+            .as_ref()
+            .map(|source| &source.pattern_proof)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DynamicLegalityProof {
+    pub selected_call_entry: SemanticValueId,
+    pub phase: Phase,
+    pub execution_env: ExecutionEnv,
+    pub capability_cell: Option<crate::CapabilityRealizationCell>,
+    pub writable_place: Option<ObjectPlaceId>,
+    pub lifecycle: Option<crate::LifecycleValidationProof>,
+}
+
+/// Unique selection together with post-selection legality evidence. Execution
+/// receives this sealed carrier, never the discarded candidate family.
+#[derive(Clone, Debug)]
+pub struct SealedSelectedInvocation {
+    pub candidate: PreparedCallCandidate,
+    pub legality: DynamicLegalityProof,
+}
+
+impl std::ops::Deref for SealedSelectedInvocation {
+    type Target = PreparedCallCandidate;
+
+    fn deref(&self) -> &Self::Target {
+        &self.candidate
+    }
+}
+
+fn validate_dynamic_legality(
+    semantic_world: &SemanticWorld,
+    selected: &PreparedCallCandidate,
+    context: OrdinaryInvocationContext<'_>,
+    provenance: &Provenance,
+) -> Result<DynamicLegalityProof, Diagnostic> {
+    let capability_cell = context
+        .dynamic_legality
+        .capability
+        .map(|(input, output)| selected.capability_realization.cell(input, output));
+    if let Some(cell) = capability_cell {
+        match cell {
+            crate::CapabilityRealizationCell::Default
+            | crate::CapabilityRealizationCell::Custom => {}
+            crate::CapabilityRealizationCell::Absent => {
+                return Err(Diagnostic::hard_error(
+                    "selected invocation has no capability realization for the demanded input/output Policy cell",
+                    Some(provenance.clone()),
+                ));
+            }
+            crate::CapabilityRealizationCell::Delete => {
+                return Err(Diagnostic::hard_error(
+                    "selected invocation deletes the demanded input/output capability realization",
+                    Some(provenance.clone()),
+                ));
+            }
+        }
+    }
+
+    let writable_place = if context.dynamic_legality.require_target_writable {
+        let place = semantic_world
+            .value(selected.target_value)
+            .map(|value| value.place)
+            .ok_or_else(|| {
+                Diagnostic::hard_error(
+                    "selected invocation target has no resident Place for Writable validation",
+                    Some(provenance.clone()),
+                )
+            })?;
+        let writable = context.dynamic_legality.writable.ok_or_else(|| {
+            Diagnostic::hard_error(
+                "selected invocation requires Writable but the evaluation context supplies no write authority",
+                Some(provenance.clone()),
+            )
+        })?;
+        if !writable.place_is_writable(place) {
+            return Err(Diagnostic::hard_error(
+                "selected invocation target Place is not Writable in this evaluation context",
+                Some(provenance.clone()),
+            ));
+        }
+        Some(place)
+    } else {
+        None
+    };
+
+    let lifecycle = context
+        .dynamic_legality
+        .lifecycle
+        .map(|lifecycle| lifecycle.validate_pre(provenance))
+        .transpose()?;
+
+    Ok(DynamicLegalityProof {
+        selected_call_entry: selected.call_entry_value,
+        phase: context.phase,
+        execution_env: context.execution_env,
+        capability_cell,
+        writable_place,
+        lifecycle,
+    })
 }
 
 /// A sibling val that has been verified callable by the Cc stage.
@@ -214,11 +369,12 @@ pub struct OrdinaryPipelineTrace {
     pub bp_prime: Vec<SemanticValueId>,
     pub b3_pattern_specific: Vec<SemanticValueId>,
     pub selected: Option<SemanticValueId>,
+    pub dynamic_legality: Option<DynamicLegalityProof>,
 }
 
 #[derive(Clone, Debug)]
 pub struct SingleMemberResult {
-    pub selected: PreparedCallCandidate,
+    pub selected: SealedSelectedInvocation,
     pub returned: OrdinaryReturnedValue,
     /// CompleteResultDomain — the complete result P2 compatibility domain
     /// returned by the ordinary callable (type/pattern compatibility
@@ -403,15 +559,33 @@ pub enum InvocationOutcome {
     ClusterSymbol(ClusterSymbolResult),
 }
 
+/// Complete type value returned by a world-connected invocation.
+///
+/// `construction_material` is replay/install material for compatibility
+/// binding and namespace projection.  Semantic consumers use
+/// `complete_type`; the material never defines type identity or equality.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReturnedCompleteType {
+    pub complete_type: crate::CompleteTypeValue,
+    pub carrier_value: SemanticValueId,
+    pub pattern: PatternValueId,
+    pub construction_material: Option<crate::GeneratedTypeDefinitionValue>,
+}
+
 #[derive(Clone, Debug)]
-pub struct AtomicRuntimeMigrationResult {
+pub struct PolicyMigrationResult {
     pub invocation: SingleMemberResult,
     pub demanded_view: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
 }
 
+/// Compatibility name for the legacy compile-to-runtime caller.  The result
+/// is produced by the general same-Type migration authority.
+pub type AtomicRuntimeMigrationResult = PolicyMigrationResult;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrdinaryReturnedValue {
     Meta(MetaInvocationValue),
+    CompleteType(ReturnedCompleteType),
     /// A source body returned an already-existing semantic value. Ordinary
     /// non-migration invocation preserves that value identity; atomic runtime
     /// migration uses it as the migration source input (slot 1 in the
@@ -430,6 +604,15 @@ pub enum OrdinaryInvocationFailure {
     },
     Ambiguous {
         candidates: Vec<SemanticValueId>,
+        trace: OrdinaryPipelineTrace,
+    },
+    DynamicLegality {
+        selected: SemanticValueId,
+        diagnostic: Diagnostic,
+        trace: OrdinaryPipelineTrace,
+    },
+    Residual {
+        residual: InvocationResidual,
         trace: OrdinaryPipelineTrace,
     },
     /// Argument normalization hit an illegal cyclic Val2: Val2 normalization
@@ -815,6 +998,30 @@ fn attach_candidate_type_observations(
         })
 }
 
+/// Form an ordinary MetaInstance key only for an invocation whose declared
+/// result/owner rule actually establishes a MetaInstance.  Ordinary value
+/// forwarding, same-Type migration, and privileged `struct` do not acquire a
+/// hidden meta identity merely because they reuse the invocation trunk.
+fn canonical_meta_instance_key_for_selected(
+    semantic_world: &mut SemanticWorld,
+    shape: &ArgProductShape,
+    callable: crate::MetaCallableIdentity,
+    provenance: &Provenance,
+    trace: &OrdinaryPipelineTrace,
+) -> Result<crate::MetaInstanceKey, OrdinaryInvocationFailure> {
+    let arguments_product_addr = semantic_world
+        .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
+        .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
+            diagnostic,
+            trace: trace.clone(),
+        })?;
+    Ok(crate::compute_canonical_meta_instance_key(
+        callable,
+        arguments_product_addr,
+        provenance.clone(),
+    ))
+}
+
 /// Evaluate one member-creation initializer of a source meta body.
 ///
 /// The only self-rooted construction the restricted evaluator implements is a
@@ -955,8 +1162,14 @@ fn evaluate_source_meta_member_initializer(
         input,
         materialization_state,
     ) {
-        MetaInvocationResult::Value(value) => value,
-        MetaInvocationResult::Diagnostic(diagnostic) => {
+        InvocationResult::SemanticResult { value, .. } => value,
+        InvocationResult::Residual(residual) => {
+            return Err(OrdinaryInvocationFailure::Residual {
+                residual,
+                trace: trace.clone(),
+            });
+        }
+        InvocationResult::Diagnostic(diagnostic) => {
             return Err(OrdinaryInvocationFailure::SelectedCoreBody {
                 diagnostic,
                 trace: trace.clone(),
@@ -1091,12 +1304,12 @@ fn substitute_binding_type_names(
     }
 }
 
-pub fn invoke_atomic_runtime_migration(
+pub fn invoke_policy_migration(
     semantic_world: &mut SemanticWorld,
     materialization_state: &mut TypeMaterializationState,
-    request: &PolicyTransitionRequest,
+    request: &PolicyMigrationRequest,
     resolver_context: &ResolverContext,
-) -> Result<AtomicRuntimeMigrationResult, OrdinaryInvocationFailure> {
+) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
     let Some(source) = semantic_world.value(request.source_value()).cloned() else {
         return Err(OrdinaryInvocationFailure::NoTargetValues {
             trace: OrdinaryPipelineTrace::default(),
@@ -1110,7 +1323,7 @@ pub fn invoke_atomic_runtime_migration(
         });
     }
     let source_mutability = singleton_mutability(&request.source_policy().value.mutability)
-        .unwrap_or(ValueMutability::Const);
+        .unwrap_or(PolicyMode::Plain);
     let migration_args = ArgProductShape::from_flattened(FlattenedProductObject {
         atoms: vec![ProductAtom::SemanticValue {
             value: request.source_value(),
@@ -1168,13 +1381,17 @@ pub fn invoke_atomic_runtime_migration(
             policy_env: PolicyEnv::OpenStatic,
             execution_env: ExecutionEnv::OpenStatic,
             phase: Phase::OpenStatic,
-            caller_mutability: ValueMutability::Const,
+            caller_mutability: PolicyMode::Plain,
             explicit_argument_mutability: &no_explicit_mutability,
+            output_mode_demand: OutputModeDemand(concrete_policy_mode(
+                &request.target_demand().value,
+            )),
             visibility: VisibilityView::Internal,
             migration: Some(MigrationInvocationContext {
                 request,
                 source_value: source.id,
             }),
+            dynamic_legality: DynamicLegalityDemand::default(),
             // Migration transport never performs an ambient struct
             // construction; no declaration-environment owner applies.
             ambient_construction_owner: None,
@@ -1191,7 +1408,7 @@ pub fn invoke_atomic_runtime_migration(
         });
     };
     let demanded_view = project_p1(
-        &P1Projection::Pair(request.target_query().clone()),
+        &P1Projection::Pair(request.target_demand().clone()),
         &invocation.complete_result,
     );
     if demanded_view.is_empty() {
@@ -1199,10 +1416,27 @@ pub fn invoke_atomic_runtime_migration(
             trace: invocation.trace,
         });
     }
-    Ok(AtomicRuntimeMigrationResult {
+    Ok(PolicyMigrationResult {
         invocation,
         demanded_view,
     })
+}
+
+/// Migration-only adapter for the historical bounded static-to-runtime
+/// request.  It supplies one canonical request and never owns selection.
+pub fn invoke_atomic_runtime_migration(
+    semantic_world: &mut SemanticWorld,
+    materialization_state: &mut TypeMaterializationState,
+    request: &PolicyTransitionRequest,
+    resolver_context: &ResolverContext,
+) -> Result<AtomicRuntimeMigrationResult, OrdinaryInvocationFailure> {
+    let request = PolicyMigrationRequest::from_atomic_runtime(request);
+    invoke_policy_migration(
+        semantic_world,
+        materialization_state,
+        &request,
+        resolver_context,
+    )
 }
 
 /// Invoke all value members of one resolved semantic Symbol.
@@ -1335,7 +1569,7 @@ pub fn invoke_pattern_associated_value_ordinary(
         });
     };
     let receiver_mutability =
-        singleton_mutability(&receiver.policy.value.mutability).unwrap_or(ValueMutability::Const);
+        singleton_mutability(&receiver.policy.value.mutability).unwrap_or(PolicyMode::Plain);
     let mut atoms = Vec::with_capacity(1 + explicit_arg_product.flattened.atoms.len());
     atoms.push(ProductAtom::SemanticValue {
         value: receiver_value,
@@ -1601,7 +1835,15 @@ pub(crate) fn invoke_target_values(
             let resolve_named_pattern = |name: &str| {
                 SemanticTypeEnv::new(world_view)
                     .resolve_type_name(name, &declaration_pattern_context)
-                    .map(|resolution| resolution.represented_type)
+                    .and_then(|resolution| {
+                        let pattern = world_view.type_value(resolution.represented_type)?.pattern;
+                        let core = resolution.complete_type_observation.and_then(|whole| {
+                            world_view
+                                .complete_type_by_whole_observation(whole)
+                                .map(|complete| complete.core)
+                        });
+                        Some(crate::NamedPatternObservation { pattern, core })
+                    })
             };
             let mut source_shape = match applicable_candidate_from_closure(
                 &declaration_identity,
@@ -1609,6 +1851,7 @@ pub(crate) fn invoke_target_values(
                 &entry.provenance,
                 &args,
                 context.execution_env,
+                entry.callable_owner,
                 Some(&resolve_named_pattern),
             ) {
                 Ok(candidate) => candidate,
@@ -1695,11 +1938,8 @@ pub(crate) fn invoke_target_values(
                 None,
                 Some(core_invocation),
                 MutabilityFormalFrame {
-                    self_pattern: MutabilityPattern::Unspecified,
-                    explicit_parameter_patterns: vec![
-                        MutabilityPattern::Unspecified;
-                        frame_args.arity
-                    ],
+                    self_pattern: PolicyMode::Plain,
+                    explicit_parameter_patterns: vec![PolicyMode::Plain; frame_args.arity],
                 },
                 // S7 — same canonical P1 authority as the source arm.  The
                 // core candidate's function-object P1 is the declared
@@ -1747,7 +1987,7 @@ pub(crate) fn invoke_target_values(
                     migration.request.source_policy(),
                 );
                 let output = project_migration_output_endpoint(
-                    migration.request.target_query(),
+                    migration.request.target_demand(),
                     &entry.callable_value_policy,
                 );
                 if input.is_none() || output.is_none() {
@@ -1785,6 +2025,8 @@ pub(crate) fn invoke_target_values(
             frame,
             complete_result_policy: entry.complete_result_policy.clone(),
             function_object_p1: self_policy,
+            output_mode: entry.output_mode,
+            capability_realization: entry.capability_realization.clone(),
             formal_policy_frame,
             candidate_role: entry.candidate_role,
             return_shape: entry.return_shape,
@@ -1836,7 +2078,7 @@ pub(crate) fn invoke_target_values(
                         .explicit_argument_mutability
                         .get(index)
                         .copied()
-                        .unwrap_or(ValueMutability::Const)
+                        .unwrap_or(PolicyMode::Plain)
                 })
             })
             .collect(),
@@ -1850,6 +2092,7 @@ pub(crate) fn invoke_target_values(
             worse,
             &actual_frame,
             context.phase,
+            context.output_mode_demand,
             context.migration,
         )
     });
@@ -1872,7 +2115,7 @@ pub(crate) fn invoke_target_values(
 
     // B4/B5/B6 are identity for the currently implemented source candidate
     // metadata.  Named strategy strings are preserved, not interpreted.
-    let selected = match b3.as_slice() {
+    let selected_candidate = match b3.as_slice() {
         [candidate] => (*candidate).clone(),
         candidates => {
             return Err(OrdinaryInvocationFailure::Ambiguous {
@@ -1884,34 +2127,53 @@ pub(crate) fn invoke_target_values(
             });
         }
     };
-    trace.selected = Some(selected.call_entry_value);
-
-    // Canonical meta instance identity, computed once for the selected
-    // candidate and shared by every construction path: the selected meta
-    // callable value plus its normalized actual
-    // arguments.  The invocation parentheses are themselves a Product, so
-    // the arguments normalize as `Addr(Product(a1..an))` — top-level
-    // order-sensitive by Product positional identity.  One key mechanism
-    // serves source-declared AND core meta callables; formal binder
-    // names, source paths, body material, and backing declaration
-    // SymbolIds never enter the key.
-    let canonical_instance_key = {
-        let shape = &classified.classified_shape;
-        let arguments_product_addr = semantic_world
-            .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
-            .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
+    trace.selected = Some(selected_candidate.call_entry_value);
+    let legality =
+        validate_dynamic_legality(semantic_world, &selected_candidate, context, &provenance)
+            .map_err(|diagnostic| OrdinaryInvocationFailure::DynamicLegality {
+                selected: selected_candidate.call_entry_value,
                 diagnostic,
                 trace: trace.clone(),
             })?;
-        crate::compute_canonical_meta_instance_key(
-            crate::MetaCallableIdentity {
-                selected_function_value: selected.target_value,
-                selected_call_entry: selected.call_entry_value,
-            },
-            arguments_product_addr,
-            provenance.clone(),
-        )
+    trace.dynamic_legality = Some(legality.clone());
+    let selected = SealedSelectedInvocation {
+        candidate: selected_candidate,
+        legality,
     };
+
+    let canonical_callable_identity = crate::MetaCallableIdentity {
+        selected_function_value: selected.target_value,
+        selected_call_entry: selected.call_entry_value,
+    };
+    let is_ambient_struct = matches!(
+        selected
+            .core_invocation
+            .as_ref()
+            .and_then(|core| core.candidate.callee_primitive),
+        Some(crate::CoreMetaFunction::Struct)
+    );
+    let ambient_construction_owner = context
+        .ambient_construction_owner
+        .or_else(|| semantic_world.namespace_owner(resolver_context.current_namespace));
+
+    // Ordinary meta invocation identity is computed once for the selected
+    // candidate and shared by every ordinary meta construction path.  The
+    // privileged `struct` builtin is intentionally excluded: its canonical
+    // owner rule establishes no MetaInstance root, so forcing its private AST
+    // carrier through an ordinary MetaInstanceKey would invent semantic
+    // identity that the language does not have.
+    let mut canonical_instance_key =
+        if selected.return_shape != ReturnShape::ClusterSymbol || is_ambient_struct {
+            None
+        } else {
+            Some(canonical_meta_instance_key_for_selected(
+                semantic_world,
+                &classified.classified_shape,
+                canonical_callable_identity,
+                &provenance,
+                &trace,
+            )?)
+        };
 
     // A declared `Unit` shape is validated at the declaration boundary but
     // has no executable producer yet: report the execution gap explicitly
@@ -1947,10 +2209,9 @@ pub(crate) fn invoke_target_values(
             });
         };
         let meta_root = crate::MetaInstanceRoot {
-            meta_callable: canonical_instance_key.callable,
+            meta_callable: canonical_callable_identity,
             placement_parent,
         };
-        let instance_key = canonical_instance_key.clone();
         // Begin an open cluster construction for this meta invocation.
         // The owner strategy is a fact of the selected callable and the
         // call context, never of the return category: a source meta
@@ -1959,16 +2220,10 @@ pub(crate) fn invoke_target_values(
         // called directly attaches its generated type to the ambient
         // declaration environment and never creates a
         // `MetaInstance(struct, arguments)` scope of its own.
-        let owner_strategy = match &selected.core_invocation {
-            Some(core)
-                if matches!(
-                    core.candidate.callee_primitive,
-                    Some(crate::CoreMetaFunction::Struct)
-                ) =>
-            {
-                crate::OwnerStrategy::AmbientStructScope
-            }
-            _ => crate::OwnerStrategy::OrdinaryMetaInstanceScope,
+        let owner_strategy = if is_ambient_struct {
+            crate::OwnerStrategy::AmbientStructScope
+        } else {
+            crate::OwnerStrategy::OrdinaryMetaInstanceScope
         };
         // B8: the ambient construction owner is a fact of the declaration
         // environment supplied by the caller.  A declaration inside a
@@ -1976,9 +2231,7 @@ pub(crate) fn invoke_target_values(
         // Self scope owner, so two ordinary functions in one namespace never
         // share an ambient struct root; the resolver's namespace node is
         // only the degenerate top-level fallback.
-        let ambient_owner = context
-            .ambient_construction_owner
-            .or_else(|| semantic_world.namespace_owner(resolver_context.current_namespace));
+        let ambient_owner = ambient_construction_owner;
         let (authority, owner) = match owner_strategy {
             crate::OwnerStrategy::AmbientStructScope => {
                 let Some(ambient_owner) = ambient_owner else {
@@ -1997,14 +2250,21 @@ pub(crate) fn invoke_target_values(
                     ambient_owner,
                 )
             }
-            _ => (
-                crate::ConstructionAuthority::MetaInvocation {
-                    meta_callable: meta_root.meta_callable,
-                    canonical_key: instance_key.clone(),
-                },
-                meta_root.placement_parent,
-            ),
+            _ => {
+                let instance_key = canonical_instance_key
+                    .as_ref()
+                    .expect("ordinary meta construction has a canonical instance key")
+                    .clone();
+                (
+                    crate::ConstructionAuthority::MetaInvocation {
+                        meta_callable: meta_root.meta_callable,
+                        canonical_key: instance_key,
+                    },
+                    meta_root.placement_parent,
+                )
+            }
         };
+        let construction_context = crate::ConstructionEvaluationContext::current(authority.clone());
         let cid = semantic_world.begin_cluster_construction(authority, owner, provenance.clone());
 
         // Generated type definitions harvested for the binding side's
@@ -2030,8 +2290,14 @@ pub(crate) fn invoke_target_values(
                 core_input,
                 materialization_state,
             ) {
-                MetaInvocationResult::Value(value) => value,
-                MetaInvocationResult::Diagnostic(diagnostic) => {
+                InvocationResult::SemanticResult { value, .. } => value,
+                InvocationResult::Residual(residual) => {
+                    return Err(OrdinaryInvocationFailure::Residual {
+                        residual,
+                        trace: trace.clone(),
+                    });
+                }
+                InvocationResult::Diagnostic(diagnostic) => {
                     return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
                 }
             };
@@ -2045,7 +2311,10 @@ pub(crate) fn invoke_target_values(
                     // original owner and is never rerooted.
                     let Some(created) = semantic_world.install_meta_instance_type_value(
                         &meta_root,
-                        instance_key.clone(),
+                        canonical_instance_key
+                            .as_ref()
+                            .expect("ordinary forwarded meta result has an instance key")
+                            .clone(),
                         value.provenance.clone(),
                     ) else {
                         return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
@@ -2085,7 +2354,10 @@ pub(crate) fn invoke_target_values(
                         }
                         _ => match semantic_world.install_generated_type_value(
                             &meta_root,
-                            instance_key.clone(),
+                            canonical_instance_key
+                                .as_ref()
+                                .expect("ordinary generated meta type has an instance key")
+                                .clone(),
                             value.type_definition_id,
                             value.canonical_pattern_value(),
                             selected.complete_result_policy.clone(),
@@ -2111,7 +2383,10 @@ pub(crate) fn invoke_target_values(
                 MetaInvocationValue::GeneratedConstructionValue(value) => {
                     if let Some(pattern) = semantic_world.allocate_meta_result_pattern(
                         &meta_root,
-                        instance_key.clone(),
+                        canonical_instance_key
+                            .as_ref()
+                            .expect("ordinary generated meta value has an instance key")
+                            .clone(),
                         value.provenance.clone(),
                     ) {
                         semantic_world
@@ -2182,7 +2457,9 @@ pub(crate) fn invoke_target_values(
                             resolver_context,
                             source_shape,
                             &meta_root,
-                            &instance_key,
+                            canonical_instance_key
+                                .as_ref()
+                                .expect("source meta construction has an instance key"),
                             &selected.complete_result_policy,
                             initializer,
                             &provenance,
@@ -2218,34 +2495,6 @@ pub(crate) fn invoke_target_values(
                             generated,
                         });
                     }
-                    MetaConstructionEffect::AddAliasMember {
-                        target_name,
-                        binding_p1,
-                    } => {
-                        // The alias member's own binding P1 is a real
-                        // binding P1: elaborate it for legality before
-                        // rejecting the forwarding itself.
-                        elaborate_binding_p1_projection(binding_p1.as_ref(), provenance.clone())
-                            .map_err(|diagnostic| OrdinaryInvocationFailure::SelectedCoreBody {
-                                diagnostic,
-                                trace: trace.clone(),
-                            })?;
-                        // Alias member creation forwards the target's
-                        // Val2 identity.  The unique type member must be
-                        // self-rooted at the meta function plus its
-                        // arguments, so forwarding a type target violates
-                        // the self-root requirement.  (Val alias members
-                        // are future work: the restricted evaluator only
-                        // executes type-returning bodies.)
-                        return Err(meta_return_type_root_mismatch(
-                            format!(
-                                "meta return type member must be rooted at the meta function plus its input arguments; `let {} === {target_name};` forwards an existing root",
-                                legacy_selected.return_slot_name
-                            ),
-                            &provenance,
-                            &trace,
-                        ));
-                    }
                     MetaConstructionEffect::PlaceholderOverwrite { initializer } => {
                         let (pattern, generated) = evaluate_source_meta_member_initializer(
                             semantic_world,
@@ -2253,7 +2502,9 @@ pub(crate) fn invoke_target_values(
                             resolver_context,
                             source_shape,
                             &meta_root,
-                            &instance_key,
+                            canonical_instance_key
+                                .as_ref()
+                                .expect("source meta construction has an instance key"),
                             &selected.complete_result_policy,
                             initializer,
                             &provenance,
@@ -2319,6 +2570,15 @@ pub(crate) fn invoke_target_values(
                         // needed for the full member-view ledger, but the
                         // pattern_clusters entry is required now.
                         semantic_world.ensure_pattern_cluster_ownership(target_pattern, cid);
+                        let member_creation_failure = |failure| {
+                            unsupported_member_initializer(
+                                format!(
+                                    "associated member creation is not authorized at this evaluation point: {failure:?}"
+                                ),
+                                &provenance,
+                                &trace,
+                            )
+                        };
                         let selected_core_body =
                             |diagnostic: Diagnostic| OrdinaryInvocationFailure::SelectedCoreBody {
                                 diagnostic,
@@ -2379,16 +2639,28 @@ pub(crate) fn invoke_target_values(
                                 // structure. Only `struct` inline construction and
                                 // (future) `inject` hold structural registration
                                 // privilege.
-                                semantic_world
-                                    .inject_associated_type_member(
-                                        cid,
-                                        target_pattern,
-                                        &member_name,
-                                        view,
-                                        type_value,
-                                        provenance.clone(),
-                                    )
-                                    .map_err(selected_core_body)?;
+                                if !semantic_world.associated_type_member_is_replay(
+                                    target_pattern,
+                                    &member_name,
+                                    &view,
+                                    type_value,
+                                ) {
+                                    let creation = semantic_world
+                                        .can_create_member_here(
+                                            target_pattern,
+                                            &construction_context,
+                                        )
+                                        .map_err(member_creation_failure)?;
+                                    semantic_world
+                                        .create_associated_type_member(
+                                            &creation,
+                                            &member_name,
+                                            view,
+                                            type_value,
+                                            provenance.clone(),
+                                        )
+                                        .map_err(selected_core_body)?;
+                                }
                             }
                             EvaluatedMetaInjectionRhs::ExistingValue(value) => {
                                 let object = semantic_world
@@ -2416,15 +2688,26 @@ pub(crate) fn invoke_target_values(
                                         &trace,
                                     ));
                                 };
-                                semantic_world
-                                    .inject_associated_existing_value_member(
-                                        cid,
-                                        target_pattern,
-                                        member_name,
-                                        view,
-                                        provenance.clone(),
-                                    )
-                                    .map_err(selected_core_body)?;
+                                if !semantic_world.associated_value_member_is_replay(
+                                    target_pattern,
+                                    member_name,
+                                    &view,
+                                ) {
+                                    let creation = semantic_world
+                                        .can_create_member_here(
+                                            target_pattern,
+                                            &construction_context,
+                                        )
+                                        .map_err(member_creation_failure)?;
+                                    semantic_world
+                                        .create_associated_existing_value_member(
+                                            &creation,
+                                            member_name,
+                                            view,
+                                            provenance.clone(),
+                                        )
+                                        .map_err(selected_core_body)?;
+                                }
                             }
                             EvaluatedMetaInjectionRhs::FunctionObject(closure) => {
                                 let head = closure.head.as_ref().expect(
@@ -2451,22 +2734,42 @@ pub(crate) fn invoke_target_values(
                                     &result_p2,
                                     &FunctionObjectDeclarationPolicy::default(),
                                 );
-                                semantic_world
-                                    .inject_associated_function_member(
+                                let construction_event = u32::try_from(effect_index)
+                                    .expect("meta body effect count fits in u32");
+                                let replay = semantic_world
+                                    .replay_associated_function_member(
                                         cid,
-                                        target_pattern,
                                         member_name,
-                                        u32::try_from(effect_index)
-                                            .expect("meta body effect count fits in u32"),
-                                        selected.backing_declaration,
+                                        construction_event,
                                         &closure,
                                         outer_p1_explicit.as_ref(),
                                         &function_policy,
-                                        result_p2,
-                                        return_shape,
+                                        &result_p2,
                                         provenance.clone(),
                                     )
                                     .map_err(selected_core_body)?;
+                                if replay.is_none() {
+                                    let creation = semantic_world
+                                        .can_create_member_here(
+                                            target_pattern,
+                                            &construction_context,
+                                        )
+                                        .map_err(member_creation_failure)?;
+                                    semantic_world
+                                        .create_associated_function_member(
+                                            &creation,
+                                            member_name,
+                                            construction_event,
+                                            selected.backing_declaration,
+                                            &closure,
+                                            outer_p1_explicit.as_ref(),
+                                            &function_policy,
+                                            result_p2,
+                                            return_shape,
+                                            provenance.clone(),
+                                        )
+                                        .map_err(selected_core_body)?;
+                                }
                             }
                         }
                     }
@@ -2554,8 +2857,11 @@ pub(crate) fn invoke_target_values(
             core_input,
             materialization_state,
         ) {
-            MetaInvocationResult::Value(value) => OrdinaryReturnedValue::Meta(value),
-            MetaInvocationResult::Diagnostic(diagnostic) => {
+            InvocationResult::SemanticResult { value, .. } => OrdinaryReturnedValue::Meta(value),
+            InvocationResult::Residual(residual) => {
+                return Err(OrdinaryInvocationFailure::Residual { residual, trace });
+            }
+            InvocationResult::Diagnostic(diagnostic) => {
                 return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
             }
         }
@@ -2563,10 +2869,31 @@ pub(crate) fn invoke_target_values(
         unreachable!("a prepared candidate has exactly one ordinary implementation body")
     };
 
+    if canonical_instance_key.is_none()
+        && !is_ambient_struct
+        && matches!(
+            returned,
+            OrdinaryReturnedValue::Meta(
+                MetaInvocationValue::GeneratedTypeDefinitionValue(_)
+                    | MetaInvocationValue::GeneratedConstructionValue(_)
+            )
+        )
+    {
+        canonical_instance_key = Some(canonical_meta_instance_key_for_selected(
+            semantic_world,
+            &classified.classified_shape,
+            canonical_callable_identity,
+            &provenance,
+            &trace,
+        )?);
+    }
     let identity = ordinary_result_identity(
         semantic_world,
         &selected,
-        &canonical_instance_key,
+        canonical_instance_key.as_ref(),
+        is_ambient_struct
+            .then_some(ambient_construction_owner)
+            .flatten(),
         &mut returned,
     )
     .map_err(|diagnostic| OrdinaryInvocationFailure::SelectedCoreBody {
@@ -2575,7 +2902,8 @@ pub(crate) fn invoke_target_values(
     })?;
     let Some((result_type, pattern, returned_value)) = identity else {
         let result_type = match &returned {
-            OrdinaryReturnedValue::Meta(value) => legacy_meta_result_type(value),
+            OrdinaryReturnedValue::Meta(value) => compatibility_meta_material_type(value),
+            OrdinaryReturnedValue::CompleteType(value) => value.complete_type.lookup_key,
             OrdinaryReturnedValue::ForwardedSemanticValue(value) => {
                 semantic_world
                     .value(*value)
@@ -2730,7 +3058,7 @@ fn classify_semantic_value_arguments(
                     return None;
                 }
                 let mutability = singleton_mutability(&view.value_policy.mutability)
-                    .unwrap_or(ValueMutability::Const);
+                    .unwrap_or(PolicyMode::Plain);
                 Some((value, object.type_value, mutability))
             })
             .collect::<Vec<_>>();
@@ -2779,9 +3107,9 @@ fn formal_mutability_frame(
             Some(mutability) if mutability.contains(&ValueMutability::Mut) => {
                 MutabilityPattern::Mut
             }
-            _ => MutabilityPattern::Unspecified,
+            _ => PolicyMode::Plain,
         },
-        None => MutabilityPattern::Unspecified,
+        None => PolicyMode::Plain,
     };
     let explicit_parameter_patterns = frame
         .explicit_parameters
@@ -2984,13 +3312,7 @@ fn formal_mutability_pattern(
     inherited: &PolicyPair,
     provenance: Provenance,
 ) -> Result<MutabilityPattern, Diagnostic> {
-    Ok(
-        match elaborate_formal_policy_pattern(policy, inherited, provenance)?.mutability {
-            Some(ValueMutability::Const) => MutabilityPattern::Const,
-            Some(ValueMutability::Mut) => MutabilityPattern::Mut,
-            None => MutabilityPattern::Unspecified,
-        },
-    )
+    Ok(elaborate_formal_policy_pattern(policy, inherited, provenance)?.mode)
 }
 
 fn bp_prime_dominates(
@@ -2998,6 +3320,7 @@ fn bp_prime_dominates(
     worse: &PreparedCallCandidate,
     actual: &MutabilityActualFrame,
     phase: Phase,
+    output_demand: OutputModeDemand,
     migration: Option<MigrationInvocationContext<'_>>,
 ) -> bool {
     let mut strictly_better = false;
@@ -3015,6 +3338,14 @@ fn bp_prime_dominates(
         PolicyPartialOrdering::Less | PolicyPartialOrdering::Incomparable => return false,
         PolicyPartialOrdering::Greater => strictly_better = true,
         PolicyPartialOrdering::Equal => {}
+    }
+
+    match mutability_preference_rank(better.output_mode, output_demand.mode()).cmp(
+        &mutability_preference_rank(worse.output_mode, output_demand.mode()),
+    ) {
+        std::cmp::Ordering::Less => return false,
+        std::cmp::Ordering::Greater => strictly_better = true,
+        std::cmp::Ordering::Equal => {}
     }
 
     if let Some(migration) = migration {
@@ -3040,7 +3371,7 @@ fn bp_prime_dominates(
             .expect("migration candidates store output endpoint at A-stage");
         match compare_migration_endpoint_coordinates(
             migration.request.source_policy(),
-            migration.request.target_query(),
+            migration.request.target_demand(),
             better_input,
             better_output,
             worse_input,
@@ -3145,7 +3476,8 @@ fn singleton_mutability(mutability: &BTreeSet<ValueMutability>) -> Option<ValueM
 fn ordinary_result_identity(
     semantic_world: &mut SemanticWorld,
     selected: &PreparedCallCandidate,
-    canonical_key: &crate::MetaInstanceKey,
+    canonical_key: Option<&crate::MetaInstanceKey>,
+    ambient_struct_owner: Option<SemanticOwnerId>,
     returned: &mut OrdinaryReturnedValue,
 ) -> Result<Option<(TypeValueId, PatternValueId, Option<SemanticValueId>)>, Diagnostic> {
     match returned {
@@ -3157,21 +3489,39 @@ fn ordinary_result_identity(
             Ok(Some((represented, pattern, None)))
         }
         OrdinaryReturnedValue::Meta(MetaInvocationValue::GeneratedTypeDefinitionValue(value)) => {
-            let Some(placement_parent) =
-                semantic_world.callable_declaration_environment(selected.call_entry_value)
-            else {
-                return Ok(None);
-            };
-            let meta_root = crate::MetaInstanceRoot {
-                meta_callable: canonical_key.callable,
-                placement_parent,
-            };
             // The generated definition id is normalized body material; the
-            // result identity is the canonical meta-type root registered
-            // under the meta callable plus its arguments.  A conflicting
-            // body under the same root propagates as a hard error.
-            let Some((_value_id, pattern, canonical_type)) = semantic_world
-                .install_generated_type_value(
+            // result identity is either the ambient struct root or the
+            // canonical meta-type root registered under the selected callable
+            // plus its arguments.  Neither branch uses the body id as tau.
+            let installed = if let Some(ambient_owner) = ambient_struct_owner {
+                if let Some((_existing, binder)) =
+                    semantic_world.ambient_struct_collision(ambient_owner, value.type_definition_id)
+                {
+                    return Err(Diagnostic::hard_error(
+                        ambient_struct_collision_message(binder),
+                        Some(value.provenance.clone()),
+                    ));
+                }
+                semantic_world.install_ambient_struct_type_value(
+                    ambient_owner,
+                    value.type_definition_id,
+                    value.canonical_pattern_value(),
+                    selected.complete_result_policy.clone(),
+                    value.provenance.clone(),
+                )
+            } else {
+                let canonical_key = canonical_key
+                    .expect("generated meta type identity requires a canonical MetaInstance key");
+                let Some(placement_parent) =
+                    semantic_world.callable_declaration_environment(selected.call_entry_value)
+                else {
+                    return Ok(None);
+                };
+                let meta_root = crate::MetaInstanceRoot {
+                    meta_callable: canonical_key.callable,
+                    placement_parent,
+                };
+                semantic_world.install_generated_type_value(
                     &meta_root,
                     canonical_key.clone(),
                     value.type_definition_id,
@@ -3179,13 +3529,41 @@ fn ordinary_result_identity(
                     selected.complete_result_policy.clone(),
                     value.provenance.clone(),
                 )?
-            else {
-                return Ok(None);
+            };
+            let Some((carrier_value, pattern, canonical_type)) = installed else {
+                return Err(Diagnostic::hard_error(
+                    "generated type installation could not form its semantic carrier",
+                    Some(value.provenance.clone()),
+                ));
             };
             value.canonical_type = Some(canonical_type);
-            Ok(Some((canonical_type, pattern, None)))
+            let carrier_place = semantic_world
+                .value(carrier_value)
+                .map(|carrier| carrier.place)
+                .ok_or_else(|| {
+                    Diagnostic::hard_error(
+                        "generated type installation lost its semantic carrier place",
+                        Some(value.provenance.clone()),
+                    )
+                })?;
+            let complete_type =
+                semantic_world.observe_complete_type(canonical_type, Some(carrier_place))?;
+            let construction_material = value.clone();
+            *returned = OrdinaryReturnedValue::CompleteType(ReturnedCompleteType {
+                complete_type: complete_type.clone(),
+                carrier_value,
+                pattern,
+                construction_material: Some(construction_material),
+            });
+            Ok(Some((
+                complete_type.lookup_key,
+                pattern,
+                Some(carrier_value),
+            )))
         }
         OrdinaryReturnedValue::Meta(MetaInvocationValue::GeneratedConstructionValue(value)) => {
+            let canonical_key = canonical_key
+                .expect("generated meta value identity requires a canonical MetaInstance key");
             let Some(placement_parent) =
                 semantic_world.callable_declaration_environment(selected.call_entry_value)
             else {
@@ -3209,18 +3587,23 @@ fn ordinary_result_identity(
         OrdinaryReturnedValue::ForwardedSemanticValue(value) => Ok(semantic_world
             .value(*value)
             .map(|value| (value.type_value, value.pattern, Some(value.id)))),
+        OrdinaryReturnedValue::CompleteType(value) => Ok(Some((
+            value.complete_type.lookup_key,
+            value.pattern,
+            Some(value.carrier_value),
+        ))),
     }
 }
 
-fn legacy_meta_result_type(value: &MetaInvocationValue) -> TypeValueId {
+fn compatibility_meta_material_type(value: &MetaInvocationValue) -> TypeValueId {
     match value {
         MetaInvocationValue::ForwardedValue(value) => value.type_value,
         MetaInvocationValue::GeneratedConstructionValue(value) => {
             TypeValueId(value.construction_instance_id.0)
         }
-        MetaInvocationValue::GeneratedTypeDefinitionValue(value) => {
-            TypeValueId(value.type_definition_id.0)
-        }
+        MetaInvocationValue::GeneratedTypeDefinitionValue(_) => unreachable!(
+            "world-connected struct material must be installed and returned as complete tau"
+        ),
     }
 }
 

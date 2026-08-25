@@ -11,7 +11,7 @@ use lang_build::{
 use lang_syntax::{NormOrigin, NormRule, Span};
 
 fn leaf_meta_value(name: &str, symbol_id: lang_build::SymbolId) -> MetaInvocationValue {
-    let type_value = lang_build::type_value_projection_from_type_symbol(symbol_id);
+    let type_value = lang_build::TypeValueId(symbol_id.0 ^ 0x4000_0000_0000_0000);
     MetaInvocationValue::ForwardedValue(ForwardedValue {
         type_value,
         type_observation: CanonicalTypeObservation::Detached(type_value),
@@ -25,7 +25,7 @@ fn uint8_symbol() -> lang_build::SymbolId {
 }
 
 fn uint8_type_value() -> lang_build::TypeValueId {
-    lang_build::type_value_projection_from_type_symbol(uint8_symbol())
+    lang_build::TypeValueId(0x4000_0000_0000_0001)
 }
 
 fn bounded_head() -> PatternHeadId {
@@ -762,10 +762,8 @@ fn into_leaf_value_for_lowering_unwraps_payload() {
 fn leaf_semantic_eq_ignores_inner_meta_value_provenance() {
     let leaf1 = leaf_value(
         MetaInvocationValue::ForwardedValue(ForwardedValue {
-            type_value: lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
-            type_observation: CanonicalTypeObservation::Detached(
-                lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
-            ),
+            type_value: uint8_type_value(),
+            type_observation: CanonicalTypeObservation::Detached(uint8_type_value()),
             return_view: ReturnViewShape::Leaf,
             provenance: Provenance::new("leaf1 provenance"),
         }),
@@ -773,10 +771,8 @@ fn leaf_semantic_eq_ignores_inner_meta_value_provenance() {
     );
     let leaf2 = leaf_value(
         MetaInvocationValue::ForwardedValue(ForwardedValue {
-            type_value: lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
-            type_observation: CanonicalTypeObservation::Detached(
-                lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
-            ),
+            type_value: uint8_type_value(),
+            type_observation: CanonicalTypeObservation::Detached(uint8_type_value()),
             return_view: ReturnViewShape::Leaf,
             provenance: Provenance::new("leaf2 provenance — different from leaf1"),
         }),

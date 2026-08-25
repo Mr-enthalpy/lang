@@ -10,14 +10,12 @@ mod support;
 use support::*;
 
 use lang_build::{
-    compute_legacy_meta_instance_digest, AliasChain, AliasCycleDetectionState,
-    AliasQueryDisposition, AliasQueryMode, AliasQueryRequest, AliasWritableBoundary,
-    ArgProductShape, CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason,
-    CandidatePrepResult, CandidatePreparationContext, CanonicalArgAtomKind, ExecutionEnv,
-    FlattenedProductInvariant, FlattenedProductObject, ForwardedValue, MetaInstanceCache,
-    MetaInvocationInput, MetaInvocationValue, NonValueArgKind, ParameterShape, PolicyEnv,
-    PreparedCallableCandidate, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
-    RawArgValueClass, ReturnViewShape, SymbolId, TypeValueId,
+    compute_legacy_meta_instance_digest, ArgProductShape, CandidateBuildIdentityPlaceholder,
+    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CanonicalArgAtomKind, ExecutionEnv, FlattenedProductInvariant, FlattenedProductObject,
+    ForwardedValue, MetaInstanceCache, MetaInvocationInput, MetaInvocationValue, NonValueArgKind,
+    ParameterShape, PolicyEnv, PreparedCallableCandidate, ProductAtom, ProductMaterialRole,
+    Provenance, RawArgShape, RawArgValueClass, ReturnViewShape, SymbolId, TypeValueId,
 };
 
 /// Unit positions must remain in the canonical argument material and not be
@@ -53,7 +51,7 @@ fn canonical_arg_material_does_not_collapse_unit_positions() {
 /// CandidatePrepResult is before formal meta invocation.
 ///
 /// The enum variants (ApplicablePlaceholder, Deferred, Diagnostic) must not
-/// be mistaken for MetaInvocationResult or MetaExpansionResult. This test
+/// be mistaken for InvocationResult or MetaExpansionResult. This test
 /// confirms that candidate-prep may defer on body-entry policy without
 /// returning a meta execution result.
 #[test]
@@ -93,43 +91,8 @@ fn candidate_prep_does_not_execute_meta_invocation() {
             panic!("meta execution on runtime-only body must defer, not diagnose")
         }
     }
-    // Confirm CandidatePrepResult is NOT MetaInvocationResult / MetaExpansionResult
+    // Confirm CandidatePrepResult is NOT InvocationResult / MetaExpansionResult
     // (compile-time type guarantee; runtime assertion above proves behavior).
-}
-
-/// The three alias query modes must return distinct dispositions and must not
-/// collapse into a single global transparency flag.
-#[test]
-fn alias_query_mode_is_not_global_transparency() {
-    let alias = AliasChain::new(
-        SymbolId(10),
-        SymbolId(20),
-        Provenance::new("forbidden collapse: alias query modes"),
-    );
-
-    let d_typeval = alias.query_disposition(AliasQueryMode::TypeValueEvaluation);
-    let d_callable = alias.query_disposition(AliasQueryMode::CallableLookup);
-    let d_place = alias.query_disposition(AliasQueryMode::InjectionPlaceTarget);
-
-    assert_ne!(
-        d_typeval, d_callable,
-        "type-value evaluation disposition must differ from callable lookup"
-    );
-    assert_ne!(
-        d_typeval, d_place,
-        "type-value evaluation disposition must differ from injection place target"
-    );
-    assert_ne!(
-        d_callable, d_place,
-        "callable lookup disposition must differ from injection place target"
-    );
-
-    assert_eq!(d_typeval, AliasQueryDisposition::FollowValueChain);
-    assert_eq!(
-        d_callable,
-        AliasQueryDisposition::PolicyAwareSymbolResolution
-    );
-    assert_eq!(d_place, AliasQueryDisposition::FollowPlaceWithBoundary);
 }
 
 /// Product flattening must not cross Expression barriers.
@@ -282,57 +245,6 @@ fn canonical_material_reflects_refined_raw_arg_kinds_object_boundary() {
     );
 }
 
-/// Object-boundary test: `AliasChain::query` accepts a request and returns
-/// a placeholder result without performing full alias resolution.
-#[test]
-fn alias_query_request_drives_placeholder_result_object_boundary() {
-    let chain = AliasChain::new(
-        SymbolId(10),
-        SymbolId(20),
-        Provenance::new("alias query request test"),
-    );
-
-    for mode in [
-        AliasQueryMode::TypeValueEvaluation,
-        AliasQueryMode::CallableLookup,
-        AliasQueryMode::InjectionPlaceTarget,
-    ] {
-        let request = AliasQueryRequest::new(mode, SymbolId(10), Provenance::new("test request"));
-        let result = chain.query(&request);
-        assert_eq!(result.disposition, chain.query_disposition(mode));
-        assert_eq!(
-            result.final_place, None,
-            "placeholder result must not resolve final place"
-        );
-        assert_eq!(
-            result.writable_boundary,
-            AliasWritableBoundary::Unknown,
-            "placeholder result must leave writable boundary unknown"
-        );
-        assert_eq!(
-            result.cycle_detection_state,
-            AliasCycleDetectionState::NotChecked,
-            "placeholder result must leave cycle detection unchecked"
-        );
-    }
-
-    assert!(
-        !chain.creates_fresh_writable_place(),
-        "alias chain must not claim to create a fresh writable place at object boundary"
-    );
-
-    // Source-symbol mismatch: conservative placeholder.
-    let request = AliasQueryRequest::new(
-        AliasQueryMode::TypeValueEvaluation,
-        SymbolId(99),
-        Provenance::new("mismatched source symbol"),
-    );
-    let result = chain.query(&request);
-    assert_eq!(result.final_symbol, None);
-    assert_eq!(result.final_value, None);
-    assert_eq!(result.final_place, None);
-}
-
 // ---------------------------------------------------------------------------
 // Helpers for object-boundary classification tests
 // ---------------------------------------------------------------------------
@@ -397,6 +309,7 @@ fn raw_arg(index: usize, value_class: RawArgValueClass) -> RawArgShape {
         known_first_order_type_value: None,
         known_type_member_view: None,
         known_type_carrier_place: None,
+        known_complete_type_observation: None,
         known_type_observation: None,
         known_semantic_value: None,
         known_value_mutability: None,
@@ -429,20 +342,22 @@ fn identity_type_rejects_unclassified_or_non_type_argument() {
     );
 }
 
-/// Object-boundary test: `as_type_object_with_type_symbol` and
+/// Object-boundary test: explicit type-object identity and
 /// `as_resolved_value_with_value_type` carry distinct `value_class` and
 /// pass-action boundaries.
 #[test]
 fn raw_arg_shape_typed_refinement_helpers_distinguish_type_object_from_value_type() {
     let arg = raw_arg(0, RawArgValueClass::UnknownExpression);
 
-    let type_arg = arg.clone().as_type_object_with_type_symbol(SymbolId(5));
+    let type_arg = arg
+        .clone()
+        .as_type_object_with_identity(SymbolId(5), TypeValueId(50));
     assert!(matches!(
         type_arg.value_class,
         RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
     ));
     assert_eq!(type_arg.known_type_symbol_id, Some(SymbolId(5)));
-    assert_eq!(type_arg.known_first_order_type_value, Some(TypeValueId(5)));
+    assert_eq!(type_arg.known_first_order_type_value, Some(TypeValueId(50)));
     assert_eq!(type_arg.is_value(), Some(false));
     assert!(
         !type_arg.receives_automatic_pass_action(),
@@ -469,6 +384,7 @@ fn shape_with_class(value_class: RawArgValueClass) -> ArgProductShape {
         known_first_order_type_value: None,
         known_type_member_view: None,
         known_type_carrier_place: None,
+        known_complete_type_observation: None,
         known_type_observation: None,
         known_semantic_value: None,
         known_value_mutability: None,
@@ -520,7 +436,7 @@ fn prepare_type_signature_candidate(shape: ArgProductShape) -> CandidatePrepResu
 /// `CandidatePrepResult::ApplicablePlaceholder` is not meta invocation.
 ///
 /// Candidate prep must not return TypeValueId, must not install NamespaceDelta,
-/// and must not produce MetaInvocationResult.
+/// and must not produce InvocationResult.
 #[test]
 fn candidate_preparation_does_not_return_meta_invocation_result() {
     let world = v08_candidate_world();
@@ -549,7 +465,7 @@ fn candidate_preparation_does_not_return_meta_invocation_result() {
         },
     );
 
-    // CandidatePrepResult is NOT MetaInvocationResult (compile-time type guarantee).
+    // CandidatePrepResult is NOT InvocationResult (compile-time type guarantee).
     // Runtime: assert it is ApplicablePlaceholder — which has no TypeValueId,
     // no NamespaceDelta, no declared symbol.
     let CandidatePrepResult::ApplicablePlaceholder(candidate) = result else {
@@ -638,7 +554,14 @@ fn legacy_meta_digest_equality_ignores_provenance() {
 #[test]
 fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
     let mut cache = MetaInstanceCache::new();
-    let key = key_for_type_value_arg(lang_build::TypeValueId(5));
+    let key = lang_build::compute_canonical_meta_instance_key(
+        lang_build::MetaCallableIdentity {
+            selected_function_value: lang_build::SemanticValueId(50),
+            selected_call_entry: lang_build::SemanticValueId(51),
+        },
+        lang_build::CanonicalValueAddr(52),
+        Provenance::new("structural cache key"),
+    );
     cache.insert(
         key.clone(),
         MetaInvocationValue::ForwardedValue(ForwardedValue {
@@ -660,6 +583,39 @@ fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
     assert_eq!(cache.len(), 1);
 }
 
+#[test]
+fn meta_instance_cache_uses_structural_instance_identity_not_a_digest_channel() {
+    let key = |call_entry| {
+        lang_build::compute_canonical_meta_instance_key(
+            lang_build::MetaCallableIdentity {
+                selected_function_value: lang_build::SemanticValueId(70),
+                selected_call_entry: lang_build::SemanticValueId(call_entry),
+            },
+            lang_build::CanonicalValueAddr(72),
+            Provenance::new("structural cache identity"),
+        )
+    };
+    let first = key(71);
+    let different_selected_callable = key(73);
+    let mut cache = MetaInstanceCache::new();
+    cache.insert(
+        first.clone(),
+        MetaInvocationValue::ForwardedValue(ForwardedValue {
+            type_value: TypeValueId(5),
+            type_observation: lang_build::CanonicalTypeObservation::Detached(TypeValueId(5)),
+            return_view: ReturnViewShape::Leaf,
+            provenance: Provenance::new("cached material"),
+        }),
+        Provenance::new("cache insert"),
+    );
+
+    assert!(cache.lookup(&first).is_some());
+    assert!(
+        cache.lookup(&different_selected_callable).is_none(),
+        "a different selected callable coordinate can never hit the cache through digest compatibility"
+    );
+}
+
 /// MetaInvocationInput primitive is derived from candidate, not caller.
 #[test]
 fn meta_invocation_primitive_identity_is_derived_from_candidate() {
@@ -669,9 +625,12 @@ fn meta_invocation_primitive_identity_is_derived_from_candidate() {
         "candidate from candidate-prep must carry callee_primitive"
     );
     let input = MetaInvocationInput::new(candidate, Provenance::new("test"));
-    // input has no callee_primitive field — compile-time guarantee.
-    let key = input.compute_key();
-    assert!(!key.value.is_empty());
+    // The primitive is owned by the selected candidate.  MetaInvocationInput
+    // intentionally has no digest-derived cache-key authority.
+    assert_eq!(
+        input.candidate.callee_primitive,
+        Some(lang_build::CoreMetaFunction::IdentityType)
+    );
 }
 
 fn empty_policy_metadata() -> lang_build::PolicyMetadata {
@@ -708,6 +667,7 @@ fn digest_raw_arg(
         known_first_order_type_value: type_value,
         known_type_member_view: None,
         known_type_carrier_place: None,
+        known_complete_type_observation: None,
         known_type_observation: None,
         known_semantic_value: None,
         known_value_mutability: None,

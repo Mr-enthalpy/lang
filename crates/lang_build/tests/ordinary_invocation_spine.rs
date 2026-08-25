@@ -1,11 +1,12 @@
 mod support;
 
 use lang_build::{
-    extract_single_call_site, BuildManifest, CompilationWorld, InvocationOutcome,
-    MetaInvocationValue, OrdinaryInvocationContext, PatternComponentPolicy, PolicyPair,
+    extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
+    CompilationWorld, InvocationOutcome, LifecyclePrecondition, LifecycleValidationContext,
+    MetaInvocationValue, OrdinaryInvocationContext, PatternComponentPolicy, PolicyMode, PolicyPair,
     PolicyStage, PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticOwnerKind,
     SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy,
-    ValueMutability, ValuePresence,
+    ValueMutability, ValuePresence, WritableContext,
 };
 
 use support::{build_single_fixture_world, fixture_root, initializer_from_source};
@@ -61,7 +62,8 @@ fn i1_let_parens_never_changes_sibling_vals() {
     // I1 — sibling_vals only changes when a declaration's binder name matches
     // an existing cluster Symbol.  Before any transport fixture is loaded,
     // sibling_vals is empty.  After loading the transport fixture (4
-    // declarations named `uint8`), sibling_vals has exactly 4 entries.
+    // declarations named `uint8`), sibling_vals has exactly 5 entries,
+    // including the canonical plain-input transport.
     // Named methods like `identity` and `type_identity` do NOT match the
     // `uint8` cluster Symbol and must appear in Val2[name], not sibling_vals.
 
@@ -77,7 +79,7 @@ fn i1_let_parens_never_changes_sibling_vals() {
         "I1 before: no transports, sibling_vals is empty"
     );
 
-    // After: transport fixture loaded, sibling_vals has exactly 4.
+    // After: transport fixture loaded, sibling_vals has exactly 5.
     let after_world = build_transport_world();
     let after_uint8 = after_world
         .semantic_world()
@@ -85,8 +87,8 @@ fn i1_let_parens_never_changes_sibling_vals() {
         .expect("core uint8 with transports");
     assert_eq!(
         after_uint8.sibling_vals.len(),
-        4,
-        "I1 after: exactly 4 transports named `uint8` are cluster sibling vals"
+        5,
+        "I1 after: exactly 5 transports named `uint8` are cluster sibling vals"
     );
 
     // `identity` and `type_identity` must NOT be cluster siblings — they are
@@ -227,8 +229,8 @@ fn i9_slot0_is_selected_callable_function_object() {
     let siblings = uint8.sibling_vals.clone();
     assert_eq!(
         siblings.len(),
-        4,
-        "I9: transport cluster has 4 sibling candidates for c0 enumeration"
+        5,
+        "I9: transport cluster has 5 sibling candidates for c0 enumeration"
     );
 
     // Verify that every sibling is a FunctionObject — these are the c0
@@ -370,7 +372,7 @@ fn i14_finalize_construction_separate_from_install() {
     );
     assert_eq!(
         uint8.sibling_vals.len(),
-        4,
+        5,
         "I14 contribute-after-install: cluster gains sibling_vals from transports"
     );
 }
@@ -399,6 +401,156 @@ fn i15_source_ordinary_call_begins_from_cluster_sibling_enumeration() {
             "I15: enumerated siblings are FunctionObjects (callable candidates)"
         );
     }
+}
+
+#[test]
+fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
+    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
+    let actual = [PolicyMode::Const];
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&actual)
+                .with_capability_demand(PolicyMode::Const, PolicyMode::Mut),
+            Provenance::new("post-selection capability death test"),
+        )
+        .expect_err("the selected entry has an absent capability cell");
+    let lang_build::OrdinaryInvocationFailure::DynamicLegality {
+        selected,
+        diagnostic,
+        trace,
+    } = failure
+    else {
+        panic!("capability failure must occur at DynamicLegality: {failure:?}");
+    };
+    assert_eq!(trace.selected, Some(selected));
+    assert!(
+        trace.c3_call_entries.len() > 1,
+        "fixture supplies a runner-up"
+    );
+    assert!(diagnostic.message.contains("no capability realization"));
+}
+
+#[test]
+fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
+    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
+    let actual = [PolicyMode::Const];
+    let lifecycle = LifecycleValidationContext {
+        preconditions: vec![LifecyclePrecondition::Reject(
+            "selected invocation cannot outlive this continuation".into(),
+        )],
+        ..LifecycleValidationContext::default()
+    };
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&actual)
+                .with_lifecycle_preconditions(&lifecycle),
+            Provenance::new("post-selection lifecycle death test"),
+        )
+        .expect_err("the selected entry must fail lifecycle Pre validation");
+    let lang_build::OrdinaryInvocationFailure::DynamicLegality {
+        selected,
+        diagnostic,
+        trace,
+    } = failure
+    else {
+        panic!("lifecycle failure must occur at DynamicLegality: {failure:?}");
+    };
+    assert_eq!(trace.selected, Some(selected));
+    assert!(
+        trace.c3_call_entries.len() > 1,
+        "fixture supplies a runner-up"
+    );
+    assert!(diagnostic
+        .message
+        .contains("lifecycle Pre validation failed"));
+}
+
+#[test]
+fn configured_capability_cell_is_proof_material_not_policy_preference() {
+    let mut world = build_single_fixture_world("s4_return_ontology", "app");
+    let keep = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "keep")
+        .expect("single compile callable Symbol");
+    let entries = keep
+        .sibling_vals
+        .iter()
+        .flat_map(|value| {
+            world
+                .semantic_world()
+                .associated_values_for_value(*value, "()")
+                .unwrap_or(&[])
+                .iter()
+                .copied()
+        })
+        .collect::<Vec<_>>();
+    let mut realization = CapabilityRealization::default();
+    realization.set(
+        PolicyMode::Const,
+        PolicyMode::Mut,
+        CapabilityRealizationCell::Default,
+    );
+    for entry in entries {
+        world
+            .configure_call_entry_capability_realization(entry, realization.clone())
+            .expect("terminal call entry accepts candidate-local realization");
+    }
+
+    let initializer = initializer_from_source("let R: type = uint8 keep;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let actual = [PolicyMode::Const];
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&actual)
+                .with_capability_demand(PolicyMode::Const, PolicyMode::Mut),
+            Provenance::new("positive DynamicLegality capability proof"),
+        )
+        .expect_err("fixture body is unsupported after DynamicLegality succeeds");
+    let lang_build::OrdinaryInvocationFailure::SelectedBody { trace, .. } = failure else {
+        panic!("configured capability must pass legality before the body failure: {failure:?}");
+    };
+    assert_eq!(
+        trace
+            .dynamic_legality
+            .expect("successful post-selection validation leaves proof material")
+            .capability_cell,
+        Some(CapabilityRealizationCell::Default)
+    );
+}
+
+#[test]
+fn mut_policy_mode_does_not_grant_writable() {
+    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
+    let actual = [PolicyMode::Const];
+    let writable = WritableContext::default();
+    let mut context =
+        OrdinaryInvocationContext::open_static(&actual).requiring_target_writable(&writable);
+    context.caller_mutability = PolicyMode::Mut;
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            context,
+            Provenance::new("mut is not Writable death test"),
+        )
+        .expect_err("mut Policy alone cannot authorize a Place write");
+    assert!(matches!(
+        failure,
+        lang_build::OrdinaryInvocationFailure::DynamicLegality { ref diagnostic, .. }
+            if diagnostic.message.contains("not Writable")
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -1013,7 +1165,7 @@ fn explicit_call_target_is_one_symbol_and_never_falls_back() {
 }
 
 #[test]
-fn privileged_struct_enters_ordinary_overload_and_returns_meta_construction() {
+fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
             .expect("core semantic world builds");
@@ -1028,39 +1180,43 @@ fn privileged_struct_enters_ordinary_overload_and_returns_meta_construction() {
             Provenance::new("core struct ordinary-spine regression"),
         )
         .expect("privileged AST decoding is an ordinary call-entry body capability");
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
-        panic!("struct is a meta callable: its return unit is a cluster construction");
+    let InvocationOutcome::SingleMember(result) = result else {
+        panic!("struct has the unified CompleteType result class");
     };
 
     // No overload bypass: the caller package differs from the toolchain
     // package, so this call goes through the external member view, and
     // `struct` is still selected through the normal
     // C0 -> C1 -> C2 -> Cc -> C3 -> A -> Bp' -> B3 spine.
-    assert_eq!(meta.trace.c0_target_values.len(), 1);
+    assert_eq!(result.trace.c0_target_values.len(), 1);
     assert_eq!(
-        meta.trace.c1_visible_values, meta.trace.c0_target_values,
+        result.trace.c1_visible_values, result.trace.c0_target_values,
         "core struct is a declaration-boundary public export; External C1 keeps it"
     );
-    assert_eq!(meta.trace.c3_call_entries.len(), 1);
+    assert_eq!(result.trace.c3_call_entries.len(), 1);
     assert!(
-        meta.trace.selected.is_some(),
+        result.trace.selected.is_some(),
         "privilege applies only to the selected body, after ordinary selection"
     );
 
-    // The construction carries one pure-P member view.  `struct` is a
+    // The selected result is a complete tau value.  Replayable construction
+    // material may remain attached for namespace projection, but it is not
+    // the semantic result authority.  `struct` is a
     // builtin privileged meta function: it never creates a
     // `MetaInstance(struct, arguments)` scope of its own, so the generated
     // Pattern owner is the ambient declaration environment (the caller's
     // package root), not a MetaInstance.
-    assert_eq!(meta.construction.member_views.len(), 1);
-    let view = &meta.construction.member_views[0];
+    let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
+        panic!("world-connected struct must return complete tau, not private meta material");
+    };
+    let view = &result.complete_result[0];
     assert!(
-        view.value.is_none(),
-        "struct returns a type result (value=None)"
+        view.value.is_some(),
+        "complete tau is an ordinary first-class semantic value"
     );
     let owner = world
         .semantic_world()
-        .pattern_owner(view.pattern)
+        .pattern_owner(returned.pattern)
         .expect("generated type Pattern has a resolved owner")
         .owner;
     let ambient_owner = world
@@ -1070,6 +1226,20 @@ fn privileged_struct_enters_ordinary_overload_and_returns_meta_construction() {
     assert_eq!(
         owner, ambient_owner,
         "direct `struct` attaches its generated type to the ambient declaration environment"
+    );
+    assert_eq!(
+        returned.complete_type.lookup_key,
+        world
+            .semantic_world()
+            .type_for_pattern(returned.pattern)
+            .expect("returned tau core has a registered Pattern"),
+    );
+    assert_eq!(
+        world
+            .semantic_world()
+            .complete_type_by_whole_observation(returned.complete_type.whole),
+        Some(&returned.complete_type),
+        "the ordinary result carries the interned whole-snapshot observation"
     );
     assert!(matches!(
         world
@@ -1128,17 +1298,17 @@ fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
     );
 
     // Built-ins use the same ontology, declared per primitive at the core
-    // declaration boundary: `struct` returns a Symbol cluster; `assert`
+    // declaration boundary: `struct` returns one complete type; `assert`
     // returns a single ordinary value even though it executes at meta
     // stage — privilege and shape are independent coordinates, so a
     // privileged built-in is NOT forced into any particular shape.
     assert_eq!(
         coordinates_of("struct"),
         (
-            lang_build::ReturnShape::ClusterSymbol,
+            lang_build::ReturnShape::SingleType,
             lang_build::CallablePrivilege::BuiltinPrivileged,
         ),
-        "core struct declares a privileged ClusterSymbol return"
+        "core struct declares a privileged complete-type return"
     );
     assert_eq!(
         coordinates_of("assert"),
@@ -1184,12 +1354,9 @@ fn return_slot_annotation_declares_shape_independent_of_body_form() {
 }
 
 #[test]
-fn bare_alias_expression_spelling_is_rejected_toward_let_declaration() {
-    // Ruling — the bare `r === t;` expression spelling is illegal in every
-    // body path; alias forwarding must converge to the declaration
-    // spelling `let r === t;`.  Both the ordinary single-value evaluator
-    // and the clustered construction evaluator reject it with the
-    // convergence guidance, never accept it as a forwarding form.
+fn alias_expression_spelling_cannot_restore_retired_forwarding_semantics() {
+    // Alias syntax remains normalized input, but neither expression nor
+    // declaration spelling may create a semantic forwarding identity.
     let mut world = build_single_fixture_world("s4_return_ontology", "app");
     for (spelling, body_path) in [
         ("let R: type = uint8 bare_alias;", "ordinary body"),
@@ -1211,9 +1378,13 @@ fn bare_alias_expression_spelling_is_rejected_toward_let_declaration() {
             panic!("{body_path}: bare `r === X;` must be a hard body error, got: {result:?}");
         };
         assert!(
-            failure.diagnostic.message.contains("let r === X;"),
-            "{body_path}: the diagnostic must converge to the declaration spelling, got: {}",
-            failure.diagnostic.message
+            failure.diagnostic.message.contains("semantics are retired"),
+            "{body_path}: the diagnostic must reject the retired semantic mechanism, got: {}",
+            failure.diagnostic.message,
+        );
+        assert_eq!(
+            failure.diagnostic.code,
+            Some(lang_build::ResolverCode::RetiredAliasSemantics)
         );
     }
 }
@@ -1225,10 +1396,10 @@ fn source_meta_body_contribution_stream_returns_cluster_construction() {
     // construction effects and the invocation pipeline contributes each
     // one to an open cluster, then finalizes one SymbolConstructionValue.
     // The construction-effect family is distinct: `let r = expr;` adds a
-    // fresh member, `let r === path;` adds an alias member, `r = expr;`
-    // writes to an existing target (currently a placeholder overwrite
-    // scaffold), and the bare `r;` terminal delivers the cluster — it is
-    // not a member event.
+    // fresh member, `r = expr;` writes to an existing target (currently a
+    // placeholder overwrite scaffold), and the bare `r;` terminal delivers
+    // the cluster — it is not a member event. Alias declarations never enter
+    // this effect stream.
     //
     // v0.9 pattern head identity: the cluster's unique type member is
     // navigated as the meta function itself plus its input arguments, so
