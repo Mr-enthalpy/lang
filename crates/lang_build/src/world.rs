@@ -1430,22 +1430,40 @@ impl CompilationWorld {
                 }
             }
         }
-        let elaborated =
-            crate::elaborate_value_binding_p1(&exposed_material, explicit_p1, provenance.clone())
-                .map_err(|failure| {
-            BuildError::single(
-                Diagnostic::hard_error(
-                    format!(
-                        "ExplicitPolicyProjectionFailed: ordinary result cannot satisfy binding P1 ({failure:?})"
-                    ),
-                    Some(provenance.clone()),
-                )
-                .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
-            )
-        })?;
+        let demand = if slot.policy.is_some() {
+            ResultPolicyDemand {
+                pair_query: namespace_declaration.projection.clone(),
+                mode: namespace_declaration.mode,
+            }
+        } else {
+            ResultPolicyDemand::default()
+        };
+        let pair_selected = match crate::elaborate_value_binding_p1(
+            &exposed_material,
+            explicit_p1,
+            provenance.clone(),
+        ) {
+            Ok(crate::P1Elaboration::Projected { selected, .. }) => selected,
+            Ok(crate::P1Elaboration::AtomicRuntimeMigration { .. }) => Vec::new(),
+            Err(failure) => {
+                return Err(BuildError::single(
+                    Diagnostic::hard_error(
+                        format!(
+                            "ExplicitPolicyProjectionFailed: ordinary result cannot satisfy binding P1 ({failure:?})"
+                        ),
+                        Some(provenance),
+                    )
+                    .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
+                ));
+            }
+        };
+        let selected = pair_selected
+            .into_iter()
+            .filter(|entry| entry.view.mode == demand.mode)
+            .collect::<Vec<_>>();
 
-        match elaborated {
-            crate::P1Elaboration::Projected { selected, .. } => match result.returned {
+        if !selected.is_empty() {
+            match result.returned {
                 crate::OrdinaryReturnedValue::Meta(crate::MetaInvocationValue::ForwardedValue(
                     _,
                 ))
@@ -1488,18 +1506,29 @@ impl CompilationWorld {
                         .map(|_| ())
                     }
                 }
-            },
-            crate::P1Elaboration::AtomicRuntimeMigration { demands, .. } => {
-                let demanded_views = self.invoke_binding_migration_demands(demands, &provenance)?;
-                self.install_connected_semantic_binding(
-                    namespace,
-                    binder_name,
-                    namespace_declaration,
-                    &demanded_views,
-                    provenance,
-                )
-                .map(|_| ())
             }
+        } else {
+            let demanded_views = self
+                .invoke_general_binding_migration(&exposed_material, &demand, &provenance)
+                .map_err(|failure| {
+                    BuildError::single(
+                        Diagnostic::hard_error(
+                            format!(
+                                "ExplicitPolicyProjectionFailed: ordinary result cannot satisfy complete result demand ({failure})"
+                            ),
+                            Some(provenance.clone()),
+                        )
+                        .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
+                    )
+                })?;
+            self.install_connected_semantic_binding(
+                namespace,
+                binder_name,
+                namespace_declaration,
+                &demanded_views,
+                provenance,
+            )
+            .map(|_| ())
         }
     }
 
@@ -1617,30 +1646,27 @@ impl CompilationWorld {
             provenance.clone(),
         )?;
 
-        let explicit_p1 = slot
-            .policy
-            .as_ref()
-            .map(|_| &namespace_declaration.projection);
-        let elaborated =
-            crate::elaborate_value_binding_p1(&result, explicit_p1, provenance.clone()).map_err(
-                |failure| {
-                    BuildError::single(
-                        Diagnostic::hard_error(
-                            format!(
-                                "ExplicitPolicyProjectionFailed: meta construction result cannot satisfy binding P1 ({failure:?})"
-                            ),
-                            Some(provenance.clone()),
-                        )
-                        .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
-                    )
-                },
-            )?;
-        let selected = match elaborated {
-            crate::P1Elaboration::Projected { selected, .. } => selected,
-            crate::P1Elaboration::AtomicRuntimeMigration { demands, .. } => {
-                self.invoke_binding_migration_demands(demands, &provenance)?
+        let demand = if slot.policy.is_some() {
+            ResultPolicyDemand {
+                pair_query: namespace_declaration.projection.clone(),
+                mode: namespace_declaration.mode,
             }
+        } else {
+            ResultPolicyDemand::default()
         };
+        let selected = self
+            .satisfy_binding_result_demand(&result, &demand, &provenance)
+            .map_err(|failure| {
+                BuildError::single(
+                    Diagnostic::hard_error(
+                        format!(
+                            "ExplicitPolicyProjectionFailed: meta construction result cannot satisfy complete result demand ({failure})"
+                        ),
+                        Some(provenance.clone()),
+                    )
+                    .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
+                )
+            })?;
         // A construction whose sole member is backed by a generated type
         // definition expands the full namespace projection (field-function
         // layer, ref/share projection namespaces, extraction interface).
@@ -1830,54 +1856,6 @@ impl CompilationWorld {
         Ok(result)
     }
 
-    /// Run binding-level atomic runtime migration demands and wrap every
-    /// demanded entry into a fresh `InvocationResult` value.
-    ///
-    /// The raw `demanded_view` of `invoke_atomic_runtime_migration` keeps the
-    /// identity semantics of the selected forwarding transport: its Val1 is
-    /// the existing static source value.  A `let` binding, however, binds the
-    /// migration *result* — a fresh runtime value recording the selected call
-    /// entry and the migration source — never the static source value itself.
-    fn invoke_binding_migration_demands(
-        &mut self,
-        demands: Vec<crate::PolicyTransitionDemand>,
-        provenance: &Provenance,
-    ) -> Result<
-        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
-        BuildError,
-    > {
-        let mut demanded_views = Vec::new();
-        for demand in demands {
-            let migration = self
-                .invoke_atomic_runtime_migration(&demand.request)
-                .map_err(|failure| {
-                    BuildError::single(ordinary_invocation_failure_diagnostic(
-                        failure,
-                        provenance.clone(),
-                    ))
-                })?;
-            let selected_call_entry = migration.invocation.selected.call_entry_value;
-            for mut entry in migration.demanded_view {
-                if let Some(source) = entry.value {
-                    let result_value = self.semantic_world.install_invocation_result(
-                        selected_call_entry,
-                        Some(source.id),
-                        source.type_value,
-                        entry.pattern,
-                        entry.view.clone(),
-                        provenance.clone(),
-                    );
-                    entry.value = Some(crate::SemanticValueRef {
-                        id: result_value,
-                        type_value: source.type_value,
-                    });
-                }
-                demanded_views.push(entry);
-            }
-        }
-        Ok(demanded_views)
-    }
-
     /// Direct general same-Type satisfaction used after an ordinary existing
     /// view projection has failed.  Each source produces at most one
     /// migration request; results are never fed back into candidate lookup.
@@ -1946,7 +1924,20 @@ impl CompilationWorld {
         provenance: &Provenance,
     ) -> Result<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>, String>
     {
-        let projected = crate::project_p1(&demand.pair_query, result)
+        // Binding P1 has one deliberate pure-P rule: a value-presence
+        // coordinate cannot require migration when the semantic result has
+        // no Val1, but its requested stage slice still applies.  Reuse that
+        // binding elaboration here while discarding its legacy transition
+        // requests; all non-identity completion below goes through the one
+        // general same-Type migration entry.
+        let explicit_pair = (!matches!(demand.pair_query, crate::P1Projection::Infer))
+            .then_some(&demand.pair_query);
+        let pair_projected =
+            match crate::elaborate_value_binding_p1(result, explicit_pair, provenance.clone()) {
+                Ok(crate::P1Elaboration::Projected { selected, .. }) => selected,
+                Ok(crate::P1Elaboration::AtomicRuntimeMigration { .. }) | Err(_) => Vec::new(),
+            };
+        let projected = pair_projected
             .into_iter()
             .filter(|entry| entry.view.mode == demand.mode)
             .collect::<Vec<_>>();

@@ -3633,7 +3633,69 @@ fn compatibility_meta_material_type(value: &MetaInvocationValue) -> TypeValueId 
 
 #[cfg(test)]
 mod tests {
-    use super::select_overwrite_target;
+    use super::{result_pair_demand_admits, select_overwrite_target};
+    use crate::{
+        P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyView,
+        StageSet, ValueComponentPolicy, ValuePresence,
+    };
+
+    fn view(
+        value_stages: impl IntoIterator<Item = PolicyStage>,
+        pattern_stages: impl IntoIterator<Item = PolicyStage>,
+        mode: PolicyMode,
+    ) -> PolicyView {
+        let mut value_stage_set = StageSet::new();
+        for stage in value_stages {
+            value_stage_set.insert(stage);
+        }
+        let mut pattern_stage_set = StageSet::new();
+        for stage in pattern_stages {
+            pattern_stage_set.insert(stage);
+        }
+        PolicyView {
+            pair: PolicyPair {
+                value: ValueComponentPolicy {
+                    stages: value_stage_set,
+                    presence: ValuePresence::Present,
+                },
+                pattern: PatternComponentPolicy {
+                    stages: pattern_stage_set,
+                },
+            },
+            mode,
+        }
+    }
+
+    #[test]
+    fn result_pair_demand_is_a_pre_maxima_hard_coordinate() {
+        let runtime = view(
+            [PolicyStage::Runtime],
+            [PolicyStage::Compile],
+            PolicyMode::Const,
+        );
+        let compile = view(
+            [PolicyStage::Compile],
+            [PolicyStage::Compile],
+            PolicyMode::Mut,
+        );
+        let runtime_demand = P1Projection::ValueDominant {
+            value: runtime.pair.value.clone(),
+        };
+        assert!(result_pair_demand_admits(&runtime.pair, &runtime_demand));
+        assert!(!result_pair_demand_admits(&compile.pair, &runtime_demand));
+
+        let pair_demand = P1Projection::Pair(PolicyPair {
+            value: runtime.pair.value.clone(),
+            pattern: PatternComponentPolicy {
+                stages: StageSet::from([PolicyStage::Seal]),
+            },
+        });
+        assert!(!result_pair_demand_admits(&runtime.pair, &pair_demand));
+        assert_ne!(
+            runtime.mode, compile.mode,
+            "mode remains a separate Bp coordinate"
+        );
+    }
 
     /// Placeholder scaffold pin — the overwrite target is the unique member
     /// carrying the written facet, by member resolution rather than
