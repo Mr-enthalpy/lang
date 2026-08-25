@@ -674,9 +674,10 @@ reopens the nested producer.
 
 `PolicyLet(P, e)` is the explicit expression boundary that may provide such a
 candidate-independent demand. Its complete operand pipe is resolved once under
-`P`, then `PolicyCast_P` forms the concrete outward view in the node's ordinary
-expression-result slot. Any ordinary value action required alongside the cast
-must be coherent with it but cannot define or prove it. That slot has its own
+`P`, then `SourcePolicy(result) -> P` enters the ordinary Policy migration
+candidate preparation and unique Policy-overload selection. The selected
+migration jointly produces the concrete Policy projection and value
+realization in the node's ordinary expression-result slot. That slot has its own
 mode but is not a NameBinding, Symbol, declaration, or independently
 addressable Place. A later outer candidate cannot propagate a formal-mode preference
 through the preserved `PolicyLet` node. The node is not an ordinary Val2 call

@@ -905,7 +905,8 @@ now closes `SemanticContinuation`, `LifeName`, first-class ordinary
 use/move/drop generations, cleanup-before-lifetime, Pre/Post summaries,
 pairwise-distinct exclusive-write and same-root shared-read defaults plus finite
 Pre patch, exact move-origin preservation, selected CopyConstruct lifecycle
-posts, and finite/monotone Color relations.
+posts, and an extensible Color vocabulary with finite/monotone relations in
+each committed compilation semantic universe.
 Concrete IR carriers, summary compression, and the checker remain
 unimplemented.
 
@@ -1372,8 +1373,9 @@ The lifetime core uses gapless half-open `Region=[i,j)`, generation-resetting
 move, cleanup-before-lifetime ordering, Pre/Post call summaries,
 pairwise-distinct exclusive-write and same-root shared-read defaults with finite
 Pre patch, exact move-origin preservation, selected CopyConstruct lifecycle
-posts, and finite/monotone Color relations. Its concrete IR representation and checker are
-not implemented. See
+posts, and an extensible Color vocabulary with finite/monotone relations in
+each committed compilation semantic universe. Its concrete IR representation
+and checker are not implemented. See
 [`lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 §1–§2.
 
@@ -1428,10 +1430,12 @@ generations. Copy origin is not a lifetime-calculus theorem: the builtin/default
 explicit lifecycle post through the ordinary Pre/Post boundary.
 Whether generation identity and `LifeName` identity share one concrete
 representation is implementation-open. Drop ends the current generation after
-cleanup obligations. Color inheritance is monotone, and each compilation
-universe has a finite Color set with mechanically decidable
-compatibility/exclusion/exchange relations; Color is not an arbitrary
-proposition carrier.
+cleanup obligations. Color inheritance is monotone. The global Color vocabulary
+is extensible, but every committed compilation semantic universe has one finite
+Color-set snapshot with mechanically decidable compatibility, exclusion, and
+exchange relations. A color contribution must define those finite relation
+rows before the universe is committed; Color is not an arbitrary proposition
+carrier.
 
 _See also: `@`, Region, Lifetime Policy Boundary._
 
@@ -2476,20 +2480,27 @@ Policy Transition,
 
 ## Policy Demand Satisfaction
 
-The act of satisfying a consumer's requested Policy view. Demand kind records
-consumer origin; it does not grant permission to search arbitrary conversion
-operations. The ordering is called **Existing-First,
-Constructible-Second**:
+The act of satisfying a consumer's requested Policy view through the single
+Policy migration algebra shared by binding, `PolicyLet`, and atomic runtime
+materialization. Demand kind records candidate admission facts; it does not
+grant permission to search arbitrary conversion operations. Every selected
+migration candidate owns declared source/target Policy endpoints and jointly
+produces `PolicyProjection` plus `ValueRealization`, which must be coherent.
+The ordering is called **Existing-First, Constructible-Second**:
 
 ```text
 existing compatible view
-  -> use Policy slicing
+  -> candidate set = {identity Policy migration}
+  -> PolicyProjection preserves the slice
+  -> ValueRealization preserves the value
 
 complete existing projection is empty
   + runtime is an accepted alternative
   + eligible static Val1 view
   -> extract RuntimeBranch(query)
-  -> consider one authorized atomic Runtime Policy migration
+  -> admit authorized direct Policy migration candidates
+  -> ordinary Policy overload / unique selection
+  -> selected migration jointly supplies PolicyProjection and ValueRealization
 
 otherwise
   -> inadmissible or governed by another explicit language mechanism
@@ -2554,23 +2565,25 @@ consumes that view as an ordinary actual and cannot reopen the operand call.
 
 `PolicyLet` creates no hidden binding, place, or declaration. It is not an
 ordinary Val2 `const`/`mut` call and is not an in-place Policy tag rewrite.
-`PolicyCast_P(result)` is a Policy judgment independent of ordinary value
-algebra. Existing accepted views give identity-preserving casts. When value
-reconstruction or transfer accompanies another cast, the selected
-Type-callspace/Val2 operation or canonical mechanical action must be coherent
-with the already-defined cast, but it neither defines nor proves that cast and
-cannot create the preceding inward demand. The parser and Normalized
-AST preserve this node; the current build prototype does not yet execute its
-result-demand/cast semantics.
+After the operand is frozen, `SourcePolicy(result) -> P` enters the same Policy
+migration candidate preparation and ordinary Policy overload used by binding
+and runtime materialization. The unique selected candidate jointly supplies
+the outward `PolicyProjection` and its concrete `ValueRealization`; their
+coherence completes the result. A Type-callspace/Val2 operation or canonical
+mechanical action may implement that value realization, but its body neither
+declares the migration's Policy endpoints nor creates the preceding inward
+demand. The parser and Normalized AST preserve this node; the current build
+prototype does not yet execute its result-demand/migration semantics.
 
 For singleton `plain`, a `const` producer may win inward selection under
 `succ_plain` while retaining `ProducedMode=const`; this is not already an exact
 plain outward view. Canonical terminal move/copy transfers the value into the
 PolicyLet's ordinary plain expression-result slot. The source mode remains
 const, the result-slot mode is plain, and no global `val plain` or Policy tag
-rewrite is introduced. Missing required move/copy/reconstruction action is a typed
-outward failure after producer selection, never permission to expose the wrong
-mode or reopen candidates.
+rewrite is introduced. The transfer is the selected migration candidate's
+`ValueRealization`, not an independent companion relation. Missing or ambiguous
+migration is a typed outward failure after producer selection, never permission
+to expose the wrong mode or reopen candidates.
 
 _See also: ResultPolicyDemand, Policy Demand Satisfaction,
 CallLocalPolicyClosure, PolicyMode._
@@ -2579,9 +2592,22 @@ CallLocalPolicyClosure, PolicyMode._
 
 ## Policy Transition
 
-The current canonical transition case is the language-authorized atomic
-Runtime Policy migration considered only after a complete accepted Policy
-choice has no existing view and that choice contains runtime. Define:
+Policy transition uses the one migration algebra shared by ordinary binding,
+`PolicyLet`, and runtime materialization:
+
+```text
+SourcePolicy -> TargetPolicy
+  -> PreparePolicyMigrationCandidates
+  -> ordinary Policy overload / unique selection
+  -> selected m
+  -> PolicyProjection(m) x ValueRealization(m)
+  -> coherent completed result
+```
+
+The current canonical non-identity stage transition is the
+language-authorized atomic Runtime Policy migration considered only after a
+complete accepted Policy choice has no existing view and that choice contains
+runtime. Define:
 
 ```text
 S = Static(Pv) = Pv - runtime
@@ -2658,6 +2684,9 @@ Project_out o Migration o Project_in
 
 No transitive migration graph, candidate backtracking, temporary-lifetime
 extension, universal transition Symbol, or new callable ontology is implied.
+PolicyLet does not introduce a second Policy selector; its demand kind only
+restricts the direct migration candidates admitted to this same ordinary
+selection.
 Explicit mechanical `ref`, `share`, and `rebind` operations remain ordinary
 function-object calls distinct from Policy-demand satisfaction.
 Binding P1 is the currently connected demand consumer. Consumer-neutral
@@ -2853,6 +2882,12 @@ copy(x) =
   tmp := CopyConstruct(x)
   Move(tmp)
 
+CopyConstruct(x : ordinary T)
+  ~= shared_view := share(x); clone(shared_view)
+
+CopyConstruct(x : T ref | T share)
+  ~= rebound_view := rebind(x); clone(rebound_view)
+
 automatic pass in {move, copy}
 automatic pass not in {ref, share, @}
 
@@ -2864,9 +2899,12 @@ TransferToDestination(source, destination, pass)
 
 There is no move of `x` before `CopyConstruct(x)`, and an explicit pass action
 dominates automatic selection. Transfer never rewrites the selected producer's
-result mode into the destination mode. These laws are canonical even though the
-selection algorithm, checker/normalizer integration, IR, and ABI are not yet
-implemented.
+result mode into the destination mode. `CopyConstruct` is the compact name for
+the selected ordinary share/clone or rebind/clone copy realization, not a new
+opaque semantic primitive; both expansions end in the same terminal move.
+Their internal borrow operations do not enlarge automatic pass selection beyond
+`{move, copy}`. These laws are canonical even though the selection algorithm,
+checker/normalizer integration, IR, and ABI are not yet implemented.
 
 _See also: PolicyMode, Migrate/Materialize._
 

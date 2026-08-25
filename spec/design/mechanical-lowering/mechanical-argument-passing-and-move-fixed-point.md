@@ -34,6 +34,22 @@ CopyAction:
     tmp := CopyConstruct(x)
     Move(tmp)
 
+CopyConstructExpansion:
+  ordinary x : T
+    CopyConstruct(x)
+      ~= shared_view := share(x); clone(shared_view)
+
+  x : T ref | T share
+    CopyConstruct(x)
+      ~= rebound_view := rebind(x); clone(rebound_view)
+
+  therefore:
+    copy(ordinary T)
+      ~= share -> clone -> terminal Move
+
+    copy(T ref | T share)
+      ~= rebind -> clone -> terminal Move
+
 NoPreMoveBeforeCopy:
   copy(x) != Move(x)
   copy(x) = CopyConstruct(x); Move(result)
@@ -58,6 +74,15 @@ an automatic slot moves or copies, prove copy/borrow legality, prescribe an IR
 instruction, or define an ABI. `TransferToDestination` in the canonical binding
 judgment is the ordinary-binding specialization of `Transfer` above, not a
 second transfer algebra.
+
+`CopyConstruct` names the selected ordinary copy-family realization; it is not
+a new opaque semantic primitive. The `~=` equations expose its existing value
+algebra. Concrete source spelling may differ, but ordinary values obtain a
+share/read view and clone it, while borrow values use their existing rebind
+path and clone the rebound view; both then perform exactly one terminal move.
+These share/rebind steps occur inside the selected copy realization. They do
+not authorize automatic argument adaptation to invent a borrow and do not
+enlarge `AutomaticPassDomain` beyond `{move, copy}`.
 
 ## 1. Purpose
 
@@ -275,6 +300,8 @@ move(x):
 
 copy(x):
   tmp = CopyConstruct(x)
+      ~= shared_view := share(x); clone(shared_view)     when x : ordinary T
+      ~= rebound_view := rebind(x); clone(rebound_view)  when x : T ref | T share
   move(tmp)
 
 ref(x):
@@ -312,6 +339,9 @@ destination mode may affect candidate preference or capability realization,
 but it does not introduce three different kinds of copy and never consumes
 `x` before `CopyConstruct(x)` has completed. Nor does transfer relabel the
 producer result: source and destination modes are independent slot facts.
+`CopyConstruct` here is the ordinary selected copy-family candidate summarized
+by `CopyConstructExpansion`, not an additional builtin whose behavior is left
+uninterpreted.
 
 ## 8. Borrow movement preserves parent/origin
 
@@ -450,7 +480,10 @@ move(move(x)) => move(x)
 ```
 
 This fixed-point equation is canonical target semantics, not a description of
-current implemented behavior.
+current implemented behavior. An IR may retain `CopyConstruct` as a compact
+instruction only after recording which ordinary share/clone or rebind/clone
+realization was selected; the instruction name does not erase the semantic
+equivalence in `CopyConstructExpansion`.
 
 ## 12. Relation to later call modes
 

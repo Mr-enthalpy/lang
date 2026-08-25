@@ -549,8 +549,11 @@ family member supplies the first post; a custom candidate may, for example,
 re-root an internal self-reference in the new object through its own explicit
 post. The lifetime calculus consumes the selected candidate's post and does not
 special-case the mechanical name `copy`. Mechanical `copy(x)` still means
-`CopyConstruct(x)` followed by terminal `Move(result)`; custom origin effects
-do not authorize a pre-move of `x`.
+the selected ordinary `CopyConstruct(x)` realization followed by terminal
+`Move(result)`; `CopyConstruct` is the compact family name for the established
+ordinary `share -> clone` expansion, or `rebind -> clone` for `T ref` /
+`T share`, rather than a new opaque primitive. Custom origin effects do not
+authorize a pre-move of `x`.
 
 `drop` ends the outstanding lifecycle/cleanup obligation for the current
 generation. Path-sensitive facts are represented by a region slice plus a
@@ -606,20 +609,32 @@ Color(child) includes inherited Color(ancestor)
 observation may slice the inherited region but may not remove the color
 
 FiniteColorPrinciple:
-  for each compilation semantic universe U:
-    ColorSet(U) is finite
+  GlobalColorVocabulary is extensible
+
+  for each committed compilation semantic universe Sigma:
+    ColorSet(Sigma) is a finite snapshot
 
   Color is not an arbitrary proposition carrier
 
   compatibility / exclusion / exchange
     are finite, mechanically decidable relations over
-    ColorSet(U) and bounded observed origin topology
+    ColorSet(Sigma) and bounded observed origin topology
+
+ColorExtensionInterface(new_color):
+  declare compatibility(new_color, existing_color)
+  declare exclusion(new_color, existing_color)
+  declare exchange(new_color, existing_color)
+  freeze those finite relation rows when Sigma is committed
 ```
 
 Color does not enter Object core or `Norm(Object)`. Its concrete carrier and
-source syntax remain implementation/surface questions. The concrete enumeration
-may evolve, but a Color implementation may not smuggle an unbounded theorem
-language into lifetime checking.
+source syntax remain implementation/surface questions. The global vocabulary
+is not a closed language-wide enumeration: later definitions may contribute
+colors and their finite relation rows. Once a compilation semantic universe is
+committed, however, its ColorSet and relation tables are finite and fixed for
+that compilation. Extension may express broader memory-access models and
+computation-reordering constraints, but it may not smuggle an unbounded theorem
+language into one lifetime check.
 
 ### 2.2 No implicit borrow formation
 
@@ -819,7 +834,8 @@ Still genuinely open engineering questions, not closed by this document:
 
 - concrete Rust/IR identity for `LifeName`, event positions, generation ids,
   Region slices, lazy origin links, and summary compression;
-- concrete Color carrier and any future source syntax;
+- concrete Color carrier, the contribution/registration API for the extensible
+  global vocabulary, and any future source syntax;
 - diagnostics and caching identity for lifetime validation;
 - automatic mechanical move-vs-copy pass selection, concrete borrow/copy
   representation, closure ABI, and environment layout, which remain the

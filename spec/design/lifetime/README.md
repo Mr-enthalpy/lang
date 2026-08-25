@@ -26,6 +26,7 @@ semantic value (without implying runtime materializability), pairwise-distinct
 exclusive-write and same-root shared-read defaults plus finite Pre patch,
 gapless half-open Region generations, move-origin preservation, selected
 CopyConstruct lifecycle posts, cleanup, Pre/Post summaries, and
-finite/monotone mechanically decidable Color relations.
+an extensible global Color vocabulary with finite/monotone mechanically
+decidable relations in each committed compilation semantic universe.
 Concrete IR, checker implementation, summary compression, access-tree
 integration, diagnostics, and any extended Horae logic remain future work.

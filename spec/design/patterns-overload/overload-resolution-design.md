@@ -734,10 +734,12 @@ completed actual but may not push a new demand through the PolicyLet boundary
 or reopen the inner candidate set. The outward satisfaction failure is not a
 conversion rank and does not select a runner-up producer.
 
-The outward `PolicyCast_P` is a Policy judgment. An ordinary Type-callspace,
-Val2, or mechanical value action may accompany it and must be coherent with
-the completed view, but the action does not define or prove the cast. In
-particular, an ordinary call cannot create the earlier inward result demand.
+After the producer is frozen, `SourcePolicy(result) -> P` reuses the ordinary
+Policy migration candidate preparation and this document's unique Policy
+overload selection. The selected migration jointly supplies its
+`PolicyProjection` and `ValueRealization`; a Type-callspace, Val2, or mechanical
+operation may implement the latter, but its body cannot create the earlier
+inward result demand. There is no PolicyLet-specific Policy selector.
 
 Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather

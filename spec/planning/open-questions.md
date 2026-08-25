@@ -155,13 +155,16 @@ Resolved future-design decisions:
   `[val, ...]`.
 - `PolicySpec let PipeExpression` is the explicit expression-level
   result-Policy boundary. It forms `ResultPolicyDemand` before the operand root
-  call's maxima, forms the outward `PolicyCast` afterward into the
+  call's maxima, then sends `SourcePolicy(result) -> P` through the same Policy
+  migration candidate preparation and ordinary unique selection used by
+  binding/runtime materialization. The selected migration jointly supplies
+  its coherent Policy projection and value realization into the
   node's ordinary expression-result slot, and closes before an outer call
   consumes the concrete view. The slot has its own concrete mode but is not a
   NameBinding, Symbol, declaration, or independently addressable Place.
   Singleton plain uses ordinary terminal move/copy when the selected producer
-  has another mode; that action must be coherent with, but does not define or
-  prove, the Policy cast. No global `val plain` is required. PolicyLet is not a
+  has another mode; that action is the selected migration's value realization,
+  paired with its Policy projection. No global `val plain` is required. PolicyLet is not a
   Val2 call, hidden binding, or cross-call fixed point. Raw/Norm preservation
   is implemented; semantic execution remains part of the Policy carrier
   package.
@@ -309,10 +312,10 @@ Not implemented after this correction:
   an available compile slice. If the complete accepted choice has no existing
   view, its runtime branch is the currently authorized constructible branch.
 - Executing `PolicyLetFormation`: form the inward result demand before the
-  operand root call, freeze that producer, form the outward Policy cast, check
-  any required coherent accompanying value action, and expose the completed
-  concrete view without reopening the operand. The value action does not
-  define or prove the cast.
+  operand root call, freeze that producer, reuse the ordinary Policy migration
+  candidate preparation/unique selection, execute the selected candidate's
+  coherent Policy projection and value realization, and expose the completed
+  concrete view without reopening the operand.
 - Completing every old ordinary Bp coordinate and every later B1..B6 filter in
   the connected `PreparedCallCandidate` carrier. The implemented slice already
   composes its ordinary formal/phase coordinates and optional migration
@@ -367,7 +370,9 @@ The implementation work is intentionally split into three follow-up packages:
 3. **Lifetime semantic model/checker:** represent LifeName generations,
    pairwise-distinct exclusive-write and same-root shared-read defaults plus
    finite Pre patch, exact move-origin preservation, gapless half-open Region
-   boundaries, selected CopyConstruct lifecycle posts, finite Color relations,
+   boundaries, selected CopyConstruct lifecycle posts, an extensible global
+   Color vocabulary whose every committed compilation universe has finite,
+   mechanically decidable compatibility/exclusion/exchange relations,
    cleanup ordering, Pre/Post summaries, and first-class `LifetimeValue`
    transport/return/storage through ordinary value machinery, then connect the
    checker without allowing failure to reopen overload selection.

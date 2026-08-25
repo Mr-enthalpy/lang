@@ -353,7 +353,9 @@ surface inventory of explicit reconstruction operations are different facts.
 The normative action meaning is owned by
 [`CanonicalMechanicalPassCore`](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md#0-canonical-pass-action-core):
 copy performs `CopyConstruct` followed by one terminal Move, with no pre-move
-of the source.
+of the source. `CopyConstruct` is the compact name for the selected ordinary
+copy algebra: ordinary `T` expands through share/clone, while `T ref` and
+`T share` expand through rebind/clone. It is not a new opaque primitive.
 
 ## 2. Pattern alternative and policy operators
 
@@ -704,6 +706,8 @@ canonical mechanical core:
 ```text
 let y = x copy
   -> tmp := CopyConstruct(x)
+           ~= share -> clone        for ordinary T
+           ~= rebind -> clone       for T ref / T share
   -> Move(tmp)
   -> y with PolicyMode = plain
 ```
@@ -802,13 +806,18 @@ PolicyLetFormation:
   Gamma ; ResultPolicyDemand = pi
     |- e ⇓ r
 
-  rho := PolicyCast_pi(r, result_slot = sigma)
-  a? := AccompanyingValueAction_pi(r, rho)
-  require RequiredValueActionPresent(rho, a?)
-  require CoherentPolicyAndValueAction(rho, a?)
+  S := SourcePolicy(r)
+  T := TargetPolicy(pi, sigma)
+  C := PreparePolicyMigrationCandidates(S, T, ResultPolicyDemand)
+  m := Unique(PolicyOverload(C, PolicyMigrationDemand(S, T)))
+
+  rho := PolicyProjection(m, r, sigma)
+  v := ValueRealization(m, r, sigma)
+  require CoherentPolicyMigrationResult(m, rho, v)
+  result := CompletePolicyMigrationResult(m, rho, v)
 
   --------------------------------------------------
-  Gamma |- PolicyLet(P, e) ⇓ rho
+  Gamma |- PolicyLet(P, e) ⇓ result
 ```
 
 The one syntax node has two projections. Its inward projection supplies `pi`
@@ -857,36 +866,37 @@ its `const` result is not already an outward singleton-`plain` view. The
 producer fact remains frozen while the expression-result slot receives its own
 mode.
 
-Outward completion keeps the Policy judgment and any accompanying value action
-parallel rather than using one as evidence for the other:
+Outward completion is one selected Policy migration, not an independently
+created cast plus an optional second action:
 
 ```text
 r := frozen operand result
-rho := PolicyCast_pi(r, result_slot = sigma)
-a? := AccompanyingValueAction_pi(r, rho)
+S := SourcePolicy(r)
+T := TargetPolicy(pi, sigma)
+C := PreparePolicyMigrationCandidates(S, T, ResultPolicyDemand)
+m := Unique(PolicyOverload(C, PolicyMigrationDemand(S, T)))
 
-require RequiredValueActionPresent(rho, a?)
-require CoherentPolicyAndValueAction(rho, a?)
+rho := PolicyProjection(m, r, sigma)
+v := ValueRealization(m, r, sigma)
+require CoherentPolicyMigrationResult(m, rho, v)
 
-ExposeInExpressionResult(sigma, rho)
+ExposeInExpressionResult(sigma, CompletePolicyMigrationResult(m, rho, v))
 PolicyMode(sigma) = ConcreteMode(pi)
 ResultPolicyMode(r) remains unchanged
 ```
 
-`PolicyCast_pi` is defined by the Policy algebra. An exact existing accepted
-view gives an identity-preserving cast. Otherwise the cast forms the completed
-Policy view in `sigma` according to the demand kind; it is not proved by finding
-a value operation. `ExposeInExpressionResult` is observation, not a copy into a
-new Place.
+The selected candidate `m` owns declared source/target Policy endpoints and
+produces both projections of the same migration: `PolicyProjection` and
+`ValueRealization`. Their coherence is checked before the result is completed.
+An exact existing accepted view is represented by the identity migration
+candidate; its Policy projection preserves identity and its value realization
+is the same value. A non-identity candidate may realize its value side through
+an established Type callspace, ordinary Val2 body, or canonical mechanical
+action. None of those bodies independently defines the Policy edge.
 
-`AccompanyingValueAction_pi` is a separate, optional judgment. When the cast's
-value projection or transport requires an ordinary value change, that action
-uses the established Type callspace, Val2 operation, or canonical mechanical
-action. `RequiredValueActionPresent` rejects a program when such an action is
-required but unavailable. `CoherentPolicyAndValueAction` checks that the
-action's result can inhabit the already-formed Policy view. Neither judgment
-defines or proves `PolicyCast_pi`, and their failure never reopens operand
-selection.
+`ExposeInExpressionResult` is observation, not a copy into a new Place. Failure
+to select a unique migration, execute its value realization, or establish
+coherence is a typed post-producer failure and never reopens operand selection.
 
 Singleton `plain` has a closed ordinary realization without a global
 reconstructor:
@@ -898,12 +908,16 @@ ProducedMode(r) = mu_r
 sigma_plain = ExpressionResultSlot(plain let e)
 PolicyMode(sigma_plain) = plain
 
-PolicyCast_plain(r, sigma_plain) = rho_plain
+S := SourcePolicy(r)
+T := PolicyOf(sigma_plain)
+C := PreparePolicyMigrationCandidates(S, T, ResultPolicyDemand)
+m_plain := Unique(PolicyOverload(C, PolicyMigrationDemand(S, T)))
 
-AccompanyingValueAction_plain(r, rho_plain)
+PolicyProjection(m_plain, r, sigma_plain) = rho_plain
+ValueRealization(m_plain, r, sigma_plain)
   = TransferToExpressionResult(r, sigma_plain, move | copy)
 
-CoherentPolicyAndValueAction(rho_plain, move | copy)
+CoherentPolicyMigrationResult(m_plain, rho_plain, move | copy)
   uses CanonicalMechanicalPassCore
   preserves ProducedMode(r) = mu_r
   exposes the transferred result through sigma_plain
@@ -911,33 +925,35 @@ CoherentPolicyAndValueAction(rho_plain, move | copy)
 
 A fresh consumable producer result may use terminal `Move`. A source that must
 be preserved requires the ordinary `CopyConstruct` plus terminal `Move`
-action. The action accompanies the already-defined `rho_plain`; it is not a
-witness for the cast. If no permitted action exists, outward completion fails
-after the producer is frozen; that failure does not erase `sigma`, expose the
-producer's wrong mode, or reopen producer selection. This is why no global
-`val plain` dispatcher is required.
+realization. The selected migration candidate gives both the plain Policy
+projection and this value realization. If no such candidate is uniquely
+selected, outward completion fails after the producer is frozen; that failure
+does not erase `sigma`, expose the producer's wrong mode, or reopen producer
+selection. This is why no global `val plain` dispatcher is required.
 
 ```text
-PolicyCastNotDerivedFromValueCall:
+PolicyMigrationNotDerivedFromValueCall:
 
-PolicyCast_pi(r) ⇓ rho
+MigrationCandidate(m, SourcePolicy(r), TargetPolicy(pi))
 
-AccompanyingValueAction_pi(r, rho) ⇓ a  // only when required
+PolicyProjection(m, r) ⇓ rho
+ValueRealization(m, r) ⇓ v
 
-CoherentPolicyAndValueAction(rho, a)
+CoherentPolicyMigrationResult(m, rho, v)
 
 ordinary Val2 action =/> creates the inward ResultPolicyDemand
-ordinary Val2 action =/> defines or proves PolicyCast
+ordinary Val2 body =/> defines the Policy transition endpoints of m
 ordinary Val2 action =/> replaces PolicyLet
-PolicyCast =/> ordinary Val2 call
+PolicyLet =/> is itself or lowers to an ordinary Val2 call
 ```
 
 The reason is temporal: an ordinary call can be selected only after its input
 expression exists, while `PolicyLet` must contribute its demand before the
-operand root call is selected. “Policy cast” here names the complete outward
-Policy-view satisfaction projection. It is not the forbidden in-place
-`mutate-policy-tag(source)` operation of §1.2. `plain` satisfaction does not
-imply a global `val plain` dispatcher.
+operand root call is selected. A Val2 operation may be the selected migration
+candidate's `ValueRealization`, but it cannot retroactively create that demand
+or independently establish the candidate's declared Policy edge. Policy
+migration is not the forbidden in-place `mutate-policy-tag(source)` operation
+of §1.2. `plain` satisfaction does not imply a global `val plain` dispatcher.
 
 ```text
 NoCrossCallPolicyPropagation:
@@ -945,8 +961,8 @@ NoCrossCallPolicyPropagation:
 PolicyLet(P, e)
   -> establish ResultPolicyDemand(P)
   -> select/evaluate e once under that demand
-  -> form PolicyCast_P(result(e))
-  -> check any required coherent accompanying value action
+  -> uniquely select one Policy migration for SourcePolicy(result(e)) -> P
+  -> obtain its coherent PolicyProjection and ValueRealization
   -> close the boundary
 
 outer consumer demand
@@ -967,8 +983,8 @@ DeclarationSidePolicyInference
 CallSiteImplicitDemand
   -> binding/call context supplies its candidate-independent default demand
 
-ExplicitExpressionDemandAndCast
-  -> PolicyLet supplies an explicit local demand and completed outward view
+ExplicitExpressionDemandAndMigration
+  -> PolicyLet supplies an explicit local demand and one completed migration
 ```
 
 Concretely:
@@ -1194,7 +1210,7 @@ rather than the final semantic shape. It may continue to reject legacy
 value-side combinations with an absent value component, but that restriction
 does not erase the whole-slot PolicyMode.
 
-### 3.4 Policy Demand Satisfaction: existing first, constructible second
+### 3.4 Policy migration satisfaction: existing first, unique migration second
 
 `PolicyDemand` may be retained as consumer-origin metadata:
 
@@ -1206,29 +1222,37 @@ PolicyDemand
   | MechanicalPolicyDemand
 ```
 
-This enumeration does **not** give all demand kinds a shared arbitrary
-conversion search. Each demand kind owns its established
-projection/admissibility rule. The general invariant orders two classes of
-accepted view:
+This enumeration does **not** give all demand kinds an arbitrary conversion
+search. It supplies demand-kind admission facts to one Policy migration
+algebra. Every admitted candidate has declared source/target Policy endpoints
+and produces both a Policy projection and a value realization:
 
 ```text
+PolicyMigrationCandidate m:
+  SourcePolicy(m)
+  TargetPolicy(m)
+  PolicyProjection(m, result)
+  ValueRealization(m, result)
+
 SatisfyPolicyDemand(demand, result):
   Q = AcceptedPolicyQuery(demand)
   existing = ProjectExistingViewForDemand(Q, result)
 
   if existing != empty:
-    rho := IdentityPolicyCast(Q, existing)
-    return rho
+    C = { IdentityPolicyMigration(existing, Q) }
+  else:
+    C = DirectPolicyMigrationCandidates(
+          SourcePolicy(result),
+          TargetPolicy(Q),
+          demand.kind)
 
-  if runtime not in AcceptedValueStages(Q):
-    fail
+  D = PolicyMigrationDemand(SourcePolicy(result), TargetPolicy(Q))
+  m = Unique(PolicyOverload(FullyAdmissible(C), D))
 
-  Qr = RuntimeBranch(Q)
-  rho := PolicyCastToRuntimeBranch(Qr, result)
-  a := AccompanyingValueAction(Qr, result, rho)
-  require a is the one language-authorized atomic runtime migration toward Qr
-  require CoherentPolicyAndValueAction(rho, a)
-  return rho
+  rho = PolicyProjection(m, result)
+  v = ValueRealization(m, result)
+  require CoherentPolicyMigrationResult(m, rho, v)
+  return CompletePolicyMigrationResult(m, rho, v)
 ```
 
 When `Q` contains a whole-slot ModeAtom, an existing outward view is accepted
@@ -1238,37 +1262,41 @@ they do not widen the set of concrete modes accepted by outward satisfaction.
 In particular, a `const` producer that wins under `plain` preference is not an
 existing singleton-`plain` outward view.
 
-Policy cast and value algebra are separate judgments:
+The two result projections are inseparable outputs of the selected migration:
 
 ```text
-PolicyCast_P(r) ⇓ rho
+SelectPolicyMigration(SourcePolicy(r), P) ⇓ m
 
-AccompanyingValueAction_P(r, rho) ⇓ a  // when the cast requires value action
+PolicyProjection(m, r) ⇓ rho
+ValueRealization(m, r) ⇓ v
 
-SatisfyPolicyDemand(P, r) ⇓ rho
+SatisfyPolicyDemand(P, r) ⇓ result
 iff
-  PolicyCast_P(r) ⇓ rho
-  and RequiredValueActionPresent(rho, a?)
-  and CoherentPolicyAndValueAction(rho, a?)
+  UniqueSelectedPolicyMigration(m)
+  and CoherentPolicyMigrationResult(m, rho, v)
+  and result = CompletePolicyMigrationResult(m, rho, v)
 ```
 
-`PolicyCast_P` is a Policy relation, not an existential search for an ordinary
-operation. Each demand kind defines which existing or newly formed Policy view
-is its result. An accompanying action may be the selected ordinary
-Type-callspace/Val2 operation or the particular mechanical transfer already
-authorized by that demand kind, but the action neither defines nor proves the
-cast. The existing-first rule fixes which Policy-cast rule is reachable; once
-the cast is formed, failure to select or execute a required accompanying action
-does not reopen the operand candidate set.
+`PolicyProjection` is not independently formed before candidate selection, and
+`ValueRealization` is not an optional proof supplied afterward. Both belong to
+`m`. An ordinary Type-callspace/Val2 operation or mechanical transfer may
+implement `ValueRealization(m, r)`, but the migration candidate's declared
+Policy endpoints define the transition. Ordinary Policy overload performs the
+unique selection; no PolicyLet-specific selector or second transition algebra
+exists.
+Once `m` is selected, failure to execute either projection or establish
+coherence does not reopen the operand candidate set.
 
 For every demand kind:
 
 ```text
 ProjectExistingViewForDemand(demand, R) != empty
-  => no migration candidate enumeration
-  => no migration invocation
+  => candidate set is exactly {IdentityPolicyMigration}
+  => no non-identity migration candidate enumeration
+  => no non-identity migration invocation
   => no value reconstruction
-  => IdentityPolicyCast(demand, R)
+  => PolicyProjection(identity, R) preserves the accepted view
+  => ValueRealization(identity, R) = R
   => Symbol / TypeValue / PatternValue / Place identity is unchanged
 ```
 
@@ -1279,11 +1307,32 @@ This is the **Existing-First, Constructible-Second** principle:
 2. language-constructible accepted views
 ```
 
-The current set of Policy-cast stage branches that may require construction is
+The current set of stage branches admitted for non-identity construction is
 exactly `{ runtime }`. Construction does not mean every alternative in `Q`
 becomes an obligation.
 The original query may be `meta || runtime`; if its complete existing
 projection is empty, the derived migration target is only its runtime branch.
+
+```text
+OnePolicyMigrationAlgebra:
+
+ordinary binding Policy completion
+PolicyLet outward completion
+compile:compile -> runtime:compile materialization
+  -> PreparePolicyMigrationCandidates
+  -> ordinary Policy overload / unique selection
+  -> selected m
+  -> PolicyProjection(m) × ValueRealization(m)
+  -> CoherentPolicyMigrationResult
+```
+
+Demand kinds restrict which direct candidates are admitted; they do not own
+different selectors. The runtime-stage case admits the one authorized atomic
+runtime-migration family described in §3.5. A PolicyLet result-slot mode
+transfer admits the corresponding identity or canonical mechanical
+move/copy-backed migration. Ordinary binding consumes the same candidate
+algebra. No demand kind may reinterpret an arbitrary ordinary value call as a
+Policy transition merely because its return value has a useful shape.
 
 `BindingP1Demand` uses the exact conservative `ProjectP1` theorem in §3.1.
 Formal parameter and result consumers retain their existing policy-Pattern and
@@ -1292,10 +1341,10 @@ an available compile slice; the mere spelling of `runtime` as another accepted
 alternative creates no materialization obligation.
 
 `MechanicalPolicyDemand` records the origin of a language-selected mechanical
-operation. It does not imply that arbitrary Policy failure may search `ref`,
-`share`, `@`, or another structure-changing operation. Those operations
-occur only when separately required by their own language rule and then use
-ordinary function-object invocation.
+realization within a selected migration. It does not imply that arbitrary
+Policy failure may search `ref`, `share`, `@`, or another structure-changing
+operation. Those operations occur only when separately required by their own
+language rule and then use ordinary function-object invocation.
 
 ### 3.5 Slicing and atomic runtime migration
 

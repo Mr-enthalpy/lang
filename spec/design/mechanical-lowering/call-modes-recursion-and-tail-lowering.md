@@ -186,11 +186,17 @@ A call mode depends on already-normalized argument passing.
 objects that result from argument-passing normalization:
 
 ```text
-copy(x)  -> tmp = copy_construct(x); move(tmp)
+copy(x)  -> tmp = CopyConstruct(x); move(tmp)
+            where CopyConstruct(ordinary T) ~= share -> clone
+              and CopyConstruct(T ref/share) ~= rebind -> clone
 share(x) -> b = share_borrow(x); move(b)
 ref(x)   -> b = ref_borrow(x); move(b)
 move(x)  -> move(x)
 ```
+
+`CopyConstruct` is the selected ordinary copy-family realization, not a new
+opaque primitive. These internal share/rebind expansions do not authorize
+automatic pass adaptation to choose `share` or `ref`.
 
 `tco` transports the final objects that enter the parameter slots. `loop`
 additionally requires that those objects can be interpreted in the existing slots
