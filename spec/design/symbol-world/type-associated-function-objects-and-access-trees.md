@@ -222,7 +222,7 @@ Stage(accessor(f)) = compile             otherwise
 A type-valued field is compile-only only because it currently fails this
 predicate, not because “type/PatternValue field” is a separate category.
 Generated candidates use the ordinary context preference
-`succ_plain: let > const = mut`; if no plain `let` candidate exists, tied
+`succ_plain: plain > const = mut`; if no `plain` candidate exists, tied
 `const` and `mut` candidates are ambiguous rather than arbitrarily selected.
 Open authority does not propagate along owned field relations; each
 PatternValue's `OpenHere_Σ` is determined independently by stack-relative

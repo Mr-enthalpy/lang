@@ -1,0 +1,2 @@
+(const let a |> f) |> g;
+let x = mut let value;

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use lang_syntax::norm::{
     NormBindingSlot, NormClosure, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr,
     NormForm, NormNavComponent, NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem,
-    NormProduct, NormProductElem, NormProgram, NormRule,
+    NormPolicyAtom, NormProduct, NormProductElem, NormProgram, NormRule, NormValuePolicyPattern,
 };
 
 fn case_path(name: &str, extension: &str) -> PathBuf {
@@ -284,6 +284,44 @@ fn annotation_pattern() {
 #[test]
 fn policy_pair_preservation() {
     assert_norm_case("27_policy_pair", false);
+}
+
+#[test]
+fn policy_let_preservation() {
+    assert_norm_case("40_policy_let", false);
+}
+
+#[test]
+fn policy_let_policy_uses_inherited_hole_environment() {
+    let slot = single_let_slot("let <P> x = P let value;");
+    let [hole] = slot.deduce.as_slice() else {
+        panic!("expected one deduced policy hole");
+    };
+    let Some(NormExpr::PolicyLet { policy, .. }) = slot.initializer.as_deref() else {
+        panic!("expected preserved PolicyLet initializer");
+    };
+    let NormValuePolicyPattern::Conjunction(conjunction) = &policy.value_policy else {
+        panic!("expected policy conjunction");
+    };
+    let [choice] = conjunction.choices.as_slice() else {
+        panic!("expected one policy choice");
+    };
+    assert!(matches!(
+        choice.atoms.as_slice(),
+        [NormPolicyAtom::HoleRef { target, text, .. }]
+            if *target == hole.id && text == "P"
+    ));
+}
+
+#[test]
+fn policy_let_in_pattern_context_is_explicitly_unsupported() {
+    let slot = single_let_slot("let x: const let T = value;");
+    let annotation = slot.annotation.expect("annotation");
+    assert!(matches!(
+        annotation.pattern,
+        NormPattern::Unsupported { raw_kind_summary, .. }
+            if raw_kind_summary == "policy-let expression in pattern context"
+    ));
 }
 
 #[test]

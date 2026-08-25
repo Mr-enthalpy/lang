@@ -43,6 +43,14 @@ Still open after this correction:
   requirement that distinct borrow targets normalize distinctly is closed.
 - Exact future lowering of generic/meta-generated type expressions such as
   `(int Vec::std)`.
+- Character-literal spelling, extension of the exact-real carrier beyond the
+  currently parsed finite forms, the concrete machine-Type catalog, and the
+  source/context mechanism that selects ordinary literal construction targets.
+- Final surface treatment of colon Policy spellings whose whole-slot
+  `ModePattern` factorization leaves an empty residual `Pv` or `Pp` side. The
+  current rejection of forms such as `const:compile` is provisional; the closed
+  semantic requirement is only that mode factor exactly once and never inhabit
+  either pair coordinate.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
 - Exact future implementation of independent place-writability and
@@ -52,8 +60,8 @@ Still open after this correction:
   requires a still-open construction and resolves the target object from the
   constructed Pattern. Bare `let f::U` is not the target place form.
 - Exact future implementation of borrow-view evaluation (`ref` / `share` /
-  `rebind`) and of the privileged place-observation `@` (yields
-  `LifetimeVal`), of the capability coercion `Coerce_{j->k}` behind
+  `rebind`) and of continuation-relative `@` name reification (yields
+  first-class ordinary `LifetimeValue` without `PrivilegedActualPlace`), of the capability coercion `Coerce_{j->k}` behind
   borrow-operator
   overlap, and of the escape check
   `Escapes(view, destination) = Region(destination) ⊄ ValidRegion(view)`.
@@ -68,7 +76,8 @@ Still open after this correction:
   outside the object/subspace case handled here.
 - Exact form of future `unique trait`.
 - Full access-tree construction algorithm.
-- Full lifetime relation over region/origin facts.
+- Concrete LifeName/Region/Color IR and lifetime-checker integration over the
+  closed region/origin semantics.
 - Interaction between type-value equality and type-associated namespace
   traversal.
 - Final surface mechanism, if any, for requesting coordinated value/ref/share
@@ -104,8 +113,13 @@ Resolved future-design decisions:
   `P:(P-runtime)` and supplies `compile` when only `runtime` remains.
 - Function-object stage views are derived from `P2`:
   `Stage(P1p) = Stage(P2p)` and
-  `Stage(P1v) = Stage(P2v) union Stage(P2p)`. Mutability, namespace
+  `Stage(P1v) = Stage(P2v) union Stage(P2p)`. PolicyMode, namespace
   visibility, and value presence are not copied by this stage derivation.
+- Default call evaluation applies that stage lift candidate-locally under the
+  already-known current phase. Thus P1 stage follows P2 for ordinary
+  evaluation, and `compile`/`runtime` result exposure does not require a
+  `PolicyLet` spelling. This phase-derived default is not an explicit
+  target-result constraint and does not infer `const`/`mut` from P2.
 - The only execution phases are OpenStatic, SealStatic, and Runtime. `meta` is
   exposed only in OpenStatic, `seal` only in SealStatic, `compile` in both
   static phases, and runtime values only in Runtime.
@@ -123,11 +137,13 @@ Resolved future-design decisions:
 - Eligible runtime function objects have complete derived `Val2` compile
   companion objects. Overload resolution forms a fully admissible set before
   preference, and must-select is an object strategy rather than a fallback.
-- `const`/`mut` is a `Pv` dimension. Multi-position preference uses product
-  partial order; delete members remain candidates and may be the unique maximal
-  rejection.
+- `PolicyMode={const,plain,mut}` is a whole-slot coordinate orthogonal to
+  `Pv:Pp` and `Val1` shape. Multi-position preference uses the fixed
+  three-point product order; a plain demand with only const/mut maxima is
+  ambiguous. Capability realization is a separate 3×3 grid, so delete members
+  remain candidates and may be the unique maximal rejection.
 - Written formal parameters inherit their callable P2. `const let` / `mut let`
-  restrict only the inherited mutability Pattern; all other P2 dimensions are
+  restrict only the inherited `PolicyMode`; all other P2 dimensions are
   invariant. The resulting qualifier is exported into the candidate's external
   policy product order as well as its body-entry pair. Opposite actual
   qualifiers remain preference inputs rather than being removed by ordinary
@@ -142,18 +158,45 @@ Resolved future-design decisions:
   A head with no written formal retains an unbound semantic self-position.
   Generated receiver helpers therefore use `[self, val, ...]`, not
   `[val, ...]`.
-- A function-object binding has the unrestricted empty mutability domain by
-  default (`const || mut`); only its declaration may crop that internal axis.
-  Export derives a separate external view: value-bearing exports expose
-  `Project_const(Pv):Pp`, while pure `absent:Pp` exports have no mutability
-  requirement. A `mut`-only value export is invalid; `const || mut` remains a
-  valid complete internal view. This projection consumes the resolved internal
-  `PolicyPair` after declaration-side P1 application. Direct `export + mut`
-  roots are rejected; mut-only overload members of an exported symbol remain
-  in `Σ_full` and are omitted from `Σ_export`. `Pv = absent` is structurally
-  empty on the value side: both value stages and value mutability are empty.
-  P1 elaboration, P2 normalization, and resolved export projection reject flat
-  compatibility carriers that attach either subdimension to absent Pv.
+- `PolicySpec let PipeExpression` is the explicit expression-level
+  result-Policy boundary. It is optional when ordinary current-phase
+  evaluation already obtains `compile`/`runtime` exposure through
+  P1-stage-follow-P2; stage spellings remain available for explicit
+  delimitation/migration, while `const`/`mut` ModeAtoms manually replace the
+  default `plain` mode demand. It forms `ResultPolicyDemand` before the operand
+  root call's maxima, then sends `SourcePolicy(result) -> P` through the same
+  Policy migration candidate preparation and ordinary unique selection used
+  by binding/runtime materialization. The selected migration jointly supplies
+  its coherent Policy projection and value realization into the node's
+  ordinary expression-result slot, and closes before an outer call consumes
+  the concrete view. The slot has its own concrete mode but is not a
+  NameBinding, Symbol, declaration, or independently addressable Place.
+  Singleton plain uses ordinary terminal move/copy when the selected producer
+  has another mode; that action is the selected migration's value realization,
+  paired with its Policy projection. No global `val plain` is required. PolicyLet is not a
+  Val2 call, hidden binding, or cross-call fixed point. Raw/Norm preservation
+  is implemented; semantic execution remains part of the Policy carrier
+  package.
+- Every call has a total `OutputModeDemand`: an already-formed
+  candidate-independent immediate-consumer demand when available, otherwise
+  concrete `plain`. Optional expected result pair/type/rank/facet constraints
+  are a separate hard-admissibility input and do not remove that output
+  coordinate when absent. The separately total `EvaluationStageContext`
+  supplies the current phase and derives candidate-local P1 stage exposure from
+  P2 when no explicit target stage is written.
+- A function-object binding with no written mode is `plain`. Export preserves
+  the complete internal `Pv:Pp` and `PolicyMode`; stable external admission
+  uses export retention plus public path visibility, while consumer Policy
+  selection and dynamic-legality checks occur after lookup. `Pv = absent` removes
+  value stages and `SemanticValueId`, but does not erase the whole-slot mode.
+  The former universal const-projection rule and the equation
+  `plain = const || mut` are closed as retired semantics; current flat and
+  const-projected carriers remain explicitly bounded implementation adapters.
+- Explicit surface `plain` is `ModeAtom(plain)`. A typed `ModePattern` is one
+  singleton point from `const | plain | mut`; a surface `PolicyChoice` with
+  multiple ModeAtoms, including `const || mut`, is rejected after
+  factorization. This does not restrict pair/view choices such as
+  `compile || runtime`, and no mode atom may remain in `Pv` or `Pp`.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
   It remains one Pattern remainder constructor, never a pack type or RHS
   unpack. Raw `...(a, b)` is preserved but rejected after P normalization
@@ -184,16 +227,17 @@ Resolved future-design decisions:
 - In-place closures may contribute callable overload candidates. They have no
   capture list, defer unresolved outer reads to the embedding layer, gain no
   capture set, and may not directly write an outer place. Ordinary closures
-  have explicit source captures plus future resolved automatic-const
+  have explicit source captures plus future resolved automatic-eligible
   requirements; `[x]` is explicit `[let x = x]`, not automatic capture.
   Capture requirements remain abstract dependencies rather than `self` fields
   or layout declarations. In-place candidates are preferred over otherwise tied
   non-in-place candidates after first-order-over-instantiated preference.
 - Internal explicit navigation searches `Σ_full`; external explicit navigation
-  searches the const-projected `Σ_export`; neither is a Wpre/Wseal membership
-  query. Ordinary external call dependencies normally fall within automatic
-  const capture. Automatic capture and call resolution share a problem domain
-  around symbol identity and const visibility, without implying pass ordering,
+  searches stable `Σ_export`; a later consumer applies its Policy demand and
+  checks dynamic legality of the selected invocation;
+  neither is a Wpre/Wseal membership query. Automatic capture and call
+  resolution share a problem domain around symbol identity and the stable
+  external view, without implying pass ordering,
   shared intermediate objects, or an implementation dependency. Explicit and
   automatic capture remain distinct dependency declarations even when they
   resolve to the same source; later layout alone may coalesce equivalent
@@ -206,17 +250,25 @@ Implemented substrate after this correction:
 
 - Raw and Normalized AST preserve dedicated conjunction, choice, atom, pair,
   and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
+  `ExprKind::PolicyLet` and `NormExpr::PolicyLet` preserve an explicit local
+  result-Policy boundary with full-pipe precedence and inherited hole
+  normalization; call extractors keep it opaque rather than executing its
+  operand transparently.
 - `lang_build` provides typed pair normalization and true slice restriction,
   three contextual P1 elaborators, three-phase exposure, structural compile
-  flow projection, Wpre/export-retention closure, candidate-level
+  flow projection, Wpre/export-retention closure, and the legacy candidate-level
   `ResolvedCandidatePolicy { pair: PolicyPair, provenance }` to
   `ExportCandidateView { identity, internal_candidate, external_policy:
   PolicyPair }` transformation, and phase/const-mut product-order test
-  substrate. The direct declaration `external_projection` remains a
-  root-local `P1Projection` preview. External admission requires both
+  substrate. These current Rust carriers do not yet implement canonical
+  `ResolvedCandidateSnapshot`, whole-slot mode/realization retention, or
+  consumer-context `DynamicLegality_Γ`; they remain the explicitly bounded
+  const-projected 2×2 adapter. The direct declaration `external_projection`
+  remains a root-local `P1Projection` preview. External admission requires both
   symbol-level export-retention-closure membership and public path
-  reachability; among an admitted symbol's resolved candidates, mut-only
-  entries remain in `Σ_full` and are omitted from `Σ_export`. Namespace-graph
+  reachability. Canonical `Σ_export` retains every admitted resolved candidate
+  with the same identity, pair, mode, stable realization facts, and provenance;
+  the current adapter does not yet realize that payload. Namespace-graph
   installation supplies the persistent admission facts. Retention membership
   is not itself export status; `Σ_export` is the external candidate set.
 - `lang_build` now also provides a parent-linked `SemanticOwnerGraph`,
@@ -232,11 +284,12 @@ Implemented substrate after this correction:
   alternative is extracted as the runtime-only migration target and paired
   with an eligible static input view; pure types use a projection-only
   `Infallible` carrier. The compiler mandates the static-to-runtime stage edge,
-  while callable-declared mutability endpoints may differ. Migration cannot
+  while callable-declared `PolicyMode` endpoints may differ. Migration cannot
   repair Type/Pattern structural failure. Literal helpers separate literal
-  family, atomic builtin type `T`, and concrete numeric `Tnum`; registries store
-  current first-order TypeValue projections derived from resolved Type symbols,
-  not final canonical type-value identities. The caller-supplied candidate
+  family, atomic builtin type `T`, and concrete numeric `Tnum`; these registries
+  perform concrete construction-target lookup only and do not implement the
+  closed abstract `integer`/`real`/`character` denotations, exact values,
+  contextual construction, or same-Type materialization. The caller-supplied candidate
   prototype preserves input × output endpoint Pareto preference before its
   Pattern-specificity stand-in, with direct-only selection. Its endpoint-only
   maxima helper is private and is not a sequentially composable full-Bp
@@ -255,7 +308,8 @@ Not implemented after this correction:
   normalized canonical argument product. The legacy digest only keys the
   compatibility cache and does not participate in canonical semantic
   identity.
-- Storing and checking canonical `Pv:Pp` on every symbol/value object.
+- Storing and checking canonical `Pv:Pp` plus whole-slot `PolicyMode` on every
+  symbol/value slot.
 - Storing policy-pair views on every namespace entry and routing every build
   operation through the typed P1 projection.
 - Connecting the candidate-level export-view projector to the persistent
@@ -268,6 +322,11 @@ Not implemented after this correction:
   consumer. A consumer accepting `compile || runtime` is already satisfied by
   an available compile slice. If the complete accepted choice has no existing
   view, its runtime branch is the currently authorized constructible branch.
+- Executing `PolicyLetFormation`: form the inward result demand before the
+  operand root call, freeze that producer, reuse the ordinary Policy migration
+  candidate preparation/unique selection, execute the selected candidate's
+  coherent Policy projection and value realization, and expose the completed
+  concrete view without reopening the operand.
 - Completing every old ordinary Bp coordinate and every later B1..B6 filter in
   the connected `PreparedCallCandidate` carrier. The implemented slice already
   composes its ordinary formal/phase coordinates and optional migration
@@ -292,11 +351,43 @@ Not implemented after this correction:
 - Result Pattern delivery/D-reduction; the current return-target substrate only
   retains the complete return binding slot and selects a restricted active
   frame.
-- Any positive lifetime/Horae design beyond the `@` place-observation and the
-  escape check.
-- Borrow-view evaluation (`ref` / `share` / `rebind`) and the privileged
-  place-observation `@` (yields `LifetimeVal`) under policy projection, type
-  checking, and runtime IR.
+- Concrete LifeName/Region/Color IR, summary compression, access-tree
+  integration, lifetime checking, and any extended Horae logic beyond the
+  closed core.
+- Borrow-view evaluation (`ref` / `share` / `rebind`) and continuation-relative
+  `@` name reification under policy projection, type checking, and runtime IR.
+  The resulting `LifetimeValue` is already fixed as an ordinary first-class
+  semantic value: implementation must support ordinary binding, value-slot
+  storage, passing, return, and admitted move/copy without introducing an
+  ephemeral observation species. Same-Type runtime materialization remains
+  conditional on the ordinary non-deleted callspace transition.
+
+The implementation work is intentionally split into three follow-up packages:
+
+1. **Policy carrier and 3×3 tests:** add first-class whole-slot `PolicyMode`,
+   stable export admission/projection, later selected-invocation dynamic-legality checks, all
+   nine capability coordinates, plain ambiguity, and asymmetric
+   default/delete/custom fixtures; consume the preserved `PolicyLet` boundary
+   with inward demand plus outward satisfaction without changing resolver retry
+   rules.
+2. **Abstract literals and materialization:** add exact `integer`/`real`
+   denotations, keep character spelling as a separate amendment, perform
+   ordinary construction to the concrete machine Type, install the intrinsic
+   deleted same-Type runtime cells in the immutable canonical `tau_integer`,
+   `tau_real`, and `tau_character` callspace snapshots, preserve the existing
+   no-retroactive-snapshot-mutation and `NoForeignTypeMemberInjection`
+   invariants, and enforce concrete same-Type materialization plus
+   `StageInvariantTypeSemantics`.
+3. **Lifetime semantic model/checker:** represent LifeName generations,
+   pairwise-distinct exclusive-write and same-root shared-read defaults plus
+   finite Pre patch, exact move-origin preservation, gapless half-open Region
+   boundaries, copy lifecycle posts inherited exactly from the selected
+   share/rebind-plus-clone realization, an extensible global
+   Color vocabulary whose every committed compilation universe has finite,
+   mechanically decidable compatibility/exclusion/exchange relations,
+   cleanup ordering, Pre/Post summaries, and first-class `LifetimeValue`
+   transport/return/storage through ordinary value machinery, then connect the
+   checker without allowing failure to reopen overload selection.
 
 Deferred materialization and mixed-stage work must preserve these
 already-recorded design constraints:
@@ -304,7 +395,7 @@ already-recorded design constraints:
 ```text
 existing Policy view => slice; migration is unreachable
 complete choice empty + runtime accepted => construct runtime branch
-compiler mandates static -> runtime; callable owns legal mutability endpoints
+compiler mandates static -> runtime; callable owns legal PolicyMode endpoints
 compile -> runtime = new runtime object, not lifetime extension
 addressable runtime value => ordinary owner/place
 compile-ref cache identity = StableTargetIdentity(Target(ref)), not pointee equality
@@ -451,7 +542,8 @@ Still open for later design:
 - finer-grained require atomization and canonical identities for grouped
   require structures;
 - future Pattern policy after an explicit sealing mechanism;
-- complete lifetime region/origin/Horae algebra;
+- concrete LifeName/Region/Color IR, summary compression, access-tree
+  integration, and any extended Horae logic;
 - the future member set of `BuiltinPrivilegedAstMetaFunction` and each member's
   bounded capability.
 

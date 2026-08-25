@@ -350,6 +350,13 @@ fn dump_annotation_term(output: &mut String, annotation: &AnnotationTermAst, ind
 fn dump_expr(output: &mut String, expr: &ExprAst, indent: usize) {
     line(output, indent, "Expr");
     match &expr.kind {
+        ExprKind::PolicyLet(policy_let) => {
+            line(output, indent + 1, "PolicyLet");
+            line(output, indent + 2, "policy:");
+            dump_policy_spec(output, &policy_let.policy, indent + 3);
+            line(output, indent + 2, "operand:");
+            dump_expr(output, &policy_let.operand, indent + 3);
+        }
         ExprKind::Pipe(pipe) => dump_pipe(output, pipe, indent + 1),
         ExprKind::Product(product) => dump_product(output, product, indent + 1),
         ExprKind::Error(error) => {
@@ -900,6 +907,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::ExpectedColon => "ExpectedColon",
         DiagnosticCode::ExpectedBindingAnnotation => "ExpectedBindingAnnotation",
         DiagnosticCode::ExpectedEqual => "ExpectedEqual",
+        DiagnosticCode::ExpectedPolicyLetOperand => "ExpectedPolicyLetOperand",
         DiagnosticCode::EmptyPipeSegment => "EmptyPipeSegment",
         DiagnosticCode::ExpectedNameAfterDot => "ExpectedNameAfterDot",
         DiagnosticCode::ExpectedNameAfterDoubleDot => "ExpectedNameAfterDoubleDot",

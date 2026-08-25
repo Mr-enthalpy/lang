@@ -10,6 +10,7 @@ pub enum DiagnosticCode {
     ExpectedColon,
     ExpectedBindingAnnotation,
     ExpectedEqual,
+    ExpectedPolicyLetOperand,
     EmptyPipeSegment,
     ExpectedNameAfterDot,
     ExpectedNameAfterDoubleDot,

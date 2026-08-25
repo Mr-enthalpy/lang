@@ -6,7 +6,7 @@ the first-order identity core: recursive normalization over the present
 type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
 per-carrier places. The complete `tau=<Q,V_τ>` snapshot and
 `Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
-`share`, `rebind`), the place-sensitive lifetime observation (`@`),
+`share`, `rebind`), continuation-relative lifetime name reification (`@`),
 construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgment, and type checker
 remain unimplemented target semantics. §10 registers the implementation debt.**
 
@@ -837,8 +837,8 @@ snapshot transport / copy / extend / inject
 (`ref`/`share` over a type value are governed by §5: borrow constructors are
 privileged actual-place builtins and never implicitly degrade `tau` to `Q`.)
 
-`@` is not part of this classification: it is the privileged place-observation
-operation that yields a lifetime value (canonical owner
+`@` is not part of this classification: it is the continuation-relative
+name-reification operation that yields a lifetime value (canonical owner
 `../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2) and never a
 borrow or a `type ref`.
 
@@ -1289,9 +1289,11 @@ destination prospective ProjectionSlot under `(t |> (type ref))`. It does not re
 navigation, or make the destination symbol identical to the pattern owner.
 
 Literal syntax is the explicit exception only to source-path resolution. It
-still evaluates to a value and uses the same binding rule. In
-`let a = 'a';`, the left `a` is a binding name while the right `'a'` is a
-character literal; matching textual content does not make them the same object.
+still evaluates to a value and uses the same binding rule. In the schematic
+future spelling `let a = 'a';`, the left `a` is a binding name while the right
+`'a'` denotes a character literal; matching textual content does not make them
+the same object. The frozen lexer does not yet accept that character spelling
+(§4.1.3).
 Pattern values have no analogous standalone literal syntax, so same-spelled
 Symbol paths and pattern diagnostic names must be kept especially distinct.
 
@@ -1496,66 +1498,278 @@ Member creation is a place operation. Structural extension is different: it is
 the pure value transformation `extend`, while `inject` is the explicit
 read--extend--write wrapper defined in the symbol-first construction document.
 
-### 4.1 Atomic builtin types, concrete numeric types, and literal typing
+### 4.1 Abstract literal denotations and concrete machine types
 
-The literal spelling family, atomic builtin type, and concrete numeric type are
-distinct:
-
-```text
-LiteralFamily
-  = Integer | Float | String
-
-AtomicBuiltinType T
-  = Uint | Int | Float | Buffer | Str
-
-NumericTypeKey Tnum
-  = NumericFamily x width
-```
-
-A literal family records normalized syntax and is not a type identity. Each
-member of `AtomicBuiltinType` denotes an actual atomic builtin type whose
-identity, once installed, comes from its Type symbol; it is not merely a
-classifier invented by literal materialization. The Rust enum is a lookup key,
-not itself a `TypeValueId`.
-
-A concrete numeric key selects a type object such as `uint16` or `float32`.
-Current Rust code carries the first-order `TypeValueId` projection derived from
-the installed canonical core Type symbol. That projection is transitional
-material and does not claim final whole-snapshot type-value identity:
+Lexical family, semantic denotation type, and concrete machine-semantic type
+are three different layers:
 
 ```text
-literal spelling
-  -> LiteralFamily
-  -> contextual/default concrete Tnum selection
-  -> resolve canonical Type Symbol
-  -> project TypeValueId
-  -> materialize semantic value
+lexer/Normalized-AST carrier:
+  LiteralFamily = Integer | Float | String
+
+abstract semantic literal types:
+  integer | real | character
+
+implementation lookup carriers:
+  AtomicBuiltinType T
+    = Uint | Int | Float | Buffer | Str
+
+  NumericTypeKey Tnum
+    = NumericFamily x width
 ```
 
-The lexical frontend continues to preserve spelling only; it does not choose
-width, signedness, precision, or overflow behavior. The semantic selection
-step extends that result without changing lexer meaning. An unsuffixed default
-and range/context rules remain separate decisions.
+`LiteralFamily`, `AtomicBuiltinType`, and `NumericTypeKey` remain useful Rust
+and registry shapes, but none defines the initial source-language semantic
+type. The abstract denotation types use the existing type ontology:
 
-Requiring a concrete `Tnum` for numeric literals does not imply that
-`uint`/`int`/`float` cease to be Type values. It means only that the numeric
-literal's final type is the selected concrete numeric Type rather than the
-atomic numeric family Type.
+```text
+TypeRole(integer)
+TypeRole(real)
+TypeRole(character)
 
-The design target for a string literal is a compile-stage `str` value, not
-`str ref`, implicit storage, or a lifetime extension. That statement requires
-a `str` Type symbol and its first-order projection in the semantic world. The
-current core bootstrap installs `uint8`, `uint16`, `uint32`, and `float32`, but
-not `str`; the current helper can materialize a string only when its
-`AtomicBuiltinTypeRegistry` contains a resolved `str` projection. It must not
-accept an arbitrary numeric identifier as an implemented core `str` carrier.
+NoSeparateLiteralTypeUniverse
+```
+
+`integer`, `real`, and `character` are ordinary complete type values satisfying
+the existing Type role. They do not form a parallel `LiteralType` universe or a
+fourth semantic type ontology; ordinary construction consumes them through the
+same Type/call machinery as other type values.
+
+The canonical semantic path for integer/real literals and any future character
+token is:
+
+```text
+token spelling
+  -> ParseLiteral
+  -> AbstractLiteralValue : integer | real | character
+  -> ordinary Convert/Construct to a concrete machine-semantic Type
+  -> optional same-Type Migrate/Materialize of that concrete Type
+     for another stage/policy view
+```
+
+The optional final edge never applies while the value still has abstract Type
+`integer`, `real`, or `character`; their associated cells are normatively
+deleted in §4.1.4.
+
+The initial semantic result is normatively compile-known:
+
+```text
+ParseLiteral(tok) = v : Tlit
+Tlit ∈ {integer, real, character}
+
+InitialLiteralPolicyPair(v) = compile:compile
+```
+
+This is the unique initial pair, not one optional view among compile and
+runtime alternatives. `ParseLiteral(tok)` therefore cannot directly produce
+`integer@runtime`, `real@runtime`, or `character@runtime`. Whole-slot
+`PolicyMode` is supplied by the surrounding binding/call demand formation; it
+is not inferred from the token. Runtime availability requires the later
+ordinary construction/materialization path described below.
+
+Ranked strings retain their existing, separate canonical path:
+
+```text
+ParseRankedString(tok) = v : str
+InitialStringPolicyPair(v) = compile:compile
+```
+
+Thus a ranked string denotes `str@compile`; it does not first denote
+`character`, does not belong to the three abstract scalar denotation Types, and
+does not imply `str ref`, hidden storage, or a lifetime extension. The current
+`LiteralFamily::String` carrier preserves that source family. Whether the core
+bootstrap has installed a concrete `str` Type symbol is an implementation
+availability question recorded by the v0.6 transition contract, not the owner
+of this semantic path.
+
+The frozen lexer continues to preserve spelling only. It does not choose
+width, signedness, precision, encoding, overflow behavior, or a machine type.
+Expected-type-driven insertion of the ordinary construction is a separate
+surface/diagnostic question; an expected `uint32` does not retroactively make
+`1` start with type `uint32`.
+
+#### 4.1.1 `integer`
+
+```text
+Denote(integer) = Z
+```
+
+Radix and digit separators affect parsing, not the semantic type:
+
+```text
+42
+0x2a
+0b101010
+  -> the same integer value 42
+
+0xff
+  -> integer value 255
+```
+
+The leading minus sign remains ordinary prefix-operator material. `-1` applies
+unary minus to `1 : integer`; it is not a separate signed literal token/type.
+
+#### 4.1.2 `real`
+
+Every finite decimal or hexadecimal source real literal first receives an
+exact denotation:
+
+```text
+0.1      : real = 1/10
+0x1.8p1  : real = 3
+```
+
+`ParseLiteral` performs no binary32/binary64 rounding. The complete
+mathematical carrier of `real` remains extensible, but it must contain an exact
+representation for every finite source real literal. An exact rational-like
+carrier is sufficient for the current finite forms.
+
+#### 4.1.3 `character`
+
+`character` is an abstract source-character domain:
+
+```text
+character != char8
+character != char16
+character != char32
+```
+
+This section does not add a character token to the frozen v0.2 lexer. The final
+source spelling, escape rules, and whether the carrier is exactly the Unicode
+scalar-value set require a current/future surface amendment. Ranked strings
+remain the independent `str@compile` path above and are not reinterpreted as
+character tokens.
+
+#### 4.1.4 Construct versus materialize
+
+The terminology boundary is normative:
+
+```text
+Convert / Construct
+  may change Type
+
+Migrate / Materialize
+  preserves Type
+  changes only stage/policy availability
+```
+
+For example:
+
+```text
+0.1 : real
+  -> Construct_float32
+  -> rounded float32 value
+
+float32@compile
+  -> Materialize_float32
+  -> float32@runtime with the same typed value semantics
+```
+
+Same-Type runtime materialization remains an ordinary associated callable
+family, not a compiler special case. The general mechanism is:
+
+```text
+RuntimeMaterializable(T)
+iff exists ordinary non-deleted callable realizing
+    a legal same-Type static -> runtime transition of T
+```
+
+The three canonical abstract denotation type values carry an intrinsic negative
+fact in their immutable callspace snapshots:
+
+```text
+AbstractLiteralNoRuntimeMaterialization:
+
+CanonicalLiteralType(integer)   = tau_integer
+CanonicalLiteralType(real)      = tau_real
+CanonicalLiteralType(character) = tau_character
+
+CallSpace(tau_integer) contains:
+  integer@compile -> integer@runtime => delete
+
+CallSpace(tau_real) contains:
+  real@compile -> real@runtime => delete
+
+CallSpace(tau_character) contains:
+  character@compile -> character@runtime => delete
+
+RuntimeMaterializable(integer)   = false
+RuntimeMaterializable(real)      = false
+RuntimeMaterializable(character) = false
+```
+
+Parsing an abstract scalar literal assigns exactly `tau_integer`, `tau_real`,
+or `tau_character`; it does not contextually retarget the literal to a later
+snapshot. Each intrinsic `delete` member is an ordinary associated callable and
+participates in the ordinary resolver/must-select pipeline.
+
+The result follows solely from the existing complete-type snapshot invariants.
+As established in §2.2 and the canonical `NoForeignTypeMemberInjection` theorem in
+[`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md),
+`V_tau` is fixed when `tau` is formed and later associated contributions cannot
+mutate that existing snapshot:
+
+```text
+CallSpace(tau) = V_tau                         at tau formation
+LaterAssociatedContribution(tau, F)
+  -> forms some new complete tau' with V_tau'
+  -> tau' != tau
+  -> CallSpace(tau) remains V_tau
+```
+
+An `extend` may therefore form a different complete type value with a different
+`V_tau'`; it does not alter the canonical literal type value or the callspace
+used by canonical literal values. Consequently no later declaration can add a
+non-deleted same-Type materializer to `tau_integer`, `tau_real`, or
+`tau_character`.
+
+These deleted cells therefore belong to each canonical Type's ordinary
+associated callspace. Their non-overridability follows mechanically from
+immutable complete-type snapshots plus `NoForeignTypeMemberInjection`, not
+from an ad hoc abstract-literal checker branch or an unformalized global ban.
+Abstract denotations must first enter ordinary construction to another,
+concrete machine-semantic Type. A normal integer path is therefore
+`integer@compile -> Construct_int32 -> int32@compile -> Materialize_int32 ->
+int32@runtime`; `integer@runtime`, `real@runtime`, and `character@runtime` are
+not legal same-Type results.
+
+#### 4.1.5 Stage-invariant machine semantics
+
+Once a concrete Type fixes machine semantics, those semantics do not vary by
+stage:
+
+```text
+StageInvariantTypeSemantics
+
+[[op]]_T : T^n -> Outcome(T)
+Outcome = Value(v) | Error(e) | Trap(t) | ...
+```
+
+There is no separate `[[op]]_(T, stage)`. Compile evaluation of `float32` must
+apply the same per-operation rounding and outcomes as runtime `float32`;
+integer wrap/saturate/trap/checked behavior likewise belongs to the concrete
+Type or operation, not to compile/runtime stage.
+
+```text
+MaterializationPreservesTypedValue
+
+v : T
+--------------------------------
+[[Materialize_T(v)]]_T = [[v]]_T
+```
+
+The existing core bootstrap and helper remain a bounded implementation subset:
+`uint8`, `uint16`, `uint32`, and `float32` are installed concrete lookup
+targets, while `str` is not. `AtomicBuiltinTypeRegistry` and
+`NumericTypeRegistry` resolve those concrete targets only; they neither choose
+an abstract literal's identity nor implement contextual construction.
 
 ## 5. Borrow views
 
 There is no declaration form that makes two bindings share one Symbol identity
 or one place. Shared observation is expressed by the borrow constructors `ref`
-and `share`; the privileged place-observation `@` yields a lifetime value
-(`LifetimeVal`) and is not a borrow representation.
+and `share`; `@` reifies a `LifeName` at the current semantic-continuation
+position and is not a borrow representation.
 
 ### 5.1 `ref` and `share` are privileged actual-place builtins
 
@@ -1583,12 +1797,12 @@ borrow-forming member:  runtime || compile
          obtain PrivilegedActualPlace
 ```
 
-Only
-the selected borrow-forming defaults of `ref` / `share`, and the single `@`
-operation, may obtain the actual's place
-(`PrivilegedActualPlace(ref-family)`, `PrivilegedActualPlace(share-family)`,
-`PrivilegedActualPlace(@-family)`; canonical owner
-`../lifetime/lifetime-policy-and-overload-boundary.md` §2). An ordinary user
+Only the selected borrow-forming defaults of `ref` / `share` may obtain the
+actual's place (`PrivilegedActualPlace(ref-family)` and
+`PrivilegedActualPlace(share-family)`; canonical owner
+`../lifetime/lifetime-policy-and-overload-boundary.md` §2). `@` does not use
+this acquisition path: it reifies a continuation-relative `LifeName`, including
+for temporaries. An ordinary user
 function that spells the same formal head cannot obtain that place.
 
 There is no global `E ref = Ref(Read(E))` law. The result depends on the
@@ -1628,9 +1842,10 @@ obtains the actual's place via its privilege (§5.1.0).
 The selected borrow-forming default of `ref` (or `share`) obtains the place of
 the actual — not a second place source derived from `Read(E)`. The old
 `ObjectPlace(value) ≠ CarrierPlace(E)` binary is retired: it existed only
-because `ref` was assumed unable to observe the actual place while `@` could,
-and that assumption no longer holds now that `ref` and `share` carry
-`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`.
+because `ref` was assumed unable to observe the actual place while the retired
+model assigned that privilege to `@`. The replacement gives `ref` and `share`
+`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`;
+continuation-relative `@` does not acquire a place.
 
 ```text
 ordinary candidate preparation:
@@ -1777,7 +1992,7 @@ and `ref share`) remain valid (§5.3), as does the separately specified implicit
 The borrow-forming defaults inside the formed borrow type's callspace are not
 an ad hoc pair of builtins; they are generated instance families with a fixed
 policy matrix. The `ref` family has two input shapes (`T`, `T ref`), two
-member result-policies (`mut`, `const`), and three formal mutability patterns
+member result-policies (`mut`, `const`), and three formal PolicyMode patterns
 (`mut`, `const`, `plain`):
 
 ```text
@@ -1897,7 +2112,7 @@ t |> (type ref) is not a general PlaceOf(E) available on every expression
 ```
 
 The former carrier-borrow `@` group that yielded `type ref` is retired: `@` is
-a privileged place-observation operation that yields a lifetime value, never a
+a continuation-relative name-reification operation that yields a lifetime value, never a
 borrow view and never a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2.1). Reaching the
 carrier slot explicitly uses `t |> (type ref)` or `(S ref).type`.
@@ -1983,9 +2198,9 @@ rank(t ref/share rebind)       = rank(t)
 ```
 
 The former `@` fixed points (`type ref@ = type ref`, `type share@ = type share`)
-and the former value-instance rule `t@ = lifetime(t)` are retired: `@` is a
-privileged place-observation operation that yields a lifetime value uniformly
-and is never a borrow constructor
+and the former value-instance rule `t@ = lifetime(t)` are retired: `@` is
+`ReifyLife(NameOf(actual), Pos(SemanticContinuation))`, yields a lifetime value
+uniformly, and is never a borrow constructor
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1). The old blanket
 equation “`@@` is identity on every borrow view” does not return.
 
@@ -2269,6 +2484,24 @@ Writable_Γ(q)           does not imply OpenHere_Σ(Read(q))
 OpenHere_Σ(v)           does not imply Writable_Γ(Carrier(v))
 CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
 ```
+
+`PolicyMode` is equally orthogonal to object shape and operation capability:
+
+```text
+PolicyModeOrthogonalToObjectShape:
+  Val1(x) = absent does not determine PolicyMode(slot(x))
+  PolicyMode(slot(x)) does not alter Norm(x)
+
+default ref/write-family realization:
+  Write(const ref) = delete
+  Write(plain ref) = delete
+  Write(mut ref)   = default
+```
+
+The table is a theorem of the builtin ref/write family, not a Policy axiom.
+Another family may mark any 3×3 coordinate absent or realize it with
+`default`, `delete`, or `custom`. In particular `mut` selected for a non-ref
+object does not automatically make any place writable.
 
 A writable slot may contain a closed-window type value that can be replaced wholesale
 but cannot be structurally extended from. Conversely an open-window value may be
@@ -2618,7 +2851,7 @@ meaning.
   binding/install boundary. It uses this document's `SymbolId` / `PlaceId` /
   `TypeValueId` and place judgments.
 - `../lifetime/lifetime-policy-and-overload-boundary.md` — canonical owner of
-  `@` (privileged place observation yielding a lifetime value) and of
+  `@` (continuation-relative name reification yielding a lifetime value) and of
   `ref` / `share` borrow formation, plus escape checking. This document
   supplies only the `Origin`/`Value` split that `@` consumes.
 - `type-associated-function-objects-and-access-trees.md` — field functions,

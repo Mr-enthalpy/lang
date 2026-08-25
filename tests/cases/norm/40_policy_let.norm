@@ -1,0 +1,51 @@
+NormProgram origin=Source@1:1[0..48]
+  forms:
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@1:23[22..23]
+        source:
+          Product origin=Generated(ProductLift)@1:2[1..17]
+            elements:
+              ExprElem
+                PolicyLet origin=Generated(PolicyLetPreserve)@1:2[1..17]
+                  policy:
+                    PolicySpec
+                      value_policy:
+                        PolicyConjunction
+                          PolicyChoice
+                            PolicyAtom Name "const"
+                      pattern_policy:
+                        None
+                  operand:
+                    Call origin=Derived(PipeFallback; no following source product)@1:17[16..17]
+                      source:
+                        Product origin=Generated(ProductLift)@1:12[11..12]
+                          elements:
+                            ExprElem
+                              Name "a" origin=Source@1:12[11..12]
+                      target:
+                        Name "f" origin=Source@1:17[16..17]
+        target:
+          Name "g" origin=Source@1:23[22..23]
+    Form Let
+      Decl Let origin=Source@2:1[25..46]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[29..46]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@2:5[29..30]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            PolicyLet origin=Generated(PolicyLetPreserve)@2:9[33..46]
+              policy:
+                PolicySpec
+                  value_policy:
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "mut"
+                  pattern_policy:
+                    None
+              operand:
+                Name "value" origin=Source@2:17[41..46]

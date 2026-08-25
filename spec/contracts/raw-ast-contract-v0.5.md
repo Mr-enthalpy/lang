@@ -43,6 +43,7 @@ default
 delete
 strategy identifiers
 meta / compile / seal / runtime
+const / plain / mut / let
 ```
 
 are not lexer keywords.
@@ -291,6 +292,42 @@ Nested binders do not leak into this calculation.
 All initializers in one capture clause see the enclosing environment before
 the clause; captures are simultaneous, not a sequential let block.
 
+### 4.3 Expression PolicyLet
+
+The current expression grammar is:
+
+```text
+Expression          ::= PolicyLetExpression | PipeExpression
+PolicyLetExpression ::= PolicySpec "let" PipeExpression
+```
+
+Raw AST preserves the boundary directly:
+
+```text
+PolicyLetAst {
+  policy: PolicySpecAst,
+  operand: ExprAst,
+  span: Span
+}
+
+ExprKind::PolicyLet(PolicyLetAst)
+```
+
+The right operand covers the complete following pipe. Parentheses close that
+scope, so `P let a |> f`, `(P let a |> f) |> g`, and `(P let a) |> f` retain
+three distinct trees.
+
+At a declaration-capable form start, a top-level `=` after `PolicySpec let`
+selects the existing declaration parser. A top-level `===` selects only the
+frozen legacy alias-preservation path. Delimiters inside parentheses, products,
+or closures do not participate. Without either delimiter the form is a
+PolicyLet expression. Pure expression contexts never admit a nested
+declaration through this prefix.
+
+This strong-context amendment also means a former expression ending in
+`P let` (including inferred capture shorthand such as `[x let]`) is a
+PolicyLet with a missing operand and receives `ExpectedPolicyLetOperand`.
+
 ## 5. Dot closure and member forms
 
 The Raw AST contains:
@@ -480,18 +517,21 @@ complete body. Nested callables inherit the active environment and extend it
 with their own telescope. Ordinary value binders do not shadow hole identity.
 
 Normalized source capture items are explicit let-shaped bindings. `[x]` is
-explicit shorthand for `[let x = x]` with an unwritten policy domain; it is not
+explicit shorthand for `[let x = x]` with the unwritten `plain` mode; it is not
 automatic const capture. Future resolved free-reference analysis may create
-separate `ImplicitConst` capture requirements. Such requirements are abstract
-dependencies, not `self` fields or layout decisions. In-place closures create
+separate implicit eligible capture requirements carrying requested Policy and
+required access capability. Such requirements are abstract dependencies, not
+`self` fields or layout decisions. In-place closures create
 no capture set, may resolve outer reads at the embedding layer, and may not
 directly write an outer place.
 
 Explicit-navigation/export checking and automatic capture remain resolved
-semantics, not Raw-to-Norm work. External navigation searches the export view;
-internal navigation searches the complete namespace view. A navigable exported
-value supplies the const projection for `ImplicitConst`; ordinary external call
-references normally inhabit the same external-symbol problem domain. This does
+semantics, not Raw-to-Norm work. External navigation searches the export view
+formed stably from export retention plus public path reachability; internal
+navigation searches the complete namespace view. A later consumer's capability
+and Policy checks do not filter that namespace view or rewrite `PolicyMode`;
+ordinary external call references inhabit the same external-symbol problem
+domain. This does
 not imply an implementation dependency on call resolution. Explicit and
 automatic capture remain distinct dependency declarations even when they
 resolve to the same source symbol; only later layout may coalesce equivalent
@@ -499,18 +539,21 @@ storage while preserving binder, policy, and provenance.
 
 ## 10. Diagnostics
 
-The amended implementation has 33 `DiagnosticCode` variants. The v0.2 frozen
+The amended implementation has 34 `DiagnosticCode` variants. The v0.2 frozen
 diagnostic inventory remains 32 because it is a historical snapshot.
 
-The additional code is:
+The post-v0.2 codes are:
 
 ```text
 MultiplePackPatternsAtSameLevel
+ExpectedPolicyLetOperand
 ```
 
-This code is reserved for a consumer that projects normalized Pattern
+`MultiplePackPatternsAtSameLevel` is reserved for a consumer that projects normalized Pattern
 validation failures into the syntax diagnostic transport. The parser does not
-emit it or independently count packs. Every diagnostic retains a span.
+emit it or independently count packs. `ExpectedPolicyLetOperand` is emitted
+when `PolicySpec let` reaches its local expression boundary without an
+operand. Every diagnostic retains a span.
 Recovery remains error tolerant, but no recovery path may replace invalid
 callable syntax with a valid executable body.
 

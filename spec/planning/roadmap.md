@@ -330,14 +330,16 @@ Must cover:
 - no source-level import/use/include/module
 - policy metadata slots on symbols, contexts, and namespace graph nodes,
   including the legacy flat resolver adapter now mapped onto OpenStatic,
-  SealStatic, and Runtime visibility; full pair storage on every entry and
+  SealStatic, and Runtime visibility; full pair plus whole-slot PolicyMode
+  storage on every entry and
   end-to-end checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
-- a bounded cross-Policy implementation prototype: T/Tnum literal helper,
+- a bounded cross-Policy implementation prototype: T/Tnum concrete-target
+  lookup helper (not abstract literal semantics),
   existing-view-first projection over mixed result collections,
   projection-only absent entries, runtime-branch extraction after a complete
   choice projects empty, a prototype ordinary-result-shaped carrier, typed
-  Runtime Val1 legality, callable-owned mutability endpoints using the existing
+  Runtime Val1 legality, callable-owned PolicyMode endpoints using the existing
   actual-relative ordinary preference rather than hard domain intersection,
   a fixture for the future pre-Bp fallback strategy, complete ordinary result
   Policy separated from the demanded output view, and transition endpoint input × output Policy
@@ -377,18 +379,23 @@ permission, and generated field functions are `meta+runtime` visible symbols
 with runtime-only bodies. The current implementation's legacy projection nodes
 are transitional; target field access uses one same-name associated Symbol with
 `T` / `T ref` / `T share` receiver candidates.
-The crate also implements a bounded cross-Policy demand preparer: ordinary omitted P1
-continues to preserve the complete RHS, explicit P1 first uses the canonical
+The crate also implements a bounded cross-Policy pair-view demand preparer.
+Canonical semantics additionally require binding spelling to form concrete
+output mode (`plain` for bare `let`) before RHS call selection; that first-class
+mode carrier is not implemented by this helper. After demand-aware selection,
+ordinary omitted P1 preserves the complete RHS pair view; explicit P1 first uses the canonical
 non-empty projection rule, absent entries lack transition capability without
 invalidating value-bearing siblings. Only after the complete query projects
 nothing can an accepted runtime alternative be extracted as the derived
 runtime-only target and paired with an eligible static input view after
-Pattern-Policy stage/domain slicing. Separate helpers cover T/Tnum literal
-selection, prototype ordinary-result-shaped fixtures, typed runtime failures,
-callable-owned mutability endpoints, and an endpoint-product fixture before
+Pattern-Policy stage/domain slicing. Separate helpers cover T/Tnum concrete
+target lookup, prototype ordinary-result-shaped fixtures, typed runtime failures,
+callable-owned PolicyMode endpoints, and an endpoint-product fixture before
 its Pattern-specificity stand-in. Opposite const/mut endpoint Patterns remain
-admissible and reuse ordinary `matching > unspecified > opposite` preference.
-The four default transport members in the toolchain-source fixture declare complete
+admissible and reuse ordinary `matching > plain > opposite` preference; a
+plain demand with only const/mut maxima remains ambiguous. The four default
+transport members are only a 2×2 connected subset of the canonical 3×3
+capability space and declare complete
 `(compile || runtime):compile` input/output Policies; `Project_in` and
 `Project_out` select the compile and runtime views around the ordinary result.
 Current source has no fallback role (`D = A`). The prototype fixture verifies
@@ -405,7 +412,13 @@ Policy migration cannot repair Type/Pattern structural failure; explicit
 T and Tnum registries
 carry current first-order
 TypeValue projections derived from installed Type symbols, not final canonical
-type-value identity. The implemented consumer is binding P1; future consumers
+type-value identity. They do not define source literal Types: the target path is
+exact abstract `integer`/`real`/`character` denotation, ordinary construction
+to a concrete machine Type, then optional same-Type materialization for that
+concrete Type. The three abstract denotation Types themselves have intrinsic
+deleted compile-to-runtime materialization cells; the current registries do not
+implement those Types or cells. The
+implemented consumer is binding P1; future consumers
 must project the complete accepted choice first, then may construct its
 runtime branch only when the complete existing projection is empty.
 Source callables are now installed as one semantic Symbol with heterogeneous
@@ -468,8 +481,8 @@ Must cover:
 - policy fields on callable objects retained as transitional symbol,
   body-entry, and result metadata; final source semantics use canonical
   `Pv:Pp`, contextual P1 projection, P2 result normalization, and no independent
-  `P3`. Parameters may refine inherited P2 mutability, and returns symmetrically
-  may refine inherited P1 mutability; neither may alter other policy dimensions.
+  `P3`. Parameters may refine inherited P2 whole-slot `PolicyMode`, and returns
+  symmetrically may refine inherited P1 mode; neither may alter other policy dimensions.
   The typed pair substrate now exists, while migration of every legacy
   `PolicySet` consumer and end-to-end execution checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
@@ -497,13 +510,15 @@ Must cover:
 - keep normalized body material, current policy metadata, canonical instance keys, and
   outer atomic installation as explicit stage boundaries;
 - first-class generic classes such as `(T Vec)`, `(T Option)`, `(A, B Pair)`
-- preserve canonical policy as `Pv:Pp`: `P1` is contextual binding projection,
+- preserve canonical policy as `Pv:Pp` plus independent whole-slot
+  `PolicyMode={const,plain,mut}`: `P1` is contextual binding projection,
   `P2` is result-pair normalization, and function-object stage views are
   derived from `P2`; current flat symbol/body/result fields remain transitional;
 - preserve legal runtime bindings and keep any non-runtime
   projection-source premise local to its specific compile-determined rule;
-- preserve typed policy dimensions (stage, value mutability, value presence,
-  ordinary namespace visibility, and export-root) rather than flattening atoms;
+- preserve typed policy dimensions (stage, PolicyMode, value presence,
+  ordinary namespace visibility, export-root, and capability realization)
+  rather than flattening atoms;
 - preserve three phases: OpenStatic exposes meta/compile, SealStatic exposes
   seal/compile, Runtime exposes runtime values; privileged seal scans consume
   fixed Wpre and never Wseal
@@ -621,12 +636,13 @@ The following remain deferred and are not numbered precisely here:
 - storing canonical `Pv:Pp` on every semantic object and wiring full P1
   projection, P2 result validation, function-object views, and compile/runtime/
   seal namespace lookup; formal parameter elaboration must feed the same
-  P2-inherited const/mut Pattern both to body entry and to the candidate's
+  P2-inherited `PolicyMode` both to body entry and to the candidate's
   external policy product-order position, while return elaboration applies the
-  symmetric P1-inherited mutability-only refinement;
+  symmetric P1-inherited mode-only refinement;
 - seal dependency ordering, complete reflection objects, and any future policy
   stage beyond the current three-phase model;
-- integrating const/mut product order into the complete overload resolver, plus
+- integrating the three-point PolicyMode product order and independent 3×3
+  capability realization into the complete overload resolver, plus
   effect/error/panic and resource-capability policy
   (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - first semantic compiler prototype integrating selected passes

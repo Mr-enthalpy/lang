@@ -7,7 +7,6 @@ use super::{
     closure::try_parse_closure,
     form::Parser,
     let_stmt::looks_like_alias_binding_start,
-    pipe::parse_pipe_expr,
     product::{parse_bracket_product_expr, parse_product_expr},
 };
 
@@ -435,7 +434,7 @@ fn parse_group(parser: &mut Parser<'_>) -> Option<AtomAst> {
 
     parser.enter_nesting();
 
-    let expr = parse_pipe_expr(parser, |p| {
+    let expr = super::expr::parse_expr_until(parser, |p| {
         p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RParen)
     });
 

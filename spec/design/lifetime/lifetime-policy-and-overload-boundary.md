@@ -1,10 +1,9 @@
 # Lifetime Policy, `@`, and the Overload Boundary
 
-Status: canonical target semantics for the `@` operation and the lifetime/
-ordinary-overload boundary. The `@` place-observation and the escape check
-defined here are unimplemented target semantics; §6 registers the implementation
-debt. The full lifetime algebra of `@` (region representation, `LifetimeVal`
-shape, ordering) is deliberately left unfrozen.
+Status: canonical target semantics for the `@` operation, the core lifetime
+value algebra, and the lifetime/ordinary-overload boundary. These semantics are
+not implemented; §6 registers the representation and checker debt. The semantic
+relations are closed here even though their Rust/IR encoding remains deferred.
 
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by
@@ -12,7 +11,7 @@ split, and the `ref` / `share` / `rebind` operations are owned by
 construction authority (`OpenHere_Σ(value)`) is owned by
 [`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-## 1. `@` is a privileged place-observation operation
+## 1. `@` is continuation-relative name observation
 
 `@` is a normal overloaded operation. It is not a syntax-only marker, not a
 reserved lexical territory without semantics, and not exempt from overload
@@ -20,60 +19,58 @@ resolution:
 
 ```text
 Apply(@, E):
-  p := privileged-place-of-actual(E)
-  return LifetimeVal(p)
+  n := NameOf(E)
+  k := Pos(SemanticContinuation)
+  return ReifyLife(n, k)
 ```
 
-`@` still applies to an expression syntactically, but obtaining the place is an
-implicit privilege of the builtin application itself: there is no user-callable
-`PlaceOf(E)`, and an ordinary user function cannot obtain the same place merely
-by writing a matching parameter Pattern. The produced lifetime value depends on
-the abstract place `p`; this is not a Rust-style "borrow a generic lifetime
-parameter" operation.
+`@` still applies to an expression syntactically, but its builtin action switches
+from value interpretation to the semantic name observed at the current
+continuation position. It neither exposes a user-callable `PlaceOf(E)` nor reads
+hidden residency metadata from the value. Lifetime facts already follow from
+the continuation; applying `@` reifies them and does not launch a second
+analysis.
 
 `@` is **not** a borrow constructor. It yields a lifetime value, never a borrow
 view. Borrow formation belongs to `ref` and `share`, which may be privileged
 actual-place builtins (`PrivilegedActualPlace(ref-family)`,
 `PrivilegedActualPlace(share-family)`) when the overload needs the actual's
-place (§2). An expression with no abstract place — a freshly computed temporary —
-supplies none: `@` selection still runs, and only after the unique `@` builtin
-is selected does place acquisition run; absence of a place is a post-selection
-invocation precondition failure (`InvocationFailure(NoCarrierPlace(actual))`),
-not candidate removal or overload reopening.
+place (§2). A freshly computed temporary may receive a generated semantic
+LifeName even when it has no writable or borrowable Place, so
+`NoCarrierPlace(actual)` is not a general failure condition for `@`.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
 policy is not a fifth stage in that dimension. `@` is evaluated at a stage; it
 does not name one.
 
-## 2. Privileged place acquisition: `@`, `ref`, and `share`
+## 2. Privileged place acquisition belongs to `ref` and `share`
 
-`@`, `ref`, and `share` are builtin applications that may, for some overloads,
-be granted privileged access to the place of their actual argument:
+`ref` and `share` are builtin applications that may, for some overloads, be
+granted privileged access to the place of their actual argument:
 
 ```text
-PrivilegedActualPlace(@-family)
 PrivilegedActualPlace(ref-family)
 PrivilegedActualPlace(share-family)
 ```
 
-This does not make them one callable family. Each operator keeps its own
-family identity and overload set: `@` remains a normal overloaded operator,
-and `ref` / `share` each have a type-forming overload (producing `type ref` /
+This does not make them one callable family. `@` remains a normal overloaded
+operator whose selected builtin performs name/continuation reification; `ref`
+and `share` each have a type-forming overload (producing `type ref` /
 `type share` as type values) and a borrow-forming overload (producing `t ref` /
-`t share` as borrow instances). The permission attaches to each operator's
-builtin family identity, not to ordinary function parameters. An ordinary
+`t share` as borrow instances). Place permission attaches to each borrow
+family's builtin identity, not to ordinary function parameters. An ordinary
 user function that spells the same formal head still cannot obtain the
 actual's place.
 
-The three operators produce different results:
+The operators produce different results through different semantic premises:
 
 ```text
-@      -> LifetimeVal(p)
+@      -> ReifyLife(NameOf(actual), Pos(K))
 ref    -> borrow instance | TypeValue (type formation)
 share  -> borrow instance | TypeValue (type formation)
 ```
 
-Phase order (same for `@`, `ref`, `share`):
+Phase order for a place-sensitive `ref` / `share` member:
 
 ```text
 ordinary candidate preparation
@@ -294,7 +291,8 @@ fails.
 ### 2.1 `@` yields a lifetime value, uniformly
 
 ```text
-E@ : LifetimeVal(p)    where p = privileged-place-of-actual(E)
+E@ : LifetimeValue
+E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
 ```
 
 The retired forms do not return:
@@ -313,12 +311,340 @@ place is done explicitly with `t |> (type ref)` (or `(S ref).type` for a Symbol)
 never by `@`. `AsType(S) = S |> type` remains by-value and is never followed by
 `@` to recover a place.
 
-The complete lifetime algebra of `@` is deliberately **not frozen** here: the
-concrete representation and granularity of a region, the shape of `LifetimeVal`
-and its region/origin projections, and whether it is a first-class storable
-value are open questions (§6). This section freezes only the responsibility
-boundary — privileged place observation producing a lifetime value — and the
-fact that `@` is not a borrow constructor.
+`LifeName` is not a source spelling, NameBinding, Symbol, Place, or ordinary
+value identity. It is the semantic name whose lifecycle is observed. A bound
+value normally has a stable LifeName; a temporary may receive a generated one.
+This keeps place identity and lifecycle identity distinct.
+
+#### First-class `LifetimeValue`
+
+`ReifyLife` produces an ordinary first-class semantic value, not an ephemeral
+observation-only expression species:
+
+```text
+FirstClassLifetimeValuePrinciple:
+
+ReifyLife(n, k) : LifetimeValue
+
+LifetimeValue participates in the ordinary value formation machinery:
+  binding
+  storage in an ordinary value slot
+  argument passing
+  return
+  move/copy when admitted by its ordinary Type/callspace
+```
+
+Each use remains subject to the same Type, Policy, capability, lifecycle, and
+destination-legality judgments that apply to another value at that point.
+First-class therefore does not mean unrestricted storage, implicit copying, or
+automatic runtime availability. Binding or transporting `E@` carries the value
+already reified at `Pos(SemanticContinuation)`; it does not silently re-run `@`
+at the later destination and does not turn the destination into a hidden
+LifeName, Place, or borrow view.
+
+```text
+StageDoesNotChangeLifetimeValueOntology:
+
+TypeOf(ReifyLife(n, k)) = LifetimeValue
+  independent of the stage at which the value is known
+
+compile-known LifetimeValue
+  =/= a distinct CompileLifetimeValue species
+```
+
+Whether a `LifetimeValue` can make a same-Type static-to-runtime transition is
+therefore decided by the ordinary materialization theorem, not by first-class
+status and not by a lifetime special case:
+
+```text
+RuntimeMaterializable(LifetimeValue)
+iff exists an ordinary non-deleted callable realizing
+    a legal same-Type static -> runtime transition of LifetimeValue
+```
+
+This is the general `RuntimeMaterializable(T)` rule owned by
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§4.1. Applying `@` is still not an automatic mechanical pass. Once `@` has
+produced a `LifetimeValue`, ordinary transport of that result uses the same
+admitted move/copy machinery as another value.
+
+#### 2.1.1 One semantic continuation
+
+All compile, runtime, meta, and lifetime activity is projected from one
+semantic continuation:
+
+```text
+SemanticContinuation K
+
+pi_runtime(K)
+pi_compile(K)
+pi_life(K)
+pi_meta?(K)
+
+Life : LifeName × Pos(K) -> LifetimeValue
+```
+
+Compile-known and runtime-known values do not inhabit different lifetime
+species. Stage says when a fact is known; it does not change the lifecycle
+calculus or numeric/value identity.
+
+#### 2.1.2 NameView, origin, and finite observation
+
+For every semantic value operation `f_V : T -> U` that is name-projectable,
+there exists a unique semantic name-level companion:
+
+```text
+NameView<T> {
+  origin,
+  region,
+  name-observable field/operation companions
+}
+
+NameProjectable_T(f)
+  => exists unique f_N : NameView<T> -> NameView<U>
+```
+
+Value and name projection must commute:
+
+```text
+@(f_V(x))     = f_N(x@)
+@(field_V(x)) = field_N(x@)
+(x.field)@    = x@.field
+```
+
+The name-level companion does not re-execute the runtime field operation.
+Companion existence, uniqueness, and commutation are closed semantic
+requirements. How companions are generated, stored, or represented in an IR or
+registry remains implementation-open; absence of a particular registry entry
+cannot make a semantically name-projectable operation fail this law.
+
+`origin : LifeName -> LifeName | None` records semantic provenance rather than
+source text or an address. Origin ancestry is generated coinductively by the
+default generator of the semantic construction that produced the name;
+omission is not `None`. `None` is an explicit termination proposition. Each
+`ReifyLife(n, k)` is nevertheless a finite structural observation. A later
+`.origin` projection issues a new request; `@` never eagerly unfolds the whole
+chain.
+
+```text
+OriginDefaultPrinciple:
+  if no explicit origin(n) = None fact applies,
+  origin(n) continues through the default origin generator
+  of the semantic construction that produced n
+
+  origin(n) = None is a terminating fact,
+  not the interpretation of missing origin information
+```
+
+Construction, field projection, copy, move, and call-result formation may each
+provide the applicable name companion or lifecycle post. The general default
+therefore does not classify an ordinary non-borrow value as origin-free merely
+because no borrow-root rule applies to it.
+
+Function entry begins from a default universe and applies the written lifetime
+precondition as a finite correction:
+
+```text
+U_entry = U_default ⊕ Delta_pre
+|Delta_pre| < infinity
+
+DefaultOriginUniverse:
+  exclusive-write borrow roots e_i, e_j
+    -> DefaultRoot(e_i) and DefaultRoot(e_j) are anonymous
+    -> i != j => DefaultRoot(e_i) != DefaultRoot(e_j)
+
+  shared-read borrow roots s_i, s_j
+    -> G_shared is one anonymous LifeName
+    -> DefaultRoot(s_i) = G_shared
+    -> DefaultRoot(s_j) = G_shared
+
+  therefore exclusive-write defaults are pairwise distinct while all
+  shared-read defaults have the same root; a finite Delta_pre may override
+  only the relations it states
+
+  borrow name tree
+    -> mirrors exactly the subname edges already admitted by
+       the established access relation
+
+  structural membership alone
+    =/=> lifetime-name reachability
+    =/=> access capability
+
+  no alias-write/internal-mutability edge is synthesized here;
+  when the independent access relation admits no such edge,
+  the mirrored alias-write subtree is empty
+
+  unmentioned origin ancestry
+    -> continue the applicable semantic default generator
+       unless an explicit origin = None terminates it
+
+  function-entry borrow roots
+    -> additionally receive the exclusive/shared default-root rules above
+
+PreDoesNotConstructUniverseFromZero:
+  Delta_pre is a finite patch over U_default,
+  not the complete origin universe
+```
+
+Here `⊕` applies the finite declared corrections while retaining every
+unmentioned default rule. Thus a missing Pre fact cannot silently truncate an
+origin chain to `None`.
+
+Neither origin nor a complete NameView enters `Norm(Object)` or adds a fourth
+Object axis.
+
+#### 2.1.3 Region and lifecycle events
+
+The first-level region of one LifeName generation is a linear half-open
+interval over the semantic continuation:
+
+```text
+Region(n) = [i, j)
+events    = use | move | drop
+```
+
+`use` records an observation point. Affine move rebuilds only the first-level
+generation/Region and preserves the deeper origin exactly:
+
+```text
+MoveOriginPreservation:
+
+old@ = { name = n_old, origin = o, region = r_old }
+move(old -> new)
+new@ = { name = n_new, origin = o, region = r_new }
+
+new@.origin = old@.origin
+k := Boundary(move)
+k is a position in SemanticContinuation
+end(Region_1(old))   = k
+begin(Region_1(new)) = k
+
+Region_1(old) = [i, k)
+Region_1(new) = [k, j)
+```
+
+`Boundary(move)` is the single continuation cut occupied by the move event.
+The old generation ends and the new generation begins at that same cut; no
+unowned interval or implicit position lies between them. A future IR may split
+one event into explicit `PrePos(move) < PostPos(move)` only if it uses those two
+positions consistently for both interval endpoints; the one-position semantic
+model above has no strict `>` edge.
+
+The new generation therefore does not acquire the old generation itself as its
+origin. Origin effects of copy construction belong to the selected
+`CopyConstruct` candidate's lifecycle postcondition rather than to the
+lifetime calculus as a universal copy theorem:
+
+```text
+SelectedCopyRealization(T, source):
+  ordinary T
+    -> shared_view := share(source)
+    -> SelectedCloneCandidate(shared_view)
+
+  T ref | T share
+    -> rebound_view := rebind(source)
+    -> SelectedRebindCloneCandidate(rebound_view)
+
+CopyLifecycle(copy_T, source)
+  = LifecyclePost(SelectedCopyRealization(T, source))
+
+CopyConstruct.lifecycle_post
+  = lifecycle_post of the selected share/rebind + clone realization
+```
+
+The selected clone-family realization owns the relation. A particular builtin,
+default, or custom clone candidate may declare
+`origin(result)=NameOf(source)`, `SomeInternalOrigin(source)`, a re-rooted
+relation, or another legal lifecycle post. None is implied merely by the names
+`copy` or `CopyConstruct`. The lifetime calculus consumes that selected post
+through the ordinary Pre/Post boundary and adds no copy-origin equation.
+
+Mechanical `copy(x)` still means that selected `CopyConstruct(x)` realization
+followed by terminal `Move(result)`; `CopyConstruct` is the compact family name
+for the established ordinary `share -> clone` expansion, or `rebind -> clone`
+for `T ref` / `T share`, rather than a new opaque primitive. Candidate-specific
+origin effects do not authorize a pre-move of `x`.
+
+`drop` ends the outstanding lifecycle/cleanup obligation for the current
+generation. Path-sensitive facts are represented by a region slice plus a
+regular origin path, not by turning Region into an arbitrary CFG subgraph.
+
+#### 2.1.4 Cleanup placement precedes lifetime observation
+
+```text
+CleanupPlacementBeforeLifetimeObservation
+```
+
+Ordinary control-flow, ownership, and end-event semantics place cleanup/drop
+events first. Lifetime observation then describes that fixed continuation. It
+does not move cleanup to satisfy a constraint and does not participate in a
+cleanup/lifetime fixed point.
+
+#### 2.1.5 Pre-check and post-commit
+
+Every fact-changing lifecycle action has the order:
+
+```text
+Pre(action, state)
+  -> failure rejects before mutation
+  -> perform action
+  -> Post(action, committed_state)
+```
+
+The checker does not tentatively mutate all facts and discover the violation at
+function end. A failed precondition leaves the prior lifecycle state unchanged.
+
+#### 2.1.6 Call-boundary summaries
+
+A caller instantiates the callee's declared conjunction of atomic contracts:
+
+```text
+lifetime pre
+lifetime post
+```
+
+The caller need not expand the callee's internal origin history. The post
+summary may compress that history, but contract bodies remain conjunctions of
+atomic facts; this rule introduces no contract-level disjunction, negation, or
+control flow.
+
+#### 2.1.7 Region Color
+
+Color remains a future constraint dimension, but its inheritance law is
+closed:
+
+```text
+Color is a future-continuation constraint
+Color(child) includes inherited Color(ancestor)
+observation may slice the inherited region but may not remove the color
+
+FiniteColorPrinciple:
+  GlobalColorVocabulary is extensible
+
+  for each committed compilation semantic universe Sigma:
+    ColorSet(Sigma) is a finite snapshot
+
+  Color is not an arbitrary proposition carrier
+
+  compatibility / exclusion / exchange
+    are finite, mechanically decidable relations over
+    ColorSet(Sigma) and bounded observed origin topology
+
+ColorExtensionInterface(new_color):
+  declare compatibility(new_color, existing_color)
+  declare exclusion(new_color, existing_color)
+  declare exchange(new_color, existing_color)
+  freeze those finite relation rows when Sigma is committed
+```
+
+Color does not enter Object core or `Norm(Object)`. Its concrete carrier and
+source syntax remain implementation/surface questions. The global vocabulary
+is not a closed language-wide enumeration: later definitions may contribute
+colors and their finite relation rows. Once a compilation semantic universe is
+committed, however, its ColorSet and relation tables are finite and fixed for
+that compilation. Extension may express broader memory-access models and
+computation-reordering constraints, but it may not smuggle an unbounded theorem
+language into one lifetime check.
 
 ### 2.2 No implicit borrow formation
 
@@ -454,18 +780,19 @@ type/policy overload resolution, introduce a second selection stage, or
 establish a specificity ordering that competes with ordinary overload order.
 
 This restriction applies to lifetime *rules*, not to `@` itself. `@` is
-resolved by ordinary overload resolution like any other operation — §2 defines
-its candidate set — so "no lifetime overload stage" and "`@` has overloads" are
-consistent statements about two different things.
+resolved by ordinary overload resolution like any other operation, while its
+selected builtin performs the name/continuation observation of §2.1. Thus "no
+lifetime overload stage" and "`@` has overloads" are consistent statements
+about two different things.
 
 The apparent circularity dissolves once the three steps are separated. They are
 strictly ordered, and each one is finished before the next begins:
 
 ```text
-1. ordinary selection inside the operand   -> the operand value and its carrier place
-2. ordinary selection of `@` itself        -> one candidate: the privileged
-                                              place-observation visible in the
-                                              operand's policy stage (§2)
+1. ordinary selection inside the operand   -> the operand value/name relation
+2. ordinary selection of `@` itself        -> one candidate: the lifecycle
+                                              observation visible in the
+                                              operand's policy stage
 3. lifetime validation                     -> accept or reject steps 1 and 2
 ```
 
@@ -483,7 +810,8 @@ The positive obligation established for closure capture is:
 ```text
 ResolvedCaptureRequirement
   -> CheckableCaptureForm {
-       source_place,
+       source_life_name,
+       source_place?,
        requested_access_view,
        origin_or_region_relation,
        storage_or_link_category
@@ -502,27 +830,34 @@ consumes.
 Semantics closed here, not yet built:
 
 ```text
-the privileged `@` place-observation (`PrivilegedActualPlace(@-family)`) and
-`LifetimeVal`
+SemanticContinuation / LifeName / LifetimeValue / NameView carriers
+`@` name/continuation reification
+region event indexing and move-generation tracking
+cleanup-before-observation scheduling evidence
+Pre/Post lifecycle action checking
+call-boundary lifetime summary instantiation
 the escape check of §3 at all four destination classes
-the lifetime policy stage as an evaluation stage
 CheckableCaptureForm construction at closure materialization
 ```
 
 Still genuinely open engineering questions, not closed by this document:
 
-- the full `@` lifetime algebra: concrete representation and granularity of a
-  region (lexical block, construction anchor, or a finer relation), the shape of
-  `LifetimeVal`, and whether it is a first-class value that user code may store
-  or an observation consumed only by checking — deliberately not frozen (§2.1);
+- concrete Rust/IR identity for `LifeName`, event positions, generation ids,
+  Region slices, lazy origin links, and summary compression;
+- concrete Color carrier, the contribution/registration API for the extensible
+  global vocabulary, and any future source syntax;
 - diagnostics and caching identity for lifetime validation;
-- borrow/move/copy defaults, closure ABI, and environment layout, which remain
-  the mechanical-lowering design's territory.
+- automatic mechanical move-vs-copy pass selection, concrete borrow/copy
+  representation, closure ABI, and environment layout, which remain the
+  mechanical-lowering design's territory. The entry origin defaults, exact
+  move-origin/Region boundary, and selected share/rebind-plus-clone realization
+  lifecycle-post boundary above are closed lifetime semantics, not items in that
+  implementation debt.
 
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff
-objects, ABI equivalence classes used for selection, refinement ordering or a
-refinement phase, or Horae semantics. The retired `@` forms — the two instance
+objects, ABI equivalence classes used for selection, or a lifetime-driven
+ordinary resolver. The retired `@` forms — the two instance
 groups (`Val1?(x) ≠ null -> LifetimeFact`, `Val1?(x) = null -> P ref`),
 `t@ : type ref`, and the borrow-type fixed points `type ref@ = type ref` /
 `type share@ = type share` — do not return.

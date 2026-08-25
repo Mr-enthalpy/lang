@@ -96,6 +96,11 @@ pub enum NormDecl {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormExpr {
+    PolicyLet {
+        policy: NormPolicySpec,
+        operand: Box<NormExpr>,
+        origin: NormOrigin,
+    },
     Call {
         source: NormProduct,
         target: Box<NormExpr>,
@@ -510,6 +515,7 @@ fn direct_pack_pattern_origin(pattern: &NormPattern) -> Option<&NormOrigin> {
 
 fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PatternValidationError>) {
     match expr {
+        NormExpr::PolicyLet { operand, .. } => collect_expr_pack_errors(operand, errors),
         NormExpr::Call { source, target, .. } => {
             for element in &source.elements {
                 if let NormProductElem::Expr(expr) = element {
@@ -1076,6 +1082,7 @@ pub enum NormOrigin {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NormRule {
+    PolicyLetPreserve,
     ProductLift,
     ProductMerge,
     PipeFallback,
@@ -1303,6 +1310,12 @@ impl HoleAlphaNormalizer {
         owner: NormSemanticOwnerId,
     ) {
         match expr {
+            NormExpr::PolicyLet {
+                policy, operand, ..
+            } => {
+                self.normalize_policy_spec(policy, holes);
+                self.normalize_expr(operand, holes, owner);
+            }
             NormExpr::Call { source, target, .. } => {
                 self.normalize_product(source, holes, owner);
                 self.normalize_expr(target, holes, owner);
@@ -1761,6 +1774,14 @@ fn normalize_expr(expr: &ExprAst) -> NormExpr {
     // extraction/pattern material; pattern contexts use the dedicated
     // normalize_*_as_pattern path below.
     match &expr.kind {
+        ExprKind::PolicyLet(policy_let) => NormExpr::PolicyLet {
+            policy: normalize_policy_spec(&policy_let.policy),
+            operand: Box::new(normalize_expr(&policy_let.operand)),
+            origin: NormOrigin::Generated {
+                rule: NormRule::PolicyLetPreserve,
+                span: policy_let.span,
+            },
+        },
         ExprKind::Pipe(pipe) => normalize_pipe(pipe),
         ExprKind::Product(product) => NormExpr::Product(normalize_product_expr(product, true)),
         ExprKind::Error(error) => NormExpr::Error(normalize_error(error)),
@@ -2580,6 +2601,9 @@ fn collect_free_non_call_names_expr(
     names: &mut BTreeSet<String>,
 ) {
     match expr {
+        NormExpr::PolicyLet { operand, .. } => {
+            collect_free_non_call_names_expr(operand, bound, direct_call_target, names);
+        }
         NormExpr::Name { text, .. } => {
             if !direct_call_target && !bound.contains(text) {
                 names.insert(text.clone());
@@ -3092,6 +3116,13 @@ fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[VisibleHole]) -> NormPatte
     // Pattern-side lowering for raw expression-shaped syntax in annotation or
     // extraction contexts. Names become PatternName/HoleRef, not NormExpr::Name.
     match &expr.kind {
+        ExprKind::PolicyLet(policy_let) => NormPattern::Unsupported {
+            raw_kind_summary: "policy-let expression in pattern context".to_string(),
+            origin: NormOrigin::Generated {
+                rule: NormRule::Unsupported,
+                span: policy_let.span,
+            },
+        },
         ExprKind::Pipe(pipe) => normalize_pipe_as_pattern(pipe, holes),
         ExprKind::Product(product) => {
             let elements = product
@@ -3529,7 +3560,8 @@ fn normalize_error(error: &ErrorAst) -> NormError {
 
 fn expr_span(expr: &NormExpr) -> Option<Span> {
     match expr {
-        NormExpr::Call { origin, .. }
+        NormExpr::PolicyLet { origin, .. }
+        | NormExpr::Call { origin, .. }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
@@ -3670,6 +3702,21 @@ fn dump_norm_decl(output: &mut String, decl: &NormDecl, indent: usize) {
 
 fn dump_norm_expr(output: &mut String, expr: &NormExpr, indent: usize) {
     match expr {
+        NormExpr::PolicyLet {
+            policy,
+            operand,
+            origin,
+        } => {
+            line(
+                output,
+                indent,
+                &format!("PolicyLet {}", origin_inline(origin)),
+            );
+            line(output, indent + 1, "policy:");
+            dump_norm_policy_spec(output, policy, indent + 2);
+            line(output, indent + 1, "operand:");
+            dump_norm_expr(output, operand, indent + 2);
+        }
         NormExpr::Call {
             source,
             target,
@@ -4419,6 +4466,7 @@ fn line(output: &mut String, indent: usize, text: &str) {
 
 fn rule_label(rule: NormRule) -> &'static str {
     match rule {
+        NormRule::PolicyLetPreserve => "PolicyLetPreserve",
         NormRule::ProductLift => "ProductLift",
         NormRule::ProductMerge => "ProductMerge",
         NormRule::PipeFallback => "PipeFallback",

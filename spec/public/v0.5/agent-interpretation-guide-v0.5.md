@@ -91,6 +91,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
 - Value-side material stays `NormExpr`; pattern-side material stays `NormPattern`.
   The same source name dumps as `Name` in value position but `PatternName` in
   annotation position.
+- `PolicySpec let PipeExpr` in value position is `NormExpr::PolicyLet`, not a
+  declaration, hidden binding, or ordinary `const`/`mut` call. Its operand is
+  the complete following pipe; parentheses close the Policy context. In a
+  Pattern/annotation position it is explicit unsupported Pattern material.
 - A value enters pattern space only through an explicit bridge; a pattern exposes
   values only through explicit extraction, binding, passing, or returning.
 - Annotations are annotation-pattern (classifier) material, not runtime
@@ -172,9 +176,10 @@ closure carrier, not a callable value. Only a later explicit binding or call
 consumer may materialize that carrier.
 
 Source-written captures are explicit binding requirements. `[x]` is
-`[let x = x]` with an unwritten (`const || mut`) capture policy, not automatic
-const capture. Automatic const requirements need later resolved free-reference
-analysis. Capture requirements do not define `self` fields, layout, or ABI.
+`[let x = x]` with the unwritten `plain` capture mode, not automatic const
+capture. Any implicit capture requirement needs later resolved free-reference
+and external-eligibility analysis. Capture requirements do not define `self`
+fields, layout, or ABI.
 In-place closures have no capture set: they may read through embedding-layer
 lookup but may not directly write an outer place.
 
@@ -187,6 +192,8 @@ lookup but may not directly write an outer place.
   closure whose body contains unresolved `field::T` navigation; lookup is future.
 - "annotation `T Option::std` is an expression" — no; it is annotation-pattern
   material.
+- "`P let e` is `e |> P` or a hidden `let`" — no; `PolicyLet` preserves a
+  result-Policy context that exists before the operand root call is selected.
 - "Normalized AST is basically HIR" — no; HIR assumes resolution and checking.
 - "`if` / `else` / `match` are keywords" — no; they are ordinary names; `match`
   is a future library closer, not built-in control flow.

@@ -373,8 +373,10 @@ _See also: ExternalNameView, DefaultExtractionView._
 
 The identity-preserving external namespace projection used after lookup crosses
 a package boundary. It requires export-retention admission, public reachability
-through every access-path component, and an externally eligible candidate
-policy view.
+through every access-path component, and a resolved candidate view. Every
+candidate of an admitted symbol preserves its identity, `Pv:Pp`, and
+`PolicyMode`; consumer Policy selection and dynamic-legality checks happen only
+after this stable lookup.
 
 _See also: FullNameView, PackageBoundary, Mount._
 
@@ -692,10 +694,11 @@ _See also: OverloadSpecificity, OverloadResolutionPipeline,
 
 An overload candidate that has passed every hard legality check for the current
 call: namespace/policy-view visibility, associated `()`, argument/Pattern shape,
-receiver and parameter policy pairs, stage legality, any target-result policy
-constraint, expected result class/facet, concept and ordinary require
-satisfaction, and other compile/type prerequisites. The set of all such
-candidates is `A`.
+receiver and parameter policy pairs, stage legality, any supplied target-result
+pair/type/rank/facet constraint, concept and ordinary require satisfaction, and
+other compile/type prerequisites. The set of all such candidates is `A`. The
+total `OutputModeDemand(call)` is a later PolicyMode-product preference
+coordinate, not an optional hard-admissibility constraint.
 
 Preference survivors are not a second meaning of "qualified." They are the
 successive subsets obtained by applying the fixed ordered preference filters to
@@ -732,21 +735,56 @@ _See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject, CompilePartn
 
 ---
 
-## Const/Mut Product Order
+## PolicyMode
 
-The overload preference relation for value mutability. At one constrained
-position the context-indexed rows are `succ_const: const > let > mut`,
-`succ_mut: mut > let > const`, and `succ_plain: let > const = mut`. Plain `let`
-is the formerly unspecified point. In a plain context, `const` and `mut` remain
-co-maximal and ambiguous when no `let` candidate survives; equality never means
-arbitrary choice. Across receiver, parameters, and a target-result constraint
-when present, candidates are compared by product partial order. A candidate
-dominates only when it is no worse everywhere and strictly better somewhere.
-Incomparable maxima remain ambiguous; there is no score, exact-match count,
-position weight, or lexicographic fallback. Delete members participate in the
-same comparison. Preference never grants capability.
+The real whole-slot coordinate `PolicyMode = {const, plain, mut}`. It is
+orthogonal to `Val1` shape and to the `Pv:Pp` Policy pair. Plain Policy is the
+`plain` point, not an omitted value, inference variable, or `const || mut`
+choice. At one constrained position the context-indexed rows are
+`succ_const: const > plain > mut`, `succ_mut: mut > plain > const`, and
+`succ_plain: plain > const = mut`. In a plain context, `const` and `mut` remain
+co-maximal and ambiguous when no `plain` candidate survives; equality never
+means arbitrary choice. Across receiver, parameters, and a target-result
+constraint when present, candidates are compared by product partial order. A
+candidate dominates only when it is no worse everywhere and strictly better
+somewhere. Incomparable maxima remain ambiguous; there is no score,
+exact-match count, position weight, or lexicographic fallback. Delete members
+participate in the same comparison. Preference never grants capability.
 
-_See also: FullyAdmissibleCandidate, OverloadResolutionPipeline._
+_See also: CapabilityRealization, Policy Pair, FullyAdmissibleCandidate,
+OverloadResolutionPipeline._
+
+---
+
+## CapabilityRealization
+
+The independent realization of an operation at an input/output `PolicyMode`
+coordinate. A family may leave any of the nine 3×3 coordinates absent or
+realize it as `default`, `delete`, or `custom`. This grid is not the
+three-point Policy preference order: selecting `mut` may still select a
+`delete` member, and `mut` on a non-reference object does not universally imply
+writability. Realization is a stable declaration/intrinsic candidate-family
+fact and may be retained in a namespace candidate snapshot. It is distinct
+from `DynamicLegality_Γ`, which is formed for the selected invocation in a
+concrete consumer context and is never stored in `Σ_export`.
+
+_See also: PolicyMode, DynamicLegality_Γ, Borrow view._
+
+---
+
+## DynamicLegality_Γ
+
+The legality judgment formed for one already selected invocation in consumer
+context `Γ`. It may depend on required capabilities, current writability,
+lifetime, access, escape, `OpenHere`, and construction authority. These are
+premises of legality, not a second 3×3 capability-realization layer. The
+judgment is not declaration metadata and must never be copied from an internal
+observation edge into `Σ_export`. External lookup returns the stable candidate
+snapshot; ordinary Policy/realization selection chooses the invocation; the
+consumer then forms `DynamicLegality_Γ_consumer`. Failure rejects that selected
+invocation without reopening candidate lookup or Policy maxima.
+
+_See also: CapabilityRealization, Namespace Symbol Views._
 
 ---
 
@@ -782,7 +820,7 @@ containing level; internal evidence stays below the stable head at the next
 structural level.
 Specificity does not depend on declaration order or an ad-hoc conversion-rank
 table. This extraction-only rank is not a const/mut fitness score and never
-resolves candidates that remain incomparable under the const/mut product order.
+resolves candidates that remain incomparable under the PolicyMode product order.
 
 _See also: OverloadCandidate, OverloadResolutionPipeline,
 `spec/design/patterns-overload/overload-resolution-design.md` §4._
@@ -851,19 +889,27 @@ lifetime policy is not an ordinary stage policy atom, and no lifetime rule may
 reopen or change the already unique ordinary overload result. `@` is evaluated at
 a stage; it does not name one.
 
-This boundary is *not* a claim that `@` lacks semantics. `@` is a privileged
-place-observation operation that yields a lifetime value (`LifetimeVal`), never
-a borrow view and never a `type ref`; its former two instance groups
+This boundary is *not* a claim that `@` lacks semantics. `@` reifies a
+continuation-relative `LifeName` as a `LifetimeValue`, never a borrow view and
+never a `type ref`; its former two instance groups
 (`LifetimeFact` for value instances and `P ref` for borrowable pure pattern
 slots), `t@ : type ref`, and the borrow-type fixed points `type ref@ = type
 ref` / `type share@ = type share` are retired. `ref` and `share` are the borrow
 constructors (`PrivilegedActualPlace(ref-family)` /
-`PrivilegedActualPlace(share-family)`); explicit higher-level selection uses
+`PrivilegedActualPlace(share-family)`); `@` does not share that place-acquisition
+privilege. Explicit higher-level selection uses
 `t |> (type ref)` / `t |> (type share)`. Borrow-constructor composition
-preserves its resident target, but that is not a `@` overlap. What remains
-undefined is the full `@` lifetime algebra (region representation,
-`LifetimeVal` shape, ordering), checking order, refinement phase, and handoff
-object.
+preserves its resident target, but that is not a `@` overlap. The semantic core
+now closes `SemanticContinuation`, `LifeName`, first-class ordinary
+`LifetimeValue`, `NameView<T>`, `origin`, gapless half-open `Region`,
+use/move/drop generations, cleanup-before-lifetime, Pre/Post summaries,
+pairwise-distinct exclusive-write and same-root shared-read defaults plus finite
+Pre patch, exact move-origin preservation, lifecycle posts inherited from the
+selected share/rebind-plus-clone realization, and an extensible Color
+vocabulary with finite/monotone relations in
+each committed compilation semantic universe.
+Concrete IR carriers, summary compression, and the checker remain
+unimplemented.
 
 _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
 
@@ -1098,8 +1144,8 @@ ordinary Pattern/namespace observation and type-rank equality/keying use
 `Core(tau)=Q`; type-as-callee uses `CallSpace(tau)=V_τ`; copying, `extend`,
 and `inject` preserve or transform the whole closure. `CallSpace(τ)` is an
 intrinsic property of the closure, fixed at formation and never recovered
-from the host Symbol, source binding, or carrier provenance. `@` is the privileged
-place-observation operation that yields a lifetime value and never a
+from the host Symbol, source binding, or carrier provenance. `@` is the
+continuation-relative name-reification operation that yields a lifetime value and never a
 `type ref` (canonical owner
 `../design/lifetime/lifetime-policy-and-overload-boundary.md` §1–§2).
 Callable val members project across the typed buckets of `V_S` to the formal
@@ -1146,7 +1192,7 @@ project `tau` as needed: ordinary Pattern/namespace observation and
 type-rank equality/keying use `Core(tau)=Q`; type-as-callee uses
 `CallSpace(tau)=V_τ`; copying, `extend`, and `inject` preserve or transform
 the whole closure as required by their own judgments. `@` is a
-privileged place-observation operation that yields a lifetime value, not a
+continuation-relative name-reification operation that yields a lifetime value, not a
 borrow and not part of the complete-type observation classification.
 Canonical owner:
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
@@ -1291,21 +1337,20 @@ _See also: Let binding, BindingSlot, `@`._
 
 ## `@`
 
-A privileged place-observation operation that yields a lifetime value:
+A continuation-relative name-reification operation that yields a lifetime
+value:
 
 ```text
-E@ : LifetimeVal(p)    where p = privileged-place-of-actual(E)
+E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
 ```
 
 `@` is not a borrow constructor and never yields a borrow view or a `type ref`.
 `ref` and `share` are the borrow constructors; each is a privileged
 actual-place builtin (`PrivilegedActualPlace(ref-family)` /
 `PrivilegedActualPlace(share-family)`) that may obtain the place of its actual
-argument, while an ordinary user function cannot. An expression with no abstract
-place — a freshly computed temporary — supplies none: `@` selection still runs,
-and the place acquisition is a post-selection invocation precondition — absence
-yields `InvocationFailure(NoCarrierPlace(actual))`, not candidate removal or
-overload reopening.
+argument, while an ordinary user function cannot. `@` does not use that
+privilege. A freshly computed temporary may receive a generated `LifeName`, so
+absence of a carrier place is not an `@` failure.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. The former
 two instance groups (`Val1?(x) ≠ null -> LifetimeFact`,
@@ -1325,12 +1370,94 @@ ordered and non-circular: ordinary selection inside the operand, then ordinary
 selection of `@` in the operand's policy stage, then lifetime validation, which
 may reject the first two but never reselects them.
 
-The complete lifetime algebra of `@` — region representation, `LifetimeVal`
-shape, and ordering — is deliberately not frozen here. See
+The lifetime core uses gapless half-open `Region=[i,j)`, generation-resetting
+move, cleanup-before-lifetime ordering, Pre/Post call summaries,
+pairwise-distinct exclusive-write and same-root shared-read defaults with finite
+Pre patch, exact move-origin preservation, lifecycle posts inherited from the
+selected share/rebind-plus-clone realization, and an extensible Color
+vocabulary with finite/monotone relations in
+each committed compilation semantic universe. Its concrete IR representation
+and checker are not implemented. See
 [`lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 §1–§2.
 
 _See also: Borrow view, Open authority, Lifetime Policy Boundary, `type ref`._
+
+---
+
+## LifeName, LifetimeValue, and NameView
+
+`LifeName` is the stable semantic name of one value generation, including a
+generated name for a temporary. `LifetimeValue` is the semantic result/value of
+reifying that name at `Pos(SemanticContinuation)`. `NameView<T>` is the typed
+observation that carries a `LifeName`, its half-open `Region=[i,j)`, and an
+`origin` relation for a value of `T`; it is neither a borrow view nor a place
+handle.
+
+`LifetimeValue` is an ordinary first-class semantic value. It may be bound,
+stored in an ordinary value slot, passed, returned, and moved/copied wherever
+its ordinary Type, Policy, capability, lifecycle, and destination judgments
+admit those operations. It is not an ephemeral observation-only expression
+species. Transport preserves the value reified at its original continuation
+position and does not silently execute `@` again. First-class status does not
+imply runtime materializability: a same-Type static-to-runtime transition exists
+iff the ordinary `RuntimeMaterializable(T)` callspace rule supplies a
+non-deleted candidate. Compile-known and runtime-known observations do not form
+distinct `LifetimeValue` species.
+
+Every semantically name-projectable value operation has one unique name-level
+companion, and the projections commute: `@(f_V(x)) = f_N(x@)`. Companion
+existence is semantic; registry or IR representation remains
+implementation-open.
+
+Entry lifetime facts are `U_entry = U_default ⊕ Delta_pre`, where `Delta_pre`
+is finite. Origin ancestry continues through the default generator of the
+semantic construction that produced the name unless an explicit `origin=None`
+terminates it; omission is not `None`. Exclusive-write borrow roots are
+anonymous and pairwise distinct. All shared-read borrow roots default to the
+same anonymous `G_shared`; a finite Pre patch changes only the relations it
+states. The borrow name tree mirrors exactly the subname edges already admitted
+by the established access relation. Structural membership alone grants neither
+lifetime-name reachability nor access capability, and the lifetime default
+synthesizes no alias-write/internal-mutability edge. The exclusive/shared root
+rules specialize function-entry borrows; they do not make
+ordinary non-borrow values origin-free by default.
+
+Moving a nontrivial value uses one boundary `k`: the old first-level Region is
+`[i,k)`, the successor Region is `[k,j)`, and the successor has exactly the
+same deeper origin, `new@.origin = old@.origin`. There is no gap between
+generations. Copy origin is not a lifetime-calculus theorem:
+`CopyConstruct.lifecycle_post` is exactly the lifecycle post of the selected
+`share -> clone` or `rebind -> clone` realization. A concrete clone-family
+candidate may declare `origin(result)=NameOf(source)`, an internal/re-rooted
+origin, or another legal relation; `copy` and `CopyConstruct` imply none of
+those equations by themselves. The selected post enters through the ordinary
+Pre/Post boundary.
+Whether generation identity and `LifeName` identity share one concrete
+representation is implementation-open. Drop ends the current generation after
+cleanup obligations. Color inheritance is monotone. The global Color vocabulary
+is extensible, but every committed compilation semantic universe has one finite
+Color-set snapshot with mechanically decidable compatibility, exclusion, and
+exchange relations. A color contribution must define those finite relation
+rows before the universe is committed; Color is not an arbitrary proposition
+carrier.
+
+_See also: `@`, Region, Lifetime Policy Boundary._
+
+---
+
+## Region
+
+The half-open semantic-continuation interval `[i,j)` over one `LifeName`
+generation. A move is one shared boundary `k`: the old generation is `[i,k)`
+and the successor is `[k,j)`, with neither overlap nor an unowned gap. Uses must
+lie inside the live region; move or drop closes the current generation. Cleanup
+obligations are solved before lifetime closure.
+Call summaries expose Pre obligations and Post facts: a failed Pre check makes
+no state change, and lifetime failure never reopens ordinary overload
+selection.
+
+_See also: LifeName, LifetimeValue, Escape check._
 
 ---
 
@@ -1421,7 +1548,7 @@ The negative invariant that candidate adaptation, structural repair, Policy
 migration, and automatic argument passing cannot turn an ordinary
 Object/Symbol/type actual into `ref` or `share` merely to make a candidate
 applicable. The source or normalized expression must explicitly form the view
-with `ref` or `share`; the privileged place-observation `@` yields a lifetime
+with `ref` or `share`; continuation-relative `@` yields a lifetime
 value and never forms a borrow view. Fixed points and legal weakening of an
 already formed borrow preserve its target and are not implicit formation;
 callable-frame implicit `self` is a separate narrow capability rule.
@@ -1709,9 +1836,8 @@ performed.
 > forwards a `Symbol` constructor value or a place. `let a = b` creates a fresh binding in a fresh
 > place carrying `b`'s value (`SymbolId(a) ≠ SymbolId(b)`,
 > `PlaceId(a) ≠ PlaceId(b)`, `Value(a) = Value(b)`). Shared observation of another
-> object is expressed only by a borrow view (`ref` / `share`); to observe its
-> place-level lifetime, apply the privileged place-observation `@` (yields
-> `LifetimeVal`). No
+> object is expressed only by a borrow view (`ref` / `share`); to reify its
+> continuation-relative lifetime name, apply `@` (yields `LifetimeValue`). No
 > operator-name exception survives: operator environments are ordinary values
 > under the global `operator` type, with lexical copy/shadow and Symbol algebra.
 > See
@@ -1830,18 +1956,20 @@ This does not perform name resolution, environment layout, or closure
 materialization.
 
 Every source-written item is an explicit capture requirement. `[x]` is
-shorthand for `[let x = x]` with the ordinary unwritten capture-policy domain
-(`const || mut`), not an automatic const capture. A future resolved stage may
-add a separate `ImplicitConst` requirement for an otherwise uncaptured free
-outer value reference. Capture requirements are abstract dependencies: they
-do not declare `self` fields, copy/reference representation, layout, ZST
+shorthand for `[let x = x]` with the ordinary unwritten `plain` capture mode,
+not an automatic const capture. A future resolved stage may add a separate
+`ImplicitEligible` requirement for an otherwise uncaptured free outer value
+reference. Capture requirements are abstract dependencies: they carry
+requested Policy and required access capability into later ordinary checking,
+but do not declare `self` fields, copy/reference representation, layout, ZST
 status, or ABI.
 
-External explicit navigation reaches the namespace export view; internal
-explicit navigation reaches the complete namespace view. Because exported
-value views are const-projected, externally navigated values and callable
-targets normally satisfy `ImplicitConst` dependencies. Automatic capture and
-call resolution share the Symbol-identity/const-view problem domain; this does
+External explicit navigation reaches the stable namespace export view; internal
+explicit navigation reaches the complete namespace view. A capture's access
+capability does not filter namespace membership and is checked later together
+with its Policy demand. External access does not rewrite the slot's PolicyMode.
+Automatic capture and call resolution share the Symbol-identity/stable-view
+problem domain; this does
 not imply pass ordering or an implementation dependency.
 
 An explicit capture and an automatic capture may name the same source but
@@ -2150,8 +2278,8 @@ If RHS is a path, the path first resolves a `Symbol` constructor value and reads
 carrier Symbol is not part of `v` after that read. `let T: type = uint8`
 therefore binds the existing type value under a fresh carrier. No declaration
 form forwards a `Symbol` constructor value or a place; to observe another object's place, bind a
-borrow view (`uint8 ref`, `uint8 share`); to observe its place-level lifetime,
-apply the privileged place-observation `@` (yields `LifetimeVal`).
+borrow view (`uint8 ref`, `uint8 share`); to reify its continuation-relative
+lifetime name, apply `@` (yields `LifetimeValue`).
 
 At the semantic layer this is also the only missing-member creation operation.
 Navigation may yield a prospective ProjectionSlot containing `None`; `let` may
@@ -2223,13 +2351,17 @@ Wfinal       Wpre ∪ Wseal, materialized/retained/generated build world
 Internal explicit resolution searches `Σ_full`; external explicit resolution
 searches `Σ_export`; world membership asks whether a binding exists in Wpre or
 Wseal. The export overload set preserves the same candidate identities as the
-full set, but every external candidate carries a separately const-projected
-resolved `PolicyPair` rather than a declaration-side `P1Projection` or a clone
-of its complete internal policy. External admission requires both
+full set, but every external candidate preserves its resolved `PolicyPair` and
+whole-slot `PolicyMode` rather than carrying a declaration-side `P1Projection`.
+External admission requires both
 export-retention-closure membership and public reachability through the full
 path.
-Within each admitted full overload set, mut-only candidates remain internal
-and candidates with const (or pure `Pp`) views enter the external set.
+Within each admitted full overload set, every resolved candidate enters the
+stable external view with the same identity, pair, mode, declaration/intrinsic
+realization facts, and provenance. It carries no context-indexed dynamic
+legality judgment. A later concrete consumer applies ordinary Policy and
+capability-realization selection, then forms `DynamicLegality_Γ_consumer` for
+the selected invocation without changing namespace membership.
 Publicly reachable export-retention-closure ancestors and descendants receive this
 projection even when they are not export roots. World membership does not
 imply export, and export does not imply that the binding itself was an export
@@ -2249,9 +2381,23 @@ The canonical internal policy representation:
 ```
 
 `Pv` describes the `Val1`/value component; `Pp` describes its carried
-Pattern/anonymous-type component. Stage, value mutability, value presence,
-ordinary namespace visibility, and export-root are typed orthogonal dimensions. A scalar policy
-is surface shorthand or a derived summary and cannot reconstruct the pair.
+Pattern/anonymous-type component. `PolicyMode={const,plain,mut}` is a separate
+whole-slot coordinate; stage, value presence, ordinary namespace visibility,
+export-root, and capability realization are further typed orthogonal
+dimensions. A scalar policy is surface shorthand or a derived summary and
+cannot reconstruct the pair plus mode.
+Surface elaboration factors at most one connected whole-slot `ModePattern`
+before elaborating the residual `Pv:Pp`; mode atoms cannot independently occupy
+the value or Pattern side of `:`. A typed `ModePattern` is exactly one
+`ModeAtom ::= const | plain | mut`; a surface `PolicyChoice` containing multiple
+ModeAtoms is rejected during typed Policy elaboration. `plain` is the only
+neutral/default point and is not `const || mut`. This restriction leaves
+pair/view choices such as `compile || runtime` unchanged. In result-demand
+context, absence of a written ModeAtom independently defaults to `plain` and
+does not erase that residual pair/view choice.
+Whether a colon spelling with an empty residual side is
+rejected or contextually completed is still a surface question; the current
+rejection examples are provisional rather than a consequence of orthogonality.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
 
@@ -2267,18 +2413,18 @@ observer may hide an existing `Val1`, so `Pv = absent` does not prove physical
 absence.
 
 There is no independent `P3`. Written parameters inherit `P2`, and returns
-inherit `P1`; either position may refine only the inherited mutability dimension.
+inherit `P1`; either position may refine only the inherited `PolicyMode`.
 Stage, presence, visibility, and every other policy dimension remain invariant.
 
 At namespace direct top level, `export` derives an external view without
-cropping the complete internal `Pv:Pp`. A value-bearing external view is
-`Project_const(Pv):Pp` and therefore requires a non-empty const projection; a
-`mut`-only value export is invalid. A pure `absent:Pp` export has no
-value-mutability obligation. More strongly, absent Pv has no value stages and
-no value-mutability domain at all; `const + S : compile` and
-`mut + S : compile` are invalid before namespace export is considered. This
-rule is checked by P1/P2 elaboration and resolved export projection rather than
-being inferred from export alone.
+cropping the complete internal `Pv:Pp` or rewriting `PolicyMode`.
+That stable view depends on export retention and public path reachability, not a
+future consumer's capability or Policy demand. A pure `absent:Pp` slot still
+has a whole-slot mode; absence removes
+value stages and `SemanticValueId`, not the mode coordinate. The former
+universal `Project_const` export rule is retired semantic vocabulary; any
+remaining const-projected adapter is an explicitly bounded implementation
+subset.
 
 _See also: PolicyBinding,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
@@ -2293,7 +2439,23 @@ The future P1 projection judgment for a binding:
 [P1] let x = expr
 ```
 
-Omitted P1 keeps the fully inferred result. A single `Q` selects values visible
+Before resolving/evaluating the RHS, binding spelling forms the output-mode
+selection preference: bare `let` gives concrete `plain`, while `const let` and
+`mut let` give singleton `const` and `mut`. That producer-selection coordinate participates with input
+Policy coordinates in ordinary call overload selection. Only after the unique
+RHS result has been selected does omitted P1 keep its fully inferred pair view
+or an explicit P1 apply the existing pair-view projection/migration machinery.
+The selected producer retains its declared concrete `ResultPolicyMode`; the
+destination has its own mode from binding elaboration. Mechanical move/copy
+transfers the value between those slots without relabeling the producer result.
+Thus a `const` producer may win under plain preference while the destination
+remains `plain`. The destination never inherits the RHS slot's mode, and the
+RHS mode is never rewritten to the destination mode.
+Independently, current-phase evaluation derives each candidate's implicit P1
+stage view from its P2. Therefore an omitted pair/stage demand does not make
+`compile`/`runtime` unknown and does not require `PolicyLet`; omitted binding
+P1 still retains the selected RHS's complete pair view.
+A single `Q` selects values visible
 under `Q` and retains each value's associated Pattern component. An explicit
 `Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
 The selected slice must be non-empty and admitted by the destination binding.
@@ -2327,20 +2489,27 @@ Policy Transition,
 
 ## Policy Demand Satisfaction
 
-The act of satisfying a consumer's requested Policy view. Demand kind records
-consumer origin; it does not grant permission to search arbitrary conversion
-operations. The ordering is called **Existing-First,
-Constructible-Second**:
+The act of satisfying a consumer's requested Policy view through the single
+Policy migration algebra shared by binding, `PolicyLet`, and atomic runtime
+materialization. Demand kind records candidate admission facts; it does not
+grant permission to search arbitrary conversion operations. Every selected
+migration candidate owns declared source/target Policy endpoints and jointly
+produces `PolicyProjection` plus `ValueRealization`, which must be coherent.
+The ordering is called **Existing-First, Constructible-Second**:
 
 ```text
 existing compatible view
-  -> use Policy slicing
+  -> candidate set = {identity Policy migration}
+  -> PolicyProjection preserves the slice
+  -> ValueRealization preserves the value
 
 complete existing projection is empty
   + runtime is an accepted alternative
   + eligible static Val1 view
   -> extract RuntimeBranch(query)
-  -> consider one authorized atomic Runtime Policy migration
+  -> admit authorized direct Policy migration candidates
+  -> ordinary Policy overload / unique selection
+  -> selected migration jointly supplies PolicyProjection and ValueRealization
 
 otherwise
   -> inadmissible or governed by another explicit language mechanism
@@ -2366,11 +2535,126 @@ _See also: Policy Binding, Policy Pair, Policy Transition._
 
 ---
 
+## Default Evaluation Result Context
+
+The result context present for every call even when no explicit result Policy
+is written. It has two orthogonal total inputs and one optional input:
+
+```text
+EvaluationStageContext(call) = current phase kappa
+OutputModeDemand(call)       = immediate explicit demand | plain
+TargetResultConstraint(call) = optional explicit pair/type/rank/facet facts
+```
+
+For candidate `f`, the evaluation-stage component derives an implicit P1 stage
+view from `P2(f)` using
+`Stage(P1p)=Stage(P2p)` and
+`Stage(P1v)=Stage(P2v) union Stage(P2p)`, then checks that view in `kappa`.
+This is the default **P1-stage-follows-P2** behavior. It makes ordinary
+`compile`/`runtime` evaluation phase-directed without requiring
+`compile let e` or `runtime let e`.
+
+The derivation is stage-only. It does not copy `PolicyMode`, visibility,
+capability, export status, or value presence from P2. Unwritten whole-slot mode
+is the concrete point `plain`; selecting `const` or `mut` is a separate manual
+result demand. An explicit `PolicyLet` may still delimit, narrow, or request a
+stage/migration result, or supply that non-plain Mode demand.
+
+_See also: CallLocalPolicyClosure, PolicyLet, PolicyMode, Policy Pair._
+
+---
+
+## CallLocalPolicyClosure
+
+The rule that closes every call node before an unresolved outer candidate may
+influence it. A call's output-mode preference is formed before its own candidate
+maxima. It may use an already-formed, candidate-independent immediate-consumer
+demand; when none exists, the local default is `plain`. After unique selection,
+the call's concrete `ResultPolicyMode` is frozen. An outer call consumes that
+result as an ordinary actual and never reopens the inner call. Thus an outer
+formal PolicyMode Pattern cannot be assumed to select an inner call and then be
+used to decide the outer candidate; no cross-call fixed point exists.
+
+This `OutputModeDemand(call)` exists for every call and always participates in
+the PolicyMode product. The current phase separately supplies the
+P1-stage-follow-P2 default. Optional expected result pair/type/rank/facet facts
+are a separate `TargetResultConstraint(call)` used by hard admissibility only
+when the context supplies them.
+
+_See also: Default Evaluation Result Context, Policy Binding, PolicyMode,
+OverloadResolutionPipeline._
+
+---
+
+## PolicyLet
+
+The expression-level term former:
+
+```text
+PolicySpec let PipeExpression
+```
+
+It has one preserved syntax/Normalized-AST boundary and two semantic
+projections. The inward projection forms `ResultPolicyDemand(PolicySpec)`
+before the operand root call's ordinary overload maxima. The outward
+projection applies ordinary Policy-demand satisfaction and exposes one
+completed concrete Policy view through the node's ordinary expression-result
+slot. The slot is not a NameBinding, Symbol, hidden declaration, or
+independently addressable Place. Parentheses close the boundary; an outer call
+consumes that view as an ordinary actual and cannot reopen the operand call.
+
+This is an explicit override/boundary, not the source of the ordinary
+evaluation phase. Without PolicyLet, `compile`/`runtime` stage exposure already
+comes from the current phase and the candidate's P2-derived P1 stage view.
+`compile let e` / `runtime let e` remain available for explicit stage
+delimitation or migration; `const let e` / `mut let e` manually replace the
+otherwise concrete `plain` Mode demand.
+
+`PolicyLet` creates no hidden binding, place, or declaration. It is not an
+ordinary Val2 `const`/`mut` call and is not an in-place Policy tag rewrite.
+After the operand is frozen, `SourcePolicy(result) -> P` enters the same Policy
+migration candidate preparation and ordinary Policy overload used by binding
+and runtime materialization. The unique selected candidate jointly supplies
+the outward `PolicyProjection` and its concrete `ValueRealization`; their
+coherence completes the result. A Type-callspace/Val2 operation or canonical
+mechanical action may implement that value realization, but its body neither
+declares the migration's Policy endpoints nor creates the preceding inward
+demand. The parser and Normalized AST preserve this node; the current build
+prototype does not yet execute its result-demand/migration semantics.
+
+For singleton `plain`, a `const` producer may win inward selection under
+`succ_plain` while retaining `ProducedMode=const`; this is not already an exact
+plain outward view. Canonical terminal move/copy transfers the value into the
+PolicyLet's ordinary plain expression-result slot. The source mode remains
+const, the result-slot mode is plain, and no global `val plain` or Policy tag
+rewrite is introduced. The transfer is the selected migration candidate's
+`ValueRealization`, not an independent companion relation. Missing or ambiguous
+migration is a typed outward failure after producer selection, never permission
+to expose the wrong mode or reopen candidates.
+
+_See also: ResultPolicyDemand, Policy Demand Satisfaction,
+Default Evaluation Result Context, CallLocalPolicyClosure, PolicyMode._
+
+---
+
 ## Policy Transition
 
-The current canonical transition case is the language-authorized atomic
-Runtime Policy migration considered only after a complete accepted Policy
-choice has no existing view and that choice contains runtime. Define:
+Policy transition uses the one migration algebra shared by ordinary binding,
+`PolicyLet`, and runtime materialization:
+
+```text
+SourcePolicy -> TargetPolicy
+  -> PreparePolicyMigrationCandidates
+  -> ordinary Policy overload / unique selection
+  -> selected m
+  -> PolicyProjection(m) x ValueRealization(m)
+  -> coherent completed result
+```
+
+The current canonical non-identity stage transition is the
+language-authorized atomic Runtime Policy migration considered only after a
+complete accepted Policy choice has no existing view and that choice contains
+runtime. Define:
 
 ```text
 S = Static(Pv) = Pv - runtime
@@ -2384,7 +2668,7 @@ input:  Type=T, value stage=S,       Pp=S
 output: Type=T, value stage=runtime, Pp=S, presence=present
 ```
 
-Input/output value mutability may differ because those coordinates belong to
+Input/output `PolicyMode` may differ because those coordinates belong to
 the selected ordinary callable and its overload Policy. Thus
 `const compile -> mut runtime` may construct a fresh runtime object; the
 compiler authorizes the stage edge but does not invent `mut`. Pattern-side
@@ -2393,21 +2677,22 @@ the source Pattern object. An eventual ordinary function-object invocation
 supplies an ordinary result whose Type/Pattern/owner coherence is governed by
 existing invocation and Pattern semantics.
 
-Migration endpoint mutability uses ordinary actual-relative Bp preference, not
+Migration endpoint `PolicyMode` uses ordinary actual-relative Bp preference, not
 hard Policy-domain intersection or subset specificity:
 
 ```text
-succ_const: const > let > mut
-succ_mut:   mut > let > const
-succ_plain: let > const = mut
+succ_const: const > plain > mut
+succ_mut:   mut > plain > const
+succ_plain: plain > const = mut
 ```
 
 Opposite endpoint Patterns remain fully admissible. Stage, presence, Pp
 capability, Type, and structural applicability remain hard constraints. The
 plain row preserves ambiguity when only tied `const`/`mut` endpoints survive.
-Generic ordinary members may realize the four default transports
-`const <- const`, `const <- mut`, `mut <- const`, and `mut <- mut`; more
-specific Pattern members may refine or delete regions of that relation.
+Generic ordinary members may realize any of the nine input/output mode
+coordinates as absent/default/delete/custom; the current four-member 2×2
+fixture is only an implementation subset. More specific Pattern members may
+refine or delete regions of that relation.
 
 The demand-preparation helper implements only the binding-P1 entry point. It projects
 the complete original query first, then derives a runtime-only target branch:
@@ -2446,6 +2731,9 @@ Project_out o Migration o Project_in
 
 No transitive migration graph, candidate backtracking, temporary-lifetime
 extension, universal transition Symbol, or new callable ontology is implied.
+PolicyLet does not introduce a second Policy selector; its demand kind only
+restricts the direct migration candidates admitted to this same ordinary
+selection.
 Explicit mechanical `ref`, `share`, and `rebind` operations remain ordinary
 function-object calls distinct from Policy-demand satisfaction.
 Binding P1 is the currently connected demand consumer. Consumer-neutral
@@ -2523,6 +2811,35 @@ _See also: AnnotationTerm, CanonicalSkeleton, Type-object._
 
 ---
 
+## Abstract literal type
+
+One of the source-language denotation types `integer`, `real`, or `character`.
+An integer literal denotes an exact integer; a finite real literal denotes an
+exact rational value (`0.1 = 1/10`, `0x1.8p1 = 3`). These denotations precede
+machine-width, signedness, storage, and rounding choices. Their unique initial
+Policy pair is `compile:compile`; parsing never directly creates a runtime
+abstract-literal value. Character spelling is
+still a separate surface amendment and is not added by this semantic closure.
+These are ordinary complete type values satisfying the existing Type role, not
+members of a separate `LiteralType` universe parallel to ordinary types.
+Their ordinary same-Type compile-to-runtime materialization cells are
+intrinsically `delete` in the immutable callspaces of `tau_integer`,
+`tau_real`, and `tau_character`, so
+`RuntimeMaterializable(integer|real|character)` is false. Canonical literal
+values are typed by exactly those snapshots. Later associated contributions
+form a new complete type snapshot instead of mutating an existing `V_tau`, and
+`NoForeignTypeMemberInjection` prevents importing foreign members. No mechanism
+beyond the ordinary snapshot and resolver rules is involved. The values must first be
+constructed into another, concrete machine-semantic Type. Ranked string
+literals follow a separate existing path directly to
+`str@compile`; they are not `character` tokens and do not belong to these three
+abstract scalar denotation Types.
+
+_See also: Complete type closure (`tau`), Concrete machine-semantic type,
+Convert/Construct._
+
+---
+
 ## Atomic builtin type
 
 An actual builtin Type value whose identity does not require applying a
@@ -2543,8 +2860,9 @@ _See also: Concrete numeric type, Type-object, TypeValueId._
 ## Concrete numeric type
 
 A width-bearing numeric Type (`Tnum`) such as `uint16` or `float32`. Numeric
-literal materialization selects a concrete numeric Type rather than using the
-atomic `uint`/`int`/`float` Type as the literal's final type. In the current
+literal construction may target such a Type; the literal does not initially
+have that machine Type. Rounding occurs during ordinary construction to the
+concrete target, never while parsing the abstract denotation. In the current
 implementation, `NumericTypeKey` maps to a first-order `TypeValueId` projection
 derived from an installed core Type symbol; final whole-snapshot type-value
 identity is `Addr(Norm_type(tau))`, used where the language has frozen
@@ -2552,6 +2870,90 @@ whole-snapshot semantics, while ordinary type equality/keying keeps observing
 `Core(tau)=Q` under the minimal-change rule.
 
 _See also: Atomic builtin type, Literal, TypeValueId._
+
+---
+
+## Concrete machine-semantic type
+
+A concrete Type whose value semantics are fixed across compile and runtime
+stages, such as a width-bearing integer or floating Type. Stage controls when a
+value is available; it may not redefine that Type's equality, range, rounding,
+or representation-level value semantics.
+
+_See also: Abstract literal type, StageInvariantTypeSemantics._
+
+---
+
+## Convert/Construct
+
+Ordinary semantic operations that may change Type. Literal flow uses them to
+construct a concrete machine-semantic value from an exact abstract literal.
+They own range checks and rounding required by the target Type.
+
+_See also: Migrate/Materialize, Abstract literal type._
+
+---
+
+## Migrate/Materialize
+
+Operations that preserve Type while producing an eligible value at another
+stage or in a concrete storage form. They may change value/place identity but
+must satisfy `Type(output) = Type(input)`; they are not conversion or
+construction to a different Type. The abstract denotation Types `integer`,
+`real`, and `character` have deleted compile-to-runtime cells and therefore do
+not admit this same-Type runtime operation.
+
+_See also: Convert/Construct, StageInvariantTypeSemantics._
+
+---
+
+## StageInvariantTypeSemantics
+
+The invariant that one concrete machine-semantic Type has the same value
+semantics at compile and runtime stages. A stage transition may materialize or
+migrate a same-Type value, but it cannot switch the Type's range, rounding,
+equality, or interpretation.
+
+_See also: Concrete machine-semantic type, Migrate/Materialize._
+
+---
+
+## CanonicalMechanicalPassCore
+
+The normative target action algebra for ordinary value passing:
+
+```text
+move(move(x)) = move(x)
+
+copy(x) =
+  tmp := CopyConstruct(x)
+  Move(tmp)
+
+CopyConstruct(x : ordinary T)
+  ~= shared_view := share(x); clone(shared_view)
+
+CopyConstruct(x : T ref | T share)
+  ~= rebound_view := rebind(x); clone(rebound_view)
+
+automatic pass in {move, copy}
+automatic pass not in {ref, share, @}
+
+ProducedMode(source) = mu_source
+PolicyMode(destination) = mu_destination
+TransferToDestination(source, destination, pass)
+  preserves mu_source and installs the destination under mu_destination
+```
+
+There is no move of `x` before `CopyConstruct(x)`, and an explicit pass action
+dominates automatic selection. Transfer never rewrites the selected producer's
+result mode into the destination mode. `CopyConstruct` is the compact name for
+the selected ordinary share/clone or rebind/clone copy realization, not a new
+opaque semantic primitive; both expansions end in the same terminal move.
+Their internal borrow operations do not enlarge automatic pass selection beyond
+`{move, copy}`. These laws are canonical even though the selection algorithm,
+checker/normalizer integration, IR, and ABI are not yet implemented.
+
+_See also: PolicyMode, Migrate/Materialize._
 
 ---
 

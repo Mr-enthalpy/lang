@@ -24,10 +24,11 @@ The namespace graph world model and symbol-level identity:
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
 - Object `⟨Val1?, P, Val2⟩`, canonical `Pv:Pp`, contextual P1 projection, P2
-  result normalization, derived function-object stage views, seal visibility,
-  const/mut product order, compile-flow projection over ordinary call nodes,
-  complete derived compile-companion objects, coarse inferred require, and
-  shared compile evaluation
+  result normalization, current-phase P1-stage-follow-P2 evaluation defaults,
+  optional explicit PolicyLet result boundaries, derived function-object stage
+  views, seal visibility, PolicyMode product order, compile-flow projection over
+  ordinary call nodes, complete derived compile-companion objects, coarse
+  inferred require, and shared compile evaluation
 - Object-closed bare Product, `T*N`, `T*omega`, `product`, and Symbol carriers;
   their normalization uses only ordinary `Val1`/`Val2` recursion
 - resolved pattern scopes, `struct` forming complete type values, pure child-only `extend`,
@@ -35,8 +36,8 @@ The namespace graph world model and symbol-level identity:
 - meta-return self-root identity and complete meta-instance navigation atoms
 - type-core namespace origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
-- the borrow views `ref` / `share` and the place-sensitive lifetime
-  observation `@`, writability, and construction-authority
+- the borrow views `ref` / `share`, continuation-relative lifetime name
+  reification `@`, writability, and construction-authority
   (`OpenHere_Σ` / `WindowLive_Σ`)
 - field functions and same-name value/ref/share receiver overload families
 - type-associated function objects and namespace extension targets
@@ -66,7 +67,8 @@ recovery are retired.
 - `symbol-policy-and-compile-flow-projection.md` — canonical future `Pv:Pp`,
   P1/P2 contextual elaboration, function-object stage derivation, seal
   three-phase visibility, Wpre scanning versus explicit seal lookup,
-  independent export-root/public-private dimensions, const/mut product order,
+  independent export-root/public-private dimensions, whole-slot PolicyMode,
+  three-point preference and 3×3 capability realization,
   mechanical compile projection, derived companion objects,
   must-select consistency, match/D/Done, coarse require, and shared evaluation.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
@@ -74,7 +76,9 @@ recovery are retired.
   once the symbol world stabilizes it may be split further.
 - `type-values-places-and-borrow-views.md` — canonical `TypeValueId` /
   `PlaceId` / `SymbolId` distinction, object normal form, the borrow views
-  `ref` / `share`, and the place-sensitive lifetime observation `@`.
+  `ref` / `share`, abstract scalar literal/concrete-Type semantics, ranked
+  string `str@compile`, and continuation-relative lifetime name reification
+  `@`.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   same-name receiver overload families, and access-tree implications.
 - `entity-ref-design.md` — general `EntityRef` design (alias-RHS subset

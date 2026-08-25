@@ -1,6 +1,6 @@
 # Normalized Surface Semantics v0.5
 
-> **Status:** Published. The v0.5 public normalized surface semantics are
+> **Status:** Published and amended. The v0.5 public normalized surface semantics are
 > complete. §1–§7 define call / product / pipe binding; §8–§10 define
 > value-side / pattern-side / annotation / alias boundaries; §11 defines
 > origin / generated / derived / unsupported visibility; §12–§13 define the
@@ -414,6 +414,38 @@ generated binders, and the receiver becomes the call's source product (a
 `field::T` and `method::T` are unresolved navigation targets.
 No field lookup, method lookup, method dispatch, type checking, or overload resolution occurs.
 ```
+
+### PolicyLet preservation
+
+The expression-level Policy boundary is preserved rather than desugared:
+
+```text
+P let a |> f
+  -> PolicyLet(
+       policy = N(P),
+       operand = N(a |> f),
+       origin = Generated(PolicyLetPreserve))
+```
+
+`P` is the existing complete `PolicySpec` grammar. The operand is the complete
+following pipe expression. Parentheses close the boundary:
+
+```text
+(P let a |> f) |> g   // PolicyLet is an ordinary source actual for g
+(P let a) |> f        // only a is inside the PolicyLet
+```
+
+Normalization does not turn this node into a declaration, hidden variable,
+place, or ordinary value-side `const`/`mut` call. Policy atoms are normalized
+under the inherited DeduceList hole environment; the operand uses the same
+environment, and the node declares nothing. In Pattern/annotation material it
+surfaces as `PatternUnsupported "policy-let expression in pattern context"`.
+
+The normalized node records the future semantic ordering—form the operand's
+result-Policy demand before selecting its root call, then expose the completed
+Policy view—but does not execute overload resolution or Policy satisfaction.
+Current build prototypes treat the wrapper as an opaque unsupported semantic
+boundary rather than transparently selecting the inner call.
 
 ## 8. Value-Side vs Pattern-Side Material
 
@@ -857,33 +889,32 @@ layout, name resolution, or materialization.
 
 These source-written captures are explicit requirements. In particular,
 `[x]` means explicit `[let x = x]` with the ordinary unwritten capture policy
-domain (`const || mut`); it is not an automatic const capture. A later resolved
-stage may add an `ImplicitConst` requirement for an otherwise uncaptured free
-outer value reference. That later operation requires symbol resolution and
-const-slice projection and therefore is not normalization.
+mode (`plain`); it is not an automatic const capture. A later resolved stage
+may add an implicit capture requirement for an otherwise uncaptured free outer
+value reference. That later operation requires symbol resolution and external
+namespace visibility plus later capability checking and therefore is not
+normalization.
 
 In later resolved semantics, external explicit navigation searches the export
 view, while internal explicit navigation searches the complete namespace view.
 Declaration-side `P1Projection` first applies to actual RHS/result entries and
-produces a resolved internal `PolicyPair`. Only that complete pair may become
-an external candidate policy: its value component is const-projected and its
-associated Pattern component is preserved. Export-retention-closure membership
+produces a resolved internal `PolicyPair`. Later semantic passes preserve that
+pair and its independently selected whole-slot mode in a stable external view.
+Export-retention-closure membership
 admits only the graph-retention dimension; external exposure additionally
 requires every path component to be publicly reachable. A private child and
 public descendants behind it therefore remain internal even inside the
-retention closure. Among admitted symbols, mut-only overload candidates remain
-in the complete internal set and are omitted from the external overload set.
-Pure `absent:Pp` candidates enter unchanged, subject to the structural
-invariant that absent Pv has neither value stages nor value mutability. Thus
-`const + S : compile`, `mut + S : compile`, and their `export` forms are
-invalid. A direct source `export + mut` root remains an invalid declaration.
+retention closure. All resolved candidates of an admitted symbol remain in that
+stable external view; a concrete consumer's Policy selection and legality
+checks on the selected invocation occur after lookup and are not a normalization
+rule. In particular,
+normalization does not project external values to `const`, erase a mode on
+`absent:Pp`, or infer capture mode from export.
 
-Value-bearing export views are therefore const-projected, so dependencies reached with
-external authority—including ordinary external call targets—normally satisfy
-automatic const-capture requirements. Automatic capture and call resolution
-therefore touch the same problem domain—symbol identity and readable const
-view—but this does not prescribe pass ordering, data flow, or an implementation
-dependency.
+Automatic capture and call resolution may later touch the same problem
+domain—symbol identity, stable visibility, and post-selection legality
+requirements—but this does not prescribe pass ordering, data flow, or an
+implementation dependency.
 
 Explicit and automatic capture remain distinct even when they resolve to the
 same source symbol. Explicit capture may rename, project policy, use a complex
@@ -1089,6 +1120,7 @@ alias examples in this document:
 
 ```text
 Generated:
+  PolicyLetPreserve
   ProductLift
   OperatorLowering
   PrefixNegativeLowering

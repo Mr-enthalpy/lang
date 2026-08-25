@@ -99,21 +99,24 @@ output: Type=T, value stage=runtime, Pp=S, presence=present
 ```
 
 Other legal endpoint Policy coordinates belong to the ordinary callable and
-its overload declaration. In particular, input/output mutability need not be
-equal: `const compile -> mut runtime` may construct a fresh mutable runtime
-object when such a candidate is the unique ordinary winner. The compiler
+its overload declaration. In particular, input/output `PolicyMode` need not be
+equal: `const compile -> mut runtime` may construct a fresh runtime result
+whose output slot has `PolicyMode = mut` when such a candidate is the unique
+ordinary winner. This does not imply `Writable(result)`. The compiler
 authorizes the stage edge but does not synthesize the candidate's `mut`
 capability. Opposite const/mut endpoint Patterns remain fully admissible and
 participate in the same actual-relative ordinary Bp order as explicit
-parameters/results; mutability is not tested by Policy-domain intersection.
+parameters/results; mode is not tested by Policy-domain intersection.
 Stage, presence, Pp capability, Type, and structural applicability remain hard
 conditions.
 
 As an explanatory model rather than frozen surface syntax, one type Symbol may
-carry the pure Pattern member `:t` plus ordinary value members for the four
-default transports `const <- const`, `const <- mut`, `mut <- const`, and
-`mut <- mut`. More specific Pattern members may refine or delete regions of
-that default ordinary relation.
+carry the pure Pattern member `:t` plus ordinary value members over all nine
+`output PolicyMode <- input PolicyMode` coordinates. Every coordinate is
+expressible, but no coordinate is required to exist: each may be absent or
+realized by `default`, `delete`, or `custom`. More specific Pattern members may
+refine or delete regions of that capability relation. This 3×3 relation is not
+the three-point Policy preference order.
 
 Those ordinary transport members expose complete callable Policies, not
 special `compile -> runtime` signatures:
@@ -414,14 +417,16 @@ Thus the selected object has the static/runtime view required to supply self;
 an optional written P1 prefix merely projects that derived view.
 
 Each written formal parameter takes the callable P2 as its base policy pair.
-No formal prefix means exact inheritance. `const let` or `mut let` changes only
-the inherited value-mutability Pattern; every stage, presence, and Pattern-side
-dimension stays equal to P2. That qualifier remains an overload-order Pattern,
-so it must not be implemented by running ordinary binding P1 projection over
-the actual and deleting the oppositely qualified candidate early.
+With no formal prefix, the pair component inherits P2 exactly while the
+unwritten whole-slot mode elaborates to the concrete `plain` point. `const let`
+or `mut let` changes only that whole-slot `PolicyMode`; every stage, presence,
+and Pattern-side dimension stays equal to P2. That qualifier remains an
+overload-order Pattern, so it must not be implemented by running ordinary
+binding P1 projection over the actual and deleting the oppositely qualified
+candidate early.
 
 Candidate preparation also carries that qualifier outward as the parameter's
-const/mut product-order position. It therefore affects selection between
+three-point product-order position. It therefore affects selection between
 callable objects as well as the effective parameter pair seen after entry.
 
 ### 6.1 Callable owner, receiver type, and local pattern construction
@@ -483,42 +488,44 @@ A capture requirement does not by itself imply a stored field or non-ZST
 layout. If representation selection chooses stored state, the resulting object
 may be non-ZST and follows ordinary value-passing and ownership rules.
 
-### 7.1 Function-object mutability default
+### 7.1 Function-object PolicyMode default
 
-The binding created by `let fn = () => { ... }` has no written mutability
-restriction. Its empty typed mutability domain denotes `const || mut`. This is
-the neutral, fully available function-object view; it is not copied from P2.
-An explicit declaration P1 may restrict that domain to one view. The
+The binding created by `let fn = () => { ... }` has an unwritten mode spelling,
+which elaborates to the real `plain` point, not a `const || mut` choice and not
+an inference variable. The mode is not copied from P2. An
+explicit declaration P1 may select another mode. The
 namespace-declaration spelling `export let fn = ...` does not change this
-complete internal view. Export elaboration separately derives the externally
-visible const projection. A written `const || mut` internal view is therefore
-valid when its const projection is non-empty; a `mut`-only value export is not.
+complete internal view. Export elaboration derives a stable, identity-preserving
+`Σ_export` from export retention and public path reachability; it neither
+filters candidates by a future consumer demand nor projects the mode to
+`const`.
 
 ### 7.2 Ordinary closure capture requirements
 
 Ordinary closures combine source-explicit capture bindings with resolved-stage
-automatic const capture:
+automatic eligible capture:
 
 ```text
 source [let x = E] / [x = E] -> Explicit capture
 source [E] shorthand          -> ExplicitInferredBinder capture
-unreplaced resolved free ref  -> ImplicitConst capture
+unreplaced resolved free ref  -> ImplicitEligible capture
 ```
 
-`[x]` is the explicit shorthand `[let x = x]`. Because its capture policy is
-unwritten, its mutability domain is the neutral `const || mut`; it is not
-automatic const capture. A write to an outer source requires an explicit
-capture projected to a `mut` view. Automatic capture never grants mutability.
+`[x]` is the explicit shorthand `[let x = x]`. Because its capture mode is
+unwritten, it is `plain`; capture does not silently replace it with `const`.
+Write capability remains a separate family-specific capability and is not
+implied merely by selecting `mut`.
 
-External explicit navigation resolves through the namespace export view.
+External explicit navigation resolves through the stable namespace export view;
+the resulting capture requirement later enters ordinary capability-family and
+Policy checks.
 Internal explicit navigation resolves through the complete namespace view and
-does not prove export membership. Exported value views are const-projected, so
-an externally navigated callable or value normally satisfies the
-`ImplicitConst` capture requirement. Ordinary external calls are therefore
-normally backed by automatic const dependencies, not by a source capture list.
+does not prove export membership. Eligibility and visibility do not alter the
+selected slot's `PolicyMode`; ordinary external calls therefore do not acquire
+an automatic const dependency merely by crossing the boundary.
 
 Automatic capture and call resolution occupy adjoining problem domains: both
-reason about an external symbol identity and its readable const view. This
+reason about an external symbol identity and its stable external view. This
 does not require either mechanism to consume the other's output, share a pass,
 or run in a prescribed order. Automatic capture does not skip admissibility or
 select a candidate.
@@ -537,9 +544,14 @@ ResolvedCaptureRequirement {
   local_binder,
   source,
   requested_policy,
+  required_access_capability,
   origin
 }
 ```
+
+Namespace lookup supplies the stable source candidate set; it does not consume
+these request fields. The later ordinary capture-legality consumer checks both
+the requested Policy demand and required access capability.
 
 This object is not a `self` field list and does not determine receiver mode,
 copy/reference representation, field ordering, ZST status, or ABI layout.
@@ -563,8 +575,12 @@ exports `internal_state` nor requires an address field in every
 
 Before materialization, each requirement must lower to a lifetime-checkable
 form naming its source place, requested access view, origin/region relation,
-and storage-or-link category. This is only a handoff obligation; copy/move/
-borrow defaults, region construction, escape rules, and ABI remain unfrozen.
+and storage-or-link category. This is only a handoff obligation. Automatic
+mechanical move-vs-copy selection, concrete borrow/copy representation, Region
+IR construction, escape-check implementation, and ABI remain open; entry
+origin defaults, the exact move-origin/Region boundary, and the selected
+share/rebind-plus-clone realization lifecycle-post boundary are closed by the
+lifetime owner; `CopyConstruct` adds no default origin equation.
 
 ### 7.3 In-place closures are embedded callable candidates
 
@@ -627,7 +643,9 @@ Product |> Expr
 2. Resolve a name/path to Symbol `S`; form `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
    and enumerate that candidate set (one step, no priority, no fallback, no
    reopening; the same candidate reachable through both paths is deduplicated)
-3. Expose each Val2 object's policy-pair view for the current `Phase`
+3. Expose each Val2 object's policy-pair view for the current `Phase`; for
+   ordinary result evaluation, derive the candidate-local P1 stage view from
+   its P2 under that phase
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries
@@ -636,15 +654,48 @@ Product |> Expr
    selected associated `()`
 8. Build invocation frame: implicit caller/self + explicit shaped product args
 9. Form fully admissible set A using all hard checks, including receiver and
-   parameter pair compatibility, P2 result compatibility with any target
-   expectation, stage legality, and require legality
-10. Export every elaborated formal const/mut Pattern to its candidate position,
-    apply const/mut product-maximal filtering and the remaining fixed-order
+   parameter pair compatibility, phase legality of the P1-stage-follow-P2
+   default, P2 result compatibility with any explicit target
+   pair/type/rank/facet expectation actually supplied, and require legality
+10. Export every elaborated formal PolicyMode Pattern to its candidate position,
+    add the always-present `OutputModeDemand(call)` (`plain` when no
+    candidate-independent immediate-consumer demand exists), apply PolicyMode
+    product-maximal filtering and the remaining fixed-order
     preference filters, including in-place over non-in-place after the
     first-order-over-instantiated filter, then named strategy rules and the
     must-select check
 11. Enter the unique selected invocation or defer according to demand
 ```
+
+Every nested producer actual is closed under the canonical
+`CallLocalPolicyClosure` before an unresolved candidate of the current outer
+call can influence it. A nested call uses an already-formed,
+candidate-independent immediate-consumer output demand when one exists;
+otherwise it uses local `plain`. Its selected concrete result mode is then an
+ordinary actual fact for this pipeline. Outer ambiguity or failure never
+reopens the nested producer.
+
+The evaluation phase is a separate, already-known input. In the absence of an
+explicit target-result pair/stage constraint, each candidate's default
+evaluation P1 stage view follows its P2 through the canonical stage lift and is
+checked against the current phase. Therefore `compile`/`runtime` evaluation is
+not gated on the presence of `PolicyLet`. This default does not derive
+PolicyMode: an unwritten output mode remains `plain`, while an explicit
+`const`/`mut` result context is a manual demand.
+
+`PolicyLet(P, e)` is the explicit expression boundary that may provide such a
+candidate-independent demand. It is optional for the phase-derived default:
+`compile let e` or `runtime let e` explicitly delimits/narrows the stage
+context, while `const let e` or `mut let e` explicitly replaces the default
+plain Mode demand. Its complete operand pipe is resolved once under `P`, then
+`SourcePolicy(result) -> P` enters the ordinary Policy migration candidate
+preparation and unique Policy-overload selection. The selected migration
+jointly produces the concrete Policy projection and value realization in the
+node's ordinary expression-result slot. That slot has its own mode but is not a
+NameBinding, Symbol, declaration, or independently addressable Place. A later
+outer candidate cannot propagate a formal-mode preference through the
+preserved `PolicyLet` node. The node is not an ordinary Val2 call or a hidden
+binding.
 
 A derived compile companion is a complete `Val2` function object with stable
 origin, its own type, and its own associated static `()`. For origin result
@@ -734,15 +785,14 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
   type checking, not by a separate declaration validator.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
-- Empty function-object mutability means the unrestricted `const || mut`
-  domain; an explicit declaration P1 may crop it. Export does not crop the
-  complete namespace-internal domain. A value-bearing external candidate view
-  projects that domain to const; `const || mut` is valid, while mut-only has no
-  external candidate view.
-- Written formal parameters inherit P2 exactly outside the optional const/mut
-  Pattern axis.
+- An unwritten function-object mode is `plain`; an explicit declaration P1 may
+  select another mode. Export preserves the complete namespace-internal mode
+  and filters external candidates through independent capability/visibility
+  eligibility rather than a universal const projection.
+- Written formal parameters inherit P2 exactly outside the optional whole-slot
+  PolicyMode axis.
 - Ordinary closures distinguish explicit, explicit-inferred-binder, and
-  implicit-const capture requirements; those requirements do not define
+  implicit-eligible capture requirements; those requirements do not define
   `self` fields or physical layout.
 - In-place closures may be overload candidates, have no capture clause or
   automatic capture set, defer unresolved outer reads to their embedding

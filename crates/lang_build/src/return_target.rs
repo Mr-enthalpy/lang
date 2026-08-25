@@ -252,6 +252,7 @@ impl ReturnTargetBinder {
 
     fn visit_expr(&mut self, expr: &NormExpr) {
         match expr {
+            NormExpr::PolicyLet { operand, .. } => self.visit_expr(operand),
             NormExpr::Call { source, target, .. } => {
                 for elem in &source.elements {
                     if let lang_syntax::NormProductElem::Expr(expr) = elem {
@@ -354,7 +355,8 @@ fn resolve_explicit_return_target(
                 )),
             }
         }
-        NormExpr::Call { origin, .. }
+        NormExpr::PolicyLet { origin, .. }
+        | NormExpr::Call { origin, .. }
         | NormExpr::Product(lang_syntax::NormProduct { origin, .. })
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
@@ -490,6 +492,7 @@ fn collect_return_events_in_decl(
 
 fn collect_return_events_in_expr(expr: &NormExpr, events: &mut Vec<UnboundReturnEvent>) {
     match expr {
+        NormExpr::PolicyLet { operand, .. } => collect_return_events_in_expr(operand, events),
         NormExpr::Call { source, target, .. } => {
             for elem in &source.elements {
                 if let lang_syntax::NormProductElem::Expr(expr) = elem {

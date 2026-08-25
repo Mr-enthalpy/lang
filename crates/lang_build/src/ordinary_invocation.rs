@@ -1019,6 +1019,15 @@ fn substitute_binding_type_names(
 ) -> Result<lang_syntax::NormExpr, String> {
     use lang_syntax::{NormExpr, NormProduct, NormProductElem};
     match expr {
+        NormExpr::PolicyLet {
+            policy,
+            operand,
+            origin,
+        } => Ok(NormExpr::PolicyLet {
+            policy: policy.clone(),
+            operand: Box::new(substitute_binding_type_names(operand, source_shape)?),
+            origin: origin.clone(),
+        }),
         NormExpr::Name { text, origin } => {
             if let Some(bound) = source_shape.bindings.get(text) {
                 let Some(spelling) = bound.top_pattern_name.clone() else {

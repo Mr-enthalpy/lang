@@ -20,10 +20,10 @@ pub use ast::{
     ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst, LetAliasAst, LetAst,
     MemberVisibilityAst, NameAst, NavComponentAst, OperatorExprAst, OperatorExprKind,
     OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
-    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
-    ProductExtractElementAst, ProgramAst, ReturnClauseAst, ReturnEventAst, ReturnTargetAst,
-    SegmentAst, SegmentElementAst, SelectorAst, ValuePolicyPatternAst, WithClauseAst,
-    WithClauseKind,
+    PolicyConjunctionAst, PolicyLetAst, PolicySpecAst, ProductElementAst, ProductExprAst,
+    ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, ReturnEventAst,
+    ReturnTargetAst, SegmentAst, SegmentElementAst, SelectorAst, ValuePolicyPatternAst,
+    WithClauseAst, WithClauseKind,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};

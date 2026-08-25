@@ -459,11 +459,14 @@ visibility. An export descendant or ancestor may be externally exposed without
 being the original export root, while a private dependency may belong to Wpre
 without entering `Σ_export`.
 
-The current typed helper now carries:
+The canonical typed handoff is:
 
 ```text
-ResolvedCandidatePolicy {
+ResolvedCandidateSnapshot {
+  identity,
   pair: PolicyPair,
+  mode: PolicyMode,
+  realization_facts: CapabilityRealization[],
   provenance
 }
 
@@ -475,34 +478,45 @@ ExportAdmission {
 ExportCandidateView {
   identity,
   internal_candidate,
-  external_policy: PolicyPair
+  external_snapshot: ResolvedCandidateSnapshot
 }
 ```
+
+The snapshot contains declaration/intrinsic candidate-family realization facts,
+not a context-indexed `DynamicLegality_Γ`. Its `internal_candidate` link is
+identity/provenance, not an internal observation edge carried into the external
+consumer.
 
 Declaration-side `P1Projection` is first applied to actual RHS/result entries.
 Namespace external admission then requires both export-retention-closure
 membership and public reachability through every path component. The
 retention closure alone is not sufficient: a private child and public
 descendants behind it remain internal. This admission is symbol-level and does
-not act as an arbitrary per-candidate eligibility callback.
+not act as an arbitrary per-candidate eligibility callback or consume a future
+call/read/capture demand.
 
-For each admitted symbol, the helper derives an external `PolicyPair` from
-every resolved candidate pair that has a const value slice (or has
-`Pv = absent`). Mut-only candidates remain in the full overload set and are
-absent from the external overload set. A direct source `export + mut` root is
-rejected earlier as an invalid declaration.
+For each admitted symbol, canonical semantics preserve candidate identity,
+resolved `PolicyPair`, whole-slot `PolicyMode`, declaration/intrinsic
+`CapabilityRealization` facts, and provenance. Consumer Policy demand and
+`DynamicLegality_Γ_consumer` are formed after lookup and ordinary invocation
+selection and do not universally project mode to const. The
+currently connected helper still admits candidates
+through a const-projected 2×2 compatibility carrier. That is an implementation
+subset only, not export semantics.
 
 An absent value component is structurally empty:
 
 ```text
 Pv = absent
   => value stages = ∅
-  && value mutability = ∅
+  && SemanticValueId = none
+
+PolicyMode remains independently const | plain | mut
 ```
 
 The projection helper reports an error when a flat compatibility carrier
-violates this invariant; it does not silently pass the malformed pair through
-the absent branch.
+violates its narrower prototype invariants; those errors do not redefine the
+canonical absent-slot × PolicyMode matrix.
 
 The helper no longer returns cloned internal policies as external views.
 Full namespace-graph installation and external resolver routing remain later

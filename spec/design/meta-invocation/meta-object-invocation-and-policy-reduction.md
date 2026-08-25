@@ -357,7 +357,10 @@ Gamma |- derive_function_object_P1(P2v:P2p) => P1base
 Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 ```
 
-Omitted P1 keeps the complete result. Single P1 `q` selects values visible
+Before RHS invocation selection, the binding spelling forms its concrete output
+mode demand: a bare ordinary binding supplies `PolicyMode=plain`. That output
+coordinate participates in the same candidate product order as the inputs.
+After unique selection, omitted P1 keeps the complete result pair view. Single P1 `q` selects values visible
 under `q` and follows their associated pattern components. Pair P1 `qv:qp`
 filters both. Single P1 is not normalized to `q:q`. These lower-case policy
 metavariables are distinct from the type-core `Core(τ)`.
@@ -403,10 +406,11 @@ exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
 must wait for SealStatic.
 
-There is no independent P3 and no scalar policy for the entire returned result.
-Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
-retains its own pair. Return positions inherit P1 and may refine mutability
-only; parameters symmetrically refine inherited P2 mutability only. Current
+There is no independent P3 and no scalar replacement for `Pv:Pp`. Every
+value/pattern result entry retains `Pv:Pp`; every returned Val2 object retains
+its own pair. A result slot nevertheless has an independent scalar
+`PolicyMode`. Return positions inherit P1 and may refine that whole-slot mode
+only; parameters symmetrically refine inherited P2 mode only. Current
 `self_policy`, `body_entry_policy`, and
 `return_object_policy` fields are transitional compatibility transport.
 

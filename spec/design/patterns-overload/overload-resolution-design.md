@@ -116,7 +116,8 @@ They are not three final source-level policy positions. In the final model,
 base path resolution produces `Symbol` before policy-view filtering; each
 projected candidate carries its own `Pv:Pp`, P2 describes the call result
 pair and derives the function-object stage view, and there is no independent
-`P3`. The
+`P3` or third `Pv`/`Pp` component. A result slot nevertheless carries its
+orthogonal scalar `PolicyMode`. The
 current return-object field is provisional transport until canonical component
 policy storage exists.
 
@@ -169,7 +170,7 @@ language. It defines:
   for the complete invocation frame and P2 compatibility with a target-result
   expectation, forms the fully admissible candidate set `A`
 - the extraction-pattern specificity rule as a stable lexicographic rank
-- the const/mut preference relation as a separate product partial order
+- the three-point PolicyMode preference relation as a separate product partial order
 - the full overload resolution pipeline from raw symbol lookup to uniqueness
 - how `must_select_if_qualified` activates from `A` and constrains the final
   result without closing an
@@ -401,7 +402,12 @@ Stage(P1p) = Stage(P2p)
 Stage(P1v) = Stage(P2v) union Stage(P2p)
 ```
 
-Omitted P1 retains the complete object view. Single P1 `Q` selects value
+Bare ordinary binding forms output demand `PolicyMode=plain` before RHS call
+selection, so that coordinate participates in the same Policy product order as
+the inputs. After unique selection, omitted P1 retains the complete object pair
+view. The selected producer also retains its declared concrete result
+`PolicyMode`; a plain destination remains independently plain, and ordinary
+move/copy transfer between them is not a result-mode rewrite. Single P1 `Q` selects value
 slices visible under Q and follows their associated pattern components. Pair P1
 `Qv:Qp` filters both. A written P1 cannot manufacture a stage absent from the
 derived object.
@@ -648,28 +654,63 @@ be a type-rank object. This node's depth contributes to specificity.
 
 ### 4.5 Policy product partial order
 
-`const` and `mut` belong to the value component `Pv`. Plain `let` is the
-previously named unspecified policy point. The preference relation is indexed
+`PolicyMode = {const, plain, mut}` is a whole-slot coordinate orthogonal to
+`Pv:Pp`; it is not a subfield of `Pv`. Plain `let` denotes the real `plain`
+point, never an unspecified or missing mode. The preference relation is indexed
 by the actual/demand context:
 
 ```text
-succ_const: const > let > mut
-succ_mut:   mut > let > const
-succ_plain: let > const = mut
+succ_const: const > plain > mut
+succ_mut:   mut > plain > const
+succ_plain: plain > const = mut
 ```
 
 The equality in `succ_plain` does not authorize an arbitrary tie break. If a
 plain context has one fully admissible `const` candidate and one fully
-admissible `mut` candidate but no plain `let` candidate, both are co-maximal and
+admissible `mut` candidate but no `plain` candidate, both are co-maximal and
 the call is ambiguous.
 
-Across the first written self formal, later explicit parameters, and a target
-result policy when one is actually supplied, compare candidates by product
+Across the first written self formal, later explicit parameters, and the
+always-present call output `PolicyMode` demand, compare candidates by product
 order. The self actual is injected rather than taken from the call-site
-Product, but its formal const/mut restriction participates in the same order.
+Product, but its formal PolicyMode restriction participates in the same order.
 Candidate `f`
 dominates `g` iff `f` is no worse at every compared position and strictly
 better at at least one.
+
+Default phase-directed result formation, the total output-mode preference, and
+optional explicit expected-result constraints are different inputs:
+
+```text
+EvaluationStageContext(c) = current phase kappa
+
+ImplicitEvaluationP1StageView(candidate, kappa)
+  = ExposeAtPhase(kappa, StageLiftP2(P2(candidate)))
+
+OutputModeDemand(c)
+  = explicit or candidate-independent immediate-consumer PolicyMode point
+      when already formed
+  | plain
+
+TargetResultConstraint(c)
+  = optional expected Pv:Pp / result Type / rank / facet constraints
+```
+
+`EvaluationStageContext(c)` exists for every call. Candidate phase
+admissibility derives the default P1 stage view from that candidate's P2, using
+the canonical `Stage(P1p)=Stage(P2p)` and
+`Stage(P1v)=Stage(P2v) union Stage(P2p)` lift. Consequently ordinary
+`compile`/`runtime` evaluation does not require a preceding `PolicyLet`; the
+current phase already selects which derived stage view is evaluable. This
+candidate-local stage rule is not a target-result demand and does not copy
+PolicyMode from P2.
+
+`OutputModeDemand(c)` exists for every call and always contributes the output
+PolicyMode coordinate to Bp'. `TargetResultConstraint(c)` contributes only
+when explicitly supplied and is consumed by hard admissibility in `A`; its
+absence uses the phase-derived stage default and never removes the output-mode
+coordinate. The default mode is still the concrete point `plain`; current
+phase never infers `const` or `mut`.
 
 Crossed advantages remain incomparable. Phase-local stage specificity joins
 this product only after full admissibility: OpenStatic has `meta > compile` and
@@ -679,6 +720,47 @@ visible domain. It is not a global override of argument dimensions.
 There is no total score, exact-match count, parameter weighting,
 left-to-right lexicographic fallback,
 input-before-output preference, or independent conversion rank.
+
+Nested producer calls are closed before an unresolved outer candidate may
+contribute a formal-mode preference:
+
+```text
+CallLocalPolicyClosure:
+  output preference of c
+    = already-formed candidate-independent immediate-consumer demand
+      when one exists
+    = plain otherwise
+
+  select c once -> freeze ResultPolicyMode(c)
+  outer call consumes that concrete result as an ordinary actual
+  outer failure =/=> reopen c
+```
+
+An outer candidate's formal `PolicyMode` Pattern therefore cannot be assumed in
+order to choose a nested actual and then reused to decide whether that outer
+candidate should win. This rule adds no cross-call fixed point or conversion
+rank.
+
+An explicit `PolicyLet(P, e)` supplies a candidate-independent output demand
+to the root call of `e` before that call's maxima. It is an optional explicit
+override/boundary, not the mechanism by which the evaluator ordinarily knows
+`compile` versus `runtime`: absent such spelling, P1 stage follows candidate P2
+under the current phase. A written `compile`/`runtime` policy may still narrow
+or request an explicit stage/migration target; a written `const`/`mut`
+ModeAtom manually replaces the default `plain` mode demand. The node then
+closes by satisfying `P` into its ordinary expression-result slot and exposes
+one concrete ordinary actual view. That slot is not a NameBinding, Symbol,
+declaration, or independently addressable Place. Outer overload resolution may
+compare the completed actual but may not push a new demand through the
+PolicyLet boundary or reopen the inner candidate set. Outward satisfaction
+failure is not a conversion rank and does not select a runner-up producer.
+
+After the producer is frozen, `SourcePolicy(result) -> P` reuses the ordinary
+Policy migration candidate preparation and this document's unique Policy
+overload selection. The selected migration jointly supplies its
+`PolicyProjection` and `ValueRealization`; a Type-callspace, Val2, or mechanical
+operation may implement the latter, but its body cannot create the earlier
+inward result demand. There is no PolicyLet-specific Policy selector.
 
 Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
@@ -711,7 +793,7 @@ so the old Bp survivor identities and every later B1..B6 result are unchanged.
 No transition-specific B6 named strategy exists.
 
 The compiler mandates the static-to-runtime stage edge, not equality of every
-endpoint coordinate. Candidate-declared input/output value mutability belongs
+endpoint coordinate. Candidate-declared input/output `PolicyMode` belongs
 to this product. Thus a callable may expose:
 
 ```text
@@ -722,7 +804,7 @@ for a fresh runtime object. The compiler does not synthesize `mut`; the
 callable declares it and must win ordinary overload selection. Type remains
 unchanged, so this does not reopen structural applicability repair.
 
-Endpoint mutability reuses the ordinary actual-relative order above. It is not
+Endpoint `PolicyMode` reuses the ordinary actual-relative order above. It is not
 a Policy-domain hard intersection:
 
 ```text
@@ -733,42 +815,43 @@ HardEndpointApplicability
   x Pp capability
   x structural applicability
 
-InputMutabilityPreference
+InputPolicyModePreference
   = Compare(candidate input Pattern, selected source actual)
 
-OutputMutabilityPreference
+OutputPolicyModePreference
   = Compare(candidate output Pattern, requested target)
 ```
 
 Consequently an opposite const/mut endpoint remains in fully admissible set
-`A`; it is merely worse than plain `let`, which is worse than the matching
-endpoint. For a const source/target the ordering is `const > let > mut`, and it
+`A`; it is merely worse than `plain`, which is worse than the matching
+endpoint. For a const source/target the ordering is `const > plain > mut`, and it
 reverses for a mut source/target. A plain target uses
-`let > const = mut`, preserving ambiguity when only the tied endpoints survive.
+`plain > const = mut`, preserving ambiguity when only the tied endpoints survive.
 This is the same ordinary Bp relation, not a migration-specific subset order.
 If a unique ordinary winner later produces a result that `Project_out` cannot
 expose to the consumer, that failure does not reopen overload selection.
 
 One explanatory semantic normal form is a type Symbol with one pure Pattern
-facet and ordinary value members implementing the default mutability transport
-relation:
+facet and ordinary value members implementing a capability realization over
+the full 3×3 input/output mode space:
 
 ```text
 Symbol t
   Pattern:
     :t
 
-  ordinary transport members (output <- input):
-    const <- const
-    const <- mut
-    mut   <- const
-    mut   <- mut
+  transport coordinate: output PolicyMode <- input PolicyMode
+  every one of the nine coordinates is expressible
+  each coordinate may be absent or realized by default/delete/custom
 ```
 
 This is not frozen surface syntax and does not require a conversion table or a
-new callable ontology. It illustrates that generic ordinary members define the
-default relation. More specific structural Pattern members may locally refine
-or `delete` regions of that relation. Each default member's ordinary formal
+new callable ontology. It illustrates that ordinary members realize
+capabilities independently of Policy preference. A `mut` endpoint may be the
+unique selected mode while the selected member is `delete`, and `mut` on a
+non-reference object does not by itself grant write capability. More specific
+structural Pattern members may locally refine or `delete` regions of the 3×3
+relation. Each installed member's ordinary formal
 and complete result Policy is `(compile || runtime):compile`; the migration
 context compares the compile `Project_in` and runtime `Project_out` views. It
 does not replace the member's complete P2 with a direct
@@ -801,7 +884,7 @@ crossed ordinary/endpoint advantages must remain incomparable.
 Output Policy participation here does not make ordinary return type an overload
 preference dimension. An optional output-type expectation remains a hard
 admissibility check only. Stage, presence, and Pp endpoint capability remain
-hard constraints, while output mutability remains an actual-relative Bp
+hard constraints, while output `PolicyMode` remains an actual-relative Bp
 preference coordinate. Existing-slice P1 projection is checked first; any
 non-empty binding projection creates no transition request.
 
@@ -844,7 +927,7 @@ A   = FullyAdmissible(
         C3,
         Phase,
         invocation_frame,
-        expected_result,
+        optional_target_result_constraint,
         compile_type_requirements
       )
 
@@ -854,7 +937,7 @@ Bp' = MaxPolicyProduct(
         D,
         Phase,
         invocation_frame,
-        target_result_policy,
+        output_mode_demand,
         optional_atomic_migration_endpoints
       )
 B1  = MaxEntryPreference(Bp')
@@ -960,11 +1043,12 @@ Hard admissibility includes, at minimum:
 ```text
 path and object visibility
 object policy-view admission for the current Phase
+candidate-local P1 stage exposure derived from P2 under the current Phase
 existence of associated ()
 parameter count and structural shape
 Pattern/extraction applicability
 receiver and explicit-parameter policy-pair compatibility
-P2 result pair compatibility with any target-result constraint
+P2 result pair compatibility with any explicit target-result constraint
 expected result class/facet compatibility
 concept and ordinary require legality
 other compile/type-stage hard preconditions
@@ -1017,13 +1101,17 @@ Only candidates surviving declaration-side policy enter ordinary preference
 filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
-  phase-local stage specificity and const/mut positions; include target-result
-  policy only when the context supplies one. For an authorized atomic
+  phase-local stage specificity from the P1-stage-follow-P2 default and
+  whole-slot PolicyMode positions; include the total `OutputModeDemand(c)` for
+  every call. Optional target-result
+  pair/type/rank/facet constraints are not Bp' coordinates and enter hard
+  admissibility only when the context supplies them. For an authorized atomic
   runtime-migration call, add input/output endpoint Policy fit as two product
   coordinates. Without those coordinates, this is exactly old Bp.
   Each parameter position is taken from its elaborated formal policy Pattern:
-  the callable P2 is inherited first, then an optional `const let` / `mut let`
-  slice supplies `Const` / `Mut`; omission supplies `Unspecified`. This carrier
+  the callable P2 pair is inherited first, then the written whole-slot mode
+  supplies `const`, `plain`, or `mut`; unwritten mode also supplies the concrete
+  `plain`. This carrier
   is part of the externally compared candidate, not merely the body-entry
   environment.
 - **B1 Entry preference**: apply any configured entry preference.
@@ -1119,15 +1207,23 @@ Derivation:
 CalleeSymbol = ResolveSymbol(Γ, name)
 C0  = CallSiteFamilyView(CallableProjection(CalleeSymbol), call_site_annotation)
 C1  = VisibleObjects(C0, V)
-C2  = ExposePhaseViews(C1, Phase)
+C2  = ExposePhaseViews(
+        C1,
+        EvaluationStageContext(call) = Phase,
+        candidate_stage_view = StageLiftP2(P2(candidate)))
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
-A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
+A   = FullyAdmissible(
+        C3,
+        Phase,
+        invocation_frame,
+        TargetResultConstraint(call)?,
+        Γ)
 D   = DeclarationCandidatePolicy(A)
 Bp' = MaxPolicyProduct(
         D,
         Phase,
         invocation_frame,
-        target_result_policy,
+        OutputModeDemand(call),
         optional_atomic_migration_endpoints
       )
 B1  = MaxEntryPreference(Bp')
@@ -1168,7 +1264,7 @@ meta body-entry checking, extraction specificity for selected source
 callables, one remainder pack at each normalized parameter level, and
 propagation of source-named strategy metadata after applicability. It does not
 execute arbitrary named strategy rules. Separate pair-model tests cover P1/P2
-elaboration and const/mut product ordering, but the restricted resolver does
+elaboration and PolicyMode product ordering, but the restricted resolver does
 not yet carry full pairs through candidate preparation, derive compile
 companions, enforce `must_select_if_qualified`, or replace its existing
 specificity selector.
@@ -1182,7 +1278,7 @@ source Symbol or held PatternValue
   -> Pattern owner / associated ()
   -> InvocationFrame
   -> C0/C1/C2/C3/A
-  -> one Bp' product over ordinary mutability/phase coordinates
+  -> one Bp' product over ordinary PolicyMode/phase coordinates
        x optional migration input endpoint
        x optional migration output endpoint
   -> bounded B3 Pattern specificity
@@ -1191,7 +1287,7 @@ source Symbol or held PatternValue
 
 There is no maxima pass between ordinary and endpoint coordinates. Without a
 migration context, the optional endpoint coordinates are absent and the
-comparison is exactly the connected old-Bp mutability/phase order. B1, B2, B4,
+comparison is exactly the connected old-Bp PolicyMode/phase order. B1, B2, B4,
 B5, B6, full Pattern applicability, concepts/requires, and lifetime remain
 incomplete/identity boundaries in this bounded slice.
 
@@ -1230,7 +1326,7 @@ Lifetime checking is separately deferred by
 no refinement, ABI class, or second selection stage, and no lifetime-driven
 re-selection: a lifetime rule never reopens the unique ordinary overload result.
 That is a restriction on lifetime *rules*, not a claim that `@` lacks overloads
-— `@` is an ordinary place-sensitive operation with its own candidate set,
+— `@` is an ordinary continuation-relative name-reification operation with its own candidate set,
 specified in that document.
 
 ---

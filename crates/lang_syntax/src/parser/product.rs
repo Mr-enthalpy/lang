@@ -1,6 +1,6 @@
 use crate::{DiagnosticCode, ExprAst, ExprKind, ProductElementAst, ProductExprAst, Span, Symbol};
 
-use super::{form::Parser, pipe::parse_pipe_expr};
+use super::{expr::parse_expr_until, form::Parser};
 
 pub fn parse_product_expr(parser: &mut Parser<'_>) -> ProductExprAst {
     parse_delimited_product_expr(
@@ -53,7 +53,7 @@ fn parse_delimited_product_expr(
             continue;
         }
 
-        let expr = parse_pipe_expr(parser, |p| {
+        let expr = parse_expr_until(parser, |p| {
             p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(close)
         });
         elements.push(ProductElementAst::Expr(expr));

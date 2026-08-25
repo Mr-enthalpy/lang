@@ -666,6 +666,7 @@ use std::collections::BTreeMap;
 
 fn expr_variant_name(expr: &NormExpr) -> &'static str {
     match expr {
+        NormExpr::PolicyLet { .. } => "PolicyLet",
         NormExpr::Call { .. } => "Call",
         NormExpr::Product(_) => "Product",
         NormExpr::Name { .. } => "Name",

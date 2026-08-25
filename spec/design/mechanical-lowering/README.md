@@ -1,8 +1,10 @@
 # mechanical-lowering
 
-**Status: Non-normative future design. Not implemented as current normalizer,
-IR, ABI, optimizer, or runtime behavior. This block is not a machine-ABI
-design.**
+**Status: Mixed. `CanonicalMechanicalPassCore` in
+`mechanical-argument-passing-and-move-fixed-point.md` is canonical target
+semantics. Selection algorithms, return/call-mode design, normalizer/checker/IR
+integration, ABI, optimizer, and runtime behavior remain non-normative and
+unimplemented. This block is not a machine-ABI design.**
 
 ## Scope
 
@@ -51,8 +53,8 @@ format.
 
 ## Documents
 
-- `mechanical-argument-passing-and-move-fixed-point.md` — pass insertion and the
-  `move` fixed point.
+- `mechanical-argument-passing-and-move-fixed-point.md` — canonical pass-action
+  core plus future pass selection/insertion and the `move` fixed point.
 - `mechanical-return-normalization-and-error-policy.md` — return normalization,
   `Error` handler lookup, and `noerror`.
 - `call-modes-recursion-and-tail-lowering.md` — `normal` / `tco` / `loop`.

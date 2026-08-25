@@ -45,6 +45,7 @@ This amendment therefore classifies each delta explicitly:
 | DeduceList telescope and exact `HoleBinderId` references | Normalized binding correction | A string-only `HoleRef` cannot identify its declaration or define forward/self/duplicate behavior in nested let-shaped slots. |
 | First written formal = callable self-position | Normalized formal-frame correction | Invocation already injects callable self as slot 0. Treating the first written Pattern as an explicit user argument split one position into two incompatible meanings and made generated receiver helpers consume their own callable object as the business receiver. |
 | Empty DeduceList selects a binderless Pattern; atomic pipe-branch shorthand uses it | Hard binding-shape correction (PR #100) | `let <> P` must preserve binder absence while `let P` remains the ordinary singleton binder. Lowering `|> P { ... }` through `(_ P)` fabricated a wildcard position and changed Pattern structure. |
+| Expression `PolicySpec let PipeExpr` / `PolicyLetAst` | New expression-context syntax amendment (PR #102) | A result-Policy demand must exist before the operand root call is selected. An ordinary value-side `const`/`mut` call occurs too late and cannot preserve that boundary. |
 
 ## 2. Version boundary
 
@@ -63,12 +64,13 @@ The amended v0.5 contract describes the current implementation:
 
 ```text
 20 structural Symbol variants, including Ellipsis
-33 DiagnosticCode variants
+34 DiagnosticCode variants
 ClosureAst { placement, head, body, span }
 CaptureItemAst::Explicit | CaptureItemAst::Inferred
 DotClosure
 BindingPatternAst::Pack
 CallableImplementationTail
+ExprKind::PolicyLet(PolicyLetAst)
 ```
 
 The `lang_syntax` and `lang_cli` package versions, and
@@ -213,6 +215,38 @@ This is a deliberate source-language contraction, not merely an AST storage
 change. A delete message is compiler diagnostic text fixed in source; it is
 not an expression to evaluate. Consequently `=> (reason) delete` is invalid,
 while `=> ("reason") delete` remains valid.
+
+### 4.1 Expression-level Policy context
+
+The amended expression grammar adds one low-precedence term former:
+
+```text
+Expression          ::= PolicyLetExpression | PipeExpression
+PolicyLetExpression ::= PolicySpec "let" PipeExpression
+```
+
+Its right operand covers the complete following pipe expression:
+
+```text
+P let a |> f       == P let (a |> f)
+(P let a |> f) |> g
+(P let a) |> f
+```
+
+The last two forms are distinct. Parentheses close the local Policy context.
+At a form start, a depth-aware non-consuming classification preserves the
+existing declaration path when the material after `PolicySpec let` contains a
+top-level `=`. A top-level `===` continues to select the frozen legacy alias
+Raw-AST path only; no alias semantics are restored. Without either delimiter,
+the form is an expression `PolicyLet`. In a pure expression context,
+`PolicySpec let` is always `PolicyLet`, and a following top-level `=`/`===` is
+invalid expression material rather than a nested declaration.
+
+`const`, `plain`, `mut`, and `let` remain weak-lexer `Name` tokens. A missing
+operand emits `ExpectedPolicyLetOperand` and preserves an error operand.
+Consequently a former inferred-capture expression ending in the exact strong
+shape `P let`, such as `[x let]`, is now a malformed PolicyLet rather than a
+two-name capture-inference expression.
 
 ## 5. Raw AST amendment
 
@@ -402,6 +436,29 @@ structural levels. The certificate proves only Pattern-layer invariants;
 recovered `NormExpr::Error` nodes require a separate future recovery-free
 certificate and are not ruled out by this type.
 
+### 6.1 PolicyLet preservation
+
+Raw `ExprKind::PolicyLet(PolicyLetAst)` normalizes to a dedicated value-side
+node:
+
+```text
+NormExpr::PolicyLet {
+  policy: NormPolicySpec,
+  operand: NormExpr,
+  origin: Generated(PolicyLetPreserve)
+}
+```
+
+The policy is alpha-normalized under the inherited hole environment, then the
+operand is normalized under that same environment. The node introduces no
+binder, place, declaration, or new hole scope. It is not lowered to
+`NormDecl`, an ordinary `const`/`mut` call, or a hidden temporary binding.
+Value-side structural visitors recurse through its operand while retaining the
+wrapper. Call/target/struct semantic prototypes treat the wrapper as an opaque
+unsupported boundary until a later Policy elaborator exists. In a Pattern or
+annotation position the value-side node becomes explicit `PatternUnsupported`
+rather than a value call.
+
 ## 7. Non-semantic boundary
 
 This amendment does not implement:
@@ -417,6 +474,7 @@ stable Pattern-head discovery and general pack matching execution
 runtime spread/unpack
 ABI pack classes
 overload reopening
+PolicyLet result-demand or Policy-cast execution
 ```
 
 The weak lexer, parser-owns-shape rule, value/Pattern separation, and

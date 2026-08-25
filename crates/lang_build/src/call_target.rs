@@ -114,7 +114,8 @@ fn expr_to_target_path(expr: &NormExpr) -> Option<Vec<String>> {
 
 fn expr_origin(expr: &NormExpr) -> &lang_syntax::NormOrigin {
     match expr {
-        NormExpr::Call { origin, .. }
+        NormExpr::PolicyLet { origin, .. }
+        | NormExpr::Call { origin, .. }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }

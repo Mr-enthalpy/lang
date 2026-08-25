@@ -382,9 +382,10 @@ error-policy checker exists. The relevant dimensions are:
   `Error` branch predicate or handler objects are available;
 - receiver/parameter policy pairs and stage constraints determine whether a
   handler call is admissible, while P2 describes its result pair;
-- the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material; there is
-  no independent return-policy `P3` or scalar whole-result policy, while the
-  return position may refine inherited P1 mutability only;
+- the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material;
+  there is no independent return-policy `P3` or scalar replacement for its
+  `Pv:Pp` pair, while the result slot still carries an independent
+  `PolicyMode` and the return position may refine inherited P1 mode only;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 
