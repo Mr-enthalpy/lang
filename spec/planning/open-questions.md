@@ -115,6 +115,11 @@ Resolved future-design decisions:
   `Stage(P1p) = Stage(P2p)` and
   `Stage(P1v) = Stage(P2v) union Stage(P2p)`. PolicyMode, namespace
   visibility, and value presence are not copied by this stage derivation.
+- Default call evaluation applies that stage lift candidate-locally under the
+  already-known current phase. Thus P1 stage follows P2 for ordinary
+  evaluation, and `compile`/`runtime` result exposure does not require a
+  `PolicyLet` spelling. This phase-derived default is not an explicit
+  target-result constraint and does not infer `const`/`mut` from P2.
 - The only execution phases are OpenStatic, SealStatic, and Runtime. `meta` is
   exposed only in OpenStatic, `seal` only in SealStatic, `compile` in both
   static phases, and runtime values only in Runtime.
@@ -154,13 +159,17 @@ Resolved future-design decisions:
   Generated receiver helpers therefore use `[self, val, ...]`, not
   `[val, ...]`.
 - `PolicySpec let PipeExpression` is the explicit expression-level
-  result-Policy boundary. It forms `ResultPolicyDemand` before the operand root
-  call's maxima, then sends `SourcePolicy(result) -> P` through the same Policy
-  migration candidate preparation and ordinary unique selection used by
-  binding/runtime materialization. The selected migration jointly supplies
-  its coherent Policy projection and value realization into the
-  node's ordinary expression-result slot, and closes before an outer call
-  consumes the concrete view. The slot has its own concrete mode but is not a
+  result-Policy boundary. It is optional when ordinary current-phase
+  evaluation already obtains `compile`/`runtime` exposure through
+  P1-stage-follow-P2; stage spellings remain available for explicit
+  delimitation/migration, while `const`/`mut` ModeAtoms manually replace the
+  default `plain` mode demand. It forms `ResultPolicyDemand` before the operand
+  root call's maxima, then sends `SourcePolicy(result) -> P` through the same
+  Policy migration candidate preparation and ordinary unique selection used
+  by binding/runtime materialization. The selected migration jointly supplies
+  its coherent Policy projection and value realization into the node's
+  ordinary expression-result slot, and closes before an outer call consumes
+  the concrete view. The slot has its own concrete mode but is not a
   NameBinding, Symbol, declaration, or independently addressable Place.
   Singleton plain uses ordinary terminal move/copy when the selected producer
   has another mode; that action is the selected migration's value realization,
@@ -172,7 +181,9 @@ Resolved future-design decisions:
   candidate-independent immediate-consumer demand when available, otherwise
   concrete `plain`. Optional expected result pair/type/rank/facet constraints
   are a separate hard-admissibility input and do not remove that output
-  coordinate when absent.
+  coordinate when absent. The separately total `EvaluationStageContext`
+  supplies the current phase and derives candidate-local P1 stage exposure from
+  P2 when no explicit target stage is written.
 - A function-object binding with no written mode is `plain`. Export preserves
   the complete internal `Pv:Pp` and `PolicyMode`; stable external admission
   uses export retention plus public path visibility, while consumer Policy

@@ -594,6 +594,7 @@ the existing pair-view projection and mechanical destination transfer:
 
 ```text
 OrdinaryBindingElaboration(prefix, expr, destination):
+  kappa := CurrentEvaluationPhase
   demand := BindingDemand(prefix)
 
   demand.mode
@@ -609,9 +610,12 @@ OrdinaryBindingElaboration(prefix, expr, destination):
 
   R := ResolveAndEvaluate(
          expr,
+         evaluation_stage_context = kappa,
          result_mode_preference = delta_out)
        // if expr is a call, delta_out is its output PolicyMode coordinate
        // before ordinary overload maxima are chosen
+       // without a written pair/stage demand, candidate-local P1 stage
+       // exposure follows each candidate's P2 under kappa
 
   mu_produced := ResultPolicyMode(SelectedCandidate(R))
   // the selected producer retains this declared concrete result mode
@@ -716,6 +720,46 @@ There is no `x move; CopyConstruct(x); move` sequence and no implicit Policy
 conversion. Nested calls obey an explicit local-closure theorem:
 
 ```text
+DefaultEvaluationResultContext:
+
+For every call node c evaluated in phase kappa:
+  EvaluationStageContext(c) = kappa
+
+For each candidate f of c:
+  P2_f := DeclaredResultPair(f)
+
+  ImplicitEvaluationP1StageView(f, kappa)
+    := ExposeAtPhase(
+         kappa,
+         < Stage(P2v_f) || Stage(P2p_f)
+         : Stage(P2p_f) >)
+
+  PhaseAdmissible(f, c)
+    requires that this derived view admits evaluation/exposure in kappa
+```
+
+This is the default **P1-stage-follows-P2** rule for evaluation. The current
+phase and each candidate's already-declared `P2` make the relevant
+`runtime`/`compile` stage view known without first writing `runtime let e` or
+`compile let e`. It is candidate-local phase admissibility plus the existing
+phase-local stage preference, not a candidate-independent target-result demand
+and not a new migration request.
+
+The word “follows” is limited to the stage projection above. It does not copy
+`PolicyMode`, namespace visibility, export status, capability, or value
+presence from `P2`, and it does not replace the canonical declaration `P1`
+authority described in §§4–5. In particular, the current evaluation phase does
+not infer `const` or `mut`: the unwritten whole-slot mode demand remains the
+concrete point `plain`.
+
+An explicit `PolicyLet(P, e)` may still write `runtime`, `compile`, or another
+pair/stage constraint. That spelling is an explicit local boundary and may
+narrow, select, or request migration beyond the phase-derived default. It is
+optional for ordinary phase-directed evaluation. Writing a ModeAtom such as
+`const` or `mut` is the separate manual act that distinguishes that demand
+from default `plain`.
+
+```text
 CallLocalPolicyClosure:
 
 For every call node c:
@@ -736,10 +780,15 @@ For every call node c:
      and never reopens c.
 ```
 
-The always-present preference coordinate and optional expected-result
-constraints are distinct interfaces:
+The always-present phase context, always-present mode preference, and optional
+explicit expected-result constraints are three distinct interfaces:
 
 ```text
+EvaluationStageContext(c)
+  = current evaluation phase kappa
+  -> derives candidate-local ImplicitEvaluationP1StageView from P2
+  -> participates in phase admissibility / phase-local stage preference
+
 OutputModeDemand(c)
   = already-formed candidate-independent immediate-consumer PolicyMode point
       when one exists
@@ -755,8 +804,10 @@ TargetResultConstraint(c) participates in hard admissibility
   iff the context actually supplies it
 ```
 
-`OutputModeDemand` is total. `TargetResultConstraint` is optional. The latter's
-absence may not be used to remove the former output coordinate.
+`EvaluationStageContext` and `OutputModeDemand` are total.
+`TargetResultConstraint` is optional and explicit when supplied. Its absence
+means “use the phase-derived P1-stage-follow-P2 default,” not “the result stage
+is unknown,” and may not be used to remove the output-mode coordinate.
 
 Thus every nested call closes locally as producer selection, concrete result,
 and then outer consumption/transfer; no cross-call fixed point is introduced.
@@ -766,8 +817,9 @@ Using schematic call notation only (not source syntax):
 let x = g(f())
 
 f()
+  -> derive its phase-local P1 stage view from candidate P2 under kappa
   -> no candidate-independent outer-formal demand is available
-  -> resolve locally under plain
+  -> resolve locally with PolicyMode demand plain
   -> freeze produced mode mu_f
 
 g(f())
@@ -778,8 +830,8 @@ g(f())
 
 ### 3.1.1 Explicit expression result-Policy context
 
-An expression can establish the missing candidate-independent result demand
-explicitly:
+An expression may override or delimit the default evaluation result context
+with an explicit candidate-independent result demand:
 
 ```text
 PolicyLetExpression ::= PolicySpec "let" PipeExpression
@@ -794,6 +846,13 @@ P let a |> f          // P let (a |> f)
 (P let a |> f) |> g   // f closes under P before g is selected
 (P let a) |> f        // only a is inside the boundary
 ```
+
+The syntax is not required merely to evaluate a call in `compile` or
+`runtime`. Without it, current-phase evaluation already derives the applicable
+P1 stage view from each candidate's P2. `compile let e` / `runtime let e`
+remain available when the programmer wants an explicit stage boundary or
+migration target. `const let e` / `mut let e` are the orthogonal explicit
+ModeAtom cases that replace the default `plain` output-mode demand locally.
 
 The normative judgment is:
 
@@ -1684,6 +1743,15 @@ P2 runtime:seal    -> P1stage (runtime || seal):seal
 P2 meta:meta       -> P1stage meta:meta
 ```
 
+The evaluator uses this stage lift candidate-locally as its default result
+stage context. Because `CurrentEvaluationPhase` is already fixed, ordinary
+`compile`/`runtime` exposure is known from `P2` without an explicit
+`PolicyLet`. This evaluation default does not mutate the declaration's
+canonical P1, add an outward authority, or manufacture an absent pair slice;
+it selects/exposes the P1 stage view admitted by the current phase. An explicit
+result Policy remains available when the programmer wants a narrower stage
+boundary or a migration target.
+
 The following never propagate from P2 to the function object:
 
 ```text
@@ -2153,7 +2221,10 @@ All ordinary bindings and call targets use one selection trunk:
 
 ```text
 C0 = CallableProjection(ResolveSymbol(path))
-C1 = ExposePhaseViews(C0, Phase)
+C1 = ExposePhaseViews(
+       C0,
+       EvaluationStageContext(call),
+       candidate_stage_view = StageLiftP2(P2(candidate)))
 C2 = ProjectExpectedPolicy(C1, P1_or_expected_facet)
 T? = TargetResultConstraint(call)
 A  = FullyAdmissible(C2, argument_frame, T?)
@@ -2166,6 +2237,11 @@ M  = MaxPolicyAndOverloadOrder(
 Success requires exactly one maximal candidate. Failure can mean no exposed
 slice, no fully admissible entry, multiple incomparable maxima, a unique delete
 maximum, or an unfinished terminal SealStatic task.
+
+`C1` is the default phase path: candidate P1 stage follows P2 under the current
+evaluation phase. `C2` applies an explicit expected projection when one exists;
+its absence does not make stage policy unknown and does not require
+`PolicyLet`.
 
 For each whole-slot PolicyMode comparison position:
 
@@ -2191,7 +2267,9 @@ count, parameter weighting, lexicographic order, input-before-output rule, or
 separate conversion rank. Every call contributes its total
 `OutputModeDemand(c)` as the output PolicyMode preference coordinate. Optional
 target-result pair/type/rank/facet constraints participate only when supplied,
-as hard admissibility in `A`; they are not the output-mode coordinate.
+as hard admissibility in `A`; they are not the output-mode coordinate. The
+separately total `EvaluationStageContext` drives P1-stage-follow-P2 exposure in
+`C1` and never infers a non-plain PolicyMode.
 
 Preference and capability are separate relations. Any operation with input and
 output modes has an expressible 3×3 capability space:

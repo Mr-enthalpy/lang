@@ -642,7 +642,9 @@ Product |> Expr
 2. Resolve a name/path to Symbol `S`; form `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
    and enumerate that candidate set (one step, no priority, no fallback, no
    reopening; the same candidate reachable through both paths is deduplicated)
-3. Expose each Val2 object's policy-pair view for the current `Phase`
+3. Expose each Val2 object's policy-pair view for the current `Phase`; for
+   ordinary result evaluation, derive the candidate-local P1 stage view from
+   its P2 under that phase
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries
@@ -651,9 +653,9 @@ Product |> Expr
    selected associated `()`
 8. Build invocation frame: implicit caller/self + explicit shaped product args
 9. Form fully admissible set A using all hard checks, including receiver and
-   parameter pair compatibility, P2 result compatibility with any target
-   pair/type/rank/facet expectation actually supplied, stage legality, and
-   require legality
+   parameter pair compatibility, phase legality of the P1-stage-follow-P2
+   default, P2 result compatibility with any explicit target
+   pair/type/rank/facet expectation actually supplied, and require legality
 10. Export every elaborated formal PolicyMode Pattern to its candidate position,
     add the always-present `OutputModeDemand(call)` (`plain` when no
     candidate-independent immediate-consumer demand exists), apply PolicyMode
@@ -672,16 +674,27 @@ otherwise it uses local `plain`. Its selected concrete result mode is then an
 ordinary actual fact for this pipeline. Outer ambiguity or failure never
 reopens the nested producer.
 
+The evaluation phase is a separate, already-known input. In the absence of an
+explicit target-result pair/stage constraint, each candidate's default
+evaluation P1 stage view follows its P2 through the canonical stage lift and is
+checked against the current phase. Therefore `compile`/`runtime` evaluation is
+not gated on the presence of `PolicyLet`. This default does not derive
+PolicyMode: an unwritten output mode remains `plain`, while an explicit
+`const`/`mut` result context is a manual demand.
+
 `PolicyLet(P, e)` is the explicit expression boundary that may provide such a
-candidate-independent demand. Its complete operand pipe is resolved once under
-`P`, then `SourcePolicy(result) -> P` enters the ordinary Policy migration
-candidate preparation and unique Policy-overload selection. The selected
-migration jointly produces the concrete Policy projection and value
-realization in the node's ordinary expression-result slot. That slot has its own
-mode but is not a NameBinding, Symbol, declaration, or independently
-addressable Place. A later outer candidate cannot propagate a formal-mode preference
-through the preserved `PolicyLet` node. The node is not an ordinary Val2 call
-or a hidden binding.
+candidate-independent demand. It is optional for the phase-derived default:
+`compile let e` or `runtime let e` explicitly delimits/narrows the stage
+context, while `const let e` or `mut let e` explicitly replaces the default
+plain Mode demand. Its complete operand pipe is resolved once under `P`, then
+`SourcePolicy(result) -> P` enters the ordinary Policy migration candidate
+preparation and unique Policy-overload selection. The selected migration
+jointly produces the concrete Policy projection and value realization in the
+node's ordinary expression-result slot. That slot has its own mode but is not a
+NameBinding, Symbol, declaration, or independently addressable Place. A later
+outer candidate cannot propagate a formal-mode preference through the
+preserved `PolicyLet` node. The node is not an ordinary Val2 call or a hidden
+binding.
 
 A derived compile companion is a complete `Val2` function object with stable
 origin, its own type, and its own associated static `()`. For origin result

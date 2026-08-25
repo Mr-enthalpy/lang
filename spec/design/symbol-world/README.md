@@ -24,10 +24,11 @@ The namespace graph world model and symbol-level identity:
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
 - Object `⟨Val1?, P, Val2⟩`, canonical `Pv:Pp`, contextual P1 projection, P2
-  result normalization, derived function-object stage views, seal visibility,
-  PolicyMode product order, compile-flow projection over ordinary call nodes,
-  complete derived compile-companion objects, coarse inferred require, and
-  shared compile evaluation
+  result normalization, current-phase P1-stage-follow-P2 evaluation defaults,
+  optional explicit PolicyLet result boundaries, derived function-object stage
+  views, seal visibility, PolicyMode product order, compile-flow projection over
+  ordinary call nodes, complete derived compile-companion objects, coarse
+  inferred require, and shared compile evaluation
 - Object-closed bare Product, `T*N`, `T*omega`, `product`, and Symbol carriers;
   their normalization uses only ordinary `Val1`/`Val2` recursion
 - resolved pattern scopes, `struct` forming complete type values, pure child-only `extend`,

@@ -2446,6 +2446,10 @@ transfers the value between those slots without relabeling the producer result.
 Thus a `const` producer may win under plain preference while the destination
 remains `plain`. The destination never inherits the RHS slot's mode, and the
 RHS mode is never rewritten to the destination mode.
+Independently, current-phase evaluation derives each candidate's implicit P1
+stage view from its P2. Therefore an omitted pair/stage demand does not make
+`compile`/`runtime` unknown and does not require `PolicyLet`; omitted binding
+P1 still retains the selected RHS's complete pair view.
 A single `Q` selects values visible
 under `Q` and retains each value's associated Pattern component. An explicit
 `Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
@@ -2526,6 +2530,35 @@ _See also: Policy Binding, Policy Pair, Policy Transition._
 
 ---
 
+## Default Evaluation Result Context
+
+The result context present for every call even when no explicit result Policy
+is written. It has two orthogonal total inputs and one optional input:
+
+```text
+EvaluationStageContext(call) = current phase kappa
+OutputModeDemand(call)       = immediate explicit demand | plain
+TargetResultConstraint(call) = optional explicit pair/type/rank/facet facts
+```
+
+For candidate `f`, the evaluation-stage component derives an implicit P1 stage
+view from `P2(f)` using
+`Stage(P1p)=Stage(P2p)` and
+`Stage(P1v)=Stage(P2v) union Stage(P2p)`, then checks that view in `kappa`.
+This is the default **P1-stage-follows-P2** behavior. It makes ordinary
+`compile`/`runtime` evaluation phase-directed without requiring
+`compile let e` or `runtime let e`.
+
+The derivation is stage-only. It does not copy `PolicyMode`, visibility,
+capability, export status, or value presence from P2. Unwritten whole-slot mode
+is the concrete point `plain`; selecting `const` or `mut` is a separate manual
+result demand. An explicit `PolicyLet` may still delimit, narrow, or request a
+stage/migration result, or supply that non-plain Mode demand.
+
+_See also: CallLocalPolicyClosure, PolicyLet, PolicyMode, Policy Pair._
+
+---
+
 ## CallLocalPolicyClosure
 
 The rule that closes every call node before an unresolved outer candidate may
@@ -2538,11 +2571,13 @@ formal PolicyMode Pattern cannot be assumed to select an inner call and then be
 used to decide the outer candidate; no cross-call fixed point exists.
 
 This `OutputModeDemand(call)` exists for every call and always participates in
-the PolicyMode product. Optional expected result pair/type/rank/facet facts are
-a separate `TargetResultConstraint(call)` used by hard admissibility only when
-the context supplies them.
+the PolicyMode product. The current phase separately supplies the
+P1-stage-follow-P2 default. Optional expected result pair/type/rank/facet facts
+are a separate `TargetResultConstraint(call)` used by hard admissibility only
+when the context supplies them.
 
-_See also: Policy Binding, PolicyMode, OverloadResolutionPipeline._
+_See also: Default Evaluation Result Context, Policy Binding, PolicyMode,
+OverloadResolutionPipeline._
 
 ---
 
@@ -2562,6 +2597,13 @@ completed concrete Policy view through the node's ordinary expression-result
 slot. The slot is not a NameBinding, Symbol, hidden declaration, or
 independently addressable Place. Parentheses close the boundary; an outer call
 consumes that view as an ordinary actual and cannot reopen the operand call.
+
+This is an explicit override/boundary, not the source of the ordinary
+evaluation phase. Without PolicyLet, `compile`/`runtime` stage exposure already
+comes from the current phase and the candidate's P2-derived P1 stage view.
+`compile let e` / `runtime let e` remain available for explicit stage
+delimitation or migration; `const let e` / `mut let e` manually replace the
+otherwise concrete `plain` Mode demand.
 
 `PolicyLet` creates no hidden binding, place, or declaration. It is not an
 ordinary Val2 `const`/`mut` call and is not an in-place Policy tag rewrite.
@@ -2586,7 +2628,7 @@ migration is a typed outward failure after producer selection, never permission
 to expose the wrong mode or reopen candidates.
 
 _See also: ResultPolicyDemand, Policy Demand Satisfaction,
-CallLocalPolicyClosure, PolicyMode._
+Default Evaluation Result Context, CallLocalPolicyClosure, PolicyMode._
 
 ---
 

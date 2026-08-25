@@ -100,6 +100,14 @@ Phase = OpenStatic | SealStatic | Runtime
 | seal | no | yes | no |
 | runtime | no | no | yes |
 
+For ordinary call evaluation, the current `Phase` is already known. When no
+explicit target pair/stage Policy is written, each candidate's evaluation P1
+stage view follows its P2 through the stage-only derivation in §2 and is then
+checked against this table. Therefore `compile`/`runtime` exposure does not
+require `PolicyLet`; that syntax remains an optional explicit result boundary.
+The phase rule does not choose whole-slot mode: unwritten mode stays `plain`,
+and explicit `const`/`mut` demand is a separate manual choice.
+
 Resolution and exposure are distinct. A `runtime:compile` symbol resolves in
 OpenStatic, exposes no readable runtime value, but exposes its compile Pattern
 and derived compile companion. Seal-only slices are hidden in OpenStatic but

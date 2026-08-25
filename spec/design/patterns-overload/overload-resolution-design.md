@@ -678,10 +678,15 @@ Candidate `f`
 dominates `g` iff `f` is no worse at every compared position and strictly
 better at at least one.
 
-The total output preference and optional expected-result constraints are
-different inputs:
+Default phase-directed result formation, the total output-mode preference, and
+optional explicit expected-result constraints are different inputs:
 
 ```text
+EvaluationStageContext(c) = current phase kappa
+
+ImplicitEvaluationP1StageView(candidate, kappa)
+  = ExposeAtPhase(kappa, StageLiftP2(P2(candidate)))
+
 OutputModeDemand(c)
   = explicit or candidate-independent immediate-consumer PolicyMode point
       when already formed
@@ -691,10 +696,21 @@ TargetResultConstraint(c)
   = optional expected Pv:Pp / result Type / rank / facet constraints
 ```
 
+`EvaluationStageContext(c)` exists for every call. Candidate phase
+admissibility derives the default P1 stage view from that candidate's P2, using
+the canonical `Stage(P1p)=Stage(P2p)` and
+`Stage(P1v)=Stage(P2v) union Stage(P2p)` lift. Consequently ordinary
+`compile`/`runtime` evaluation does not require a preceding `PolicyLet`; the
+current phase already selects which derived stage view is evaluable. This
+candidate-local stage rule is not a target-result demand and does not copy
+PolicyMode from P2.
+
 `OutputModeDemand(c)` exists for every call and always contributes the output
 PolicyMode coordinate to Bp'. `TargetResultConstraint(c)` contributes only
-when supplied and is consumed by hard admissibility in `A`; its absence never
-removes the output-mode coordinate.
+when explicitly supplied and is consumed by hard admissibility in `A`; its
+absence uses the phase-derived stage default and never removes the output-mode
+coordinate. The default mode is still the concrete point `plain`; current
+phase never infers `const` or `mut`.
 
 Crossed advantages remain incomparable. Phase-local stage specificity joins
 this product only after full admissibility: OpenStatic has `meta > compile` and
@@ -726,13 +742,18 @@ candidate should win. This rule adds no cross-call fixed point or conversion
 rank.
 
 An explicit `PolicyLet(P, e)` supplies a candidate-independent output demand
-to the root call of `e` before that call's maxima. It then closes by satisfying
-`P` into the node's ordinary expression-result slot and exposing one concrete
-ordinary actual view. That slot is not a NameBinding, Symbol, declaration, or
-independently addressable Place. Outer overload resolution may compare the
-completed actual but may not push a new demand through the PolicyLet boundary
-or reopen the inner candidate set. The outward satisfaction failure is not a
-conversion rank and does not select a runner-up producer.
+to the root call of `e` before that call's maxima. It is an optional explicit
+override/boundary, not the mechanism by which the evaluator ordinarily knows
+`compile` versus `runtime`: absent such spelling, P1 stage follows candidate P2
+under the current phase. A written `compile`/`runtime` policy may still narrow
+or request an explicit stage/migration target; a written `const`/`mut`
+ModeAtom manually replaces the default `plain` mode demand. The node then
+closes by satisfying `P` into its ordinary expression-result slot and exposes
+one concrete ordinary actual view. That slot is not a NameBinding, Symbol,
+declaration, or independently addressable Place. Outer overload resolution may
+compare the completed actual but may not push a new demand through the
+PolicyLet boundary or reopen the inner candidate set. Outward satisfaction
+failure is not a conversion rank and does not select a runner-up producer.
 
 After the producer is frozen, `SourcePolicy(result) -> P` reuses the ordinary
 Policy migration candidate preparation and this document's unique Policy
@@ -1022,11 +1043,12 @@ Hard admissibility includes, at minimum:
 ```text
 path and object visibility
 object policy-view admission for the current Phase
+candidate-local P1 stage exposure derived from P2 under the current Phase
 existence of associated ()
 parameter count and structural shape
 Pattern/extraction applicability
 receiver and explicit-parameter policy-pair compatibility
-P2 result pair compatibility with any target-result constraint
+P2 result pair compatibility with any explicit target-result constraint
 expected result class/facet compatibility
 concept and ordinary require legality
 other compile/type-stage hard preconditions
@@ -1079,8 +1101,9 @@ Only candidates surviving declaration-side policy enter ordinary preference
 filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
-  phase-local stage specificity and whole-slot PolicyMode positions; include
-  the total `OutputModeDemand(c)` for every call. Optional target-result
+  phase-local stage specificity from the P1-stage-follow-P2 default and
+  whole-slot PolicyMode positions; include the total `OutputModeDemand(c)` for
+  every call. Optional target-result
   pair/type/rank/facet constraints are not Bp' coordinates and enter hard
   admissibility only when the context supplies them. For an authorized atomic
   runtime-migration call, add input/output endpoint Policy fit as two product
@@ -1184,7 +1207,10 @@ Derivation:
 CalleeSymbol = ResolveSymbol(Γ, name)
 C0  = CallSiteFamilyView(CallableProjection(CalleeSymbol), call_site_annotation)
 C1  = VisibleObjects(C0, V)
-C2  = ExposePhaseViews(C1, Phase)
+C2  = ExposePhaseViews(
+        C1,
+        EvaluationStageContext(call) = Phase,
+        candidate_stage_view = StageLiftP2(P2(candidate)))
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(
         C3,
