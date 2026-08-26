@@ -414,6 +414,14 @@ impl LifecycleMachine {
                 })
             }
             LifecycleAction::Move(name) => {
+                // Freeze the finite Color observation of the old generation
+                // before committing the move cut. The replacement preserves
+                // the deeper origin (not the moved-from name), so this
+                // explicit generation snapshot is what enforces
+                // `ObservedColors(new) >= ObservedColors(old)` without
+                // inventing a new origin edge or closing the future storage
+                // representation.
+                let inherited_colors = self.observed_colors(name);
                 let replacement = LifeName(self.next_name);
                 self.next_name = self.next_name.saturating_add(1);
                 let event = self
@@ -435,6 +443,7 @@ impl LifecycleMachine {
                 // the moved-from name as a new ancestry layer.
                 let deeper_origin = self.origins.get(&name).copied().flatten();
                 self.origins.insert(replacement, deeper_origin);
+                self.colors.insert(replacement, inherited_colors);
                 self.active.insert(
                     replacement,
                     Region {
@@ -549,6 +558,43 @@ mod tests {
             moved.event.at,
             "old end and new start are the same continuation cut"
         );
+    }
+
+    #[test]
+    fn move_preserves_direct_and_inherited_colors_without_changing_deeper_origin() {
+        let mut machine = LifecycleMachine::default();
+        let ancestor = machine.register_value(SemanticValueId(70), None);
+        let old = machine.register_value(SemanticValueId(71), Some(ancestor));
+        let ancestor_color = ColorId("ancestor".into());
+        let direct_color = ColorId("direct-old-generation".into());
+        machine.assign_color(ancestor, ancestor_color.clone());
+        machine.assign_color(old, direct_color.clone());
+        let before = machine.observed_colors(old);
+        assert_eq!(
+            before,
+            BTreeSet::from([ancestor_color.clone(), direct_color.clone()])
+        );
+
+        let validation = LifecycleValidationContext {
+            snapshot: machine.snapshot(ColorAlgebra::default(), AccessSnapshot::default()),
+            preconditions: vec![LifecyclePrecondition::Alive(old)],
+        };
+        let moved = machine
+            .perform(
+                LifecycleAction::Move(old),
+                &validation,
+                Provenance::new("move keeps every observed Color"),
+            )
+            .expect("move commits");
+        let replacement = moved.replacement.expect("replacement generation");
+
+        assert_eq!(machine.origins.get(&replacement), Some(&Some(ancestor)));
+        assert_eq!(
+            machine.observed_colors(replacement),
+            before,
+            "a generation cut may slice Color regions but never remove an already observed Color"
+        );
+        assert!(machine.observed_colors(replacement).contains(&direct_color));
     }
 
     #[test]
