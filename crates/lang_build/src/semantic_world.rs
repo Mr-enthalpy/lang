@@ -749,11 +749,6 @@ pub enum SemanticValuePayload {
         represented_type: TypeValueId,
         represented_pattern: PatternValueId,
     },
-    /// Value returned by one already selected ordinary invocation.
-    InvocationResult {
-        selected_call_entry: SemanticValueId,
-        source_value: Option<SemanticValueId>,
-    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -2000,14 +1995,13 @@ impl SemanticWorld {
                 represented_pattern,
                 ..
             } => self.canonical_type_object_address(Some(place), represented_pattern, state),
-            SemanticValuePayload::SimpleLiteral { family, normalized } => {
-                self.canonical_object_address(
+            SemanticValuePayload::SimpleLiteral { family, normalized } => self
+                .canonical_object_address(
                     Some(place),
                     pattern,
                     Some(CanonicalVal1Norm::Literal { family, normalized }),
                     state,
-                )
-            }
+                ),
             SemanticValuePayload::AbstractLiteral {
                 canonical_family: family,
                 normalized,
@@ -2030,13 +2024,12 @@ impl SemanticWorld {
                 state,
             ),
             SemanticValuePayload::FunctionObject { .. }
-            | SemanticValuePayload::InjectedFunctionObject { .. } => self
-                .canonical_object_address(
-                    Some(place),
-                    pattern,
-                    Some(CanonicalVal1Norm::FunctionObject),
-                    state,
-                ),
+            | SemanticValuePayload::InjectedFunctionObject { .. } => self.canonical_object_address(
+                Some(place),
+                pattern,
+                Some(CanonicalVal1Norm::FunctionObject),
+                state,
+            ),
             SemanticValuePayload::CallEntry(_) => self.canonical_object_address(
                 Some(place),
                 pattern,
@@ -2052,10 +2045,6 @@ impl SemanticWorld {
                     state,
                 )
             }
-            SemanticValuePayload::InvocationResult { .. } => Err(crate::Diagnostic::hard_error(
-                "ordinary Object Val1 is not observable: legacy InvocationResult does not carry a coherent canonical realization",
-                Some(object.provenance),
-            )),
         }
     }
 
@@ -2152,6 +2141,27 @@ impl SemanticWorld {
             )
             })?;
         self.canonical_type_object_address(place, pattern, &mut state)
+    }
+
+    /// Observe the registered Core of a type lookup key for ordinary Type
+    /// equality. The lookup key locates the core; equality is the resulting
+    /// canonical address, never the key itself.
+    pub fn canonical_registered_type_core_observation_address(
+        &mut self,
+        type_value: TypeValueId,
+    ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
+        let pattern = self
+            .types
+            .get(&type_value)
+            .map(|ty| ty.pattern)
+            .ok_or_else(|| {
+                crate::Diagnostic::hard_error(
+                    "type equality observation has no registered Pattern",
+                    None,
+                )
+            })?;
+        let place = self.pattern_places.get(&pattern).copied();
+        self.canonical_type_core_observation_address(type_value, place)
     }
 
     /// Observe and intern the complete immutable closure
@@ -5141,32 +5151,6 @@ impl SemanticWorld {
             .insert(backing_declaration, function_value);
 
         Ok((function_value, call_entry_value))
-    }
-
-    pub fn install_invocation_result(
-        &mut self,
-        selected_call_entry: SemanticValueId,
-        source_value: Option<SemanticValueId>,
-        type_value: TypeValueId,
-        pattern: PatternValueId,
-        view: PolicyView,
-        provenance: Provenance,
-    ) -> SemanticValueId {
-        let id = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
-            id,
-            type_value,
-            pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy: view.pair,
-            mode: view.mode,
-            namespace_visibility: None,
-            payload: SemanticValuePayload::InvocationResult {
-                selected_call_entry,
-                source_value,
-            },
-            provenance,
-        })
     }
 
     pub fn install_plain_value(

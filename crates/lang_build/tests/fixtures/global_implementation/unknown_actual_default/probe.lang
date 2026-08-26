@@ -1,0 +1,13 @@
+public + compile let probe =
+  (self, const let x): compile
+    -> let r =>
+{
+  x;
+};
+
+public + compile let probe =
+  (self, let x): compile
+    -> let r =>
+{
+  x;
+};

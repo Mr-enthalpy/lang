@@ -942,37 +942,6 @@ fn real_val1_production_freezes_the_open_construction_automatically() {
     );
 }
 
-/// Every Val1 production primitive shares the central
-/// materialization boundary: `install_invocation_result` freezes an open
-/// self-typed construction exactly like `install_plain_value`, with no
-/// manual `use_cluster_for_val1` call anywhere.
-#[test]
-fn invocation_result_production_freezes_the_open_construction_automatically() {
-    let mut world = SemanticWorld::new("unit");
-    world.bind_package_namespace(NamespaceNodeId(0));
-    let policy = static_type_pair();
-    let provenance = Provenance::new("automatic freeze on invocation result");
-
-    let (cid, self_type, self_pattern) =
-        open_self_typed_construction(&mut world, 970, &policy, &provenance);
-
-    world.install_invocation_result(
-        SemanticValueId(971),
-        None,
-        self_type,
-        self_pattern,
-        plain_view(&policy),
-        provenance.clone(),
-    );
-    let construction = world.open_cluster(cid).expect("construction");
-    assert_eq!(
-        construction.state,
-        ConstructionState::Frozen,
-        "an invocation result of the self type froze the construction automatically"
-    );
-    assert!(construction.use_observation.has_been_used_for_val1);
-}
-
 /// Same P, different Val2: two values each own an independent per-object
 /// ObjectPlace.  Writing a `()` call entry into one value's place does not
 /// make the other value callable, and does not pollute the pattern's

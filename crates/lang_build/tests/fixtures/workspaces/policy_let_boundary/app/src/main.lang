@@ -1,2 +1,3 @@
-mut let completed = mut let uint8 compile_identity::;
-const let outer = mut let uint8 compile_identity::;
+compile let seed: uint8 = 42;
+mut let completed = mut let seed;
+const let outer = mut let seed;

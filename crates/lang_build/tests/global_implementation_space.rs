@@ -41,6 +41,15 @@ fn type_transport_bundle() -> ToolchainGlobalSourceRoot {
     )
 }
 
+fn wrong_type_transport_bundle() -> ToolchainGlobalSourceRoot {
+    ToolchainGlobalSourceRoot::under(
+        fixture_root()
+            .join("global_implementation")
+            .join("wrong_type_transport"),
+        vec!["core".to_string(), "uint8".to_string()],
+    )
+}
+
 fn stages(items: &[PolicyStage]) -> StageSet {
     let mut stages = StageSet::new();
     for stage in items {
@@ -525,38 +534,38 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
     let result = world
         .semantic_world()
         .value(result_id)
-        .expect("bound invocation result exists");
-    let SemanticValuePayload::InvocationResult {
-        selected_call_entry,
-        source_value: Some(source_value),
-    } = result.payload
-    else {
-        panic!("runtime binding must expose the fresh ordinary migration result");
-    };
-    let source = world
+        .expect("bound migrated value exists");
+    let migration_source = world
         .semantic_world()
-        .value(source_value)
-        .expect("migration source ordinary result exists");
-    assert_eq!(source.type_value, result.type_value);
-    assert_eq!(source.pattern, result.pattern);
+        .symbol_in_namespace(world.package_root_node(), "migration_source")
+        .and_then(|symbol| symbol.member_views.first())
+        .and_then(|view| view.value)
+        .expect("compile migration source carries Val1");
+    assert_eq!(
+        result_id, migration_source,
+        "migration exposes the selected body's coherent realization directly instead of allocating an InvocationResult wrapper"
+    );
+    assert!(matches!(
+        result.payload,
+        SemanticValuePayload::ConstructedLiteral { .. }
+    ));
+    assert_eq!(
+        world
+            .semantic_world()
+            .value(migration_source)
+            .expect("migration source exists")
+            .pattern,
+        result.pattern
+    );
 
-    let selected = world
+    let canonical_source = world
         .semantic_world()
-        .value(selected_call_entry)
-        .expect("selected transport call entry exists");
-    let SemanticValuePayload::CallEntry(entry) = &selected.payload else {
-        panic!("migration winner must be an ordinary associated call entry");
-    };
-    assert_eq!(
-        entry.callable_view.mode,
-        PolicyMode::Mut,
-        "Project_out mutability is owned by the ordinary member endpoint"
-    );
-    assert_eq!(
-        entry.complete_result_view.pair.value.stages,
-        stages(&[PolicyStage::Compile, PolicyStage::Runtime]),
-        "the selected member retains complete ordinary P2 before Project_out"
-    );
+        .value(result_id)
+        .expect("migration result is an ordinary canonicalizable value");
+    assert!(!matches!(
+        canonical_source.payload,
+        SemanticValuePayload::CallEntry(_)
+    ));
 
     let rebound = world
         .semantic_world()
@@ -570,6 +579,141 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
         rebound.member_views, binding.member_views,
         "the identity-preserving binding also retains the selected Policy/Pattern views"
     );
+}
+
+#[test]
+fn binding_demand_reaches_rhs_maxima_and_output_preference_reads_result_p2_mode() {
+    let mut world = CompilationWorld::from_manifest(&BuildManifest::single_source_root(
+        "app",
+        vec!["app".to_string()],
+        fixture_source_root("binding_result_demand", "app"),
+    ))
+    .expect("the written mut binding demand must disambiguate its RHS producer before selection");
+    assert!(
+        world
+            .semantic_world()
+            .symbol_in_namespace(world.package_root_node(), "Selected")
+            .is_some(),
+        "without pre-maxima binding demand the crossed const/mut producers are ambiguous"
+    );
+
+    let initializer = initializer_from_source("let x = uint8 choose;");
+    let call = extract_single_call_site(&initializer).expect("fixture call normalizes");
+    let actual_modes = [PolicyMode::Plain];
+    let invocation = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call,
+            OrdinaryInvocationContext::open_static(&actual_modes).with_result_policy_demand(
+                ResultPolicyDemand {
+                    pair_query: P1Projection::Infer,
+                    mode: PolicyMode::Mut,
+                },
+            ),
+            Provenance::new("crossed function-object/result mode regression"),
+        )
+        .expect("mut result demand chooses one producer");
+    let InvocationOutcome::SingleMember(invocation) = invocation else {
+        panic!("ordinary value call has one member result");
+    };
+    assert_eq!(
+        invocation.selected.complete_result_view.mode,
+        PolicyMode::Mut,
+        "Bp compares the producer's concrete result P2 mode"
+    );
+    assert_eq!(
+        invocation.selected.function_object_view.mode,
+        PolicyMode::Const,
+        "the selected producer deliberately has the opposite P1 mode; P1 cannot create output preference"
+    );
+}
+
+#[test]
+fn type_changing_migration_candidate_is_excluded_in_a_before_preference() {
+    let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
+    manifest
+        .global_implementation_roots
+        .push(wrong_type_transport_bundle());
+    let mut world = CompilationWorld::from_manifest(&manifest)
+        .expect("dedicated migration family is installed");
+    let uint8_type = world.resolve_type_value("uint8").expect("uint8 Type");
+    let source_view = PolicyView {
+        pair: pair(&[PolicyStage::Compile], &[PolicyStage::Compile], &[]),
+        mode: PolicyMode::Const,
+    };
+    let source = world
+        .install_semantic_value(
+            uint8_type,
+            source_view.pair.clone(),
+            Provenance::new("same-Type A regression source"),
+        )
+        .expect("source value");
+    let request = PolicyTransitionRequest::new(
+        source_view,
+        ResultPolicyDemand {
+            pair_query: P1Projection::Pair(pair(
+                &[PolicyStage::Runtime],
+                &[PolicyStage::Compile],
+                &[],
+            )),
+            mode: PolicyMode::Mut,
+        },
+        uint8_type,
+        source,
+        Provenance::new("wrong declared result Type must not enter A"),
+    )
+    .expect("migration request");
+    let migration = world
+        .invoke_atomic_runtime_migration(&request)
+        .expect("the less preferred same-Type candidate remains selectable");
+    assert_eq!(
+        migration.invocation.trace.a_fully_admissible.len(),
+        1,
+        "the structurally preferred uint16-result candidate is removed before Bp/maxima"
+    );
+    let selected = world
+        .semantic_world()
+        .value(migration.invocation.selected.call_entry_value)
+        .expect("selected call entry");
+    let SemanticValuePayload::CallEntry(entry) = &selected.payload else {
+        panic!("migration selected an ordinary call entry");
+    };
+    let return_type_name = entry
+        .closure
+        .as_ref()
+        .and_then(|closure| closure.head.as_ref())
+        .and_then(|head| head.returns.as_ref())
+        .and_then(|returns| returns.annotation.as_ref())
+        .and_then(|annotation| match &annotation.pattern {
+            lang_syntax::NormPattern::Name { name, .. } => Some(name.as_str()),
+            _ => None,
+        });
+    assert_eq!(return_type_name, Some("uint8"));
+}
+
+#[test]
+fn pure_p_policy_let_never_fabricates_a_val1_for_migration() {
+    let mut manifest = BuildManifest::single_source_root(
+        "app",
+        vec!["app".to_string()],
+        fixture_source_root("pure_p_policy_let_migration", "app"),
+    );
+    manifest
+        .global_implementation_roots
+        .push(compile_identity_bundle());
+    manifest
+        .global_implementation_roots
+        .push(transport_bundle());
+    let error = CompilationWorld::from_manifest(&manifest)
+        .expect_err("absent Val1 is outside same-Type Policy migration");
+    assert!(error.diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .message
+            .contains("cannot migrate a pure-P result")
+            && diagnostic
+                .message
+                .contains("authorized constructor/materializer")
+    }));
 }
 
 #[test]
@@ -600,17 +744,24 @@ fn policy_let_forms_inward_mode_before_selection_and_returns_a_completed_view() 
         PolicyMode::Mut,
         "the explicit inward/outward demand is the real mut Policy point"
     );
+    let seed = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "seed")
+        .and_then(|symbol| symbol.member_views.first())
+        .and_then(|view| view.value)
+        .expect("PolicyLet seed is a real value");
     let result = world
         .semantic_world()
         .value(view.value.expect("PolicyLet completed view carries Val1"))
         .expect("completed result is installed");
-    assert!(
-        matches!(
-            result.payload,
-            SemanticValuePayload::InvocationResult { .. }
-        ),
-        "outward satisfaction produces the sealed selected migration result"
+    assert_eq!(
+        result.id, seed,
+        "PolicyLet outward satisfaction exposes the selected body's coherent value realization"
     );
+    assert!(matches!(
+        result.payload,
+        SemanticValuePayload::ConstructedLiteral { .. }
+    ));
 
     let outer = world
         .semantic_world()
@@ -620,47 +771,10 @@ fn policy_let_forms_inward_mode_before_selection_and_returns_a_completed_view() 
         panic!("outer binding has one completed view");
     };
     assert_eq!(outer_view.view.mode, PolicyMode::Const);
-    let outer_result = world
-        .semantic_world()
-        .value(outer_view.value.expect("outer completed value"))
-        .expect("outer migration result exists");
-    let SemanticValuePayload::InvocationResult {
-        selected_call_entry: outer_selected,
-        source_value: Some(inner_result),
-    } = outer_result.payload
-    else {
-        panic!("outer satisfaction is one direct migration over the sealed inner result");
-    };
-    let inner_result = world
-        .semantic_world()
-        .value(inner_result)
-        .expect("PolicyLet inner result remains a first-class value");
-    let SemanticValuePayload::InvocationResult {
-        selected_call_entry: inner_selected,
-        ..
-    } = inner_result.payload
-    else {
-        panic!("the outer binding did not rewrite or reopen the PolicyLet inner selection");
-    };
-    let endpoint_mode = |entry_id| {
-        let entry = world
-            .semantic_world()
-            .value(entry_id)
-            .expect("selected call entry exists");
-        let SemanticValuePayload::CallEntry(entry) = &entry.payload else {
-            panic!("migration selection is an ordinary call entry");
-        };
-        entry.callable_view.mode
-    };
     assert_eq!(
-        endpoint_mode(inner_selected),
-        PolicyMode::Mut,
-        "the inner PolicyLet winner remains sealed under its inward mut demand"
-    );
-    assert_eq!(
-        endpoint_mode(outer_selected),
-        PolicyMode::Const,
-        "the outer consumer performs a later direct satisfaction operation instead of reopening the inner call"
+        outer_view.value,
+        Some(seed),
+        "the outer consumer changes only its completed view and cannot replace or wrap the sealed inner realization"
     );
 }
 
@@ -745,20 +859,8 @@ fn literals_form_abstract_values_before_construction_and_same_type_migration() {
 
     let runtime = bound_value("runtime_value");
     assert_eq!(runtime.type_value, uint8_type);
-    let SemanticValuePayload::InvocationResult {
-        source_value: Some(concrete_source),
-        ..
-    } = runtime.payload
-    else {
-        panic!("runtime materialization is a later same-Type migration");
-    };
-    let concrete_source = world
-        .semantic_world()
-        .value(concrete_source)
-        .expect("migration source exists");
-    assert_eq!(concrete_source.type_value, uint8_type);
     assert!(matches!(
-        concrete_source.payload,
+        runtime.payload,
         SemanticValuePayload::ConstructedLiteral { .. }
-    ));
+    ), "same-Type materialization preserves the concrete constructor's ordinary value realization instead of wrapping it");
 }

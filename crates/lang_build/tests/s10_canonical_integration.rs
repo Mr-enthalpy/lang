@@ -64,6 +64,49 @@ fn invoke(
     )
 }
 
+#[test]
+fn unknown_actual_uses_primitive_plain_and_never_world_fabricated_const() {
+    let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
+    manifest
+        .global_implementation_roots
+        .push(ToolchainGlobalSourceRoot::new(
+            fixture_root()
+                .join("global_implementation")
+                .join("unknown_actual_default"),
+        ));
+    let mut world = CompilationWorld::from_manifest(&manifest).expect("probe family builds");
+    let no_fabricated_modes = [];
+    let result = invoke(
+        &mut world,
+        "let result = mystery probe::;",
+        OrdinaryInvocationContext::open_static(&no_fabricated_modes),
+        "unknown actual defaults to Plain",
+    );
+    let selected = trace_of(&result).selected.unwrap_or_else(|| {
+        panic!("selection must seal before the unknown body result is diagnosed: {result:?}")
+    });
+    let selected = world
+        .semantic_world()
+        .value(selected)
+        .expect("selected call entry");
+    let SemanticValuePayload::CallEntry(entry) = &selected.payload else {
+        panic!("probe selection is an ordinary call entry");
+    };
+    let formal = entry
+        .closure
+        .as_ref()
+        .and_then(|closure| closure.head.as_ref())
+        .and_then(|head| head.formal_frame().explicit_parameters.first())
+        .expect("one explicit formal");
+    let lang_syntax::NormPatternElem::BindingSlot(formal) = formal else {
+        panic!("probe formal is a binding slot");
+    };
+    assert!(
+        formal.policy.is_none(),
+        "Plain formal must beat the const formal for an unknown actual; a fabricated const would select the other candidate"
+    );
+}
+
 fn seal_static(explicit_argument_mutability: &[PolicyMode]) -> OrdinaryInvocationContext<'_> {
     let mut context = OrdinaryInvocationContext::open_static(explicit_argument_mutability);
     context.phase = Phase::SealStatic;

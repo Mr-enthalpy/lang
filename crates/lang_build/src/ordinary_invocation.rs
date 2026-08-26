@@ -1416,7 +1416,7 @@ pub fn invoke_policy_migration(
             trace: invocation.trace,
         });
     }
-    let realized_mode = invocation.selected.function_object_view.mode;
+    let realized_mode = invocation.selected.complete_result_view.mode;
     for entry in &mut demanded_view {
         entry.view.mode = realized_mode;
     }
@@ -1785,6 +1785,10 @@ pub(crate) fn invoke_target_values(
         let SemanticValuePayload::CallEntry(entry) = &entry_value.payload else {
             continue;
         };
+        // Candidate preparation may intern Type Core observations during A;
+        // own the call-entry facts so no immutable world borrow can become a
+        // hidden constraint on that semantic observation.
+        let entry = entry.clone();
         // C2 result-demand hard projection. Every pair/stage coordinate that
         // can affect producer selection is present before maxima; whole-slot
         // mode remains the independent Bp coordinate below.
@@ -1819,6 +1823,7 @@ pub(crate) fn invoke_target_values(
             .expect("every C3 entry retains its receiver");
         let target = semantic_world
             .value(target_value)
+            .cloned()
             .expect("C1 retained existing target values");
         if entry.receiver_type != target.type_value {
             continue;
@@ -1844,6 +1849,37 @@ pub(crate) fn invoke_target_values(
                 default_mounts: resolver_context.default_mounts.clone(),
                 current_policy: resolver_context.current_policy.clone(),
             };
+            if let Some(migration) = context.migration {
+                // same-Type is hard migration applicability. A source
+                // candidate whose declared result Type cannot be observed,
+                // or whose Core differs from the source Core, never enters A
+                // and therefore cannot win only to fail after execution.
+                let declared_result_type = match declared_value_result_type(
+                    entry_closure,
+                    semantic_world,
+                    &declaration_pattern_context,
+                    provenance.clone(),
+                ) {
+                    Ok(Some(result_type)) => result_type,
+                    Ok(None) => continue,
+                    Err(diagnostic) => {
+                        first_diagnostic.get_or_insert(diagnostic);
+                        continue;
+                    }
+                };
+                match same_type_core(
+                    semantic_world,
+                    migration.request.source_type(),
+                    declared_result_type,
+                ) {
+                    Ok(true) => {}
+                    Ok(false) => continue,
+                    Err(diagnostic) => {
+                        first_diagnostic.get_or_insert(diagnostic);
+                        continue;
+                    }
+                }
+            }
             let world_view: &SemanticWorld = semantic_world;
             let resolve_named_pattern = |name: &str| {
                 SemanticTypeEnv::new(world_view)
@@ -1877,8 +1913,8 @@ pub(crate) fn invoke_target_values(
             };
             if let Err(diagnostic) = apply_written_self_structure(
                 &mut source_shape,
-                entry,
-                target,
+                &entry,
+                &target,
                 semantic_world,
                 resolver_context,
                 provenance.clone(),
@@ -1887,7 +1923,7 @@ pub(crate) fn invoke_target_values(
                 continue;
             }
             if let Err(diagnostic) = validate_explicit_value_type_annotations(
-                entry,
+                &entry,
                 &classified.classified_shape,
                 semantic_world,
                 resolver_context,
@@ -1896,7 +1932,7 @@ pub(crate) fn invoke_target_values(
                 first_diagnostic.get_or_insert(diagnostic);
                 continue;
             }
-            let formal_policy_frame = match formal_mutability_frame(entry, provenance.clone()) {
+            let formal_policy_frame = match formal_mutability_frame(&entry, provenance.clone()) {
                 Ok(frame) => frame,
                 Err(diagnostic) => {
                     first_diagnostic.get_or_insert(diagnostic);
@@ -1919,6 +1955,12 @@ pub(crate) fn invoke_target_values(
                 classified.classified_shape.clone(),
             )
         } else if let Some(primitive) = entry.core_primitive {
+            if context.migration.is_some() {
+                // The connected slice has no declared ordinary result-Type
+                // observation for core primitives. They cannot be admitted
+                // as same-Type migration candidates by assumption.
+                continue;
+            }
             let Some(call_site) = source_call_site else {
                 first_diagnostic.get_or_insert_with(|| {
                     Diagnostic::hard_error(
@@ -1964,6 +2006,11 @@ pub(crate) fn invoke_target_values(
                 frame_args,
             )
         } else if let Some(intrinsic) = &entry.intrinsic_body {
+            if context.migration.is_some() {
+                // Construction intrinsics are type-changing operations, not
+                // same-Type Policy migration candidates.
+                continue;
+            }
             let Some(target_snapshot) = context.construction_target else {
                 first_diagnostic.get_or_insert_with(|| {
                     Diagnostic::hard_error(
@@ -3059,7 +3106,14 @@ pub(crate) fn invoke_target_values(
     };
     if let Some(migration) = context.migration {
         let source = migration.request.source_type();
-        if source != result_type {
+        let same_type =
+            same_type_core(semantic_world, source, result_type).map_err(|diagnostic| {
+                OrdinaryInvocationFailure::SelectedCoreBody {
+                    diagnostic,
+                    trace: trace.clone(),
+                }
+            })?;
+        if !same_type {
             return Err(OrdinaryInvocationFailure::MigrationResultTypeChanged {
                 source,
                 result: result_type,
@@ -3373,6 +3427,50 @@ fn resolve_type_annotation_value(
         })
 }
 
+/// Declared ordinary value result Type used by same-Type migration A.
+///
+/// An absent annotation, or a non-value result class (`type`, `symbol`,
+/// `unit`), supplies no same-Type proof and is therefore not admissible as a
+/// migration producer in the connected slice.
+fn declared_value_result_type(
+    closure: &lang_syntax::NormClosure,
+    semantic_world: &SemanticWorld,
+    resolver_context: &ResolverContext,
+    provenance: Provenance,
+) -> Result<Option<TypeValueId>, Diagnostic> {
+    let Some(annotation) = closure
+        .head
+        .as_ref()
+        .and_then(|head| head.returns.as_ref())
+        .and_then(|returns| returns.annotation.as_ref())
+    else {
+        return Ok(None);
+    };
+    if matches!(
+        &annotation.pattern,
+        NormPattern::Name { name, .. } if matches!(name.as_str(), "type" | "symbol" | "unit")
+    ) {
+        return Ok(None);
+    }
+    resolve_type_annotation_value(
+        &annotation.pattern,
+        semantic_world,
+        resolver_context,
+        provenance,
+    )
+    .map(Some)
+}
+
+fn same_type_core(
+    semantic_world: &mut SemanticWorld,
+    left: TypeValueId,
+    right: TypeValueId,
+) -> Result<bool, Diagnostic> {
+    let left = semantic_world.canonical_registered_type_core_observation_address(left)?;
+    let right = semantic_world.canonical_registered_type_core_observation_address(right)?;
+    Ok(left == right)
+}
+
 fn validate_explicit_value_type_annotations(
     entry: &OrdinaryCallEntry,
     actuals: &ArgProductShape,
@@ -3480,8 +3578,8 @@ fn bp_prime_dominates(
         PolicyPartialOrdering::Equal => {}
     }
 
-    match mutability_preference_rank(better.function_object_view.mode, output_demand.mode()).cmp(
-        &mutability_preference_rank(worse.function_object_view.mode, output_demand.mode()),
+    match mutability_preference_rank(better.complete_result_view.mode, output_demand.mode()).cmp(
+        &mutability_preference_rank(worse.complete_result_view.mode, output_demand.mode()),
     ) {
         std::cmp::Ordering::Less => return false,
         std::cmp::Ordering::Greater => strictly_better = true,
