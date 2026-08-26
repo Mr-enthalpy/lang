@@ -722,6 +722,11 @@ pub enum SemanticValuePayload {
     /// the semantic value coordinates.
     ConstructedLiteral {
         source_abstract: SemanticValueId,
+        /// Whole-snapshot identity of the exact complete target Type selected
+        /// by ordinary construction.  The lookup key alone is not enough:
+        /// two complete Types may share a Core while carrying different
+        /// immutable TypeMember callspaces.
+        target_complete_type: CanonicalValueAddr,
         canonical_family: CanonicalLiteralFamily,
         normalized: String,
     },
@@ -765,10 +770,12 @@ pub struct OrdinaryCallEntry {
     pub callable_owner: SemanticOwnerId,
     pub receiver_type: TypeValueId,
     /// Source body shape when this ordinary call entry was declared in
-    /// language source. Core primitives use `core_primitive` instead; both
-    /// are implementation bodies behind the same function-object entry.
+    /// language source. Core primitives and authorized ordinary intrinsics
+    /// use their respective body coordinates instead; all three remain
+    /// implementation bodies behind the same call-entry candidate.
     pub closure: Option<NormClosure>,
     pub core_primitive: Option<CoreMetaFunction>,
+    pub(crate) intrinsic_body: Option<OrdinaryIntrinsicBody>,
     /// This call entry is a terminal FunctionItem: `Type(c) = FunctionItem(Self, Args...) -> R`
     /// and `c.Val2 = ∅`.  There is no recursive callable lookup from a
     /// CallEntry — the invocation spine terminates here.
@@ -800,6 +807,23 @@ pub struct OrdinaryCallEntry {
     /// can never spell it.
     pub privilege: CallablePrivilege,
     pub provenance: Provenance,
+}
+
+/// Compiler-authorized implementation body behind an ordinary call entry.
+///
+/// This is body data only. Candidate enumeration, A-stage applicability,
+/// Policy preference, unique selection, DynamicLegality, and the no-reopen
+/// boundary remain owned by the ordinary invocation pipeline.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
+pub(crate) enum OrdinaryIntrinsicBody {
+    AbstractLiteralConstruct(crate::BuiltinNumericConstructorSpec),
+    /// Explicit deleted realization used by builtin declarations and
+    /// authority-death tests. Selection of this candidate is terminal.
+    Delete,
+    /// Testable selected-body failure. It exists to prove that a runnable
+    /// lower-ranked intrinsic is never retried after selection is sealed.
+    FailSelected,
 }
 
 /// Reconcile the outer function-object P1 with the written-self P1 from the
@@ -3745,7 +3769,7 @@ impl SemanticWorld {
                     pattern: value.pattern,
                     view: PolicyView {
                         pair: value.policy.clone(),
-                        mode: PolicyMode::Plain,
+                        mode: value.mode,
                     },
                 })
             })
@@ -4270,23 +4294,30 @@ impl SemanticWorld {
     ///
     /// The call entry's own scope is never populated — `Type(c) =
     /// FunctionItem(Self, Args...) -> Result` and `c.Val2 = ∅`.  The call
-    /// entry is registered in `owner_pattern`'s ObjectPlace
-    /// `associated_val2["()"]`, not in its own FunctionItem scope.
+    /// entry is registered in `owner_pattern`'s immutable TypeMember
+    /// callspace under `operation_selector`, not in its own FunctionItem
+    /// scope. Source-visible callables additionally materialize the same
+    /// entry in the owner's owned Val2; compiler-only operation families can
+    /// remain V_tau-only so V_tau is never redefined as Object Val2.
     ///
     /// This is the single semantic construction primitive shared by all
     /// callable construction paths (associated call entries, source
     /// callables, core callables, and cluster-contributed function
-    /// objects).  It guarantees that every `()` call entry is terminal
-    /// regardless of which caller reached it.
+    /// objects and compiler-authorized operation families). It guarantees
+    /// that every call entry is terminal regardless of which entrance
+    /// reached it.
     #[allow(clippy::too_many_arguments)]
     fn allocate_terminal_call_entry(
         &mut self,
         owner_pattern: PatternValueId,
         backing_declaration: SymbolId,
         declaration_name: &str,
+        operation_selector: &str,
+        materialize_owned_val2: bool,
         declaration_namespace: Option<NamespaceNodeId>,
         closure: Option<&NormClosure>,
         core_primitive: Option<CoreMetaFunction>,
+        intrinsic_body: Option<OrdinaryIntrinsicBody>,
         callable_owner: SemanticOwnerId,
         receiver_type: TypeValueId,
         canonical_view: PolicyView,
@@ -4346,6 +4377,7 @@ impl SemanticWorld {
                 receiver_type,
                 closure: closure.cloned(),
                 core_primitive,
+                intrinsic_body,
                 complete_result_view,
                 callable_view: canonical_view,
                 capability_realization: CapabilityRealization::default(),
@@ -4356,9 +4388,9 @@ impl SemanticWorld {
             }),
             provenance,
         });
-        // The call entry is registered in the owner pattern's associated
-        // Val2 place, not in its own FunctionItem scope.  The FunctionItem
-        // scope is terminal.
+        // The call entry always enters the owner's immutable TypeMember
+        // callspace. Only source-visible families also own a corresponding
+        // Object Val2 member; the FunctionItem scope itself remains terminal.
         let place_id = self
             .pattern_places
             .get(&owner_pattern)
@@ -4369,17 +4401,83 @@ impl SemanticWorld {
                     Some(err_provenance.clone()),
                 ))
             })?;
-        self.associate_existing_value_in_place(place_id, "()", call_entry)
-            .expect("allocated pattern place and call entry exist");
+        if materialize_owned_val2 {
+            self.associate_existing_value_in_place(place_id, operation_selector, call_entry)
+                .expect("allocated pattern place and call entry exist");
+        }
         self.admit_direct_type_member(
             owner_pattern,
             owner_pattern,
-            "()",
+            operation_selector,
             TypeMemberFacet::Value,
             call_entry,
         )
         .map_err(BuildError::single)?;
         Ok(call_entry)
+    }
+
+    /// Register one compiler-authorized ordinary intrinsic directly in a
+    /// target Type's operation family. The returned call entry is the
+    /// candidate identity; `backing_declaration` is compatibility/provenance
+    /// material and never participates in selection identity.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn register_intrinsic_type_operation(
+        &mut self,
+        target_type: TypeValueId,
+        operation_selector: &str,
+        backing_declaration: SymbolId,
+        body: OrdinaryIntrinsicBody,
+        callable_view: PolicyView,
+        complete_result_view: PolicyView,
+        provenance: Provenance,
+    ) -> Result<SemanticValueId, BuildError> {
+        let target_pattern = self
+            .type_value(target_type)
+            .map(|value| value.pattern)
+            .ok_or_else(|| {
+                BuildError::single(crate::Diagnostic::hard_error(
+                    "intrinsic operation target Type is not installed",
+                    Some(provenance.clone()),
+                ))
+            })?;
+        let callable_owner = self.owners.callable(
+            self.pattern(target_pattern)
+                .expect("installed Type Pattern exists")
+                .root
+                .owner,
+            LocalCallableIdentity(self.next_callable),
+            CallableOwnerPlacement::Ordinary,
+        );
+        self.next_callable = self
+            .next_callable
+            .checked_add(1)
+            .expect("semantic callable identity exhausted");
+        let receiver_type = self.type_rank.ok_or_else(|| {
+            BuildError::single(crate::Diagnostic::hard_error(
+                "intrinsic Type operation requires the builtin `type` rank",
+                Some(provenance.clone()),
+            ))
+        })?;
+        self.allocate_terminal_call_entry(
+            target_pattern,
+            backing_declaration,
+            operation_selector,
+            operation_selector,
+            false,
+            None,
+            None,
+            None,
+            Some(body),
+            callable_owner,
+            receiver_type,
+            callable_view,
+            complete_result_view,
+            None,
+            OrdinaryCandidateRole::Ordinary,
+            ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained),
+            CallablePrivilege::BuiltinPrivileged,
+            provenance,
+        )
     }
 
     /// Install one [`SemanticNamespaceDelta`] atomically.
@@ -4611,8 +4709,11 @@ impl SemanticWorld {
             pattern,
             backing_declaration,
             "()",
+            "()",
+            true,
             Some(declaration_namespace),
             Some(closure),
+            None,
             None,
             self.pattern(pattern)
                 .ok_or_else(|| {
@@ -4719,8 +4820,11 @@ impl SemanticWorld {
             function_pattern,
             backing_declaration,
             name,
+            "()",
+            true,
             Some(namespace),
             Some(closure),
+            None,
             None,
             callable_owner,
             function_type,
@@ -4856,9 +4960,12 @@ impl SemanticWorld {
             function_pattern,
             backing_declaration,
             name,
+            "()",
+            true,
             Some(namespace),
             None,
             Some(primitive),
+            None,
             callable_owner,
             function_type,
             canonical_view.clone(),
@@ -4992,8 +5099,11 @@ impl SemanticWorld {
             function_pattern,
             backing_declaration,
             &declaration_name,
+            "()",
+            true,
             Some(declaration_namespace),
             Some(closure),
+            None,
             None,
             callable_owner,
             function_type,
@@ -5193,11 +5303,11 @@ impl SemanticWorld {
     /// abstract-to-concrete literal construction.  The caller has already
     /// selected the concrete constructor/target; this operation never
     /// changes the source abstract value or performs Policy migration.
-    pub fn construct_abstract_literal_value(
+    pub(crate) fn construct_abstract_literal_value(
         &mut self,
         source_abstract: SemanticValueId,
-        concrete_type: TypeValueId,
-        policy: PolicyPair,
+        target: &CompleteTypeValue,
+        view: PolicyView,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
         let source = self.value(source_abstract)?.clone();
@@ -5209,18 +5319,19 @@ impl SemanticWorld {
         else {
             return None;
         };
-        let pattern = self.type_value(concrete_type)?.pattern;
+        let pattern = self.type_value(target.lookup_key)?.pattern;
         let id = self.allocate_value_id();
         self.materialize_val1_object(SemanticValueObject {
             id,
-            type_value: concrete_type,
+            type_value: target.lookup_key,
             pattern,
             place: ObjectPlaceId(0),
-            policy,
-            mode: PolicyMode::Plain,
+            policy: view.pair,
+            mode: view.mode,
             namespace_visibility: None,
             payload: SemanticValuePayload::ConstructedLiteral {
                 source_abstract,
+                target_complete_type: target.whole,
                 canonical_family,
                 normalized,
             },
@@ -6410,8 +6521,11 @@ impl SemanticWorld {
                 function_pattern,
                 backing_declaration,
                 member_name,
+                "()",
+                true,
                 None,
                 Some(closure),
+                None,
                 None,
                 callable_owner,
                 function_type,

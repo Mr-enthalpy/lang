@@ -719,7 +719,9 @@ fn literals_form_abstract_values_before_construction_and_same_type_migration() {
     let concrete = bound_value("concrete_value");
     assert_eq!(concrete.type_value, uint16_type);
     let SemanticValuePayload::ConstructedLiteral {
-        source_abstract, ..
+        source_abstract,
+        target_complete_type,
+        ..
     } = concrete.payload
     else {
         panic!("concrete annotation runs a later construction operation");
@@ -731,6 +733,14 @@ fn literals_form_abstract_values_before_construction_and_same_type_migration() {
     assert_eq!(
         original.type_value, integer_type,
         "expected uint16 never rewrites the literal's initial integer Type"
+    );
+    assert_eq!(
+        world
+            .semantic_world()
+            .complete_type_by_whole_observation(target_complete_type)
+            .expect("the concrete result carries a registered complete Type")
+            .lookup_key,
+        uint16_type
     );
 
     let runtime = bound_value("runtime_value");

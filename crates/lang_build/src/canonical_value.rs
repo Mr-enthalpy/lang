@@ -34,10 +34,10 @@
 //! pure-P types, structured PatternValues, and static Products are
 //! canonicalized here.  Every value normal form carries its Pattern
 //! coordinate explicitly: `Norm_VP(Val1, P)` is a PAIR — equal Val1 content
-//! under different Ps never shares one address.  Complex compile-time memory
-//! values whose Val1 observation is not implemented fail normalization
-//! explicitly; their allocation identity is not silently promoted into the
-//! language's canonical Object equality.
+//! under different Ps never shares one address.  Values whose Val1 content
+//! observation is not implemented use an identity-stable opaque semantic
+//! leaf.  This safely under-merges instead of either inventing content
+//! equality or denying that the ordinary Object has a normal form.
 //!
 //! Formal binder names, source paths, body material, provenance, and carrier
 //! Symbols never appear in any normal form.

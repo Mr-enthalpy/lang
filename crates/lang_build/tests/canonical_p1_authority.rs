@@ -353,8 +353,8 @@ fn pure_p_entry(
     }
 }
 
-/// B3 — a constrained canonical P1 crops both the stage window and the
-/// unconstrained (`const || mut`) mutability domain of the material.
+/// B3 — a constrained canonical P1 crops the pair's stage window while the
+/// material's primitive whole-slot mode remains independent.
 #[test]
 fn expose_crops_stage_window_and_unconstrained_mutability() {
     let outward = exposure_window(
@@ -382,7 +382,7 @@ fn expose_crops_stage_window_and_unconstrained_mutability() {
 }
 
 /// B3 — an entry whose exposed window vanishes is not part of the outward
-/// result at all, for both the stage facet and the mutability facet.
+/// result at all; whole-slot mode is not another exposure-window facet.
 #[test]
 fn expose_hides_entries_whose_window_vanishes() {
     let stage_disjoint = ExposedInvocationResult::expose(
@@ -462,10 +462,10 @@ fn expose_keeps_pure_p_entries_with_clipped_value_stages() {
 
 /// B3 — the exposure window is computed on a REAL invocation result that
 /// travelled the full ordinary spine, not only on hand-built entries: the
-/// transport callables declare an explicit outer mutability (`const let
-/// uint8` / `mut let uint8`), the complete result's mutability domain is
-/// the unconstrained `const || mut` domain, and the exposed material is
-/// cropped to the selected callable's canonical P1.
+/// transport callables declare an explicit outer mode (`const let uint8` /
+/// `mut let uint8`) while the complete result carries its own concrete mode;
+/// the pair exposure is cropped to the selected callable's canonical P1
+/// without deriving either mode from the other.
 #[test]
 fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
     let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);

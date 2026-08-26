@@ -107,6 +107,10 @@ pub struct OrdinaryInvocationContext<'a> {
     pub result_policy_demand: ResultPolicyDemand,
     pub visibility: VisibilityView,
     pub migration: Option<MigrationInvocationContext<'a>>,
+    /// Exact complete target Type for an authorized type-changing
+    /// construction. This supplies execution material only after the target
+    /// snapshot itself has enumerated the candidate family.
+    pub construction_target: Option<&'a crate::CompleteTypeValue>,
     /// Post-selection capability/place demand. This coordinate never
     /// participates in candidate ordering and therefore cannot reopen maxima.
     pub dynamic_legality: DynamicLegalityDemand<'a>,
@@ -130,6 +134,7 @@ impl<'a> OrdinaryInvocationContext<'a> {
             result_policy_demand: ResultPolicyDemand::default(),
             visibility: VisibilityView::Internal,
             migration: None,
+            construction_target: None,
             dynamic_legality: DynamicLegalityDemand::default(),
             ambient_construction_owner: None,
         }
@@ -149,6 +154,11 @@ impl<'a> OrdinaryInvocationContext<'a> {
 
     pub fn with_result_policy_demand(mut self, demand: ResultPolicyDemand) -> Self {
         self.result_policy_demand = demand;
+        self
+    }
+
+    pub fn with_construction_target(mut self, target: &'a crate::CompleteTypeValue) -> Self {
+        self.construction_target = Some(target);
         self
     }
 
@@ -210,6 +220,7 @@ pub struct PreparedCallCandidate {
     pub formal_policy_frame: MutabilityFormalFrame,
     pub(crate) source_shape: Option<ApplicableCandidate>,
     pub(crate) core_invocation: Option<MetaInvocationInput>,
+    pub(crate) intrinsic_body: Option<crate::semantic_world::OrdinaryIntrinsicBody>,
     pub return_shape: ReturnShape,
     pub candidate_role: OrdinaryCandidateRole,
     pub overload_strategy: NormOverloadStrategy,
@@ -239,7 +250,10 @@ impl PreparedCallCandidate {
                 source.source_callable.closure.body,
                 lang_syntax::NormClosureBody::Delete(_)
             )
-        })
+        }) || matches!(
+            self.intrinsic_body,
+            Some(crate::semantic_world::OrdinaryIntrinsicBody::Delete)
+        )
     }
 
     /// Proof-relevant Pattern applicability result for source candidates.
@@ -464,10 +478,9 @@ impl ExposedInvocationResult {
 ///
 /// Window rules mirror `project_p1`'s slice restriction (`restrict_stages`
 /// is shared): stage sets are intersected, an empty window facet stays
-/// unconstrained, a facet whose non-empty intersection vanishes hides the
-/// entry, and the empty mutability domain stays the unconstrained
-/// `const || mut` domain, so a constrained P1 crops an unconstrained
-/// material domain.
+/// unconstrained, and a facet whose non-empty intersection vanishes hides
+/// the entry. Whole-slot mode remains the independent concrete coordinate
+/// already stored on `PolicyView`; it is never inferred from this pair.
 fn expose_result_entry(
     outward: &PolicyPair,
     entry: &PolicyResultEntry<SemanticValueRef, PatternValueId>,
@@ -1382,6 +1395,7 @@ pub fn invoke_policy_migration(
                 request,
                 source_value: source.id,
             }),
+            construction_target: None,
             dynamic_legality: DynamicLegalityDemand::default(),
             // Migration transport never performs an ambient struct
             // construction; no declaration-environment owner applies.
@@ -1817,6 +1831,7 @@ pub(crate) fn invoke_target_values(
         let (
             source_shape,
             core_invocation,
+            intrinsic_body,
             formal_policy_frame,
             self_policy,
             overload_strategy,
@@ -1902,6 +1917,7 @@ pub(crate) fn invoke_target_values(
             (
                 Some(source_shape),
                 None,
+                None,
                 formal_policy_frame,
                 self_policy,
                 strategy,
@@ -1940,6 +1956,7 @@ pub(crate) fn invoke_target_values(
             (
                 None,
                 Some(core_invocation),
+                None,
                 MutabilityFormalFrame {
                     self_pattern: PolicyMode::Plain,
                     explicit_parameter_patterns: vec![PolicyMode::Plain; frame_args.arity],
@@ -1950,6 +1967,62 @@ pub(crate) fn invoke_target_values(
                 entry.callable_view.pair.clone(),
                 NormOverloadStrategy::Ordinary,
                 frame_args,
+            )
+        } else if let Some(intrinsic) = &entry.intrinsic_body {
+            let Some(target_snapshot) = context.construction_target else {
+                first_diagnostic.get_or_insert_with(|| {
+                    Diagnostic::hard_error(
+                        "ordinary construction intrinsic requires an exact complete target Type",
+                        Some(provenance.clone()),
+                    )
+                });
+                continue;
+            };
+            let SemanticValuePayload::TypeObject {
+                represented_type: receiver_target,
+                ..
+            } = &target.payload
+            else {
+                continue;
+            };
+            let [ProductAtom::SemanticValue {
+                value: source_value,
+                ..
+            }] = classified.classified_shape.flattened.atoms.as_slice()
+            else {
+                continue;
+            };
+            let Some(source) = semantic_world.value(*source_value) else {
+                continue;
+            };
+            let SemanticValuePayload::AbstractLiteral { family, .. } = &source.payload else {
+                continue;
+            };
+            let applicable = match intrinsic {
+                crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(spec) => {
+                    spec.source_family == *family
+                        && spec.target_type == *receiver_target
+                        && target_snapshot.lookup_key == *receiver_target
+                }
+                crate::semantic_world::OrdinaryIntrinsicBody::Delete
+                | crate::semantic_world::OrdinaryIntrinsicBody::FailSelected => {
+                    target_snapshot.lookup_key == *receiver_target
+                }
+            };
+            if !applicable {
+                continue;
+            }
+            (
+                None,
+                None,
+                Some(intrinsic.clone()),
+                MutabilityFormalFrame {
+                    self_pattern: PolicyMode::Plain,
+                    explicit_parameter_patterns: vec![PolicyMode::Plain],
+                },
+                entry.callable_view.pair.clone(),
+                NormOverloadStrategy::Ordinary,
+                classified.classified_shape.clone(),
             )
         } else {
             continue;
@@ -2038,6 +2111,7 @@ pub(crate) fn invoke_target_values(
             overload_strategy,
             source_shape,
             core_invocation,
+            intrinsic_body,
             migration_input_endpoint,
             migration_output_endpoint,
         });
@@ -2869,6 +2943,72 @@ pub(crate) fn invoke_target_values(
             }
             InvocationResult::Diagnostic(diagnostic) => {
                 return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
+            }
+        }
+    } else if let Some(intrinsic) = &selected.intrinsic_body {
+        match intrinsic {
+            crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(_) => {
+                let Some(target) = context.construction_target else {
+                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                        diagnostic: Diagnostic::hard_error(
+                            "selected literal constructor lost its exact complete target Type",
+                            Some(provenance.clone()),
+                        ),
+                        trace,
+                    });
+                };
+                let [ProductAtom::SemanticValue {
+                    value: source_value,
+                    ..
+                }] = selected
+                    .frame
+                    .explicit_arg_product
+                    .flattened
+                    .atoms
+                    .as_slice()
+                else {
+                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                        diagnostic: Diagnostic::hard_error(
+                            "selected literal constructor requires exactly one abstract source value",
+                            Some(provenance.clone()),
+                        ),
+                        trace,
+                    });
+                };
+                let Some(constructed) = semantic_world.construct_abstract_literal_value(
+                    *source_value,
+                    target,
+                    selected.complete_result_view.clone(),
+                    provenance.clone(),
+                ) else {
+                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                        diagnostic: Diagnostic::hard_error(
+                            "selected literal constructor failed to realize its result",
+                            Some(provenance.clone()),
+                        ),
+                        trace,
+                    });
+                };
+                OrdinaryReturnedValue::ForwardedSemanticValue(constructed)
+            }
+            crate::semantic_world::OrdinaryIntrinsicBody::Delete => {
+                return Err(OrdinaryInvocationFailure::SelectedDelete {
+                    selected: selected.call_entry_value,
+                    diagnostic: Diagnostic::hard_error(
+                        "selected literal construction candidate is deleted",
+                        Some(provenance.clone()),
+                    ),
+                    trace,
+                });
+            }
+            crate::semantic_world::OrdinaryIntrinsicBody::FailSelected => {
+                return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                    diagnostic: Diagnostic::hard_error(
+                        "selected literal construction candidate failed to realize its result",
+                        Some(provenance.clone()),
+                    ),
+                    trace,
+                });
             }
         }
     } else {

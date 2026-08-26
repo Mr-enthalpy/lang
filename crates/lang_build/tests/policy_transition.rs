@@ -5,11 +5,10 @@ use std::convert::Infallible;
 use lang_build::{
     assemble_transition_results, compare_policy_transition_candidates,
     elaborate_pure_type_binding_p1, elaborate_value_binding_p1, expose_policy_slice,
-    invoke_resolved_policy_bridge, materialize_literal_value, project_transition_policy_domain,
-    qualify_policy_bridge, read_pattern, read_value, resolve_policy_bridge, select_policy_overload,
+    invoke_resolved_policy_bridge, project_transition_policy_domain, qualify_policy_bridge,
+    read_pattern, read_value, resolve_policy_bridge, select_policy_overload,
     validate_runtime_transition, AtomicBuiltinType, AtomicBuiltinTypeRegistry,
-    AtomicBuiltinTypeRegistryFailure, BridgeQualification, CompilationWorld, LiteralFamily,
-    LiteralMaterializationFailure, LiteralTypeSelection, MutabilityActualFrame,
+    AtomicBuiltinTypeRegistryFailure, BridgeQualification, CompilationWorld, MutabilityActualFrame,
     MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey, NumericTypeRegistry,
     OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, OutputModeDemand, P1Elaboration,
     P1ElaborationFailure, P1Origin, P1Projection, PatternComponentPolicy, Phase,
@@ -20,7 +19,7 @@ use lang_build::{
     ResultPolicyDemand, SemanticValueId, SemanticValueRef, StageSet, SymbolPayload,
     TransitionTypeExpectation, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
-use support::{empty_app_manifest, initializer_from_source};
+use support::empty_app_manifest;
 
 fn stages(items: &[PolicyStage]) -> StageSet {
     let mut stages = StageSet::new();
@@ -1026,48 +1025,6 @@ fn core_numeric_registry_uses_explicit_type_values_carried_by_installed_symbols(
 }
 
 #[test]
-fn literal_family_is_distinct_from_selected_concrete_numeric_type() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
-    let registry = NumericTypeRegistry::from_core_world(&world).expect("numeric registry");
-    let uint16 = NumericTypeKey::new(NumericFamily::Uint, 16);
-    let expected = registry.get(uint16).expect("installed core uint16");
-    let expr = initializer_from_source("let x = 42");
-    let literal = materialize_literal_value(
-        &expr,
-        &AtomicBuiltinTypeRegistry::new(),
-        &registry,
-        LiteralTypeSelection::Numeric(uint16),
-        SemanticValueId(30),
-        Provenance::new("42"),
-    )
-    .expect("concrete Tnum selected");
-    assert_eq!(literal.literal_family, LiteralFamily::Integer);
-    assert_eq!(literal.numeric_type, Some(uint16));
-    assert_eq!(literal.type_value, expected);
-    assert_eq!(literal.policy, compile_pair());
-}
-
-#[test]
-fn numeric_literal_cannot_use_an_atomic_numeric_type_as_its_tnum() {
-    let expr = initializer_from_source("let x = 42");
-    assert!(matches!(
-        materialize_literal_value(
-            &expr,
-            &AtomicBuiltinTypeRegistry::new(),
-            &NumericTypeRegistry::new(),
-            LiteralTypeSelection::Atomic(AtomicBuiltinType::Int),
-            SemanticValueId(30),
-            Provenance::new("42"),
-        ),
-        Err(
-            LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericType {
-                selected: AtomicBuiltinType::Int
-            }
-        )
-    ));
-}
-
-#[test]
 fn atomic_registry_rejects_a_different_type_symbol_as_str() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
     assert!(
@@ -1082,26 +1039,6 @@ fn atomic_registry_rejects_a_different_type_symbol_as_str() {
             key: AtomicBuiltinType::Str,
             actual_name: "uint8".to_string()
         })
-    );
-}
-
-#[test]
-fn string_literal_cannot_invent_a_missing_str_type_projection() {
-    let expr = initializer_from_source("let s = \"abc\"");
-    assert_eq!(
-        materialize_literal_value(
-            &expr,
-            &AtomicBuiltinTypeRegistry::new(),
-            &NumericTypeRegistry::new(),
-            LiteralTypeSelection::Atomic(AtomicBuiltinType::Str),
-            SemanticValueId(30),
-            Provenance::new("\"abc\""),
-        ),
-        Err(
-            LiteralMaterializationFailure::AtomicBuiltinTypeUnavailable {
-                key: AtomicBuiltinType::Str
-            }
-        )
     );
 }
 

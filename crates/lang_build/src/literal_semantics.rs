@@ -205,17 +205,6 @@ impl AtomicBuiltinTypeRegistry {
     }
 }
 
-/// Syntactic literal family retained from normalized input.
-///
-/// This is not an atomic builtin type `T`: an integer spelling may later
-/// select either a signed or unsigned concrete numeric type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LiteralFamily {
-    Integer,
-    Float,
-    String,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NumericFamily {
     Uint,
@@ -244,6 +233,33 @@ pub struct NumericTypeRegistry {
     types: BTreeMap<NumericTypeKey, TypeValueId>,
 }
 
+/// Authorized abstract-to-concrete construction family.  Type-changing
+/// literal construction is distinct from same-Type Policy migration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConstructionFamily {
+    ConstructOrConvert,
+}
+
+/// Internal ordinary construction request.  The exact target is a complete
+/// immutable tau snapshot; its callspace supplies the candidate family.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConstructionRequest {
+    pub source: crate::SemanticValueRef,
+    pub target: crate::CompleteTypeValue,
+    pub result_demand: crate::ResultPolicyDemand,
+    pub family: ConstructionFamily,
+}
+
+/// Core bootstrap implementation data for one builtin constructor.  This is
+/// not a legality table used by call sites: bootstrap registers each row as
+/// an ordinary candidate in the target tau callspace.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BuiltinNumericConstructorSpec {
+    pub source_family: AbstractLiteralFamily,
+    pub target_key: NumericTypeKey,
+    pub target_type: TypeValueId,
+}
+
 impl NumericTypeRegistry {
     pub fn new() -> Self {
         Self::default()
@@ -255,10 +271,6 @@ impl NumericTypeRegistry {
 
     pub fn get(&self, key: NumericTypeKey) -> Option<TypeValueId> {
         self.types.get(&key).copied()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (NumericTypeKey, TypeValueId)> + '_ {
-        self.types.iter().map(|(key, value)| (*key, *value))
     }
 
     /// Resolve the concrete numeric types already installed by core bootstrap.
@@ -274,130 +286,35 @@ impl NumericTypeRegistry {
         }
         Ok(registry)
     }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LiteralTypeSelection {
-    Numeric(NumericTypeKey),
-    Atomic(AtomicBuiltinType),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LiteralValue {
-    pub id: SemanticValueId,
-    pub kind: NormLiteralKind,
-    pub text: String,
-    pub literal_family: LiteralFamily,
-    pub numeric_type: Option<NumericTypeKey>,
-    pub type_value: TypeValueId,
-    pub policy: PolicyPair,
-    pub provenance: Provenance,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum LiteralMaterializationFailure {
-    NotLiteral,
-    NumericLiteralRequiresConcreteNumericType {
-        selected: AtomicBuiltinType,
-    },
-    NumericFamilySelectionMismatch {
-        literal: LiteralFamily,
-        selected: NumericFamily,
-    },
-    AtomicTypeSelectionMismatch {
-        literal: LiteralFamily,
-        selected: AtomicBuiltinType,
-    },
-    AtomicBuiltinTypeUnavailable {
-        key: AtomicBuiltinType,
-    },
-    ConcreteNumericTypeUnavailable {
-        key: NumericTypeKey,
-    },
-}
-
-/// Materialize one normalized literal after context has selected its concrete
-/// type.
-///
-/// This API intentionally has no implicit numeric default. Unsuffixed literal
-/// defaulting/range selection remains a separate language decision.
-pub fn materialize_literal_value(
-    expr: &NormExpr,
-    atomic_types: &AtomicBuiltinTypeRegistry,
-    numeric_types: &NumericTypeRegistry,
-    selection: LiteralTypeSelection,
-    id: SemanticValueId,
-    provenance: Provenance,
-) -> Result<LiteralValue, LiteralMaterializationFailure> {
-    let NormExpr::Literal { kind, text, .. } = expr else {
-        return Err(LiteralMaterializationFailure::NotLiteral);
-    };
-    let literal_family = match kind {
-        NormLiteralKind::Int => LiteralFamily::Integer,
-        NormLiteralKind::Float => LiteralFamily::Float,
-        NormLiteralKind::String => LiteralFamily::String,
-    };
-
-    let (numeric_type, type_value) = match selection {
-        LiteralTypeSelection::Numeric(key) => {
-            let compatible = match literal_family {
-                LiteralFamily::Integer => {
-                    matches!(key.family, NumericFamily::Uint | NumericFamily::Int)
-                }
-                LiteralFamily::Float => key.family == NumericFamily::Float,
-                LiteralFamily::String => false,
-            };
-            if !compatible {
-                return Err(
-                    LiteralMaterializationFailure::NumericFamilySelectionMismatch {
-                        literal: literal_family,
-                        selected: key.family,
-                    },
-                );
-            }
-            let type_value = numeric_types
-                .get(key)
-                .ok_or(LiteralMaterializationFailure::ConcreteNumericTypeUnavailable { key })?;
-            (Some(key), type_value)
-        }
-        LiteralTypeSelection::Atomic(selected) => {
-            if matches!(
-                selected,
-                AtomicBuiltinType::Uint | AtomicBuiltinType::Int | AtomicBuiltinType::Float
-            ) {
-                return Err(
-                    LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericType {
-                        selected,
-                    },
-                );
-            }
-            let compatible = matches!(
-                (literal_family, selected),
-                (LiteralFamily::String, AtomicBuiltinType::Str)
-            );
-            if !compatible {
-                return Err(LiteralMaterializationFailure::AtomicTypeSelectionMismatch {
-                    literal: literal_family,
-                    selected,
+    /// Builtin implementation roster installed into target callspaces during
+    /// core bootstrap.  Consumers enumerate the resulting callspace entries;
+    /// they never query this registry to decide construction legality.
+    pub fn builtin_constructor_specs(&self) -> Vec<BuiltinNumericConstructorSpec> {
+        let mut specs = Vec::new();
+        for target_key in [
+            NumericTypeKey::new(NumericFamily::Uint, 8),
+            NumericTypeKey::new(NumericFamily::Uint, 16),
+            NumericTypeKey::new(NumericFamily::Uint, 32),
+        ] {
+            if let Some(target_type) = self.get(target_key) {
+                specs.push(BuiltinNumericConstructorSpec {
+                    source_family: AbstractLiteralFamily::Integer,
+                    target_key,
+                    target_type,
                 });
             }
-            let type_value = atomic_types.get(selected).ok_or(
-                LiteralMaterializationFailure::AtomicBuiltinTypeUnavailable { key: selected },
-            )?;
-            (None, type_value)
         }
-    };
-
-    Ok(LiteralValue {
-        id,
-        kind: *kind,
-        text: text.clone(),
-        literal_family,
-        numeric_type,
-        type_value,
-        policy: compile_literal_policy(),
-        provenance,
-    })
+        let target_key = NumericTypeKey::new(NumericFamily::Float, 32);
+        if let Some(target_type) = self.get(target_key) {
+            specs.push(BuiltinNumericConstructorSpec {
+                source_family: AbstractLiteralFamily::Real,
+                target_key,
+                target_type,
+            });
+        }
+        specs
+    }
 }
 
 pub fn compile_literal_policy() -> PolicyPair {

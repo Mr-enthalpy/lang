@@ -118,11 +118,10 @@ pub use lifecycle::{
 };
 pub use literal_semantics::{
     abstract_character_value, compile_literal_policy, form_abstract_literal_value,
-    materialize_literal_value, AbstractLiteralExactValue, AbstractLiteralFamily,
-    AbstractLiteralFormationFailure, AbstractLiteralValue, AtomicBuiltinType,
-    AtomicBuiltinTypeRegistry, AtomicBuiltinTypeRegistryFailure, LiteralFamily,
-    LiteralMaterializationFailure, LiteralTypeSelection, LiteralValue, NumericFamily,
-    NumericTypeKey, NumericTypeRegistry,
+    AbstractLiteralExactValue, AbstractLiteralFamily, AbstractLiteralFormationFailure,
+    AbstractLiteralValue, AtomicBuiltinType, AtomicBuiltinTypeRegistry,
+    AtomicBuiltinTypeRegistryFailure, BuiltinNumericConstructorSpec, ConstructionFamily,
+    ConstructionRequest, NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
 pub use meta::{

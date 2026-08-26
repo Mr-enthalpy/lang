@@ -66,6 +66,8 @@ enum ConnectedInitializerOutcome {
     Diagnostic(Diagnostic),
 }
 
+const CONSTRUCT_OR_CONVERT_SELECTOR: &str = "<ConstructOrConvert>";
+
 fn policy_let_target_demand(demand: &ResultPolicyDemand, source: &PolicyPair) -> PolicyView {
     let (value_query, pattern_query) = match &demand.pair_query {
         P1Projection::Infer => (None, None),
@@ -107,6 +109,10 @@ pub struct CompilationWorld {
     type_materialization_state: TypeMaterializationState,
     source_fragments: Vec<SourceFragment>,
     diagnostics: Vec<Diagnostic>,
+    /// Compatibility-only declaration ids for compiler-internal call
+    /// entries. Candidate identity is the semantic call-entry value; these
+    /// ids never enter name lookup or selection.
+    next_intrinsic_backing: u64,
 }
 
 impl CompilationWorld {
@@ -180,6 +186,7 @@ impl CompilationWorld {
             type_materialization_state: TypeMaterializationState::default(),
             source_fragments: Vec::new(),
             diagnostics: Vec::new(),
+            next_intrinsic_backing: u64::MAX,
         };
         // Core type carriers enter the semantic world
         // straight from the bootstrap's declared registration roster; the
@@ -205,6 +212,7 @@ impl CompilationWorld {
                 )
                 .expect("core namespace has a semantic owner");
         }
+        world.register_builtin_literal_constructors()?;
         // Core callables enter the semantic world straight
         // from the bootstrap's declared registration roster; there is no
         // graph-payload scan or legacy PolicySet re-projection step.
@@ -579,6 +587,74 @@ impl CompilationWorld {
                     None,
                 )
             })
+    }
+
+    /// Install core builtin implementations as ordinary target-callspace
+    /// candidates.  `NumericTypeRegistry` supplies bootstrap lookup/data only;
+    /// annotation evaluation never consults it for legality.
+    fn register_builtin_literal_constructors(&mut self) -> Result<(), BuildError> {
+        let registry =
+            crate::NumericTypeRegistry::from_core_world(self).map_err(BuildError::single)?;
+        for spec in registry.builtin_constructor_specs() {
+            let provenance =
+                Provenance::new(format!("builtin {:?} literal constructor", spec.target_key));
+            let view = PolicyView {
+                pair: crate::compile_literal_policy(),
+                mode: PolicyMode::Plain,
+            };
+            let backing = crate::SymbolId(self.next_intrinsic_backing);
+            self.next_intrinsic_backing = self
+                .next_intrinsic_backing
+                .checked_sub(1)
+                .expect("compiler-internal declaration id exhausted");
+            self.semantic_world.register_intrinsic_type_operation(
+                spec.target_type,
+                CONSTRUCT_OR_CONVERT_SELECTOR,
+                backing,
+                crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(spec),
+                view.clone(),
+                view,
+                provenance,
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Resolve the annotation's exact complete tau snapshot.  The target
+    /// carrier is used only to choose the owned Core observation; construction
+    /// candidates are enumerated from the immutable callspace on this value.
+    fn resolve_complete_annotation_type(
+        &mut self,
+        source_order_path: &str,
+    ) -> Result<Option<crate::CompleteTypeValue>, BuildError> {
+        let components = source_order_path
+            .split("::")
+            .filter(|component| !component.is_empty())
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+        let identity = match self.semantic_world.resolve_symbol_path(
+            &components,
+            self.package_root_node,
+            &[self.semantic_world.namespace_index().root_node()],
+            &[self.core_node],
+        ) {
+            Ok(identity) => identity,
+            Err(_) => return Ok(None),
+        };
+        let Some(member) = self
+            .semantic_world
+            .symbol(identity)
+            .and_then(|symbol| symbol.pure_p)
+        else {
+            return Ok(None);
+        };
+        let Some(target_type) = self.semantic_world.type_for_pattern(member.pattern) else {
+            return Ok(None);
+        };
+        self.semantic_world
+            .observe_complete_type(target_type, Some(member.place))
+            .map(Some)
+            .map_err(BuildError::single)
     }
 
     /// Resolve a normalized source call through the semantic Symbol/value/type
@@ -1725,9 +1801,18 @@ impl CompilationWorld {
         result: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
+        let demand = if slot.policy.is_some() {
+            ResultPolicyDemand {
+                pair_query: namespace_declaration.projection.clone(),
+                mode: namespace_declaration.mode,
+            }
+        } else {
+            ResultPolicyDemand::default()
+        };
         let result = self.construct_abstract_literals_for_annotation(
             slot.annotation.as_ref(),
             result,
+            &demand,
             &provenance,
         )?;
         assert_semantic_result_satisfies_annotation(
@@ -1737,14 +1822,6 @@ impl CompilationWorld {
             provenance.clone(),
         )?;
 
-        let demand = if slot.policy.is_some() {
-            ResultPolicyDemand {
-                pair_query: namespace_declaration.projection.clone(),
-                mode: namespace_declaration.mode,
-            }
-        } else {
-            ResultPolicyDemand::default()
-        };
         let selected = self
             .satisfy_binding_result_demand(&result, &demand, &provenance)
             .map_err(|failure| {
@@ -1768,6 +1845,148 @@ impl CompilationWorld {
         .map(|_| ())
     }
 
+    /// Select and execute one abstract-to-concrete constructor from the exact
+    /// target tau callspace.  The target is slot 0 and the abstract source is
+    /// the sole explicit argument (slot 1).  Selection is sealed before the
+    /// builtin/custom body runs, so realization failure cannot retry.
+    fn invoke_literal_construction_request(
+        &mut self,
+        request: crate::ConstructionRequest,
+        provenance: &Provenance,
+    ) -> Result<(crate::SemanticValueRef, crate::PatternValueId, PolicyView), BuildError> {
+        if request.family != crate::ConstructionFamily::ConstructOrConvert {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "unsupported literal construction candidate family",
+                Some(provenance.clone()),
+            )));
+        }
+        let source_object = self
+            .semantic_world
+            .value(request.source.id)
+            .cloned()
+            .ok_or_else(|| {
+                BuildError::single(Diagnostic::hard_error(
+                    "literal construction source value is not installed",
+                    Some(provenance.clone()),
+                ))
+            })?;
+        let crate::SemanticValuePayload::AbstractLiteral { .. } = source_object.payload else {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "literal construction source is not an abstract semantic literal",
+                Some(provenance.clone()),
+            )));
+        };
+        let target_receiver = self
+            .semantic_world
+            .type_object_value(request.target.lookup_key)
+            .ok_or_else(|| {
+                BuildError::single(Diagnostic::hard_error(
+                    "literal construction target tau has no semantic receiver value",
+                    Some(provenance.clone()),
+                ))
+            })?;
+        let explicit_atom = crate::ProductAtom::SemanticValue {
+            value: request.source.id,
+            type_value: request.source.type_value,
+            mode: source_object.mode,
+            provenance: provenance.clone(),
+        };
+        let explicit_product =
+            crate::ArgProductShape::from_flattened(crate::FlattenedProductObject {
+                atoms: vec![explicit_atom],
+                provenance: provenance.clone(),
+                invariant: crate::FlattenedProductInvariant {
+                    no_direct_product_atom_remains: true,
+                },
+            });
+        let candidate_values = request
+            .target
+            .call_space
+            .get(CONSTRUCT_OR_CONVERT_SELECTOR)
+            .into_iter()
+            .flatten()
+            .filter(|entry| entry.facet == crate::TypeMemberFacet::Value)
+            .map(|entry| entry.value)
+            .collect::<Vec<_>>();
+        let target_members = self
+            .semantic_world
+            .member_views_for_values(&candidate_values);
+        let target_pattern = self
+            .semantic_world
+            .type_value(request.target.lookup_key)
+            .expect("complete target lookup key remains installed")
+            .pattern;
+
+        // Abstract-to-concrete construction itself produces a compile view.
+        // A surrounding runtime demand is satisfied only afterwards by the
+        // ordinary same-Type migration boundary. Whole-slot mode remains the
+        // coordinate supplied by the original result demand.
+        let construction_demand = ResultPolicyDemand {
+            pair_query: P1Projection::Pair(crate::compile_literal_policy()),
+            mode: request.result_demand.mode,
+        };
+        let explicit_modes = [source_object.mode];
+        let context = crate::OrdinaryInvocationContext::open_static(&explicit_modes)
+            .with_result_policy_demand(construction_demand)
+            .with_construction_target(&request.target);
+        let resolver_context = self.root_context();
+        let outcome = crate::ordinary_invocation::invoke_target_values(
+            &mut self.semantic_world,
+            &mut self.type_materialization_state,
+            crate::OrdinaryCandidateOrigin::PatternAssociatedCallEntry(target_pattern),
+            target_members,
+            Some(target_receiver),
+            None,
+            explicit_product,
+            &resolver_context,
+            context,
+            provenance.clone(),
+        )
+        .map_err(|failure| {
+            BuildError::single(ordinary_invocation_failure_diagnostic(
+                failure,
+                provenance.clone(),
+            ))
+        })?;
+        let crate::InvocationOutcome::SingleMember(selected) = outcome else {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "literal construction selected a non-value result shape",
+                Some(provenance.clone()),
+            )));
+        };
+        let exposed = selected.exposed();
+        let [entry] = exposed.material.as_slice() else {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "literal construction did not expose exactly one concrete value",
+                Some(provenance.clone()),
+            )));
+        };
+        let Some(result_ref) = entry.value else {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "literal construction returned a pure Pattern instead of a value",
+                Some(provenance.clone()),
+            )));
+        };
+        let result = self
+            .semantic_world
+            .value(result_ref.id)
+            .expect("ordinary constructor installed its returned value");
+        let exact_target = matches!(
+            &result.payload,
+            crate::SemanticValuePayload::ConstructedLiteral {
+                target_complete_type,
+                ..
+            } if *target_complete_type == request.target.whole
+        );
+        if result_ref.type_value != request.target.lookup_key || !exact_target {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "selected literal constructor returned a value outside the demanded complete Type",
+                Some(provenance.clone()),
+            )));
+        }
+        Ok((result_ref, entry.pattern, entry.view.clone()))
+    }
+
     /// Apply an explicit concrete annotation only after abstract literal
     /// formation.  The installed abstract source remains intact and the
     /// result records it as construction provenance, so an expected machine
@@ -1776,6 +1995,7 @@ impl CompilationWorld {
         &mut self,
         annotation: Option<&NormAnnotation>,
         mut result: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
+        result_demand: &ResultPolicyDemand,
         provenance: &Provenance,
     ) -> Result<
         Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
@@ -1788,70 +2008,33 @@ impl CompilationWorld {
         if matches!(name.as_str(), "type" | "integer" | "real" | "character") {
             return Ok(result);
         }
-        let target_type = match self.resolve_type_value(name) {
-            Ok(target) => target,
-            Err(_) => return Ok(result),
+        let Some(target) = self.resolve_complete_annotation_type(name)? else {
+            return Ok(result);
         };
-        let numeric =
-            crate::NumericTypeRegistry::from_core_world(self).map_err(BuildError::single)?;
         for entry in &mut result {
             let Some(source) = entry.value else {
                 continue;
             };
-            let Some(source_object) = self.semantic_world.value(source.id) else {
+            if !matches!(
+                self.semantic_world
+                    .value(source.id)
+                    .map(|value| &value.payload),
+                Some(crate::SemanticValuePayload::AbstractLiteral { .. })
+            ) {
                 continue;
-            };
-            let crate::SemanticValuePayload::AbstractLiteral { family, .. } = source_object.payload
-            else {
-                continue;
-            };
-            let compatible = numeric.iter().any(|(key, candidate_type)| {
-                candidate_type == target_type
-                    && matches!(
-                        (family, key.family),
-                        (
-                            crate::AbstractLiteralFamily::Integer,
-                            crate::NumericFamily::Uint | crate::NumericFamily::Int
-                        ) | (
-                            crate::AbstractLiteralFamily::Real,
-                            crate::NumericFamily::Float
-                        )
-                    )
-            });
-            if !compatible {
-                return Err(BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "literal construction has no candidate from abstract `{}` to concrete `{name}`",
-                        family.type_name()
-                    ),
-                    Some(provenance.clone()),
-                )));
             }
-            let policy = entry.view.pair.clone();
-            let constructed = self
-                .semantic_world
-                .construct_abstract_literal_value(
-                    source.id,
-                    target_type,
-                    policy,
-                    provenance.clone(),
-                )
-                .ok_or_else(|| {
-                    BuildError::single(Diagnostic::hard_error(
-                        "selected literal construction could not realize its result",
-                        Some(provenance.clone()),
-                    ))
-                })?;
-            let pattern = self
-                .semantic_world
-                .type_value(target_type)
-                .expect("resolved concrete literal Type exists")
-                .pattern;
-            entry.value = Some(crate::SemanticValueRef {
-                id: constructed,
-                type_value: target_type,
-            });
+            let (constructed, pattern, view) = self.invoke_literal_construction_request(
+                crate::ConstructionRequest {
+                    source,
+                    target: target.clone(),
+                    result_demand: result_demand.clone(),
+                    family: crate::ConstructionFamily::ConstructOrConvert,
+                },
+                provenance,
+            )?;
+            entry.value = Some(constructed);
             entry.pattern = pattern;
+            entry.view = view;
         }
         Ok(result)
     }
@@ -3331,5 +3514,195 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::BindingSlot { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
+    }
+}
+
+#[cfg(test)]
+mod literal_construction_tests {
+    use super::*;
+
+    fn world() -> CompilationWorld {
+        CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
+            .expect("core world builds")
+    }
+
+    fn abstract_integer(world: &mut CompilationWorld) -> crate::SemanticValueRef {
+        let integer = world
+            .resolve_type_value("integer")
+            .expect("abstract integer Type resolves");
+        let id = world
+            .semantic_world
+            .install_abstract_literal_value(
+                crate::AbstractLiteralFamily::Integer,
+                crate::AbstractLiteralExactValue::Integer("42".to_string()),
+                integer,
+                crate::compile_literal_policy(),
+                Provenance::new("literal construction test source"),
+            )
+            .expect("abstract integer installs");
+        crate::SemanticValueRef {
+            id,
+            type_value: integer,
+        }
+    }
+
+    fn add_test_candidate(
+        world: &mut CompilationWorld,
+        target_type: crate::TypeValueId,
+        mode: PolicyMode,
+        body: crate::semantic_world::OrdinaryIntrinsicBody,
+    ) -> crate::SemanticValueId {
+        let view = PolicyView {
+            pair: crate::compile_literal_policy(),
+            mode,
+        };
+        let backing = crate::SymbolId(world.next_intrinsic_backing);
+        world.next_intrinsic_backing = world
+            .next_intrinsic_backing
+            .checked_sub(1)
+            .expect("test intrinsic declaration ids remain available");
+        world
+            .semantic_world
+            .register_intrinsic_type_operation(
+                target_type,
+                CONSTRUCT_OR_CONVERT_SELECTOR,
+                backing,
+                body,
+                view.clone(),
+                view,
+                Provenance::new("test literal constructor candidate"),
+            )
+            .expect("test candidate enters target callspace")
+    }
+
+    fn request(
+        world: &mut CompilationWorld,
+        target_name: &str,
+        mode: PolicyMode,
+    ) -> crate::ConstructionRequest {
+        let source = abstract_integer(world);
+        let target = world
+            .resolve_complete_annotation_type(target_name)
+            .expect("target observation succeeds")
+            .expect("target resolves to complete tau");
+        crate::ConstructionRequest {
+            source,
+            target,
+            result_demand: ResultPolicyDemand {
+                pair_query: P1Projection::Infer,
+                mode,
+            },
+            family: crate::ConstructionFamily::ConstructOrConvert,
+        }
+    }
+
+    fn constructed_count(world: &CompilationWorld) -> usize {
+        world
+            .semantic_world
+            .values()
+            .filter(|value| {
+                matches!(
+                    value.payload,
+                    crate::SemanticValuePayload::ConstructedLiteral { .. }
+                )
+            })
+            .count()
+    }
+
+    #[test]
+    fn registry_target_without_callspace_candidate_is_not_constructible() {
+        let mut world = world();
+        let mut request = request(&mut world, "uint16", PolicyMode::Plain);
+        request
+            .target
+            .call_space
+            .remove(CONSTRUCT_OR_CONVERT_SELECTOR);
+        let before = constructed_count(&world);
+        let error = world
+            .invoke_literal_construction_request(
+                request,
+                &Provenance::new("missing constructor candidate"),
+            )
+            .expect_err("the numeric registry is not construction authority");
+        assert!(error.diagnostics[0]
+            .message
+            .contains("no semantic target values"));
+        assert_eq!(constructed_count(&world), before);
+    }
+
+    #[test]
+    fn selected_constructor_failure_does_not_run_plain_runner_up() {
+        let mut world = world();
+        let target = world.resolve_type_value("uint16").expect("uint16 resolves");
+        add_test_candidate(
+            &mut world,
+            target,
+            PolicyMode::Const,
+            crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
+        );
+        let request = request(&mut world, "uint16", PolicyMode::Const);
+        let before = constructed_count(&world);
+        let error = world
+            .invoke_literal_construction_request(
+                request,
+                &Provenance::new("selected constructor failure"),
+            )
+            .expect_err("the preferred selected body fails terminally");
+        assert!(error.diagnostics[0].message.contains("failed to realize"));
+        assert_eq!(
+            constructed_count(&world),
+            before,
+            "the runnable plain builtin was not retried"
+        );
+    }
+
+    #[test]
+    fn selected_delete_and_ambiguity_do_not_fabricate_literal_results() {
+        let mut deleted = world();
+        let target = deleted
+            .resolve_type_value("uint16")
+            .expect("uint16 resolves");
+        add_test_candidate(
+            &mut deleted,
+            target,
+            PolicyMode::Mut,
+            crate::semantic_world::OrdinaryIntrinsicBody::Delete,
+        );
+        let deleted_request = request(&mut deleted, "uint16", PolicyMode::Mut);
+        let before = constructed_count(&deleted);
+        let error = deleted
+            .invoke_literal_construction_request(
+                deleted_request,
+                &Provenance::new("deleted constructor"),
+            )
+            .expect_err("delete winner rejects");
+        assert!(error.diagnostics[0].message.contains("deleted"));
+        assert_eq!(constructed_count(&deleted), before);
+
+        let mut ambiguous = world();
+        let target = ambiguous
+            .resolve_type_value("uint16")
+            .expect("uint16 resolves");
+        let builtin_spec = crate::BuiltinNumericConstructorSpec {
+            source_family: crate::AbstractLiteralFamily::Integer,
+            target_key: crate::NumericTypeKey::new(crate::NumericFamily::Uint, 16),
+            target_type: target,
+        };
+        add_test_candidate(
+            &mut ambiguous,
+            target,
+            PolicyMode::Plain,
+            crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(builtin_spec),
+        );
+        let ambiguous_request = request(&mut ambiguous, "uint16", PolicyMode::Plain);
+        let before = constructed_count(&ambiguous);
+        let error = ambiguous
+            .invoke_literal_construction_request(
+                ambiguous_request,
+                &Provenance::new("ambiguous constructors"),
+            )
+            .expect_err("equal maxima are ambiguous");
+        assert!(error.diagnostics[0].message.contains("multiple maximal"));
+        assert_eq!(constructed_count(&ambiguous), before);
     }
 }
