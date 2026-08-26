@@ -63,7 +63,7 @@ pub use canonical_value::{
     CanonicalPatternAtom, CanonicalPatternBuilder, CanonicalPatternNorm, CanonicalPatternValue,
     CanonicalProductConstructor, CanonicalTypeCallSpaceNorm, CanonicalTypeObservation,
     CanonicalVal1Norm, CanonicalVal2Norm, CanonicalValueAddr, DuplicatePatternNavigation,
-    ExtractionPatternParent, MissingExtractionNavigationAnchor, PatternChildInput,
+    ExtractionPatternParent, MissingExtractionNavigationAnchor, OpaqueVal1Id, PatternChildInput,
     PatternLayerContext, PatternNavigationInput, PatternOwnNavigation,
 };
 pub use construction_value::{
@@ -294,9 +294,9 @@ pub use semantic_world::{
     ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
     ResidentGeneration, ResidentIdentity, ResidualRuntimeEpoch, ResolvedExtractionTarget,
     ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticPatternValue,
-    SemanticSymbolCell, SemanticTypeValue, SemanticValueObject, SemanticValuePayload,
-    SemanticWorld, StableBorrowTarget, SymbolConstructionValue, TypeMemberFacet,
-    TypeMemberSnapshotEntry, WritableContext,
+    SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot, SemanticValueObject,
+    SemanticValuePayload, SemanticWorld, StableBorrowTarget, SymbolConstructionValue,
+    TypeMemberFacet, TypeMemberSnapshotEntry, WritableContext,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{

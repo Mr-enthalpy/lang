@@ -448,8 +448,9 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
 /// CONTENT, not by value identity: two distinct `SimpleLiteral` semantic
 /// values with normalization-equivalent spellings share one canonical
 /// argument address (and merge with the un-materialized literal spelling),
-/// while content-free `PlainValue` material is rejected rather than using an
-/// allocation identity as semantic content.
+/// while content-free `PlainValue` material receives a dedicated opaque Val1
+/// leaf.  That leaf is stable for one semantic value and never merges two
+/// different values; it is not a Place, Symbol, or Type lookup identity.
 #[test]
 fn materialized_simple_literals_normalize_by_content_not_identity() {
     use lang_build::{canonical_literal_norm, ProductAtom, RawArgShape};
@@ -534,21 +535,20 @@ fn materialized_simple_literals_normalize_by_content_not_identity() {
         .expect("literal value installs against the registered type");
     assert_ne!(dec_addr, address_of(&mut world, other));
 
-    // Content-free plain values cannot form complete Norm_Val1.  The
-    // normalizer fails explicitly rather than turning allocation identity
-    // into a fourth Object axis.
+    // Content-free plain values use safe opaque under-merge until a content
+    // normalizer exists: repeated observation is stable, while two different
+    // values never merge.
     let plain_a = world
         .install_plain_value(TypeValueId(0), policy.clone(), provenance.clone())
         .expect("plain value installs against the registered type");
-    let plain_atom = ProductAtom::SemanticValue {
-        value: plain_a,
-        type_value: TypeValueId(0),
-        mode: PolicyMode::Const,
-        provenance: provenance.clone(),
-    };
-    let plain_raw = RawArgShape::from_product_atom(0, &plain_atom);
-    let diagnostic = world
-        .canonical_argument_address(&plain_raw, &plain_atom)
-        .expect_err("unobservable Val1 must not acquire an opaque canonical address");
-    assert!(diagnostic.message.contains("PlainValue"));
+    let plain_b = world
+        .install_plain_value(TypeValueId(0), policy, provenance.clone())
+        .expect("second plain value installs against the registered type");
+    let plain_a_addr = address_of(&mut world, plain_a);
+    assert_eq!(plain_a_addr, address_of(&mut world, plain_a));
+    assert_ne!(
+        plain_a_addr,
+        address_of(&mut world, plain_b),
+        "opaque Val1 leaves may under-merge but never over-merge distinct values"
+    );
 }

@@ -78,17 +78,17 @@ fn expected_single_field_pattern(
 }
 
 /// The over-merge counterexample: ONE resident TypeValue (`uint8`), ONE
-/// Pattern, but a Val2 injection between two `struct` generations — the two
-/// resident leaves consume two different observations and must differ.
+/// Pattern, but an owned Val2 contribution between two direct observations.
+/// The owned Object observations differ, while a previously bound complete
+/// tau snapshot remains immutable and is not silently rebuilt by navigation.
 ///
 /// ```text
-/// t_1 = ⟨P_t, ∅⟩        ((t x) A) |> struct
-/// let f::t = type;
-/// t_2 = ⟨P_t, {f}⟩      ((t x) B) |> struct
-/// Atom(t_1) ≠ Atom(t_2)  even though TypeValueId(t_1) = TypeValueId(t_2)
+/// Q_1 = ⟨P_t, ∅⟩        tau_1 = bind.<Q_1,V_tau>
+/// let f::t = type;       Q_2 = ⟨P_t, {f}⟩
+/// Q_1 ≠ Q_2             while the already bound tau_1 stays immutable
 /// ```
 #[test]
-fn same_type_value_with_different_observed_val2_separates_struct_resident_atoms() {
+fn owned_val2_changes_core_observation_without_rewriting_bound_tau_snapshot() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
             .expect("core semantic world builds");
@@ -142,31 +142,24 @@ fn same_type_value_with_different_observed_val2_separates_struct_resident_atoms(
         "⟨P, ∅⟩ and ⟨P, {{f}}⟩ are two different type-object observations"
     );
 
-    let b = generated_struct(
+    // The over-merge boundary itself is observable directly from the owned
+    // Object snapshot.  The already bound `uint8` complete-tau carrier keeps
+    // the immutable snapshot captured before this contribution; ordinary
+    // navigation does not retroactively rewrite it.
+    assert_ne!(
+        before, after,
+        "same TypeValueId, different owned Val2 gives different Core observations"
+    );
+    let collision = invoke_struct(
         &mut world,
         "let B: type = ((uint8 x) B) |> struct;",
-        "resident observation after injection",
-    );
-    assert_eq!(
-        b.fields[0].type_observation,
-        CanonicalTypeObservation::Observed(after),
-        "the second generation consumes the second observation"
-    );
-    assert_eq!(
-        b.canonical_pattern_value(),
-        expected_single_field_pattern("B", "x", CanonicalTypeObservation::Observed(after)),
-    );
-
-    // The over-merge boundary itself: one TypeValueId, two distinct atoms.
-    assert_eq!(
-        a.fields[0].type_value, b.fields[0].type_value,
-        "both residents project ONE TypeValueId"
-    );
-    assert_ne!(
-        CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(a.fields[0].type_observation)),
-        CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(b.fields[0].type_observation)),
-        "same TypeValueId, different observed Val2 → the struct resident atoms differ"
-    );
+        "bound tau remains the pre-injection snapshot",
+    )
+    .expect_err("the bound immutable tau still presents the original resident atom");
+    assert!(matches!(
+        collision,
+        OrdinaryInvocationFailure::SelectedCoreBody { .. }
+    ));
 }
 
 /// The reverse direction: two carriers `T` and `U` of ONE TypeValue at two

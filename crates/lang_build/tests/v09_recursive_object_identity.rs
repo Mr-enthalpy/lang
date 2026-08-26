@@ -49,7 +49,7 @@ use lang_build::{
     Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
     RawArgShape, RawArgValueClass, ResolverContext, ReturnShape, SemanticSymbolIdentity,
     SemanticTypeEnv, SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeMaterializationState,
-    TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
+    TypeMemberFacet, TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
 
@@ -257,6 +257,96 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
         type_addr(&mut world, type_value, Some(v_place)),
         t_with_f,
         "equal P and equal recursive Val2 is equal identity, whatever the place"
+    );
+}
+
+/// Lookup-visible fallback is horizontal navigation, not owned Val2.  A
+/// carrier freezes physically shared members when it is formed; later writes
+/// to the Pattern's canonical place remain navigable but cannot rewrite that
+/// existing Object's normal form.
+#[test]
+fn later_pattern_fallback_does_not_rewrite_existing_owned_val2() {
+    let Carriers {
+        mut world,
+        base,
+        t,
+        member,
+        type_value,
+        ..
+    } = carriers();
+    let canonical = place_of(&world, base);
+    let t_place = place_of(&world, t);
+    let t_host = world.host_member_of(t).expect("T is a pure-P host");
+    let before = type_addr(&mut world, type_value, Some(t_place));
+
+    world
+        .associate_existing_symbol_in_place(canonical, "late", member)
+        .expect("the canonical Pattern object receives a later member");
+    assert_eq!(
+        world.associated_symbol_for_host(&t_host, "late"),
+        Some(member),
+        "navigation may still expose the Pattern fallback"
+    );
+    assert_eq!(
+        type_addr(&mut world, type_value, Some(t_place)),
+        before,
+        "lookup fallback is not SemanticVal2Snapshot(T)"
+    );
+    assert_ne!(
+        type_addr(&mut world, type_value, Some(canonical)),
+        before,
+        "the canonical object's own snapshot did change"
+    );
+}
+
+/// The complete type callspace snapshot and an Object's owned Val2 snapshot
+/// are distinct semantic observations.  A new direct TypeMember produces a
+/// successor tau without rewriting the existing Object's Val2 definition.
+#[test]
+fn successor_vtau_does_not_redefine_object_val2() {
+    let Carriers {
+        mut world,
+        t,
+        pattern,
+        type_value,
+        ..
+    } = carriers();
+    let t_place = place_of(&world, t);
+    let object_before = world
+        .canonical_type_core_observation_address(type_value, Some(t_place))
+        .expect("initial Object core observes");
+    let tau_before = world
+        .observe_complete_type(type_value, Some(t_place))
+        .expect("initial complete tau observes")
+        .whole;
+    let builtin_member = world
+        .type_object_value(TypeValueId(1))
+        .expect("member type has a transport value");
+
+    world
+        .admit_direct_type_member(
+            pattern,
+            pattern,
+            "vtau_only",
+            TypeMemberFacet::Value,
+            builtin_member,
+        )
+        .expect("a fresh direct TypeMember is admitted");
+    let tau_after = world
+        .observe_complete_type(type_value, Some(t_place))
+        .expect("successor complete tau observes")
+        .whole;
+
+    assert_ne!(
+        tau_before, tau_after,
+        "V_tau changed the whole tau snapshot"
+    );
+    assert_eq!(
+        object_before,
+        world
+            .canonical_type_core_observation_address(type_value, Some(t_place))
+            .expect("Object core re-observes"),
+        "V_tau is not SemanticVal2Snapshot(x)"
     );
 }
 

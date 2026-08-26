@@ -534,6 +534,16 @@ pub enum CanonicalProductConstructor {
     CallParentheses,
 }
 
+/// Identity-stable leaf used when an ordinary Val1 has no implemented
+/// content normalizer yet.
+///
+/// This identity is deliberately its own semantic coordinate: it is not a
+/// Place, Symbol, Type lookup key, or exposed `SemanticValueId`.  Opaque
+/// leaves only under-merge (the same value reuses one leaf; distinct values
+/// never collapse) until a content normalizer replaces them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OpaqueVal1Id(pub(crate) u64);
+
 /// Canonical normal form of the owned Val1 component.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CanonicalVal1Norm {
@@ -545,6 +555,9 @@ pub enum CanonicalVal1Norm {
         members: Vec<CanonicalValueAddr>,
     },
     ProductUnit,
+    /// Safe under-merge for ordinary Val1 payloads whose content
+    /// normalization is not implemented yet.
+    Opaque(OpaqueVal1Id),
     /// Callable content is identified through its canonical Pattern/root and
     /// Val2 callspace; declaration spellings and carrier Symbols are absent.
     FunctionObject,
