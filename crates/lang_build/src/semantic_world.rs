@@ -1980,7 +1980,8 @@ impl SemanticWorld {
     /// Literal content and type-object material normalize by content; a
     /// materialized call entry normalizes as the object
     /// `⟨Norm_P(P_FunctionItem), Norm_Val2(∅)⟩`, which is where the recursion
-    /// bottoms out. Payloads without canonical Val1 material fail explicitly.
+    /// bottoms out. Payloads without a content normalizer use a stable opaque
+    /// Val1 leaf, which safely under-merges rather than inventing equality.
     fn canonical_member_value_address(
         &mut self,
         value: SemanticValueId,
@@ -2063,8 +2064,9 @@ impl SemanticWorld {
     ///
     /// Simple closed material — resolved type objects (pure-P), product
     /// units, and literal spellings — receives content-normalized addresses.
-    /// Material that cannot expose all three owned components is rejected;
-    /// allocation identity is not a legal normal form.
+    /// Material with an implemented content normalizer uses it; otherwise an
+    /// identity-stable opaque Val1 leaf preserves a normal form without
+    /// claiming content equality.
     ///
     /// A type argument normalizes through
     /// `Norm_type(x) = ⟨none, Norm_P(P_x), Norm_Val2(Val2_x)⟩`, where the Val2 is

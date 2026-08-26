@@ -147,11 +147,6 @@ impl<'a> OrdinaryInvocationContext<'a> {
         self
     }
 
-    pub fn with_output_mode_demand(mut self, demand: PolicyMode) -> Self {
-        self.result_policy_demand.mode = demand;
-        self
-    }
-
     pub fn with_result_policy_demand(mut self, demand: ResultPolicyDemand) -> Self {
         self.result_policy_demand = demand;
         self
