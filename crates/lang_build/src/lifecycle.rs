@@ -139,19 +139,19 @@ impl ColorAlgebra {
     pub fn declare_compatible(&mut self, left: ColorId, right: ColorId) {
         self.register(left.clone());
         self.register(right.clone());
-        self.compatible.insert(ordered_pair(left, right));
+        self.compatible.insert((left, right));
     }
 
     pub fn declare_exclusive(&mut self, left: ColorId, right: ColorId) {
         self.register(left.clone());
         self.register(right.clone());
-        self.exclusive.insert(ordered_pair(left, right));
+        self.exclusive.insert((left, right));
     }
 
     pub fn declare_exchangeable(&mut self, left: ColorId, right: ColorId) {
         self.register(left.clone());
         self.register(right.clone());
-        self.exchangeable.insert(ordered_pair(left, right));
+        self.exchangeable.insert((left, right));
     }
 
     pub fn contains(&self, color: &ColorId) -> bool {
@@ -159,28 +159,15 @@ impl ColorAlgebra {
     }
 
     pub fn compatible(&self, left: &ColorId, right: &ColorId) -> bool {
-        left == right
-            || self
-                .compatible
-                .contains(&ordered_pair(left.clone(), right.clone()))
+        self.compatible.contains(&(left.clone(), right.clone()))
     }
 
     pub fn exclusive(&self, left: &ColorId, right: &ColorId) -> bool {
-        self.exclusive
-            .contains(&ordered_pair(left.clone(), right.clone()))
+        self.exclusive.contains(&(left.clone(), right.clone()))
     }
 
     pub fn exchangeable(&self, left: &ColorId, right: &ColorId) -> bool {
-        self.exchangeable
-            .contains(&ordered_pair(left.clone(), right.clone()))
-    }
-}
-
-fn ordered_pair(left: ColorId, right: ColorId) -> (ColorId, ColorId) {
-    if left <= right {
-        (left, right)
-    } else {
-        (right, left)
+        self.exchangeable.contains(&(left.clone(), right.clone()))
     }
 }
 
@@ -588,5 +575,76 @@ mod tests {
         let future = ColorId("project-defined/future-color".into());
         colors.register(future.clone());
         assert!(colors.contains(&future));
+    }
+
+    #[test]
+    fn color_rows_are_directed_explicit_and_relation_local() {
+        let a = ColorId("a".into());
+        let b = ColorId("b".into());
+        let mut colors = ColorAlgebra::default();
+
+        colors.declare_compatible(a.clone(), b.clone());
+        assert!(colors.compatible(&a, &b));
+        assert!(!colors.compatible(&b, &a));
+        assert!(!colors.compatible(&a, &a));
+        assert!(!colors.exclusive(&a, &b));
+        assert!(!colors.exchangeable(&a, &b));
+
+        colors.declare_compatible(a.clone(), a.clone());
+        assert!(colors.compatible(&a, &a), "an explicit self row is valid");
+
+        colors.declare_exclusive(b.clone(), a.clone());
+        assert!(colors.exclusive(&b, &a));
+        assert!(!colors.exclusive(&a, &b));
+        assert!(colors.compatible(&a, &b));
+        assert!(!colors.exchangeable(&b, &a));
+
+        colors.declare_exchangeable(a.clone(), b.clone());
+        assert!(colors.exchangeable(&a, &b));
+        assert!(!colors.exchangeable(&b, &a));
+        assert!(!colors.exclusive(&a, &b));
+    }
+
+    #[test]
+    fn lifecycle_pre_consumes_color_rows_in_the_written_direction() {
+        let a = ColorId("a".into());
+        let b = ColorId("b".into());
+        let mut colors = ColorAlgebra::default();
+        colors.declare_compatible(a.clone(), b.clone());
+        colors.declare_exclusive(b.clone(), a.clone());
+
+        let forward = LifecycleValidationContext {
+            snapshot: LifecycleSnapshot {
+                colors: colors.clone(),
+                ..LifecycleSnapshot::default()
+            },
+            preconditions: vec![
+                LifecyclePrecondition::ColorCompatible(a.clone(), b.clone()),
+                LifecyclePrecondition::ColorNotExclusive(a.clone(), b.clone()),
+            ],
+        };
+        assert!(forward.validate_pre(&Provenance::new("a to b")).is_ok());
+
+        let reverse_compatible = LifecycleValidationContext {
+            snapshot: LifecycleSnapshot {
+                colors: colors.clone(),
+                ..LifecycleSnapshot::default()
+            },
+            preconditions: vec![LifecyclePrecondition::ColorCompatible(b.clone(), a.clone())],
+        };
+        assert!(reverse_compatible
+            .validate_pre(&Provenance::new("b to a compatibility"))
+            .is_err());
+
+        let reverse_not_exclusive = LifecycleValidationContext {
+            snapshot: LifecycleSnapshot {
+                colors,
+                ..LifecycleSnapshot::default()
+            },
+            preconditions: vec![LifecyclePrecondition::ColorNotExclusive(b, a)],
+        };
+        assert!(reverse_not_exclusive
+            .validate_pre(&Provenance::new("b to a exclusion"))
+            .is_err());
     }
 }
