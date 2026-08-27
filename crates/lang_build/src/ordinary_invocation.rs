@@ -1612,8 +1612,9 @@ pub fn invoke_pattern_associated_value_ordinary(
 
 /// Cc stage: filter sibling vals that are callable.
 ///
-/// Callable(v) iff (v |> type).Val2 contains `()` — i.e. following
-/// the value's own recursive Val1×P×Val2 structure yields a call entry.
+/// Callable(v) iff the immutable callspace of the exact complete Type captured
+/// when `v` was formed contains `()`. Object.Val2 is not callable authority,
+/// and the Type lookup key must not be refreshed to a later snapshot.
 fn filter_callable(
     semantic_world: &SemanticWorld,
     values: &[SemanticValueId],
@@ -1621,10 +1622,7 @@ fn filter_callable(
     values
         .iter()
         .filter_map(|value| {
-            let entries = semantic_world
-                .associated_values_for_value(*value, "()")
-                .map(|e| e.to_vec())
-                .unwrap_or_default();
+            let entries = semantic_world.callable_entries_for_value(*value);
             let call_entries: Vec<SemanticValueId> = entries
                 .into_iter()
                 .filter(|entry| {

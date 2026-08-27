@@ -1400,6 +1400,10 @@ pub struct SemanticWorld {
     local_pattern_root_counters: BTreeMap<SemanticOwnerId, u32>,
     symbols: BTreeMap<SemanticSymbolIdentity, SemanticSymbolCell>,
     values: BTreeMap<SemanticValueId, SemanticValueObject>,
+    /// Exact immutable complete-Type snapshot captured when each ordinary
+    /// Val1 is formed. This is `Type(v) = tau_v`; it is never reconstructed
+    /// from the lookup key after later TypeMember contributions.
+    value_complete_types: BTreeMap<SemanticValueId, CanonicalValueAddr>,
     types: BTreeMap<TypeValueId, SemanticTypeValue>,
     /// Direct TypeMembers admitted under each core lookup key.  This mutable
     /// table is construction substrate only: observing a complete type clones
@@ -1529,6 +1533,7 @@ impl SemanticWorld {
             local_pattern_root_counters: BTreeMap::new(),
             symbols: BTreeMap::new(),
             values: BTreeMap::new(),
+            value_complete_types: BTreeMap::new(),
             types: BTreeMap::new(),
             direct_type_members: BTreeMap::new(),
             complete_types: BTreeMap::new(),
@@ -3090,12 +3095,42 @@ impl SemanticWorld {
                 construction.state = ConstructionState::Frozen;
             }
         }
+        if let Ok(complete) = self.observe_complete_type(object.type_value, Some(object.place)) {
+            self.value_complete_types.insert(id, complete.whole);
+        }
         let replaced = self.values.insert(id, object);
         debug_assert!(
             replaced.is_none(),
             "semantic value ids are single-assignment"
         );
         id
+    }
+
+    /// `CallSpace(Type(v))["()"]` from the exact snapshot captured when `v`
+    /// was formed. No Object.Val2 fallback and no lookup-key refresh is
+    /// permitted here.
+    pub fn callable_entries_for_value(&self, value: SemanticValueId) -> Vec<SemanticValueId> {
+        self.value_complete_types
+            .get(&value)
+            .and_then(|whole| self.complete_types.get(whole))
+            .and_then(|complete| complete.call_space.get("()"))
+            .map(|entries| entries.iter().map(|entry| entry.value).collect())
+            .unwrap_or_default()
+    }
+
+    /// Complete formation of a value whose Type callspace was assembled after
+    /// the Val1 carrier itself was allocated. Ordinary later TypeMember
+    /// contributions never call this, so they cannot retarget an existing
+    /// value to a successor tau snapshot.
+    fn freeze_value_complete_type(&mut self, value: SemanticValueId) {
+        let Some(object) = self.values.get(&value) else {
+            return;
+        };
+        let type_value = object.type_value;
+        let place = object.place;
+        if let Ok(complete) = self.observe_complete_type(type_value, Some(place)) {
+            self.value_complete_types.insert(value, complete.whole);
+        }
     }
 
     pub fn type_value(&self, id: TypeValueId) -> Option<&SemanticTypeValue> {
@@ -4911,6 +4946,7 @@ impl SemanticWorld {
             .place;
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("function object explicitly owns its terminal call entry");
+        self.freeze_value_complete_type(function_value);
         self.symbols
             .get_mut(&symbol)
             .expect("interned semantic symbol exists")
@@ -5054,6 +5090,7 @@ impl SemanticWorld {
             .place;
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("function object explicitly owns its terminal call entry");
+        self.freeze_value_complete_type(function_value);
         let cell = self
             .symbols
             .get_mut(&symbol)
@@ -5206,6 +5243,7 @@ impl SemanticWorld {
             .place;
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("function object explicitly owns its terminal call entry");
+        self.freeze_value_complete_type(function_value);
 
         let cell = self
             .symbols
@@ -6622,6 +6660,7 @@ impl SemanticWorld {
             .place;
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("injected function object explicitly owns its terminal call entry");
+        self.freeze_value_complete_type(function_value);
 
         // B3: the injected value is a fresh sibling val of the member-name
         // ClusterSymbol, with its Policy view read from the same canonical
@@ -8029,6 +8068,81 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![local, type_member],
             "Symbol-local and V_tau candidates share one projection instead of local-first fallback"
+        );
+    }
+
+    #[test]
+    fn value_callability_uses_formed_tau_snapshot_not_object_val2_or_successor() {
+        let mut world = SemanticWorld::new("unit");
+        let owner = world.package_owner();
+        let (pattern, _) = world.allocate_pattern(owner, Provenance::new("callable snapshot"));
+        let lookup = TypeValueId(706);
+        world.types.insert(
+            lookup,
+            SemanticTypeValue {
+                id: lookup,
+                pattern,
+                provenance: Provenance::new("callable snapshot"),
+            },
+        );
+        world.pattern_types.insert(pattern, lookup);
+        let policy = PolicyPair {
+            value: crate::ValueComponentPolicy {
+                stages: crate::StageSet::new(),
+                presence: crate::ValuePresence::Present,
+            },
+            pattern: crate::PatternComponentPolicy {
+                stages: crate::StageSet::new(),
+            },
+        };
+        let old_value = world
+            .install_simple_literal_value(
+                lookup,
+                policy.clone(),
+                NormLiteralKind::Int,
+                "1",
+                Provenance::new("old tau value"),
+            )
+            .expect("old value forms before the TypeMember");
+        let call_member = world
+            .install_simple_literal_value(
+                lookup,
+                policy.clone(),
+                NormLiteralKind::Int,
+                "2",
+                Provenance::new("V_tau-only call member"),
+            )
+            .expect("member value");
+        world
+            .admit_direct_type_member(pattern, pattern, "()", TypeMemberFacet::Value, call_member)
+            .expect("V_tau-only member admitted");
+
+        assert!(
+            world.callable_entries_for_value(old_value).is_empty(),
+            "a later successor tau must not retarget a value formed with tau_old"
+        );
+        let old_place = world.value(old_value).expect("old value").place;
+        world
+            .associate_existing_value_in_place(old_place, "()", call_member)
+            .expect("compatibility Object.Val2 can contain the same spelling");
+        assert!(
+            world.callable_entries_for_value(old_value).is_empty(),
+            "Object.Val2 is never callability authority"
+        );
+
+        let new_value = world
+            .install_simple_literal_value(
+                lookup,
+                policy,
+                NormLiteralKind::Int,
+                "3",
+                Provenance::new("new tau value"),
+            )
+            .expect("new value forms after the TypeMember");
+        assert_eq!(
+            world.callable_entries_for_value(new_value),
+            vec![call_member],
+            "a value formed with tau_new observes its immutable V_tau-only call family"
         );
     }
 
