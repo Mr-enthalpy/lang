@@ -1,6 +1,6 @@
 //! Canonical meta-type root identity.
 //!
-//! `MetaTypeRoot = MetaCallableIdentity + Normalize(Arguments)` and
+//! `MetaTypeRoot = ParentSemanticOwner + MetaCallableIdentity + Normalize(Arguments)` and
 //! `TypeValue = (OuterMetaInstanceRoot, NormalizedStructBody)`.  The
 //! `meta_type_roots` fixture declares two source meta functions `f` and `g`
 //! with byte-identical bodies (`let r = (t inner) |> struct; r;`), so their
@@ -20,7 +20,7 @@ use lang_build::{
     MetaInstanceKey, MetaInstanceRoot, NamespaceNodeId, OrdinaryInvocationContext,
     PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, Provenance, SemanticOwnerKind,
     SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeDefinitionInstanceId, TypeValueId,
-    ValueComponentPolicy, ValuePresence,
+    ValueComponentPolicy, ValuePresence, WritableContext,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -168,7 +168,7 @@ fn static_type_pair() -> PolicyPair {
     }
 }
 
-/// B4 — `MetaRootKey = function identity + normalized arguments`;
+/// B4 — `MetaRootKey = parent owner + function identity + normalized arguments`;
 /// body material never participates in root identity.  Same function, same
 /// arguments, different body: the root stays the same, and the follow-up is
 /// the idempotence/conflict split — equal body replays the root, a
@@ -343,6 +343,88 @@ fn distinct_meta_callables_under_one_carrier_symbol_get_distinct_roots() {
         a.1, b.1,
         "two meta vals under one carrier Symbol keep distinct root patterns"
     );
+}
+
+/// The stable parent owner is a root-identity coordinate. Equal callable and
+/// argument material under different owners must never share a meta root.
+/// Root Policy is intrinsically plain and supplies no write authority.
+#[test]
+fn meta_root_is_parent_scoped_always_plain_and_not_writable() {
+    let mut world = SemanticWorld::new("unit");
+    world.bind_package_namespace(NamespaceNodeId(0));
+    let child_owner = world
+        .register_namespace(NamespaceNodeId(1), NamespaceNodeId(0), "child")
+        .expect("child namespace owner");
+    let policy = static_type_pair();
+    let provenance = Provenance::new("parent-scoped plain meta root");
+    let (_carrier, callable_value, _pattern) = world
+        .register_type_symbol(
+            NamespaceNodeId(0),
+            "type",
+            SymbolId(1),
+            TypeValueId(0),
+            TypeValueId(0),
+            None,
+            policy.clone(),
+            provenance.clone(),
+        )
+        .expect("type-rank symbol registers in the unit world");
+    let callable = MetaCallableIdentity {
+        selected_function_value: callable_value,
+        selected_call_entry: SemanticValueId(callable_value.as_u64() + 500),
+    };
+    let package_root = MetaInstanceRoot {
+        meta_callable: callable,
+        placement_parent: world.package_owner(),
+    };
+    let child_root = MetaInstanceRoot {
+        meta_callable: callable,
+        placement_parent: child_owner,
+    };
+    assert_eq!(package_root.policy_mode(), PolicyMode::Plain);
+    assert_eq!(child_root.policy_mode(), PolicyMode::Plain);
+
+    let key = MetaInstanceKey {
+        callable,
+        arguments: CanonicalValueAddr(1),
+        provenance: provenance.clone(),
+    };
+    let pattern = lang_build::CanonicalPatternValue::Atom(lang_build::CanonicalPatternAtom::Type(
+        lang_build::CanonicalTypeObservation::Detached(TypeValueId(11)),
+    ));
+    let package_value = world
+        .install_generated_type_value(
+            &package_root,
+            key.clone(),
+            TypeDefinitionInstanceId(11),
+            pattern.clone(),
+            policy.clone(),
+            provenance.clone(),
+        )
+        .expect("package-scoped root installs")
+        .expect("type rank exists");
+    let child_value = world
+        .install_generated_type_value(
+            &child_root,
+            key,
+            TypeDefinitionInstanceId(11),
+            pattern,
+            policy,
+            provenance,
+        )
+        .expect("equal material under a child owner installs a distinct root")
+        .expect("type rank exists");
+
+    assert_ne!(package_value.2, child_value.2);
+    let package_object = world
+        .value(package_value.0)
+        .expect("package root value exists");
+    let child_object = world.value(child_value.0).expect("child root value exists");
+    assert_eq!(package_object.mode, PolicyMode::Plain);
+    assert_eq!(child_object.mode, PolicyMode::Plain);
+    let writable = WritableContext::default();
+    assert!(!writable.place_is_writable(package_object.place));
+    assert!(!writable.place_is_writable(child_object.place));
 }
 
 /// The canonical meta instance key is

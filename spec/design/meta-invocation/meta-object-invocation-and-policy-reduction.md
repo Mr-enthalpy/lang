@@ -662,6 +662,22 @@ well formed only if:
   forall a in Canonicalize(args): GlobalKeyable(a)
 ```
 
+That reusable key is scoped into a root by the stable parent owner:
+
+```text
+MetaInstanceRootIdentity
+  = ParentSemanticOwner × MetaInstanceKey
+
+MetaInstanceRootAlwaysPlain:
+  PolicyMode(MetaInstanceRoot) = plain
+```
+
+The parent is therefore not optional placement provenance. Equal keys under
+distinct parents form distinct roots. Root stability comes from
+`MetaInstanceRootIdentity + StableSemanticOwner`, not from a const crop;
+`plain` grants no `Writable` fact and cannot be overridden by a position Policy
+or caller demand.
+
 The canonical owner separates callable kind, call admissibility, and effect:
 `OrdinaryMetaFunction(F)` fixes `P2(F)=meta` and `DefaultMetaResult = τ`;
 `WellFormedMetaCall(F,args)` contains admissibility plus `GlobalKeyable`; only a

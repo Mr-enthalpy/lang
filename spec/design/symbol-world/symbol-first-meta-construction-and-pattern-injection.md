@@ -1015,10 +1015,41 @@ WellFormedMetaCall_Gamma(F, args)
    and forall a in Canonicalize(args): MetaArgumentAdmissible(a)
 
 WellFormedMetaCall_Gamma(F, args)
-  => M = MetaInstance(F, Canonicalize(args))
+  => K = MetaInstanceKey(F, Canonicalize(args))
+   and M = MetaInstanceRoot(ParentSemanticOwner_Gamma(F), K)
    and RootIdentityExists(M)
    and ConstructionNavigationAvailable_Gamma(M)
 ```
+
+The parent owner is an identity coordinate of the root, not diagnostic
+placement metadata:
+
+```text
+Identity(M)
+  = <ParentSemanticOwner(M),
+     SelectedCallableIdentity(M),
+     Addr(Product(Canonicalize(args)))>
+```
+
+The callable/argument pair may remain a reusable `MetaInstanceKey`, but a root
+cache must scope that key by `ParentSemanticOwner`; equal callable and argument
+material under distinct stable owners denotes distinct roots.
+
+Root consistency is not encoded by the retired `export => const` crop. It is a
+positive invariant of meta-root formation:
+
+```text
+MetaInstanceRootAlwaysPlain:
+  MetaInstanceRoot(M) => PolicyMode(M) = plain
+
+MetaInstanceRoot(M) => StableSemanticOwner(M)
+PolicyMode(M) = plain =/> Writable(M)
+```
+
+This `plain` coordinate belongs to root identity/formation and is not a
+contextual default. Parameter/return position overlays and caller demands may
+refine views produced under the root; they cannot change the root itself to
+`const` or `mut`.
 
 Equivalently, and without overloading “return shape”:
 
