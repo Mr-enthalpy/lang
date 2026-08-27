@@ -10,11 +10,11 @@ use lang_build::{
     invoke_meta_callable_with_materialization_state, CandidateBuildIdentityPlaceholder,
     CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
     CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, CanonicalValueAddr, ExecutionEnv,
-    FieldProjection, GeneratedTypeDefinitionValue, InvocationResult, MetaCallableIdentity,
-    MetaInstanceCache, MetaInvocationInput, MetaInvocationValue, NamespaceNode, NamespaceNodeKind,
-    NonValueArgKind, ParameterShape, PatternHeadId, PlaceId, PolicyEnv, PolicyFlag,
-    ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape, SemanticNameIndex,
-    SemanticValueId, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
+    FieldProjection, GeneratedTypeDefinitionValue, MetaCallableIdentity, MetaInstanceCache,
+    MetaInvocationInput, MetaInvocationValue, MetaPrimitiveExecution, NamespaceNode,
+    NamespaceNodeKind, NonValueArgKind, ParameterShape, PatternHeadId, PlaceId, PolicyEnv,
+    PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
+    SemanticNameIndex, SemanticValueId, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
     TypeMaterializationState, TypeValueBindingPlaceholder, TypeValueId,
 };
 
@@ -583,17 +583,11 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("formal invocation"));
-    let InvocationResult::SemanticResult {
-        declared_result_class,
-        value: MetaInvocationValue::ForwardedValue(fv),
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("invoke_meta_callable should yield ForwardedValue");
     };
-    assert_eq!(
-        declared_result_class,
-        lang_build::DeclaredResultClass::CompleteType
-    );
     assert_eq!(fv.return_view, ReturnViewShape::Leaf);
     let forwarded_type = fv.type_value;
     // Verify the result is the value obtained through the argument carrier.
@@ -643,10 +637,7 @@ fn identity_type_binding_uses_invocation_value_boundary() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("binding boundary"));
-    let InvocationResult::SemanticResult {
-        value: invocation_value,
-        ..
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(invocation_value) = invoke_meta_callable(invocation_input)
     else {
         panic!("IdentityType should yield invocation value");
     };
@@ -734,11 +725,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     assert!(cache.lookup(&key).is_none(), "cache should be empty");
 
     let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::ForwardedValue(fv1),
-        ..
-    } = result1
-    else {
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv1)) = result1 else {
         panic!("invocation should yield ForwardedValue");
     };
 
@@ -770,11 +757,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("cache test 2"));
     let result2 =
         lang_build::invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::ForwardedValue(fv2),
-        ..
-    } = result2
-    else {
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv2)) = result2 else {
         panic!("second invocation should yield ForwardedValue");
     };
     assert_eq!(
@@ -816,10 +799,8 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("forwarded binding"));
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::ForwardedValue(fv),
-        ..
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("IdentityType must yield ForwardedValue");
     };
@@ -975,10 +956,8 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     assert!(cache.lookup(&key).is_none());
 
     let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedConstructionValue(gcv1),
-        ..
-    } = result1
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv1)) =
+        result1
     else {
         panic!("first invocation should yield GCV");
     };
@@ -1007,10 +986,8 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     };
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("GCV cache 2"));
     let result2 = invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedConstructionValue(gcv2),
-        ..
-    } = result2
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv2)) =
+        result2
     else {
         panic!("second invocation should yield GCV");
     };
@@ -1063,10 +1040,8 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("UCPrototype invocation"));
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
-        ..
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("UCPrototype should yield GeneratedConstructionValue");
     };
@@ -1118,24 +1093,17 @@ fn generated_construction_value_carries_construction_instance_identity() {
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("GCV identity invocation"));
     let gcv = match invoke_meta_callable(invocation_input) {
-        InvocationResult::SemanticResult {
-            value: MetaInvocationValue::GeneratedConstructionValue(gcv),
-            ..
-        } => gcv,
-        InvocationResult::SemanticResult {
-            value: MetaInvocationValue::ForwardedValue(_),
-            ..
-        } => {
+        MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) => {
+            gcv
+        }
+        MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(_)) => {
             panic!("UCPrototype must NOT return a forwarded TypeValue")
         }
-        InvocationResult::SemanticResult {
-            value: MetaInvocationValue::GeneratedTypeDefinitionValue(_),
-            ..
-        } => {
+        MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(_)) => {
             panic!("UCPrototype must NOT return GeneratedTypeDefinitionValue")
         }
-        InvocationResult::Residual(residual) => panic!("unexpected residual: {residual:?}"),
-        InvocationResult::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
+        MetaPrimitiveExecution::Residual(residual) => panic!("unexpected residual: {residual:?}"),
+        MetaPrimitiveExecution::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
     };
 
     assert!(
@@ -1185,10 +1153,8 @@ fn binding_layer_materializes_generated_construction_value() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("binding materialization"));
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
-        ..
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
     };
@@ -1262,10 +1228,8 @@ fn generated_construction_identity_is_independent_of_binding_name() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("identity independence"));
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
-        ..
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
     };
@@ -1400,10 +1364,8 @@ fn produce_gcv(
     };
 
     let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("GCV production"));
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedConstructionValue(gcv),
-        ..
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
     };
@@ -1434,17 +1396,13 @@ fn identity_type_initializer_expands_through_meta_invocation_driver() {
 }
 
 #[test]
-fn unary_construction_initializer_expands_through_meta_invocation_driver() {
-    let world = build_single_fixture_world("v08_unary_construction", "app");
-    let result = world
-        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
-        .expect("connected source build installs UnaryConstructionPrototype result");
-    assert_eq!(result.kind, lang_build::SymbolKind::Type);
-    assert_eq!(result.name, "T");
-    assert!(result
-        .cache_key_fragment
-        .as_deref()
-        .is_some_and(|fragment| fragment.starts_with("construction:")));
+fn ordinary_construction_material_cannot_satisfy_a_complete_type_annotation() {
+    let error = build_fixture_error("v08_unary_construction", "app");
+    assert!(error.diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .message
+            .contains("expects an explicit complete type semantic result")
+    }));
 }
 
 #[test]
@@ -1474,7 +1432,7 @@ fn struct_initializer_expands_through_generated_type_definition_value() {
 }
 
 #[test]
-fn struct_formal_invocation_produces_value_not_namespace_delta() {
+fn struct_primitive_produces_material_not_complete_type_semantic_result() {
     let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
         .expect("empty world with core");
     let initializer = parse_and_normalize_fixture_let_initializer(
@@ -1483,20 +1441,17 @@ fn struct_formal_invocation_produces_value_not_namespace_delta() {
     let invocation_input =
         struct_invocation_input(&world, &initializer, "uint8", "pure struct invocation");
 
-    let InvocationResult::SemanticResult {
-        declared_result_class,
-        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
     };
-    assert_eq!(
-        declared_result_class,
-        lang_build::DeclaredResultClass::CompleteType
-    );
 
     assert_ne!(gtdv.type_definition_id.as_u64(), 0);
     assert_eq!(gtdv.fields.len(), 1);
+    // The primitive boundary has no DeclaredResultClass coordinate at all.
+    // Only the world-connected installer may turn this replayable material
+    // into `SemanticResult(CompleteType, tau)`.
 }
 
 #[test]
@@ -1514,13 +1469,11 @@ fn materialized_struct_type_definition_records_pattern_heads() {
     );
     let mut materialization_state = TypeMaterializationState::default();
 
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
-        ..
-    } = invoke_meta_callable_with_materialization_state(
-        invocation_input,
-        &mut materialization_state,
-    )
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+        invoke_meta_callable_with_materialization_state(
+            invocation_input,
+            &mut materialization_state,
+        )
     else {
         panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
     };
@@ -1729,10 +1682,8 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
     let mut cache = MetaInstanceCache::new();
 
     let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1),
-        ..
-    } = result1
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
+        result1
     else {
         panic!("first invocation should yield GeneratedTypeDefinitionValue");
     };
@@ -1750,10 +1701,8 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
         "generated type definition cache hit",
     );
     let result2 = invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2),
-        ..
-    } = result2
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
+        result2
     else {
         panic!("second invocation should yield GeneratedTypeDefinitionValue");
     };
@@ -1779,15 +1728,13 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
     let mut cache = MetaInstanceCache::new();
     let mut miss_state = TypeMaterializationState::default();
 
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1),
-        ..
-    } = invoke_meta_callable_cached_with_materialization_state(
-        invocation_input,
-        key.clone(),
-        &mut cache,
-        &mut miss_state,
-    )
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
+        invoke_meta_callable_cached_with_materialization_state(
+            invocation_input,
+            key.clone(),
+            &mut cache,
+            &mut miss_state,
+        )
     else {
         panic!("first invocation should yield GeneratedTypeDefinitionValue");
     };
@@ -1822,15 +1769,13 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
         Provenance::new("preexisting pattern head"),
     );
 
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2),
-        ..
-    } = invoke_meta_callable_cached_with_materialization_state(
-        invocation_input2,
-        key.clone(),
-        &mut cache,
-        &mut hit_state,
-    )
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
+        invoke_meta_callable_cached_with_materialization_state(
+            invocation_input2,
+            key.clone(),
+            &mut cache,
+            &mut hit_state,
+        )
     else {
         panic!("cache hit should yield GeneratedTypeDefinitionValue");
     };
@@ -1906,10 +1851,8 @@ fn produce_gtdv_from_struct_initializer(
 ) -> GeneratedTypeDefinitionValue {
     let invocation_input =
         struct_invocation_input(world, initializer, field_type_name, "produce GTDV");
-    let InvocationResult::SemanticResult {
-        value: MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
-        ..
-    } = invoke_meta_callable(invocation_input)
+    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+        invoke_meta_callable(invocation_input)
     else {
         panic!("struct invocation should yield GeneratedTypeDefinitionValue");
     };

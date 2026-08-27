@@ -83,7 +83,7 @@ use crate::{
         SemanticValuePayload, SemanticWorld, WritableContext,
     },
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
-    InvocationResidual, InvocationResult, NormalizedCallSite,
+    InvocationResidual, NormalizedCallSite,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -390,6 +390,11 @@ pub struct OrdinaryPipelineTrace {
 pub struct SingleMemberResult {
     pub selected: SealedSelectedInvocation,
     pub returned: OrdinaryReturnedValue,
+    /// Exact semantic complete-type result, present iff the selected
+    /// declaration's result class is `CompleteType`.  Binding consumers use
+    /// this field directly; they never infer a type result or recover tau from
+    /// a `TypeObject` compatibility payload.
+    pub complete_type: Option<crate::CompleteTypeValue>,
     /// CompleteResultDomain — the complete result P2 compatibility domain
     /// returned by the ordinary callable (type/pattern compatibility
     /// information), before any consumer-specific `Project_out`.  This is
@@ -1190,14 +1195,14 @@ fn evaluate_source_meta_member_initializer(
         input,
         materialization_state,
     ) {
-        InvocationResult::SemanticResult { value, .. } => value,
-        InvocationResult::Residual(residual) => {
+        crate::MetaPrimitiveExecution::Material(value) => value,
+        crate::MetaPrimitiveExecution::Residual(residual) => {
             return Err(OrdinaryInvocationFailure::Residual {
                 residual,
                 trace: trace.clone(),
             });
         }
-        InvocationResult::Diagnostic(diagnostic) => {
+        crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
             return Err(OrdinaryInvocationFailure::SelectedCoreBody {
                 diagnostic,
                 trace: trace.clone(),
@@ -2451,14 +2456,14 @@ pub(crate) fn invoke_target_values(
                 core_input,
                 materialization_state,
             ) {
-                InvocationResult::SemanticResult { value, .. } => value,
-                InvocationResult::Residual(residual) => {
+                crate::MetaPrimitiveExecution::Material(value) => value,
+                crate::MetaPrimitiveExecution::Residual(residual) => {
                     return Err(OrdinaryInvocationFailure::Residual {
                         residual,
                         trace: trace.clone(),
                     });
                 }
-                InvocationResult::Diagnostic(diagnostic) => {
+                crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
                     return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
                 }
             };
@@ -3023,11 +3028,11 @@ pub(crate) fn invoke_target_values(
             core_input,
             materialization_state,
         ) {
-            InvocationResult::SemanticResult { value, .. } => OrdinaryReturnedValue::Meta(value),
-            InvocationResult::Residual(residual) => {
+            crate::MetaPrimitiveExecution::Material(value) => OrdinaryReturnedValue::Meta(value),
+            crate::MetaPrimitiveExecution::Residual(residual) => {
                 return Err(OrdinaryInvocationFailure::Residual { residual, trace });
             }
-            InvocationResult::Diagnostic(diagnostic) => {
+            crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
                 return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
             }
         }
@@ -3179,6 +3184,21 @@ pub(crate) fn invoke_target_values(
     // visibility of the invocation result is NOT this P2: it is the
     // canonical P1 layer, derived on demand by
     // `SingleMemberResult::exposed()`.
+    let semantic_complete_type = match &returned {
+        OrdinaryReturnedValue::CompleteType(value) => Some(value.complete_type.clone()),
+        _ => None,
+    };
+    if matches!(selected.return_shape, ReturnShape::SingleType) != semantic_complete_type.is_some()
+    {
+        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+            diagnostic: Diagnostic::hard_error(
+                "declared CompleteType result did not materialize an exact complete tau",
+                Some(provenance.clone()),
+            ),
+            trace,
+        });
+    }
+
     let complete_result = vec![PolicyResultEntry {
         value: returned_value.map(|id| SemanticValueRef {
             id,
@@ -3194,6 +3214,7 @@ pub(crate) fn invoke_target_values(
         ProjectedInvocationOutcome::SingleMember(SingleMemberResult {
             selected,
             returned,
+            complete_type: semantic_complete_type,
             complete_result,
             trace,
         }),
@@ -3791,6 +3812,34 @@ fn ordinary_result_identity(
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
             };
+            let complete_type = match value.type_observation {
+                crate::CanonicalTypeObservation::Observed(whole) => semantic_world
+                    .complete_type_by_whole_observation(whole)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Diagnostic::hard_error(
+                            "forwarded CompleteType observation is not interned in this semantic world",
+                            Some(value.provenance.clone()),
+                        )
+                    })?,
+                crate::CanonicalTypeObservation::Detached(_) => {
+                    semantic_world.observe_complete_type(represented, None)?
+                }
+            };
+            let carrier_value = semantic_world
+                .type_object_value(represented)
+                .ok_or_else(|| {
+                    Diagnostic::hard_error(
+                        "forwarded CompleteType has no compatibility carrier value",
+                        Some(value.provenance.clone()),
+                    )
+                })?;
+            *returned = OrdinaryReturnedValue::CompleteType(ReturnedCompleteType {
+                complete_type,
+                carrier_value,
+                pattern,
+                construction_material: None,
+            });
             Ok(Some((represented, pattern, None)))
         }
         OrdinaryReturnedValue::Meta(MetaInvocationValue::GeneratedTypeDefinitionValue(value)) => {

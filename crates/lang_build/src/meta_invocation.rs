@@ -12,7 +12,8 @@
 //! CandidatePrepResult::ApplicablePlaceholder
 //!   → MetaInvocationInput
 //!   → invoke_meta_callable
-//!   → MetaInvocationValue  (no graph installation or binding)
+//!   → MetaPrimitiveExecution::Material(MetaInvocationValue)
+//!     (no semantic result, graph installation, or binding)
 //!
 //! MetaInvocationValue
 //!   → bind_meta_invocation_value_result (meta.rs)
@@ -54,7 +55,6 @@ use crate::{
     },
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
     struct_decoder::DecodedStructPattern,
-    DeclaredResultClass, InvocationResult,
 };
 
 /// Input for formal meta invocation.
@@ -330,6 +330,22 @@ pub enum MetaInvocationValue {
     ForwardedValue(ForwardedValue),
     GeneratedConstructionValue(GeneratedConstructionValue),
     GeneratedTypeDefinitionValue(GeneratedTypeDefinitionValue),
+}
+
+/// Result of executing a compiler primitive before semantic result
+/// materialization.
+///
+/// `Material` is replayable implementation material, not a value in any
+/// [`crate::DeclaredResultClass`].  In particular, a
+/// [`GeneratedTypeDefinitionValue`] must be installed and observed as a
+/// [`crate::CompleteTypeValue`] before a
+/// [`crate::InvocationResult::SemanticResult`] with class
+/// [`crate::DeclaredResultClass::CompleteType`] may be formed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MetaPrimitiveExecution {
+    Material(MetaInvocationValue),
+    Residual(crate::InvocationResidual),
+    Diagnostic(Diagnostic),
 }
 
 impl MetaInvocationValue {
@@ -738,7 +754,7 @@ pub enum ReturnViewShape {
 ///
 /// Reads `callee_primitive` from the candidate itself. Invocation is pure
 /// — no graph mutation, no `NamespaceDelta` installation.
-pub fn invoke_meta_callable(input: MetaInvocationInput) -> InvocationResult<MetaInvocationValue> {
+pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaPrimitiveExecution {
     // Standalone compatibility entry point. It is suitable for one-off formal
     // invocation tests but does not preserve PatternHeadRegistry continuity
     // across calls. Callers that need registry-backed identity continuity must
@@ -750,9 +766,9 @@ pub fn invoke_meta_callable(input: MetaInvocationInput) -> InvocationResult<Meta
 pub fn invoke_meta_callable_with_materialization_state(
     input: MetaInvocationInput,
     materialization_state: &mut TypeMaterializationState,
-) -> InvocationResult<MetaInvocationValue> {
+) -> MetaPrimitiveExecution {
     let Some(primitive) = input.candidate.callee_primitive else {
-        return InvocationResult::Diagnostic(
+        return MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 format!(
                     "meta invocation: candidate `{}` has no callee primitive",
@@ -772,7 +788,7 @@ pub fn invoke_meta_callable_with_materialization_state(
         crate::model::CoreMetaFunction::Struct => {
             invoke_struct_type_definition(&input, materialization_state)
         }
-        _ => InvocationResult::Diagnostic(
+        _ => MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 format!(
                     "meta invocation: primitive {:?} is not callable through formal invocation",
@@ -794,7 +810,7 @@ pub fn invoke_meta_callable_cached(
     input: MetaInvocationInput,
     key: MetaInvocationMaterialKey,
     cache: &mut MetaInstanceCache,
-) -> InvocationResult<MetaInvocationValue> {
+) -> MetaPrimitiveExecution {
     // Standalone compatibility entry point. Cache hits for registry-backed
     // values are rehydrated into this temporary state only; callers that need
     // to query the registry later must use the `_with_materialization_state`
@@ -813,11 +829,11 @@ pub fn invoke_meta_callable_cached_with_materialization_state(
     key: MetaInvocationMaterialKey,
     cache: &mut MetaInstanceCache,
     materialization_state: &mut TypeMaterializationState,
-) -> InvocationResult<MetaInvocationValue> {
+) -> MetaPrimitiveExecution {
     // Validate primitive before cache lookup — prevents a manually-inserted
     // cache entry for a no-primitive candidate from bypassing validation.
     if input.candidate.callee_primitive.is_none() {
-        return InvocationResult::Diagnostic(
+        return MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 format!(
                     "meta invocation (cached): candidate `{}` has no callee primitive",
@@ -836,7 +852,7 @@ pub fn invoke_meta_callable_cached_with_materialization_state(
         );
     }
     let result = invoke_meta_callable_with_materialization_state(input, materialization_state);
-    if let InvocationResult::SemanticResult { value: val, .. } = &result {
+    if let MetaPrimitiveExecution::Material(val) = &result {
         cache.insert(
             key,
             cacheable_invocation_value(val.clone()),
@@ -846,13 +862,13 @@ pub fn invoke_meta_callable_cached_with_materialization_state(
     result
 }
 
-fn invoke_identity_type(input: &MetaInvocationInput) -> InvocationResult<MetaInvocationValue> {
+fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     let candidate = &input.candidate;
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
 
     if mat.arity != 1 {
-        return InvocationResult::Diagnostic(
+        return MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 format!(
                     "IdentityType: expected exactly 1 type argument, got {}",
@@ -867,7 +883,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> InvocationResult<MetaInv
     let type_value = match mat.known_type_values.first().and_then(|value| *value) {
         Some(value) => value,
         None => {
-            return InvocationResult::Diagnostic(
+            return MetaPrimitiveExecution::Diagnostic(
                 Diagnostic::hard_error(
                     "IdentityType: argument is not a classified type object with a TypeValue",
                     Some(input.provenance.clone()),
@@ -880,29 +896,28 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> InvocationResult<MetaInv
         .arg_product_shape
         .raw_args
         .first()
-        .and_then(|raw| raw.type_observation())
+        .and_then(|raw| {
+            raw.known_complete_type_observation
+                .map(crate::CanonicalTypeObservation::Observed)
+                .or_else(|| raw.type_observation())
+        })
         .unwrap_or(crate::CanonicalTypeObservation::Detached(type_value));
 
-    InvocationResult::semantic(
-        DeclaredResultClass::CompleteType,
-        MetaInvocationValue::ForwardedValue(ForwardedValue {
-            type_value,
-            type_observation,
-            return_view: ReturnViewShape::Leaf,
-            provenance: input.provenance.clone(),
-        }),
-    )
+    MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(ForwardedValue {
+        type_value,
+        type_observation,
+        return_view: ReturnViewShape::Leaf,
+        provenance: input.provenance.clone(),
+    }))
 }
 
-fn invoke_unary_construction_prototype(
-    input: &MetaInvocationInput,
-) -> InvocationResult<MetaInvocationValue> {
+fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     let candidate = &input.candidate;
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
 
     if mat.arity != 1 {
-        return InvocationResult::Diagnostic(
+        return MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 format!(
                     "UnaryConstructionPrototype: expected exactly 1 type argument, got {}",
@@ -917,7 +932,7 @@ fn invoke_unary_construction_prototype(
     let _type_value = match mat.known_type_values.first().and_then(|value| *value) {
         Some(value) => value,
         None => {
-            return InvocationResult::Diagnostic(
+            return MetaPrimitiveExecution::Diagnostic(
                 Diagnostic::hard_error(
                     "UnaryConstructionPrototype: argument is not a classified type object with a TypeValue",
                     Some(input.provenance.clone()),
@@ -940,21 +955,20 @@ fn invoke_unary_construction_prototype(
     };
     let construction_instance_id = compute_construction_instance_id(&identity_material);
 
-    InvocationResult::semantic(
-        DeclaredResultClass::OrdinaryValue,
-        MetaInvocationValue::GeneratedConstructionValue(GeneratedConstructionValue {
+    MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(
+        GeneratedConstructionValue {
             construction_instance_id,
             identity_material,
             return_view: ReturnViewShape::Leaf,
             provenance: input.provenance.clone(),
-        }),
-    )
+        },
+    ))
 }
 
 fn invoke_struct_type_definition(
     input: &MetaInvocationInput,
     materialization_state: &mut TypeMaterializationState,
-) -> InvocationResult<MetaInvocationValue> {
+) -> MetaPrimitiveExecution {
     let candidate = &input.candidate;
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
@@ -964,7 +978,7 @@ fn invoke_struct_type_definition(
         .as_ref()
         .is_some_and(|decoded| decoded.type_pattern_expr.is_pure_pattern_without_value());
     if mat.arity == 0 && !pure_pattern_without_value {
-        return InvocationResult::Diagnostic(
+        return MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 "struct: expected at least one `Expr name` field or a pure no-value Pattern such as `(() t)` or `if | else`",
                 Some(input.provenance.clone()),
@@ -979,7 +993,7 @@ fn invoke_struct_type_definition(
         &input.provenance,
     ) {
         Ok(fields) => fields,
-        Err(diagnostic) => return InvocationResult::Diagnostic(diagnostic),
+        Err(diagnostic) => return MetaPrimitiveExecution::Diagnostic(diagnostic),
     };
 
     let identity_material = TypeDefinitionIdentityMaterial {
@@ -1031,11 +1045,10 @@ fn invoke_struct_type_definition(
         materialization_state,
         input.provenance.clone(),
     ) {
-        Ok(value) => InvocationResult::semantic(
-            DeclaredResultClass::CompleteType,
+        Ok(value) => MetaPrimitiveExecution::Material(
             MetaInvocationValue::GeneratedTypeDefinitionValue(value),
         ),
-        Err(diagnostic) => InvocationResult::Diagnostic(diagnostic),
+        Err(diagnostic) => MetaPrimitiveExecution::Diagnostic(diagnostic),
     }
 }
 
@@ -1043,25 +1056,22 @@ fn cached_value_for_current_materialization_state(
     value: MetaInvocationValue,
     materialization_state: &mut TypeMaterializationState,
     provenance: Provenance,
-) -> InvocationResult<MetaInvocationValue> {
+) -> MetaPrimitiveExecution {
     match value {
         MetaInvocationValue::GeneratedTypeDefinitionValue(value) => {
             match attach_type_definition_pattern_heads(value, materialization_state, provenance) {
-                Ok(value) => InvocationResult::semantic(
-                    DeclaredResultClass::CompleteType,
+                Ok(value) => MetaPrimitiveExecution::Material(
                     MetaInvocationValue::GeneratedTypeDefinitionValue(value),
                 ),
-                Err(diagnostic) => InvocationResult::Diagnostic(diagnostic),
+                Err(diagnostic) => MetaPrimitiveExecution::Diagnostic(diagnostic),
             }
         }
-        MetaInvocationValue::ForwardedValue(value) => InvocationResult::semantic(
-            DeclaredResultClass::CompleteType,
-            MetaInvocationValue::ForwardedValue(value),
-        ),
-        MetaInvocationValue::GeneratedConstructionValue(value) => InvocationResult::semantic(
-            DeclaredResultClass::OrdinaryValue,
-            MetaInvocationValue::GeneratedConstructionValue(value),
-        ),
+        MetaInvocationValue::ForwardedValue(value) => {
+            MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(value))
+        }
+        MetaInvocationValue::GeneratedConstructionValue(value) => {
+            MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(value))
+        }
     }
 }
 

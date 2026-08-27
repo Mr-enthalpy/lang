@@ -58,12 +58,21 @@ pub struct ResolvedCallTarget {
 #[derive(Clone, Debug)]
 enum ConnectedInitializerOutcome {
     Ordinary(crate::InvocationOutcome),
-    Existing(Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>),
+    Existing(ConnectedExistingResult),
     Residual {
         reason: crate::ResidualReason,
         provenance: Provenance,
     },
     Diagnostic(Diagnostic),
+}
+
+#[derive(Clone, Debug)]
+struct ConnectedExistingResult {
+    material: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
+    /// Exact complete tau carried by an existing type result. This coordinate
+    /// comes from the semantic binding's immutable snapshot, never from a
+    /// TypeObject compatibility payload.
+    complete_type: Option<crate::CompleteTypeValue>,
 }
 
 const CONSTRUCT_OR_CONVERT_SELECTOR: &str = "<ConstructOrConvert>";
@@ -472,6 +481,7 @@ impl CompilationWorld {
         name: &str,
         binding: crate::SymbolId,
         represented_type: crate::TypeValueId,
+        complete_type: Option<crate::CanonicalValueAddr>,
         associated_namespace: Option<NamespaceNodeId>,
         policy: PolicyPair,
         provenance: Provenance,
@@ -483,6 +493,7 @@ impl CompilationWorld {
                     name: name.to_string(),
                     binding,
                     represented_type,
+                    complete_type,
                     associated_namespace: associated_namespace
                         .map(|node| (node, format!("{name}<type-associated>"))),
                     policy,
@@ -505,6 +516,7 @@ impl CompilationWorld {
                 &replacement_object.name,
                 replacement_object.id,
                 type_object.represented_type,
+                None,
                 type_object.type_associated_namespace,
                 policy,
                 replacement_object.provenance.clone(),
@@ -1368,6 +1380,7 @@ impl CompilationWorld {
                 name: binder_name.clone(),
                 binding: symbol_id,
                 represented_type,
+                complete_type: None,
                 associated_namespace: Some((
                     associated_namespace,
                     format!("{binder_name}<type-associated>"),
@@ -1469,6 +1482,7 @@ impl CompilationWorld {
         // The callable's canonical P1 is a real window here: material
         // outside it is invisible to the binder, and a fully invisible
         // result is a hard error before any outer projection runs.
+        let complete_type_authority = result.complete_type.clone();
         let exposed = result.exposed();
         if exposed.material.is_empty() {
             return Err(BuildError::single(Diagnostic::hard_error(
@@ -1479,9 +1493,9 @@ impl CompilationWorld {
             )));
         }
         assert_semantic_result_satisfies_annotation(
-            &self.semantic_world,
             slot.annotation.as_ref(),
             &exposed.material,
+            complete_type_authority.as_ref(),
             provenance.clone(),
         )?;
 
@@ -1513,7 +1527,6 @@ impl CompilationWorld {
             .into_iter()
             .filter(|entry| entry.view.mode == demand.mode)
             .collect::<Vec<_>>();
-
         if !selected.is_empty() {
             match result.returned {
                 crate::OrdinaryReturnedValue::Meta(crate::MetaInvocationValue::ForwardedValue(
@@ -1525,6 +1538,7 @@ impl CompilationWorld {
                         binder_name,
                         namespace_declaration,
                         &selected,
+                        None,
                         provenance,
                     )
                     .map(|_| ()),
@@ -1535,9 +1549,16 @@ impl CompilationWorld {
                         namespace_declaration,
                         &selected,
                         value,
+                        None,
                         provenance,
                     ),
                 crate::OrdinaryReturnedValue::CompleteType(value) => {
+                    let complete_type = complete_type_authority.as_ref().ok_or_else(|| {
+                        BuildError::single(Diagnostic::hard_error(
+                            "CompleteType binding lost its exact semantic tau",
+                            Some(provenance.clone()),
+                        ))
+                    })?;
                     if let Some(material) = value.construction_material {
                         self.bind_connected_meta_material_result(
                             namespace,
@@ -1545,6 +1566,7 @@ impl CompilationWorld {
                             namespace_declaration,
                             &selected,
                             crate::MetaInvocationValue::GeneratedTypeDefinitionValue(material),
+                            Some(complete_type),
                             provenance,
                         )
                     } else {
@@ -1553,6 +1575,7 @@ impl CompilationWorld {
                             binder_name,
                             namespace_declaration,
                             &selected,
+                            Some(complete_type),
                             provenance,
                         )
                         .map(|_| ())
@@ -1578,6 +1601,7 @@ impl CompilationWorld {
                 binder_name,
                 namespace_declaration,
                 &demanded_views,
+                complete_type_authority.as_ref(),
                 provenance,
             )
             .map(|_| ())
@@ -1596,6 +1620,7 @@ impl CompilationWorld {
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
         value: crate::MetaInvocationValue,
+        semantic_complete_type: Option<&crate::CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
         let generated_type = match &value {
@@ -1634,11 +1659,29 @@ impl CompilationWorld {
         // Semantic type and projection Symbols are installed before their
         // compatibility rendering.
         if let Some(entry) = selected.first() {
-            self.register_expansion_type_carrier(
-                &expansion.replacement_object,
-                namespace,
-                declared_pair_from_result_entry(entry, namespace_declaration),
-            )?;
+            let pair = declared_pair_from_result_entry(entry, namespace_declaration);
+            if let Some(complete_type) = semantic_complete_type {
+                let associated_namespace = match &expansion.replacement_object.payload {
+                    SymbolPayload::Type(adapter) => adapter.type_associated_namespace,
+                    _ => None,
+                };
+                self.register_installed_type_carrier(
+                    namespace,
+                    &expansion.replacement_object.name,
+                    expansion.replacement_object.id,
+                    complete_type.lookup_key,
+                    Some(complete_type.whole),
+                    associated_namespace,
+                    pair,
+                    expansion.replacement_object.provenance.clone(),
+                )?;
+            } else {
+                self.register_expansion_type_carrier(
+                    &expansion.replacement_object,
+                    namespace,
+                    pair,
+                )?;
+            }
         }
         self.semantic_world
             .register_generated_projection_symbols(&expansion.namespace_delta)?;
@@ -1692,10 +1735,24 @@ impl CompilationWorld {
                 view: entry.view.clone(),
             })
             .collect::<Vec<_>>();
+        let semantic_complete_type = if generated_types.len() == 1 {
+            generated_types
+                .first()
+                .and_then(|generated| generated.canonical_type)
+                .and_then(|lookup| {
+                    let pattern = self.semantic_world.type_value(lookup)?.pattern;
+                    let place = self.semantic_world.pattern_place(pattern);
+                    self.semantic_world
+                        .observe_complete_type(lookup, place)
+                        .ok()
+                })
+        } else {
+            None
+        };
         assert_semantic_result_satisfies_annotation(
-            &self.semantic_world,
             slot.annotation.as_ref(),
             &result,
+            semantic_complete_type.as_ref(),
             provenance.clone(),
         )?;
 
@@ -1732,6 +1789,12 @@ impl CompilationWorld {
                     namespace_declaration,
                     &selected,
                     generated,
+                    semantic_complete_type.as_ref().ok_or_else(|| {
+                        BuildError::single(Diagnostic::hard_error(
+                            "generated type member lost its exact complete tau",
+                            Some(provenance.clone()),
+                        ))
+                    })?,
                     provenance,
                 )?;
                 if let Some(canonical_type) = canonical_type {
@@ -1747,6 +1810,7 @@ impl CompilationWorld {
                     binder_name,
                     namespace_declaration,
                     &selected,
+                    None,
                     provenance,
                 )?
             };
@@ -1768,19 +1832,20 @@ impl CompilationWorld {
         slot: &lang_syntax::NormBindingSlot,
         namespace_declaration: &NamespaceDeclarationPolicy,
         demand: &ResultPolicyDemand,
-        result: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
+        result: ConnectedExistingResult,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
+        let complete_type = result.complete_type;
         let result = self.construct_abstract_literals_for_annotation(
             slot.annotation.as_ref(),
-            result,
+            result.material,
             demand,
             &provenance,
         )?;
         assert_semantic_result_satisfies_annotation(
-            &self.semantic_world,
             slot.annotation.as_ref(),
             &result,
+            complete_type.as_ref(),
             provenance.clone(),
         )?;
 
@@ -1802,6 +1867,7 @@ impl CompilationWorld {
             binder_name,
             namespace_declaration,
             &selected,
+            complete_type.as_ref(),
             provenance,
         )
         .map(|_| ())
@@ -2092,6 +2158,7 @@ impl CompilationWorld {
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        semantic_complete_type: Option<&crate::CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
         let Some(first_pattern) = selected.first().map(|entry| entry.pattern) else {
@@ -2110,15 +2177,18 @@ impl CompilationWorld {
         let mut declared_type_carrier = None;
         if selected.iter().all(|entry| entry.value.is_none()) {
             let pattern = first_pattern;
-            let represented_type = self
-                .semantic_world
-                .type_for_pattern(pattern)
-                .ok_or_else(|| {
-                    BuildError::single(Diagnostic::hard_error(
-                        "ordinary semantic binding: pure-P result uses an unregistered PatternValue",
-                        Some(provenance.clone()),
-                    ))
-                })?;
+            let represented_type = match semantic_complete_type {
+                Some(complete) => complete.lookup_key,
+                None => self
+                    .semantic_world
+                    .type_for_pattern(pattern)
+                    .ok_or_else(|| {
+                        BuildError::single(Diagnostic::hard_error(
+                            "ordinary semantic binding: pure-P result uses an unregistered PatternValue",
+                            Some(provenance.clone()),
+                        ))
+                    })?,
+            };
             let mut delta = {
                 let carrier = declared_bound_type_value_delta(
                     self.semantic_world.namespace_index(),
@@ -2157,6 +2227,7 @@ impl CompilationWorld {
                     binder_name,
                     symbol_id,
                     represented_type,
+                    semantic_complete_type.map(|complete| complete.whole),
                     Some(associated_namespace),
                     declared_pair_from_result_entry(&selected[0], namespace_declaration),
                     provenance,
@@ -2166,29 +2237,13 @@ impl CompilationWorld {
             return Ok(destination);
         }
 
-        // Extracting represented_type from the TypeObject
-        // carrier is a legitimate type-system boundary: `let name: type = T`
-        // must read the underlying SemanticTypeValue to install the binding.
-        // This is NOT ordinary-semantic-algorithm leakage.
-        let represented_type = selected
-            .iter()
-            .filter_map(|entry| entry.value)
-            .map(|value| {
-                self.semantic_world
-                    .value(value.id)
-                    .and_then(|value| match value.payload {
-                        crate::SemanticValuePayload::TypeObject {
-                            represented_type, ..
-                        } => Some(represented_type),
-                        _ => None,
-                    })
-            })
-            .collect::<Option<Vec<_>>>()
-            .and_then(|values| {
-                let first = values.first().copied()?;
-                values.iter().all(|value| *value == first).then_some(first)
-            });
-        let mut delta = if let Some(represented_type) = represented_type {
+        // A complete type result reaches this boundary as an already-observed
+        // semantic entity.  The TypeObject carried by a compatibility value
+        // is deliberately not inspected here: compatibility projection is a
+        // one-way `tau -> TypeObject` rendering and can never recover or
+        // decide type identity.
+        let mut delta = if let Some(complete_type) = semantic_complete_type {
+            let represented_type = complete_type.lookup_key;
             let carrier = declared_bound_type_value_delta(
                 self.semantic_world.namespace_index(),
                 namespace,
@@ -2225,6 +2280,7 @@ impl CompilationWorld {
                 binder_name,
                 symbol_id,
                 represented_type,
+                semantic_complete_type.map(|complete| complete.whole),
                 Some(associated_namespace),
                 declared_pair_from_result_entry(&selected[0], namespace_declaration),
                 provenance,
@@ -2248,6 +2304,7 @@ impl CompilationWorld {
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
         generated: crate::GeneratedTypeDefinitionValue,
+        semantic_complete_type: &crate::CompleteTypeValue,
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
         let result_policy = legacy_policy_set_from_result_entries(selected);
@@ -2283,10 +2340,19 @@ impl CompilationWorld {
         // Semantic type and projection Symbols are
         // installed before their compatibility rendering.
         if let Some(entry) = selected.first() {
-            self.register_expansion_type_carrier(
-                &expansion.replacement_object,
+            let associated_namespace = match &expansion.replacement_object.payload {
+                SymbolPayload::Type(adapter) => adapter.type_associated_namespace,
+                _ => None,
+            };
+            self.register_installed_type_carrier(
                 namespace,
+                &expansion.replacement_object.name,
+                expansion.replacement_object.id,
+                semantic_complete_type.lookup_key,
+                Some(semantic_complete_type.whole),
+                associated_namespace,
                 declared_pair_from_result_entry(entry, namespace_declaration),
+                expansion.replacement_object.provenance.clone(),
             )?;
         }
         self.semantic_world
@@ -2347,17 +2413,20 @@ impl CompilationWorld {
                         .type_value(type_value)
                         .expect("abstract literal Type was resolved")
                         .pattern;
-                    ConnectedInitializerOutcome::Existing(vec![crate::PolicyResultEntry {
-                        value: Some(crate::SemanticValueRef {
-                            id: value,
-                            type_value,
-                        }),
-                        pattern,
-                        view: PolicyView {
-                            pair: policy,
-                            mode: PolicyMode::Plain,
-                        },
-                    }])
+                    ConnectedInitializerOutcome::Existing(ConnectedExistingResult {
+                        material: vec![crate::PolicyResultEntry {
+                            value: Some(crate::SemanticValueRef {
+                                id: value,
+                                type_value,
+                            }),
+                            pattern,
+                            view: PolicyView {
+                                pair: policy,
+                                mode: PolicyMode::Plain,
+                            },
+                        }],
+                        complete_type: None,
+                    })
                 }
                 Err(crate::AbstractLiteralFormationFailure::CharacterSpellingOpen) => {
                     ConnectedInitializerOutcome::Residual {
@@ -2507,33 +2576,36 @@ impl CompilationWorld {
             }
         };
 
-        let material = match inner {
+        let (material, complete_type) = match inner {
             ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
                 value: crate::ProjectedInvocationOutcome::SingleMember(result),
                 ..
-            }) => result.exposed().material,
+            }) => (result.exposed().material, result.complete_type),
             ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
                 declared_result_class: crate::DeclaredResultClass::ClusterSymbol,
                 value: crate::ProjectedInvocationOutcome::ClusterSymbol(result),
-            }) => result
-                .construction
-                .member_views
-                .into_iter()
-                .map(|entry| crate::PolicyResultEntry {
-                    value: entry.value.map(|id| {
-                        let value = self
-                            .semantic_world
-                            .value(id)
-                            .expect("construction result references installed value");
-                        crate::SemanticValueRef {
-                            id,
-                            type_value: value.type_value,
-                        }
-                    }),
-                    pattern: entry.pattern,
-                    view: entry.view,
-                })
-                .collect(),
+            }) => (
+                result
+                    .construction
+                    .member_views
+                    .into_iter()
+                    .map(|entry| crate::PolicyResultEntry {
+                        value: entry.value.map(|id| {
+                            let value = self
+                                .semantic_world
+                                .value(id)
+                                .expect("construction result references installed value");
+                            crate::SemanticValueRef {
+                                id,
+                                type_value: value.type_value,
+                            }
+                        }),
+                        pattern: entry.pattern,
+                        view: entry.view,
+                    })
+                    .collect(),
+                None,
+            ),
             ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
                 declared_result_class: crate::DeclaredResultClass::Unit,
                 value: crate::ProjectedInvocationOutcome::Unit(_),
@@ -2560,7 +2632,9 @@ impl CompilationWorld {
                     Some(provenance),
                 ));
             }
-            ConnectedInitializerOutcome::Existing(material) => material,
+            ConnectedInitializerOutcome::Existing(existing) => {
+                (existing.material, existing.complete_type)
+            }
             ConnectedInitializerOutcome::Residual { reason, provenance } => {
                 return ConnectedInitializerOutcome::Residual { reason, provenance };
             }
@@ -2574,7 +2648,10 @@ impl CompilationWorld {
             .filter(|entry| entry.view.mode == demand.mode)
             .collect::<Vec<_>>();
         if !projected.is_empty() {
-            return ConnectedInitializerOutcome::Existing(projected);
+            return ConnectedInitializerOutcome::Existing(ConnectedExistingResult {
+                material: projected,
+                complete_type,
+            });
         }
 
         let mut migrated = Vec::new();
@@ -2624,7 +2701,10 @@ impl CompilationWorld {
                 Some(provenance),
             ))
         } else {
-            ConnectedInitializerOutcome::Existing(migrated)
+            ConnectedInitializerOutcome::Existing(ConnectedExistingResult {
+                material: migrated,
+                complete_type,
+            })
         }
     }
 
@@ -2632,11 +2712,19 @@ impl CompilationWorld {
         &self,
         namespace: NamespaceNodeId,
         initializer: &NormExpr,
-    ) -> Option<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>> {
+    ) -> Option<ConnectedExistingResult> {
         let symbol = self
             .resolve_semantic_source_target(namespace, initializer)?
             .symbol;
         let symbol = self.semantic_world.symbol(symbol)?;
+        let complete_type = symbol
+            .pure_p
+            .and_then(|member| member.complete_type)
+            .and_then(|whole| {
+                self.semantic_world
+                    .complete_type_by_whole_observation(whole)
+            })
+            .cloned();
         let entries = symbol
             .member_views
             .iter()
@@ -2661,7 +2749,10 @@ impl CompilationWorld {
         if entries.is_empty() {
             return None;
         }
-        Some(entries)
+        Some(ConnectedExistingResult {
+            material: entries,
+            complete_type,
+        })
     }
 
     fn harvest_alias(
@@ -2811,16 +2902,11 @@ fn declared_type_placeholder_delta(
     represented_type: crate::TypeValueId,
     provenance: Provenance,
 ) -> DeclaredTypeCarrierDelta {
-    // v0.6 placeholder: this represents a type-annotated declaration before
-    // type-object binding evaluation exists. Long-term, `let t: type = uint8` is an
-    // ordinary binding of symbol/place `t` to the existing type object `uint8`,
-    // not fresh type generation and not symbol aliasing. Namespace injection
-    // through `t` must target place(t), not place(uint8), once writable-place
-    // checking exists.
-    //
-    // This PR (v0.6.1) does not implement canonical first-order projection
-    // equality, alias forwarding evaluation, or writable-place checking.
-    // The placeholder representation remains until those features land.
+    // Compatibility projection for a declared type carrier. `let t: type =
+    // uint8` is an ordinary fresh Symbol/Place binding, not type generation or
+    // aliasing. Canonical Core/whole equality and Writable judgments live in
+    // SemanticWorld; this graph object only renders the already-decided type
+    // binding for namespace compatibility.
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     let type_namespace_id = delta.allocate_node_id();
@@ -3269,33 +3355,24 @@ fn ensure_runtime_result_slice_has_value_dimension(
 }
 
 fn assert_semantic_result_satisfies_annotation(
-    semantic_world: &crate::SemanticWorld,
     annotation: Option<&NormAnnotation>,
     result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+    semantic_complete_type: Option<&crate::CompleteTypeValue>,
     provenance: Provenance,
 ) -> Result<(), BuildError> {
     if !is_type_annotation(annotation) {
         return Ok(());
     }
-    // Validating that `: type` annotation results carry
-    // a TypeObject payload is a legitimate type-system boundary: the
-    // annotation asserts the value IS a type.  This is type checking, not
-    // ordinary-semantic-algorithm leakage.
-    let value_bearing = result.iter().filter_map(|entry| entry.value);
-    for value in value_bearing {
-        if !matches!(
-            semantic_world.value(value.id).map(|value| &value.payload),
-            Some(crate::SemanticValuePayload::TypeObject { .. })
-        ) {
-            return Err(BuildError::single(
-                Diagnostic::hard_error(
-                    "AnnotationAssertionFailed: `: type` expects the evaluated ordinary result value to be a TypeValue",
-                    Some(provenance),
-                )
-                .with_code(ResolverCode::AnnotationAssertionFailed),
-            ));
-        }
+    if semantic_complete_type.is_none() {
+        return Err(BuildError::single(
+            Diagnostic::hard_error(
+                "AnnotationAssertionFailed: `: type` expects an explicit complete type semantic result",
+                Some(provenance),
+            )
+            .with_code(ResolverCode::AnnotationAssertionFailed),
+        ));
     }
+    debug_assert!(!result.is_empty());
     Ok(())
 }
 

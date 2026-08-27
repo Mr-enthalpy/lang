@@ -541,6 +541,11 @@ pub enum SemanticDeclarationEntry {
         name: String,
         binding: SymbolId,
         represented_type: TypeValueId,
+        /// Exact immutable complete-type snapshot carried by the semantic
+        /// result/binding, when one is already known. `represented_type` is
+        /// only its Core lookup projection and must not be used to rebuild a
+        /// newer callspace snapshot.
+        complete_type: Option<CanonicalValueAddr>,
         /// Associated namespace node together with its local spelling.
         associated_namespace: Option<(NamespaceNodeId, String)>,
         policy: PolicyPair,
@@ -4039,6 +4044,34 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternValueId)> {
+        self.register_type_symbol_with_complete_type(
+            namespace,
+            name,
+            binding_symbol,
+            represented_type,
+            None,
+            type_rank,
+            associated_namespace,
+            policy,
+            provenance,
+        )
+    }
+
+    /// Register a type carrier while preserving an already-observed exact
+    /// complete-type snapshot.  This is the semantic-result binding entry;
+    /// the legacy wrapper above is reserved for bootstrap/lookup-only callers.
+    pub fn register_type_symbol_with_complete_type(
+        &mut self,
+        namespace: NamespaceNodeId,
+        name: &str,
+        binding_symbol: SymbolId,
+        represented_type: TypeValueId,
+        complete_type: Option<CanonicalValueAddr>,
+        type_rank: TypeValueId,
+        associated_namespace: Option<NamespaceNodeId>,
+        policy: PolicyPair,
+        provenance: Provenance,
+    ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternValueId)> {
         let owner = self.namespace_owner(namespace)?;
         let symbol = self.intern_symbol(namespace, owner, name, provenance.clone());
         self.symbol_backing_declarations
@@ -4118,7 +4151,11 @@ impl SemanticWorld {
                 && *pattern == represented_pattern
                 && *existing == represented_type
         ));
-        let member = self.pure_p_member_for_carrier(symbol, represented_pattern);
+        let mut member = self.pure_p_member_for_carrier(symbol, represented_pattern);
+        if let Some(whole) = complete_type {
+            debug_assert!(self.complete_types.contains_key(&whole));
+            member.complete_type = Some(whole);
+        }
         let cell = self
             .symbols
             .get_mut(&symbol)
@@ -4715,6 +4752,7 @@ impl SemanticWorld {
                     name,
                     binding,
                     represented_type,
+                    complete_type,
                     associated_namespace,
                     policy,
                     provenance,
@@ -4740,11 +4778,12 @@ impl SemanticWorld {
                         ))
                     })?;
                     staged
-                        .register_type_symbol(
+                        .register_type_symbol_with_complete_type(
                             delta.namespace,
                             &name,
                             binding,
                             represented_type,
+                            complete_type,
                             type_rank,
                             associated_node,
                             policy,

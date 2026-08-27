@@ -2,11 +2,10 @@ mod support;
 
 use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
-    CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, MetaInvocationValue,
-    OrdinaryInvocationContext, PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage,
-    PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticOwnerKind,
-    SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy,
-    ValuePresence, WritableContext,
+    CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
+    PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyTransitionRequest,
+    Provenance, ResolveExpectation, SemanticOwnerKind, SemanticValuePayload, StageSet,
+    SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence, WritableContext,
 };
 
 use support::{
@@ -211,6 +210,31 @@ fn i12_type_object_not_in_sibling_vals() {
     assert!(
         matches!(val.payload, SemanticValuePayload::TypeObject { .. }),
         "I12: TypeObject is compatibility adapter, not semantic Val1"
+    );
+}
+
+#[test]
+fn struct_binding_carries_exact_tau_independently_of_typeobject_projection() {
+    let world = build_single_fixture_world("struct_single_field", "app");
+    let binding = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "T")
+        .expect("struct result is bound as T");
+    let member = binding
+        .pure_p
+        .expect("T carries the returned pure type object");
+    let whole = member
+        .complete_type
+        .expect("the binding stores the returned exact complete tau snapshot");
+    let complete = world
+        .semantic_world()
+        .complete_type_by_whole_observation(whole)
+        .expect("the exact complete tau remains interned");
+    assert_eq!(complete.whole, whole);
+    assert_eq!(
+        world.semantic_world().type_for_pattern(member.pattern),
+        Some(complete.lookup_key),
+        "the Core lookup projection agrees with tau without defining its whole identity"
     );
 }
 
@@ -1160,12 +1184,16 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         )
         .expect("IdentityType accepts the value read through U");
     let lang_build::InvocationResult::SemanticResult {
+        declared_result_class,
         value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
-        ..
     } = result
     else {
         panic!("expected ordinary outcome");
     };
+    assert_eq!(
+        declared_result_class,
+        lang_build::DeclaredResultClass::CompleteType
+    );
 
     let uint8 = world
         .semantic_world()
@@ -1176,16 +1204,14 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         result.complete_result[0].pattern,
         uint8.pure_p_pattern().unwrap()
     );
-    let lang_build::OrdinaryReturnedValue::Meta(MetaInvocationValue::ForwardedValue(value)) =
-        result.returned
-    else {
-        panic!("IdentityType returns the evaluated type value");
+    let lang_build::OrdinaryReturnedValue::CompleteType(value) = result.returned else {
+        panic!("IdentityType returns the evaluated complete type value");
     };
     let uint8_type = world
         .semantic_world()
         .type_object_value_for_symbol(uint8.identity)
         .expect("uint8 type object value");
-    let represented = value.type_value;
+    let represented = value.complete_type.lookup_key;
     let SemanticValuePayload::TypeObject {
         represented_type, ..
     } = world
@@ -1404,6 +1430,11 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
     let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
         panic!("world-connected struct must return complete tau, not private meta material");
     };
+    assert_eq!(
+        result.complete_type.as_ref(),
+        Some(&returned.complete_type),
+        "every CompleteType semantic success carries its exact whole tau explicitly"
+    );
     let view = &result.complete_result[0];
     assert!(
         view.value.is_some(),

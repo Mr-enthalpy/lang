@@ -662,7 +662,7 @@ This table is implementation bookkeeping, not a second semantic authority.
 | Value / binding Place separation | implemented | ordinary `let` preserves value identity while allocating a fresh destination Place; Writable reads the selected residency | source ref/share and broader place-operation inference remain partial |
 | OpenHere/ConstructionAuthority/Writable | implemented | meta construction/inject paths connected | broader source operation coverage deferred |
 | abstract literal construction/migration | implemented | ordinary candidate path connected | contextual target inference remains Open |
-| unified InvocationResult and `struct -> tau` | implemented | meta and ordinary semantic-success paths connected; shape-specific ordinary payload is projection transport only | selected ordinary Residual/Diagnostic transport and residual representation remain partial/Open |
+| unified InvocationResult and `struct -> tau` | implemented | primitive execution returns replayable `MetaPrimitiveExecution` material only; world-connected installation produces exact `CompleteTypeValue`, ordinary semantic success carries that whole tau explicitly, and binding consumes it without reverse recovery from `TypeObject` | selected ordinary Residual/Diagnostic transport and residual representation remain partial/Open |
 | meta invocation material/root identity split | implemented | cache keys parent-neutral material; generated roots key parent × material | persistent root encoding remains Open |
 
 Topic-document status must be read per row. A canonical relation can have an

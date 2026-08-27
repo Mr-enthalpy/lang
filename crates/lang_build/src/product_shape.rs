@@ -372,8 +372,10 @@ impl RawArgShape {
     /// that carries a pattern name and represented type value, with an
     /// optional compatibility carrier Symbol.
     ///
-    /// The pattern name is substitution/navigation material; the represented
-    /// type value remains the only identity-bearing component.
+    /// The pattern name and represented `TypeValueId` are
+    /// substitution/navigation and Core-lookup material. Canonical identity
+    /// is carried separately by the Core and whole-type observation addresses;
+    /// the lookup projection is never the complete type identity.
     pub fn as_type_object_named(
         self,
         top_pattern_name: String,

@@ -57,3 +57,32 @@ fn ordinary_tests_do_not_construct_temp_source() {
          offending files: {offenders:?}"
     );
 }
+
+#[test]
+fn complete_type_authority_never_flows_backward_from_compatibility_payloads() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let primitive =
+        fs::read_to_string(src.join("meta_invocation.rs")).expect("read primitive executor source");
+    assert!(
+        !primitive.contains("InvocationResult::semantic("),
+        "meta primitive material must never be promoted directly into the semantic result universe"
+    );
+
+    let world = fs::read_to_string(src.join("world.rs")).expect("read world source");
+    let start = world
+        .find("fn install_connected_semantic_binding(")
+        .expect("connected binding installer exists");
+    let tail = &world[start..];
+    let end = tail
+        .find("fn install_connected_generated_type_binding(")
+        .expect("next binding helper exists");
+    let installer = &tail[..end];
+    assert!(
+        !installer.contains("SemanticValuePayload::TypeObject"),
+        "canonical binding installation must not recover tau or result class from TypeObject"
+    );
+    assert!(
+        installer.contains("semantic_complete_type"),
+        "the binding installer must receive the already-observed complete tau explicitly"
+    );
+}

@@ -147,8 +147,9 @@ pub use meta_invocation::{
     invoke_meta_callable_with_materialization_state, ConstructionIdentityMaterial,
     ConstructionInstanceId, FieldSignatureMaterial, ForwardedValue, GeneratedConstructionValue,
     GeneratedFieldDefinition, GeneratedFieldPatternHead, GeneratedTypeDefinitionValue,
-    MetaInvocationInput, MetaInvocationValue, ReturnSlotSemantics, ReturnViewShape,
-    TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId, TypeDefinitionPatternHeads,
+    MetaInvocationInput, MetaInvocationValue, MetaPrimitiveExecution, ReturnSlotSemantics,
+    ReturnViewShape, TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId,
+    TypeDefinitionPatternHeads,
 };
 pub use meta_key::{
     compute_legacy_meta_instance_digest, compute_meta_invocation_material_key,
