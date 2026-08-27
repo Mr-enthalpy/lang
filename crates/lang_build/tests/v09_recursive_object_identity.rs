@@ -831,8 +831,8 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     sealed.phase = Phase::SealStatic;
 
     // The whole chain is gated: `T` is hidden, so `g::f::T(...)` is
-    // unreachable at SealStatic, and the no-shadow search reports it as
-    // `NoTargetValues` so it keeps falling through instead of hard-failing.
+    // unreachable at SealStatic. Resolution is already sealed, so the
+    // projection reports `NoTargetValues` without any outward fallback.
     let blocked = invoke_host_member_symbol_ordinary(
         &mut world,
         &mut materialization,

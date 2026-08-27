@@ -1096,7 +1096,7 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
 }
 
 #[test]
-fn bare_call_target_searches_near_then_outer_then_core_without_shadowing() {
+fn bare_call_target_resolves_nearest_symbol_once_even_if_non_callable() {
     let mut world = build_single_fixture_world("bare_scope_chain", "app");
     let package = world.package_root_node();
     let outer_namespace = world
@@ -1107,11 +1107,6 @@ fn bare_call_target_searches_near_then_outer_then_core_without_shadowing() {
         .semantic_world()
         .child_namespace(outer_namespace, "inner")
         .expect("inner physical namespace");
-    let outer = world
-        .semantic_world()
-        .symbol_in_namespace(outer_namespace, "f")
-        .expect("outer callable f")
-        .clone();
     let inner = world
         .semantic_world()
         .symbol_in_namespace(inner_namespace, "f")
@@ -1124,20 +1119,107 @@ fn bare_call_target_searches_near_then_outer_then_core_without_shadowing() {
 
     let initializer = initializer_from_source("let result = uint8 f;");
     let call_site = extract_single_call_site(&initializer).expect("bare f call");
-    let result = world
+    let failure = world
         .invoke_ordinary_call(
             inner_namespace,
             &call_site,
             OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("near outer core bare-name chain"),
         )
-        .expect("near non-callable falls through to outer callable");
-    let InvocationOutcome::ClusterSymbol(result) = result else {
-        panic!("outer meta f returns one cluster construction");
-    };
+        .expect_err("the nearest non-callable Symbol shadows outer callable Symbols");
+    assert!(
+        matches!(
+            failure,
+            lang_build::OrdinaryInvocationFailure::NoTargetValues { .. }
+                | lang_build::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+        ),
+        "call projection fails on inner.f and never re-resolves the name: {failure:?}"
+    );
+}
+
+#[test]
+fn bare_call_target_does_not_fall_through_after_a_rejects_nearest_symbol() {
+    let mut world = build_single_fixture_world("bare_scope_chain", "app");
+    let package = world.package_root_node();
+    let outer_namespace = world
+        .semantic_world()
+        .child_namespace(package, "outer")
+        .expect("outer physical namespace");
+    let inner_namespace = world
+        .semantic_world()
+        .child_namespace(outer_namespace, "inner")
+        .expect("inner physical namespace");
+    let inner = world
+        .semantic_world()
+        .symbol_in_namespace(inner_namespace, "g")
+        .expect("inner runtime-only callable g")
+        .identity;
+
+    let initializer = initializer_from_source("let result = uint8 g;");
+    let call_site = extract_single_call_site(&initializer).expect("bare g call");
     assert_eq!(
-        result.trace.c0_target_values, outer.sibling_vals,
-        "the selected C0 target comes from outer.f, before any core fallback"
+        world.resolve_source_terminal_symbol(inner_namespace, &call_site.target),
+        Some(inner),
+        "lexical resolution seals inner.g before call projection"
+    );
+    let failure = world
+        .invoke_ordinary_call(
+            inner_namespace,
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            Provenance::new("nearest callable fails A without outward retry"),
+        )
+        .expect_err("runtime-only inner.g is inadmissible at OpenStatic");
+    assert!(
+        matches!(
+            failure,
+            lang_build::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+        ),
+        "A-stage failure belongs to inner.g and never retries outer.g: {failure:?}"
+    );
+}
+
+#[test]
+fn same_bare_path_has_one_terminal_symbol_before_value_type_and_call_projection() {
+    let world = build_single_fixture_world("bare_scope_chain", "app");
+    let package = world.package_root_node();
+    let outer_namespace = world
+        .semantic_world()
+        .child_namespace(package, "outer")
+        .expect("outer physical namespace");
+    let inner_namespace = world
+        .semantic_world()
+        .child_namespace(outer_namespace, "inner")
+        .expect("inner physical namespace");
+    let inner = world
+        .semantic_world()
+        .symbol_in_namespace(inner_namespace, "f")
+        .expect("inner type-valued f")
+        .identity;
+    let initializer = initializer_from_source("let result = uint8 f;");
+    let call_site = extract_single_call_site(&initializer).expect("bare f call");
+
+    let neutral = world
+        .resolve_source_terminal_symbol(inner_namespace, &call_site.target)
+        .expect("neutral source resolution");
+    let by_symbol_path = world
+        .semantic_world()
+        .resolve_symbol_path(
+            &["f".to_string()],
+            inner_namespace,
+            &[world.semantic_world().namespace_index().root_node()],
+            &[world.core_node()],
+        )
+        .expect("context-independent Symbol resolution");
+    assert_eq!(neutral, inner);
+    assert_eq!(by_symbol_path, inner);
+    assert!(
+        world
+            .semantic_world()
+            .symbol(inner)
+            .and_then(|symbol| symbol.pure_p_pattern())
+            .is_some(),
+        "type projection observes the already resolved inner Symbol"
     );
 }
 

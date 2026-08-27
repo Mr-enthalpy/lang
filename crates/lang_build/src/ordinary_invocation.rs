@@ -1484,9 +1484,10 @@ pub fn invoke_symbol_ordinary(
 /// carrier's own binding-level pure-P member view.  A single host anywhere in
 /// the chain that is not navigable at this phase hides everything reached
 /// through it, so the whole chain must be exposed; the failure is reported as
-/// `NoTargetValues` so the no-shadow candidate search keeps falling through to
-/// the next scope link instead of hard-failing the call.  A bare-name target
-/// has an empty host chain and composes only the member factor.
+/// `NoTargetValues` for the already resolved Symbol. Name resolution is sealed
+/// before this projection, so the failure never resumes an outward scope walk.
+/// A bare-name target has an empty host chain and composes only the member
+/// factor.
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_host_member_symbol_ordinary(
     semantic_world: &mut SemanticWorld,

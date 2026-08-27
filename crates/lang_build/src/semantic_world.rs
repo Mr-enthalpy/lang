@@ -538,8 +538,9 @@ pub enum SemanticDeclarationEntry {
     },
     /// A declared name whose value is intentionally residual/unsupported in
     /// the current evaluator. It still receives a semantic Symbol identity so
-    /// scope lookup and no-shadow fallback never depend on the declaration
-    /// projection index.
+    /// lexical lookup never depends on the declaration projection index. It
+    /// still shadows outer same-spelled Symbols in every use context;
+    /// projection failure never reopens name resolution.
     ProjectionOnly {
         name: String,
         backing_declaration: SymbolId,

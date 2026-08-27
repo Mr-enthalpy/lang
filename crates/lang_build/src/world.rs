@@ -40,7 +40,7 @@ use crate::{
     verify::evaluate_source_verifications as evaluate_verify_forms,
 };
 
-/// One resolved call target together with the COMPLETE host chain it was
+/// One resolved source target together with the COMPLETE host chain it was
 /// reached through.
 ///
 /// Explicit navigation `g::f::T` selects the terminal Symbol *through* every
@@ -669,12 +669,12 @@ impl CompilationWorld {
         context: crate::OrdinaryInvocationContext<'_>,
         provenance: Provenance,
     ) -> Result<crate::InvocationOutcome, crate::OrdinaryInvocationFailure> {
-        let candidates = self.resolve_semantic_call_target_chain(namespace, &call_site.target);
-        if candidates.is_empty() {
+        let Some(candidate) = self.resolve_semantic_source_target(namespace, &call_site.target)
+        else {
             return Err(crate::OrdinaryInvocationFailure::NoTargetValues {
                 trace: crate::OrdinaryPipelineTrace::default(),
             });
-        }
+        };
         let resolver_context = ResolverContext::with_mounts(
             namespace,
             vec![self.semantic_world.namespace_index().root_node()],
@@ -684,93 +684,34 @@ impl CompilationWorld {
             .semantic_world
             .namespace_owner(namespace)
             .map(|owner| self.semantic_world.owners().package_of(owner));
-        let mut last_failure = None;
-        for candidate in candidates {
-            let symbol = candidate.symbol;
-            let mut attempt_context = context.clone();
-            let target_package = self.semantic_world.symbol(symbol).map(|symbol| {
-                self.semantic_world
-                    .owners()
-                    .package_of(symbol.declaration_owner)
-            });
-            if caller_package.is_some()
-                && target_package.is_some()
-                && caller_package != target_package
-            {
-                attempt_context.visibility = crate::VisibilityView::External;
-            }
-            match crate::invoke_host_member_symbol_ordinary(
-                &mut self.semantic_world,
-                &mut self.type_materialization_state,
-                &candidate.host_chain,
-                symbol,
-                call_site,
-                &resolver_context,
-                attempt_context,
-                provenance.clone(),
-            ) {
-                Ok(outcome) => return Ok(outcome),
-                // No-shadow candidate search: a nearer same-name Symbol
-                // whose member views expose no admissible callable does not
-                // shadow an outer callable Symbol; the search falls through
-                // to the next scope link.  Any other failure is a real
-                // selection/execution failure of this scope's candidate set.
-                Err(
-                    failure @ (crate::OrdinaryInvocationFailure::NoTargetValues { .. }
-                    | crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
-                        ..
-                    }),
-                ) => {
-                    last_failure = Some(failure);
-                }
-                Err(failure) => return Err(failure),
-            }
-        }
-        Err(last_failure.expect("non-empty candidate chain records a failure"))
-    }
-
-    /// Scope-ordered same-name call-target Symbols (`near → outer → core`).
-    /// Navigation targets resolve to exactly one Symbol.
-    fn resolve_semantic_call_target_chain(
-        &self,
-        namespace: NamespaceNodeId,
-        target: &NormExpr,
-    ) -> Vec<ResolvedCallTarget> {
-        let name = match target {
-            NormExpr::Name { text, .. } => Some(text.as_str()),
-            NormExpr::OperatorTarget { spelling, .. } => Some(spelling.as_str()),
-            _ => None,
-        };
-        let Some(name) = name else {
-            return self
-                .resolve_semantic_call_target(namespace, target)
-                .into_iter()
-                .collect();
-        };
-        let mut chain: Vec<ResolvedCallTarget> = Vec::new();
-        for scope in self
-            .semantic_world
-            .bare_name_scope_chain(namespace, &[self.core_node])
+        let symbol = candidate.symbol;
+        let mut attempt_context = context;
+        let target_package = self.semantic_world.symbol(symbol).map(|symbol| {
+            self.semantic_world
+                .owners()
+                .package_of(symbol.declaration_owner)
+        });
+        if caller_package.is_some() && target_package.is_some() && caller_package != target_package
         {
-            if let Some(symbol) = self.semantic_world.symbol_in_namespace(scope, name) {
-                if !chain
-                    .iter()
-                    .any(|candidate| candidate.symbol == symbol.identity)
-                {
-                    // A bare name is reached without navigating a host layer,
-                    // so only the member factor of the exposure conjunction
-                    // applies.
-                    chain.push(ResolvedCallTarget {
-                        host_chain: Vec::new(),
-                        symbol: symbol.identity,
-                    });
-                }
-            }
+            attempt_context.visibility = crate::VisibilityView::External;
         }
-        chain
+        crate::invoke_host_member_symbol_ordinary(
+            &mut self.semantic_world,
+            &mut self.type_materialization_state,
+            &candidate.host_chain,
+            symbol,
+            call_site,
+            &resolver_context,
+            attempt_context,
+            provenance,
+        )
     }
 
-    fn resolve_semantic_call_target(
+    /// Resolve source navigation exactly once, before any value/type/call
+    /// projection.  A bare name is fixed by lexical shadowing alone; failure
+    /// of a later projection, A-stage check, Policy comparison, legality
+    /// check, or body execution can never resume the outward scope walk.
+    fn resolve_semantic_source_target(
         &self,
         namespace: NamespaceNodeId,
         target: &NormExpr,
@@ -846,6 +787,18 @@ impl CompilationWorld {
                 host_chain: navigation.host_chain,
                 symbol: navigation.terminal_symbol,
             })
+    }
+
+    /// Read-only terminal-Symbol observation of the same source resolver used
+    /// by value, type, and call consumers.  This exposes identity for
+    /// coherence tests and diagnostics; it performs no contextual projection.
+    pub fn resolve_source_terminal_symbol(
+        &self,
+        namespace: NamespaceNodeId,
+        target: &NormExpr,
+    ) -> Option<crate::SemanticSymbolIdentity> {
+        self.resolve_semantic_source_target(namespace, target)
+            .map(|resolved| resolved.symbol)
     }
 
     /// Feed discovered physical source units into namespace assembly and
@@ -2358,7 +2311,7 @@ impl CompilationWorld {
         }
         if let Ok(call_site) = crate::extract_single_call_site(initializer) {
             if self
-                .resolve_semantic_call_target(namespace, &call_site.target)
+                .resolve_semantic_source_target(namespace, &call_site.target)
                 .is_some()
             {
                 // Unknown actuals have the primitive Plain view. A concrete
@@ -2444,7 +2397,7 @@ impl CompilationWorld {
 
         let inner = if let Ok(call_site) = crate::extract_single_call_site(operand) {
             if self
-                .resolve_semantic_call_target(namespace, &call_site.target)
+                .resolve_semantic_source_target(namespace, &call_site.target)
                 .is_some()
             {
                 let explicit_modes =
@@ -2597,7 +2550,7 @@ impl CompilationWorld {
         initializer: &NormExpr,
     ) -> Option<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>> {
         let symbol = self
-            .resolve_semantic_call_target(namespace, initializer)?
+            .resolve_semantic_source_target(namespace, initializer)?
             .symbol;
         let symbol = self.semantic_world.symbol(symbol)?;
         let entries = symbol

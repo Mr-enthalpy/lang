@@ -1305,11 +1305,10 @@ Symbol-first resolution is a single ordered pipeline:
 Path -> SelectedHead -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection
 ```
 
-The stability claim applies to the **tail**, not to the head. Once the head
-symbol is selected, the remaining navigation is decided by the path alone: it is
-**not** decided by whether the result is subsequently used as a call target, a
-type, a value, an injection target, or an extraction subject. Head selection is a
-separate, earlier step with its own rule.
+The stability claim applies to the complete resolution, including the head.
+The path is resolved before the consumer asks for a call, type, value,
+injection, or extraction projection. One spelling in one lexical environment
+therefore denotes one terminal Symbol in every use context.
 
 #### 3.2.1 Head selection: bare versus explicitly anchored
 
@@ -1317,24 +1316,23 @@ The two forms do not use the same rule, and the difference is confined to this
 step:
 
 ```text
-ResolveBare_q(name)
-  = the nearest enclosing Symbol spelled `name` that carries the required
-    coarse facet q
+ResolveBare(name)
+  = the nearest enclosing Symbol spelled `name`
 
 ResolveExplicit(path)
   = the uniquely designated anchor, taken as written
 ```
 
-A bare head may look outward, and the coarse facet `q` demanded by the use site
-participates in that search. An explicitly anchored path may not look outward at
-all. The search discipline is:
+A bare head may look outward only until it finds the nearest same-spelled
+Symbol. No facet demanded by the use site participates in that search. An
+explicitly anchored path may not look outward at all. The search discipline is:
 
 ```text
-bare head    : walk outward; stop at the first same-spelled Symbol carrying q
+bare head    : walk outward; stop at the first same-spelled Symbol
 explicit head: no outward walk; the written anchor is the head or resolution fails
 ```
 
-The outward walk is bounded to exactly one decision. Once a Symbol carrying `q`
+The outward walk is bounded to exactly one decision. Once a same-spelled Symbol
 is found, that Symbol is the head, permanently:
 
 ```text
@@ -1343,9 +1341,8 @@ overload resolution failing inside the selected head
   -> NOT a reason to resume the outward walk
 ```
 
-Callability is not determined by the presence of a value-facet member. The
-coarse demand `q` at a call site is callability, defined by the full
-callable projection:
+Callability is not a name-resolution predicate. It is a projection of the
+already resolved Symbol:
 
 ```text
 CallablyPresent(S)
@@ -1354,25 +1351,28 @@ CallablyPresent(S)
 CallableProjection(S)
   = DedupCandidateIdentity(V_S ⊎ V_τ)
 
-ResolveBare_call(name)
-  = nearest same-spelled Symbol S with CallablyPresent(S)
-
 final call projection
-  = CallableProjection(S)
+  = CallableProjection(ResolveBare(name))
 ```
 
-A Symbol `S = <τ, None>` with a non-empty `V_τ` is therefore
-`CallablyPresent` even though it carries no value-facet members; the `V_τ`
-candidates are not lost by a value-facet-only head selection. This is what
-keeps a local Symbol with a type-capable `Q` but no callable projection from
-silently shadowing an outer callable Symbol of the same spelling, and it is
-equally what stops the search from degenerating into
-"retry outward until something type-checks" — the demand is coarse, and it is
-consulted once.
+A Symbol `S = <τ, None>` with a non-empty `V_τ` may therefore be callable even
+though it carries no value-facet members: `CallableProjection(S)` observes both
+`V_S` and `V_τ`. Conversely, a nearer non-callable Symbol still shadows an
+outer callable Symbol of the same spelling. A failed call projection and an
+empty hard-admissibility set are final failures of that resolved Symbol; they
+never mean "retry outward until something type-checks".
 
-`q` is coarse in the strict sense: it distinguishes facet presence, never
-signatures, argument types, arity, or specificity. Head selection therefore never
-becomes overload resolution in disguise.
+Formally, for every use context `q`:
+
+```text
+Resolve_value(path)
+  = Resolve_type(path)
+  = Resolve_call(path)
+  = Resolve(path)
+```
+
+The equalities identify the same terminal Symbol. Context enters only in the
+subsequent projection.
 
 #### 3.2.2 Tail navigation is context-independent
 
@@ -1416,9 +1416,8 @@ resolution in disguise. Namespace children remain reachable: a step consults
 the current symbol's object facet and its associated namespace, so ordinary
 namespace paths keep resolving unchanged.
 
-The coarse facet of §3.2.1 is not an exception to this. It participates only in
-selecting the head, once, and it distinguishes facet presence rather than
-meaning; the tail steps and the final projection remain as above.
+There is no coarse-facet exception at the head. Shadowing precedes projection,
+applicability, Policy preference, and DynamicLegality.
 
 The host layers traversed on the way are retained as an ordered `HostChain`,
 because per-layer exposure is a conjunction over every layer
