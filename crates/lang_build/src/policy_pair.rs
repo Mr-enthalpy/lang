@@ -419,6 +419,14 @@ pub struct FormalPolicyPattern {
     pub mode: PolicyMode,
 }
 
+/// Effective policy of a declared return position.  Its pair/stage is
+/// inherited from the callable P1 and cannot be rewritten at the position;
+/// only the orthogonal whole-slot mode may be explicitly overridden.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReturnPolicyPattern {
+    pub effective_view: PolicyView,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NamespaceDeclarationPosition {
     DirectTopLevel,
@@ -946,18 +954,18 @@ pub fn elaborate_binding_result_demand(
 
 pub fn elaborate_formal_policy_pattern(
     policy: Option<&NormPolicySpec>,
-    inherited_p2: &PolicyPair,
+    inherited_p2: &PolicyView,
     provenance: Provenance,
 ) -> Result<FormalPolicyPattern, Diagnostic> {
     validate_value_component_invariant(
-        &inherited_p2.value,
+        &inherited_p2.pair.value,
         "formal inherited P2",
         provenance.clone(),
     )?;
     let Some(policy) = policy else {
         return Ok(FormalPolicyPattern {
-            effective_pair: inherited_p2.clone(),
-            mode: PolicyMode::Plain,
+            effective_pair: inherited_p2.pair.clone(),
+            mode: inherited_p2.mode,
         });
     };
     if policy.pattern_policy.is_some() {
@@ -986,8 +994,56 @@ pub fn elaborate_formal_policy_pattern(
     }
     let selected = explicit_mode_atom(&atoms, "formal parameter", provenance)?;
     Ok(FormalPolicyPattern {
-        effective_pair: inherited_p2.clone(),
+        effective_pair: inherited_p2.pair.clone(),
         mode: selected,
+    })
+}
+
+pub fn elaborate_return_policy_pattern(
+    policy: Option<&NormPolicySpec>,
+    inherited_p1: &PolicyView,
+    provenance: Provenance,
+) -> Result<ReturnPolicyPattern, Diagnostic> {
+    validate_value_component_invariant(
+        &inherited_p1.pair.value,
+        "return inherited P1",
+        provenance.clone(),
+    )?;
+    let Some(policy) = policy else {
+        return Ok(ReturnPolicyPattern {
+            effective_view: inherited_p1.clone(),
+        });
+    };
+    if policy.pattern_policy.is_some() {
+        return Err(policy_error(
+            "return position policy may override only its whole-slot PolicyMode",
+            provenance,
+        ));
+    }
+    let atoms = match &policy.value_policy {
+        NormValuePolicyPattern::Conjunction(value) => {
+            parse_component(value, false, provenance.clone())?
+        }
+        NormValuePolicyPattern::Absent { .. } => {
+            return Err(policy_error(
+                "return position policy cannot rewrite inherited value presence",
+                provenance,
+            ));
+        }
+    };
+    reject_namespace_attributes(&atoms, "return position", provenance.clone())?;
+    if !atoms.stages.is_empty() || atoms.absent_value {
+        return Err(policy_error(
+            "return position policy inherits evaluation stages and may override only PolicyMode",
+            provenance,
+        ));
+    }
+    let mode = explicit_mode_atom(&atoms, "return position", provenance)?;
+    Ok(ReturnPolicyPattern {
+        effective_view: PolicyView {
+            pair: inherited_p1.pair.clone(),
+            mode,
+        },
     })
 }
 

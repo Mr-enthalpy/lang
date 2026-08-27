@@ -481,8 +481,11 @@ Must cover:
 - policy fields on callable objects retained as transitional symbol,
   body-entry, and result metadata; final source semantics use canonical
   `Pv:Pp`, contextual P1 projection, P2 result normalization, and no independent
-  `P3`. Parameters may refine inherited P2 whole-slot `PolicyMode`, and returns
-  symmetrically may refine inherited P1 mode; neither may alter other policy dimensions.
+  arbitrary complete `P3`. Parameters form `P_in = Overlay(P2, Delta_in)` and
+  returns form `P_out = Overlay(P1, Delta_out)`: omitted mode inherits its base,
+  explicit mode may refine that coordinate, and evaluation stage plus all other
+  Policy dimensions remain inherited. These declaration-local position views
+  are distinct from caller result demand and never propagate across a call.
   The typed pair substrate now exists, while migration of every legacy
   `PolicySet` consumer and end-to-end execution checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)

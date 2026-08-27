@@ -18,7 +18,9 @@ Policy implementation mapping and orthogonal semantic dimensions:
   transitional input × output Policy candidate-ordering prototype (current contract:
   `../../contracts/v0.6-cross-policy-value-transition.md`);
 - meta/compile/seal visibility and the pre-seal snapshot boundary;
-- explicit retirement of an independent return-policy `P3`;
+- explicit retirement of an independent arbitrary complete return-policy `P3`,
+  while retaining restricted position views `P_in = Overlay(P2, mode?)` and
+  `P_out = Overlay(P1, mode?)` with inherited evaluation stage;
 - component-preserving results with no scalar replacement for `Pv:Pp`, while
   every result slot still carries orthogonal whole-slot `PolicyMode`;
 - current flat `PolicyEnv` filtering substrate;

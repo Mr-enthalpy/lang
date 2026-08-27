@@ -28,6 +28,7 @@ pub(crate) struct CoreCallableRegistration {
     pub(crate) backing: SymbolId,
     pub(crate) primitive: CoreMetaFunction,
     pub(crate) function_view: PolicyView,
+    pub(crate) body_entry_view: PolicyView,
     pub(crate) result_view: PolicyView,
     pub(crate) return_shape: crate::ReturnShape,
     pub(crate) visibility: Option<crate::NamespaceVisibility>,
@@ -259,6 +260,10 @@ fn insert_meta_function(
                 }
                 _ => core_declared_pair(&[PolicyStage::Meta], true),
             },
+            mode: PolicyMode::Plain,
+        },
+        body_entry_view: PolicyView {
+            pair: core_declared_pair(&[PolicyStage::Meta], false),
             mode: PolicyMode::Plain,
         },
         result_view: PolicyView {

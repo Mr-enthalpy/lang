@@ -20,7 +20,7 @@ mut let uint8 =
 };
 
 mut let uint8 =
-  (self, let object: uint8): mut + (compile || runtime):compile
+  (self, plain let object: uint8): mut + (compile || runtime):compile
     -> let result: uint8 =>
 {
   object;

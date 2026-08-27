@@ -89,9 +89,11 @@ Pp  policy of the Pattern/anonymous-type component observed at this edge
 ```
 
 There is no scalar replacement for this pair, no third `Pv`/`Pp` component, and
-no independent P3. A result slot nevertheless carries its orthogonal scalar
-`PolicyMode`; a result object carries its own `PolicyPair` when it re-enters the
-flow.
+no independent complete P3 Policy product. Parameter and return positions do
+nevertheless have position Policies: `P_in` overlays P2 and `P_out` overlays
+P1. Their inherited pair/stage coordinates remain fixed while their orthogonal
+whole-slot `PolicyMode` may be explicitly refined. A result object carries its
+own `PolicyPair` when it re-enters the flow.
 
 The pair is an observation edge, but its two axes are constrained by whether the
 object actually has an independent value projection. This constraint does not
@@ -1149,19 +1151,22 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
-Every written formal parameter first inherits the callable result pair `P2`
-without reinterpretation. Its whole-slot PolicyMode is then fixed by the
-binding spelling:
+Every formal parameter first inherits the callable result view `P2` without
+reinterpretation. Its whole-slot PolicyMode is inherited unless the binding
+spelling explicitly overrides that coordinate:
 
 ```text
-FormalBase(parameter) = P2(callable)
+P_in = Overlay(P2(callable), Delta_in)
+
+stage(P_in) = stage(P2(callable))
 ```
 
-The three spellings select three actual PolicyMode points; plain is not an
-unspecified variable or an instruction to infer one of the other two:
+An omitted mode preserves the inherited P2 mode. The three explicit spellings
+select three actual PolicyMode points; plain is not an unspecified variable or
+an instruction to infer one of the other two:
 
 ```text
-let x        -> FormalPolicyView(P2, PolicyMode = plain)
+let x        -> P2 unchanged
 plain let x  -> FormalPolicyView(P2, PolicyMode = plain)
 const let x  -> FormalPolicyView(P2, PolicyMode = const)
 mut let x    -> FormalPolicyView(P2, PolicyMode = mut)
@@ -1204,28 +1209,39 @@ Implementations must not collapse `plain` back into an unspecified carrier.
 
 #### 3.2.1 Return policy refinement inherits P1
 
-There is no independent `P3`. A return position has the result slot's own
-PolicyMode alongside the pair projected by the callable's declaration P1:
+There is no independent complete `P3` Policy product. A return position has a
+position Policy `P_out` formed from the callable declaration P1 plus an
+optional mode-only overlay:
 
 ```text
-ReturnBase(callable) = P1(callable)
-ReturnMode           = PolicyMode(return_slot)
+P_out = Overlay(P1(callable), Delta_out)
+
+stage(P_out) = stage(P1(callable))
 ```
 
-The written spelling selects the mode symmetrically with the formal-parameter
-rule while leaving P1's stage/exposure pair unchanged:
+An omitted mode preserves P1's mode. An explicit spelling selects the mode
+symmetrically with the formal-parameter rule while leaving P1's stage/exposure
+pair unchanged:
 
 ```text
-return let x        -> inherited P1, PolicyMode = plain
+return let x        -> P1 unchanged
 return plain let x  -> inherited P1, PolicyMode = plain
 return const let x  -> inherited P1, PolicyMode = const
 return mut let x    -> inherited P1, PolicyMode = mut
 ```
 
 The mode may not alter stage, value presence, Pattern policy, ordinary
-visibility, or export-root status. “No P3” therefore means that the return site
-has no third complete Policy vector; the independent result-slot mode does not
-create one.
+visibility, or export-root status. Policy dimensions are not replace-all: each
+dimension must be classified as `InheritedOnly` or `Overridable`; evaluation
+stage is `InheritedOnly` here and whole-slot mode is `Overridable`. “No P3”
+therefore means that the return site has no third arbitrary complete Policy
+vector; it does not mean that the return position has no Policy.
+
+`P_in` and `P_out` are declaration/evaluation-boundary facts. A caller's
+`ResultPolicyDemand` is a distinct call-site judgment and never rewrites either
+position Policy. It can affect candidate admissibility, preference, and
+outward view satisfaction only through the ordinary sealed invocation
+pipeline (`NoCrossCallPolicyPropagation`).
 
 ### 3.3 Namespace declaration attributes
 

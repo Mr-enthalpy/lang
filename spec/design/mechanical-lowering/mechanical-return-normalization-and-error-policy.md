@@ -383,9 +383,10 @@ error-policy checker exists. The relevant dimensions are:
 - receiver/parameter policy pairs and stage constraints determine whether a
   handler call is admissible, while P2 describes its result pair;
 - the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material;
-  there is no independent return-policy `P3` or scalar replacement for its
-  `Pv:Pp` pair, while the result slot still carries an independent
-  `PolicyMode` and the return position may refine inherited P1 mode only;
+  there is no independent arbitrary complete return-policy `P3` or scalar
+  replacement for its `Pv:Pp` pair; instead `P_out` inherits P1's pair and
+  evaluation stage exactly, inherits omitted mode, and permits an explicit
+  mode-only overlay;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 

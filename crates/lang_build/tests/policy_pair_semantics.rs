@@ -4,19 +4,20 @@ use lang_build::{
     bool_branch_space_for_tests, bool_pattern_aliases_for_tests, classify_static_task,
     compute_export_retention_closure, compute_wpre,
     derive_function_object_view as derive_function_object_p1, elaborate_binding_result_demand,
-    elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy, expose_policy_slice,
-    externally_visible, function_object_declaration_policy, normalize_p2_policy,
-    project_complete_symbol_flow, project_export_overload_sets, project_p1,
-    project_resolved_export_view, publicly_reachable, read_pattern, read_value,
-    resolve_explicit_path, select_by_mutability_product, select_policy_overload,
-    BuiltinPrivilegedSealFunction, CapabilityRealization, CapabilityRealizationCell,
-    CompleteFlowNode, CompleteSymbolFlow, ExportAdmission, FunctionObjectDeclarationPolicy,
-    MutabilityActualFrame, MutabilityFormalFrame, MutabilityPattern, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceVisibility, OutputModeDemand, P1Projection,
-    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyMode, PolicyOverloadCandidate,
-    PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, Provenance,
-    ResolvedCandidatePolicy, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
-    ValueComponentPolicy, ValuePresence, WpreRoots,
+    elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
+    elaborate_return_policy_pattern, expose_policy_slice, externally_visible,
+    function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
+    project_export_overload_sets, project_p1, project_resolved_export_view, publicly_reachable,
+    read_pattern, read_value, resolve_explicit_path, select_by_mutability_product,
+    select_policy_overload, BuiltinPrivilegedSealFunction, CapabilityRealization,
+    CapabilityRealizationCell, CompleteFlowNode, CompleteSymbolFlow, ExportAdmission,
+    FunctionObjectDeclarationPolicy, MutabilityActualFrame, MutabilityFormalFrame,
+    MutabilityPattern, NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility,
+    ObjectPlaceId, OutputModeDemand, P1Projection, PatternComponentPolicy, Phase,
+    PhaseOverloadCandidate, PolicyMode, PolicyOverloadCandidate, PolicyOverloadSelection,
+    PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, Provenance, ResolvedCandidatePolicy,
+    SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy,
+    ValuePresence, WpreRoots, WritableContext,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -329,14 +330,14 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     )
     .expect("valid inherited P2");
     let plain =
-        elaborate_formal_policy_pattern(None, &inherited_p2.pair, Provenance::new("plain formal"))
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("plain formal"))
             .expect("omitted formal policy inherits P2");
     assert_eq!(plain.effective_pair, inherited_p2.pair);
     assert_eq!(plain.mode, PolicyMode::Plain);
 
     let formal = elaborate_formal_policy_pattern(
         Some(&policy_spec("const")),
-        &inherited_p2.pair,
+        &inherited_p2,
         Provenance::new("formal"),
     )
     .expect("const formal pattern");
@@ -363,7 +364,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         .is_err());
         assert!(elaborate_formal_policy_pattern(
             Some(&policy_spec(source)),
-            &inherited_p2.pair,
+            &inherited_p2,
             Provenance::new(source)
         )
         .is_err());
@@ -372,7 +373,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         assert!(
             elaborate_formal_policy_pattern(
                 Some(&policy_spec(source)),
-                &inherited_p2.pair,
+                &inherited_p2,
                 Provenance::new(source)
             )
             .is_err(),
@@ -387,7 +388,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     .expect("valid const-only P2");
     let mut_formal = elaborate_formal_policy_pattern(
         Some(&policy_spec("mut")),
-        &const_only_p2.pair,
+        &const_only_p2,
         Provenance::new("expanding mut formal"),
     )
     .expect("formal whole-slot mode is independent of inherited pair");
@@ -472,6 +473,64 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         Provenance::new("local export"),
     )
     .is_err());
+}
+
+#[test]
+fn position_policy_inherits_stage_and_overlays_only_mode() {
+    let inherited_p2 = normalize_p2_policy(
+        &policy_spec("mut + runtime:compile"),
+        Provenance::new("position inherited P2"),
+    )
+    .expect("valid inherited P2");
+    let omitted_formal = elaborate_formal_policy_pattern(
+        None,
+        &inherited_p2,
+        Provenance::new("omitted formal inherits P2 mode"),
+    )
+    .expect("omitted formal position");
+    assert_eq!(omitted_formal.effective_pair, inherited_p2.pair);
+    assert_eq!(omitted_formal.mode, PolicyMode::Mut);
+
+    let inherited_p1 = derive_function_object_p1(
+        &inherited_p2,
+        &FunctionObjectDeclarationPolicy {
+            mode: PolicyMode::Const,
+        },
+    );
+    let omitted_return = elaborate_return_policy_pattern(
+        None,
+        &inherited_p1,
+        Provenance::new("omitted return inherits P1"),
+    )
+    .expect("omitted return position");
+    assert_eq!(omitted_return.effective_view, inherited_p1);
+
+    let mut_return = elaborate_return_policy_pattern(
+        Some(&policy_spec("mut")),
+        &inherited_p1,
+        Provenance::new("return mode overlay"),
+    )
+    .expect("return mode may override inherited P1 mode");
+    assert_eq!(mut_return.effective_view.pair, inherited_p1.pair);
+    assert_eq!(mut_return.effective_view.mode, PolicyMode::Mut);
+
+    for forbidden in ["meta", "compile", "runtime", "seal", "mut + runtime"] {
+        assert!(
+            elaborate_return_policy_pattern(
+                Some(&policy_spec(forbidden)),
+                &inherited_p1,
+                Provenance::new(format!("forbidden return overlay {forbidden}")),
+            )
+            .is_err(),
+            "return position `{forbidden}` must not rewrite inherited stage"
+        );
+    }
+
+    let writable = WritableContext::default();
+    assert!(
+        !writable.place_is_writable(ObjectPlaceId(77)),
+        "a mut return-position mode is an overload/view coordinate and grants no Writable fact"
+    );
 }
 
 #[test]
@@ -1149,16 +1208,16 @@ fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
     .expect("valid inherited P2");
     let const_formal = elaborate_formal_policy_pattern(
         Some(&policy_spec("const")),
-        &inherited_p2.pair,
+        &inherited_p2,
         Provenance::new("const formal"),
     )
     .expect("const formal");
     let plain_formal =
-        elaborate_formal_policy_pattern(None, &inherited_p2.pair, Provenance::new("plain formal"))
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("plain formal"))
             .expect("plain formal");
     let mut_formal = elaborate_formal_policy_pattern(
         Some(&policy_spec("mut")),
-        &inherited_p2.pair,
+        &inherited_p2,
         Provenance::new("mut formal"),
     )
     .expect("mut formal");

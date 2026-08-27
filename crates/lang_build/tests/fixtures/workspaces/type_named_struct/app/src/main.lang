@@ -1,5 +1,5 @@
 let struct: type = uint8;
-let T: type = (uint8 a) |> struct;
+let T: type = (uint8 a) |> struct::core;
 
 verify kind struct type;
 verify kind struct::core meta_function;

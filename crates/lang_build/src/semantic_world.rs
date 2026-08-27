@@ -42,8 +42,8 @@ use crate::{
         ExtractionMemberVisibility, NamespaceSymbolEntry, OwnerNamespaceGraph, OwnerNamespaceNodeId,
     },
     policy_pair::{
-        CapabilityRealization, ExplicitP1Selection, NamespaceVisibility, PolicyMode, PolicyPair,
-        PolicyResultEntry, PolicyView,
+        elaborate_return_policy_pattern, CapabilityRealization, ExplicitP1Selection,
+        NamespaceVisibility, PolicyMode, PolicyPair, PolicyResultEntry, PolicyView,
     },
     product_shape::{NonValueArgKind, ProductAtom, RawArgShape, RawArgValueClass},
     semantic_name_index::{BuildError, SemanticNameIndex},
@@ -494,7 +494,7 @@ pub enum SemanticDeclarationEntry {
         closure: NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
         callable_view: PolicyView,
-        complete_result_view: PolicyView,
+        body_entry_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         candidate_role: OrdinaryCandidateRole,
         return_shape: ReturnShape,
@@ -507,7 +507,7 @@ pub enum SemanticDeclarationEntry {
         closure: NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
         function_view: PolicyView,
-        complete_result_view: PolicyView,
+        body_entry_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -520,7 +520,7 @@ pub enum SemanticDeclarationEntry {
         closure: NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
         function_view: PolicyView,
-        complete_result_view: PolicyView,
+        body_entry_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -772,17 +772,26 @@ pub struct OrdinaryCallEntry {
     pub closure: Option<NormClosure>,
     pub core_primitive: Option<CoreMetaFunction>,
     pub(crate) intrinsic_body: Option<OrdinaryIntrinsicBody>,
+    /// Callable P2 inherited by parameter positions and used for body-entry
+    /// stage admissibility. It is declaration-local and never receives a
+    /// caller's contextual result demand.
+    pub body_entry_view: PolicyView,
     /// This call entry is a terminal FunctionItem: `Type(c) = FunctionItem(Self, Args...) -> R`
     /// and `c.Val2 = ∅`.  There is no recursive callable lookup from a
     /// CallEntry — the invocation spine terminates here.
+    /// Producer result P2 exposed across the call boundary. This is the
+    /// output-mode preference coordinate and remains distinct from the
+    /// callable-internal return position.
     pub complete_result_view: PolicyView,
+    /// Callable-internal return position: canonical P1 pair/stage plus the
+    /// optional mode-only return annotation. Caller demand never propagates
+    /// backward into this declaration-local view.
+    pub return_position_view: PolicyView,
     /// Policy view declared by the ordinary callable value/member itself.
     ///
     /// For an authorized migration call this supplies the candidate's output
-    /// endpoint coordinate.  It is deliberately distinct from the complete
-    /// result P2: the latter keeps the ordinary `(compile || runtime):compile`
-    /// result domain, while the member declaration may select `const` or
-    /// `mut` for overload comparison.
+    /// endpoint coordinate. It is deliberately distinct from both the
+    /// declaration-local P2 and the produced-result position view.
     pub callable_view: PolicyView,
     /// Orthogonal 3x3 realization facts. Policy comparison never derives or
     /// modifies these cells.
@@ -4334,7 +4343,9 @@ impl SemanticWorld {
         callable_owner: SemanticOwnerId,
         receiver_type: TypeValueId,
         canonical_view: PolicyView,
+        body_entry_view: PolicyView,
         complete_result_view: PolicyView,
+        return_position_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         candidate_role: OrdinaryCandidateRole,
         return_shape: ReturnShape,
@@ -4391,7 +4402,9 @@ impl SemanticWorld {
                 closure: closure.cloned(),
                 core_primitive,
                 intrinsic_body,
+                body_entry_view,
                 complete_result_view,
+                return_position_view,
                 callable_view: canonical_view,
                 capability_realization: CapabilityRealization::default(),
                 candidate_role,
@@ -4483,8 +4496,10 @@ impl SemanticWorld {
             Some(body),
             callable_owner,
             receiver_type,
-            callable_view,
+            callable_view.clone(),
+            complete_result_view.clone(),
             complete_result_view,
+            callable_view,
             None,
             OrdinaryCandidateRole::Ordinary,
             ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained),
@@ -4513,7 +4528,7 @@ impl SemanticWorld {
                     closure,
                     outer_p1_explicit,
                     callable_view,
-                    complete_result_view,
+                    body_entry_view,
                     namespace_visibility,
                     candidate_role,
                     return_shape,
@@ -4526,7 +4541,7 @@ impl SemanticWorld {
                         &closure,
                         outer_p1_explicit,
                         callable_view,
-                        complete_result_view,
+                        body_entry_view,
                         namespace_visibility,
                         candidate_role,
                         return_shape,
@@ -4539,7 +4554,7 @@ impl SemanticWorld {
                     closure,
                     outer_p1_explicit,
                     function_view,
-                    complete_result_view,
+                    body_entry_view,
                     namespace_visibility,
                     return_shape,
                     provenance,
@@ -4551,7 +4566,7 @@ impl SemanticWorld {
                         &closure,
                         outer_p1_explicit,
                         function_view,
-                        complete_result_view,
+                        body_entry_view,
                         namespace_visibility,
                         return_shape,
                         provenance,
@@ -4572,7 +4587,7 @@ impl SemanticWorld {
                     closure,
                     outer_p1_explicit,
                     function_view,
-                    complete_result_view,
+                    body_entry_view,
                     namespace_visibility,
                     return_shape,
                     provenance,
@@ -4594,7 +4609,7 @@ impl SemanticWorld {
                             &closure,
                             outer_p1_explicit,
                             function_view,
-                            complete_result_view,
+                            body_entry_view,
                             namespace_visibility,
                             return_shape,
                             provenance,
@@ -4690,7 +4705,7 @@ impl SemanticWorld {
         closure: &NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
         callable_view: PolicyView,
-        complete_result_view: PolicyView,
+        body_entry_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         candidate_role: OrdinaryCandidateRole,
         return_shape: ReturnShape,
@@ -4712,11 +4727,22 @@ impl SemanticWorld {
         let canonical_view = canonical_function_object_view(
             outer_p1_explicit.as_ref(),
             &callable_view,
-            &complete_result_view,
+            &body_entry_view,
             Some(closure),
             &provenance,
         )
         .map_err(BuildError::single)?;
+        let return_position_view = elaborate_return_policy_pattern(
+            closure
+                .head
+                .as_ref()
+                .and_then(|head| head.returns.as_ref())
+                .and_then(|slot| slot.policy.as_ref()),
+            &canonical_view,
+            provenance.clone(),
+        )
+        .map_err(BuildError::single)?
+        .effective_view;
 
         Ok(self.allocate_terminal_call_entry(
             pattern,
@@ -4738,8 +4764,10 @@ impl SemanticWorld {
                 .root
                 .owner,
             receiver_type,
-            canonical_view,
-            complete_result_view,
+            canonical_view.clone(),
+            body_entry_view.clone(),
+            body_entry_view,
+            return_position_view,
             namespace_visibility,
             candidate_role,
             return_shape,
@@ -4757,7 +4785,7 @@ impl SemanticWorld {
         closure: &NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
         function_view: PolicyView,
-        complete_result_view: PolicyView,
+        body_entry_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -4791,11 +4819,22 @@ impl SemanticWorld {
         let canonical_view = canonical_function_object_view(
             outer_p1_explicit.as_ref(),
             &function_view,
-            &complete_result_view,
+            &body_entry_view,
             Some(closure),
             &provenance,
         )
         .map_err(BuildError::single)?;
+        let return_position_view = elaborate_return_policy_pattern(
+            closure
+                .head
+                .as_ref()
+                .and_then(|head| head.returns.as_ref())
+                .and_then(|slot| slot.policy.as_ref()),
+            &canonical_view,
+            provenance.clone(),
+        )
+        .map_err(BuildError::single)?
+        .effective_view;
 
         let function_type = self.allocate_anonymous_type();
         let (function_pattern, pattern_scope) =
@@ -4842,7 +4881,9 @@ impl SemanticWorld {
             callable_owner,
             function_type,
             canonical_view.clone(),
-            complete_result_view,
+            body_entry_view.clone(),
+            body_entry_view,
+            return_position_view,
             namespace_visibility,
             OrdinaryCandidateRole::Ordinary,
             return_shape,
@@ -4898,6 +4939,7 @@ impl SemanticWorld {
         outer_p1_explicit: Option<ExplicitP1Selection>,
         return_shape: ReturnShape,
         function_view: PolicyView,
+        body_entry_view: PolicyView,
         complete_result_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         provenance: Provenance,
@@ -4982,7 +5024,9 @@ impl SemanticWorld {
             callable_owner,
             function_type,
             canonical_view.clone(),
+            body_entry_view,
             complete_result_view,
+            canonical_view.clone(),
             namespace_visibility,
             OrdinaryCandidateRole::Ordinary,
             return_shape,
@@ -5042,7 +5086,7 @@ impl SemanticWorld {
         closure: &NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
         function_view: PolicyView,
-        complete_result_view: PolicyView,
+        body_entry_view: PolicyView,
         namespace_visibility: Option<NamespaceVisibility>,
         return_shape: ReturnShape,
         provenance: Provenance,
@@ -5070,11 +5114,22 @@ impl SemanticWorld {
         let canonical_view = canonical_function_object_view(
             outer_p1_explicit.as_ref(),
             &function_view,
-            &complete_result_view,
+            &body_entry_view,
             Some(closure),
             &provenance,
         )
         .map_err(BuildError::single)?;
+        let return_position_view = elaborate_return_policy_pattern(
+            closure
+                .head
+                .as_ref()
+                .and_then(|head| head.returns.as_ref())
+                .and_then(|slot| slot.policy.as_ref()),
+            &canonical_view,
+            provenance.clone(),
+        )
+        .map_err(BuildError::single)?
+        .effective_view;
 
         let function_type = self.allocate_anonymous_type();
         let (function_pattern, _pattern_scope) =
@@ -5121,7 +5176,9 @@ impl SemanticWorld {
             callable_owner,
             function_type,
             canonical_view.clone(),
-            complete_result_view,
+            body_entry_view.clone(),
+            body_entry_view,
+            return_position_view,
             namespace_visibility,
             OrdinaryCandidateRole::Ordinary,
             return_shape,
@@ -6358,7 +6415,7 @@ impl SemanticWorld {
         closure: &NormClosure,
         outer_p1_explicit: Option<&ExplicitP1Selection>,
         function_view: &PolicyView,
-        complete_result_view: PolicyView,
+        body_entry_view: PolicyView,
         return_shape: ReturnShape,
         provenance: Provenance,
     ) -> Result<SemanticValueId, crate::Diagnostic> {
@@ -6403,10 +6460,20 @@ impl SemanticWorld {
         let canonical_view = canonical_function_object_view(
             outer_p1_explicit,
             function_view,
-            &complete_result_view,
+            &body_entry_view,
             Some(closure),
             &provenance,
         )?;
+        let return_position_view = elaborate_return_policy_pattern(
+            closure
+                .head
+                .as_ref()
+                .and_then(|head| head.returns.as_ref())
+                .and_then(|slot| slot.policy.as_ref()),
+            &canonical_view,
+            provenance.clone(),
+        )?
+        .effective_view;
 
         // Canonical meta instance replay: same
         // declaration-event identity + same declaration material →
@@ -6517,7 +6584,9 @@ impl SemanticWorld {
                 callable_owner,
                 function_type,
                 canonical_view,
-                complete_result_view,
+                body_entry_view.clone(),
+                body_entry_view,
+                return_position_view,
                 None,
                 OrdinaryCandidateRole::Ordinary,
                 return_shape,
@@ -7643,7 +7712,7 @@ mod tests {
                     closure: closure.clone(),
                     outer_p1_explicit: None,
                     function_view: function_view.clone(),
-                    complete_result_view: result_p2.clone(),
+                    body_entry_view: result_p2.clone(),
                     namespace_visibility: None,
                     return_shape: crate::policy_pair::ReturnShape::SingleVal(
                         crate::policy_pair::PatternConstraint::Unconstrained,
@@ -7656,7 +7725,7 @@ mod tests {
                     closure,
                     outer_p1_explicit: None,
                     function_view,
-                    complete_result_view: result_p2,
+                    body_entry_view: result_p2,
                     namespace_visibility: None,
                     return_shape: crate::policy_pair::ReturnShape::SingleVal(
                         crate::policy_pair::PatternConstraint::Unconstrained,

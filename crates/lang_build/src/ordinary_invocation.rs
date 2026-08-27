@@ -205,7 +205,12 @@ pub struct PreparedCallCandidate {
     pub call_entry_value: SemanticValueId,
     pub backing_declaration: SymbolId,
     pub frame: InvocationFrame,
-    /// P2 — the complete result policy returned by the callable.
+    /// Declaration-local P2 used for body entry and inherited parameter
+    /// position policy. Caller demand never mutates this view.
+    pub body_entry_view: PolicyView,
+    /// Producer result P2 exposed across the call boundary and used by
+    /// `ResultPolicyDemand`. The declaration-local P_out is stored separately
+    /// on the call entry and never replaces this producer coordinate.
     pub complete_result_view: PolicyView,
     /// P1 of the function object — the single policy degree of freedom.
     /// P1(function object) = P1(slot0/self) = P1(let ()).
@@ -1803,10 +1808,10 @@ pub(crate) fn invoke_target_values(
         // environment (`declaration_name` / `declaration_namespace`); the
         // A-stage never looks the backing declaration up in the name index.
         // Body-entry admissibility is judged on the call entry's own
-        // complete result P2; the declaration identity below is rebuilt
+        // declaration-local P2; the declaration identity below is rebuilt
         // from the entry's declared facts for the shared candidate and
         // body-evaluator carriers.
-        if !body_entry_allows_execution(&entry.complete_result_view.pair, context.execution_env) {
+        if !body_entry_allows_execution(&entry.body_entry_view.pair, context.execution_env) {
             continue;
         }
         let declaration_identity = SymbolObject::placeholder(
@@ -2093,14 +2098,14 @@ pub(crate) fn invoke_target_values(
                     .map(|spec| {
                         elaborate_formal_policy_pattern(
                             Some(&spec),
-                            &entry.complete_result_view.pair,
+                            &entry.body_entry_view,
                             provenance.clone(),
                         )
                         .ok()
                         .map(|elab| elab.effective_pair)
                     })
                     .flatten()
-                    .unwrap_or_else(|| entry.complete_result_view.pair.clone());
+                    .unwrap_or_else(|| entry.body_entry_view.pair.clone());
                 let input = project_migration_input_endpoint(
                     &source_formal_p1,
                     &migration.request.source_view().pair,
@@ -2142,6 +2147,7 @@ pub(crate) fn invoke_target_values(
             call_entry_value,
             backing_declaration: entry.backing_declaration,
             frame,
+            body_entry_view: entry.body_entry_view.clone(),
             complete_result_view: entry.complete_result_view.clone(),
             function_object_view: PolicyView {
                 pair: self_policy,
@@ -2919,7 +2925,7 @@ pub(crate) fn invoke_target_values(
         Some(ClusterSymbolResult {
             construction,
             generated_types,
-            result_p2: selected.complete_result_view.pair.clone(),
+            result_p2: selected.body_entry_view.pair.clone(),
             trace: trace.clone(),
         })
     } else {
@@ -3290,7 +3296,7 @@ fn formal_mutability_frame(
         // The Bₚ' mutability frame only consumes the const/mut dimension.
         Some(element) => match elaborate_explicit_p1(
             element_policy(element),
-            &entry.complete_result_view.pair,
+            &entry.callable_view.pair,
             ExplicitP1Position::WrittenSelf,
             provenance.clone(),
         )?
@@ -3308,7 +3314,7 @@ fn formal_mutability_frame(
         .map(|element| {
             formal_mutability_pattern(
                 element_policy(element),
-                &entry.complete_result_view.pair,
+                &entry.body_entry_view,
                 provenance.clone(),
             )
         })
@@ -3544,7 +3550,7 @@ fn element_policy(element: &NormPatternElem) -> Option<&NormPolicySpec> {
 
 fn formal_mutability_pattern(
     policy: Option<&NormPolicySpec>,
-    inherited: &PolicyPair,
+    inherited: &PolicyView,
     provenance: Provenance,
 ) -> Result<MutabilityPattern, Diagnostic> {
     Ok(elaborate_formal_policy_pattern(policy, inherited, provenance)?.mode)

@@ -1,0 +1,6 @@
+const let f =
+  (self, let x: uint8): compile
+    -> runtime let r: uint8 =>
+{
+  x;
+};

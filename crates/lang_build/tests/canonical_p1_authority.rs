@@ -112,7 +112,7 @@ fn canonical_p1_neither_unifies_all_authorities() {
     assert_canonical_p1_unified(&world, "bad");
 }
 
-/// S7 — no P3: the invocation-time candidate carries exactly the canonical
+/// S7 — no independent complete P3: the invocation-time candidate carries exactly the canonical
 /// P1 as its `function_object_p1`.  For a core candidate the declared
 /// function policy (canonical P1) and the result P2 genuinely differ
 /// (`IdentityType` is exported at P1 but its result P2 is not), so this
@@ -130,7 +130,7 @@ fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
             world.package_root_node(),
             &call_site,
             OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-            Provenance::new("S7 no-P3 regression"),
+            Provenance::new("S7 no-independent-P3 regression"),
         )
         .expect("core primitive is selected through the ordinary spine");
     let InvocationOutcome::SingleMember(result) = result else {
@@ -537,20 +537,24 @@ fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
 /// (`compile let narrow = ...`) IS an explicit canonical P1 value-stage
 /// selection: the complete `Pv:Pp` elaboration no longer degrades a
 /// stage-only policy to "no explicit P1".  The canonical P1 value window is
-/// cropped to `compile`, so the downstream `meta let X` binding of the
-/// invocation result falls outside the exposure window and the build fails.
+/// cropped to `compile`, so the downstream `meta let X` result demand rejects
+/// the producer before maxima (or, equivalently for a non-call result, cannot
+/// satisfy the completed view). The build must fail either way; it may not
+/// widen the declared P1.
 #[test]
 fn stage_only_outer_prefix_is_an_explicit_canonical_p1() {
     let error = build_fixture_error("s4_stage_prefix_is_p1", "app");
-    let found = error
-        .diagnostics
-        .iter()
-        .any(|d| d.message.contains("cannot satisfy binding P1"));
+    let found = error.diagnostics.iter().any(|d| {
+        d.message.contains("cannot satisfy binding P1")
+            || d.message
+                .contains("requested binding policy selects no runtime value slice")
+            || d.message.contains("no fully admissible candidate")
+    });
     assert!(
         found,
         "the stage-only `compile` prefix on `narrow` is an explicit P1, so \
-         the `meta let X` binding must fall outside the cropped exposure \
-         window, got: {:?}",
+         the `meta let X` demand must remain outside the cropped result \
+         position view, got: {:?}",
         error
             .diagnostics
             .iter()

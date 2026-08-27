@@ -9,7 +9,9 @@ use lang_build::{
     ValuePresence, WritableContext,
 };
 
-use support::{build_single_fixture_world, fixture_root, initializer_from_source};
+use support::{
+    build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
+};
 
 fn transport_bundle() -> ToolchainGlobalSourceRoot {
     ToolchainGlobalSourceRoot::under(
@@ -556,6 +558,58 @@ fn mut_policy_mode_does_not_grant_writable() {
         lang_build::OrdinaryInvocationFailure::DynamicLegality { ref diagnostic, .. }
             if diagnostic.message.contains("not Writable")
     ));
+}
+
+#[test]
+fn source_position_policy_inherits_stage_and_overlays_result_mode() {
+    let world = build_single_fixture_world("position_policy", "app");
+    let function = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "f")
+        .expect("source callable f");
+    let function_value = *function
+        .sibling_vals
+        .first()
+        .expect("f has one function object");
+    let call_entry = *world
+        .semantic_world()
+        .associated_values_for_value(function_value, "()")
+        .and_then(|entries| entries.first())
+        .expect("f owns a terminal call entry");
+    let SemanticValuePayload::CallEntry(entry) = &world
+        .semantic_world()
+        .value(call_entry)
+        .expect("call entry value")
+        .payload
+    else {
+        panic!("associated () value is a call entry");
+    };
+
+    assert_eq!(entry.body_entry_view.mode, PolicyMode::Mut);
+    assert_eq!(entry.callable_view.mode, PolicyMode::Const);
+    assert_eq!(entry.complete_result_view, entry.body_entry_view);
+    assert_eq!(entry.return_position_view.mode, PolicyMode::Mut);
+    assert_eq!(
+        entry.return_position_view.pair, entry.callable_view.pair,
+        "P_out inherits the canonical P1 pair/stage byte-for-byte"
+    );
+    assert_ne!(
+        entry.body_entry_view.pair, entry.return_position_view.pair,
+        "declaration-local P2 remains distinct from callable-internal P_out"
+    );
+}
+
+#[test]
+fn return_position_cannot_override_inherited_stage() {
+    let error = build_fixture_error("position_policy_invalid_stage", "app");
+    assert!(
+        error
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("inherits evaluation stages")),
+        "return-stage rewrite is rejected during declaration Policy formation: {:?}",
+        error.diagnostics
+    );
 }
 
 // ---------------------------------------------------------------------------

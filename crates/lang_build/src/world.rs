@@ -21,10 +21,10 @@ use crate::{
     policy_metadata,
     policy_pair::{
         derive_function_object_view, elaborate_binding_result_demand,
-        elaborate_namespace_declaration_policy, function_object_declaration_policy,
-        normalize_p2_policy, ExplicitP1Selection, NamespaceDeclarationPolicy,
-        NamespaceDeclarationPosition, P1Projection, PolicyMode, PolicyView, ResultPolicyDemand,
-        ValueComponentPolicy,
+        elaborate_namespace_declaration_policy, elaborate_return_policy_pattern,
+        function_object_declaration_policy, normalize_p2_policy, ExplicitP1Selection,
+        NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyMode,
+        PolicyView, ResultPolicyDemand, ValueComponentPolicy,
     },
     policy_pair::{PatternComponentPolicy, PolicyPair, PolicyStage, ValuePresence},
     policy_set_meta_runtime, policy_set_runtime,
@@ -227,6 +227,7 @@ impl CompilationWorld {
                 )),
                 registration.return_shape,
                 registration.function_view,
+                registration.body_entry_view,
                 registration.result_view,
                 registration.visibility,
                 registration.provenance,
@@ -1097,7 +1098,7 @@ impl CompilationWorld {
                         closure: closure.clone(),
                         outer_p1_explicit: callable.outer_p1_explicit.clone(),
                         callable_view: callable.function_view,
-                        complete_result_view: callable.result_view,
+                        body_entry_view: callable.body_entry_view,
                         namespace_visibility: callable.namespace_visibility,
                         candidate_role: crate::OrdinaryCandidateRole::Ordinary,
                         return_shape: callable.return_shape,
@@ -1189,7 +1190,7 @@ impl CompilationWorld {
                         closure: closure.clone(),
                         outer_p1_explicit: callable.outer_p1_explicit.clone(),
                         function_view: callable.function_view,
-                        complete_result_view: callable.result_view,
+                        body_entry_view: callable.body_entry_view,
                         namespace_visibility: callable.namespace_visibility,
                         return_shape: callable.return_shape,
                         provenance: declaration_provenance,
@@ -1201,7 +1202,7 @@ impl CompilationWorld {
                         closure: closure.clone(),
                         outer_p1_explicit: callable.outer_p1_explicit.clone(),
                         function_view: callable.function_view,
-                        complete_result_view: callable.result_view,
+                        body_entry_view: callable.body_entry_view,
                         namespace_visibility: callable.namespace_visibility,
                         return_shape: callable.return_shape,
                         provenance: declaration_provenance,
@@ -2894,7 +2895,7 @@ struct SourceCallableDelta {
     /// canonical-P1 conflict rule.
     outer_p1_explicit: Option<ExplicitP1Selection>,
     function_view: PolicyView,
-    result_view: PolicyView,
+    body_entry_view: PolicyView,
     namespace_visibility: Option<crate::NamespaceVisibility>,
     /// Independent declared return-shape coordinate, elaborated once from
     /// the return-slot annotation (`declared_return_shape_from_closure`)
@@ -2944,6 +2945,17 @@ fn source_callable_delta(
     .map_err(BuildError::single)?;
     let declaration_policy = function_object_declaration_policy(&namespace_declaration);
     let derived_function_view = derive_function_object_view(&result_p2, &declaration_policy);
+    let preliminary_return_view = elaborate_return_policy_pattern(
+        closure
+            .head
+            .as_ref()
+            .and_then(|head| head.returns.as_ref())
+            .and_then(|slot| slot.policy.as_ref()),
+        &derived_function_view,
+        provenance.clone(),
+    )
+    .map_err(BuildError::single)?
+    .effective_view;
     let derived_symbol_policy = legacy_policy_set_from_pair(&derived_function_view.pair);
     let explicit_symbol_policy = policy_expr
         .map(|policy| elaborate_declaration_policy_expr(Some(policy), provenance.clone()))
@@ -2957,7 +2969,6 @@ fn source_callable_delta(
     let symbol_policy =
         final_binding_policy(explicit_symbol_policy.as_ref(), &derived_symbol_policy);
     let body_entry_policy = legacy_policy_set_from_pair(&result_p2.pair);
-    ensure_return_policy_supported(closure, provenance.clone()).map_err(BuildError::single)?;
 
     // Preserve explicitness information at the
     // declaration elaboration boundary. `outer_p1_explicit` is `Some` iff
@@ -3023,7 +3034,9 @@ fn source_callable_delta(
         }),
         function_policy: policy_metadata(symbol_policy.clone()),
         body_entry_policy: policy_metadata(body_entry_policy.clone()),
-        return_object_policy: policy_metadata(body_entry_policy),
+        return_object_policy: policy_metadata(legacy_policy_set_from_pair(
+            &preliminary_return_view.pair,
+        )),
         return_shape,
         privilege: crate::CallablePrivilege::OrdinarySource,
     });
@@ -3033,7 +3046,7 @@ fn source_callable_delta(
         symbol_id,
         outer_p1_explicit,
         function_view: derived_function_view,
-        result_view: result_p2,
+        body_entry_view: result_p2,
         namespace_visibility: namespace_declaration.visibility,
         return_shape,
     })
@@ -3136,25 +3149,6 @@ fn result_policy_from_closure(
         ));
     };
     normalize_p2_policy(annotation, provenance)
-}
-
-fn ensure_return_policy_supported(
-    closure: &NormClosure,
-    provenance: Provenance,
-) -> Result<(), Diagnostic> {
-    let Some(head) = &closure.head else {
-        return Ok(());
-    };
-    let Some(returns) = &head.returns else {
-        return Ok(());
-    };
-    if returns.policy.is_some() {
-        return Err(Diagnostic::hard_error(
-            "unsupported explicit return policy annotation in restricted v0.8 callable declaration",
-            Some(provenance),
-        ));
-    }
-    Ok(())
 }
 
 /// A runtime-only result P2 (all value stages == `runtime`) paired with a

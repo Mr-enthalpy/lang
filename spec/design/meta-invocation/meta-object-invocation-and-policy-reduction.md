@@ -406,11 +406,14 @@ exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
 must wait for SealStatic.
 
-There is no independent P3 and no scalar replacement for `Pv:Pp`. Every
-value/pattern result entry retains `Pv:Pp`; every returned Val2 object retains
-its own pair. A result slot nevertheless has an independent scalar
-`PolicyMode`. Return positions inherit P1 and may refine that whole-slot mode
-only; parameters symmetrically refine inherited P2 mode only. Current
+There is no independent arbitrary complete P3 and no scalar replacement for
+`Pv:Pp`. Every value/pattern result entry retains `Pv:Pp`; every returned Val2
+object retains its own pair. Position Policies are restricted overlays:
+`P_in = Overlay(P2, Delta_in)` and `P_out = Overlay(P1, Delta_out)`. Their
+evaluation stage and pair are inherited exactly; an explicit position spelling
+may refine only whole-slot `PolicyMode`. Omitted mode inherits its base mode.
+These declaration-local overlays are not caller demands and do not permit
+cross-call Policy propagation. Current
 `self_policy`, `body_entry_policy`, and
 `return_object_policy` fields are transitional compatibility transport.
 
