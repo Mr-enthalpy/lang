@@ -1,7 +1,7 @@
 //! Minimal in-memory meta instance cache.
 //!
 //! Stores replayable `MetaInvocationValue` material keyed directly by the
-//! canonical structural `MetaInstanceKey`.
+//! parent-neutral structural `MetaInvocationMaterialKey`.
 //! Does **not** store `NamespaceDelta`, `MetaExpansionResult`, declared
 //! symbols, binding names, or concrete registry-backed `PatternHeadId`
 //! material.
@@ -17,12 +17,14 @@
 
 use std::collections::BTreeMap;
 
-use crate::{meta_invocation::MetaInvocationValue, meta_key::MetaInstanceKey, model::Provenance};
+use crate::{
+    meta_invocation::MetaInvocationValue, meta_key::MetaInvocationMaterialKey, model::Provenance,
+};
 
 /// Cached meta invocation entry.
 #[derive(Clone, Debug)]
 pub struct CachedMetaInstance {
-    pub key: MetaInstanceKey,
+    pub key: MetaInvocationMaterialKey,
     pub result: MetaInvocationValue,
     pub provenance: Provenance,
 }
@@ -33,7 +35,7 @@ pub struct CachedMetaInstance {
 /// Callers that want caching must pass a `&mut MetaInstanceCache`.
 #[derive(Clone, Debug, Default)]
 pub struct MetaInstanceCache {
-    entries: BTreeMap<MetaInstanceKey, CachedMetaInstance>,
+    entries: BTreeMap<MetaInvocationMaterialKey, CachedMetaInstance>,
 }
 
 impl MetaInstanceCache {
@@ -44,14 +46,14 @@ impl MetaInstanceCache {
     }
 
     /// Look up a cached invocation value by key.
-    pub fn lookup(&self, key: &MetaInstanceKey) -> Option<&CachedMetaInstance> {
+    pub fn lookup(&self, key: &MetaInvocationMaterialKey) -> Option<&CachedMetaInstance> {
         self.entries.get(key)
     }
 
     /// Insert an invocation value into the cache.
     pub fn insert(
         &mut self,
-        key: MetaInstanceKey,
+        key: MetaInvocationMaterialKey,
         result: MetaInvocationValue,
         provenance: Provenance,
     ) {

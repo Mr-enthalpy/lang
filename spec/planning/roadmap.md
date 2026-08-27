@@ -654,14 +654,16 @@ This table is implementation bookkeeping, not a second semantic authority.
 
 | Semantic relation | Carrier/substrate | Production consumer | Remaining boundary |
 |---|---|---|---|
-| complete `tau`, Core/whole identity, immutable `V_tau` | implemented | direct ordinary call reads the exact snapshot captured at value formation | final lookup-key encoding remains Open |
+| complete `tau`, Core/whole identity, immutable `V_tau` | implemented | direct ordinary call reads the exact snapshot captured at value formation | derived `ref`/`share` associated forwarding is not implemented; final lookup-key encoding remains Open |
 | `R_Gamma` base applicability and Hole valuation | implemented | ordinary parameter A-stage connected | full Pattern-space representation remains Open |
 | DirectPatternChild + StructuralDefault | implemented | **not connected** to production structural extraction | generated getter family + protected pre-C0 filter missing |
 | post-selection DynamicLegality/no-reopen | implemented | connected when premises are supplied | operation-driven capability/Writable/lifecycle premise formation partial |
 | SemanticContinuation/LifeName/Region/Color | implemented | `CompilationWorld` owns one machine and registers real values | source use/move/drop/@, cleanup placement, action commit/Post missing |
+| Value / binding Place separation | implemented | ordinary `let` preserves value identity while allocating a fresh destination Place; Writable reads the selected residency | source ref/share and broader place-operation inference remain partial |
 | OpenHere/ConstructionAuthority/Writable | implemented | meta construction/inject paths connected | broader source operation coverage deferred |
 | abstract literal construction/migration | implemented | ordinary candidate path connected | contextual target inference remains Open |
-| unified InvocationResult and `struct -> tau` | implemented | connected | residual representation remains Open |
+| unified InvocationResult and `struct -> tau` | implemented | meta and ordinary semantic-success paths connected; shape-specific ordinary payload is projection transport only | selected ordinary Residual/Diagnostic transport and residual representation remain partial/Open |
+| meta invocation material/root identity split | implemented | cache keys parent-neutral material; generated roots key parent × material | persistent root encoding remains Open |
 
 Topic-document status must be read per row. A canonical relation can have an
 implemented carrier and a partial consumer; missing consumer wiring must not be
@@ -677,6 +679,9 @@ The following remain deferred and are not numbered precisely here:
   `AliasChain`/forwarding semantics
 - migrate `SourceExpressibleNotMigrated` builtin families to source authority
   while retaining intrinsics only as bootstrap/lowering/optimization support
+- generate fresh direct-home derived associated forwarders for `T ref` / `T share`,
+  capture the base complete-type snapshot, and keep the forwarded-name/capability
+  filter explicit; foreign TypeMembers must never be copied into the derived scope
 - type / kind checking integration
 - closure materialization model (ClosureAST → ClosureObject; capture
   environment layout and capture admissibility)

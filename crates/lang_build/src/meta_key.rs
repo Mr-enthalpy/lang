@@ -1,12 +1,12 @@
-//! Canonical meta instance key and fingerprint.
+//! Parent-neutral meta invocation material key and fingerprint.
 //!
-//! `MetaInstanceKey = MetaCallableIdentity × CanonicalArgumentProductAddr`
+//! `MetaInvocationMaterialKey = MetaCallableIdentity × CanonicalArgumentProductAddr`
 //! the key STORES its structural coordinates and defines
 //! equality/ordering directly on them.  The FNV fingerprint is a derived
 //! digest for display/transport only — it never defines semantic equality.
 //!
 //! The `PreparedCallableCandidate` digest channel survives only as an opaque
-//! compatibility-cache digest; it no longer produces a `MetaInstanceKey`.
+//! compatibility-cache digest; it no longer produces a semantic root key.
 
 use crate::{
     canonical_value::CanonicalValueAddr,
@@ -35,8 +35,7 @@ impl CanonicalFingerprint {
     }
 }
 
-/// Canonical meta instance key: the structural identity coordinates of one
-/// meta invocation.
+/// Parent-neutral structural key for replayable meta invocation material.
 ///
 /// ## Equality and ordering
 ///
@@ -47,7 +46,7 @@ impl CanonicalFingerprint {
 /// callable coordinate is the selected function object
 /// VALUE identity plus its selected `()` call entry.
 #[derive(Clone, Debug)]
-pub struct MetaInstanceKey {
+pub struct MetaInvocationMaterialKey {
     /// Selected meta callable: function object value + selected call entry.
     pub callable: MetaCallableIdentity,
     /// Canonical address of the whole argument Product,
@@ -56,7 +55,7 @@ pub struct MetaInstanceKey {
     pub provenance: Provenance,
 }
 
-impl MetaInstanceKey {
+impl MetaInvocationMaterialKey {
     /// Structural identity coordinates participating in Eq/Ord.
     fn coords(&self) -> (MetaCallableIdentity, CanonicalValueAddr) {
         (self.callable, self.arguments)
@@ -79,21 +78,21 @@ impl MetaInstanceKey {
     }
 }
 
-impl PartialEq for MetaInstanceKey {
+impl PartialEq for MetaInvocationMaterialKey {
     fn eq(&self, other: &Self) -> bool {
         self.coords() == other.coords()
     }
 }
 
-impl Eq for MetaInstanceKey {}
+impl Eq for MetaInvocationMaterialKey {}
 
-impl PartialOrd for MetaInstanceKey {
+impl PartialOrd for MetaInvocationMaterialKey {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for MetaInstanceKey {
+impl Ord for MetaInvocationMaterialKey {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.coords().cmp(&other.coords())
     }
@@ -103,7 +102,7 @@ impl Ord for MetaInstanceKey {
 ///
 /// This is the surviving remnant of the pre-canonical key channel: an opaque
 /// digest used ONLY by `MetaInstanceCache`. It is not a
-/// `MetaInstanceKey` and defines no semantic identity.
+/// `MetaInvocationMaterialKey` and defines no semantic identity.
 ///
 /// The digest material is derived on demand from the candidate's argument
 /// product shape and build-identity fragments — there is no stored second
@@ -168,11 +167,11 @@ pub fn compute_legacy_meta_instance_digest(
     CanonicalFingerprint::new(h.finish_hex())
 }
 
-/// Compute the canonical `MetaInstanceKey` of one meta invocation from the
+/// Compute the parent-neutral material key of one meta invocation from the
 /// selected meta callable identity and the canonical address of the whole
 /// argument Product.
 ///
-/// `MetaInstanceKey = MetaCallableIdentity × Addr(Product(a1..an))` — this
+/// `MetaInvocationMaterialKey = MetaCallableIdentity × Addr(Product(a1..an))` — this
 /// single key mechanism serves source-declared AND core meta callables.
 /// The invocation parentheses are themselves a
 /// Product value, so the arguments participate as one Product normal form
@@ -183,12 +182,12 @@ pub fn compute_legacy_meta_instance_digest(
 /// carrier Symbols never enter this key.  α-renaming a formal binder
 /// cannot change the key; two distinct meta function values under one
 /// carrier Symbol always produce distinct keys.
-pub fn compute_canonical_meta_instance_key(
+pub fn compute_meta_invocation_material_key(
     callable: MetaCallableIdentity,
     arguments_product_addr: CanonicalValueAddr,
     provenance: Provenance,
-) -> MetaInstanceKey {
-    MetaInstanceKey {
+) -> MetaInvocationMaterialKey {
+    MetaInvocationMaterialKey {
         callable,
         arguments: arguments_product_addr,
         provenance,

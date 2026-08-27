@@ -42,7 +42,7 @@ use crate::{
     },
     meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
-    meta_key::MetaInstanceKey,
+    meta_key::MetaInvocationMaterialKey,
     model::{Diagnostic, Provenance, SymbolId},
     pattern_head::{
         PatternFieldMaterialization, PatternHeadId, PatternMaterializationContext,
@@ -792,7 +792,7 @@ pub fn invoke_meta_callable_with_materialization_state(
 /// `NamespaceDelta`.
 pub fn invoke_meta_callable_cached(
     input: MetaInvocationInput,
-    key: MetaInstanceKey,
+    key: MetaInvocationMaterialKey,
     cache: &mut MetaInstanceCache,
 ) -> InvocationResult<MetaInvocationValue> {
     // Standalone compatibility entry point. Cache hits for registry-backed
@@ -810,7 +810,7 @@ pub fn invoke_meta_callable_cached(
 
 pub fn invoke_meta_callable_cached_with_materialization_state(
     input: MetaInvocationInput,
-    key: MetaInstanceKey,
+    key: MetaInvocationMaterialKey,
     cache: &mut MetaInstanceCache,
     materialization_state: &mut TypeMaterializationState,
 ) -> InvocationResult<MetaInvocationValue> {

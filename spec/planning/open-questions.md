@@ -300,14 +300,12 @@ Implemented substrate after this correction:
 
 Not implemented after this correction:
 
-- Retiring the legacy `MetaInstanceCache` compatibility digest
-  (`MetaInvocationInput::compute_key()`, a seed fingerprint over the bound
-  argument `TypeValueId`s). The canonical source-meta instance key is no
-  longer transitional: world-connected invocations compute
-  `MetaInstanceKey = MetaCallableIdentity × Addr(Product(args))` over the
-  normalized canonical argument product. The legacy digest only keys the
-  compatibility cache and does not participate in canonical semantic
-  identity.
+- Persistent encoding for meta roots remains open. The implementation now
+  separates `MetaInvocationMaterialKey = MetaCallableIdentity ×
+  Addr(Product(args))` (parent-neutral replay/cache material) from
+  `MetaInstanceRootKey = ParentSemanticOwner × MetaInvocationMaterialKey`.
+  A derived fingerprint may accelerate lookup but cannot define either
+  structural equality relation.
 - Storing and checking canonical `Pv:Pp` plus whole-slot `PolicyMode` on every
   symbol/value slot.
 - Storing policy-pair views on every namespace entry and routing every build
@@ -594,11 +592,10 @@ here so they are not mistaken for design decisions:
   (`PatternRoot` + root-local binder), not by string spelling. This is safe
   only under the current no-shadow restriction; see the next-stage entry
   conditions below for the mandatory coupling.
-- The legacy `MetaInstanceCache` compatibility digest
-  (`MetaInvocationInput::compute_key()`) still exists next to the canonical
-  `MetaInstanceKey = MetaCallableIdentity × Addr(Product(args))`; the digest
-  keys only the compatibility cache and does not participate in canonical
-  semantic identity (see "Not implemented after this correction" above).
+- `MetaInstanceCache` intentionally keys replayable, parent-neutral material
+  by `MetaInvocationMaterialKey`; it never interns or returns a semantic root.
+  Root identity is the separate parent-scoped `MetaInstanceRootKey`. A digest
+  is display/acceleration material only and never an equality authority.
 - Legacy `let r === path;` member bindings inside meta bodies are
   unconditionally rejected as `MetaReturnTypeRootMismatch`. That rejection is
   now permanently correct for a different reason: the alias/forwarding member

@@ -1036,14 +1036,14 @@ fn canonical_meta_instance_key_for_selected(
     callable: crate::MetaCallableIdentity,
     provenance: &Provenance,
     trace: &OrdinaryPipelineTrace,
-) -> Result<crate::MetaInstanceKey, OrdinaryInvocationFailure> {
+) -> Result<crate::MetaInvocationMaterialKey, OrdinaryInvocationFailure> {
     let arguments_product_addr = semantic_world
         .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
         .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
             diagnostic,
             trace: trace.clone(),
         })?;
-    Ok(crate::compute_canonical_meta_instance_key(
+    Ok(crate::compute_meta_invocation_material_key(
         callable,
         arguments_product_addr,
         provenance.clone(),
@@ -1069,7 +1069,7 @@ fn evaluate_source_meta_member_initializer(
     resolver_context: &ResolverContext,
     source_shape: &ApplicableCandidate,
     meta_root: &crate::MetaInstanceRoot,
-    instance_key: &crate::MetaInstanceKey,
+    instance_key: &crate::MetaInvocationMaterialKey,
     result_policy: &PolicyPair,
     initializer: &lang_syntax::NormExpr,
     provenance: &Provenance,
@@ -2322,7 +2322,7 @@ pub(crate) fn invoke_target_values(
     // candidate and shared by every ordinary meta construction path.  The
     // privileged `struct` builtin is intentionally excluded: its canonical
     // owner rule establishes no MetaInstance root, so forcing its private AST
-    // carrier through an ordinary MetaInstanceKey would invent semantic
+    // carrier through an ordinary meta material key would invent semantic
     // identity that the language does not have.
     let mut canonical_instance_key =
         if selected.return_shape != ReturnShape::ClusterSymbol || is_ambient_struct {
@@ -3781,7 +3781,7 @@ fn ordering_from_advantages(left: bool, right: bool) -> PolicyPartialOrdering {
 fn ordinary_result_identity(
     semantic_world: &mut SemanticWorld,
     selected: &PreparedCallCandidate,
-    canonical_key: Option<&crate::MetaInstanceKey>,
+    canonical_key: Option<&crate::MetaInvocationMaterialKey>,
     ambient_struct_owner: Option<SemanticOwnerId>,
     returned: &mut OrdinaryReturnedValue,
 ) -> Result<Option<(TypeValueId, PatternValueId, Option<SemanticValueId>)>, Diagnostic> {

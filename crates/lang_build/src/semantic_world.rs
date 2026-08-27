@@ -34,7 +34,7 @@ use crate::{
     },
     identity::{MetaCallableIdentity, SemanticValueId, TypeValueId},
     meta_invocation::TypeDefinitionInstanceId,
-    meta_key::MetaInstanceKey,
+    meta_key::MetaInvocationMaterialKey,
     model::{
         CoreMetaFunction, NamespaceNodeId, Provenance, SemanticNameDelta, SymbolId, SymbolKind,
     },
@@ -67,18 +67,17 @@ use crate::{
 /// same normalized body from the same arguments still get distinct keys
 /// (distinct roots) whose body material compares equal.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct MetaTypeKey {
+pub struct MetaInstanceRootKey {
     pub parent_owner: SemanticOwnerId,
-    pub meta_callable: MetaCallableIdentity,
-    pub instance: MetaInstanceKey,
+    pub material: MetaInvocationMaterialKey,
 }
 
 /// Placement + identity bundle for one meta instance root.
 ///
 /// `meta_callable` is the selected function object **value** identity.
 /// `placement_parent` is the stable semantic owner under which this instance
-/// is established. Together with the canonical argument Product held by
-/// `MetaInstanceKey`, both coordinates participate in root identity. Neither a
+/// is established. Together with the selected callable and canonical argument
+/// Product held by `MetaInvocationMaterialKey`, both coordinates participate in root identity. Neither a
 /// graph declaration Symbol nor a result binding/Place participates.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MetaInstanceRoot {
@@ -1000,7 +999,7 @@ pub enum ConstructionAuthority {
     BuildRoot,
     MetaInvocation {
         meta_callable: MetaCallableIdentity,
-        canonical_key: crate::meta_key::MetaInstanceKey,
+        canonical_key: crate::meta_key::MetaInvocationMaterialKey,
     },
     /// An ambient-scope construction (`AmbientStructScope`): the owning
     /// authority is the declaration environment itself, not a meta
@@ -1439,7 +1438,7 @@ pub struct SemanticWorld {
     /// functions whose bodies produce the same normalized struct body
     /// material share the body, never the root:
     /// `Root(f(args)) != Root(g(args))` while `Body(f(args)) = Body(g(args))`.
-    meta_type_roots: BTreeMap<MetaTypeKey, (TypeValueId, TypeDefinitionInstanceId)>,
+    meta_type_roots: BTreeMap<MetaInstanceRootKey, (TypeValueId, TypeDefinitionInstanceId)>,
     /// Ambient struct generations: one generated type per (declaration
     /// level, normalized navigation shape).  A second direct `struct`
     /// generation with the same key at the same level is a hard error, not
@@ -4161,7 +4160,7 @@ impl SemanticWorld {
     ///
     /// `MetaRootKey = ParentSemanticOwner + MetaCallableIdentity +
     /// Normalize(Arguments)`: the
-    /// canonical TypeValue root is keyed by [`MetaTypeKey`], which never
+    /// canonical TypeValue root is keyed by [`MetaInstanceRootKey`], which never
     /// includes body material.  `normalized_body` is
     /// content under the root — replaying the same root key with an equal
     /// body is an idempotent reuse, while a different body under one root
@@ -4172,16 +4171,21 @@ impl SemanticWorld {
     pub fn install_generated_type_value(
         &mut self,
         root: &MetaInstanceRoot,
-        canonical_key: MetaInstanceKey,
+        canonical_key: MetaInvocationMaterialKey,
         normalized_body: TypeDefinitionInstanceId,
         canonical_pattern: CanonicalPatternValue,
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Result<Option<(SemanticValueId, PatternValueId, TypeValueId)>, crate::Diagnostic> {
-        let key = MetaTypeKey {
+        if canonical_key.callable != root.meta_callable {
+            return Err(crate::Diagnostic::hard_error(
+                "meta root callable disagrees with the invocation material key",
+                Some(provenance),
+            ));
+        }
+        let key = MetaInstanceRootKey {
             parent_owner: root.placement_parent,
-            meta_callable: root.meta_callable,
-            instance: canonical_key.clone(),
+            material: canonical_key.clone(),
         };
         let canonical_type = match self.meta_type_roots.get(&key) {
             Some((existing, existing_body)) => {
@@ -4197,11 +4201,9 @@ impl SemanticWorld {
                 *existing
             }
             None => {
-                let owner = self.owners.meta_instance(
-                    root.placement_parent,
-                    root.meta_callable,
-                    canonical_key,
-                );
+                let owner = self
+                    .owners
+                    .meta_instance(root.placement_parent, canonical_key);
                 let id = self.allocate_anonymous_type();
                 let (pattern, _scope) = self.allocate_pattern(owner, provenance.clone());
                 self.types.insert(
@@ -4357,12 +4359,13 @@ impl SemanticWorld {
     pub fn allocate_meta_result_pattern(
         &mut self,
         root: &MetaInstanceRoot,
-        canonical_key: MetaInstanceKey,
+        canonical_key: MetaInvocationMaterialKey,
         provenance: Provenance,
     ) -> Option<PatternValueId> {
-        let owner =
-            self.owners
-                .meta_instance(root.placement_parent, root.meta_callable, canonical_key);
+        debug_assert_eq!(root.meta_callable, canonical_key.callable);
+        let owner = self
+            .owners
+            .meta_instance(root.placement_parent, canonical_key);
         Some(self.allocate_pattern(owner, provenance).0)
     }
 
@@ -4377,12 +4380,13 @@ impl SemanticWorld {
     pub fn install_meta_instance_type_value(
         &mut self,
         root: &MetaInstanceRoot,
-        canonical_key: MetaInstanceKey,
+        canonical_key: MetaInvocationMaterialKey,
         provenance: Provenance,
     ) -> Option<(TypeValueId, PatternValueId)> {
-        let owner =
-            self.owners
-                .meta_instance(root.placement_parent, root.meta_callable, canonical_key);
+        debug_assert_eq!(root.meta_callable, canonical_key.callable);
+        let owner = self
+            .owners
+            .meta_instance(root.placement_parent, canonical_key);
         let (pattern, _scope) = self.allocate_pattern(owner, provenance.clone());
         let id = self.allocate_anonymous_type();
         self.types.insert(
@@ -7418,7 +7422,7 @@ mod tests {
                     selected_function_value: SemanticValueId(99),
                     selected_call_entry: SemanticValueId(100),
                 },
-                canonical_key: crate::MetaInstanceKey {
+                canonical_key: crate::MetaInvocationMaterialKey {
                     callable: MetaCallableIdentity {
                         selected_function_value: SemanticValueId(99),
                         selected_call_entry: SemanticValueId(100),

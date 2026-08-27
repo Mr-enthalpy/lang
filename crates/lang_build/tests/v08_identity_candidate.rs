@@ -4,7 +4,7 @@ use support::*;
 
 use lang_build::{
     bind_meta_invocation_value_result, classify_type_arguments,
-    classify_type_arguments_with_report, compute_canonical_meta_instance_key,
+    classify_type_arguments_with_report, compute_meta_invocation_material_key,
     compute_type_definition_instance_id, extract_single_call_site, invoke_meta_callable,
     invoke_meta_callable_cached, invoke_meta_callable_cached_with_materialization_state,
     invoke_meta_callable_with_materialization_state, CandidateBuildIdentityPlaceholder,
@@ -18,8 +18,8 @@ use lang_build::{
     TypeMaterializationState, TypeValueBindingPlaceholder, TypeValueId,
 };
 
-fn structural_cache_key(seed: u64) -> lang_build::MetaInstanceKey {
-    compute_canonical_meta_instance_key(
+fn structural_cache_key(seed: u64) -> lang_build::MetaInvocationMaterialKey {
+    compute_meta_invocation_material_key(
         MetaCallableIdentity {
             selected_function_value: SemanticValueId(seed),
             selected_call_entry: SemanticValueId(seed + 1),

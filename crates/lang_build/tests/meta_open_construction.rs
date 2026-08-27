@@ -33,7 +33,7 @@ use lang_build::{
     CanonicalPatternAtom, CanonicalPatternNorm, CanonicalPatternValue, CanonicalTypeObservation,
     CanonicalValueAddr, ClusterConstructionId, ClusterSymbolResult, CompilationWorld,
     ConstructionAuthority, ConstructionEvaluationContext, ConstructionState, ConstructionWindow,
-    Diagnostic, MetaCallableIdentity, MetaInstanceKey, MetaInstanceRoot, NamespaceNodeId,
+    Diagnostic, MetaCallableIdentity, MetaInstanceRoot, MetaInvocationMaterialKey, NamespaceNodeId,
     OrdinaryInvocationContext, PatternComponentPolicy, Phase, PolicyMode, PolicyPair,
     PolicyResultEntry, PolicyStage, PolicyView, Provenance, ReturnShape, SemanticValueId,
     SemanticValuePayload, SemanticWorld, StageSet, SymbolId, TypeValueId, ValueComponentPolicy,
@@ -697,7 +697,7 @@ fn injected_value_identity_is_declaration_event_scoped() {
             selected_function_value: SemanticValueId(77),
             selected_call_entry: SemanticValueId(78),
         },
-        canonical_key: MetaInstanceKey {
+        canonical_key: MetaInvocationMaterialKey {
             callable: MetaCallableIdentity {
                 selected_function_value: SemanticValueId(77),
                 selected_call_entry: SemanticValueId(78),
@@ -829,7 +829,7 @@ fn open_self_typed_construction(
         meta_callable: callable,
         placement_parent: world.package_owner(),
     };
-    let key = MetaInstanceKey {
+    let key = MetaInvocationMaterialKey {
         callable,
         arguments: CanonicalValueAddr(1),
         provenance: provenance.clone(),
@@ -1051,7 +1051,7 @@ fn injection_into_external_pattern_is_rejected() {
             selected_function_value: SemanticValueId(77),
             selected_call_entry: SemanticValueId(78),
         },
-        canonical_key: MetaInstanceKey {
+        canonical_key: MetaInvocationMaterialKey {
             callable: MetaCallableIdentity {
                 selected_function_value: SemanticValueId(77),
                 selected_call_entry: SemanticValueId(78),
@@ -1166,7 +1166,7 @@ fn meta_invocation_authority(
     };
     ConstructionAuthority::MetaInvocation {
         meta_callable: callable,
-        canonical_key: MetaInstanceKey {
+        canonical_key: MetaInvocationMaterialKey {
             callable,
             arguments: CanonicalValueAddr(1),
             provenance: provenance.clone(),

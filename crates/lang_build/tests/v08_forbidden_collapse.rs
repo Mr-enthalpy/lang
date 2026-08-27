@@ -554,7 +554,7 @@ fn legacy_meta_digest_equality_ignores_provenance() {
 #[test]
 fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
     let mut cache = MetaInstanceCache::new();
-    let key = lang_build::compute_canonical_meta_instance_key(
+    let key = lang_build::compute_meta_invocation_material_key(
         lang_build::MetaCallableIdentity {
             selected_function_value: lang_build::SemanticValueId(50),
             selected_call_entry: lang_build::SemanticValueId(51),
@@ -586,7 +586,7 @@ fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
 #[test]
 fn meta_instance_cache_uses_structural_instance_identity_not_a_digest_channel() {
     let key = |call_entry| {
-        lang_build::compute_canonical_meta_instance_key(
+        lang_build::compute_meta_invocation_material_key(
             lang_build::MetaCallableIdentity {
                 selected_function_value: lang_build::SemanticValueId(70),
                 selected_call_entry: lang_build::SemanticValueId(call_entry),

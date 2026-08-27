@@ -151,8 +151,8 @@ pub use meta_invocation::{
     TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId, TypeDefinitionPatternHeads,
 };
 pub use meta_key::{
-    compute_canonical_meta_instance_key, compute_legacy_meta_instance_digest, CanonicalFingerprint,
-    MetaInstanceKey,
+    compute_legacy_meta_instance_digest, compute_meta_invocation_material_key,
+    CanonicalFingerprint, MetaInvocationMaterialKey,
 };
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
@@ -287,7 +287,7 @@ pub use semantic_world::{
     BorrowFormationFailure, BorrowKind, BorrowOperand, BorrowView, BorrowViewId,
     ClusterConstructionId, CompleteTypeValue, ConstructionAuthority, ConstructionEvaluationContext,
     ConstructionState, ConstructionWindow, ImmutableTypeCallSpace, InjectedValueIdentity,
-    MemberCreationProof, MetaInstanceRoot, MetaTypeKey, ObjectPlace, ObjectPlaceId,
+    MemberCreationProof, MetaInstanceRoot, MetaInstanceRootKey, ObjectPlace, ObjectPlaceId,
     OpenClusterConstruction, OpenHereFailure, OpenHereProof, OrdinaryCallEntry,
     OrdinaryCandidateRole, OrdinaryOpenWindow, OwnerStrategy, PatternClusterOwner,
     PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector, ProjectionSlot,

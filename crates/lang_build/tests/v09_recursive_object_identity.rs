@@ -42,7 +42,7 @@
 mod support;
 
 use lang_build::{
-    classify_type_arguments_env_with_report, compute_canonical_meta_instance_key,
+    classify_type_arguments_env_with_report, compute_meta_invocation_material_key,
     extract_single_call_site, invoke_host_member_symbol_ordinary, CanonicalValueAddr,
     MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
@@ -382,7 +382,7 @@ fn open_type_object_observed_before_and_after_injection_changes_its_meta_key() {
         let args = world
             .canonical_arguments_product_address(&[raw], &[atom])
             .expect("acyclic Val2 normalizes");
-        compute_canonical_meta_instance_key(meta_fn, args, provenance.clone())
+        compute_meta_invocation_material_key(meta_fn, args, provenance.clone())
     };
 
     // let f::t = X;  let A = t |> meta_fn;

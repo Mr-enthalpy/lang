@@ -15,11 +15,12 @@
 mod support;
 
 use lang_build::{
-    compute_canonical_meta_instance_key, extract_single_call_site, CanonicalValueAddr,
-    ClusterSymbolResult, CompilationWorld, MetaCallableIdentity, MetaInstanceKey, MetaInstanceRoot,
-    NamespaceNodeId, OrdinaryInvocationContext, PatternComponentPolicy, PolicyMode, PolicyPair,
-    PolicyStage, Provenance, SemanticOwnerKind, SemanticValueId, SemanticWorld, StageSet, SymbolId,
-    TypeDefinitionInstanceId, TypeValueId, ValueComponentPolicy, ValuePresence, WritableContext,
+    compute_meta_invocation_material_key, extract_single_call_site, CanonicalValueAddr,
+    ClusterSymbolResult, CompilationWorld, MetaCallableIdentity, MetaInstanceRoot,
+    MetaInvocationMaterialKey, NamespaceNodeId, OrdinaryInvocationContext, PatternComponentPolicy,
+    PolicyMode, PolicyPair, PolicyStage, Provenance, SemanticOwnerKind, SemanticValueId,
+    SemanticWorld, StageSet, SymbolId, TypeDefinitionInstanceId, TypeValueId, ValueComponentPolicy,
+    ValuePresence, WritableContext,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -203,16 +204,35 @@ fn same_root_conflicting_body_is_a_conflict_never_a_second_root() {
         },
         placement_parent: world.package_owner(),
     };
-    let key = MetaInstanceKey {
+    let key = MetaInvocationMaterialKey {
         callable: root.meta_callable,
         arguments: CanonicalValueAddr(1),
         provenance: provenance.clone(),
+    };
+    let mismatched_root = MetaInstanceRoot {
+        meta_callable: MetaCallableIdentity {
+            selected_function_value: SemanticValueId(type_object.as_u64() + 1),
+            selected_call_entry: SemanticValueId(type_object.as_u64() + 501),
+        },
+        placement_parent: root.placement_parent,
     };
     let body_a = TypeDefinitionInstanceId(11);
     let body_b = TypeDefinitionInstanceId(22);
     let pattern = lang_build::CanonicalPatternValue::Atom(lang_build::CanonicalPatternAtom::Type(
         lang_build::CanonicalTypeObservation::Detached(lang_build::TypeValueId(11)),
     ));
+
+    let mismatch = world
+        .install_generated_type_value(
+            &mismatched_root,
+            key.clone(),
+            body_a,
+            pattern.clone(),
+            policy.clone(),
+            provenance.clone(),
+        )
+        .expect_err("root and parent-neutral material cannot disagree on the selected callable");
+    assert!(mismatch.message.contains("material key"));
 
     // Root allocation, then idempotent reuse under equal body material.
     let first = world
@@ -308,12 +328,12 @@ fn distinct_meta_callables_under_one_carrier_symbol_get_distinct_roots() {
         placement_parent: world.package_owner(),
     };
     // Identical normalized arguments for both invocations.
-    let key_a = MetaInstanceKey {
+    let key_a = MetaInvocationMaterialKey {
         callable: root_a.meta_callable,
         arguments: CanonicalValueAddr(1),
         provenance: provenance.clone(),
     };
-    let key_b = MetaInstanceKey {
+    let key_b = MetaInvocationMaterialKey {
         callable: root_b.meta_callable,
         arguments: CanonicalValueAddr(1),
         provenance: provenance.clone(),
@@ -387,11 +407,22 @@ fn meta_root_is_parent_scoped_always_plain_and_not_writable() {
     assert_eq!(package_root.policy_mode(), PolicyMode::Plain);
     assert_eq!(child_root.policy_mode(), PolicyMode::Plain);
 
-    let key = MetaInstanceKey {
+    let key = MetaInvocationMaterialKey {
         callable,
         arguments: CanonicalValueAddr(1),
         provenance: provenance.clone(),
     };
+    assert_ne!(
+        lang_build::MetaInstanceRootKey {
+            parent_owner: package_root.placement_parent,
+            material: key.clone(),
+        },
+        lang_build::MetaInstanceRootKey {
+            parent_owner: child_root.placement_parent,
+            material: key.clone(),
+        },
+        "equal replay material under distinct parents has distinct semantic root identity"
+    );
     let pattern = lang_build::CanonicalPatternValue::Atom(lang_build::CanonicalPatternAtom::Type(
         lang_build::CanonicalTypeObservation::Detached(TypeValueId(11)),
     ));
@@ -471,8 +502,8 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
         args_dec, args_hex,
         "Addr(Product(4096)) = Addr(Product(0x1000))"
     );
-    let key_dec = compute_canonical_meta_instance_key(selected, args_dec, provenance.clone());
-    let key_hex = compute_canonical_meta_instance_key(selected, args_hex, provenance.clone());
+    let key_dec = compute_meta_invocation_material_key(selected, args_dec, provenance.clone());
+    let key_hex = compute_meta_invocation_material_key(selected, args_hex, provenance.clone());
     assert_eq!(key_dec, key_hex);
 
     // A different normalized argument changes the key.
@@ -480,7 +511,7 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
     let args_other = world.intern_canonical_value(product(vec![other]));
     assert_ne!(
         key_dec,
-        compute_canonical_meta_instance_key(selected, args_other, provenance.clone())
+        compute_meta_invocation_material_key(selected, args_other, provenance.clone())
     );
 
     // The invocation parentheses are a Product, so the argument tuple is
@@ -490,15 +521,15 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
     let ba = world.intern_canonical_value(product(vec![other, dec]));
     assert_ne!(ab, ba, "Product argument order is positional identity");
     assert_ne!(
-        compute_canonical_meta_instance_key(selected, ab, provenance.clone()),
-        compute_canonical_meta_instance_key(selected, ba, provenance.clone())
+        compute_meta_invocation_material_key(selected, ab, provenance.clone()),
+        compute_meta_invocation_material_key(selected, ba, provenance.clone())
     );
 
     // A different selected function value changes the key even for equal
     // normalized arguments (distinct meta vals never share a root).
     assert_ne!(
         key_dec,
-        compute_canonical_meta_instance_key(
+        compute_meta_invocation_material_key(
             MetaCallableIdentity {
                 selected_function_value: SemanticValueId(8),
                 selected_call_entry: SemanticValueId(70),
@@ -513,7 +544,7 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
     // structural coordinate of the key.
     assert_ne!(
         key_dec,
-        compute_canonical_meta_instance_key(
+        compute_meta_invocation_material_key(
             MetaCallableIdentity {
                 selected_function_value: SemanticValueId(7),
                 selected_call_entry: SemanticValueId(71),
