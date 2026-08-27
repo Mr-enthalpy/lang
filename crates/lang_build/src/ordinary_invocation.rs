@@ -202,6 +202,10 @@ pub enum OrdinaryCandidateOrigin {
 pub struct PreparedCallCandidate {
     pub origin: OrdinaryCandidateOrigin,
     pub target_value: SemanticValueId,
+    /// Horizontal residency of the selected target in this invocation
+    /// context. It may differ from the semantic value's formation Place when
+    /// an ordinary binding carries that same value in a fresh destination.
+    pub target_place: ObjectPlaceId,
     pub call_entry_value: SemanticValueId,
     pub backing_declaration: SymbolId,
     pub frame: InvocationFrame,
@@ -292,7 +296,7 @@ impl std::ops::Deref for SealedSelectedInvocation {
 }
 
 fn validate_dynamic_legality(
-    semantic_world: &SemanticWorld,
+    _semantic_world: &SemanticWorld,
     selected: &PreparedCallCandidate,
     context: &OrdinaryInvocationContext<'_>,
     provenance: &Provenance,
@@ -321,15 +325,7 @@ fn validate_dynamic_legality(
     }
 
     let writable_place = if context.dynamic_legality.require_target_writable {
-        let place = semantic_world
-            .value(selected.target_value)
-            .map(|value| value.place)
-            .ok_or_else(|| {
-                Diagnostic::hard_error(
-                    "selected invocation target has no resident Place for Writable validation",
-                    Some(provenance.clone()),
-                )
-            })?;
+        let place = selected.target_place;
         let writable = context.dynamic_legality.writable.ok_or_else(|| {
             Diagnostic::hard_error(
                 "selected invocation requires Writable but the evaluation context supplies no write authority",
@@ -1361,6 +1357,7 @@ pub fn invoke_policy_migration(
         .symbol(cluster)
         .map(|cell| cell.member_views.clone())
         .unwrap_or_default();
+    let target_places = semantic_world.binding_places(cluster);
 
     let no_explicit_modes = [];
     let trace = OrdinaryPipelineTrace {
@@ -1379,6 +1376,7 @@ pub fn invoke_policy_migration(
         materialization_state,
         OrdinaryCandidateOrigin::SourceSymbol(cluster),
         target_members,
+        target_places,
         None,
         None,
         migration_args,
@@ -1513,11 +1511,13 @@ pub fn invoke_host_member_symbol_ordinary(
         .symbol(symbol)
         .map(|symbol| symbol.member_views.clone())
         .unwrap_or_default();
+    let target_places = semantic_world.binding_places(symbol);
     invoke_target_values(
         semantic_world,
         materialization_state,
         OrdinaryCandidateOrigin::SourceSymbol(symbol),
         target_members,
+        target_places,
         None,
         Some(call_site),
         call_site.to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct),
@@ -1548,6 +1548,7 @@ pub fn invoke_pattern_associated_ordinary(
         materialization_state,
         OrdinaryCandidateOrigin::PatternAssociatedCallEntry(pattern),
         target_members,
+        BTreeMap::new(),
         Some(receiver_value),
         None,
         explicit_arg_product,
@@ -1601,6 +1602,7 @@ pub fn invoke_pattern_associated_value_ordinary(
         materialization_state,
         OrdinaryCandidateOrigin::PatternAssociatedValue(pattern),
         target_members,
+        BTreeMap::new(),
         None,
         None,
         explicit_arg_product,
@@ -1649,6 +1651,7 @@ pub(crate) fn invoke_target_values(
     materialization_state: &mut TypeMaterializationState,
     origin: OrdinaryCandidateOrigin,
     target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
     associated_receiver: Option<SemanticValueId>,
     source_call_site: Option<&NormalizedCallSite>,
     mut arg_shape: ArgProductShape,
@@ -1829,6 +1832,10 @@ pub(crate) fn invoke_target_values(
             .value(target_value)
             .cloned()
             .expect("C1 retained existing target values");
+        let target_place = target_places
+            .get(&target_value)
+            .copied()
+            .unwrap_or(target.place);
         if entry.receiver_type != target.type_value {
             continue;
         }
@@ -2142,6 +2149,7 @@ pub(crate) fn invoke_target_values(
         prepared.push(PreparedCallCandidate {
             origin: origin.clone(),
             target_value,
+            target_place,
             call_entry_value,
             backing_declaration: entry.backing_declaration,
             frame,

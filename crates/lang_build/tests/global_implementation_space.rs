@@ -579,6 +579,35 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
         rebound.member_views, binding.member_views,
         "the identity-preserving binding also retains the selected Policy/Pattern views"
     );
+    let binding_place = binding
+        .sibling_place(result_id)
+        .expect("the first ordinary binding has a destination Place");
+    let rebound_place = rebound
+        .sibling_place(result_id)
+        .expect("rebinding the value establishes another destination Place");
+    assert_ne!(
+        binding_place, rebound_place,
+        "equal resident values do not collapse distinct ordinary binding Places"
+    );
+    let mut writable = lang_build::WritableContext::default();
+    writable.grant_place(binding_place);
+    assert!(writable.place_is_writable(binding_place));
+    assert!(
+        !writable.place_is_writable(rebound_place),
+        "Writable authority for one binding cannot leak through shared SemanticValue identity"
+    );
+    let binding_resident = world
+        .semantic_world()
+        .resident_generation(binding_place)
+        .expect("binding resident exists");
+    let rebound_resident = world
+        .semantic_world()
+        .resident_generation(rebound_place)
+        .expect("rebound resident exists");
+    assert_ne!(
+        binding_resident, rebound_resident,
+        "fresh destinations own independent ProjectionSlot/borrow generations"
+    );
 }
 
 #[test]

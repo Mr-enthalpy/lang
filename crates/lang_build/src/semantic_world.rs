@@ -609,6 +609,14 @@ pub struct SemanticSymbolCell {
     ///
     /// A `TypeObject` adapter value must never appear in this list.
     pub sibling_vals: Vec<SemanticValueId>,
+    /// Destination residency of each ordinary value member carried by this
+    /// Symbol.  The semantic value may be shared with another binding, but
+    /// `let` always establishes a fresh horizontal Place coordinate.
+    ///
+    /// This map is deliberately separate from `SemanticValueObject::place`:
+    /// that field is the formation/storage place of the value object, while
+    /// this field records where this binding currently carries the value.
+    pub sibling_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
     /// Per-binding Policy views over the cluster members.
     ///
     /// A pure-P-only view may use `value = None`. A sibling val view uses
@@ -649,6 +657,10 @@ impl SemanticSymbolCell {
         self.sibling_vals.clone()
     }
 
+    pub fn sibling_place(&self, value: SemanticValueId) -> Option<ObjectPlaceId> {
+        self.sibling_places.get(&value).copied()
+    }
+
     /// Derived cluster Policy disjunction over the installed member
     /// views; see [`derived_cluster_policy`].
     pub fn cluster_policy(&self) -> Option<PolicyPair> {
@@ -661,8 +673,10 @@ pub struct SemanticValueObject {
     pub id: SemanticValueId,
     pub type_value: TypeValueId,
     pub pattern: PatternValueId,
-    /// Per-object Val2 place.  Each value owns its own place, independent
-    /// of other values sharing the same Pattern.
+    /// Formation/storage Place of this value object. Ordinary bindings may
+    /// carry this same semantic value in distinct destination Places; those
+    /// horizontal residencies live on the binding Symbol and are never
+    /// recovered from this field.
     pub place: ObjectPlaceId,
     pub policy: PolicyPair,
     pub mode: PolicyMode,
@@ -1437,9 +1451,10 @@ pub struct SemanticWorld {
     ambient_type_binders: BTreeMap<TypeValueId, AmbientTypeBinder>,
     patterns: BTreeMap<PatternValueId, SemanticPatternValue>,
     scopes: BTreeMap<ResolvedPatternScopeId, ResolvedPatternScope>,
-    /// Per-object Val2 places.  Each semantic value (including type objects)
-    /// owns exactly one place.  Pattern-level lookups use `pattern_places`
-    /// to find the canonical type object's place.
+    /// Object/residency Places. Semantic values have a formation Place;
+    /// ordinary bindings may additionally carry the same value in fresh
+    /// destination Places. Pattern-level lookups use `pattern_places` to find
+    /// the canonical type object's place.
     places: BTreeMap<ObjectPlaceId, ObjectPlace>,
     /// Owned Val2 semantic snapshots. Navigation and lookup may expose more
     /// material through `places`; ordinary Object normalization may not.
@@ -2995,6 +3010,28 @@ impl SemanticWorld {
 
     pub fn symbol(&self, identity: SemanticSymbolIdentity) -> Option<&SemanticSymbolCell> {
         self.symbols.get(&identity)
+    }
+
+    /// Binding-local destination Place for one value member.
+    ///
+    /// A value can be resident in multiple bindings.  Consequently this
+    /// relation is keyed by Symbol and value; it is not recoverable from the
+    /// value's formation place.
+    pub fn binding_place(
+        &self,
+        symbol: SemanticSymbolIdentity,
+        value: SemanticValueId,
+    ) -> Option<ObjectPlaceId> {
+        self.symbol(symbol)?.sibling_place(value)
+    }
+
+    pub fn binding_places(
+        &self,
+        symbol: SemanticSymbolIdentity,
+    ) -> BTreeMap<SemanticValueId, ObjectPlaceId> {
+        self.symbol(symbol)
+            .map(|cell| cell.sibling_places.clone())
+            .unwrap_or_default()
     }
 
     pub fn symbol_in_namespace(
@@ -5482,6 +5519,23 @@ impl SemanticWorld {
             .find(|view| view.value.is_none())
             .map(|view| view.pattern)
             .map(|pattern| self.pure_p_member_for_carrier(symbol, pattern));
+        // A binding copies the resident Object into a fresh destination
+        // Place without allocating a new semantic value.  Place is a
+        // horizontal coordinate and therefore does not participate in
+        // Object equality or SemanticValue identity.
+        let mut destination_places = BTreeMap::new();
+        for value in views
+            .iter()
+            .filter_map(|view| view.value.map(|value| value.id))
+        {
+            if destination_places.contains_key(&value) {
+                continue;
+            }
+            let Some(place) = self.allocate_binding_destination(value) else {
+                return Err(BindConflict::ValueNotInstalled);
+            };
+            destination_places.insert(value, place);
+        }
         let cell = self
             .symbols
             .get_mut(&symbol)
@@ -5493,6 +5547,12 @@ impl SemanticWorld {
                 if !cell.sibling_vals.contains(&value) {
                     cell.sibling_vals.push(value);
                 }
+                cell.sibling_places.insert(
+                    value,
+                    *destination_places
+                        .get(&value)
+                        .expect("every ordinary value receives a destination Place"),
+                );
             } else {
                 // Pure-P view (value=None, pattern=P):
                 // set pure_p directly so SemanticWorld has the complete
@@ -5649,6 +5709,7 @@ impl SemanticWorld {
             .expect("interned semantic symbol exists");
         cell.member_views.clear();
         cell.sibling_vals.clear();
+        cell.sibling_places.clear();
         cell.pure_p = None;
         let mut pure_p_patterns = Vec::new();
         for view in views {
@@ -6750,6 +6811,7 @@ impl SemanticWorld {
                 namespace_node: Some(namespace),
                 pure_p: None,
                 sibling_vals: Vec::new(),
+                sibling_places: BTreeMap::new(),
                 member_views: Vec::new(),
                 provenance,
             },
@@ -6803,6 +6865,7 @@ impl SemanticWorld {
                 namespace_node: None,
                 pure_p: None,
                 sibling_vals: Vec::new(),
+                sibling_places: BTreeMap::new(),
                 member_views: Vec::new(),
                 provenance,
             },
@@ -6891,6 +6954,26 @@ impl SemanticWorld {
         self.semantic_val2_snapshots
             .insert(id, SemanticVal2Snapshot::default());
         id
+    }
+
+    /// Establish a fresh binding destination carrying an equal resident
+    /// Object. Storage maps are copied as an implementation realization of
+    /// that resident; the new resident identity prevents writes, borrows and
+    /// projection generations from aliasing the source binding.
+    fn allocate_binding_destination(&mut self, value: SemanticValueId) -> Option<ObjectPlaceId> {
+        let source_place = self.values.get(&value)?.place;
+        let source_storage = self.places.get(&source_place)?.clone();
+        let source_snapshot = self.semantic_val2_snapshots.get(&source_place)?.clone();
+        let destination = self.allocate_object_place();
+        let destination_storage = self
+            .places
+            .get_mut(&destination)
+            .expect("fresh binding destination exists");
+        destination_storage.associated_symbols = source_storage.associated_symbols;
+        destination_storage.associated_val2 = source_storage.associated_val2;
+        self.semantic_val2_snapshots
+            .insert(destination, source_snapshot);
+        Some(destination)
     }
 
     fn allocate_borrow(&mut self, kind: BorrowKind, target: StableBorrowTarget) -> BorrowViewId {

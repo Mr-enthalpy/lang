@@ -1866,6 +1866,7 @@ impl CompilationWorld {
             &mut self.type_materialization_state,
             crate::OrdinaryCandidateOrigin::PatternAssociatedCallEntry(target_pattern),
             target_members,
+            std::collections::BTreeMap::new(),
             Some(target_receiver),
             None,
             explicit_product,
