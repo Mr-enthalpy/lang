@@ -552,15 +552,39 @@ pub struct UnitInvocationResult {
     pub trace: OrdinaryPipelineTrace,
 }
 
-/// The outcome of invoking a selected callable, split by the declared
-/// return SHAPE — never by the execution stage.  A meta-stage callable
-/// returning a single value produces `SingleMember` exactly like a
-/// compile-stage one; `ClusterSymbol` is a shape fact, not a stage fact.
+/// Projection transport carried inside the unified [`InvocationResult`]
+/// success branch.
+///
+/// These variants preserve shape-specific installation data; they do not
+/// decide the semantic result class. That authority belongs exclusively to
+/// `InvocationResult::SemanticResult.declared_result_class`, derived once
+/// from the selected callable's declaration.
 #[derive(Clone, Debug)]
-pub enum InvocationOutcome {
+pub enum ProjectedInvocationOutcome {
     Unit(UnitInvocationResult),
     SingleMember(SingleMemberResult),
     ClusterSymbol(ClusterSymbolResult),
+}
+
+/// Unified ordinary invocation boundary. Selection/admissibility failures
+/// remain the outer `OrdinaryInvocationFailure` channel because no callable
+/// `F` exists yet; once `F` is selected, its result crosses this envelope.
+pub type InvocationOutcome = crate::InvocationResult<ProjectedInvocationOutcome>;
+
+fn declared_result_class(shape: ReturnShape) -> crate::DeclaredResultClass {
+    match shape {
+        ReturnShape::Unit => crate::DeclaredResultClass::Unit,
+        ReturnShape::SingleType => crate::DeclaredResultClass::CompleteType,
+        ReturnShape::SingleVal(_) => crate::DeclaredResultClass::OrdinaryValue,
+        ReturnShape::ClusterSymbol => crate::DeclaredResultClass::ClusterSymbol,
+    }
+}
+
+fn semantic_invocation_outcome(
+    shape: ReturnShape,
+    projection: ProjectedInvocationOutcome,
+) -> InvocationOutcome {
+    crate::InvocationResult::semantic(declared_result_class(shape), projection)
 }
 
 /// Complete type value returned by a world-connected invocation.
@@ -1401,7 +1425,11 @@ pub fn invoke_policy_migration(
         },
         request.provenance().clone(),
     )?;
-    let InvocationOutcome::SingleMember(invocation) = invocation else {
+    let crate::InvocationResult::SemanticResult {
+        declared_result_class: crate::DeclaredResultClass::OrdinaryValue,
+        value: ProjectedInvocationOutcome::SingleMember(invocation),
+    } = invocation
+    else {
         return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
             first_diagnostic: Some(Diagnostic::hard_error(
                 "migration selected a non-single-member return shape, expected ordinary transport",
@@ -2939,7 +2967,10 @@ pub(crate) fn invoke_target_values(
     };
 
     if let Some(meta_result) = meta_construction_result {
-        return Ok(InvocationOutcome::ClusterSymbol(meta_result));
+        return Ok(semantic_invocation_outcome(
+            selected.return_shape,
+            ProjectedInvocationOutcome::ClusterSymbol(meta_result),
+        ));
     }
 
     let mut returned = if let Some(source_shape) = &selected.source_shape {
@@ -3157,12 +3188,16 @@ pub(crate) fn invoke_target_values(
         view: selected.complete_result_view.clone(),
     }];
 
-    Ok(InvocationOutcome::SingleMember(SingleMemberResult {
-        selected,
-        returned,
-        complete_result,
-        trace,
-    }))
+    let return_shape = selected.return_shape;
+    Ok(semantic_invocation_outcome(
+        return_shape,
+        ProjectedInvocationOutcome::SingleMember(SingleMemberResult {
+            selected,
+            returned,
+            complete_result,
+            trace,
+        }),
+    ))
 }
 
 fn forwarded_semantic_body_value(selected: &PreparedCallCandidate) -> Option<SemanticValueId> {

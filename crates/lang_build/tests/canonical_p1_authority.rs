@@ -19,12 +19,11 @@ mod support;
 
 use lang_build::{
     canonical_function_object_view, extract_single_call_site, BuildManifest, CompilationWorld,
-    ExplicitP1Selection, ExposedInvocationResult, InvocationOutcome, OrdinaryInvocationContext,
-    P1Projection, PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair,
-    PolicyResultEntry, PolicyStage, PolicyTransitionRequest, PolicyView, Provenance,
-    ResolveExpectation, ResultPolicyDemand, SemanticValueId, SemanticValuePayload,
-    SemanticValueRef, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, TypeValueId,
-    ValueComponentPolicy, ValuePresence,
+    ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext, P1Projection,
+    PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair, PolicyResultEntry, PolicyStage,
+    PolicyTransitionRequest, PolicyView, Provenance, ResolveExpectation, ResultPolicyDemand,
+    SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet, SymbolPayload,
+    ToolchainGlobalSourceRoot, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
 use support::{
     build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
@@ -133,7 +132,11 @@ fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
             Provenance::new("S7 no-independent-P3 regression"),
         )
         .expect("core primitive is selected through the ordinary spine");
-    let InvocationOutcome::SingleMember(result) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = result
+    else {
         panic!("expected ordinary outcome");
     };
     let selected = &result.selected;

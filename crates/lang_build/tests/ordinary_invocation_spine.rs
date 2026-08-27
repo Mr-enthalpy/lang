@@ -2,9 +2,9 @@ mod support;
 
 use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
-    CompilationWorld, InvocationOutcome, LifecyclePrecondition, LifecycleValidationContext,
-    MetaInvocationValue, OrdinaryInvocationContext, PatternComponentPolicy, PolicyMode, PolicyPair,
-    PolicyStage, PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticOwnerKind,
+    CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, MetaInvocationValue,
+    OrdinaryInvocationContext, PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage,
+    PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticOwnerKind,
     SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy,
     ValuePresence, WritableContext,
 };
@@ -1066,8 +1066,12 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
             Provenance::new("core IdentityType ordinary-spine regression"),
         )
         .expect("core primitive uses the ordinary function-object trunk");
-    let InvocationOutcome::SingleMember(result) = result else {
-        panic!("expected ordinary outcome");
+    let lang_build::InvocationResult::SemanticResult {
+        declared_result_class: lang_build::DeclaredResultClass::CompleteType,
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+    } = result
+    else {
+        panic!("declared CompleteType is the sole result-class authority");
     };
 
     let identity = world
@@ -1115,7 +1119,11 @@ fn production_world_owns_one_lifecycle_name_map_across_invocations() {
             Provenance::new("first lifecycle-owned call"),
         )
         .expect("first call");
-    let InvocationOutcome::SingleMember(first) = first else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(first),
+        ..
+    } = first
+    else {
         panic!("identity returns one member");
     };
     let target = first.selected.target_value;
@@ -1151,7 +1159,11 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
             Provenance::new("type-value-not-carrier regression"),
         )
         .expect("IdentityType accepts the value read through U");
-    let InvocationOutcome::SingleMember(result) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = result
+    else {
         panic!("expected ordinary outcome");
     };
 
@@ -1359,7 +1371,11 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
             Provenance::new("core struct ordinary-spine regression"),
         )
         .expect("privileged AST decoding is an ordinary call-entry body capability");
-    let InvocationOutcome::SingleMember(result) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = result
+    else {
         panic!("struct has the unified CompleteType result class");
     };
 
@@ -1607,7 +1623,11 @@ fn source_meta_body_contribution_stream_returns_cluster_construction() {
         .unwrap_or_else(|failure| {
             panic!("{callable}: source meta callable is selected through the ordinary spine: {failure:?}")
         });
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        declared_result_class: lang_build::DeclaredResultClass::ClusterSymbol,
+        value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(meta),
+    } = result
+    else {
         panic!("{callable}: meta-declared source callable returns a cluster construction");
     };
 

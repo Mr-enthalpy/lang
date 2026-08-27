@@ -1408,8 +1408,18 @@ impl CompilationWorld {
         provenance: Provenance,
     ) -> Result<(), BuildError> {
         let result = match result {
-            crate::InvocationOutcome::SingleMember(result) => result,
-            crate::InvocationOutcome::ClusterSymbol(meta) => {
+            crate::InvocationResult::SemanticResult {
+                declared_result_class: crate::DeclaredResultClass::OrdinaryValue,
+                value: crate::ProjectedInvocationOutcome::SingleMember(result),
+            }
+            | crate::InvocationResult::SemanticResult {
+                declared_result_class: crate::DeclaredResultClass::CompleteType,
+                value: crate::ProjectedInvocationOutcome::SingleMember(result),
+            } => result,
+            crate::InvocationResult::SemanticResult {
+                declared_result_class: crate::DeclaredResultClass::ClusterSymbol,
+                value: crate::ProjectedInvocationOutcome::ClusterSymbol(meta),
+            } => {
                 return self.bind_connected_meta_construction_result(
                     namespace,
                     binder_name,
@@ -1420,11 +1430,32 @@ impl CompilationWorld {
                     provenance,
                 );
             }
-            crate::InvocationOutcome::Unit(_) => {
+            crate::InvocationResult::SemanticResult {
+                declared_result_class: crate::DeclaredResultClass::Unit,
+                value: crate::ProjectedInvocationOutcome::Unit(_),
+            } => {
                 // The invocation layer already reports Unit execution as
                 // future work; no binding path exists yet.
                 return Err(BuildError::single(Diagnostic::hard_error(
                     "binding a Unit invocation result is future work",
+                    Some(provenance),
+                )));
+            }
+            crate::InvocationResult::Residual(residual) => {
+                return Err(BuildError::single(Diagnostic::hard_error(
+                    format!(
+                        "ordinary invocation residual `{}` cannot be bound here",
+                        residual.class
+                    ),
+                    Some(residual.provenance),
+                )));
+            }
+            crate::InvocationResult::Diagnostic(diagnostic) => {
+                return Err(BuildError::single(diagnostic));
+            }
+            crate::InvocationResult::SemanticResult { .. } => {
+                return Err(BuildError::single(Diagnostic::hard_error(
+                    "declared invocation result class does not match its projection payload",
                     Some(provenance),
                 )));
             }
@@ -1623,8 +1654,8 @@ impl CompilationWorld {
         Ok(())
     }
 
-    /// S6 — connect `InvocationOutcome::ClusterSymbol` to the ordinary let
-    /// binding path.  The finalized cluster construction's member views are
+    /// S6 — project the unified invocation success carrying ClusterSymbol
+    /// material into the ordinary let binding path. The finalized cluster construction's member views are
     /// the canonical result facts; they flow through the same annotation check,
     /// P1 elaboration, and installation as any other connected result.
     /// Installation creates a fresh destination Symbol; patterns generated
@@ -1880,7 +1911,11 @@ impl CompilationWorld {
                 provenance.clone(),
             ))
         })?;
-        let crate::InvocationOutcome::SingleMember(selected) = outcome else {
+        let crate::InvocationResult::SemanticResult {
+            declared_result_class: crate::DeclaredResultClass::OrdinaryValue,
+            value: crate::ProjectedInvocationOutcome::SingleMember(selected),
+        } = outcome
+        else {
             return Err(BuildError::single(Diagnostic::hard_error(
                 "literal construction selected a non-value result shape",
                 Some(provenance.clone()),
@@ -2473,12 +2508,14 @@ impl CompilationWorld {
         };
 
         let material = match inner {
-            ConnectedInitializerOutcome::Ordinary(crate::InvocationOutcome::SingleMember(
-                result,
-            )) => result.exposed().material,
-            ConnectedInitializerOutcome::Ordinary(crate::InvocationOutcome::ClusterSymbol(
-                result,
-            )) => result
+            ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
+                value: crate::ProjectedInvocationOutcome::SingleMember(result),
+                ..
+            }) => result.exposed().material,
+            ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
+                declared_result_class: crate::DeclaredResultClass::ClusterSymbol,
+                value: crate::ProjectedInvocationOutcome::ClusterSymbol(result),
+            }) => result
                 .construction
                 .member_views
                 .into_iter()
@@ -2497,9 +2534,29 @@ impl CompilationWorld {
                     view: entry.view,
                 })
                 .collect(),
-            ConnectedInitializerOutcome::Ordinary(crate::InvocationOutcome::Unit(_)) => {
+            ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
+                declared_result_class: crate::DeclaredResultClass::Unit,
+                value: crate::ProjectedInvocationOutcome::Unit(_),
+            }) => {
                 return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
                     "PolicyLet cannot yet complete a Unit invocation result",
+                    Some(provenance),
+                ));
+            }
+            ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::Residual(residual)) => {
+                return ConnectedInitializerOutcome::Residual {
+                    reason: crate::ResidualReason::UnsupportedExpression,
+                    provenance: residual.provenance,
+                };
+            }
+            ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::Diagnostic(
+                diagnostic,
+            )) => return ConnectedInitializerOutcome::Diagnostic(diagnostic),
+            ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
+                ..
+            }) => {
+                return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
+                    "declared invocation result class does not match its projection payload",
                     Some(provenance),
                 ));
             }

@@ -29,9 +29,22 @@ fn trace_of<'a>(
     result: &'a Result<InvocationOutcome, OrdinaryInvocationFailure>,
 ) -> &'a OrdinaryPipelineTrace {
     match result {
-        Ok(InvocationOutcome::Unit(u)) => &u.trace,
-        Ok(InvocationOutcome::SingleMember(r)) => &r.trace,
-        Ok(InvocationOutcome::ClusterSymbol(c)) => &c.trace,
+        Ok(lang_build::InvocationResult::SemanticResult {
+            value: lang_build::ProjectedInvocationOutcome::Unit(u),
+            ..
+        }) => &u.trace,
+        Ok(lang_build::InvocationResult::SemanticResult {
+            value: lang_build::ProjectedInvocationOutcome::SingleMember(r),
+            ..
+        }) => &r.trace,
+        Ok(lang_build::InvocationResult::SemanticResult {
+            value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(c),
+            ..
+        }) => &c.trace,
+        Ok(lang_build::InvocationResult::Residual(_))
+        | Ok(lang_build::InvocationResult::Diagnostic(_)) => {
+            panic!("ordinary invocation did not produce a semantic result")
+        }
         Err(OrdinaryInvocationFailure::NoTargetValues { trace })
         | Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { trace, .. })
         | Err(OrdinaryInvocationFailure::Ambiguous { trace, .. })
@@ -400,7 +413,11 @@ fn s10_06_privileged_struct_uses_the_normal_overload_path() {
         "S10 ⑥ privileged struct",
     )
     .expect("struct is selected through the ordinary spine");
-    let InvocationOutcome::SingleMember(result) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = result
+    else {
         panic!("struct declares one complete-type result");
     };
     assert_eq!(result.trace.c0_target_values.len(), 1);
@@ -475,7 +492,11 @@ fn s10_07_source_meta_constructs_self_rooted_cluster() {
         "S10 ⑦ self-rooted construction",
     )
     .expect("source meta callable is selected through the ordinary spine");
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(meta),
+        ..
+    } = result
+    else {
         panic!("meta-declared source callable returns a cluster construction");
     };
     assert_eq!(

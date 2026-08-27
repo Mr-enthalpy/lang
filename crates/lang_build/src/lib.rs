@@ -173,8 +173,9 @@ pub use ordinary_invocation::{
     ClusterSymbolResult, DynamicLegalityDemand, DynamicLegalityProof, ExposedInvocationResult,
     InvocationOutcome, MigrationInvocationContext, OrdinaryCandidateOrigin,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
-    OrdinaryReturnedValue, PolicyMigrationResult, PreparedCallCandidate, ReturnedCompleteType,
-    SealedSelectedInvocation, SingleMemberResult, UnitInvocationResult,
+    OrdinaryReturnedValue, PolicyMigrationResult, PreparedCallCandidate,
+    ProjectedInvocationOutcome, ReturnedCompleteType, SealedSelectedInvocation, SingleMemberResult,
+    UnitInvocationResult,
 };
 pub use overload_pattern::{
     overload_args_from_classified_shape, pack_operand_is_admissible, OverloadArgShape,

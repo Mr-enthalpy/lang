@@ -33,11 +33,11 @@ use lang_build::{
     CanonicalPatternAtom, CanonicalPatternNorm, CanonicalPatternValue, CanonicalTypeObservation,
     CanonicalValueAddr, ClusterConstructionId, ClusterSymbolResult, CompilationWorld,
     ConstructionAuthority, ConstructionEvaluationContext, ConstructionState, ConstructionWindow,
-    Diagnostic, InvocationOutcome, MetaCallableIdentity, MetaInstanceKey, MetaInstanceRoot,
-    NamespaceNodeId, OrdinaryInvocationContext, PatternComponentPolicy, Phase, PolicyMode,
-    PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, Provenance, ReturnShape,
-    SemanticValueId, SemanticValuePayload, SemanticWorld, StageSet, SymbolId, TypeValueId,
-    ValueComponentPolicy, ValuePresence, WritableContext,
+    Diagnostic, MetaCallableIdentity, MetaInstanceKey, MetaInstanceRoot, NamespaceNodeId,
+    OrdinaryInvocationContext, PatternComponentPolicy, Phase, PolicyMode, PolicyPair,
+    PolicyResultEntry, PolicyStage, PolicyView, Provenance, ReturnShape, SemanticValueId,
+    SemanticValuePayload, SemanticWorld, StageSet, SymbolId, TypeValueId, ValueComponentPolicy,
+    ValuePresence, WritableContext,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -63,7 +63,11 @@ fn invoke_make(
             Provenance::new(provenance),
         )
         .expect("source meta callable is selected through the ordinary spine");
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(meta),
+        ..
+    } = result
+    else {
         panic!("meta-declared source callable returns a cluster construction");
     };
     meta

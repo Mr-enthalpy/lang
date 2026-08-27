@@ -16,11 +16,10 @@ mod support;
 
 use lang_build::{
     compute_canonical_meta_instance_key, extract_single_call_site, CanonicalValueAddr,
-    ClusterSymbolResult, CompilationWorld, InvocationOutcome, MetaCallableIdentity,
-    MetaInstanceKey, MetaInstanceRoot, NamespaceNodeId, OrdinaryInvocationContext,
-    PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, Provenance, SemanticOwnerKind,
-    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeDefinitionInstanceId, TypeValueId,
-    ValueComponentPolicy, ValuePresence, WritableContext,
+    ClusterSymbolResult, CompilationWorld, MetaCallableIdentity, MetaInstanceKey, MetaInstanceRoot,
+    NamespaceNodeId, OrdinaryInvocationContext, PatternComponentPolicy, PolicyMode, PolicyPair,
+    PolicyStage, Provenance, SemanticOwnerKind, SemanticValueId, SemanticWorld, StageSet, SymbolId,
+    TypeDefinitionInstanceId, TypeValueId, ValueComponentPolicy, ValuePresence, WritableContext,
 };
 use support::{build_single_fixture_world, initializer_from_source};
 
@@ -39,7 +38,11 @@ fn invoke_meta(
             Provenance::new(provenance),
         )
         .expect("source meta callable is selected through the ordinary spine");
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(meta),
+        ..
+    } = result
+    else {
         panic!("meta-declared source callable returns a cluster construction");
     };
     meta

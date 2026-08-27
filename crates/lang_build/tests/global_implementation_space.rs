@@ -2,11 +2,11 @@ mod support;
 
 use lang_build::{
     extract_single_call_site, ArgProductShape, BuildManifest, CompilationWorld,
-    FlattenedProductInvariant, FlattenedProductObject, InvocationOutcome,
-    OrdinaryInvocationContext, OrdinaryInvocationFailure, P1Projection, PatternComponentPolicy,
-    PolicyMode, PolicyPair, PolicyStage, PolicyTransitionRequest, PolicyView, Provenance,
-    ResolveExpectation, ResultPolicyDemand, SemanticValuePayload, SourceRoot, StageSet,
-    SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
+    FlattenedProductInvariant, FlattenedProductObject, OrdinaryInvocationContext,
+    OrdinaryInvocationFailure, P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair,
+    PolicyStage, PolicyTransitionRequest, PolicyView, Provenance, ResolveExpectation,
+    ResultPolicyDemand, SemanticValuePayload, SourceRoot, StageSet, SymbolPayload,
+    ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
 };
 
 use support::{fixture_root, fixture_source_root, initializer_from_source};
@@ -386,7 +386,11 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
             Provenance::new("named associated identity"),
         )
         .expect("named associated Val2 function uses the ordinary function-object trunk");
-    let InvocationOutcome::SingleMember(named) = named else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(named),
+        ..
+    } = named
+    else {
         panic!("named associated value returns ordinary result");
     };
     assert!(matches!(
@@ -642,7 +646,11 @@ fn binding_demand_reaches_rhs_maxima_and_output_preference_reads_result_p2_mode(
             Provenance::new("crossed function-object/result mode regression"),
         )
         .expect("mut result demand chooses one producer");
-    let InvocationOutcome::SingleMember(invocation) = invocation else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(invocation),
+        ..
+    } = invocation
+    else {
         panic!("ordinary value call has one member result");
     };
     assert_eq!(

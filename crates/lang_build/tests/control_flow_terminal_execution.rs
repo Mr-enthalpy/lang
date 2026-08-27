@@ -62,7 +62,11 @@ fn nearest_layer_delivery_executes() {
         "b9 nearest delivery",
     )
     .expect("the `expr;` delivery terminal executes");
-    let InvocationOutcome::ClusterSymbol(meta) = outcome else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(meta),
+        ..
+    } = outcome
+    else {
         panic!("meta-declared source callable returns a cluster construction");
     };
     assert_eq!(meta.construction.member_views.len(), 1);

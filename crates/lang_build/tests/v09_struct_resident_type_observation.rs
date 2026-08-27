@@ -48,7 +48,11 @@ fn generated_struct(
     provenance: &str,
 ) -> lang_build::GeneratedTypeDefinitionValue {
     let outcome = invoke_struct(world, spelling, provenance).expect("struct invocation succeeds");
-    let InvocationOutcome::SingleMember(result) = outcome else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = outcome
+    else {
         panic!("struct returns one complete type value");
     };
     let lang_build::OrdinaryReturnedValue::CompleteType(returned) = result.returned else {

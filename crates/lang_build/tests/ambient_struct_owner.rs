@@ -40,7 +40,11 @@ fn returned_struct_material(
     &lang_build::ReturnedCompleteType,
     &lang_build::GeneratedTypeDefinitionValue,
 ) {
-    let InvocationOutcome::SingleMember(result) = outcome else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = outcome
+    else {
         panic!("direct struct invocation returns one complete tau value");
     };
     let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
@@ -89,7 +93,13 @@ fn second_direct_struct_invocation_collides_in_the_same_world() {
         "ambient collision: first generation",
     )
     .expect("first generation attaches to the ambient declaration environment");
-    assert!(matches!(first, InvocationOutcome::SingleMember(_)));
+    assert!(matches!(
+        first,
+        lang_build::InvocationResult::SemanticResult {
+            value: lang_build::ProjectedInvocationOutcome::SingleMember(_),
+            ..
+        }
+    ));
 
     let second = invoke_struct(
         &mut world,
