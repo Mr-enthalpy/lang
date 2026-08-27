@@ -107,6 +107,10 @@ pub struct CompilationWorld {
     core_node: NamespaceNodeId,
     semantic_world: SemanticWorld,
     type_materialization_state: TypeMaterializationState,
+    /// One shared continuation/lifecycle state owned by the real evaluator.
+    /// SemanticWorld stores object ontology; lifecycle remains an orthogonal
+    /// evaluation-state judgment.
+    lifecycle: crate::LifecycleMachine,
     source_fragments: Vec<SourceFragment>,
     diagnostics: Vec<Diagnostic>,
     /// Compatibility-only declaration ids for compiler-internal call
@@ -184,6 +188,7 @@ impl CompilationWorld {
             core_node,
             semantic_world,
             type_materialization_state: TypeMaterializationState::default(),
+            lifecycle: crate::LifecycleMachine::default(),
             source_fragments: Vec::new(),
             diagnostics: Vec::new(),
             next_intrinsic_backing: u64::MAX,
@@ -285,6 +290,25 @@ impl CompilationWorld {
 
     pub fn semantic_world(&self) -> &SemanticWorld {
         &self.semantic_world
+    }
+
+    pub fn lifecycle(&self) -> &crate::LifecycleMachine {
+        &self.lifecycle
+    }
+
+    pub fn lifecycle_mut(&mut self) -> &mut crate::LifecycleMachine {
+        &mut self.lifecycle
+    }
+
+    fn sync_lifecycle_values(&mut self) {
+        let values = self
+            .semantic_world
+            .values()
+            .map(|value| value.id)
+            .collect::<Vec<_>>();
+        for value in values {
+            self.lifecycle.ensure_value(value);
+        }
     }
 
     pub fn configure_call_entry_capability_realization(
@@ -670,6 +694,7 @@ impl CompilationWorld {
         context: crate::OrdinaryInvocationContext<'_>,
         provenance: Provenance,
     ) -> Result<crate::InvocationOutcome, crate::OrdinaryInvocationFailure> {
+        self.sync_lifecycle_values();
         let Some(candidate) = self.resolve_semantic_source_target(namespace, &call_site.target)
         else {
             return Err(crate::OrdinaryInvocationFailure::NoTargetValues {

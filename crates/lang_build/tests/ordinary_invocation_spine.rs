@@ -1101,6 +1101,44 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
 }
 
 #[test]
+fn production_world_owns_one_lifecycle_name_map_across_invocations() {
+    let mut world =
+        CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
+            .expect("core semantic world builds");
+    let initializer = initializer_from_source("let result = uint8 IdentityType;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized core call");
+    let first = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("first lifecycle-owned call"),
+        )
+        .expect("first call");
+    let InvocationOutcome::SingleMember(first) = first else {
+        panic!("identity returns one member");
+    };
+    let target = first.selected.target_value;
+    let first_name = world
+        .lifecycle()
+        .name_of(target)
+        .expect("production invocation registers the callable value");
+    let _ = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("second lifecycle-owned call"),
+        )
+        .expect("second call");
+    assert_eq!(
+        world.lifecycle().name_of(target),
+        Some(first_name),
+        "one CompilationWorld keeps one stable LifeName map"
+    );
+}
+
+#[test]
 fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
     let mut world = build_single_fixture_world("single_package_type_binding", "app");
     let initializer = initializer_from_source("let result = U IdentityType;");

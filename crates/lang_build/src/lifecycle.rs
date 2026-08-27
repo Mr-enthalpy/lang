@@ -318,6 +318,17 @@ impl LifecycleMachine {
         name
     }
 
+    pub fn ensure_value(&mut self, value: SemanticValueId) -> LifeName {
+        self.values
+            .get(&value)
+            .copied()
+            .unwrap_or_else(|| self.register_value(value, None))
+    }
+
+    pub fn name_of(&self, value: SemanticValueId) -> Option<LifeName> {
+        self.values.get(&value).copied()
+    }
+
     pub fn assign_color(&mut self, name: LifeName, color: ColorId) {
         self.colors.entry(name).or_default().insert(color);
     }
