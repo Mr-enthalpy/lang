@@ -772,9 +772,12 @@ fn s10_13_alias_declaration_is_rejected_without_installing_forwarding_authority(
     assert_eq!(error.diagnostics.len(), 1);
     assert_eq!(
         error.diagnostics[0].code,
-        Some(ResolverCode::RetiredAliasSemantics)
+        Some(ResolverCode::UnsupportedLexicalAlias)
     );
     assert!(error.diagnostics[0]
         .message
-        .contains("does not install or forward a semantic Symbol"));
+        .contains("lexical alias resolution is not implemented"));
+    assert!(error.diagnostics[0]
+        .message
+        .contains("must not install or forward a semantic entity"));
 }

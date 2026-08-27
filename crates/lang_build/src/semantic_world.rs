@@ -574,8 +574,9 @@ pub enum SemanticDeclarationEntry {
 /// ```
 ///
 /// so a later `let f::T = expr;` writes `T`'s Val2 only.  Ordinary `let =`
-/// binds a new object and therefore a fresh writable place; `let ===`
-/// installs no cell at all and forwards the original object.
+/// binds a new object and therefore a fresh writable place. A future lexical
+/// `let ===` pass installs no cell at all; it maps a local spelling to an
+/// already-resolved terminal Symbol in a separate lexical environment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PurePMember {
     pub pattern: PatternValueId,
@@ -5436,8 +5437,8 @@ impl SemanticWorld {
         }
         // Ordinary `let =` binds a NEW object, so a pure-P view gives this
         // carrier its own writable Val2 place: `let U: type = T` must not be
-        // able to write `T`'s members.  `let ===` never reaches this path —
-        // an alias installs no cell and forwards the original object.
+        // able to write `T`'s members. `let ===` never reaches this path: the
+        // not-yet-implemented lexical alias pass creates no carrier cell.
         let pure_p_member = views
             .iter()
             .find(|view| view.value.is_none())

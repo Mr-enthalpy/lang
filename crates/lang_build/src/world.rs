@@ -2592,10 +2592,10 @@ impl CompilationWorld {
         };
         Err(BuildError::single(
             Diagnostic::hard_error(
-                "declaration alias semantics are retired; `===` is preserved by the frontend but does not install or forward a semantic Symbol",
+                "block-local lexical alias resolution is not implemented; `===` is preserved by the frontend and must not install or forward a semantic entity",
                 Some(Provenance::from_norm_origin("alias declaration", origin)),
             )
-            .with_code(ResolverCode::RetiredAliasSemantics),
+            .with_code(ResolverCode::UnsupportedLexicalAlias),
         ))
     }
 }

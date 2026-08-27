@@ -139,7 +139,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
         "alias_external_injection_future",
         "app",
-        "declaration alias semantics are retired",
+        "block-local lexical alias resolution is not implemented",
     ),
     (
         "diagnostic_source_contribution_prefix",

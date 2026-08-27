@@ -362,10 +362,10 @@ pub enum ResolverCode {
     UnsupportedOverloadTarget,
     UnsupportedCandidateShape,
     UnsupportedParameterPattern,
-    /// Alias syntax is preserved by the frontend, but declaration aliases
-    /// are not part of the canonical semantic model.  A semantic evaluator
-    /// must reject the form instead of installing a forwarding identity.
-    RetiredAliasSemantics,
+    /// Alias syntax is preserved by the frontend. Its canonical target is a
+    /// block-local lexical resolver mapping, but that scoped environment is
+    /// not implemented. Reject rather than installing a forwarding entity.
+    UnsupportedLexicalAlias,
     ReturnOutsideReturnableContext,
     ReturnTargetNotActive,
     AmbiguousReturnTarget,

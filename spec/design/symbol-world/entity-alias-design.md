@@ -1,22 +1,23 @@
 # Entity Alias Binding Design
 
-> **Retirement notice — the semantic alias model described in this document is
-> retired.**
+> **Canonical direction — lexical alias only.**
 >
-> Two separate things were recorded here, and only the parser fact survives:
+> Three separate things must not be conflated:
 >
 > 1. **Frozen parser fact (retained).** `===` is lexed as
 >    `Symbol::TripleEqual` and the parser preserves `LetAliasAst` /
 >    `AliasBinderAst` / `EntityRefAst`. This is v0.2 frozen contract material
 >    and is not rewritten. It is a syntactic artifact of the frozen surface.
-> 2. **Semantic alias model (retired).** Lexical alias binding, symbol/place
->    forwarding, `AliasChain`, alias-inherited writability, and "alias member"
->    contributions are **not** the target semantics and are no longer a future
->    direction.
+> 2. **Forwarding/entity alias model (retired).** Symbol/place forwarding,
+>    `AliasChain`, alias-inherited writability, alias values, and "alias member"
+>    contributions are not target semantics.
+> 3. **Local lexical resolver alias (canonical, not yet implemented).**
+>    `let n === q` resolves `q` once in the current lexical environment and
+>    adds a block-local name-map entry to that same terminal Symbol. It creates
+>    no Symbol, Object, Place, runtime identity, `V_S`, or `V_tau` member.
 >
-> The target semantics has **no** ordinary symbol-alias or place-forwarding
-> declaration form. Binding a name to an existing value is always an ordinary
-> copy into a fresh symbol and a fresh place:
+> The target semantics has no ordinary symbol-alias or place-forwarding
+> declaration form. Ordinary value binding remains a fresh Symbol/place:
 >
 > ```text
 > let T = uint8;
@@ -30,38 +31,65 @@
 > `ref`, `share`, and `@`, specified in
 > `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 >
-> Operator-name binding is not an exception. The target direction models
-> `operator` as an ordinary global type and operator environments as ordinary
-> copyable/shadowable values. No semantic `let ===` form survives.
->
-> Everything below is retained as the historical record of the surface form and
-> of the retired semantic direction. Do not cite it as a specification of
-> intended behavior.
+> The block-local lexical resolver environment required by item 3 is migration
+> debt. Until it exists, `lang_build` rejects the normalized form explicitly;
+> it must not emulate it by installing a forwarding entity.
 
 **Status:**
 - **Parser preservation** for `let binder === EntityRef` is implemented in v0.1 as raw AST preservation. The lexer recognizes `===` as a single structural delimiter token (`Symbol::TripleEqual`). The parser produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
-- **The alias semantics, lookup, scope validation, and forwarding behavior described below are retired, not deferred.** The parser does not resolve targets, validate operator identity, perform entity lookup, or execute alias semantics, and no future pass is planned to do so under this model.
+- **Forwarding/entity alias semantics are retired.** The local lexical mapping
+  specified here is canonical but its resolver scope/substitution pass is not
+  implemented. The parser remains non-semantic.
 
 `v0.2` status: alias-let parser preservation is frozen contract material. Changes
 in this window may clarify documentation or preserve narrowly additive syntax,
 but must not implement alias target resolution, namespace lookup, operator
 identity validation, or alias semantics.
 
-This document records the design for lexical alias binding of
-compile-time entities (Phase 4.3 design complete). Phase 4.4 implemented raw
-parser preservation. The remaining sections describe the implemented
-syntax and the retired semantic direction.
+This document records the frozen surface plus the local lexical alias
+semantics. Historical sections below that describe forwarding, alias
+writability, or alias entities remain retired.
 
 The right-hand side `EntityRef` syntax is defined separately in
 `spec/design/symbol-world/entity-ref-design.md`.
 
-This document owns the surface/parser alias syntax only. The *semantic* alias
-forwarding model — value/place forwarding, the `AliasChain`, and its
-writable-place effect — has been withdrawn;
+The *semantic forwarding* model — value/place forwarding, the `AliasChain`, and
+its writable-place effect — has been withdrawn;
 `spec/design/symbol-world/type-values-places-and-borrow-views.md` now specifies
-borrow views in its place and documents no forwarding mechanism.
+borrow views in its place and documents no forwarding mechanism. This document
+owns the separate block-local lexical resolver mapping.
 
-## Purpose (retired)
+## Canonical lexical meaning
+
+```text
+Resolve_Gamma(q) = S
+
+Gamma |- let n === q
+  => Gamma[n |->lex S]
+```
+
+The right-hand path is resolved by the same context-independent resolver used
+for value, type, and call projections. Resolving `n` subsequently yields the
+same terminal Symbol `S`; only lexical provenance/spelling differs. Alias-chain
+elimination is ordinary environment lookup and creates no addressable alias
+identity.
+
+The form is block-local, begins after its declaration point, and may be
+shadowed in nested lexical scopes. It may not be installed as a namespace or
+module member, exported, inserted into `V_S`/`V_tau`, cross a normal callable
+boundary, or participate in ordinary binding freshness. Hence both laws hold:
+
+```text
+NewOrdinaryBinding => FreshSymbol
+LexicalAlias       => no binding entity
+```
+
+The implementation boundary is intentionally narrow: a future semantic pass
+needs a scoped `LexAliasEntry { local_name, resolved_target }`. It must not add
+`Symbol`, `Object`, `Place`, `AliasValue`, `ForwardingMember`, or `AliasChain`
+carriers.
+
+## Historical purpose and frozen surface
 
 The form recorded by the frozen parser is:
 

@@ -1519,13 +1519,20 @@ fn alias_expression_spelling_cannot_restore_retired_forwarding_semantics() {
             panic!("{body_path}: bare `r === X;` must be a hard body error, got: {result:?}");
         };
         assert!(
-            failure.diagnostic.message.contains("semantics are retired"),
-            "{body_path}: the diagnostic must reject the retired semantic mechanism, got: {}",
+            failure
+                .diagnostic
+                .message
+                .contains("lexical alias resolution is not implemented")
+                && failure
+                    .diagnostic
+                    .message
+                    .contains("must not create or forward a semantic entity"),
+            "{body_path}: the diagnostic must preserve the lexical-only boundary without restoring forwarding, got: {}",
             failure.diagnostic.message,
         );
         assert_eq!(
             failure.diagnostic.code,
-            Some(lang_build::ResolverCode::RetiredAliasSemantics)
+            Some(lang_build::ResolverCode::UnsupportedLexicalAlias)
         );
     }
 }

@@ -592,6 +592,23 @@ retroactive promotion would reintroduce "future promotion can ratify past
 capture" — exactly the model the meta-key / global-stability boundary has
 always prohibited.
 
+Closure construction and TypeMember injection are orthogonal operations:
+
+```text
+ConstructClosure(f) independent-of Inject(f, r)
+
+Owner(AnonymousTypeOf(f)) = current stable MetaInstanceRoot
+Inject(f, r)              = a later, explicit contribution to the open τ
+```
+
+An in-place closure therefore acquires its anonymous classifier owner from the
+ambient meta environment before any return-local construction handle is
+consulted. A source spelling or implementation shortcut may sequence closure
+construction immediately before injection, but it must not use `r:type` as the
+owner anchor, add `HomeSymbol(τ)`, or merge the two semantic operations. Nested
+in-place closure anchoring that is not yet wired is implementation debt, not a
+license to recover the eventual result binding.
+
 ### 2.2 Role and value projections coexist
 
 One symbol may simultaneously provide:

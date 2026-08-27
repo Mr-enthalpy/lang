@@ -79,7 +79,7 @@ pub enum RestrictedOverloadFailureKind {
     UnsupportedCanonicalSumPatternValue,
     UnsupportedSelectedMetaBody,
     UnsupportedSelectedMetaBodyLocalBinding,
-    RetiredAliasSemantics,
+    UnsupportedLexicalAlias,
     SelectedDeleteBodyDiagnostic,
 }
 
@@ -102,7 +102,7 @@ impl RestrictedOverloadFailureKind {
             Self::UnsupportedSelectedMetaBodyLocalBinding => {
                 ResolverCode::UnsupportedSelectedMetaBodyLocalBinding
             }
-            Self::RetiredAliasSemantics => ResolverCode::RetiredAliasSemantics,
+            Self::UnsupportedLexicalAlias => ResolverCode::UnsupportedLexicalAlias,
             Self::SelectedDeleteBodyDiagnostic => ResolverCode::UnsupportedSelectedMetaBody,
         }
     }
@@ -618,7 +618,7 @@ fn collect_block_body_execution(
             }
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
             | NormForm::Alias(lang_syntax::NormDecl::Alias { .. }) => {
-                return Err(retired_alias_failure(selected));
+                return Err(unsupported_lexical_alias_failure(selected));
             }
             NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
@@ -890,7 +890,7 @@ fn evaluate_block_body(
             }
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
             | NormForm::Alias(lang_syntax::NormDecl::Alias { .. }) => {
-                return Err(retired_alias_failure(selected));
+                return Err(unsupported_lexical_alias_failure(selected));
             }
             NormForm::Let(lang_syntax::NormDecl::Error(_))
             | NormForm::Alias(lang_syntax::NormDecl::Let { .. })
@@ -1003,16 +1003,18 @@ fn bare_alias_equality_shape(expr: &NormExpr, return_slot_name: &str) -> bool {
 }
 
 /// Alias-looking expression spellings cannot become a back door to the
-/// retired declaration-alias semantic mechanism.
+/// not-yet-implemented lexical-alias resolver mechanism.
 fn bare_alias_spelling_failure(selected: &SelectedOverloadCandidate) -> RestrictedOverloadFailure {
-    retired_alias_failure(selected)
+    unsupported_lexical_alias_failure(selected)
 }
 
-fn retired_alias_failure(selected: &SelectedOverloadCandidate) -> RestrictedOverloadFailure {
+fn unsupported_lexical_alias_failure(
+    selected: &SelectedOverloadCandidate,
+) -> RestrictedOverloadFailure {
     selected_body_failure(
         selected,
-        RestrictedOverloadFailureKind::RetiredAliasSemantics,
-        "declaration alias semantics are retired; `===` syntax does not create or forward a semantic identity",
+        RestrictedOverloadFailureKind::UnsupportedLexicalAlias,
+        "block-local lexical alias resolution is not implemented; `===` must not create or forward a semantic entity",
     )
 }
 

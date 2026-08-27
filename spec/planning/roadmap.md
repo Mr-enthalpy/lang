@@ -149,8 +149,9 @@ v0.4 normalization boundary is recorded in
 
 v0.4 did **not** implement name resolution, type checking, operator lookup,
 alias-target resolution, pattern-head resolution, canonical matching, or closure
-materialization. (Alias-target resolution has since been retired as a semantic
-direction; `LetAliasAst` remains frozen parser material only.)
+materialization. Forwarding/entity alias semantics have since been retired;
+`LetAliasAst` remains frozen parser material and its target semantic use is a
+later block-local lexical resolver mapping that creates no semantic entity.
 
 ---
 
@@ -611,11 +612,51 @@ suppression is ever allowed, and what equivalent compile Pattern/contract
 interface it would require, also remains open rather than an implementation
 commitment.
 
+#### Bootstrap semantic-authority debt
+
+Compiler implementation is not evidence that a language operation is a
+permanent semantic primitive. Every builtin/intrinsic family must carry one of
+these migration classifications:
+
+```text
+BootstrapRequired
+SourceExpressibleNotMigrated
+IntrinsicOnly
+SemanticPrimitiveByNecessity
+```
+
+`SemanticPrimitiveByNecessity` requires an explicit non-bootstrappability
+argument. When a source definition can start without circularly requiring the
+operation it defines, semantic authority must migrate to that source
+definition; a builtin may remain as a bootstrap seed, lowering target, or
+optimization only.
+
+Current debt classification is deliberately conservative:
+
+| Family | Current classification | Authority boundary |
+|---|---|---|
+| token spelling → exact abstract literal | `BootstrapRequired` | frontend/bootstrap supplies exact input material; it does not choose a concrete target Type |
+| concrete literal constructors/converters | `SourceExpressibleNotMigrated` | ordinary candidates already decide legality; Rust bodies are provisional realizations |
+| construction and same-Type Policy migration families | `SourceExpressibleNotMigrated` | ordinary selection remains authority; registered builtin bodies are bootstrap implementations |
+| capability realization entries | `SourceExpressibleNotMigrated` pending family-by-family audit | table facts are declaration/candidate facts, not compiler-wide legality or Policy inclusion |
+| Pattern primitive extractors / `StructuralDefault` providers | `SourceExpressibleNotMigrated` pending extractor bootstrap audit | `R_Gamma` remains semantic authority; registry code is not the Pattern ontology |
+| lifecycle move/copy/drop algebra | `SourceExpressibleNotMigrated` | source algebra should ultimately define the operation; continuation/event commit hooks may remain intrinsic lowering support |
+| identity interning, graph allocation, exact continuation position observation | `IntrinsicOnly` | implementation mechanism/observation, never a rule making a program legal |
+
+No current family is declared `SemanticPrimitiveByNecessity`. Future work may
+change a row only with the required proof and must preserve ordinary candidate
+selection, DynamicLegality, and no-reopen boundaries.
+
 #### Later stages
 
 The following remain deferred and are not numbered precisely here:
 
 - general value-to-value `compile` PatternValue execution
+- block-local `let ===` lexical resolver entries; this creates no Symbol,
+  Object, Place, `V_S`, `V_tau`, or runtime identity, and must not restore
+  `AliasChain`/forwarding semantics
+- migrate `SourceExpressibleNotMigrated` builtin families to source authority
+  while retaining intrinsics only as bootstrap/lowering/optimization support
 - type / kind checking integration
 - closure materialization model (ClosureAST → ClosureObject; capture
   environment layout and capture admissibility)

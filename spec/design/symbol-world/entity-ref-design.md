@@ -15,9 +15,10 @@ namespace-resolution, or semantic lookup feature in this window.
 
 > **Semantic direction notice.** Every mention of "alias" below names the frozen
 > *parser* position `let binder === EntityRef` (`Symbol::TripleEqual` +
-> `LetAliasAst`), which stays in the v0.2 frozen surface. The *semantic* alias
-> model — lexical alias binding, symbol/place forwarding, `AliasChain`, and
-> alias-inherited writability — is retired; see the retirement notice in
+> `LetAliasAst`), which stays in the v0.2 frozen surface. The forwarding/entity
+> alias model — symbol/place forwarding, `AliasChain`, and alias-inherited
+> writability — is retired. A later semantic pass may consume this strong RHS
+> solely to create the block-local lexical resolver mapping specified in
 > [`entity-alias-design.md`](entity-alias-design.md). Shared observation of
 > another object is expressed by a borrow view (`ref` / `share`);
 > continuation-relative `@` yields a `LifetimeValue` and is not a

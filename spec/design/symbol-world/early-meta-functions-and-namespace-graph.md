@@ -788,7 +788,7 @@ has target semantics:
 | Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
 | `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T |> (type ref))` may create under `place(T)` when separately authorized |
-| `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
+| `let T === uint8` | Frozen parser surface; target semantics is a block-local lexical resolver alias only. Forwarding/entity alias semantics remain retired; the scoped resolver pass is not implemented | — | — |
 | `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is the formed complete type value whose core `Q_struct = Core(value(T))` satisfies `TypeRole`; the Symbol is created by this binding, not by `struct` | `let f::(T |> (type ref))` may create under that explicit type-member place |
 
 Fresh formed type values provide their `Q_struct` core's associated
