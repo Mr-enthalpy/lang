@@ -647,6 +647,26 @@ No current family is declared `SemanticPrimitiveByNecessity`. Future work may
 change a row only with the required proof and must preserve ordinary candidate
 selection, DynamicLegality, and no-reopen boundaries.
 
+#### Canonical implementation-status matrix
+
+This table is implementation bookkeeping, not a second semantic authority.
+“Carrier exists” never implies that the production evaluator consumes it.
+
+| Semantic relation | Carrier/substrate | Production consumer | Remaining boundary |
+|---|---|---|---|
+| complete `tau`, Core/whole identity, immutable `V_tau` | implemented | direct ordinary call reads the exact snapshot captured at value formation | final lookup-key encoding remains Open |
+| `R_Gamma` base applicability and Hole valuation | implemented | ordinary parameter A-stage connected | full Pattern-space representation remains Open |
+| DirectPatternChild + StructuralDefault | implemented | **not connected** to production structural extraction | generated getter family + protected pre-C0 filter missing |
+| post-selection DynamicLegality/no-reopen | implemented | connected when premises are supplied | operation-driven capability/Writable/lifecycle premise formation partial |
+| SemanticContinuation/LifeName/Region/Color | implemented | `CompilationWorld` owns one machine and registers real values | source use/move/drop/@, cleanup placement, action commit/Post missing |
+| OpenHere/ConstructionAuthority/Writable | implemented | meta construction/inject paths connected | broader source operation coverage deferred |
+| abstract literal construction/migration | implemented | ordinary candidate path connected | contextual target inference remains Open |
+| unified InvocationResult and `struct -> tau` | implemented | connected | residual representation remains Open |
+
+Topic-document status must be read per row. A canonical relation can have an
+implemented carrier and a partial consumer; missing consumer wiring must not be
+reported as a completed authority cut-over.
+
 #### Later stages
 
 The following remain deferred and are not numbered precisely here:
