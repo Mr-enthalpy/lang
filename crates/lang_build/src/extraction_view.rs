@@ -29,7 +29,7 @@ pub enum ObservedAtomKind {
     Leaf,
     Constructed {
         owner_type_value: Option<TypeValueId>,
-        /// Compatibility graph carrier only.
+        /// Graph projection carrier only.
         owner_type_symbol_id: Option<SymbolId>,
     },
     Forwarded {
@@ -38,7 +38,7 @@ pub enum ObservedAtomKind {
     GeneratedConstruction {
         construction_instance_id: ConstructionInstanceId,
     },
-    GeneratedTypeDefinition {
+    StructConstruction {
         type_definition_id: TypeDefinitionInstanceId,
     },
 }
@@ -55,7 +55,7 @@ pub enum ObservedProductKind {
     Bare,
     Named {
         owner_type_value: Option<TypeValueId>,
-        /// Compatibility graph carrier only.
+        /// Graph projection carrier only.
         owner_type_symbol_id: Option<SymbolId>,
     },
 }
@@ -73,7 +73,7 @@ pub struct ObservedProductElement {
     /// projection.  Semantic equality consumes this, never the bare
     /// `type_value`.
     pub type_observation: Option<crate::CanonicalTypeObservation>,
-    /// Compatibility graph carrier for navigation/provenance only.
+    /// Graph projection carrier for navigation/provenance only.
     pub type_symbol_id: Option<SymbolId>,
     pub provenance: Provenance,
 }
@@ -88,7 +88,7 @@ pub enum ContentObservationInterface {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamedObservedProduct {
     pub owner_type_value: TypeValueId,
-    /// Compatibility graph carrier used to navigate installed projections.
+    /// Graph projection carrier used to navigate installed projections.
     pub owner_type_symbol_id: SymbolId,
     pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub fields: Vec<NamedObservedField>,
@@ -107,7 +107,7 @@ pub struct NamedObservedField {
     /// the recursive Val2 read at the classifying boundary, otherwise the
     /// `Detached` projection.  Semantic equality consumes this.
     pub field_type_observation: crate::CanonicalTypeObservation,
-    /// Compatibility graph carrier for current namespace projection.
+    /// Graph projection carrier for current namespace projection.
     pub field_type_symbol_id: SymbolId,
     pub field_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub field_index: usize,
@@ -235,10 +235,10 @@ fn value_point_kind_observationally_equal(
             },
         ) => left == right,
         (
-            ObservedAtomKind::GeneratedTypeDefinition {
+            ObservedAtomKind::StructConstruction {
                 type_definition_id: left,
             },
-            ObservedAtomKind::GeneratedTypeDefinition {
+            ObservedAtomKind::StructConstruction {
                 type_definition_id: right,
             },
         ) => left == right,

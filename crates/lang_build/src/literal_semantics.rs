@@ -157,8 +157,8 @@ pub enum AtomicBuiltinTypeRegistryFailure {
 
 /// Current first-order projections for installed atomic builtin Type symbols.
 ///
-/// The key denotes the intended type identity. The stored `TypeValueId` is
-/// transitional projection material, not final canonical type-value tracking.
+/// The key denotes the intended bootstrap type. The stored `TypeValueId` is an
+/// opaque Core lookup projection; complete type observations remain separate.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AtomicBuiltinTypeRegistry {
     types: BTreeMap<AtomicBuiltinType, TypeValueId>,
@@ -186,13 +186,13 @@ impl AtomicBuiltinTypeRegistry {
                 actual_name: symbol.name.clone(),
             });
         }
-        let crate::SymbolPayload::CompleteTypeProjection(type_object) = &symbol.payload else {
+        let crate::SymbolPayload::CompleteTypeProjection(type_projection) = &symbol.payload else {
             return Err(AtomicBuiltinTypeRegistryFailure::NotTypeSymbol {
                 key,
                 actual_kind: symbol.kind,
             });
         };
-        self.types.insert(key, type_object.represented_type);
+        self.types.insert(key, type_projection.represented_type);
         Ok(())
     }
 

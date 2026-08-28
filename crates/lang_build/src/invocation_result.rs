@@ -10,7 +10,7 @@
 //!
 //! The payload is generic because the current vertical slice still has more
 //! than one storage carrier behind the common semantic boundary.  The generic
-//! parameter is carrier compatibility only; it never changes the result
+//! parameter is generic carrier variation only; it never changes the result
 //! universe or the declared result class.
 
 use crate::{Diagnostic, Provenance};

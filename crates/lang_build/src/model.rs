@@ -436,8 +436,8 @@ impl SymbolObject {
             SymbolPayload::Namespace { node } | SymbolPayload::VerificationNamespace { node } => {
                 Some(*node)
             }
-            SymbolPayload::CompleteTypeProjection(type_object) => {
-                type_object.type_associated_namespace
+            SymbolPayload::CompleteTypeProjection(type_projection) => {
+                type_projection.type_associated_namespace
             }
             _ => None,
         }
@@ -492,7 +492,7 @@ pub struct CoreTypeProjection {
     pub fields: Vec<TypeField>,
     pub field_names: Vec<String>,
     pub field_type_values: Vec<TypeValueId>,
-    /// Compatibility carrier list for the current graph projection layer.
+    /// Graph projection list for the current graph projection layer.
     /// Semantic field-type equality consumes `field_type_values`.
     pub field_type_symbol_ids: Vec<SymbolId>,
     pub type_associated_namespace: Option<NamespaceNodeId>,
@@ -587,7 +587,7 @@ pub enum CoreMetaFunction {
     Assert,
     Verify(VerificationPrimitive),
     IdentityType,
-    UnaryConstructionPrototype,
+    UnaryConstruction,
 }
 
 /// Core source-verification primitive resolved through the namespace graph.

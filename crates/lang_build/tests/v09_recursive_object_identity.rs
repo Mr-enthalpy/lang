@@ -1,7 +1,7 @@
 //! Type-object identity is the RECURSIVE object normal form, and every
 //! use context shares ONE Val2 Symbol navigator.
 //!
-//! A type object is `null × P × Val2`, so its normal form must carry both
+//! A pure type Object is `null × P × Val2`, so its normal form must carry both
 //! components:
 //!
 //! ```text
@@ -152,7 +152,7 @@ fn type_arg(type_value: TypeValueId, place: Option<ObjectPlaceId>) -> (RawArgSha
         summary: "type argument under test".to_string(),
         provenance: Provenance::new("recursive type identity"),
     };
-    let raw = RawArgShape::from_product_atom(0, &atom).as_type_object_named(
+    let raw = RawArgShape::from_product_atom(0, &atom).as_complete_type_projection_named(
         "T".to_string(),
         type_value,
         None,
@@ -163,7 +163,7 @@ fn type_arg(type_value: TypeValueId, place: Option<ObjectPlaceId>) -> (RawArgSha
     (raw, atom)
 }
 
-/// `Norm_type` of the type object observed from `place`.
+/// `Norm_type` of the pure type Object observed from `place`.
 fn type_addr(
     world: &mut SemanticWorld,
     type_value: TypeValueId,
@@ -205,7 +205,7 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
 
     let canonical = world
         .pattern_place(pattern)
-        .expect("the Pattern has a canonical type object");
+        .expect("the Pattern has a canonical pure type Object");
     let base_place = place_of(&world, base);
     let t_place = place_of(&world, t);
     let u_place = place_of(&world, u);
@@ -230,7 +230,7 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
     let t_with_f = type_addr(&mut world, type_value, Some(t_place));
     assert_ne!(
         t_with_f, t_addr,
-        "a new Val2 member changes the type object's normal form"
+        "a new Val2 member changes the pure type Object's normal form"
     );
     assert_eq!(
         type_addr(&mut world, type_value, Some(u_place)),
@@ -320,7 +320,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
         .expect("initial complete tau observes")
         .whole;
     let builtin_member = world
-        .type_object_value(TypeValueId(1))
+        .core_type_projection_value(TypeValueId(1))
         .expect("member type has a transport value");
 
     world
@@ -350,7 +350,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
     );
 }
 
-/// One open type object observed BEFORE and AFTER a Val2 injection produces
+/// One open pure type Object observed BEFORE and AFTER a Val2 injection produces
 /// two normal forms and therefore two meta instance keys.
 ///
 /// ```text
@@ -361,7 +361,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
 /// The observation coordinate is unchanged across both observations, so the
 /// only thing that can separate the keys is the recursive Val2 content.
 #[test]
-fn open_type_object_observed_before_and_after_injection_changes_its_meta_key() {
+fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key() {
     let Carriers {
         mut world,
         t,
@@ -408,7 +408,7 @@ fn open_type_object_observed_before_and_after_injection_changes_its_meta_key() {
     let second_addr = type_addr(&mut world, type_value, Some(t_place));
     assert_ne!(
         first_addr, second_addr,
-        "⟨P_t, {{f}}⟩ and ⟨P_t, {{f, g}}⟩ are different type objects"
+        "⟨P_t, {{f}}⟩ and ⟨P_t, {{f, g}}⟩ are different pure type Objects"
     );
     assert_ne!(
         first_key,
@@ -644,7 +644,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
             .expect("`f::T` stepped through a host")
             .pattern,
         pattern,
-        "the host layer is T's pure-P type object"
+        "the host layer is T's pure-P Object"
     );
 
     // Call target and injection RHS: `(…) |> f::T`, `let g::U = f::T`.
@@ -695,7 +695,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
                 RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
             )
         })
-        .expect("`f::T` classifies as a type object argument")
+        .expect("`f::T` classifies as a pure type Object argument")
         .clone();
     assert_eq!(classified.known_first_order_type_value, Some(member_type));
     assert_eq!(

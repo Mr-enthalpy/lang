@@ -63,7 +63,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
         CoreMetaFunction::Assert => "assert",
         CoreMetaFunction::Verify(_) => "verify",
         CoreMetaFunction::IdentityType => "IdentityType",
-        CoreMetaFunction::UnaryConstructionPrototype => "UnaryConstructionPrototype",
+        CoreMetaFunction::UnaryConstruction => "UnaryConstruction",
     };
 
     let arg_product_shape =
@@ -71,7 +71,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
     let mut unresolved_type_names = Vec::new();
     let mut struct_decoded_pattern: Option<crate::struct_decoder::DecodedStructPattern> = None;
     let (classified_shape, parameter_shape) = match primitive {
-        CoreMetaFunction::IdentityType | CoreMetaFunction::UnaryConstructionPrototype => {
+        CoreMetaFunction::IdentityType | CoreMetaFunction::UnaryConstruction => {
             let report = classify_type_arguments_env_with_report(
                 &arg_product_shape,
                 type_env,
@@ -165,7 +165,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
                 let names = unresolved_type_names.join(", ");
                 return Err(BuildError::single(Diagnostic::hard_error(
                     format!(
-                        "meta hard error: {primitive_name} argument `{names}` could not be resolved as a type object"
+                        "meta hard error: {primitive_name} argument `{names}` could not be resolved as a pure type Object"
                     ),
                     Some(provenance),
                 )));
@@ -176,21 +176,6 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
     let mut invocation_input = MetaInvocationInput::new(candidate, provenance);
     invocation_input.struct_decoded_pattern = struct_decoded_pattern;
     Ok(invocation_input)
-}
-
-pub fn compile_time_assert(
-    condition: bool,
-    provenance: Provenance,
-    message: impl Into<String>,
-) -> Result<(), Diagnostic> {
-    if condition {
-        Ok(())
-    } else {
-        Err(Diagnostic::hard_error(
-            format!("meta hard error: {}", message.into()),
-            Some(provenance),
-        ))
-    }
 }
 
 /// Classify the actual structural leaves produced by the struct decoder.
@@ -246,7 +231,7 @@ fn classify_decoded_struct_field_arguments(
     for (raw_arg, (carrier_symbol, represented_type)) in shape.raw_args.iter_mut().zip(resolved) {
         *raw_arg = raw_arg
             .clone()
-            .as_type_object_with_identity(carrier_symbol, represented_type);
+            .as_complete_type_projection_with_identity(carrier_symbol, represented_type);
     }
     Ok(shape)
 }
@@ -421,31 +406,7 @@ fn insert_field_projection_layer(
 /// - `UnaryConstructionMaterial`: materialized by `bind_generated_construction_value`.
 /// - `StructConstructionMaterial`: materialized by `bind_generated_type_definition_value`.
 ///
-/// Compatibility helper only. This creates a temporary
-/// `StructMaterializationState`, so it is not suitable for registry-backed world
-/// binding of generated type definitions. Callers that install generated type
-/// definitions into a `CompilationWorld` must use
-/// `bind_meta_invocation_value_result_with_materialization_state` so the
-/// world-owned `StructPatternMaterialRegistry` remains authoritative.
-pub fn bind_meta_invocation_value_result(
-    value: MetaExecutionMaterial,
-    snapshot: &SemanticNameIndex,
-    parent_namespace: NamespaceNodeId,
-    binding_name: &str,
-    provenance: Provenance,
-) -> Result<MetaExpansionResult, BuildError> {
-    let mut materialization_state = StructMaterializationState::default();
-    bind_meta_invocation_value_result_with_materialization_state(
-        value,
-        snapshot,
-        parent_namespace,
-        binding_name,
-        provenance,
-        &mut materialization_state,
-    )
-}
-
-pub fn bind_meta_invocation_value_result_with_materialization_state(
+pub(crate) fn bind_meta_invocation_value_result_with_materialization_state(
     value: MetaExecutionMaterial,
     snapshot: &SemanticNameIndex,
     parent_namespace: NamespaceNodeId,
@@ -578,7 +539,7 @@ fn bind_generated_type_definition_value(
     // Root, NormalizedStructBody)`); the raw definition-id projection is a
     // standalone-binding fallback for unregistered expansion, never a root
     // shared across meta functions.
-    // Compatibility lookup material for replaying a generated type-definition
+    // Replay lookup material for replaying a generated type-definition
     // projection before a world-connected complete tau is supplied. This is
     // deliberately domain-separated from TypeDefinition, Symbol, and whole
     // tau identity.
@@ -602,7 +563,7 @@ fn bind_generated_type_definition_value(
     ));
 
     let type_definition_fragment = format!("type-definition:{}", value.type_definition_id.as_u64());
-    let mut type_object = SymbolObject::placeholder(
+    let mut type_projection = SymbolObject::placeholder(
         type_symbol_id,
         binding_name,
         SymbolKind::CompleteTypeProjection,
@@ -610,16 +571,16 @@ fn bind_generated_type_definition_value(
         Some(parent_namespace),
         provenance.clone(),
     );
-    type_object.policy_view = Some(declared_policy_view(
+    type_projection.policy_view = Some(declared_policy_view(
         &[PolicyStage::Meta, PolicyStage::Runtime],
         PolicyMode::Plain,
     ));
-    type_object.node_kind = Some(NamespaceNodeKind::Virtual);
-    type_object.generation_origin = Some("core::struct generated type definition".to_string());
+    type_projection.node_kind = Some(NamespaceNodeKind::Virtual);
+    type_projection.generation_origin = Some("core::struct generated type definition".to_string());
     // cache_key_fragment is a temporary carrier;
     // TypeDefinitionInstanceId is the semantic identity.
-    type_object.cache_key_fragment = Some(type_definition_fragment.clone());
-    type_object.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
+    type_projection.cache_key_fragment = Some(type_definition_fragment.clone());
+    type_projection.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_symbol_id,
         represented_type,
         owner_struct_pattern_registry: value
@@ -669,7 +630,7 @@ fn bind_generated_type_definition_value(
         abi_slot: None,
     });
 
-    delta.insert_symbol(parent_namespace, type_object.clone());
+    delta.insert_symbol(parent_namespace, type_projection.clone());
     insert_field_projection_layer(
         &mut delta,
         type_namespace_id,
@@ -710,7 +671,7 @@ fn bind_generated_type_definition_value(
     );
 
     Ok(MetaExpansionResult {
-        replacement_object: type_object,
+        replacement_object: type_projection,
         namespace_delta: delta,
         diagnostics: Vec::new(),
         provenance,
@@ -815,19 +776,17 @@ fn bind_generated_construction_value(
             ..crate::model::VisibilityMetadata::default()
         },
         diagnostics: Vec::new(),
-        generation_origin: Some(
-            "core::UnaryConstructionPrototype generated construction".to_string(),
-        ),
+        generation_origin: Some("core::UnaryConstruction generated construction".to_string()),
         cache_key_fragment: Some(format!(
             "construction:{}",
             gcv.construction_instance_id.as_u64()
         )),
         provenance: Provenance::new(format!(
-            "declared construction type `{binding_name}` via core::UnaryConstructionPrototype"
+            "declared construction type `{binding_name}` via core::UnaryConstruction"
         )),
         payload: SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
             carrier_symbol_id: declared_id,
-            // Compatibility lookup material for this replayable construction.
+            // Replay lookup material for this replayable construction.
             // Construction identity and type lookup identity must not collapse.
             represented_type: crate::TypeValueId(
                 gcv.construction_instance_id.0 ^ 0x38c4_15ea_d792_b60f,
@@ -844,7 +803,7 @@ fn bind_generated_construction_value(
                 gcv.construction_instance_id.as_u64()
             )),
             generation_origin: Some(
-                "core::UnaryConstructionPrototype generated construction type".to_string(),
+                "core::UnaryConstruction generated construction type".to_string(),
             ),
             layout_slot: None,
             abi_slot: None,

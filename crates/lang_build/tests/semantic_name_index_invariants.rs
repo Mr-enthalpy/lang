@@ -1,4 +1,4 @@
-//! Compatibility name-index role and transaction invariants.
+//! Read name-index projection role and transaction invariants.
 
 mod support;
 use support::*;
@@ -152,7 +152,7 @@ fn namespace_capable_object_cross_role_rejected() {
     let namespace_id = delta.allocate_symbol_id();
     delta.symbols.insert(
         type_id,
-        type_with_namespace(type_id, "T", root, type_namespace_id, "type object"),
+        type_with_namespace(type_id, "T", root, type_namespace_id, "pure type Object"),
     );
     delta.symbols.insert(
         namespace_id,

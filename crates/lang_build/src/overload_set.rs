@@ -37,8 +37,8 @@ pub enum LookupPhase {
 
 /// Selected-candidate carrier for the shared body evaluators.
 ///
-/// The legacy restricted selector is deleted; the canonical
-/// ordinary pipeline is the only producer.  It builds this struct directly
+/// The connected ordinary pipeline is the only producer. It builds this
+/// struct directly
 /// from its own prepared candidate to reuse the body evaluators, so this is
 /// a plain data carrier, not selector output.
 #[derive(Clone, Debug)]
@@ -121,8 +121,8 @@ pub(crate) struct ApplicableCandidate {
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub(crate) specificity: SpecificityTuple,
-    /// Proof-relevant result of the canonical Pattern relation.  The legacy
-    /// name-keyed maps above are one-way body-evaluator transport derived from
+    /// Proof-relevant result of the canonical Pattern relation. The name-keyed
+    /// maps above are one-way body-evaluator transport derived from
     /// this proof and never participate in applicability.
     pub(crate) pattern_proof: PatternApplicabilityProof,
     pub(crate) overload_strategy: NormOverloadStrategy,
@@ -424,7 +424,7 @@ pub(crate) fn evaluate_selected_source_meta_body(
 /// be collapsed into one "injection" spelling:
 ///
 /// * `let r = expr;`   → `AddMember` — fresh member creation (the
-///   return-slot spelling reading is the current compatibility
+///   return-slot spelling reading is the source-boundary
 ///   encoding; see the variant doc).
 /// Alias declarations are deliberately absent: the frontend preserves their
 /// shape, but the canonical evaluator rejects them instead of producing a
@@ -444,7 +444,7 @@ pub(crate) enum MetaConstructionEffect {
     /// `let r = expr;` — fresh member creation from an initializer,
     /// carrying the `let`'s own written P1 (if any).
     ///
-    /// CURRENT return-slot compatibility encoding, not the final rule:
+    /// Source-boundary return-slot encoding:
     /// while expression-level `=` does not exist, the spelling
     /// `let <return-slot> = expr` is read as a member contribution and
     /// ordinary locals may not shadow the explicit return slot.  Under
@@ -545,7 +545,7 @@ fn collect_block_body_execution(
                 // `let r = expr;` where `r` is the return target: fresh
                 // member creation on the return-target cluster.  This
                 // spelling-directed reading is the current return-slot
-                // compatibility encoding (removed when expression-level
+                // source-boundary encoding (replaced when expression-level
                 // `=` becomes semantic) — not a body-local binding, not
                 // a return, and not the final `let` rule.
                 if binding_slot_name(slot).as_deref() == Some(selected.return_slot_name.as_str()) {

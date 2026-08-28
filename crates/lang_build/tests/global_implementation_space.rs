@@ -200,7 +200,7 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
         .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type");
     let SymbolPayload::CompleteTypeProjection(uint8_type) = uint8.payload else {
-        panic!("uint8 resolves as a Type object");
+        panic!("uint8 resolves as a CompleteType projection");
     };
     let type_value = uint8_type.represented_type;
     let pattern = world
@@ -450,12 +450,12 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
         .expect("core uint8 type value");
     let existing_type = world
         .semantic_world()
-        .type_object_value_for_symbol(existing.identity)
-        .expect("existing type object value");
+        .core_type_projection_value_for_symbol(existing.identity)
+        .expect("existing pure type Object value");
     let uint8_type = world
         .semantic_world()
-        .type_object_value_for_symbol(uint8.identity)
-        .expect("uint8 type object value");
+        .core_type_projection_value_for_symbol(uint8.identity)
+        .expect("uint8 pure type Object value");
     assert_eq!(
         existing_type, uint8_type,
         "the forwarding call returns the existing TypeValue and let binds that value"
@@ -489,7 +489,7 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
         forwarded_type.represented_type,
         world
             .semantic_world()
-            .type_object_value_for_symbol(existing.identity)
+            .core_type_projection_value_for_symbol(existing.identity)
             .and_then(|id| {
                 let value = world.semantic_world().value(id)?;
                 match value.payload {
@@ -499,7 +499,7 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
                     _ => None,
                 }
             })
-            .expect("existing type object value"),
+            .expect("existing pure type Object value"),
         "forwarded type binding preserves the represented type"
     );
     assert_ne!(

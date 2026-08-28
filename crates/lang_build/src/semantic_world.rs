@@ -128,7 +128,7 @@ pub struct ResolvedPatternScopeId(pub u64);
 
 /// Snapshot-local handle of one per-object Val2 place.
 ///
-/// Each semantic object (including `null × P × Val2` type objects) owns
+/// Each semantic object (including `null × P × Val2` pure type Objects) owns
 /// exactly one `ObjectPlace`.  The place holds the object's recursive
 /// associated Val2 members — the values navigable from that specific object,
 /// independent of other objects sharing the same Pattern.
@@ -253,7 +253,7 @@ fn projection_storage_key(selector: &ProjectionSelector) -> String {
 
 /// Per-object Val2 container.
 ///
-/// Each semantic object (including `null × P × Val2` type objects) owns
+/// Each semantic object (including `null × P × Val2` pure type Objects) owns
 /// exactly one `ObjectPlace`.  The place holds the object's recursive
 /// associated Val2 members — the values navigable from that specific object,
 /// independent of other objects sharing the same Pattern.
@@ -316,7 +316,7 @@ struct SemanticVal2ClusterSnapshot {
 /// error — a cycle has no normal form.  `memo` caches only FINISHED subtrees
 /// (shared acyclic material, e.g. a diamond) for the duration of one
 /// top-level walk: canonical addresses are content-derived, but the
-/// *content* of an open type object changes as members are injected, so a
+/// *content* of an open pure type Object changes as members are injected, so a
 /// memo entry must never outlive the observation it was taken in.  Neither
 /// the frame keys nor the memo keys reach any produced normal form.
 #[derive(Clone, Debug, Default)]
@@ -443,7 +443,7 @@ impl ResolvedSemanticNavigation {
 
 /// One resolved host layer of a Val2 navigation.
 ///
-/// A host is the pure-P member (the `null × P × Val2` type object) that the
+/// A host is the pure-P member (the `null × P × Val2` pure type Object) that the
 /// navigation stepped through.  `symbol` is the carrier that named it when
 /// the step came from source navigation; compiler-internal Pattern-level
 /// hosts have no carrier Symbol.  `place` is that object's own Val2 place,
@@ -486,7 +486,7 @@ impl PatternHostMember {
 /// all-or-nothing: application runs on a scratch copy of the semantic
 /// world and the copy replaces the live world only after every entry
 /// succeeded, so a failing entry leaves no partial semantic residue.
-/// Any compatibility declaration projection is committed only as part of
+/// Any graph declaration projection is committed only as part of
 /// the owning `CompilationWorld` transaction after this unit succeeds.
 #[derive(Clone, Debug)]
 pub struct SemanticNamespaceDelta {
@@ -788,7 +788,7 @@ pub struct OrdinaryCallEntry {
     /// Declared spelling of the callable.  Together with
     /// `declaration_namespace` this is the call entry's own declaration
     /// environment: the A-stage never looks the backing declaration up in the
-    /// compatibility name index to recover identity or namespace material.
+    /// read name index to recover identity or namespace material.
     pub declaration_name: String,
     /// Namespace the callable was declared in.  `None` for callables with
     /// no graph declaration site (meta-injected members).
@@ -1394,7 +1394,7 @@ pub struct RegisteredCallable {
 /// One snapshot-local connected semantic world.
 #[derive(Clone, Debug)]
 pub struct SemanticWorld {
-    /// Transitional namespace-name index embedded in the one semantic world.
+    /// Read projection of graph names embedded in the one semantic world.
     ///
     /// This is not an independently committed world.  It is retained while
     /// the remaining projection-oriented resolver adapters migrate to direct
@@ -1409,7 +1409,7 @@ pub struct SemanticWorld {
     /// this typed graph and never reconstruct identity from that projection.
     owner_namespaces_graph: OwnerNamespaceGraph,
     owner_namespace_nodes: BTreeMap<NamespaceNodeId, OwnerNamespaceNodeId>,
-    legacy_namespace_nodes: BTreeMap<OwnerNamespaceNodeId, NamespaceNodeId>,
+    projected_namespace_nodes: BTreeMap<OwnerNamespaceNodeId, NamespaceNodeId>,
     toolchain_owner: SemanticOwnerId,
     package_owner: SemanticOwnerId,
     namespace_owners: BTreeMap<NamespaceNodeId, SemanticOwnerId>,
@@ -1431,10 +1431,10 @@ pub struct SemanticWorld {
     direct_type_members: BTreeMap<TypeValueId, ImmutableTypeCallSpace>,
     /// Interned complete type closures keyed by whole-snapshot observation.
     complete_types: BTreeMap<CanonicalValueAddr, CompleteTypeValue>,
-    /// Compatibility adapter carrying a type-value identity for graph
-    /// transport and legacy compatibility.  This is NOT a semantic Val1
+    /// Projection carrying a Core lookup identity for graph transport. This
+    /// is NOT a semantic Val1
     /// (pure-P types have Val1 = ∅).  It never appears in sibling_vals.
-    type_object_values: BTreeMap<TypeValueId, SemanticValueId>,
+    core_type_projection_values: BTreeMap<TypeValueId, SemanticValueId>,
     pattern_types: BTreeMap<PatternValueId, TypeValueId>,
     /// Canonical meta-type roots: `MetaRootKey = parent SemanticOwner + meta
     /// function + normalized arguments`. The stored `TypeDefinitionInstanceId` is body material
@@ -1458,13 +1458,13 @@ pub struct SemanticWorld {
     /// Object/residency Places. Semantic values have a formation Place;
     /// ordinary bindings may additionally carry the same value in fresh
     /// destination Places. Pattern-level lookups use `pattern_places` to find
-    /// the canonical type object's place.
+    /// the canonical pure type Object's place.
     places: BTreeMap<ObjectPlaceId, ObjectPlace>,
     /// Owned Val2 semantic snapshots. Navigation and lookup may expose more
     /// material through `places`; ordinary Object normalization may not.
     semantic_val2_snapshots: BTreeMap<ObjectPlaceId, SemanticVal2Snapshot>,
     borrows: BTreeMap<BorrowViewId, BorrowView>,
-    /// Forward map: PatternValue (as pure-P type) -> its type object's place.
+    /// Forward map: PatternValue (as pure-P type) -> its pure type Object's place.
     /// This is the canonical type-level Val2 for this pattern.  Every
     /// pattern allocated via `allocate_pattern_and_scope` receives an entry.
     pattern_places: BTreeMap<PatternValueId, ObjectPlaceId>,
@@ -1543,7 +1543,7 @@ impl SemanticWorld {
             owners,
             owner_namespaces_graph: OwnerNamespaceGraph::new(),
             owner_namespace_nodes: BTreeMap::new(),
-            legacy_namespace_nodes: BTreeMap::new(),
+            projected_namespace_nodes: BTreeMap::new(),
             toolchain_owner,
             package_owner,
             namespace_owners: BTreeMap::new(),
@@ -1556,7 +1556,7 @@ impl SemanticWorld {
             types: BTreeMap::new(),
             direct_type_members: BTreeMap::new(),
             complete_types: BTreeMap::new(),
-            type_object_values: BTreeMap::new(),
+            core_type_projection_values: BTreeMap::new(),
             pattern_types: BTreeMap::new(),
             meta_type_roots: BTreeMap::new(),
             ambient_struct_types: BTreeMap::new(),
@@ -1614,9 +1614,8 @@ impl SemanticWorld {
 
         // Namespace Symbols are semantic Symbols too.  Earlier bootstrap
         // adoption registered only namespace topology, leaving compiler-owned
-        // namespace bindings such as `core::verify` discoverable only through
-        // the legacy index. Admit those binding identities into the typed
-        // graph and retain the old SymbolObject strictly as a projection.
+        // Admit bootstrap namespace binding identities into the typed graph;
+        // their SymbolObjects remain read projections of that graph.
         let namespace_symbols = self
             .namespace_index
             .symbols()
@@ -1782,7 +1781,7 @@ impl SemanticWorld {
     ///
     /// Generated field functions do not yet have an executable semantic body,
     /// but they still require a Semantic Symbol identity: path resolution and
-    /// Pattern association may not discover them by querying the compatibility
+    /// Pattern association may not discover them by querying the graph
     /// name index. The whole registration is staged on a clone, so malformed
     /// topology leaves no partial semantic residue.
     pub(crate) fn register_generated_projection_symbols(
@@ -1816,7 +1815,7 @@ impl SemanticWorld {
             }
         }
 
-        // Bind every newly installed compatibility declaration record to the
+        // Bind every newly installed graph declaration record to the
         // already-authoritative typed Symbol selected by namespace+name.
         // Ordinary bindings create the typed Symbol before committing this
         // delta, so the projection must never be used to reconstruct it.
@@ -1936,11 +1935,9 @@ impl SemanticWorld {
         state: &mut Val2NormState,
     ) -> Result<crate::canonical_value::CanonicalClusterNorm, crate::Diagnostic> {
         let pure_p = match cluster.pure_p {
-            Some(member) => Some(self.canonical_type_object_address(
-                Some(member.place),
-                member.pattern,
-                state,
-            )?),
+            Some(member) => {
+                Some(self.canonical_pure_type_address(Some(member.place), member.pattern, state)?)
+            }
             None => None,
         };
         let vals = cluster
@@ -1955,7 +1952,7 @@ impl SemanticWorld {
     }
 
     /// `Norm_pureP(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩` — the recursive
-    /// normal form of one type object, observed through `place`.
+    /// normal form of one pure type Object, observed through `place`.
     ///
     /// Val2 normalization is well-founded finite recursion: every traversed
     /// object edge must descend toward a leaf (`Children_V(x) = ∅`).
@@ -1965,7 +1962,7 @@ impl SemanticWorld {
     /// diamond) stay legal: FINISHED subtrees are memoized for the duration
     /// of one top-level canonicalization only, so a later injection must be
     /// observed by the next canonicalization.
-    fn canonical_type_object_address(
+    fn canonical_pure_type_address(
         &mut self,
         place: Option<ObjectPlaceId>,
         pattern: PatternValueId,
@@ -2040,7 +2037,7 @@ impl SemanticWorld {
             SemanticValuePayload::CoreTypeProjection {
                 represented_pattern,
                 ..
-            } => self.canonical_type_object_address(Some(place), represented_pattern, state),
+            } => self.canonical_pure_type_address(Some(place), represented_pattern, state),
             SemanticValuePayload::SimpleLiteral { family, normalized } => self
                 .canonical_object_address(
                     Some(place),
@@ -2097,7 +2094,7 @@ impl SemanticWorld {
     /// Normalize one call-argument position into its canonical interning
     /// address.
     ///
-    /// Simple closed material — resolved type objects (pure-P), product
+    /// Simple closed material — resolved pure type Objects (pure-P), product
     /// units, and literal spellings — receives content-normalized addresses.
     /// Material with an implemented content normalizer uses it; otherwise an
     /// identity-stable opaque Val1 leaf preserves a normal form without
@@ -2186,7 +2183,7 @@ impl SemanticWorld {
                 None,
             )
             })?;
-        self.canonical_type_object_address(place, pattern, &mut state)
+        self.canonical_pure_type_address(place, pattern, &mut state)
     }
 
     /// Observe the registered Core of a type lookup key for ordinary Type
@@ -2486,7 +2483,7 @@ impl SemanticWorld {
             NamespaceVisibility::Public,
         );
         self.owner_namespace_nodes.insert(node, typed);
-        self.legacy_namespace_nodes.insert(typed, node);
+        self.projected_namespace_nodes.insert(typed, node);
         Some(typed)
     }
 
@@ -2494,7 +2491,7 @@ impl SemanticWorld {
     pub fn namespace_parent(&self, node: NamespaceNodeId) -> Option<NamespaceNodeId> {
         let typed = self.owner_namespace_nodes.get(&node)?;
         let parent = self.owner_namespaces_graph.node(*typed)?.parent?;
-        self.legacy_namespace_nodes.get(&parent).copied()
+        self.projected_namespace_nodes.get(&parent).copied()
     }
 
     /// Bare-name lookup order: current namespace, every semantic enclosing
@@ -2533,13 +2530,13 @@ impl SemanticWorld {
     pub fn child_namespace(&self, parent: NamespaceNodeId, name: &str) -> Option<NamespaceNodeId> {
         let typed_parent = self.owner_namespace_nodes.get(&parent).copied()?;
         let child = self.owner_namespaces_graph.child(typed_parent, name)?;
-        self.legacy_namespace_nodes.get(&child).copied()
+        self.projected_namespace_nodes.get(&child).copied()
     }
 
     /// Resolve an inner-to-outer path to its namespace facet through typed
     /// namespace topology and namespace-capable semantic Symbols.  This is
-    /// the namespace-role companion of `resolve_symbol_path`; no legacy name
-    /// index lookup participates in identity selection.
+    /// the namespace-role companion of `resolve_symbol_path`; graph identity
+    /// selection is completed before any projection is rendered.
     pub fn resolve_namespace_path(
         &self,
         path: &[String],
@@ -2615,7 +2612,7 @@ impl SemanticWorld {
     /// Symbol-first, object-before-namespace: when the cursor stands on an
     /// object, that object's own Val2 answers the name (`Val2(T_t)[f] = C_f`,
     /// read through the carrier's own place with per-name inheritance from the
-    /// Pattern's canonical type object).  The namespace side of the cursor is
+    /// Pattern's canonical pure type Object).  The namespace side of the cursor is
     /// the fallback for names that live in a declaration namespace instead of
     /// an object's Val2.
     fn cursor_symbol(
@@ -3061,14 +3058,14 @@ impl SemanticWorld {
             .and_then(|cell| cell.sibling_vals.get(index).copied())
     }
 
-    pub fn type_object_value_for_symbol(
+    pub fn core_type_projection_value_for_symbol(
         &self,
         identity: SemanticSymbolIdentity,
     ) -> Option<SemanticValueId> {
         let cell = self.symbol(identity)?;
         let pattern = cell.pure_p_pattern()?;
         let type_value = self.type_for_pattern(pattern)?;
-        self.type_object_value(type_value)
+        self.core_type_projection_value(type_value)
     }
 
     pub fn value(&self, id: SemanticValueId) -> Option<&SemanticValueObject> {
@@ -3186,8 +3183,13 @@ impl SemanticWorld {
         self.symbol_rank
     }
 
-    pub fn type_object_value(&self, represented_type: TypeValueId) -> Option<SemanticValueId> {
-        self.type_object_values.get(&represented_type).copied()
+    pub fn core_type_projection_value(
+        &self,
+        represented_type: TypeValueId,
+    ) -> Option<SemanticValueId> {
+        self.core_type_projection_values
+            .get(&represented_type)
+            .copied()
     }
 
     /// The transport-default pure-P member view of a Pattern.
@@ -3209,7 +3211,7 @@ impl SemanticWorld {
         let recorded = self
             .pattern_types
             .get(&pattern)
-            .and_then(|type_value| self.type_object_values.get(type_value))
+            .and_then(|type_value| self.core_type_projection_values.get(type_value))
             .and_then(|value| self.values.get(value))
             .map(|object| object.policy.clone());
         match recorded {
@@ -3482,7 +3484,7 @@ impl SemanticWorld {
             .map(Vec::as_slice)
     }
 
-    /// Look up Val2 for the canonical type object of a Pattern.
+    /// Look up Val2 for the canonical pure type Object of a Pattern.
     ///
     /// This is the type-level Val2: the values navigable from the type itself
     /// (the `null × P × Val2` object that owns this Pattern).  For per-value
@@ -3749,7 +3751,7 @@ impl SemanticWorld {
             .copied()
     }
 
-    /// The source-visible Val2 Symbol of a Pattern's canonical type object.
+    /// The source-visible Val2 Symbol of a Pattern's canonical pure type Object.
     pub fn associated_symbol_for_pattern(
         &self,
         pattern: PatternValueId,
@@ -3763,7 +3765,7 @@ impl SemanticWorld {
     /// The host object's own place wins: `let T: type = uint8; let f::T = ...`
     /// installs `f` on `T`'s object only, so `uint8::f` and `U::f` must not
     /// see it.  A host whose own place carries nothing under the name falls
-    /// back to the Pattern's canonical type object, which is where
+    /// back to the Pattern's canonical pure type Object, which is where
     /// construction-time and toolchain-installed type members live.
     pub fn associated_symbol_for_host(
         &self,
@@ -3774,7 +3776,7 @@ impl SemanticWorld {
             .or_else(|| self.associated_symbol_for_pattern(host.pattern, name))
     }
 
-    /// Record a source-visible Val2 name on a Pattern's canonical type object.
+    /// Record a source-visible Val2 name on a Pattern's canonical pure type Object.
     pub fn associate_existing_symbol(
         &mut self,
         pattern: PatternValueId,
@@ -3846,7 +3848,7 @@ impl SemanticWorld {
         self.symbol_backing_declarations.get(&symbol).copied()
     }
 
-    /// Render an already-selected semantic Symbol through the compatibility
+    /// Render an already-selected semantic Symbol through the graph projection
     /// declaration projection.
     ///
     /// The name index is deliberately not consulted for selection here:
@@ -3892,7 +3894,7 @@ impl SemanticWorld {
     /// `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_tau)`: local
     /// Symbol members and the immutable complete-type snapshot occupy one
     /// candidate space. Transport-only values are admitted as a one-way
-    /// compatibility source, then deduplicated in that same space. There is no
+    /// projection source, then deduplicated in that same space. There is no
     /// local-first / TypeMember-second fallback tier.
     ///
     /// Exposure composes per layer and per phase:
@@ -3957,7 +3959,7 @@ impl SemanticWorld {
     /// This is the compiler-internal entry point: no carrier Symbol named the
     /// host step (an authorized receiver operation, for example), so there is
     /// no binding-level host view to compose and lookup lands on the Pattern's
-    /// canonical type object. Source navigation must use
+    /// canonical pure type Object. Source navigation must use
     /// [`Self::associated_member_views_for_host`] with the carrier's own host
     /// layer instead, otherwise the host factor of the exposure conjunction is
     /// silently dropped.
@@ -3977,7 +3979,7 @@ impl SemanticWorld {
     ///
     /// A pure P is a real object, so each carrier owns its own writable Val2
     /// place while the Pattern stays shared identity material.  The Pattern's
-    /// canonical type object belongs to the cluster that declared the Pattern:
+    /// canonical pure type Object belongs to the cluster that declared the Pattern:
     /// that carrier keeps writing there, because construction-time members
     /// were injected into the canonical place before the carrier existed.
     /// Every other carrier of the same Pattern — `let U: type = T` — binds a
@@ -4058,8 +4060,8 @@ impl SemanticWorld {
     }
 
     /// Register a type carrier while preserving an already-observed exact
-    /// complete-type snapshot.  This is the semantic-result binding entry;
-    /// the legacy wrapper above is reserved for bootstrap/lookup-only callers.
+    /// complete-type snapshot. This is the semantic-result binding entry;
+    /// the lookup-only wrapper above is reserved for bootstrap callers.
     pub fn register_type_symbol_with_complete_type(
         &mut self,
         namespace: NamespaceNodeId,
@@ -4110,7 +4112,10 @@ impl SemanticWorld {
             self.symbol_rank = Some(represented_type);
         }
         let value_type_pattern = self.types.get(&type_rank)?.pattern;
-        let value = if let Some(existing) = self.type_object_values.get(&represented_type).copied()
+        let value = if let Some(existing) = self
+            .core_type_projection_values
+            .get(&represented_type)
+            .copied()
         {
             existing
         } else {
@@ -4133,7 +4138,8 @@ impl SemanticWorld {
                     provenance: provenance.clone(),
                 },
             );
-            self.type_object_values.insert(represented_type, value);
+            self.core_type_projection_values
+                .insert(represented_type, value);
             value
         };
         debug_assert!(matches!(
@@ -4261,7 +4267,11 @@ impl SemanticWorld {
         let Some(pattern) = self.types.get(&canonical_type).map(|value| value.pattern) else {
             return Ok(None);
         };
-        if let Some(value) = self.type_object_values.get(&canonical_type).copied() {
+        if let Some(value) = self
+            .core_type_projection_values
+            .get(&canonical_type)
+            .copied()
+        {
             return Ok(Some((value, pattern, canonical_type)));
         }
         let Some(type_rank) = self.type_rank else {
@@ -4286,7 +4296,8 @@ impl SemanticWorld {
                 provenance,
             },
         );
-        self.type_object_values.insert(canonical_type, value);
+        self.core_type_projection_values
+            .insert(canonical_type, value);
         Ok(Some((value, pattern, canonical_type)))
     }
 
@@ -4371,7 +4382,8 @@ impl SemanticWorld {
                 provenance,
             },
         );
-        self.type_object_values.insert(canonical_type, value);
+        self.core_type_projection_values
+            .insert(canonical_type, value);
         Some((value, pattern, canonical_type))
     }
 
@@ -4571,7 +4583,7 @@ impl SemanticWorld {
 
     /// Register one compiler-authorized ordinary intrinsic directly in a
     /// target Type's operation family. The returned call entry is the
-    /// candidate identity; `backing_declaration` is compatibility/provenance
+    /// candidate identity; `backing_declaration` is projection/provenance
     /// material and never participates in selection identity.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn register_intrinsic_type_operation(
@@ -4640,7 +4652,7 @@ impl SemanticWorld {
     /// Every entry applies to a scratch copy of the semantic world; the
     /// copy replaces the live world only when all entries succeeded, so a
     /// failing entry installs nothing. The semantic world is the declaration
-    /// installation authority; compatibility projections never define the
+    /// installation authority; graph projections never define the
     /// installed identities or member policies.
     pub fn install_namespace_delta(
         &mut self,
@@ -5608,9 +5620,9 @@ impl SemanticWorld {
             }
             // Every bound semantic value carries a Pattern, including a
             // first-class complete type value.  Register its owning cluster
-            // without rerooting an already-owned Pattern.  Restricting this
-            // to legacy pure-P (`value=None`) views made `struct -> tau`
-            // impossible: the later compatibility type-carrier projection
+            // without rerooting an already-owned Pattern. Restricting this to
+            // pure-P (`value=None`) views made `struct -> tau` impossible: the
+            // later graph projection
             // observed an ownerless Pattern.
             self.pattern_clusters
                 .entry(view.pattern)
@@ -6184,14 +6196,14 @@ impl SemanticWorld {
         Ok(extended)
     }
 
-    /// Install a `null × P × Val2` type object as an **associated type** in
+    /// Install a `null × P × Val2` pure type Object as an **associated type** in
     /// the target type member's object-level Val2, without modifying the
     /// target's canonical Pattern structure.
     ///
     /// ## Privilege boundary
     ///
     /// This is the ordinary navigated `let f::t = expr` path when `expr` is a
-    /// pure type object. It does **not** register `f` into `t`'s Pattern
+    /// pure type Object. It does **not** register `f` into `t`'s Pattern
     /// canonical norm — that privilege belongs exclusively to `struct` inline
     /// construction (which calls [`inject_pattern_value_member`]) and the
     /// future `inject` built-in meta function.
@@ -6199,7 +6211,7 @@ impl SemanticWorld {
     /// ## Recursive Val2 Symbol ontology
     ///
     /// Val2 is not a name → raw value list map; it stays a recursive Symbol
-    /// world: `Val2(T_t)[f] = C_f`. The injected pure type object
+    /// world: `Val2(T_t)[f] = C_f`. The injected pure type Object
     /// `x = ⟨Val1 = ∅, P_x, Val2_x⟩` becomes the single pure-P member of
     /// that associated Symbol:
     ///
@@ -6341,11 +6353,11 @@ impl SemanticWorld {
         }
 
         // Transport reference only: the object-level Val2 container indexes
-        // by `SemanticValueId`, so a pure type object needs a CoreTypeProjection
+        // by `SemanticValueId`, so a pure type Object needs a CoreTypeProjection
         // adapter to be navigable from the place. The adapter is globally
         // reused per TypeValue and is NEVER the binding-Policy carrier — the
         // member view installed below is.
-        let type_value_id = self.find_or_install_type_object_value(
+        let type_value_id = self.find_or_install_core_type_projection_value(
             member_type_value,
             member_pattern,
             view.view.pair.clone(),
@@ -7043,7 +7055,7 @@ impl SemanticWorld {
     }
 
     /// Return the existing `SemanticValueId` adapter for a given TypeValue, or
-    /// create a fresh one. This is used to store a pure-P type object in Val2
+    /// create a fresh one. This is used to store a pure-P Object in Val2
     /// scopes which index by `SemanticValueId`.
     ///
     /// `transport_policy` is construction metadata for a freshly created
@@ -7053,14 +7065,18 @@ impl SemanticWorld {
     /// associated type lives in the associated Symbol's member view
     /// (`C_f.member_views`), which is where lookup reads it from; two
     /// distinct bindings of one type therefore keep two distinct views.
-    fn find_or_install_type_object_value(
+    fn find_or_install_core_type_projection_value(
         &mut self,
         represented_type: TypeValueId,
         represented_pattern: PatternValueId,
         transport_policy: PolicyPair,
         provenance: Provenance,
     ) -> SemanticValueId {
-        if let Some(existing) = self.type_object_values.get(&represented_type).copied() {
+        if let Some(existing) = self
+            .core_type_projection_values
+            .get(&represented_type)
+            .copied()
+        {
             return existing;
         }
         let type_rank = self.type_rank.unwrap_or(represented_type);
@@ -7083,7 +7099,8 @@ impl SemanticWorld {
                 provenance,
             },
         );
-        self.type_object_values.insert(represented_type, value);
+        self.core_type_projection_values
+            .insert(represented_type, value);
         value
     }
 }
@@ -7145,7 +7162,7 @@ mod tests {
             vec![identity]
         );
 
-        // Corrupt only the compatibility projection. Semantic lookup must not
+        // Corrupt only the graph projection. Semantic lookup must not
         // discover that declaration because the typed graph did not admit it.
         let projection_only = world.namespace_index.capability().declare(
             root,
@@ -7171,9 +7188,8 @@ mod tests {
         let root = NamespaceNodeId(0);
         world.bind_toolchain_root(root);
 
-        // Install a parent only into the legacy projection so a later delta
-        // passes declaration-index validation but cannot acquire a semantic
-        // owner. This models exactly the stale-authority half-commit hazard.
+        // Install a parent only into the read projection so a later delta
+        // passes projection validation but cannot acquire a semantic owner.
         let mut parent_delta = world.namespace_index.empty_delta();
         let projection_parent = crate::semantic_name_index::namespace_symbol(
             &mut parent_delta,
@@ -7186,7 +7202,7 @@ mod tests {
         world.namespace_index = world
             .namespace_index
             .install_delta(parent_delta)
-            .expect("projection-only parent is valid in the legacy index");
+            .expect("projection-only parent is valid in the read index");
 
         let before_snapshot = world.namespace_index.snapshot_id();
         let before_typed_nodes = world.owner_namespace_nodes.clone();
@@ -7616,10 +7632,12 @@ mod tests {
                     represented_type,
                     represented_pattern: pattern,
                 },
-                provenance: Provenance::new("val2 test type object"),
+                provenance: Provenance::new("val2 test pure type Object"),
             },
         );
-        world.type_object_values.insert(represented_type, value_id);
+        world
+            .core_type_projection_values
+            .insert(represented_type, value_id);
 
         // Build the RawArgShape that identifies this value.
         let raw = crate::product_shape::RawArgShape {
@@ -8250,7 +8268,7 @@ mod tests {
         let old_place = world.value(old_value).expect("old value").place;
         world
             .associate_existing_value_in_place(old_place, "()", call_member)
-            .expect("compatibility Object.Val2 can contain the same spelling");
+            .expect("lookup Object.Val2 can contain the same spelling");
         assert!(
             world.callable_entries_for_value(old_value).is_empty(),
             "Object.Val2 is never callability authority"

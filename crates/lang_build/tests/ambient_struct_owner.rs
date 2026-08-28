@@ -53,7 +53,7 @@ fn returned_struct_material(
     let material = returned
         .construction_material
         .as_ref()
-        .expect("the compatibility namespace installer retains replayable struct material");
+        .expect("the namespace graph installer retains replayable struct material");
     (returned, material)
 }
 

@@ -8,7 +8,7 @@ pub mod canonical_value;
 pub mod control_flow_end;
 pub mod core;
 pub mod discovery;
-pub mod extraction_view;
+mod extraction_view;
 pub mod fingerprint;
 pub mod identity;
 pub mod initializer_eval;
@@ -17,17 +17,17 @@ pub mod invocation_result;
 pub mod lifecycle;
 pub mod literal_semantics;
 pub mod manifest;
-pub mod meta;
+mod meta;
 pub mod meta_body;
-pub mod meta_cache;
-pub mod meta_candidate;
-pub mod meta_invocation;
-pub mod meta_key;
+mod meta_cache;
+mod meta_candidate;
+mod meta_invocation;
+mod meta_key;
 pub mod model;
 pub mod normalized_call;
 pub mod ordinary_invocation;
-pub mod overload_pattern;
-pub mod overload_set;
+mod overload_pattern;
+mod overload_set;
 pub mod owner_namespace;
 pub mod pattern_relation;
 pub mod phase_flow;
@@ -40,9 +40,9 @@ pub mod semantic_name_index;
 pub mod semantic_owner;
 pub mod semantic_world;
 pub mod source;
-pub mod struct_decoder;
-pub mod struct_pattern_material;
-pub mod struct_pattern_registry;
+mod struct_decoder;
+mod struct_pattern_material;
+mod struct_pattern_registry;
 pub mod type_argument;
 pub mod verify;
 pub mod world;
@@ -106,10 +106,7 @@ pub use literal_semantics::{
     ConstructionRequest, NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
-pub use meta::{
-    bind_meta_invocation_value_result,
-    bind_meta_invocation_value_result_with_materialization_state, MetaExpansionResult,
-};
+pub use meta::MetaExpansionResult;
 pub use meta_body::{
     check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
     selected_meta_delete_diagnostic, ClosureBodyExecutionEnv, SelectedMetaBodyEvaluation,
@@ -123,20 +120,16 @@ pub use meta_candidate::{
     PreparedCallableCandidate,
 };
 pub use meta_invocation::{
-    attach_type_definition_pattern_materials,
-    attach_type_definition_pattern_materials_with_context, compute_construction_instance_id,
-    compute_type_definition_instance_id, invoke_meta_callable, invoke_meta_callable_cached,
-    invoke_meta_callable_cached_with_materialization_state,
-    invoke_meta_callable_with_materialization_state, ConstructionIdentityMaterial,
-    ConstructionInstanceId, FieldSignatureMaterial, ForwardedResultMaterial,
-    GeneratedFieldDefinition, GeneratedFieldStructPatternMaterial, MetaExecutionMaterial,
-    MetaInvocationInput, MetaPrimitiveExecution, ReturnSlotSemantics, ReturnViewShape,
-    StructConstructionMaterial, TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId,
-    TypeDefinitionStructPatternMaterials, UnaryConstructionMaterial,
+    compute_construction_instance_id, compute_type_definition_instance_id,
+    ConstructionIdentityMaterial, ConstructionInstanceId, FieldSignatureMaterial,
+    ForwardedResultMaterial, GeneratedFieldDefinition, GeneratedFieldStructPatternMaterial,
+    MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution, ReturnSlotSemantics,
+    ReturnViewShape, StructConstructionMaterial, TypeDefinitionIdentityMaterial,
+    TypeDefinitionInstanceId, TypeDefinitionStructPatternMaterials, UnaryConstructionMaterial,
 };
 pub use meta_key::{
-    compute_legacy_meta_instance_digest, compute_meta_invocation_material_key,
-    CanonicalFingerprint, MetaInvocationMaterialKey,
+    compute_candidate_fingerprint, compute_meta_invocation_material_key, CanonicalFingerprint,
+    MetaInvocationMaterialKey,
 };
 pub use model::{
     policy_view_allows_execution, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
@@ -165,11 +158,8 @@ pub use semantic_name_index::{
     BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex, SemanticNameInstallError,
     SemanticNameResolver,
 };
-// The legacy restricted selector/evaluator surface is
-// deleted.  The canonical overload ontology is the connected ordinary
-// pipeline exported from `ordinary_invocation` above; what remains here is
-// the shared failure taxonomy and the selected-candidate carrier consumed
-// by the shared body evaluators.
+// The connected ordinary pipeline owns candidate selection. This surface
+// exposes only its shared failure taxonomy and sealed-candidate material.
 pub use overload_set::{
     declared_return_shape_from_closure, LookupPhase, RestrictedOverloadFailure,
     RestrictedOverloadFailureKind, SelectedOverloadCandidate, VisibilityView,

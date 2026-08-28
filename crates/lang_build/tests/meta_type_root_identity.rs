@@ -183,7 +183,7 @@ fn same_root_conflicting_body_is_a_conflict_never_a_second_root() {
     world.bind_package_namespace(NamespaceNodeId(0));
     let policy = static_type_pair();
     let provenance = Provenance::new("b4 root vs body");
-    let (_meta_function, type_object, _pattern) = world
+    let (_meta_function, type_projection, _pattern) = world
         .register_type_symbol(
             NamespaceNodeId(0),
             "type",
@@ -199,8 +199,8 @@ fn same_root_conflicting_body_is_a_conflict_never_a_second_root() {
     // the placement parent is a declaration-environment owner only.
     let root = MetaInstanceRoot {
         meta_callable: MetaCallableIdentity {
-            selected_function_value: type_object,
-            selected_call_entry: SemanticValueId(type_object.as_u64() + 500),
+            selected_function_value: type_projection,
+            selected_call_entry: SemanticValueId(type_projection.as_u64() + 500),
         },
         placement_parent: world.package_owner(),
     };
@@ -211,8 +211,8 @@ fn same_root_conflicting_body_is_a_conflict_never_a_second_root() {
     };
     let mismatched_root = MetaInstanceRoot {
         meta_callable: MetaCallableIdentity {
-            selected_function_value: SemanticValueId(type_object.as_u64() + 1),
-            selected_call_entry: SemanticValueId(type_object.as_u64() + 501),
+            selected_function_value: SemanticValueId(type_projection.as_u64() + 1),
+            selected_call_entry: SemanticValueId(type_projection.as_u64() + 501),
         },
         placement_parent: root.placement_parent,
     };

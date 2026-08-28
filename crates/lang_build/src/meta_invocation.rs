@@ -41,9 +41,7 @@ use crate::{
     extraction_view::{
         ContentObservationInterface, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
     },
-    meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
-    meta_key::MetaInvocationMaterialKey,
     model::{Diagnostic, Provenance, SymbolId},
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
     struct_decoder::DecodedStructPattern,
@@ -322,10 +320,9 @@ fn sum_struct_pattern_material_semantic_eq(
 /// Replayable execution material produced behind the unified invocation
 /// result boundary.
 ///
-/// `ForwardedResultMaterial` is produced by the restricted evaluator's legacy
-/// `IdentityType` forwarding proof. It is transitional transport, not the final
-/// formal meta-return model. `UnaryConstructionMaterial` is produced by
-/// `UnaryConstructionPrototype` from argument-derived construction material.
+/// `ForwardedResultMaterial` records an `IdentityType` forwarding proof for
+/// later result formation. `UnaryConstructionMaterial` is produced by
+/// `UnaryConstruction` from argument-derived construction material.
 /// `StructConstructionMaterial` is the replayable construction material
 /// produced while evaluating `struct`; it is not the semantic result of that
 /// callable.  The world-connected invocation path installs the material and
@@ -376,7 +373,7 @@ impl MetaExecutionMaterial {
             }
             MetaExecutionMaterial::StructConstructionMaterial(value) => {
                 ObservedArgumentContent::ValuePoint(ObservedAtomContent {
-                    value_kind: ObservedAtomKind::GeneratedTypeDefinition {
+                    value_kind: ObservedAtomKind::StructConstruction {
                         type_definition_id: value.type_definition_id,
                     },
                     extraction_interface: ContentObservationInterface::Leaf,
@@ -573,7 +570,7 @@ pub struct FieldSignatureMaterial {
     /// invocation boundary was world-connected, otherwise the `Detached`
     /// projection (which never equals an observed address).
     pub field_type_observation: crate::CanonicalTypeObservation,
-    /// Compatibility graph carrier retained for current StructPatternMaterial/field
+    /// Graph projection carrier retained for current StructPatternMaterial/field
     /// installation only. It is non-identity material.
     pub field_type_carrier_symbol: SymbolId,
     pub field_index: usize,
@@ -754,21 +751,7 @@ pub enum ReturnViewShape {
     Product { arity: usize },
 }
 
-/// Invoke a prepared callable candidate through the formal meta invocation
-/// boundary.
-///
-/// Reads `callee_primitive` from the candidate itself. Invocation is pure
-/// — no graph mutation, no `NamespaceDelta` installation.
-pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaPrimitiveExecution {
-    // Standalone compatibility entry point. It is suitable for one-off formal
-    // invocation tests but does not preserve StructPatternMaterialRegistry continuity
-    // across calls. Callers that need registry-backed identity continuity must
-    // use `invoke_meta_callable_with_materialization_state`.
-    let mut materialization_state = StructMaterializationState::default();
-    invoke_meta_callable_with_materialization_state(input, &mut materialization_state)
-}
-
-pub fn invoke_meta_callable_with_materialization_state(
+pub(crate) fn invoke_meta_callable_with_materialization_state(
     input: MetaInvocationInput,
     materialization_state: &mut StructMaterializationState,
 ) -> MetaPrimitiveExecution {
@@ -787,9 +770,7 @@ pub fn invoke_meta_callable_with_materialization_state(
 
     match primitive {
         crate::model::CoreMetaFunction::IdentityType => invoke_identity_type(&input),
-        crate::model::CoreMetaFunction::UnaryConstructionPrototype => {
-            invoke_unary_construction_prototype(&input)
-        }
+        crate::model::CoreMetaFunction::UnaryConstruction => invoke_unary_construction(&input),
         crate::model::CoreMetaFunction::Struct => {
             invoke_struct_type_definition(&input, materialization_state)
         }
@@ -804,67 +785,6 @@ pub fn invoke_meta_callable_with_materialization_state(
             .with_symbol_context(input.candidate.callee_symbol_id),
         ),
     }
-}
-
-/// Cached variant: look up the key in the cache before invoking.
-///
-/// On cache miss, invokes and inserts the result. On hit, returns the cached
-/// invocation value. The cache stores only `MetaExecutionMaterial` — no
-/// `NamespaceDelta`.
-pub fn invoke_meta_callable_cached(
-    input: MetaInvocationInput,
-    key: MetaInvocationMaterialKey,
-    cache: &mut MetaInstanceCache,
-) -> MetaPrimitiveExecution {
-    // Standalone compatibility entry point. Cache hits for registry-backed
-    // values are rehydrated into this temporary state only; callers that need
-    // to query the registry later must use the `_with_materialization_state`
-    // variant.
-    let mut materialization_state = StructMaterializationState::default();
-    invoke_meta_callable_cached_with_materialization_state(
-        input,
-        key,
-        cache,
-        &mut materialization_state,
-    )
-}
-
-pub fn invoke_meta_callable_cached_with_materialization_state(
-    input: MetaInvocationInput,
-    key: MetaInvocationMaterialKey,
-    cache: &mut MetaInstanceCache,
-    materialization_state: &mut StructMaterializationState,
-) -> MetaPrimitiveExecution {
-    // Validate primitive before cache lookup — prevents a manually-inserted
-    // cache entry for a no-primitive candidate from bypassing validation.
-    if input.candidate.callee_primitive.is_none() {
-        return MetaPrimitiveExecution::Diagnostic(
-            Diagnostic::hard_error(
-                format!(
-                    "meta invocation (cached): candidate `{}` has no callee primitive",
-                    input.candidate.callee_name
-                ),
-                Some(input.provenance),
-            )
-            .with_symbol_context(input.candidate.callee_symbol_id),
-        );
-    }
-    if let Some(cached) = cache.lookup(&key) {
-        return cached_value_for_current_materialization_state(
-            cached.result.clone(),
-            materialization_state,
-            input.provenance,
-        );
-    }
-    let result = invoke_meta_callable_with_materialization_state(input, materialization_state);
-    if let MetaPrimitiveExecution::Material(val) = &result {
-        cache.insert(
-            key,
-            cacheable_invocation_value(val.clone()),
-            Provenance::new("cached meta invocation result"),
-        );
-    }
-    result
 }
 
 fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
@@ -890,7 +810,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
         None => {
             return MetaPrimitiveExecution::Diagnostic(
                 Diagnostic::hard_error(
-                    "IdentityType: argument is not a classified type object with a TypeValue",
+                    "IdentityType: argument is not a classified pure type Object with a TypeValue",
                     Some(input.provenance.clone()),
                 )
                 .with_symbol_context(candidate.callee_symbol_id),
@@ -918,7 +838,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     ))
 }
 
-fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
+fn invoke_unary_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     let candidate = &input.candidate;
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
@@ -927,7 +847,7 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaPrimi
         return MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 format!(
-                    "UnaryConstructionPrototype: expected exactly 1 type argument, got {}",
+                    "UnaryConstruction: expected exactly 1 type argument, got {}",
                     mat.arity
                 ),
                 Some(input.provenance.clone()),
@@ -941,7 +861,7 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaPrimi
         None => {
             return MetaPrimitiveExecution::Diagnostic(
                 Diagnostic::hard_error(
-                    "UnaryConstructionPrototype: argument is not a classified type object with a TypeValue",
+                    "UnaryConstruction: argument is not a classified pure type Object with a TypeValue",
                     Some(input.provenance.clone()),
                 )
                 .with_symbol_context(candidate.callee_symbol_id),
@@ -1059,53 +979,13 @@ fn invoke_struct_type_definition(
     }
 }
 
-fn cached_value_for_current_materialization_state(
-    value: MetaExecutionMaterial,
-    materialization_state: &mut StructMaterializationState,
-    provenance: Provenance,
-) -> MetaPrimitiveExecution {
-    match value {
-        MetaExecutionMaterial::StructConstructionMaterial(value) => {
-            match attach_type_definition_pattern_materials(value, materialization_state, provenance)
-            {
-                Ok(value) => MetaPrimitiveExecution::Material(
-                    MetaExecutionMaterial::StructConstructionMaterial(value),
-                ),
-                Err(diagnostic) => MetaPrimitiveExecution::Diagnostic(diagnostic),
-            }
-        }
-        MetaExecutionMaterial::ForwardedResultMaterial(value) => {
-            MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(value))
-        }
-        MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
-            MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(
-                value,
-            ))
-        }
-    }
-}
-
-fn cacheable_invocation_value(value: MetaExecutionMaterial) -> MetaExecutionMaterial {
-    match value {
-        MetaExecutionMaterial::StructConstructionMaterial(mut value) => {
-            value.pattern_materials = None;
-            value.canonical_type = None;
-            for field in &mut value.fields {
-                field.struct_pattern_registry = None;
-            }
-            MetaExecutionMaterial::StructConstructionMaterial(value)
-        }
-        other => other,
-    }
-}
-
 /// Attach pattern heads for a generated type definition under its anonymous
 /// generated fallback context.
 ///
 /// Formal `struct` invocation is graph-installation-free and binding-free. It
 /// may allocate registry-backed material through this fallback before final
 /// resolved pattern-scope semantics are available.
-pub fn attach_type_definition_pattern_materials(
+pub(crate) fn attach_type_definition_pattern_materials(
     value: StructConstructionMaterial,
     materialization_state: &mut StructMaterializationState,
     provenance: Provenance,
@@ -1133,17 +1013,13 @@ pub fn attach_type_definition_pattern_materials(
 /// Attach pattern heads for a generated type definition under an explicit
 /// materialization context.
 ///
-/// This is a doc-hidden transitional test-support API. It remains public only
-/// so integration tests can exercise categorical registry identity. It is not
-/// a stable pattern-owner construction capability, and production semantic
-/// callers must not treat `Global`, `Namespace`, `Local`, or `Generated`
-/// contexts as final `ResolvedPatternScope` identities.
+/// The materialization context is an implementation input; callers must not
+/// treat its storage categories as `ResolvedPatternScope` identities.
 ///
 /// The display name is diagnostic material only. The owner `StructPatternMaterialId`
 /// identity comes from `context`; callers must not derive identity from the
 /// bare source spelling.
-#[doc(hidden)]
-pub fn attach_type_definition_pattern_materials_with_context(
+fn attach_type_definition_pattern_materials_with_context(
     mut value: StructConstructionMaterial,
     materialization_state: &mut StructMaterializationState,
     context: StructPatternMaterialContext,

@@ -314,7 +314,7 @@ impl VerificationInvocation {
     ) -> Result<(), Diagnostic> {
         self.expect_min_arity(1)?;
         let path = self.arg_path(0)?;
-        let type_object = self.resolve_type_payload(world, context, &path)?;
+        let type_projection = self.resolve_type_payload(world, context, &path)?;
         let expected = self
             .args
             .iter()
@@ -322,14 +322,14 @@ impl VerificationInvocation {
             .map(VerificationArg::as_name)
             .collect::<Option<Vec<_>>>()
             .ok_or_else(|| self.error("field_names expects name arguments"))?;
-        if type_object.field_names == expected {
+        if type_projection.field_names == expected {
             Ok(())
         } else {
             Err(self.error(format!(
                 "expected `{}` fields [{}], got [{}]",
                 path.source_order_display(),
                 expected.join(", "),
-                type_object.field_names.join(", ")
+                type_projection.field_names.join(", ")
             )))
         }
     }
@@ -342,8 +342,8 @@ impl VerificationInvocation {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let field_name = self.arg_name(1)?;
-        let type_object = self.resolve_type_payload(world, context, &path)?;
-        if type_object
+        let type_projection = self.resolve_type_payload(world, context, &path)?;
+        if type_projection
             .field_names
             .iter()
             .any(|name| name == &field_name)
@@ -403,8 +403,8 @@ impl VerificationInvocation {
             .namespace_index()
             .symbol(field.owner_type_symbol_id)
             .and_then(|symbol| match &symbol.payload {
-                SymbolPayload::CompleteTypeProjection(type_object) => {
-                    Some(type_object.represented_type)
+                SymbolPayload::CompleteTypeProjection(type_projection) => {
+                    Some(type_projection.represented_type)
                 }
                 _ => None,
             })
@@ -415,7 +415,9 @@ impl VerificationInvocation {
                 ))
             })?;
         let expected_owner_type = match &owner.payload {
-            SymbolPayload::CompleteTypeProjection(type_object) => type_object.represented_type,
+            SymbolPayload::CompleteTypeProjection(type_projection) => {
+                type_projection.represented_type
+            }
             _ => {
                 return Err(self.error(format!(
                     "expected `{}` to carry a type value",
@@ -456,7 +458,9 @@ impl VerificationInvocation {
             ))
         })?;
         let represented_type = match &field_type.payload {
-            SymbolPayload::CompleteTypeProjection(type_object) => type_object.represented_type,
+            SymbolPayload::CompleteTypeProjection(type_projection) => {
+                type_projection.represented_type
+            }
             _ => {
                 return Err(self.error(format!(
                     "expected `{}` to carry a type value",
@@ -600,7 +604,7 @@ impl VerificationInvocation {
                     ))
                 })?;
         match symbol.payload {
-            SymbolPayload::CompleteTypeProjection(type_object) => Ok(type_object),
+            SymbolPayload::CompleteTypeProjection(type_projection) => Ok(type_projection),
             _ => Err(self.error(format!(
                 "expected `{}` to carry a type payload",
                 path.source_order_display()
@@ -910,7 +914,7 @@ fn resolve_semantic_namespace(
 /// Resolve the compiler-owned verification entry and operations using typed
 /// Symbol identity, while filtering each bare-name scope by its semantic
 /// member views. A runtime-only local binding therefore cannot shadow the
-/// static core verification namespace. The compatibility SymbolObject is
+/// static core verification namespace. The projected SymbolObject is
 /// projected only after identity selection.
 fn resolve_open_static_projected(
     world: &SemanticWorld,

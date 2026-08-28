@@ -326,7 +326,7 @@ fn s10_04_non_callable_member_is_no_candidate_but_stays_legal_member() {
     );
     assert!(
         t.member_views.iter().any(|view| view.value.is_some()),
-        "T carries its complete type value in addition to compatibility pure-P projection"
+        "T carries its complete type value in addition to pure-P graph projection"
     );
     assert_eq!(t.sibling_vals.len(), 1);
 
@@ -604,7 +604,7 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
         .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type");
     let SymbolPayload::CompleteTypeProjection(uint8_type) = uint8.payload else {
-        panic!("uint8 resolves as a Type object");
+        panic!("uint8 resolves as a CompleteType projection");
     };
     let type_value = uint8_type.represented_type;
 
@@ -788,8 +788,8 @@ fn s10_12_meta_body_without_terminal_does_not_deliver() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_13_alias_declaration_is_rejected_without_installing_forwarding_authority() {
-    let error = build_fixture_error("alias_semantics_retired", "app");
+fn s10_13_unwired_lexical_alias_creates_no_semantic_entity() {
+    let error = build_fixture_error("lexical_alias_unwired", "app");
     assert_eq!(error.diagnostics.len(), 1);
     assert_eq!(
         error.diagnostics[0].code,

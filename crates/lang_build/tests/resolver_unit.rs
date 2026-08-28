@@ -92,8 +92,8 @@ fn typed_resolver_helpers_select_expected_kind() {
     let context = world.package_context();
 
     let type_symbol = capability
-        .resolve_type_object("uint8", &context)
-        .expect("uint8 is a type object");
+        .resolve_complete_type_projection("uint8", &context)
+        .expect("uint8 is a pure type Object");
     assert_eq!(type_symbol.kind, SymbolKind::CompleteTypeProjection);
 
     let meta_symbol = capability
@@ -102,7 +102,7 @@ fn typed_resolver_helpers_select_expected_kind() {
     assert_eq!(meta_symbol.kind, SymbolKind::MetaFunction);
 
     let error = capability
-        .resolve_type_object("struct", &context)
+        .resolve_complete_type_projection("struct", &context)
         .expect_err("struct is a MetaFunction, not a Type");
     assert!(error.message.contains("resolver error"));
 }

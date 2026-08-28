@@ -488,7 +488,7 @@ fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
         .payload
     {
         SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
-        _ => panic!("uint8 resolves as a Type object"),
+        _ => panic!("uint8 resolves as a CompleteType projection"),
     };
     let source_policy = exposure_window(
         &[PolicyStage::Compile],

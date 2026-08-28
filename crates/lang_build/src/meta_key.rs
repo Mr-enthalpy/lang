@@ -5,8 +5,8 @@
 //! equality/ordering directly on them.  The FNV fingerprint is a derived
 //! digest for display/transport only — it never defines semantic equality.
 //!
-//! The `PreparedCallableCandidate` digest channel survives only as an opaque
-//! compatibility-cache digest; it no longer produces a semantic root key.
+//! Prepared-candidate fingerprints are opaque cache indices and never produce
+//! a semantic root key.
 
 use crate::{
     canonical_value::CanonicalValueAddr,
@@ -20,8 +20,8 @@ use crate::{
 
 /// Deterministic canonical fingerprint prefixed with version marker.
 ///
-/// A fingerprint is DERIVED material: display, transport, and legacy cache
-/// digests only.  It never defines equality of any semantic identity.
+/// A fingerprint is DERIVED display, transport, and cache-index material. It
+/// never defines equality of any semantic identity.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CanonicalFingerprint {
     pub value: String,
@@ -98,10 +98,9 @@ impl Ord for MetaInvocationMaterialKey {
     }
 }
 
-/// Compatibility cache digest of a prepared meta candidate.
+/// Cache fingerprint of a prepared meta candidate.
 ///
-/// This is the surviving remnant of the pre-canonical key channel: an opaque
-/// digest used ONLY by `MetaInstanceCache`. It is not a
+/// This opaque digest is used ONLY by `MetaInstanceCache`. It is not a
 /// `MetaInvocationMaterialKey` and defines no semantic identity.
 ///
 /// The digest material is derived on demand from the candidate's argument
@@ -110,7 +109,7 @@ impl Ord for MetaInvocationMaterialKey {
 /// length-prefixing so that concatenation of neighbouring fields cannot
 /// produce false matches (e.g. `"ab" + "c"` must not collide with
 /// `"a" + "bc"`).
-pub fn compute_legacy_meta_instance_digest(
+pub fn compute_candidate_fingerprint(
     candidate: &PreparedCallableCandidate,
 ) -> CanonicalFingerprint {
     let material =

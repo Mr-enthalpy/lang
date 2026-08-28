@@ -13,7 +13,7 @@ use crate::{
 /// decide whether a formal Pattern relates to this content.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OverloadArgShape {
-    /// Diagnostic compatibility spelling only.
+    /// Diagnostic spelling only.
     pub top_pattern_name: Option<String>,
     /// Carrier/graph coordinate only.
     pub type_symbol_id: Option<SymbolId>,

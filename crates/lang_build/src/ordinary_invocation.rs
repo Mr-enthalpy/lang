@@ -392,7 +392,7 @@ pub struct SingleMemberResult {
     /// Exact semantic complete-type result, present iff the selected
     /// declaration's result class is `CompleteType`.  Binding consumers use
     /// this field directly; they never infer a type result or recover tau from
-    /// a `CoreTypeProjection` compatibility payload.
+    /// a `CoreTypeProjection` graph payload.
     pub complete_type: Option<crate::CompleteTypeValue>,
     /// CompleteResultDomain — the complete result P2 compatibility domain
     /// returned by the ordinary callable (type/pattern compatibility
@@ -593,7 +593,7 @@ fn semantic_invocation_outcome(
 
 /// Complete type value returned by a world-connected invocation.
 ///
-/// `construction_material` is replay/install material for compatibility
+/// `construction_material` is replay/install material for graph replay
 /// binding and namespace projection.  Semantic consumers use
 /// `complete_type`; the material never defines type identity or equality.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1185,7 +1185,7 @@ fn evaluate_source_meta_member_initializer(
     };
     let mut input = input;
     attach_candidate_type_observations(semantic_world, &mut input, trace)?;
-    let value = match crate::invoke_meta_callable_with_materialization_state(
+    let value = match crate::meta_invocation::invoke_meta_callable_with_materialization_state(
         input,
         materialization_state,
     ) {
@@ -2428,21 +2428,25 @@ pub(crate) fn invoke_target_values(
             // carrier; the carrier drives one member contribution.
             let mut core_input = core.clone();
             attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
-            let value = match crate::invoke_meta_callable_with_materialization_state(
-                core_input,
-                materialization_state,
-            ) {
-                crate::MetaPrimitiveExecution::Material(value) => value,
-                crate::MetaPrimitiveExecution::Residual(residual) => {
-                    return Err(OrdinaryInvocationFailure::Residual {
-                        residual,
-                        trace: trace.clone(),
-                    });
-                }
-                crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
-                }
-            };
+            let value =
+                match crate::meta_invocation::invoke_meta_callable_with_materialization_state(
+                    core_input,
+                    materialization_state,
+                ) {
+                    crate::MetaPrimitiveExecution::Material(value) => value,
+                    crate::MetaPrimitiveExecution::Residual(residual) => {
+                        return Err(OrdinaryInvocationFailure::Residual {
+                            residual,
+                            trace: trace.clone(),
+                        });
+                    }
+                    crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
+                        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                            diagnostic,
+                            trace,
+                        });
+                    }
+                };
             match &value {
                 MetaExecutionMaterial::ForwardedResultMaterial(value) => {
                     // Core identity-forwarding primitives (builtin
@@ -2544,9 +2548,8 @@ pub(crate) fn invoke_target_values(
             //
             // S8 — `SelectedOverloadCandidate` here is a plain data
             // carrier for the shared body evaluator, built from the
-            // canonical pipeline's own prepared candidate.  The legacy
-            // restricted selector is not involved.
-            let legacy_selected = SelectedOverloadCandidate {
+            // canonical pipeline's own prepared candidate.
+            let selected_body_input = SelectedOverloadCandidate {
                 symbol: source_shape.symbol.clone(),
                 source_callable: source_shape.source_callable.clone(),
                 bindings: source_shape.bindings.clone(),
@@ -2558,7 +2561,7 @@ pub(crate) fn invoke_target_values(
             let execution = match evaluate_selected_source_meta_body_execution(
                 &SemanticTypeEnv::new(&*semantic_world),
                 resolver_context,
-                &legacy_selected,
+                &selected_body_input,
             ) {
                 Ok(execution) => execution,
                 Err(failure) => {
@@ -2775,7 +2778,7 @@ pub(crate) fn invoke_target_values(
                                     ));
                                 };
                                 // PRIVILEGE BOUNDARY: ordinary navigated `let f::t = expr`
-                                // installs the pure type object as the pure-P member of
+                                // installs the pure type Object as the pure-P member of
                                 // the associated Val2 Symbol `C_f` in the target type
                                 // member's Val2 (`Val2(T_t)[f] = C_f`). It does NOT
                                 // become a member of the HOST cluster and does NOT
@@ -2955,9 +2958,8 @@ pub(crate) fn invoke_target_values(
     }
 
     let mut returned = if let Some(source_shape) = &selected.source_shape {
-        // S8 — carrier construction only; see the meta-construction arm
-        // above.  Not legacy-selector output.
-        let legacy_selected = SelectedOverloadCandidate {
+        // S8 — carrier construction only; see the meta-construction arm above.
+        let selected_body_input = SelectedOverloadCandidate {
             symbol: source_shape.symbol.clone(),
             source_callable: source_shape.source_callable.clone(),
             bindings: source_shape.bindings.clone(),
@@ -2973,7 +2975,7 @@ pub(crate) fn invoke_target_values(
                 match evaluate_selected_source_meta_body(
                     &SemanticTypeEnv::new(&*semantic_world),
                     resolver_context,
-                    &legacy_selected,
+                    &selected_body_input,
                 ) {
                     Ok(value) => OrdinaryReturnedValue::Meta(value),
                     Err(failure) => {
@@ -2985,7 +2987,7 @@ pub(crate) fn invoke_target_values(
             match evaluate_selected_source_meta_body(
                 &SemanticTypeEnv::new(&*semantic_world),
                 resolver_context,
-                &legacy_selected,
+                &selected_body_input,
             ) {
                 Ok(value) => OrdinaryReturnedValue::Meta(value),
                 Err(failure) => {
@@ -3000,7 +3002,7 @@ pub(crate) fn invoke_target_values(
     } else if let Some(core) = &selected.core_invocation {
         let mut core_input = core.clone();
         attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
-        match crate::invoke_meta_callable_with_materialization_state(
+        match crate::meta_invocation::invoke_meta_callable_with_materialization_state(
             core_input,
             materialization_state,
         ) {
@@ -3115,7 +3117,7 @@ pub(crate) fn invoke_target_values(
     })?;
     let Some((result_type, pattern, returned_value)) = identity else {
         let result_type = match &returned {
-            OrdinaryReturnedValue::Meta(value) => compatibility_meta_material_type(value),
+            OrdinaryReturnedValue::Meta(value) => meta_material_type_projection(value),
             OrdinaryReturnedValue::CompleteType(value) => value.complete_type.lookup_key,
             OrdinaryReturnedValue::ForwardedSemanticValue(value) => {
                 semantic_world
@@ -3281,9 +3283,9 @@ fn classify_semantic_value_arguments(
                 // This CoreTypeProjection filter is a defensive
                 // guard, NOT ontology leakage.  Pure-P/type views carry
                 // `value=None` and are already skipped by `view.value?`
-                // above.  This branch only catches legacy CoreTypeProjection carriers
-                // that somehow ended up in a value-bearing view — ordinary
-                // invocation must never treat a type adapter as a runtime
+                // above. This branch catches CoreTypeProjection carriers that
+                // ended up in a value-bearing view — ordinary invocation must
+                // never treat a projection as a runtime
                 // argument.  The filter proves CoreTypeProjection is NOT an
                 // indispensable hidden Val1: ordinary algorithms explicitly
                 // reject it rather than depend on it.
@@ -3806,10 +3808,10 @@ fn ordinary_result_identity(
                 }
             };
             let carrier_value = semantic_world
-                .type_object_value(represented)
+                .core_type_projection_value(represented)
                 .ok_or_else(|| {
                     Diagnostic::hard_error(
-                        "forwarded CompleteType has no compatibility carrier value",
+                        "forwarded CompleteType has no graph projection value",
                         Some(value.provenance.clone()),
                     )
                 })?;
@@ -3928,7 +3930,7 @@ fn ordinary_result_identity(
     }
 }
 
-fn compatibility_meta_material_type(value: &MetaExecutionMaterial) -> TypeValueId {
+fn meta_material_type_projection(value: &MetaExecutionMaterial) -> TypeValueId {
     match value {
         MetaExecutionMaterial::ForwardedResultMaterial(value) => value.type_value,
         MetaExecutionMaterial::UnaryConstructionMaterial(value) => {

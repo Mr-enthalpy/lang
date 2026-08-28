@@ -73,7 +73,7 @@ fn invoke_make(
     meta
 }
 
-/// Test-only source-compatibility facade.  Production APIs deliberately no
+/// Test-only source fixture facade.  Production APIs deliberately no
 /// longer expose state-only `inject_associated_*` entry points: this adapter
 /// builds the explicit evaluation context and then calls the canonical
 /// member-creation/OpenHere boundaries.
@@ -473,7 +473,7 @@ fn ordinary_let_does_not_enter_target_pattern_structure() {
             installed_value.payload,
             SemanticValuePayload::CoreTypeProjection { .. }
         ),
-        "the associated member is a type object (null × P × Val2), got {:?}",
+        "the associated member is a pure type Object (null × P × Val2), got {:?}",
         installed_value.payload
     );
 
@@ -1497,7 +1497,7 @@ fn associated_type_is_the_pure_p_member_of_its_val2_symbol() {
         .expect("associated-type injection installs");
 
     // `Val2(T_t)["f"]` carries the CoreTypeProjection transport reference so the
-    // pure type object is navigable from the host type member's place.
+    // pure type Object is navigable from the host type member's place.
     let transported = world
         .associated_values_for_pattern(target_pattern, "f")
         .expect("the associated type is reachable through the target place's Val2");
@@ -1825,7 +1825,7 @@ fn stage_pair(stages: &[PolicyStage]) -> PolicyPair {
 /// Three carriers of one TypeValue plus one member type to navigate to.
 ///
 /// `base` declares the Pattern and therefore keeps the Pattern's canonical
-/// type object; `t` and `u` are ordinary rebindings (`let T: type = base;`)
+/// pure type Object; `t` and `u` are ordinary rebindings (`let T: type = base;`)
 /// and own fresh writable places.  `t` is `meta + compile`, `u` is `meta`
 /// only, so the two carriers share one Pattern and one TypeValue while
 /// carrying different binding Policies.  The member type is `compile` only.
@@ -1898,7 +1898,7 @@ fn place_of(
         .expect("a pure P is a real object with its own place")
 }
 
-/// `let f::T = expr` writes `T`'s own pure-type object, never the shared
+/// `let f::T = expr` writes `T`'s own pure-pure type Object, never the shared
 /// PatternValue.
 ///
 /// ```text
@@ -1906,7 +1906,7 @@ fn place_of(
 /// Place(T)  != Place(U)  != Place(base)
 /// ```
 ///
-/// Reads still fall back to the Pattern's canonical type object, which is
+/// Reads still fall back to the Pattern's canonical pure type Object, which is
 /// where construction-time and toolchain-installed type members live, so
 /// inheritance stays visible from every carrier while a per-carrier
 /// injection stays local.
@@ -1916,7 +1916,7 @@ fn carrier_local_val2_injection_stays_in_that_carriers_object() {
 
     let canonical = world
         .pattern_place(pattern)
-        .expect("the Pattern has a canonical type object");
+        .expect("the Pattern has a canonical pure type Object");
     assert_eq!(
         place_of(&world, base),
         canonical,
@@ -1976,7 +1976,7 @@ fn carrier_local_val2_injection_stays_in_that_carriers_object() {
     // object is reachable from every carrier of that Pattern.
     world
         .associate_existing_symbol_in_place(canonical, "inherited", member)
-        .expect("the canonical type object accepts a type member");
+        .expect("the canonical pure type Object accepts a type member");
     for carrier in [base, t, u] {
         assert_eq!(
             world.associated_symbol_for_host(&host(&world, carrier), "inherited"),

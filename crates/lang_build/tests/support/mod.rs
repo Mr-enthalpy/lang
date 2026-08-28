@@ -342,7 +342,7 @@ pub fn type_with_namespace(
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_id,
-        // Synthetic compatibility fixture: Symbol and type lookup identities
+        // Synthetic identity fixture: Symbol and type lookup identities
         // are intentionally independent.
         represented_type: lang_build::TypeValueId(type_id.0 ^ 0x4000_0000_0000_0000),
         owner_struct_pattern_registry: None,

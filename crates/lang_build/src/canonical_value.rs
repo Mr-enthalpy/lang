@@ -273,7 +273,7 @@ pub struct CanonicalOrderedPatternEntry {
 /// erased; only the completed navigation map survives in the PatternValue.
 ///
 /// Ordinary navigated `let f::t = expr` never calls this builder — whether
-/// the RHS is `Val1 × P × Val2` or a pure `null × P × Val2` type object, it
+/// the RHS is `Val1 × P × Val2` or a pure `null × P × Val2` pure type Object, it
 /// installs an associated Val2 member and cannot change the Pattern normal
 /// form. Only `struct` and `inject` hold Pattern-injection privilege.
 #[derive(Clone, Debug, PartialEq, Eq)]

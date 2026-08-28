@@ -26,8 +26,8 @@ use crate::{
 /// Classify type-object arguments within an `ArgProductShape`.
 ///
 /// For each `UnknownExpression` argument whose corresponding atom is a
-/// `NormExpr::Name`, resolves the name through the supplied compatibility
-/// resolver as a type object under the given policy. Successfully resolved
+/// `NormExpr::Name`, resolves the name through the supplied name-resolution
+/// resolver as a pure type Object under the given policy. Successfully resolved
 /// arguments are refined
 /// to `NonValue(CoreTypeProjection)` with independent carrier-Symbol and represented
 /// type-value identities.
@@ -56,20 +56,23 @@ pub fn classify_type_arguments(
             } => text.clone(),
             _ => continue,
         };
-        let Ok(type_symbol) =
-            capability.resolve_type_object_with_policy(&name, context, PolicyEnv::OpenStatic)
-        else {
+        let Ok(type_symbol) = capability.resolve_complete_type_projection_with_policy(
+            &name,
+            context,
+            PolicyEnv::OpenStatic,
+        ) else {
             continue;
         };
         let (carrier_symbol, represented_type) = match &type_symbol.payload {
-            SymbolPayload::CompleteTypeProjection(type_object) => {
-                (type_object.carrier_symbol_id, type_object.represented_type)
-            }
+            SymbolPayload::CompleteTypeProjection(type_projection) => (
+                type_projection.carrier_symbol_id,
+                type_projection.represented_type,
+            ),
             _ => continue,
         };
         *raw_arg = raw_arg
             .clone()
-            .as_type_object_with_identity(carrier_symbol, represented_type);
+            .as_complete_type_projection_with_identity(carrier_symbol, represented_type);
     }
     ArgProductShape {
         raw_args: args,
@@ -88,7 +91,7 @@ pub struct TypeArgumentClassificationReport {
 /// Classify type-object arguments and record unresolved names for diagnostics.
 ///
 /// Same logic as `classify_type_arguments`, but also returns a list of
-/// names that could not be resolved as type objects. Callers can surface
+/// names that could not be resolved as pure type Objects. Callers can surface
 /// these as near-cause diagnostics.
 pub fn classify_type_arguments_with_report(
     shape: &ArgProductShape,
@@ -112,12 +115,17 @@ pub fn classify_type_arguments_with_report(
             } => text.clone(),
             _ => continue,
         };
-        match capability.resolve_type_object_with_policy(&name, context, PolicyEnv::OpenStatic) {
+        match capability.resolve_complete_type_projection_with_policy(
+            &name,
+            context,
+            PolicyEnv::OpenStatic,
+        ) {
             Ok(type_symbol) => {
                 let (carrier_symbol, represented_type) = match &type_symbol.payload {
-                    SymbolPayload::CompleteTypeProjection(type_object) => {
-                        (type_object.carrier_symbol_id, type_object.represented_type)
-                    }
+                    SymbolPayload::CompleteTypeProjection(type_projection) => (
+                        type_projection.carrier_symbol_id,
+                        type_projection.represented_type,
+                    ),
                     _ => {
                         unresolved.push(name);
                         continue;
@@ -125,7 +133,7 @@ pub fn classify_type_arguments_with_report(
                 };
                 *raw_arg = raw_arg
                     .clone()
-                    .as_type_object_with_identity(carrier_symbol, represented_type);
+                    .as_complete_type_projection_with_identity(carrier_symbol, represented_type);
             }
             Err(_) => {
                 unresolved.push(name);
@@ -143,7 +151,7 @@ pub fn classify_type_arguments_with_report(
 
 /// Result of resolving one bare name as a type in some resolution
 /// environment. Identity flows only through `represented_type`; the
-/// carrier Symbol is compatibility place/navigation material and is absent
+/// carrier Symbol is graph place/navigation material and is absent
 /// for semantic-world resolutions.
 ///
 /// `effective_view` is the resolved carrier's own binding-level pure-P member
@@ -187,18 +195,18 @@ pub enum BodyLocalInitializerCheck {
 /// Type-resolution environment boundary.
 ///
 /// The canonical build/invocation spine resolves type names through the
-/// semantic world; compatibility projection paths keep name-index reads
+/// semantic world; graph projection paths keep name-index reads
 /// behind the same interface. Callers never read
 /// `SemanticNameIndex` / `SymbolPayload::CompleteTypeProjection` directly.
 pub trait TypeResolutionEnv {
-    /// Resolve one bare name as a type object under open-static policy.
+    /// Resolve one bare name as a pure type Object under open-static policy.
     fn resolve_type_name(
         &self,
         name: &str,
         context: &ResolverContext,
     ) -> Option<NamedTypeResolution>;
 
-    /// Resolve one complete inner-to-outer navigation as a type object.
+    /// Resolve one complete inner-to-outer navigation as a pure type Object.
     ///
     /// A navigated type argument (`f::T`) must reach the same terminal Symbol
     /// as the same path in any other use context; only the projected facet
@@ -310,13 +318,13 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
                 Some(provenance.clone()),
             )
         })?;
-        // Compatibility field-type carrier for current StructPatternMaterial/field
+        // Field-type graph projection for current StructPatternMaterial/field
         // installation only; it is non-identity material (see
         // `FieldSignatureMaterial::field_type_carrier_symbol`).
         Ok((
             resolution.carrier_symbol.ok_or_else(|| {
                 Diagnostic::hard_error(
-                    "resolved struct field type has no compatibility declaration carrier",
+                    "resolved struct field type has no graph declaration projection",
                     Some(provenance.clone()),
                 )
             })?,
@@ -375,7 +383,7 @@ pub fn classify_type_arguments_env_with_report(
         let name = path.join("::");
         match env.resolve_type_path(&path, context) {
             Some(resolution) => {
-                *raw_arg = raw_arg.clone().as_type_object_named(
+                *raw_arg = raw_arg.clone().as_complete_type_projection_named(
                     name,
                     resolution.represented_type,
                     resolution.carrier_symbol,

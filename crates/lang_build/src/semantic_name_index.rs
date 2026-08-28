@@ -469,7 +469,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// exist for the same name the lookup fails with an ambiguity diagnostic.
     ///
     /// Most semantic passes should use [`resolve_with_expectation`] or one of
-    /// the typed helpers (`resolve_type_object`, `resolve_meta_function`, …)
+    /// the typed helpers (`resolve_complete_type_projection`, `resolve_meta_function`, …)
     /// instead of plain `resolve`, because plain `resolve` rejects role
     /// coexistence that may be semantically valid.
     pub fn resolve(
@@ -663,7 +663,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// Resolve a terminal symbol whose kind is `Type`.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::CoreTypeProjection)`.
-    pub fn resolve_type_object(
+    pub fn resolve_complete_type_projection(
         &self,
         source_order_path: &str,
         context: &ResolverContext,
@@ -675,8 +675,8 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         )
     }
 
-    /// Policy-aware variant of [`resolve_type_object`](Self::resolve_type_object).
-    pub fn resolve_type_object_with_policy(
+    /// Policy-aware variant of [`resolve_complete_type_projection`](Self::resolve_complete_type_projection).
+    pub fn resolve_complete_type_projection_with_policy(
         &self,
         source_order_path: &str,
         context: &ResolverContext,

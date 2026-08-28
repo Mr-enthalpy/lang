@@ -68,7 +68,7 @@ struct ConnectedExistingResult {
     material: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
     /// Exact complete tau carried by an existing type result. This coordinate
     /// comes from the semantic binding's immutable snapshot, never from a
-    /// CoreTypeProjection compatibility payload.
+    /// CoreTypeProjection graph payload.
     complete_type: Option<crate::CompleteTypeValue>,
 }
 
@@ -119,7 +119,7 @@ pub struct CompilationWorld {
     lifecycle: crate::LifecycleMachine,
     source_fragments: Vec<SourceFragment>,
     diagnostics: Vec<Diagnostic>,
-    /// Compatibility-only declaration ids for compiler-internal call
+    /// Graph-projection declaration ids for compiler-internal call
     /// entries. Candidate identity is the semantic call-entry value; these
     /// ids never enter name lookup or selection.
     next_intrinsic_backing: u64,
@@ -278,7 +278,7 @@ impl CompilationWorld {
         Ok(world)
     }
 
-    /// Read-only compatibility projection for diagnostics and historical
+    /// Read-only graph projection for diagnostics and historical
     /// boundary tests. Namespace allocation, installation, and invocation
     /// authority remain inside the connected SemanticWorld.
     pub fn namespace_projection(&self) -> &SemanticNameIndex {
@@ -491,14 +491,15 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
         policy: PolicyPair,
     ) -> Result<(), BuildError> {
-        if let SymbolPayload::CompleteTypeProjection(type_object) = &replacement_object.payload {
+        if let SymbolPayload::CompleteTypeProjection(type_projection) = &replacement_object.payload
+        {
             self.register_installed_type_carrier(
                 namespace,
                 &replacement_object.name,
                 replacement_object.id,
-                type_object.represented_type,
+                type_projection.represented_type,
                 None,
-                type_object.type_associated_namespace,
+                type_projection.type_associated_namespace,
                 policy,
                 replacement_object.provenance.clone(),
             )?;
@@ -678,8 +679,8 @@ impl CompilationWorld {
     /// Resolve a normalized source call through the semantic Symbol/value/type
     /// associated-`()` spine and invoke the unique ordinary candidate.
     ///
-    /// This is the source-facing integration entry.  It does not use
-    /// No legacy direct-Symbol callable adapter participates in this path.
+    /// This is the source-facing integration entry. Name resolution produces
+    /// one Symbol, then call projection observes its exact complete type.
     pub fn invoke_ordinary_call(
         &mut self,
         namespace: NamespaceNodeId,
@@ -1105,7 +1106,7 @@ impl CompilationWorld {
                 declaration_provenance.clone(),
             )?;
             // The semantic declaration is authoritative;
-            // its compatibility rendering is installed afterward within the
+            // its graph rendering is installed afterward within the
             // same staged CompilationWorld transaction.
             self.semantic_world
                 .install_namespace_delta(SemanticNamespaceDelta {
@@ -1199,7 +1200,7 @@ impl CompilationWorld {
                     });
 
                 // The semantic declaration is authoritative;
-                // its compatibility rendering is installed afterward within
+                // its graph rendering is installed afterward within
                 // the same staged CompilationWorld transaction.
                 let entry = if let Some(cluster_symbol) = cluster_symbol {
                     SemanticDeclarationEntry::ClusterContribution {
@@ -1347,7 +1348,7 @@ impl CompilationWorld {
             }
         }
         // Install the authoritative semantic carrier before
-        // its compatibility rendering, in one staged world transaction.
+        // its graph rendering, in one staged world transaction.
         let semantic_entry = if let Some((symbol_id, represented_type, associated_namespace)) =
             declared_type_carrier
         {
@@ -1582,7 +1583,7 @@ impl CompilationWorld {
         }
     }
 
-    /// Compatibility installation of replayable meta construction material.
+    /// Installation of replayable meta construction material.
     ///
     /// The selected ordinary result (including a complete tau value) is the
     /// semantic authority.  This helper only expands graph/projection material
@@ -1631,7 +1632,7 @@ impl CompilationWorld {
             .bind_ordinary_new(namespace, binder_name, selected, provenance.clone())
             .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
         // Semantic type and projection Symbols are installed before their
-        // compatibility rendering.
+        // graph rendering.
         if let Some(entry) = selected.first() {
             let pair = declared_pair_from_result_entry(entry, namespace_declaration);
             if let Some(complete_type) = semantic_complete_type {
@@ -1882,7 +1883,7 @@ impl CompilationWorld {
         };
         let target_receiver = self
             .semantic_world
-            .type_object_value(request.target.lookup_key)
+            .core_type_projection_value(request.target.lookup_key)
             .ok_or_else(|| {
                 BuildError::single(Diagnostic::hard_error(
                     "literal construction target tau has no semantic receiver value",
@@ -2194,7 +2195,7 @@ impl CompilationWorld {
                 .bind_ordinary_new(namespace, binder_name, &pure_selected, provenance.clone())
                 .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
             // Install the authoritative semantic carrier
-            // before its compatibility rendering.
+            // before its graph rendering.
             if let Some((symbol_id, represented_type, associated_namespace)) = declared_type_carrier
             {
                 self.register_installed_type_carrier(
@@ -2213,8 +2214,8 @@ impl CompilationWorld {
         }
 
         // A complete type result reaches this boundary as an already-observed
-        // semantic entity.  The CoreTypeProjection carried by a compatibility value
-        // is deliberately not inspected here: compatibility projection is a
+        // semantic entity.  The CoreTypeProjection carried by a projected value
+        // is deliberately not inspected here: graph projection is a
         // one-way `tau -> CoreTypeProjection` rendering and can never recover or
         // decide type identity.
         let mut delta = if let Some(complete_type) = semantic_complete_type {
@@ -2248,7 +2249,7 @@ impl CompilationWorld {
             .bind_ordinary_new(namespace, binder_name, selected, provenance.clone())
             .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
         // Install the authoritative semantic carrier before
-        // its compatibility rendering.
+        // its graph rendering.
         if let Some((symbol_id, represented_type, associated_namespace)) = declared_type_carrier {
             self.register_installed_type_carrier(
                 namespace,
@@ -2313,7 +2314,7 @@ impl CompilationWorld {
             .bind_ordinary_new(namespace, binder_name, selected, provenance.clone())
             .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
         // Semantic type and projection Symbols are
-        // installed before their compatibility rendering.
+        // installed before their graph rendering.
         if let Some(entry) = selected.first() {
             let associated_namespace = match &expansion.replacement_object.payload {
                 SymbolPayload::CompleteTypeProjection(adapter) => adapter.type_associated_namespace,
@@ -2877,11 +2878,11 @@ fn declared_type_placeholder_delta(
     represented_type: crate::TypeValueId,
     provenance: Provenance,
 ) -> DeclaredTypeCarrierDelta {
-    // Compatibility projection for a declared type carrier. `let t: type =
+    // Graph projection for a declared type carrier. `let t: type =
     // uint8` is an ordinary fresh Symbol/Place binding, not type generation or
     // aliasing. Canonical Core/whole equality and Writable judgments live in
     // SemanticWorld; this graph object only renders the already-decided type
-    // binding for namespace compatibility.
+    // binding for namespace projection.
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     let type_namespace_id = delta.allocate_node_id();
@@ -2927,7 +2928,7 @@ fn declared_type_placeholder_delta(
     }
 }
 
-/// One declared type-carrier installation: its compatibility projection plus
+/// One declared type-carrier installation: its graph projection plus
 /// the carrier facts (`SymbolId`, represented `TypeValue`, associated
 /// namespace) installed directly into SemanticWorld.
 struct DeclaredTypeCarrierDelta {
@@ -2971,11 +2972,11 @@ fn declared_bound_type_value_delta(
         .values_mut()
         .find(|symbol| symbol.name == name)
         .expect("declared type-value delta contains its carrier");
-    let SymbolPayload::CompleteTypeProjection(type_object) = &mut symbol.payload else {
-        unreachable!("declared type-value carrier is a Type object");
+    let SymbolPayload::CompleteTypeProjection(type_projection) = &mut symbol.payload else {
+        unreachable!("declared type-value carrier is a CompleteType projection");
     };
-    type_object.represented_type = represented_type;
-    type_object.generation_origin = Some("ordinary evaluated TypeValue binding".to_string());
+    type_projection.represented_type = represented_type;
+    type_projection.generation_origin = Some("ordinary evaluated TypeValue binding".to_string());
     carrier.represented_type = represented_type;
     carrier
 }

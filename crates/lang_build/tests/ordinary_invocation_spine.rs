@@ -192,7 +192,7 @@ fn i11_sibling_vals_different_from_pure_p_val2() {
 }
 
 #[test]
-fn i12_type_object_not_in_sibling_vals() {
+fn i12_type_projection_not_in_sibling_vals() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let uint8 = world
         .semantic_world()
@@ -200,21 +200,21 @@ fn i12_type_object_not_in_sibling_vals() {
         .expect("core uint8");
     assert!(uint8.sibling_vals.is_empty());
     assert!(uint8.pure_p_pattern().is_some());
-    // CoreTypeProjection adapter is accessible through type_object_value_for_symbol,
+    // CoreTypeProjection adapter is accessible through core_type_projection_value_for_symbol,
     // never through sibling_vals.
     let type_obj = world
         .semantic_world()
-        .type_object_value_for_symbol(uint8.identity)
-        .expect("type object adapter exists");
+        .core_type_projection_value_for_symbol(uint8.identity)
+        .expect("pure type Object adapter exists");
     let val = world.semantic_world().value(type_obj).unwrap();
     assert!(
         matches!(val.payload, SemanticValuePayload::CoreTypeProjection { .. }),
-        "I12: CoreTypeProjection is compatibility adapter, not semantic Val1"
+        "I12: CoreTypeProjection is graph projection, not semantic Val1"
     );
 }
 
 #[test]
-fn struct_binding_carries_exact_tau_independently_of_typeobject_projection() {
+fn struct_binding_carries_exact_tau_independently_of_core_projection() {
     let world = build_single_fixture_world("struct_single_field", "app");
     let binding = world
         .semantic_world()
@@ -222,7 +222,7 @@ fn struct_binding_carries_exact_tau_independently_of_typeobject_projection() {
         .expect("struct result is bound as T");
     let member = binding
         .pure_p
-        .expect("T carries the returned pure type object");
+        .expect("T carries the returned pure type Object");
     let whole = member
         .complete_type
         .expect("the binding stores the returned exact complete tau snapshot");
@@ -284,7 +284,7 @@ fn i9_slot0_is_selected_callable_function_object() {
         .payload
     {
         SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
-        _ => panic!("uint8 resolves as a Type object"),
+        _ => panic!("uint8 resolves as a CompleteType projection"),
     };
     let source = world
         .install_semantic_value(
@@ -690,16 +690,16 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
 
     let bound_type = world
         .semantic_world()
-        .type_object_value_for_symbol(bound.identity)
-        .expect("T type object value");
+        .core_type_projection_value_for_symbol(bound.identity)
+        .expect("T pure type Object value");
     let bound_value = world
         .semantic_world()
         .value(bound_type)
         .expect("T value facet");
     let core_type = world
         .semantic_world()
-        .type_object_value_for_symbol(core.identity)
-        .expect("uint8 type object value");
+        .core_type_projection_value_for_symbol(core.identity)
+        .expect("uint8 pure type Object value");
     let core_value = world
         .semantic_world()
         .value(core_type)
@@ -710,8 +710,8 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
     );
     let rebound_type = world
         .semantic_world()
-        .type_object_value_for_symbol(rebound.identity)
-        .expect("U type object value");
+        .core_type_projection_value_for_symbol(rebound.identity)
+        .expect("U pure type Object value");
     assert_eq!(
         rebound_type, bound_type,
         "`let U: type = T` reads the value carried by T and binds that same value; the RHS carrier is not identity"
@@ -757,7 +757,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         .expect("core uint8 graph carrier");
     let lang_build::SymbolPayload::CompleteTypeProjection(core_type) = core_graph_symbol.payload
     else {
-        panic!("uint8 is a graph Type object");
+        panic!("uint8 is a graph CompleteType projection");
     };
     assert_ne!(
         bound_type.carrier_symbol_id, core_type.carrier_symbol_id,
@@ -777,13 +777,13 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
     let lang_build::SymbolPayload::CompleteTypeProjection(rebound_type) =
         rebound_graph_symbol.payload
     else {
-        panic!("U is a graph Type object");
+        panic!("U is a graph CompleteType projection");
     };
     assert_ne!(rebound_type.carrier_symbol_id, bound_type.carrier_symbol_id);
     assert_eq!(rebound_type.represented_type, bound_type.represented_type);
     let companion = bound_type
         .type_associated_namespace
-        .expect("legacy graph transport installs a companion place for T");
+        .expect("graph projection installs a companion place for T");
     assert_eq!(
         world
             .semantic_world()
@@ -914,7 +914,7 @@ fn owner_cluster_preserved_across_carrier_rebinding() {
 /// ```
 ///
 /// The place inequality is what makes `let f::T = ...` a write to `T`'s own
-/// pure-type object instead of to the PatternValue that `U` and `uint8`
+/// pure-pure type Object instead of to the PatternValue that `U` and `uint8`
 /// share, so it is the structural difference between `let =` and `let ===`.
 #[test]
 fn ordinary_type_bindings_own_distinct_val2_places() {
@@ -964,11 +964,11 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
         "two ordinary bindings of one Pattern never share one Val2 place"
     );
 
-    // The Pattern's canonical type object belongs to the cluster that
+    // The Pattern's canonical pure type Object belongs to the cluster that
     // declared the Pattern; neither rebinding writes there.
     let canonical = semantic
         .pattern_place(pattern)
-        .expect("the Pattern has a canonical type object");
+        .expect("the Pattern has a canonical pure type Object");
     assert_ne!(bound_place, canonical);
     assert_ne!(rebound_place, canonical);
 }
@@ -1118,8 +1118,8 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
         .expect("core uint8 TypeValue");
     let uint8_type = world
         .semantic_world()
-        .type_object_value_for_symbol(uint8.identity)
-        .expect("uint8 type object value");
+        .core_type_projection_value_for_symbol(uint8.identity)
+        .expect("uint8 pure type Object value");
     assert!(
         result.complete_result[0].value.is_none(),
         "IdentityType returns a type result (value=None)"
@@ -1129,7 +1129,7 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
         world
             .semantic_world()
             .value(uint8_type)
-            .expect("uint8 type object")
+            .expect("uint8 pure type Object")
             .pattern,
         "the core identity implementation returns the uint8 PatternValue"
     );
@@ -1216,8 +1216,8 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
     };
     let uint8_type = world
         .semantic_world()
-        .type_object_value_for_symbol(uint8.identity)
-        .expect("uint8 type object value");
+        .core_type_projection_value_for_symbol(uint8.identity)
+        .expect("uint8 pure type Object value");
     let represented = value.complete_type.lookup_key;
     let SemanticValuePayload::CoreTypeProjection {
         represented_type, ..
@@ -1587,7 +1587,7 @@ fn return_slot_annotation_declares_shape_independent_of_body_form() {
 }
 
 #[test]
-fn alias_expression_spelling_cannot_restore_retired_forwarding_semantics() {
+fn unwired_lexical_alias_creates_no_semantic_entity() {
     // Alias syntax remains normalized input, but neither expression nor
     // declaration spelling may create a semantic forwarding identity.
     let mut world = build_single_fixture_world("s4_return_ontology", "app");

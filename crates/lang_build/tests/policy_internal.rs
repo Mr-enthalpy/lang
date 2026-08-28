@@ -13,7 +13,11 @@ fn core_type_is_visible_in_open_static_phase() {
     let symbol = world
         .namespace_projection()
         .capability()
-        .resolve_type_object_with_policy("uint8", &world.package_context(), PolicyEnv::OpenStatic)
+        .resolve_complete_type_projection_with_policy(
+            "uint8",
+            &world.package_context(),
+            PolicyEnv::OpenStatic,
+        )
         .expect("uint8 should be visible in the open-static phase");
     assert_eq!(symbol.kind, SymbolKind::CompleteTypeProjection);
     assert_eq!(symbol.name, "uint8");

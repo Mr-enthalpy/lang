@@ -157,7 +157,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
         "v08_identity_type_notype",
         "app",
-        "could not be resolved as a type object",
+        "could not be resolved as a pure type Object",
     ),
 ];
 

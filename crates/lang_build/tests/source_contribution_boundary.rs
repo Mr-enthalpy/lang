@@ -24,15 +24,15 @@ fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
     assert!(view.pair.value.stages.contains(PolicyStage::Runtime));
     let symbol_id = symbol.id;
 
-    let SymbolPayload::CompleteTypeProjection(type_object) = symbol.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_projection) = symbol.payload else {
         panic!("expected bound Type payload");
     };
 
     let SymbolPayload::CompleteTypeProjection(core_type) = core_uint8.payload else {
-        panic!("core uint8 is a Type object");
+        panic!("core uint8 is a CompleteType projection");
     };
-    assert_eq!(type_object.carrier_symbol_id, symbol_id);
-    assert_eq!(type_object.represented_type, core_type.represented_type);
+    assert_eq!(type_projection.carrier_symbol_id, symbol_id);
+    assert_eq!(type_projection.represented_type, core_type.represented_type);
     assert_ne!(symbol_id, core_uint8.id);
-    assert!(type_object.type_associated_namespace.is_some());
+    assert!(type_projection.type_associated_namespace.is_some());
 }

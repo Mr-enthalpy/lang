@@ -351,7 +351,7 @@ impl RawArgShape {
     /// with the already-existing `uint8` TypeValue.  Candidate identity and
     /// type equality consume the latter; the former remains graph/place
     /// material only.
-    pub fn as_type_object_with_identity(
+    pub fn as_complete_type_projection_with_identity(
         self,
         carrier_symbol: SymbolId,
         represented_type: TypeValueId,
@@ -372,13 +372,13 @@ impl RawArgShape {
 
     /// Refine into `NonValue(CoreTypeProjection)` from a semantic-world resolution
     /// that carries a pattern name and represented type value, with an
-    /// optional compatibility carrier Symbol.
+    /// optional graph projection Symbol.
     ///
     /// The pattern name and represented `TypeValueId` are
     /// substitution/navigation and Core-lookup material. Canonical identity
     /// is carried separately by the Core and whole-type observation addresses;
     /// the lookup projection is never the complete type identity.
-    pub fn as_type_object_named(
+    pub fn as_complete_type_projection_named(
         self,
         top_pattern_name: String,
         represented_type: TypeValueId,
