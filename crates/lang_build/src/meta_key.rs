@@ -198,7 +198,7 @@ pub(crate) fn atom_kind_discriminant(kind: &CanonicalArgAtomKind) -> u8 {
     match kind {
         CanonicalArgAtomKind::ExpressionBarrier => 0,
         CanonicalArgAtomKind::ResolvedValue => 1,
-        CanonicalArgAtomKind::TypeObject => 2,
+        CanonicalArgAtomKind::CoreTypeProjection => 2,
         CanonicalArgAtomKind::RankObject => 3,
         CanonicalArgAtomKind::NamespaceObject => 4,
         CanonicalArgAtomKind::MetaObject => 5,

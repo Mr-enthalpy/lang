@@ -191,7 +191,7 @@ pub struct RawArgShape {
     /// argument was classified from a named type carrier.
     ///
     /// A represented TypeValue is shared by every carrier binding it, and the
-    /// world-level TypeObject adapter for that TypeValue is created once and
+    /// world-level CoreTypeProjection adapter for that TypeValue is created once and
     /// reused, so neither can answer "what Policy did *this* binding expose?".
     /// The binding view therefore rides along with the argument instead of
     /// being reconstructed downstream.
@@ -344,7 +344,7 @@ impl RawArgShape {
         self.with_value_class(RawArgValueClass::NonValue(kind))
     }
 
-    /// Refine into `NonValue(TypeObject)` while keeping carrier Symbol and
+    /// Refine into `NonValue(CoreTypeProjection)` while keeping carrier Symbol and
     /// represented type value independent.
     ///
     /// Ordinary `let T: type = uint8` passes the fresh carrier `T` together
@@ -356,9 +356,11 @@ impl RawArgShape {
         carrier_symbol: SymbolId,
         represented_type: TypeValueId,
     ) -> Self {
-        self.with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
-            .with_known_type_symbol_id(carrier_symbol)
-            .with_known_first_order_type_value(represented_type)
+        self.with_value_class(RawArgValueClass::NonValue(
+            NonValueArgKind::CoreTypeProjection,
+        ))
+        .with_known_type_symbol_id(carrier_symbol)
+        .with_known_first_order_type_value(represented_type)
     }
 
     fn with_known_type_symbol_id(self, symbol_id: SymbolId) -> Self {
@@ -368,7 +370,7 @@ impl RawArgShape {
         }
     }
 
-    /// Refine into `NonValue(TypeObject)` from a semantic-world resolution
+    /// Refine into `NonValue(CoreTypeProjection)` from a semantic-world resolution
     /// that carries a pattern name and represented type value, with an
     /// optional compatibility carrier Symbol.
     ///
@@ -386,7 +388,9 @@ impl RawArgShape {
         complete_type_observation: Option<CanonicalValueAddr>,
     ) -> Self {
         let refined = self
-            .with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
+            .with_value_class(RawArgValueClass::NonValue(
+                NonValueArgKind::CoreTypeProjection,
+            ))
             .with_known_first_order_type_value(represented_type);
         Self {
             known_type_pattern_name: Some(top_pattern_name),
@@ -433,7 +437,7 @@ pub enum RawArgValueClass {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NonValueArgKind {
-    TypeObject,
+    CoreTypeProjection,
     RankObject,
     NamespaceObject,
     MetaObject,

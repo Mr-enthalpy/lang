@@ -55,7 +55,7 @@ impl ParameterShape {
     pub fn type_parameter_signature(provenance: Provenance) -> Self {
         Self {
             expected_arity: Some(1),
-            expected_arg_kinds: vec![ParameterArgRequirement::TypeObject],
+            expected_arg_kinds: vec![ParameterArgRequirement::CoreTypeProjection],
             provenance,
         }
     }
@@ -63,7 +63,7 @@ impl ParameterShape {
     pub fn type_parameter_sequence(expected_arity: usize, provenance: Provenance) -> Self {
         Self {
             expected_arity: Some(expected_arity),
-            expected_arg_kinds: vec![ParameterArgRequirement::TypeObject; expected_arity],
+            expected_arg_kinds: vec![ParameterArgRequirement::CoreTypeProjection; expected_arity],
             provenance,
         }
     }
@@ -72,7 +72,7 @@ impl ParameterShape {
 /// Per-argument kind requirement for parameter shape validation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParameterArgRequirement {
-    TypeObject,
+    CoreTypeProjection,
     Deferred,
 }
 
@@ -157,8 +157,8 @@ impl CanonicalArgProductShapeMaterial {
                 .map(|raw_arg| match &raw_arg.value_class {
                     RawArgValueClass::UnknownExpression => CanonicalArgAtomKind::ExpressionBarrier,
                     RawArgValueClass::Value => CanonicalArgAtomKind::ResolvedValue,
-                    RawArgValueClass::NonValue(NonValueArgKind::TypeObject) => {
-                        CanonicalArgAtomKind::TypeObject
+                    RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection) => {
+                        CanonicalArgAtomKind::CoreTypeProjection
                     }
                     RawArgValueClass::NonValue(NonValueArgKind::RankObject) => {
                         CanonicalArgAtomKind::RankObject
@@ -200,7 +200,7 @@ pub enum CanonicalArgAtomKind {
     /// Positively classified as a value argument.
     ResolvedValue,
     /// Classified as a type object argument.
-    TypeObject,
+    CoreTypeProjection,
     /// Classified as a rank object argument.
     RankObject,
     /// Classified as a namespace object argument.
@@ -307,16 +307,16 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
             None => break,
         };
         match requirement {
-            ParameterArgRequirement::TypeObject => {
+            ParameterArgRequirement::CoreTypeProjection => {
                 if !matches!(
                     raw_arg.value_class,
-                    RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+                    RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
                 ) {
                     let got = format!("{:?}", raw_arg.value_class);
                     return CandidatePrepResult::Diagnostic(
                         Diagnostic::hard_error(
                             format!(
-                                "candidate preparation argument kind mismatch at position {index}: expected TypeObject argument, got {got}"
+                                "candidate preparation argument kind mismatch at position {index}: expected CoreTypeProjection argument, got {got}"
                             ),
                             Some(raw_arg.provenance.clone()),
                         )

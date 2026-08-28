@@ -3,7 +3,8 @@ use std::{collections::BTreeMap, fmt, path::PathBuf};
 use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
 
 use crate::{
-    extraction_view::TypeExtractionInterface, identity::TypeValueId, pattern_head::PatternHeadId,
+    extraction_view::TypeContentObservation, identity::TypeValueId,
+    struct_pattern_registry::StructPatternMaterialId,
 };
 
 /// Stable identity for a namespace node inside one graph snapshot.
@@ -68,7 +69,9 @@ pub enum SourceCategory {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SymbolKind {
     Namespace,
-    Type,
+    /// Namespace-graph rendering of a carried complete type value. This is a
+    /// projection role, never the ontology or identity of the type itself.
+    CompleteTypeProjection,
     MetaFunction,
     FieldFunction,
     Placeholder,
@@ -241,7 +244,7 @@ pub enum ResolverCode {
     UnsupportedCanonicalSumPatternValue,
     UnsupportedSelectedMetaBody,
     UnsupportedSelectedMetaBodyLocalBinding,
-    PatternHeadConflict,
+    StructPatternMaterialConflict,
     /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)
     /// declares a value slice whose stage is disjoint from its Pattern stage,
     /// but the pure-P return slot (`let r: type`) carries no value dimension.
@@ -250,7 +253,7 @@ pub enum ResolverCode {
     /// `compile:compile`, `seal:seal`) keep Pv == Pp and remain legal for
     /// pure-P return slots.
     RuntimeSliceWithoutValueDimension,
-    UnsupportedPatternExpectation,
+    UnsupportedStructPatternLookupExpectation,
     UnsupportedExternalVisibility,
     UnsupportedOverloadTarget,
     UnsupportedCandidateShape,
@@ -433,7 +436,9 @@ impl SymbolObject {
             SymbolPayload::Namespace { node } | SymbolPayload::VerificationNamespace { node } => {
                 Some(*node)
             }
-            SymbolPayload::Type(type_object) => type_object.type_associated_namespace,
+            SymbolPayload::CompleteTypeProjection(type_object) => {
+                type_object.type_associated_namespace
+            }
             _ => None,
         }
     }
@@ -441,7 +446,7 @@ impl SymbolObject {
     pub fn child_name_role(&self) -> ChildNameRole {
         match self.kind {
             SymbolKind::Namespace => ChildNameRole::NamespaceSubspace,
-            SymbolKind::Type
+            SymbolKind::CompleteTypeProjection
             | SymbolKind::MetaFunction
             | SymbolKind::FieldFunction
             | SymbolKind::Placeholder => ChildNameRole::Object,
@@ -462,7 +467,7 @@ impl SymbolObject {
 pub enum SymbolPayload {
     Namespace { node: NamespaceNodeId },
     VerificationNamespace { node: NamespaceNodeId },
-    Type(TypeObject),
+    CompleteTypeProjection(CoreTypeProjection),
     MetaFunction(MetaFunctionObject),
     FieldFunction(FieldObject),
     Placeholder,
@@ -470,7 +475,7 @@ pub enum SymbolPayload {
 
 /// Placeholder type payload created by the v0.6 struct meta slice.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypeObject {
+pub struct CoreTypeProjection {
     /// Symbol/place carrier for this particular source-visible binding.
     ///
     /// Ordinary `=` binding allocates a fresh carrier even when it binds an
@@ -483,7 +488,7 @@ pub struct TypeObject {
     /// `let T: type = uint8`, the former is the fresh carrier `T` while this
     /// projection is exactly the value read from `uint8`.
     pub represented_type: TypeValueId,
-    pub owner_pattern_head: Option<PatternHeadId>,
+    pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub fields: Vec<TypeField>,
     pub field_names: Vec<String>,
     pub field_type_values: Vec<TypeValueId>,
@@ -491,14 +496,14 @@ pub struct TypeObject {
     /// Semantic field-type equality consumes `field_type_values`.
     pub field_type_symbol_ids: Vec<SymbolId>,
     pub type_associated_namespace: Option<NamespaceNodeId>,
-    pub extraction_interface: Option<TypeExtractionInterface>,
+    pub extraction_interface: Option<TypeContentObservation>,
     pub provenance: Provenance,
     pub generation_origin: Option<String>,
     pub layout_slot: Option<String>,
     pub abi_slot: Option<String>,
 }
 
-/// Field entry recorded in a placeholder `TypeObject`.
+/// Field entry recorded in a placeholder `CoreTypeProjection`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeField {
     pub name: String,
@@ -506,8 +511,8 @@ pub struct TypeField {
     /// Current graph carrier used to reach field-type namespace material.
     /// This is not field-type identity.
     pub type_symbol_id: SymbolId,
-    pub pattern_head: Option<PatternHeadId>,
-    pub visibility: crate::pattern_space::StructuralMemberVisibility,
+    pub struct_pattern_registry: Option<StructPatternMaterialId>,
+    pub visibility: crate::struct_pattern_material::StructuralMemberVisibility,
     pub provenance: Provenance,
 }
 
@@ -527,11 +532,11 @@ pub struct CallablePolicyViews {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldObject {
     pub owner_type_symbol_id: SymbolId,
-    pub owner_pattern_head: Option<PatternHeadId>,
+    pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub field_name: String,
     pub field_type_value: TypeValueId,
     pub field_type_symbol_id: SymbolId,
-    pub field_pattern_head: Option<PatternHeadId>,
+    pub field_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub projection: FieldProjection,
     pub callable_policy: CallablePolicyViews,
     pub provenance: Provenance,

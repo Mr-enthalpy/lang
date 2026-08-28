@@ -1,12 +1,13 @@
 use lang_build::{
-    attach_type_definition_pattern_heads, attach_type_definition_pattern_heads_with_context,
+    attach_type_definition_pattern_materials,
+    attach_type_definition_pattern_materials_with_context,
     bind_meta_invocation_value_result_with_materialization_state,
     compute_type_definition_instance_id, CanonicalArgProductShapeMaterial, FieldSignatureMaterial,
-    GeneratedFieldDefinition, GeneratedTypeDefinitionValue, LocalPatternPlaceId, NamespaceNode,
-    NamespaceNodeId, NamespaceNodeKind, PatternHeadId, PatternHeadOrigin,
-    PatternMaterializationContext, Provenance, ReturnSlotSemantics, ReturnViewShape,
-    SemanticNameIndex, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
-    TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId, TypeMaterializationState,
+    GeneratedFieldDefinition, LocalPatternPlaceId, NamespaceNode, NamespaceNodeId,
+    NamespaceNodeKind, Provenance, ReturnSlotSemantics, ReturnViewShape, SemanticNameIndex,
+    SourceCategory, StructConstructionMaterial, StructMaterializationState,
+    StructPatternMaterialContext, StructPatternMaterialId, StructPatternMaterialOrigin, SymbolId,
+    SymbolObject, SymbolPayload, TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId,
 };
 
 fn provenance(label: &str) -> Provenance {
@@ -15,9 +16,9 @@ fn provenance(label: &str) -> Provenance {
 
 fn generated_struct_value(
     type_definition_id: TypeDefinitionInstanceId,
-) -> GeneratedTypeDefinitionValue {
+) -> StructConstructionMaterial {
     let field_provenance = provenance("field x");
-    GeneratedTypeDefinitionValue {
+    StructConstructionMaterial {
         type_definition_id,
         identity_material: TypeDefinitionIdentityMaterial {
             callee_symbol_id: SymbolId(1),
@@ -52,37 +53,37 @@ fn generated_struct_value(
             type_carrier_symbol: SymbolId(50),
             index: 0,
             visibility: lang_build::StructuralMemberVisibility::Public,
-            pattern_head: None,
+            struct_pattern_registry: None,
             provenance: field_provenance,
         }],
-        pattern_heads: None,
+        pattern_materials: None,
         return_view: ReturnViewShape::Leaf,
         type_pattern_expr: None,
-        sum_pattern_space: None,
+        sum_struct_pattern_material: None,
         canonical_type: None,
         canonical_pattern_override: None,
         provenance: provenance("generated struct"),
     }
 }
 
-fn generated_struct_value_for_binding() -> GeneratedTypeDefinitionValue {
+fn generated_struct_value_for_binding() -> StructConstructionMaterial {
     let mut value = generated_struct_value(TypeDefinitionInstanceId(0));
     value.type_definition_id = compute_type_definition_instance_id(&value.identity_material);
     value
 }
 
-fn owner_head(value: &GeneratedTypeDefinitionValue) -> PatternHeadId {
+fn owner_head(value: &StructConstructionMaterial) -> StructPatternMaterialId {
     value
-        .pattern_heads
+        .pattern_materials
         .as_ref()
         .expect("pattern heads attached")
         .owner_head
 }
 
-fn stripped(mut value: GeneratedTypeDefinitionValue) -> GeneratedTypeDefinitionValue {
-    value.pattern_heads = None;
+fn stripped(mut value: StructConstructionMaterial) -> StructConstructionMaterial {
+    value.pattern_materials = None;
     for field in &mut value.fields {
-        field.pattern_head = None;
+        field.struct_pattern_registry = None;
     }
     value
 }
@@ -121,18 +122,18 @@ fn install_test_namespace(
     (snapshot, namespace_symbol_id, namespace_node_id)
 }
 
-fn type_payload(symbol: &SymbolObject) -> &lang_build::TypeObject {
+fn type_payload(symbol: &SymbolObject) -> &lang_build::CoreTypeProjection {
     match &symbol.payload {
-        SymbolPayload::Type(type_object) => type_object,
+        SymbolPayload::CompleteTypeProjection(type_object) => type_object,
         other => panic!("expected Type payload, got {other:?}"),
     }
 }
 
 #[test]
 fn generated_fallback_attaches_generated_type_definition_origin() {
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let type_definition_id = TypeDefinitionInstanceId(101);
-    let value = attach_type_definition_pattern_heads(
+    let value = attach_type_definition_pattern_materials(
         generated_struct_value(type_definition_id),
         &mut state,
         provenance("attach generated fallback"),
@@ -141,24 +142,31 @@ fn generated_fallback_attaches_generated_type_definition_origin() {
 
     let owner_head = owner_head(&value);
     assert_eq!(
-        state.pattern_heads.get(owner_head).unwrap().origin,
-        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
+        state.pattern_materials.get(owner_head).unwrap().origin,
+        StructPatternMaterialOrigin::StructDefinition { type_definition_id }
     );
-    assert!(state.pattern_heads.lookup_child(owner_head, "x").is_some());
+    assert!(state
+        .pattern_materials
+        .lookup_child(owner_head, "x")
+        .is_some());
     assert_ne!(
-        state.pattern_heads.get(owner_head).unwrap().display_name,
+        state
+            .pattern_materials
+            .get(owner_head)
+            .unwrap()
+            .display_name,
         ""
     );
 }
 
 #[test]
 fn explicit_global_registry_context_attaches_global_owner_origin() {
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let symbol_id = SymbolId(20);
-    let value = attach_type_definition_pattern_heads_with_context(
+    let value = attach_type_definition_pattern_materials_with_context(
         generated_struct_value(TypeDefinitionInstanceId(102)),
         &mut state,
-        PatternMaterializationContext::Global { symbol_id },
+        StructPatternMaterialContext::Global { symbol_id },
         "Name",
         provenance("attach global"),
     )
@@ -166,30 +174,34 @@ fn explicit_global_registry_context_attaches_global_owner_origin() {
 
     let owner_head = owner_head(&value);
     assert_eq!(
-        state.pattern_heads.get(owner_head).unwrap().origin,
-        PatternHeadOrigin::GlobalBinding { symbol_id }
+        state.pattern_materials.get(owner_head).unwrap().origin,
+        StructPatternMaterialOrigin::GlobalBinding { symbol_id }
     );
     assert_eq!(
-        state.pattern_heads.get(owner_head).unwrap().display_name,
+        state
+            .pattern_materials
+            .get(owner_head)
+            .unwrap()
+            .display_name,
         "Name"
     );
     assert_eq!(
-        value.fields[0].pattern_head,
-        state.pattern_heads.lookup_child(owner_head, "x")
+        value.fields[0].struct_pattern_registry,
+        state.pattern_materials.lookup_child(owner_head, "x")
     );
 }
 
 #[test]
 fn explicit_namespace_registry_context_attaches_namespace_owner_origin() {
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let symbol_id = SymbolId(30);
     let namespace_a = SymbolId(300);
     let namespace_b = SymbolId(301);
 
-    let value_a = attach_type_definition_pattern_heads_with_context(
+    let value_a = attach_type_definition_pattern_materials_with_context(
         generated_struct_value(TypeDefinitionInstanceId(103)),
         &mut state,
-        PatternMaterializationContext::Namespace {
+        StructPatternMaterialContext::Namespace {
             namespace_symbol_id: namespace_a,
             symbol_id,
         },
@@ -197,10 +209,10 @@ fn explicit_namespace_registry_context_attaches_namespace_owner_origin() {
         provenance("attach namespace a"),
     )
     .expect("namespace attachment succeeds");
-    let value_b = attach_type_definition_pattern_heads_with_context(
+    let value_b = attach_type_definition_pattern_materials_with_context(
         generated_struct_value(TypeDefinitionInstanceId(103)),
         &mut state,
-        PatternMaterializationContext::Namespace {
+        StructPatternMaterialContext::Namespace {
             namespace_symbol_id: namespace_b,
             symbol_id,
         },
@@ -213,15 +225,15 @@ fn explicit_namespace_registry_context_attaches_namespace_owner_origin() {
     let owner_b = owner_head(&value_b);
     assert_ne!(owner_a, owner_b);
     assert_eq!(
-        state.pattern_heads.get(owner_a).unwrap().origin,
-        PatternHeadOrigin::NamespaceBinding {
+        state.pattern_materials.get(owner_a).unwrap().origin,
+        StructPatternMaterialOrigin::NamespaceBinding {
             namespace_symbol_id: namespace_a,
             symbol_id,
         }
     );
     assert_eq!(
-        state.pattern_heads.get(owner_b).unwrap().origin,
-        PatternHeadOrigin::NamespaceBinding {
+        state.pattern_materials.get(owner_b).unwrap().origin,
+        StructPatternMaterialOrigin::NamespaceBinding {
             namespace_symbol_id: namespace_b,
             symbol_id,
         }
@@ -230,22 +242,22 @@ fn explicit_namespace_registry_context_attaches_namespace_owner_origin() {
 
 #[test]
 fn same_display_spelling_different_contexts_have_distinct_identities() {
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let type_definition_id = TypeDefinitionInstanceId(104);
-    let global = attach_type_definition_pattern_heads_with_context(
+    let global = attach_type_definition_pattern_materials_with_context(
         generated_struct_value(type_definition_id),
         &mut state,
-        PatternMaterializationContext::Global {
+        StructPatternMaterialContext::Global {
             symbol_id: SymbolId(40),
         },
         "Name",
         provenance("attach global"),
     )
     .expect("global attachment succeeds");
-    let namespace = attach_type_definition_pattern_heads_with_context(
+    let namespace = attach_type_definition_pattern_materials_with_context(
         generated_struct_value(type_definition_id),
         &mut state,
-        PatternMaterializationContext::Namespace {
+        StructPatternMaterialContext::Namespace {
             namespace_symbol_id: SymbolId(400),
             symbol_id: SymbolId(40),
         },
@@ -253,7 +265,7 @@ fn same_display_spelling_different_contexts_have_distinct_identities() {
         provenance("attach namespace"),
     )
     .expect("namespace attachment succeeds");
-    let generated = attach_type_definition_pattern_heads(
+    let generated = attach_type_definition_pattern_materials(
         generated_struct_value(type_definition_id),
         &mut state,
         provenance("attach generated"),
@@ -267,12 +279,16 @@ fn same_display_spelling_different_contexts_have_distinct_identities() {
     assert_ne!(global_owner, generated_owner);
     assert_ne!(namespace_owner, generated_owner);
     assert_eq!(
-        state.pattern_heads.get(global_owner).unwrap().display_name,
+        state
+            .pattern_materials
+            .get(global_owner)
+            .unwrap()
+            .display_name,
         "Name"
     );
     assert_eq!(
         state
-            .pattern_heads
+            .pattern_materials
             .get(namespace_owner)
             .unwrap()
             .display_name,
@@ -280,7 +296,7 @@ fn same_display_spelling_different_contexts_have_distinct_identities() {
     );
     assert_eq!(
         state
-            .pattern_heads
+            .pattern_materials
             .get(generated_owner)
             .unwrap()
             .display_name,
@@ -290,33 +306,33 @@ fn same_display_spelling_different_contexts_have_distinct_identities() {
 
 #[test]
 fn stripped_values_reattach_under_explicit_registry_context() {
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let type_definition_id = TypeDefinitionInstanceId(105);
-    let generated = attach_type_definition_pattern_heads(
+    let generated = attach_type_definition_pattern_materials(
         generated_struct_value(type_definition_id),
         &mut state,
         provenance("attach generated"),
     )
     .expect("generated attachment succeeds");
 
-    // Cacheable generated type-definition values strip concrete PatternHeadId
+    // Cacheable generated type-definition values strip concrete StructPatternMaterialId
     // material. The low-level helper may reattach them under an explicitly
     // supplied transitional registry context.
     let replayable = stripped(generated);
-    let global = attach_type_definition_pattern_heads_with_context(
+    let global = attach_type_definition_pattern_materials_with_context(
         replayable.clone(),
         &mut state,
-        PatternMaterializationContext::Global {
+        StructPatternMaterialContext::Global {
             symbol_id: SymbolId(50),
         },
         "Name",
         provenance("reattach global"),
     )
     .expect("global reattachment succeeds");
-    let namespace = attach_type_definition_pattern_heads_with_context(
+    let namespace = attach_type_definition_pattern_materials_with_context(
         replayable,
         &mut state,
-        PatternMaterializationContext::Namespace {
+        StructPatternMaterialContext::Namespace {
             namespace_symbol_id: SymbolId(500),
             symbol_id: SymbolId(50),
         },
@@ -326,18 +342,22 @@ fn stripped_values_reattach_under_explicit_registry_context() {
     .expect("namespace reattachment succeeds");
 
     assert_eq!(
-        state.pattern_heads.get(owner_head(&global)).unwrap().origin,
-        PatternHeadOrigin::GlobalBinding {
+        state
+            .pattern_materials
+            .get(owner_head(&global))
+            .unwrap()
+            .origin,
+        StructPatternMaterialOrigin::GlobalBinding {
             symbol_id: SymbolId(50),
         }
     );
     assert_eq!(
         state
-            .pattern_heads
+            .pattern_materials
             .get(owner_head(&namespace))
             .unwrap()
             .origin,
-        PatternHeadOrigin::NamespaceBinding {
+        StructPatternMaterialOrigin::NamespaceBinding {
             namespace_symbol_id: SymbolId(500),
             symbol_id: SymbolId(50),
         }
@@ -346,12 +366,12 @@ fn stripped_values_reattach_under_explicit_registry_context() {
 
 #[test]
 fn local_context_uses_place_identity_not_rendered_path_identity() {
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let place_id = LocalPatternPlaceId(7);
-    let value = attach_type_definition_pattern_heads_with_context(
+    let value = attach_type_definition_pattern_materials_with_context(
         generated_struct_value(TypeDefinitionInstanceId(106)),
         &mut state,
-        PatternMaterializationContext::Local { place_id },
+        StructPatternMaterialContext::Local { place_id },
         "Name",
         provenance("attach local"),
     )
@@ -359,14 +379,18 @@ fn local_context_uses_place_identity_not_rendered_path_identity() {
 
     let owner_head = owner_head(&value);
     assert_eq!(
-        state.pattern_heads.get(owner_head).unwrap().origin,
-        PatternHeadOrigin::LocalMaterialization {
+        state.pattern_materials.get(owner_head).unwrap().origin,
+        StructPatternMaterialOrigin::LocalMaterialization {
             place_id,
             display_name: "Name".to_string(),
         }
     );
     assert_eq!(
-        state.pattern_heads.get(owner_head).unwrap().display_name,
+        state
+            .pattern_materials
+            .get(owner_head)
+            .unwrap()
+            .display_name,
         "Name"
     );
 }
@@ -374,11 +398,11 @@ fn local_context_uses_place_identity_not_rendered_path_identity() {
 #[test]
 fn binding_generated_type_at_root_uses_generated_fallback() {
     let snapshot = SemanticNameIndex::new();
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let value = generated_struct_value_for_binding();
     let type_definition_id = value.type_definition_id;
     let expansion = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(value),
+        lang_build::MetaExecutionMaterial::StructConstructionMaterial(value),
         &snapshot,
         snapshot.root_node(),
         "Name",
@@ -389,26 +413,26 @@ fn binding_generated_type_at_root_uses_generated_fallback() {
 
     let type_object = type_payload(&expansion.replacement_object);
     let owner_head = type_object
-        .owner_pattern_head
+        .owner_struct_pattern_registry
         .expect("binding attaches owner pattern head");
     assert_eq!(
         type_object.carrier_symbol_id,
         expansion.replacement_object.id
     );
     assert_eq!(
-        state.pattern_heads.get(owner_head).unwrap().origin,
-        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
+        state.pattern_materials.get(owner_head).unwrap().origin,
+        StructPatternMaterialOrigin::StructDefinition { type_definition_id }
     );
     assert_eq!(
-        type_object.fields[0].pattern_head,
-        state.pattern_heads.lookup_child(owner_head, "x")
+        type_object.fields[0].struct_pattern_registry,
+        state.pattern_materials.lookup_child(owner_head, "x")
     );
     assert_eq!(
         type_object
             .extraction_interface
             .as_ref()
             .expect("struct binding exposes extraction interface")
-            .owner_pattern_head,
+            .owner_struct_pattern_registry,
         Some(owner_head)
     );
 }
@@ -416,7 +440,7 @@ fn binding_generated_type_at_root_uses_generated_fallback() {
 #[test]
 fn private_structural_member_remains_in_full_type_but_not_default_extraction() {
     let snapshot = SemanticNameIndex::new();
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let mut value = generated_struct_value(TypeDefinitionInstanceId(0));
     let default_identity = compute_type_definition_instance_id(&value.identity_material);
     value.identity_material.field_signature_material[0].visibility =
@@ -429,7 +453,7 @@ fn private_structural_member_remains_in_full_type_but_not_default_extraction() {
     );
 
     let expansion = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(value),
+        lang_build::MetaExecutionMaterial::StructConstructionMaterial(value),
         &snapshot,
         snapshot.root_node(),
         "PrivateFieldType",
@@ -462,12 +486,12 @@ fn binding_destination_does_not_select_or_reroot_owner_head() {
     let snapshot = SemanticNameIndex::new();
     let (snapshot, _, namespace_a_node_id) = install_test_namespace(snapshot, "ns_a");
     let (snapshot, _, namespace_b_node_id) = install_test_namespace(snapshot, "ns_b");
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let replayable = stripped(generated_struct_value_for_binding());
     let type_definition_id = replayable.type_definition_id;
 
     let expansion_a = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(replayable.clone()),
+        lang_build::MetaExecutionMaterial::StructConstructionMaterial(replayable.clone()),
         &snapshot,
         namespace_a_node_id,
         "Name",
@@ -479,7 +503,7 @@ fn binding_destination_does_not_select_or_reroot_owner_head() {
         .install_delta(expansion_a.namespace_delta.clone())
         .expect("namespace a binding delta installs");
     let expansion_b = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(replayable),
+        lang_build::MetaExecutionMaterial::StructConstructionMaterial(replayable),
         &snapshot,
         namespace_b_node_id,
         "Name",
@@ -491,48 +515,48 @@ fn binding_destination_does_not_select_or_reroot_owner_head() {
     let type_a = type_payload(&expansion_a.replacement_object);
     let type_b = type_payload(&expansion_b.replacement_object);
     let owner_a = type_a
-        .owner_pattern_head
+        .owner_struct_pattern_registry
         .expect("namespace a binding attaches owner pattern head");
     let owner_b = type_b
-        .owner_pattern_head
+        .owner_struct_pattern_registry
         .expect("namespace b binding attaches owner pattern head");
 
     assert_eq!(owner_a, owner_b);
     assert_eq!(
-        state.pattern_heads.get(owner_a).unwrap().origin,
-        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
+        state.pattern_materials.get(owner_a).unwrap().origin,
+        StructPatternMaterialOrigin::StructDefinition { type_definition_id }
     );
     assert_eq!(
-        state.pattern_heads.get(owner_b).unwrap().origin,
-        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
+        state.pattern_materials.get(owner_b).unwrap().origin,
+        StructPatternMaterialOrigin::StructDefinition { type_definition_id }
     );
     assert_eq!(
-        state.pattern_heads.get(owner_a).unwrap().display_name,
+        state.pattern_materials.get(owner_a).unwrap().display_name,
         format!("generated-type-definition-{}", type_definition_id.as_u64())
     );
     assert_eq!(
-        state.pattern_heads.get(owner_b).unwrap().display_name,
+        state.pattern_materials.get(owner_b).unwrap().display_name,
         format!("generated-type-definition-{}", type_definition_id.as_u64())
     );
     assert_eq!(
-        type_a.fields[0].pattern_head,
-        state.pattern_heads.lookup_child(owner_a, "x")
+        type_a.fields[0].struct_pattern_registry,
+        state.pattern_materials.lookup_child(owner_a, "x")
     );
     assert_eq!(
-        type_b.fields[0].pattern_head,
-        state.pattern_heads.lookup_child(owner_b, "x")
+        type_b.fields[0].struct_pattern_registry,
+        state.pattern_materials.lookup_child(owner_b, "x")
     );
 }
 
 #[test]
 fn binding_preserves_pre_attached_provisional_owner_material() {
     let snapshot = SemanticNameIndex::new();
-    let mut state = TypeMaterializationState::default();
+    let mut state = StructMaterializationState::default();
     let provisional_symbol_id = SymbolId(900);
-    let value = attach_type_definition_pattern_heads_with_context(
+    let value = attach_type_definition_pattern_materials_with_context(
         generated_struct_value_for_binding(),
         &mut state,
-        PatternMaterializationContext::Global {
+        StructPatternMaterialContext::Global {
             symbol_id: provisional_symbol_id,
         },
         "provisional-owner",
@@ -542,7 +566,7 @@ fn binding_preserves_pre_attached_provisional_owner_material() {
     let provisional_owner = owner_head(&value);
 
     let expansion = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(value),
+        lang_build::MetaExecutionMaterial::StructConstructionMaterial(value),
         &snapshot,
         snapshot.root_node(),
         "Destination",
@@ -553,18 +577,22 @@ fn binding_preserves_pre_attached_provisional_owner_material() {
 
     let type_object = type_payload(&expansion.replacement_object);
     let bound_owner = type_object
-        .owner_pattern_head
+        .owner_struct_pattern_registry
         .expect("binding preserves owner pattern head");
     assert_eq!(bound_owner, provisional_owner);
     assert_ne!(type_object.carrier_symbol_id, provisional_symbol_id);
     assert_eq!(
-        state.pattern_heads.get(bound_owner).unwrap().origin,
-        PatternHeadOrigin::GlobalBinding {
+        state.pattern_materials.get(bound_owner).unwrap().origin,
+        StructPatternMaterialOrigin::GlobalBinding {
             symbol_id: provisional_symbol_id,
         }
     );
     assert_eq!(
-        state.pattern_heads.get(bound_owner).unwrap().display_name,
+        state
+            .pattern_materials
+            .get(bound_owner)
+            .unwrap()
+            .display_name,
         "provisional-owner"
     );
 }

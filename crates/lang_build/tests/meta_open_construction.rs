@@ -463,7 +463,7 @@ fn ordinary_let_does_not_enter_target_pattern_structure() {
         1,
         "one associated-type injection produces one Val2 entry"
     );
-    // The installed value is a TypeObject (pure-P, null Val1).
+    // The installed value is a CoreTypeProjection (pure-P, null Val1).
     let installed_value = world
         .semantic_world()
         .value(associated[0])
@@ -471,7 +471,7 @@ fn ordinary_let_does_not_enter_target_pattern_structure() {
     assert!(
         matches!(
             installed_value.payload,
-            SemanticValuePayload::TypeObject { .. }
+            SemanticValuePayload::CoreTypeProjection { .. }
         ),
         "the associated member is a type object (null × P × Val2), got {:?}",
         installed_value.payload
@@ -1473,7 +1473,7 @@ fn associated_value_injection_keeps_target_pattern_norm_unchanged() {
 /// member ledger and Pattern norm stay untouched.
 ///
 /// The binding-level member view of `C_f` is the Policy authority. The
-/// globally reused TypeObject adapter in the ObjectPlace is transport
+/// globally reused CoreTypeProjection adapter in the ObjectPlace is transport
 /// material only, so two bindings of the same type keep two independent
 /// views.
 #[test]
@@ -1496,7 +1496,7 @@ fn associated_type_is_the_pure_p_member_of_its_val2_symbol() {
         )
         .expect("associated-type injection installs");
 
-    // `Val2(T_t)["f"]` carries the TypeObject transport reference so the
+    // `Val2(T_t)["f"]` carries the CoreTypeProjection transport reference so the
     // pure type object is navigable from the host type member's place.
     let transported = world
         .associated_values_for_pattern(target_pattern, "f")
@@ -1651,7 +1651,7 @@ fn associated_type_is_the_pure_p_member_of_its_val2_symbol() {
             .associated_values_for_pattern(target_pattern, "g")
             .expect("container"),
         &[adapter][..],
-        "the TypeObject adapter is globally reused transport material"
+        "the CoreTypeProjection adapter is globally reused transport material"
     );
     let g_cell = world
         .symbol(

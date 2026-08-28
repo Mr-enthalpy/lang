@@ -12,11 +12,10 @@ use crate::{
     manifest::{BuildManifest, NamespaceMount},
     meta::bind_meta_invocation_value_result_with_materialization_state,
     model::{
-        Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta, SourceCallableObject,
-        SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
+        CoreTypeProjection, Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceNode,
+        NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
+        SourceCallableObject, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
     },
-    pattern_head::TypeMaterializationState,
     policy_pair::{
         declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
         elaborate_namespace_declaration_policy, elaborate_return_policy_pattern,
@@ -34,6 +33,7 @@ use crate::{
     },
     semantic_world::{SemanticDeclarationEntry, SemanticNamespaceDelta, SemanticWorld},
     source::SourceFragment,
+    struct_pattern_registry::StructMaterializationState,
     verify::evaluate_source_verifications as evaluate_verify_forms,
 };
 
@@ -68,7 +68,7 @@ struct ConnectedExistingResult {
     material: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
     /// Exact complete tau carried by an existing type result. This coordinate
     /// comes from the semantic binding's immutable snapshot, never from a
-    /// TypeObject compatibility payload.
+    /// CoreTypeProjection compatibility payload.
     complete_type: Option<crate::CompleteTypeValue>,
 }
 
@@ -112,7 +112,7 @@ pub struct CompilationWorld {
     package_root_node: NamespaceNodeId,
     core_node: NamespaceNodeId,
     semantic_world: SemanticWorld,
-    type_materialization_state: TypeMaterializationState,
+    type_materialization_state: StructMaterializationState,
     /// One shared continuation/lifecycle state owned by the real evaluator.
     /// SemanticWorld stores object ontology; lifecycle remains an orthogonal
     /// evaluation-state judgment.
@@ -193,7 +193,7 @@ impl CompilationWorld {
             package_root_node,
             core_node,
             semantic_world,
-            type_materialization_state: TypeMaterializationState::default(),
+            type_materialization_state: StructMaterializationState::default(),
             lifecycle: crate::LifecycleMachine::default(),
             source_fragments: Vec::new(),
             diagnostics: Vec::new(),
@@ -445,12 +445,12 @@ impl CompilationWorld {
         &self.diagnostics
     }
 
-    pub fn type_materialization_state(&self) -> &TypeMaterializationState {
+    pub fn type_materialization_state(&self) -> &StructMaterializationState {
         &self.type_materialization_state
     }
 
     /// Every installation point that
-    /// carries a `TypeObject` registers its semantic type binding through the
+    /// carries a `CoreTypeProjection` registers its semantic type binding through the
     /// atomic [`SemanticNamespaceDelta`] path with the declared canonical
     /// `PolicyPair`; the graph is not a registration source, and the
     /// type-associated namespace is created
@@ -484,14 +484,14 @@ impl CompilationWorld {
     }
 
     /// Registers the semantic type binding for a meta-expansion replacement
-    /// object when (and only when) it carries a `TypeObject` payload.
+    /// object when (and only when) it carries a `CoreTypeProjection` payload.
     fn register_expansion_type_carrier(
         &mut self,
         replacement_object: &SymbolObject,
         namespace: NamespaceNodeId,
         policy: PolicyPair,
     ) -> Result<(), BuildError> {
-        if let SymbolPayload::Type(type_object) = &replacement_object.payload {
+        if let SymbolPayload::CompleteTypeProjection(type_object) = &replacement_object.payload {
             self.register_installed_type_carrier(
                 namespace,
                 &replacement_object.name,
@@ -1503,9 +1503,9 @@ impl CompilationWorld {
             .collect::<Vec<_>>();
         if !selected.is_empty() {
             match result.returned {
-                crate::OrdinaryReturnedValue::Meta(crate::MetaInvocationValue::ForwardedValue(
-                    _,
-                ))
+                crate::OrdinaryReturnedValue::Meta(
+                    crate::MetaExecutionMaterial::ForwardedResultMaterial(_),
+                )
                 | crate::OrdinaryReturnedValue::ForwardedSemanticValue(_) => self
                     .install_connected_semantic_binding(
                         namespace,
@@ -1539,7 +1539,7 @@ impl CompilationWorld {
                             binder_name,
                             namespace_declaration,
                             &selected,
-                            crate::MetaInvocationValue::GeneratedTypeDefinitionValue(material),
+                            crate::MetaExecutionMaterial::StructConstructionMaterial(material),
                             Some(complete_type),
                             provenance,
                         )
@@ -1593,12 +1593,12 @@ impl CompilationWorld {
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        value: crate::MetaInvocationValue,
+        value: crate::MetaExecutionMaterial,
         semantic_complete_type: Option<&crate::CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
         let generated_type = match &value {
-            crate::MetaInvocationValue::GeneratedTypeDefinitionValue(value) => value.canonical_type,
+            crate::MetaExecutionMaterial::StructConstructionMaterial(value) => value.canonical_type,
             _ => None,
         };
         let result_view = uniform_result_policy_view(selected);
@@ -1636,7 +1636,9 @@ impl CompilationWorld {
             let pair = declared_pair_from_result_entry(entry, namespace_declaration);
             if let Some(complete_type) = semantic_complete_type {
                 let associated_namespace = match &expansion.replacement_object.payload {
-                    SymbolPayload::Type(adapter) => adapter.type_associated_namespace,
+                    SymbolPayload::CompleteTypeProjection(adapter) => {
+                        adapter.type_associated_namespace
+                    }
                     _ => None,
                 };
                 self.register_installed_type_carrier(
@@ -2211,9 +2213,9 @@ impl CompilationWorld {
         }
 
         // A complete type result reaches this boundary as an already-observed
-        // semantic entity.  The TypeObject carried by a compatibility value
+        // semantic entity.  The CoreTypeProjection carried by a compatibility value
         // is deliberately not inspected here: compatibility projection is a
-        // one-way `tau -> TypeObject` rendering and can never recover or
+        // one-way `tau -> CoreTypeProjection` rendering and can never recover or
         // decide type identity.
         let mut delta = if let Some(complete_type) = semantic_complete_type {
             let represented_type = complete_type.lookup_key;
@@ -2265,7 +2267,7 @@ impl CompilationWorld {
 
     /// Installs a connected meta construction result whose unique type
     /// member is backed by a generated type definition.  The namespace side
-    /// reuses the full generated-type expansion (TypeObject with fields,
+    /// reuses the full generated-type expansion (CoreTypeProjection with fields,
     /// field-function projection layer, ref/share projection namespaces),
     /// while the semantic side binds the construction's member views under
     /// a fresh destination Symbol — the same canonical facts as the plain
@@ -2276,13 +2278,13 @@ impl CompilationWorld {
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        generated: crate::GeneratedTypeDefinitionValue,
+        generated: crate::StructConstructionMaterial,
         semantic_complete_type: &crate::CompleteTypeValue,
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
         let result_view = uniform_result_policy_view(selected);
         let mut expansion = bind_meta_invocation_value_result_with_materialization_state(
-            crate::MetaInvocationValue::GeneratedTypeDefinitionValue(generated),
+            crate::MetaExecutionMaterial::StructConstructionMaterial(generated),
             self.semantic_world.namespace_index(),
             namespace,
             binder_name,
@@ -2314,7 +2316,7 @@ impl CompilationWorld {
         // installed before their compatibility rendering.
         if let Some(entry) = selected.first() {
             let associated_namespace = match &expansion.replacement_object.payload {
-                SymbolPayload::Type(adapter) => adapter.type_associated_namespace,
+                SymbolPayload::CompleteTypeProjection(adapter) => adapter.type_associated_namespace,
                 _ => None,
             };
             self.register_installed_type_carrier(
@@ -2895,16 +2897,16 @@ fn declared_type_placeholder_delta(
     let mut symbol = SymbolObject::placeholder(
         type_symbol_id,
         name,
-        SymbolKind::Type,
+        SymbolKind::CompleteTypeProjection,
         SourceCategory::DeclaredSymbol,
         Some(parent),
         provenance.clone(),
     );
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
-    symbol.payload = SymbolPayload::Type(TypeObject {
+    symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_symbol_id,
         represented_type,
-        owner_pattern_head: None,
+        owner_struct_pattern_registry: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_values: Vec::new(),
@@ -2969,7 +2971,7 @@ fn declared_bound_type_value_delta(
         .values_mut()
         .find(|symbol| symbol.name == name)
         .expect("declared type-value delta contains its carrier");
-    let SymbolPayload::Type(type_object) = &mut symbol.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_object) = &mut symbol.payload else {
         unreachable!("declared type-value carrier is a Type object");
     };
     type_object.represented_type = represented_type;
@@ -3366,7 +3368,7 @@ fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExp
         }
         ResolveExpectation::NamespaceSubspace => object.kind == SymbolKind::Namespace,
         ResolveExpectation::NamespaceCapableParent => object.namespace_node().is_some(),
-        ResolveExpectation::TypeObject => object.kind == SymbolKind::Type,
+        ResolveExpectation::CoreTypeProjection => object.kind == SymbolKind::CompleteTypeProjection,
         ResolveExpectation::MetaFunction => object.kind == SymbolKind::MetaFunction,
         ResolveExpectation::FieldFunction => object.kind == SymbolKind::FieldFunction,
     }

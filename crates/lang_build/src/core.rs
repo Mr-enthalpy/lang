@@ -1,8 +1,8 @@
 use crate::{
     model::{
-        CoreMetaFunction, MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
-        Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
-        SymbolPayload, TypeObject, VerificationPrimitive,
+        CoreMetaFunction, CoreTypeProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
+        NamespaceNodeKind, Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind,
+        SymbolObject, SymbolPayload, VerificationPrimitive,
     },
     policy_pair::{
         PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyView, StageSet,
@@ -36,7 +36,7 @@ pub(crate) struct CoreCallableRegistration {
 ///
 /// The bootstrap spells the canonical PolicyPair next to the graph payload
 /// so the semantic world is populated from the declaration itself; the
-/// compilation world no longer rescans graph `SymbolPayload::Type` payloads
+/// compilation world no longer rescans graph `SymbolPayload::CompleteTypeProjection` payloads
 /// through a secondary graph projection.
 pub(crate) struct CoreTypeRegistration {
     pub(crate) namespace: NamespaceNodeId,
@@ -378,7 +378,7 @@ pub(crate) fn insert_core_type(
     let mut symbol = SymbolObject::placeholder(
         symbol_id,
         name,
-        SymbolKind::Type,
+        SymbolKind::CompleteTypeProjection,
         SourceCategory::CoreBootstrap,
         Some(parent),
         provenance.clone(),
@@ -405,10 +405,10 @@ pub(crate) fn insert_core_type(
         policy: core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true),
         provenance: provenance.clone(),
     });
-    symbol.payload = SymbolPayload::Type(TypeObject {
+    symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: symbol_id,
         represented_type,
-        owner_pattern_head: None,
+        owner_struct_pattern_registry: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_values: Vec::new(),

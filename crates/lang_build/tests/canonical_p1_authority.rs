@@ -483,11 +483,11 @@ fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
     let mut world = CompilationWorld::from_manifest(&manifest).expect("transport bundle builds");
 
     let uint8_type = match &world
-        .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type")
         .payload
     {
-        SymbolPayload::Type(t) => t.represented_type,
+        SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
         _ => panic!("uint8 resolves as a Type object"),
     };
     let source_policy = exposure_window(

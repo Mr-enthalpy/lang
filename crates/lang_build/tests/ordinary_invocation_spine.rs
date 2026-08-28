@@ -185,7 +185,7 @@ fn i11_sibling_vals_different_from_pure_p_val2() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
     assert!(uint8.pure_p_pattern().is_some());
-    // sibling_vals contains no TypeObject adapter
+    // sibling_vals contains no CoreTypeProjection adapter
     assert!(uint8.sibling_vals.is_empty());
     // pure-P.Val2["()"] may contain call entries from let () declarations,
     // which are NOT sibling vals. This structural separation is invariant I11.
@@ -200,7 +200,7 @@ fn i12_type_object_not_in_sibling_vals() {
         .expect("core uint8");
     assert!(uint8.sibling_vals.is_empty());
     assert!(uint8.pure_p_pattern().is_some());
-    // TypeObject adapter is accessible through type_object_value_for_symbol,
+    // CoreTypeProjection adapter is accessible through type_object_value_for_symbol,
     // never through sibling_vals.
     let type_obj = world
         .semantic_world()
@@ -208,8 +208,8 @@ fn i12_type_object_not_in_sibling_vals() {
         .expect("type object adapter exists");
     let val = world.semantic_world().value(type_obj).unwrap();
     assert!(
-        matches!(val.payload, SemanticValuePayload::TypeObject { .. }),
-        "I12: TypeObject is compatibility adapter, not semantic Val1"
+        matches!(val.payload, SemanticValuePayload::CoreTypeProjection { .. }),
+        "I12: CoreTypeProjection is compatibility adapter, not semantic Val1"
     );
 }
 
@@ -279,11 +279,11 @@ fn i9_slot0_is_selected_callable_function_object() {
         &[PolicyMode::Mut],
     );
     let uint8_type = match &world
-        .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type")
         .payload
     {
-        SymbolPayload::Type(t) => t.represented_type,
+        SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
         _ => panic!("uint8 resolves as a Type object"),
     };
     let source = world
@@ -716,19 +716,19 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         rebound_type, bound_type,
         "`let U: type = T` reads the value carried by T and binds that same value; the RHS carrier is not identity"
     );
-    let SemanticValuePayload::TypeObject {
+    let SemanticValuePayload::CoreTypeProjection {
         represented_type,
         represented_pattern,
         ..
     } = core_value.payload
     else {
-        panic!("core uint8 carries a TypeObject adapter");
+        panic!("core uint8 carries a CoreTypeProjection adapter");
     };
     assert_eq!(bound_value.type_value, core_value.type_value);
     assert_eq!(bound_value.pattern, core_value.pattern);
     assert_ne!(
         core_value.type_value, represented_type,
-        "the TypeObject adapter has rank `type`; it is not an instance of represented uint8"
+        "the CoreTypeProjection adapter has rank `type`; it is not an instance of represented uint8"
     );
     assert_eq!(represented_pattern, core_value.pattern);
     assert_eq!(
@@ -746,15 +746,17 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
     );
 
     let bound_graph_symbol = world
-        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("T", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("graph-level forwarding type binding");
-    let lang_build::SymbolPayload::Type(bound_type) = bound_graph_symbol.payload else {
+    let lang_build::SymbolPayload::CompleteTypeProjection(bound_type) = bound_graph_symbol.payload
+    else {
         panic!("T has the graph carrier required for source navigation/place semantics");
     };
     let core_graph_symbol = world
-        .resolve_with_expectation("uint8", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 graph carrier");
-    let lang_build::SymbolPayload::Type(core_type) = core_graph_symbol.payload else {
+    let lang_build::SymbolPayload::CompleteTypeProjection(core_type) = core_graph_symbol.payload
+    else {
         panic!("uint8 is a graph Type object");
     };
     assert_ne!(
@@ -770,9 +772,11 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         "both carrier Symbols expose the same evaluated TypeValue"
     );
     let rebound_graph_symbol = world
-        .resolve_with_expectation("U", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("U", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("U graph carrier");
-    let lang_build::SymbolPayload::Type(rebound_type) = rebound_graph_symbol.payload else {
+    let lang_build::SymbolPayload::CompleteTypeProjection(rebound_type) =
+        rebound_graph_symbol.payload
+    else {
         panic!("U is a graph Type object");
     };
     assert_ne!(rebound_type.carrier_symbol_id, bound_type.carrier_symbol_id);
@@ -819,14 +823,17 @@ fn rebound_type_value_is_canonical_struct_field_material() {
     );
 
     let direct_graph = world
-        .resolve_with_expectation("Direct", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("Direct", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("Direct graph carrier");
     let rebound_graph = world
-        .resolve_with_expectation("Rebound", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation(
+            "Rebound",
+            lang_build::ResolveExpectation::CoreTypeProjection,
+        )
         .expect("Rebound graph carrier");
     let (
-        lang_build::SymbolPayload::Type(direct_type),
-        lang_build::SymbolPayload::Type(rebound_type),
+        lang_build::SymbolPayload::CompleteTypeProjection(direct_type),
+        lang_build::SymbolPayload::CompleteTypeProjection(rebound_type),
     ) = (&direct_graph.payload, &rebound_graph.payload)
     else {
         panic!("both source declarations bind type values");
@@ -979,7 +986,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
     );
     assert!(
         bound.sibling_vals.is_empty(),
-        "TypeObject adapter value does not appear in sibling_vals"
+        "CoreTypeProjection adapter value does not appear in sibling_vals"
     );
     let core = world
         .semantic_world()
@@ -988,7 +995,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
     assert!(core.pure_p_pattern().is_some());
     assert!(
         core.sibling_vals.is_empty(),
-        "core type without transport fixture has no sibling vals (TypeObject is not a sibling val)"
+        "core type without transport fixture has no sibling vals (CoreTypeProjection is not a sibling val)"
     );
 
     // Ordinary callable declarations cluster by name into a Symbol whose
@@ -1212,15 +1219,15 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         .type_object_value_for_symbol(uint8.identity)
         .expect("uint8 type object value");
     let represented = value.complete_type.lookup_key;
-    let SemanticValuePayload::TypeObject {
+    let SemanticValuePayload::CoreTypeProjection {
         represented_type, ..
     } = world
         .semantic_world()
         .value(uint8_type)
-        .expect("uint8 TypeObject value")
+        .expect("uint8 CoreTypeProjection value")
         .payload
     else {
-        panic!("uint8 carries a TypeObject");
+        panic!("uint8 carries a CoreTypeProjection");
     };
     assert_eq!(represented, represented_type);
 }

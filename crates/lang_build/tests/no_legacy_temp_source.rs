@@ -78,8 +78,8 @@ fn complete_type_authority_never_flows_backward_from_compatibility_payloads() {
         .expect("next binding helper exists");
     let installer = &tail[..end];
     assert!(
-        !installer.contains("SemanticValuePayload::TypeObject"),
-        "canonical binding installation must not recover tau or result class from TypeObject"
+        !installer.contains("SemanticValuePayload::CoreTypeProjection"),
+        "canonical binding installation must not recover tau or result class from CoreTypeProjection"
     );
     assert!(
         installer.contains("semantic_complete_type"),

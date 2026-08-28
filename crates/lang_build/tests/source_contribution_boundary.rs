@@ -7,10 +7,10 @@ use lang_build::{PolicyStage, ResolveExpectation, SourceCategory, SymbolPayload}
 fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let symbol = world
-        .resolve_with_expectation("T", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("T", ResolveExpectation::CoreTypeProjection)
         .expect("resolve ordinary type-value binding");
     let core_uint8 = world
-        .resolve_with_expectation("uint8::core", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8::core", ResolveExpectation::CoreTypeProjection)
         .expect("resolve core uint8 type");
 
     assert_eq!(symbol.name, "T");
@@ -24,11 +24,11 @@ fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
     assert!(view.pair.value.stages.contains(PolicyStage::Runtime));
     let symbol_id = symbol.id;
 
-    let SymbolPayload::Type(type_object) = symbol.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_object) = symbol.payload else {
         panic!("expected bound Type payload");
     };
 
-    let SymbolPayload::Type(core_type) = core_uint8.payload else {
+    let SymbolPayload::CompleteTypeProjection(core_type) = core_uint8.payload else {
         panic!("core uint8 is a Type object");
     };
     assert_eq!(type_object.carrier_symbol_id, symbol_id);

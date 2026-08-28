@@ -10,10 +10,10 @@ use std::{
 use lang_build::{
     prepare_meta_callable_candidate_with_declared_planes, ArgProductShape, BuildError,
     BuildManifest, BuildSession, BuildWorkspace, CallableCandidateKind, CandidatePrepResult,
-    CandidatePreparationContext, CompilationWorld, NamespaceNodeId, NormalizedCallSite,
-    PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance, SourceCategory, SourceRoot,
-    StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, ToolchainGlobalSourceRoot,
-    TypeObject,
+    CandidatePreparationContext, CompilationWorld, CoreTypeProjection, NamespaceNodeId,
+    NormalizedCallSite, PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance,
+    SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload,
+    ToolchainGlobalSourceRoot,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
@@ -338,14 +338,14 @@ pub fn type_with_namespace(
     provenance: &str,
 ) -> SymbolObject {
     let mut symbol = placeholder_symbol(type_id, parent, name, provenance);
-    symbol.kind = SymbolKind::Type;
+    symbol.kind = SymbolKind::CompleteTypeProjection;
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
-    symbol.payload = SymbolPayload::Type(TypeObject {
+    symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_id,
         // Synthetic compatibility fixture: Symbol and type lookup identities
         // are intentionally independent.
         represented_type: lang_build::TypeValueId(type_id.0 ^ 0x4000_0000_0000_0000),
-        owner_pattern_head: None,
+        owner_struct_pattern_registry: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_values: Vec::new(),

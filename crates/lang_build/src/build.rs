@@ -505,7 +505,7 @@ fn compute_package_fingerprint(
 fn symbol_kind_fingerprint_tag(kind: SymbolKind) -> &'static str {
     match kind {
         SymbolKind::Namespace => "namespace",
-        SymbolKind::Type => "type",
+        SymbolKind::CompleteTypeProjection => "complete_type_projection",
         SymbolKind::MetaFunction => "meta_function",
         SymbolKind::FieldFunction => "field_function",
         SymbolKind::Placeholder => "placeholder",

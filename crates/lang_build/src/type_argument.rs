@@ -2,7 +2,7 @@
 //!
 //! Classifies `UnknownExpression` arguments in an `ArgProductShape` by
 //! resolving their corresponding product-atom names through a supplied
-//! type-resolution environment. Classification sets `NonValue(TypeObject)` and
+//! type-resolution environment. Classification sets `NonValue(CoreTypeProjection)` and
 //! records both its carrier `SymbolId` and its represented `TypeValueId`.
 //! Type equality and canonical argument material consume the value identity;
 //! the carrier remains place/navigation material.
@@ -29,7 +29,7 @@ use crate::{
 /// `NormExpr::Name`, resolves the name through the supplied compatibility
 /// resolver as a type object under the given policy. Successfully resolved
 /// arguments are refined
-/// to `NonValue(TypeObject)` with independent carrier-Symbol and represented
+/// to `NonValue(CoreTypeProjection)` with independent carrier-Symbol and represented
 /// type-value identities.
 /// Unresolved names remain `UnknownExpression`.
 ///
@@ -62,7 +62,7 @@ pub fn classify_type_arguments(
             continue;
         };
         let (carrier_symbol, represented_type) = match &type_symbol.payload {
-            SymbolPayload::Type(type_object) => {
+            SymbolPayload::CompleteTypeProjection(type_object) => {
                 (type_object.carrier_symbol_id, type_object.represented_type)
             }
             _ => continue,
@@ -115,7 +115,7 @@ pub fn classify_type_arguments_with_report(
         match capability.resolve_type_object_with_policy(&name, context, PolicyEnv::OpenStatic) {
             Ok(type_symbol) => {
                 let (carrier_symbol, represented_type) = match &type_symbol.payload {
-                    SymbolPayload::Type(type_object) => {
+                    SymbolPayload::CompleteTypeProjection(type_object) => {
                         (type_object.carrier_symbol_id, type_object.represented_type)
                     }
                     _ => {
@@ -189,7 +189,7 @@ pub enum BodyLocalInitializerCheck {
 /// The canonical build/invocation spine resolves type names through the
 /// semantic world; compatibility projection paths keep name-index reads
 /// behind the same interface. Callers never read
-/// `SemanticNameIndex` / `SymbolPayload::Type` directly.
+/// `SemanticNameIndex` / `SymbolPayload::CompleteTypeProjection` directly.
 pub trait TypeResolutionEnv {
     /// Resolve one bare name as a type object under open-static policy.
     fn resolve_type_name(
@@ -310,7 +310,7 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
                 Some(provenance.clone()),
             )
         })?;
-        // Compatibility field-type carrier for current PatternHead/field
+        // Compatibility field-type carrier for current StructPatternMaterial/field
         // installation only; it is non-identity material (see
         // `FieldSignatureMaterial::field_type_carrier_symbol`).
         Ok((

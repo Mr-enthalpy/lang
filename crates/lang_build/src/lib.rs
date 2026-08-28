@@ -29,9 +29,7 @@ pub mod ordinary_invocation;
 pub mod overload_pattern;
 pub mod overload_set;
 pub mod owner_namespace;
-pub mod pattern_head;
 pub mod pattern_relation;
-pub mod pattern_space;
 pub mod phase_flow;
 pub mod policy_migration;
 pub mod policy_overload;
@@ -43,6 +41,8 @@ pub mod semantic_owner;
 pub mod semantic_world;
 pub mod source;
 pub mod struct_decoder;
+pub mod struct_pattern_material;
+pub mod struct_pattern_registry;
 pub mod type_argument;
 pub mod verify;
 pub mod world;
@@ -72,10 +72,10 @@ pub use discovery::{
     SourceRootRequest,
 };
 pub use extraction_view::{
-    match_binding_pattern_shape, question_view, BindingPatternShape, BindingShapeMatchResult,
-    EvalResultNormalForm, ExposedExtractionInterface, ExtractionViewResult, NamedExtractionField,
-    NamedProductExtractionShape, ProductNormalFormElem, ProductNormalFormKind,
-    ProductNormalFormShape, TypeExtractionInterface, ValuePointKind, ValuePointShape,
+    observe_content_projection, ContentObservationInterface, NamedObservedField,
+    NamedObservedProduct, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
+    ObservedContentProjection, ObservedProductContent, ObservedProductElement, ObservedProductKind,
+    TypeContentObservation,
 };
 pub use fingerprint::{fnv1a64_hex, Fnv1a64};
 pub use identity::{
@@ -123,15 +123,16 @@ pub use meta_candidate::{
     PreparedCallableCandidate,
 };
 pub use meta_invocation::{
-    attach_type_definition_pattern_heads, attach_type_definition_pattern_heads_with_context,
-    compute_construction_instance_id, compute_type_definition_instance_id, invoke_meta_callable,
-    invoke_meta_callable_cached, invoke_meta_callable_cached_with_materialization_state,
+    attach_type_definition_pattern_materials,
+    attach_type_definition_pattern_materials_with_context, compute_construction_instance_id,
+    compute_type_definition_instance_id, invoke_meta_callable, invoke_meta_callable_cached,
+    invoke_meta_callable_cached_with_materialization_state,
     invoke_meta_callable_with_materialization_state, ConstructionIdentityMaterial,
-    ConstructionInstanceId, FieldSignatureMaterial, ForwardedValue, GeneratedConstructionValue,
-    GeneratedFieldDefinition, GeneratedFieldPatternHead, GeneratedTypeDefinitionValue,
-    MetaInvocationInput, MetaInvocationValue, MetaPrimitiveExecution, ReturnSlotSemantics,
-    ReturnViewShape, TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId,
-    TypeDefinitionPatternHeads,
+    ConstructionInstanceId, FieldSignatureMaterial, ForwardedResultMaterial,
+    GeneratedFieldDefinition, GeneratedFieldStructPatternMaterial, MetaExecutionMaterial,
+    MetaInvocationInput, MetaPrimitiveExecution, ReturnSlotSemantics, ReturnViewShape,
+    StructConstructionMaterial, TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId,
+    TypeDefinitionStructPatternMaterials, UnaryConstructionMaterial,
 };
 pub use meta_key::{
     compute_legacy_meta_instance_digest, compute_meta_invocation_material_key,
@@ -139,11 +140,11 @@ pub use meta_key::{
 };
 pub use model::{
     policy_view_allows_execution, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
-    CoreMetaFunction, Diagnostic, DiagnosticSeverity, ExecutionEnv, FieldObject, FieldProjection,
-    MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance,
-    ResolverCode, SemanticNameDelta, SourceCallableObject, SourceCategory, SymbolId, SymbolKind,
-    SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
-    VerificationPrimitive, VisibilityMetadata,
+    CoreMetaFunction, CoreTypeProjection, Diagnostic, DiagnosticSeverity, ExecutionEnv,
+    FieldObject, FieldProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
+    NamespaceNodeKind, PolicyEnv, Provenance, ResolverCode, SemanticNameDelta,
+    SourceCallableObject, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+    SyntaxObject, SyntaxObjectKind, TypeField, VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{
@@ -177,24 +178,12 @@ pub use owner_namespace::{
     ExtractionMemberVisibility, NamespaceLookupFailure, NamespaceLookupResult, NamespaceNameView,
     NamespaceSymbolEntry, OwnerNamespaceGraph, OwnerNamespaceNode, OwnerNamespaceNodeId,
 };
-pub use pattern_head::{
-    nav_component_name, LocalPatternPlaceId, PatternExpectation, PatternFieldMaterialization,
-    PatternHead, PatternHeadId, PatternHeadKind, PatternHeadMaterialization, PatternHeadOrigin,
-    PatternHeadRegistry, PatternLookupInput, PatternMaterializationContext,
-    TypeMaterializationState,
-};
 pub use pattern_relation::{
     direct_pattern_child_from_canonical_value, solve_parameter_product_relation,
     DirectPatternChildEvidence, ExtractedTypeObservation, NamedPatternObservation,
     PatternApplicabilityProof, PatternLocalBinding, PatternPackBinding, PatternRelationContext,
     PatternRelationDerivation, PatternRelationFailure, PatternSelector, ResolvedPatternBinderId,
     StructuralDefault,
-};
-pub use pattern_space::{
-    bool_branch_space_for_tests, bool_pattern_aliases_for_tests, derive_sum_pattern_space,
-    PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, StructuralMemberVisibility,
-    SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape,
-    TypePatternExprShape,
 };
 pub use phase_flow::{
     classify_static_task, enumerate_value_facet, expose_policy_slice, project_complete_symbol_flow,
@@ -271,6 +260,19 @@ pub use source::SourceFragment;
 pub use struct_decoder::{
     decode_struct_associated_val2_let, decode_struct_type_pattern_expr, DecodedStructPattern,
     StructAssociatedVal2Contribution,
+};
+pub use struct_pattern_material::{
+    bool_struct_aliases_for_tests, bool_struct_sum_material_for_tests, derive_struct_sum_material,
+    SelectedStructAlternative, StructLeafSyntaxMaterial, StructPatternAlias,
+    StructPatternSyntaxMaterial, StructSumAlternative, StructSumPayloadMaterial,
+    StructSumSyntaxMaterial, StructSymbolPathMaterial, StructuralMemberVisibility,
+};
+pub use struct_pattern_registry::{
+    nav_component_name, LocalPatternPlaceId, StructFieldPatternMaterial,
+    StructMaterializationState, StructPatternLookupExpectation, StructPatternLookupInput,
+    StructPatternMaterial, StructPatternMaterialContext, StructPatternMaterialId,
+    StructPatternMaterialKind, StructPatternMaterialOrigin, StructPatternMaterialRegistry,
+    StructPatternMaterialization,
 };
 pub use type_argument::{
     classify_type_arguments, classify_type_arguments_env_with_report,

@@ -13,9 +13,10 @@ use lang_build::{
     compute_legacy_meta_instance_digest, ArgProductShape, CandidateBuildIdentityPlaceholder,
     CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
     CanonicalArgAtomKind, ExecutionEnv, FlattenedProductInvariant, FlattenedProductObject,
-    ForwardedValue, MetaInstanceCache, MetaInvocationInput, MetaInvocationValue, NonValueArgKind,
-    ParameterShape, PolicyEnv, PreparedCallableCandidate, ProductAtom, ProductMaterialRole,
-    Provenance, RawArgShape, RawArgValueClass, ReturnViewShape, SymbolId, TypeValueId,
+    ForwardedResultMaterial, MetaExecutionMaterial, MetaInstanceCache, MetaInvocationInput,
+    NonValueArgKind, ParameterShape, PolicyEnv, PreparedCallableCandidate, ProductAtom,
+    ProductMaterialRole, Provenance, RawArgShape, RawArgValueClass, ReturnViewShape, SymbolId,
+    TypeValueId,
 };
 
 /// Unit positions must remain in the canonical argument material and not be
@@ -152,7 +153,7 @@ fn canonical_arg_material_distinguishes_future_non_value_atom_kinds_object_bound
         vec![
             CanonicalArgAtomKind::ExpressionBarrier,
             CanonicalArgAtomKind::ResolvedValue,
-            CanonicalArgAtomKind::TypeObject,
+            CanonicalArgAtomKind::CoreTypeProjection,
             CanonicalArgAtomKind::RankObject,
             CanonicalArgAtomKind::NamespaceObject,
             CanonicalArgAtomKind::MetaObject,
@@ -180,7 +181,9 @@ fn raw_arg_shape_refinement_preserves_provenance_and_pass_boundary_object_bounda
     assert!(!arg.receives_automatic_pass_action());
     assert_eq!(arg.is_value(), None);
 
-    let refined = arg.clone().as_non_value(NonValueArgKind::TypeObject);
+    let refined = arg
+        .clone()
+        .as_non_value(NonValueArgKind::CoreTypeProjection);
     assert_eq!(
         refined.index, 3,
         "index must be preserved through refinement"
@@ -192,7 +195,7 @@ fn raw_arg_shape_refinement_preserves_provenance_and_pass_boundary_object_bounda
     assert_eq!(refined.is_value(), Some(false));
     assert!(
         !refined.receives_automatic_pass_action(),
-        "NonValue(TypeObject) must not receive automatic pass action"
+        "NonValue(CoreTypeProjection) must not receive automatic pass action"
     );
 
     let value = arg.clone().as_resolved_value();
@@ -225,8 +228,8 @@ fn canonical_material_reflects_refined_raw_arg_kinds_object_boundary() {
     );
     assert_eq!(
         kinds[2],
-        CanonicalArgAtomKind::TypeObject,
-        "refined NonValue(TypeObject) must become TypeObject"
+        CanonicalArgAtomKind::CoreTypeProjection,
+        "refined NonValue(CoreTypeProjection) must become CoreTypeProjection"
     );
     assert_eq!(
         kinds[5],
@@ -257,7 +260,10 @@ fn build_mixed_classification_shape() -> ArgProductShape {
     let raw_args = vec![
         raw_arg(0, RawArgValueClass::UnknownExpression),
         raw_arg(1, RawArgValueClass::Value),
-        raw_arg(2, RawArgValueClass::NonValue(NonValueArgKind::TypeObject)),
+        raw_arg(
+            2,
+            RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection),
+        ),
         raw_arg(3, RawArgValueClass::NonValue(NonValueArgKind::RankObject)),
         raw_arg(
             4,
@@ -322,23 +328,23 @@ fn raw_arg(index: usize, value_class: RawArgValueClass) -> RawArgShape {
 // ---------------------------------------------------------------------------
 
 /// Type-argument check: `UnknownExpression` and `Value` arguments must not
-/// satisfy a `ParameterShape` requiring `TypeObject`.
+/// satisfy a `ParameterShape` requiring `CoreTypeProjection`.
 #[test]
 fn identity_type_rejects_unclassified_or_non_type_argument() {
-    // UnknownExpression should be rejected by TypeObject requirement
+    // UnknownExpression should be rejected by CoreTypeProjection requirement
     let unknown_shape = shape_with_class(RawArgValueClass::UnknownExpression);
     let result = prepare_type_signature_candidate(unknown_shape);
     assert!(
         !matches!(result, CandidatePrepResult::ApplicablePlaceholder(_)),
-        "UnknownExpression must not satisfy TypeObject requirement"
+        "UnknownExpression must not satisfy CoreTypeProjection requirement"
     );
 
-    // Value should be rejected by TypeObject requirement
+    // Value should be rejected by CoreTypeProjection requirement
     let value_shape = shape_with_class(RawArgValueClass::Value);
     let result = prepare_type_signature_candidate(value_shape);
     assert!(
         !matches!(result, CandidatePrepResult::ApplicablePlaceholder(_)),
-        "Value must not satisfy TypeObject requirement"
+        "Value must not satisfy CoreTypeProjection requirement"
     );
 }
 
@@ -354,7 +360,7 @@ fn raw_arg_shape_typed_refinement_helpers_distinguish_type_object_from_value_typ
         .as_type_object_with_identity(SymbolId(5), TypeValueId(50));
     assert!(matches!(
         type_arg.value_class,
-        RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+        RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
     ));
     assert_eq!(type_arg.known_type_symbol_id, Some(SymbolId(5)));
     assert_eq!(type_arg.known_first_order_type_value, Some(TypeValueId(50)));
@@ -498,10 +504,10 @@ fn canonical_fingerprint_distinguishes_unit_positions() {
 #[test]
 fn canonical_fingerprint_distinguishes_expression_barrier_from_type_object() {
     let key_barrier = key_for_single_arg(CanonicalArgAtomKind::ExpressionBarrier);
-    let key_typed = key_for_single_arg(CanonicalArgAtomKind::TypeObject);
+    let key_typed = key_for_single_arg(CanonicalArgAtomKind::CoreTypeProjection);
     assert_ne!(
         key_barrier.value, key_typed.value,
-        "ExpressionBarrier vs TypeObject must produce different fingerprints"
+        "ExpressionBarrier vs CoreTypeProjection must produce different fingerprints"
     );
 }
 
@@ -516,10 +522,14 @@ fn canonical_fingerprint_distinguishes_type_values() {
 /// Canonical fingerprint must not include binding name.
 #[test]
 fn canonical_fingerprint_excludes_declaration_binding_name() {
-    let key_a =
-        key_for_single_arg_with_provenance(CanonicalArgAtomKind::TypeObject, "binding context A");
-    let key_b =
-        key_for_single_arg_with_provenance(CanonicalArgAtomKind::TypeObject, "binding context B");
+    let key_a = key_for_single_arg_with_provenance(
+        CanonicalArgAtomKind::CoreTypeProjection,
+        "binding context A",
+    );
+    let key_b = key_for_single_arg_with_provenance(
+        CanonicalArgAtomKind::CoreTypeProjection,
+        "binding context B",
+    );
     assert_eq!(
         key_a.value, key_b.value,
         "same semantic material must yield same key regardless of context"
@@ -564,7 +574,7 @@ fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
     );
     cache.insert(
         key.clone(),
-        MetaInvocationValue::ForwardedValue(ForwardedValue {
+        MetaExecutionMaterial::ForwardedResultMaterial(ForwardedResultMaterial {
             type_value: lang_build::TypeValueId(5),
             type_observation: lang_build::CanonicalTypeObservation::Detached(
                 lang_build::TypeValueId(5),
@@ -577,7 +587,7 @@ fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
     let cached = cache.lookup(&key).expect("cache entry should be found");
     assert!(matches!(
         cached.result,
-        MetaInvocationValue::ForwardedValue(_)
+        MetaExecutionMaterial::ForwardedResultMaterial(_)
     ));
     // MetaInstanceCache does not expose NamespaceDelta — compile-time guarantee.
     assert_eq!(cache.len(), 1);
@@ -600,7 +610,7 @@ fn meta_instance_cache_uses_structural_instance_identity_not_a_digest_channel() 
     let mut cache = MetaInstanceCache::new();
     cache.insert(
         first.clone(),
-        MetaInvocationValue::ForwardedValue(ForwardedValue {
+        MetaExecutionMaterial::ForwardedResultMaterial(ForwardedResultMaterial {
             type_value: TypeValueId(5),
             type_observation: lang_build::CanonicalTypeObservation::Detached(TypeValueId(5)),
             return_view: ReturnViewShape::Leaf,
@@ -716,7 +726,9 @@ fn value_class_for_atom_kind(kind: CanonicalArgAtomKind) -> RawArgValueClass {
     match kind {
         CanonicalArgAtomKind::ExpressionBarrier => RawArgValueClass::UnknownExpression,
         CanonicalArgAtomKind::ResolvedValue => RawArgValueClass::Value,
-        CanonicalArgAtomKind::TypeObject => RawArgValueClass::NonValue(NonValueArgKind::TypeObject),
+        CanonicalArgAtomKind::CoreTypeProjection => {
+            RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
+        }
         CanonicalArgAtomKind::RankObject => RawArgValueClass::NonValue(NonValueArgKind::RankObject),
         CanonicalArgAtomKind::NamespaceObject => {
             RawArgValueClass::NonValue(NonValueArgKind::NamespaceObject)
@@ -792,7 +804,7 @@ fn key_for_type_value_arg_with_provenance(
 ) -> lang_build::CanonicalFingerprint {
     let raw_args = vec![digest_raw_arg(
         0,
-        RawArgValueClass::NonValue(NonValueArgKind::TypeObject),
+        RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection),
         Some(type_value),
         provenance_desc,
     )];

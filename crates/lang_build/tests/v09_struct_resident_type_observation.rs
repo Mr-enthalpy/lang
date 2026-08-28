@@ -46,7 +46,7 @@ fn generated_struct(
     world: &mut CompilationWorld,
     spelling: &str,
     provenance: &str,
-) -> lang_build::GeneratedTypeDefinitionValue {
+) -> lang_build::StructConstructionMaterial {
     let outcome = invoke_struct(world, spelling, provenance).expect("struct invocation succeeds");
     let lang_build::InvocationResult::SemanticResult {
         value: lang_build::ProjectedInvocationOutcome::SingleMember(result),

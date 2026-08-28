@@ -1,11 +1,11 @@
 mod support;
 
 use lang_build::{
-    decode_struct_associated_val2_let, decode_struct_type_pattern_expr, derive_sum_pattern_space,
+    decode_struct_associated_val2_let, decode_struct_type_pattern_expr, derive_struct_sum_material,
     DecodedStructPattern, DiagnosticSeverity, NamespaceVisibility, PatternComponentPolicy,
     PolicyPair, PolicyStage, Provenance, StageSet, StructAssociatedVal2Contribution,
-    StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape,
-    ValueComponentPolicy, ValuePresence,
+    StructLeafSyntaxMaterial, StructPatternSyntaxMaterial, StructSymbolPathMaterial,
+    StructuralMemberVisibility, ValueComponentPolicy, ValuePresence,
 };
 use lang_syntax::{
     norm::NormNavComponent, NormExpr, NormOperatorFixity, NormOrigin, NormProduct, NormProductElem,
@@ -177,7 +177,7 @@ fn decode_anonymous_product_struct_expr() {
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Product { elements, .. } => {
+        StructPatternSyntaxMaterial::Product { elements, .. } => {
             assert_eq!(elements.len(), 2);
         }
         _ => panic!("expected Product"),
@@ -206,7 +206,7 @@ fn decode_named_product_struct_expr() {
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Named {
+        StructPatternSyntaxMaterial::Named {
             pattern_name,
             child,
             ..
@@ -214,7 +214,7 @@ fn decode_named_product_struct_expr() {
             assert_eq!(pattern_name, "mytype");
             assert!(matches!(
                 child.as_ref(),
-                TypePatternExprShape::Product { .. }
+                StructPatternSyntaxMaterial::Product { .. }
             ));
         }
         _ => panic!("expected Named"),
@@ -232,13 +232,13 @@ fn decode_leaf_distinguishes_type_path_from_field_name() {
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             external_type_expr,
             local_pattern_name,
             ..
         } => {
             match external_type_expr {
-                StructLeafTypeExprShape::Path(p) => {
+                StructLeafSyntaxMaterial::Path(p) => {
                     assert_eq!(p.segments, vec!["uint8"]);
                 }
                 _ => panic!("expected Path"),
@@ -267,13 +267,13 @@ fn decode_leaf_nav_path_as_type_expr() {
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             external_type_expr,
             local_pattern_name,
             ..
         } => {
             match external_type_expr {
-                StructLeafTypeExprShape::Path(p) => {
+                StructLeafSyntaxMaterial::Path(p) => {
                     assert_eq!(p.segments, vec!["Vec", "std"]);
                 }
                 _ => panic!("expected Path"),
@@ -324,14 +324,14 @@ fn decode_leaf_type_expr_as_normalized_ast() {
     // Here `int Vec a` → Leaf(type_expr = int Vec, local_pattern_name = a).
     // The inner call `int Vec` is preserved as the type expression.
     match shape {
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             external_type_expr,
             local_pattern_name,
             ..
         } => {
             assert_eq!(local_pattern_name, "a");
             match external_type_expr {
-                StructLeafTypeExprShape::NormalizedAst { .. } => {}
+                StructLeafSyntaxMaterial::NormalizedAst { .. } => {}
                 _ => panic!("expected NormalizedAst for type expression"),
             }
         }
@@ -357,7 +357,7 @@ fn canonical_bar_sum_decodes_as_sum() {
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Sum { alternatives, .. } => {
+        StructPatternSyntaxMaterial::Sum { alternatives, .. } => {
             assert_eq!(alternatives.len(), 2);
         }
         _ => panic!("expected Sum"),
@@ -388,16 +388,16 @@ fn decode_none_is_nullary_product() {
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Sum { alternatives, .. } => {
+        StructPatternSyntaxMaterial::Sum { alternatives, .. } => {
             assert_eq!(alternatives.len(), 1);
             match &alternatives[0] {
-                TypePatternExprShape::Named {
+                StructPatternSyntaxMaterial::Named {
                     pattern_name,
                     child,
                     ..
                 } => {
                     assert_eq!(pattern_name, "None");
-                    if let TypePatternExprShape::Product { elements, .. } = child.as_ref() {
+                    if let StructPatternSyntaxMaterial::Product { elements, .. } = child.as_ref() {
                         assert!(elements.is_empty());
                     } else {
                         panic!("expected Product child");
@@ -421,21 +421,21 @@ fn decode_duplicate_alternative_name_is_diagnostic() {
 }
 
 #[test]
-fn leaf_alternative_derives_sum_pattern_space() {
+fn leaf_alternative_derives_sum_struct_pattern_material() {
     // A bare Leaf (e.g. `uint8 a`) is a valid sum alternative.
     // `uint8 a | None` → Sum[Leaf(uint8,a), Named(Product[], "None")]
-    let leaf_a = TypePatternExprShape::leaf(
-        StructLeafTypeExprShape::Path(SymbolPathShape::single("uint8")),
+    let leaf_a = StructPatternSyntaxMaterial::leaf(
+        StructLeafSyntaxMaterial::Path(StructSymbolPathMaterial::single("uint8")),
         "a",
         provenance("leaf a"),
     );
-    let none_alt = TypePatternExprShape::named(
-        TypePatternExprShape::product(vec![], provenance("nullary")),
+    let none_alt = StructPatternSyntaxMaterial::named(
+        StructPatternSyntaxMaterial::product(vec![], provenance("nullary")),
         "None",
         provenance("none alt"),
     );
-    let sum = TypePatternExprShape::sum(vec![leaf_a, none_alt], provenance("leaf | None"));
-    let derived = derive_sum_pattern_space(&sum);
+    let sum = StructPatternSyntaxMaterial::sum(vec![leaf_a, none_alt], provenance("leaf | None"));
+    let derived = derive_struct_sum_material(&sum);
     assert!(derived.is_some());
     let space = derived.unwrap();
     let labels: Vec<&str> = space
@@ -473,14 +473,14 @@ fn bare_name_at_top_level_is_a_pure_no_value_pattern() {
         decode_struct_type_pattern_expr(&expr, provenance("test")).expect("pure Pattern decodes");
     assert!(matches!(
         &shape,
-        TypePatternExprShape::Named {
+        StructPatternSyntaxMaterial::Named {
             pattern_name,
             child,
             ..
         } if pattern_name == "None"
             && matches!(
                 child.as_ref(),
-                TypePatternExprShape::Product { elements, .. } if elements.is_empty()
+                StructPatternSyntaxMaterial::Product { elements, .. } if elements.is_empty()
             )
     ));
     assert!(shape.is_pure_pattern_without_value());
@@ -527,7 +527,7 @@ fn named_pattern_name_is_inner_construction_name_not_bound_symbol() {
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Named { pattern_name, .. } => {
+        StructPatternSyntaxMaterial::Named { pattern_name, .. } => {
             assert_eq!(pattern_name, "mytype");
         }
         _ => panic!("expected Named"),
@@ -545,7 +545,7 @@ fn derive_sum_space_from_decoded_sum_of_products() {
         named_call(empty_product(), "else"),
     ]);
     let shape = decode_struct_type_pattern_expr(&expr, provenance("test")).unwrap();
-    let derived = derive_sum_pattern_space(&shape);
+    let derived = derive_struct_sum_material(&shape);
     assert!(derived.is_some());
     let space = derived.unwrap();
     let labels: Vec<&str> = space
@@ -563,7 +563,7 @@ fn structural_member_visibility_is_part_of_the_decoded_struct_model() {
             .unwrap();
     assert!(matches!(
         default,
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             visibility: StructuralMemberVisibility::Default,
             ..
         }
@@ -576,7 +576,7 @@ fn structural_member_visibility_is_part_of_the_decoded_struct_model() {
     .unwrap();
     assert!(matches!(
         private,
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             local_pattern_name,
             visibility: StructuralMemberVisibility::Private,
             ..
@@ -590,7 +590,7 @@ fn structural_member_visibility_is_part_of_the_decoded_struct_model() {
     .unwrap();
     assert!(matches!(
         public,
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             visibility: StructuralMemberVisibility::Public,
             ..
         }

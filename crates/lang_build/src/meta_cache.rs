@@ -1,9 +1,9 @@
 //! Minimal in-memory meta instance cache.
 //!
-//! Stores replayable `MetaInvocationValue` material keyed directly by the
+//! Stores replayable `MetaExecutionMaterial` material keyed directly by the
 //! parent-neutral structural `MetaInvocationMaterialKey`.
 //! Does **not** store `NamespaceDelta`, `MetaExpansionResult`, declared
-//! symbols, binding names, or concrete registry-backed `PatternHeadId`
+//! symbols, binding names, or concrete registry-backed `StructPatternMaterialId`
 //! material.
 //!
 //! ## Separation of concerns
@@ -12,20 +12,20 @@
 //! (`bind_meta_invocation_value_result`) remains outside the cache — duplicate
 //! invocation material can be reused, but each distinct binding still installs
 //! its own declared symbol via `NamespaceDelta`. Values that require
-//! `TypeMaterializationState` are rehydrated in the caller's current state on
+//! `StructMaterializationState` are rehydrated in the caller's current state on
 //! cache hit.
 
 use std::collections::BTreeMap;
 
 use crate::{
-    meta_invocation::MetaInvocationValue, meta_key::MetaInvocationMaterialKey, model::Provenance,
+    meta_invocation::MetaExecutionMaterial, meta_key::MetaInvocationMaterialKey, model::Provenance,
 };
 
 /// Cached meta invocation entry.
 #[derive(Clone, Debug)]
 pub struct CachedMetaInstance {
     pub key: MetaInvocationMaterialKey,
-    pub result: MetaInvocationValue,
+    pub result: MetaExecutionMaterial,
     pub provenance: Provenance,
 }
 
@@ -54,7 +54,7 @@ impl MetaInstanceCache {
     pub fn insert(
         &mut self,
         key: MetaInvocationMaterialKey,
-        result: MetaInvocationValue,
+        result: MetaExecutionMaterial,
         provenance: Provenance,
     ) {
         self.entries.insert(

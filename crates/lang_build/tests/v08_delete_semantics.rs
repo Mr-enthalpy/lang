@@ -141,7 +141,7 @@ fn defaulted_body_is_preserved_for_compiler_generation() {
 
 #[test]
 fn delete_body_does_not_produce_value() {
-    // Delete is not a MetaInvocationValue variant — it produces a
+    // Delete is not a MetaExecutionMaterial variant — it produces a
     // Diagnostic. The evaluate function proves this.
     let body = delete_body("msg");
     let result = evaluate_selected_meta_closure_body(&body, provenance("t"));

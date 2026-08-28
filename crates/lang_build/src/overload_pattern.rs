@@ -100,13 +100,13 @@ pub fn overload_args_from_classified_shape(
         .iter()
         .map(|raw_arg| {
             let type_symbol_id = match raw_arg.value_class {
-                RawArgValueClass::NonValue(NonValueArgKind::TypeObject) => {
+                RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection) => {
                     raw_arg.known_type_symbol_id
                 }
                 _ => None,
             };
             let top_pattern_name = match raw_arg.value_class {
-                RawArgValueClass::NonValue(NonValueArgKind::TypeObject) => raw_arg
+                RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection) => raw_arg
                     .known_type_pattern_name
                     .clone()
                     .or_else(|| type_symbol_id.and_then(&symbol_name)),

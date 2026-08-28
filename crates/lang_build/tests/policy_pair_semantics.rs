@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use lang_build::{
-    bool_branch_space_for_tests, bool_pattern_aliases_for_tests, classify_static_task,
+    bool_struct_aliases_for_tests, bool_struct_sum_material_for_tests, classify_static_task,
     compute_export_retention_closure, compute_wpre,
     derive_function_object_view as derive_function_object_p1, elaborate_binding_result_demand,
     elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
@@ -1462,7 +1462,7 @@ fn phase_stage_preference_is_part_of_the_partial_order() {
 
 #[test]
 fn bool_has_one_pattern_alternative_space_and_true_false_are_aliases() {
-    let space = bool_branch_space_for_tests(Provenance::new("bool"));
+    let space = bool_struct_sum_material_for_tests(Provenance::new("bool"));
     assert_eq!(
         space
             .alternatives
@@ -1471,7 +1471,7 @@ fn bool_has_one_pattern_alternative_space_and_true_false_are_aliases() {
             .collect::<Vec<_>>(),
         vec!["if", "else"]
     );
-    let aliases = bool_pattern_aliases_for_tests();
+    let aliases = bool_struct_aliases_for_tests();
     assert_eq!(aliases.len(), 2);
     assert_eq!(aliases[0].alias, "true");
     assert_eq!(

@@ -94,7 +94,7 @@ fn typed_resolver_helpers_select_expected_kind() {
     let type_symbol = capability
         .resolve_type_object("uint8", &context)
         .expect("uint8 is a type object");
-    assert_eq!(type_symbol.kind, SymbolKind::Type);
+    assert_eq!(type_symbol.kind, SymbolKind::CompleteTypeProjection);
 
     let meta_symbol = capability
         .resolve_meta_function("struct", &context)

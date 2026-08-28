@@ -97,7 +97,7 @@ fn toolchain_global_source_is_parsed_installed_and_invoked_through_ordinary_spin
     assert_eq!(global.sibling_vals.len(), 1);
 
     let result = world
-        .resolve_with_expectation("Result", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("Result", ResolveExpectation::CoreTypeProjection)
         .expect("user initializer invoked explicit global implementation");
     assert_eq!(
         result.generation_origin, None,
@@ -197,9 +197,9 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
         CompilationWorld::from_manifest(&manifest).expect("source-backed transport bundle builds");
 
     let uint8 = world
-        .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type");
-    let SymbolPayload::Type(uint8_type) = uint8.payload else {
+    let SymbolPayload::CompleteTypeProjection(uint8_type) = uint8.payload else {
         panic!("uint8 resolves as a Type object");
     };
     let type_value = uint8_type.represented_type;
@@ -480,9 +480,9 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
     );
     assert_eq!(forwarded_view.pattern, existing_view.pattern);
     let forwarded_graph = world
-        .resolve_with_expectation("forwarded", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("forwarded", ResolveExpectation::CoreTypeProjection)
         .expect("`: type` checks the evaluated ordinary result value");
-    let SymbolPayload::Type(forwarded_type) = forwarded_graph.payload else {
+    let SymbolPayload::CompleteTypeProjection(forwarded_type) = forwarded_graph.payload else {
         panic!("forwarded type value receives a fresh LHS graph carrier");
     };
     assert_eq!(
@@ -493,7 +493,7 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
             .and_then(|id| {
                 let value = world.semantic_world().value(id)?;
                 match value.payload {
-                    SemanticValuePayload::TypeObject {
+                    SemanticValuePayload::CoreTypeProjection {
                         represented_type, ..
                     } => Some(represented_type),
                     _ => None,
@@ -505,7 +505,7 @@ fn source_binding_p1_uses_existing_projection_then_connected_ordinary_migration(
     assert_ne!(
         forwarded_type.carrier_symbol_id,
         world
-            .resolve_with_expectation("existing", ResolveExpectation::TypeObject)
+            .resolve_with_expectation("existing", ResolveExpectation::CoreTypeProjection)
             .expect("existing carrier")
             .id,
         "type annotation does not turn ordinary `=` into Symbol forwarding"

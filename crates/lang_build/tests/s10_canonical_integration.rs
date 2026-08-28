@@ -601,9 +601,9 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
         .expect("source-backed transport bundle mounts without conflict");
 
     let uint8 = world
-        .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type");
-    let SymbolPayload::Type(uint8_type) = uint8.payload else {
+    let SymbolPayload::CompleteTypeProjection(uint8_type) = uint8.payload else {
         panic!("uint8 resolves as a Type object");
     };
     let type_value = uint8_type.represented_type;

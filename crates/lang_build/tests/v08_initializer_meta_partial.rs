@@ -80,7 +80,7 @@ fn explicit_p1_projects_runtime_slice_from_residual_initializer() {
 fn explicit_p1_projects_selected_callable_result_slice() {
     let world = build_single_fixture_world("v08_initializer_return_policy_verification", "app");
     let symbol = world
-        .resolve_with_expectation("X", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("X", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("meta result slice");
     assert_symbol_stage(&symbol, PolicyStage::Meta);
     assert_symbol_not_stage(&symbol, PolicyStage::Runtime);
@@ -91,7 +91,7 @@ fn omitted_policy_infers_selected_callable_return_policy() {
     let world =
         build_single_fixture_world("v08_initializer_omitted_return_policy_inference", "app");
     let symbol = world
-        .resolve_with_expectation("X", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("X", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("X type");
     assert_symbol_stage(&symbol, PolicyStage::Meta);
     assert_symbol_not_stage(&symbol, PolicyStage::Runtime);

@@ -10,8 +10,8 @@
 
 use crate::{
     extraction_view::{
-        ExposedExtractionInterface, NamedProductExtractionShape, ProductNormalFormElem,
-        ProductNormalFormKind, ProductNormalFormShape, ValuePointKind, ValuePointShape,
+        ContentObservationInterface, NamedObservedProduct, ObservedAtomContent, ObservedAtomKind,
+        ObservedProductContent, ObservedProductElement, ObservedProductKind,
     },
     model::{Diagnostic, DiagnosticSeverity, Provenance},
 };
@@ -23,11 +23,11 @@ use crate::{
 /// Lightweight path for external type-symbol lookups inside type-pattern
 /// expressions (e.g. `uint8` in `uint8 a`).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SymbolPathShape {
+pub struct StructSymbolPathMaterial {
     pub segments: Vec<String>,
 }
 
-impl SymbolPathShape {
+impl StructSymbolPathMaterial {
     pub fn new(segments: Vec<String>) -> Self {
         Self { segments }
     }
@@ -49,9 +49,9 @@ impl SymbolPathShape {
 /// type expression such as `int Vec` in `int Vec a`. The simplest case is a
 /// path like `uint8`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum StructLeafTypeExprShape {
+pub enum StructLeafSyntaxMaterial {
     /// A simple type path (e.g. `uint8`, `Vec::std`).
-    Path(SymbolPathShape),
+    Path(StructSymbolPathMaterial),
 
     /// A type expression that the decoder cannot fully reduce to a simple
     /// path at this stage. Carries a debug description and provenance for
@@ -62,19 +62,19 @@ pub enum StructLeafTypeExprShape {
     },
 }
 
-impl From<SymbolPathShape> for StructLeafTypeExprShape {
-    fn from(p: SymbolPathShape) -> Self {
+impl From<StructSymbolPathMaterial> for StructLeafSyntaxMaterial {
+    fn from(p: StructSymbolPathMaterial) -> Self {
         Self::Path(p)
     }
 }
 
-impl StructLeafTypeExprShape {
-    pub fn path(path: SymbolPathShape) -> Self {
+impl StructLeafSyntaxMaterial {
+    pub fn path(path: StructSymbolPathMaterial) -> Self {
         Self::Path(path)
     }
 
     /// Semantic equality: compares structural identity without provenance.
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+    pub fn materially_equal(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Path(a), Self::Path(b)) => a == b,
             (
@@ -115,12 +115,12 @@ pub enum StructuralMemberVisibility {
 /// name appears on the right, child structure on the left:
 /// `(child_structure parent_pattern_name)`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TypePatternExprShape {
+pub enum StructPatternSyntaxMaterial {
     /// Leaf field: `external_type_expr local_pattern_name`.
     /// Example: `uint8 a` (lookup `uint8` externally, bind `a` locally).
     /// Example: `int Vec a` (type expression `int Vec`, local name `a`).
     Leaf {
-        external_type_expr: StructLeafTypeExprShape,
+        external_type_expr: StructLeafSyntaxMaterial,
         local_pattern_name: String,
         visibility: StructuralMemberVisibility,
         provenance: Provenance,
@@ -129,14 +129,14 @@ pub enum TypePatternExprShape {
     /// Product of elements: `(elem1, elem2, ...)`.
     /// Example: `(uint8 a, uint8 b)`.
     Product {
-        elements: Vec<TypePatternExprShape>,
+        elements: Vec<StructPatternSyntaxMaterial>,
         provenance: Provenance,
     },
 
     /// Sum of alternatives: `alt1 | alt2 | ...`.
     /// Example: `(uint8 a, uint8 b) Some | None`.
     Sum {
-        alternatives: Vec<TypePatternExprShape>,
+        alternatives: Vec<StructPatternSyntaxMaterial>,
         provenance: Provenance,
     },
 
@@ -144,14 +144,14 @@ pub enum TypePatternExprShape {
     /// Example: `((uint8 a, uint8 b) mytype)` — `mytype` is the
     /// pattern/constructor name, not the externally bound symbol.
     Named {
-        child: Box<TypePatternExprShape>,
+        child: Box<StructPatternSyntaxMaterial>,
         pattern_name: String,
         visibility: StructuralMemberVisibility,
         provenance: Provenance,
     },
 }
 
-impl TypePatternExprShape {
+impl StructPatternSyntaxMaterial {
     /// Ignore transparent singleton Product wrappers introduced by the
     /// invocation argument parentheses.  This does not erase a Product with
     /// zero or multiple children.
@@ -193,16 +193,16 @@ impl TypePatternExprShape {
     /// zero-arity field products.  An anonymous empty Product alone has no
     /// Pattern identity and does not satisfy this predicate.
     pub fn is_pure_pattern_without_value(&self) -> bool {
-        fn facts(pattern: &TypePatternExprShape) -> (bool, bool) {
+        fn facts(pattern: &StructPatternSyntaxMaterial) -> (bool, bool) {
             match pattern {
-                TypePatternExprShape::Leaf { .. } => (true, false),
-                TypePatternExprShape::Product { elements, .. } => {
+                StructPatternSyntaxMaterial::Leaf { .. } => (true, false),
+                StructPatternSyntaxMaterial::Product { elements, .. } => {
                     elements.iter().fold((false, false), |acc, element| {
                         let next = facts(element);
                         (acc.0 || next.0, acc.1 || next.1)
                     })
                 }
-                TypePatternExprShape::Sum { alternatives, .. } => {
+                StructPatternSyntaxMaterial::Sum { alternatives, .. } => {
                     alternatives
                         .iter()
                         .fold((false, false), |acc, alternative| {
@@ -210,7 +210,7 @@ impl TypePatternExprShape {
                             (acc.0 || next.0, acc.1 || next.1)
                         })
                 }
-                TypePatternExprShape::Named { child, .. } => {
+                StructPatternSyntaxMaterial::Named { child, .. } => {
                     let child = facts(child);
                     (child.0, true)
                 }
@@ -222,7 +222,7 @@ impl TypePatternExprShape {
     }
 
     pub fn leaf(
-        external_type_expr: StructLeafTypeExprShape,
+        external_type_expr: StructLeafSyntaxMaterial,
         local_pattern_name: impl Into<String>,
         provenance: Provenance,
     ) -> Self {
@@ -234,14 +234,14 @@ impl TypePatternExprShape {
         }
     }
 
-    pub fn product(elements: Vec<TypePatternExprShape>, provenance: Provenance) -> Self {
+    pub fn product(elements: Vec<StructPatternSyntaxMaterial>, provenance: Provenance) -> Self {
         Self::Product {
             elements,
             provenance,
         }
     }
 
-    pub fn sum(alternatives: Vec<TypePatternExprShape>, provenance: Provenance) -> Self {
+    pub fn sum(alternatives: Vec<StructPatternSyntaxMaterial>, provenance: Provenance) -> Self {
         Self::Sum {
             alternatives,
             provenance,
@@ -249,7 +249,7 @@ impl TypePatternExprShape {
     }
 
     pub fn named(
-        child: TypePatternExprShape,
+        child: StructPatternSyntaxMaterial,
         pattern_name: impl Into<String>,
         provenance: Provenance,
     ) -> Self {
@@ -277,52 +277,60 @@ impl TypePatternExprShape {
     }
 
     /// Semantic equality: compares structural identity without provenance.
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+    pub fn materially_equal(&self, other: &Self) -> bool {
         match (self, other) {
             (
-                TypePatternExprShape::Leaf {
+                StructPatternSyntaxMaterial::Leaf {
                     external_type_expr: e1,
                     local_pattern_name: n1,
                     visibility: v1,
                     ..
                 },
-                TypePatternExprShape::Leaf {
+                StructPatternSyntaxMaterial::Leaf {
                     external_type_expr: e2,
                     local_pattern_name: n2,
                     visibility: v2,
                     ..
                 },
-            ) => e1.semantic_eq(e2) && n1 == n2 && v1 == v2,
+            ) => e1.materially_equal(e2) && n1 == n2 && v1 == v2,
             (
-                TypePatternExprShape::Product { elements: es1, .. },
-                TypePatternExprShape::Product { elements: es2, .. },
+                StructPatternSyntaxMaterial::Product { elements: es1, .. },
+                StructPatternSyntaxMaterial::Product { elements: es2, .. },
             ) => {
-                es1.len() == es2.len() && es1.iter().zip(es2.iter()).all(|(a, b)| a.semantic_eq(b))
+                es1.len() == es2.len()
+                    && es1
+                        .iter()
+                        .zip(es2.iter())
+                        .all(|(a, b)| a.materially_equal(b))
             }
             (
-                TypePatternExprShape::Sum {
+                StructPatternSyntaxMaterial::Sum {
                     alternatives: as1, ..
                 },
-                TypePatternExprShape::Sum {
+                StructPatternSyntaxMaterial::Sum {
                     alternatives: as2, ..
                 },
             ) => {
-                as1.len() == as2.len() && as1.iter().zip(as2.iter()).all(|(a, b)| a.semantic_eq(b))
+                as1.len() == as2.len()
+                    && as1
+                        .iter()
+                        .zip(as2.iter())
+                        .all(|(a, b)| a.materially_equal(b))
             }
             (
-                TypePatternExprShape::Named {
+                StructPatternSyntaxMaterial::Named {
                     child: c1,
                     pattern_name: n1,
                     visibility: v1,
                     ..
                 },
-                TypePatternExprShape::Named {
+                StructPatternSyntaxMaterial::Named {
                     child: c2,
                     pattern_name: n2,
                     visibility: v2,
                     ..
                 },
-            ) => c1.semantic_eq(c2) && n1 == n2 && v1 == v2,
+            ) => c1.materially_equal(c2) && n1 == n2 && v1 == v2,
             _ => false,
         }
     }
@@ -340,46 +348,46 @@ impl TypePatternExprShape {
 /// - `Some | None`
 /// - `Ok | Err`
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SumPatternSpaceShape {
-    pub alternatives: Vec<SumPatternAlternative>,
+pub struct StructSumSyntaxMaterial {
+    pub alternatives: Vec<StructSumAlternative>,
     pub provenance: Provenance,
 }
 
-impl SumPatternSpaceShape {
+impl StructSumSyntaxMaterial {
     /// Semantic equality: compares alternatives without provenance.
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+    pub fn materially_equal(&self, other: &Self) -> bool {
         self.alternatives.len() == other.alternatives.len()
             && self
                 .alternatives
                 .iter()
                 .zip(other.alternatives.iter())
-                .all(|(a, b)| a.semantic_eq(b))
+                .all(|(a, b)| a.materially_equal(b))
     }
 }
 
-impl SumPatternAlternative {
+impl StructSumAlternative {
     /// Semantic equality: compares label and payload without provenance.
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+    pub fn materially_equal(&self, other: &Self) -> bool {
         self.label == other.label
-            && sum_payload_shape_semantic_eq(&self.payload_shape, &other.payload_shape)
+            && sum_payload_shape_materially_equal(&self.payload_shape, &other.payload_shape)
     }
 }
 
-fn sum_payload_shape_semantic_eq(
-    lhs: &Option<SumPatternPayloadShape>,
-    rhs: &Option<SumPatternPayloadShape>,
+fn sum_payload_shape_materially_equal(
+    lhs: &Option<StructSumPayloadMaterial>,
+    rhs: &Option<StructSumPayloadMaterial>,
 ) -> bool {
     match (lhs, rhs) {
         (Some(l), Some(r)) => match (l, r) {
-            (SumPatternPayloadShape::Unit, SumPatternPayloadShape::Unit) => true,
-            (SumPatternPayloadShape::ValuePoint, SumPatternPayloadShape::ValuePoint) => true,
-            (SumPatternPayloadShape::Product(p1), SumPatternPayloadShape::Product(p2)) => {
-                p1.semantic_eq(p2)
+            (StructSumPayloadMaterial::Unit, StructSumPayloadMaterial::Unit) => true,
+            (StructSumPayloadMaterial::ValuePoint, StructSumPayloadMaterial::ValuePoint) => true,
+            (StructSumPayloadMaterial::Product(p1), StructSumPayloadMaterial::Product(p2)) => {
+                p1.observationally_equal(p2)
             }
             (
-                SumPatternPayloadShape::NamedProduct(n1),
-                SumPatternPayloadShape::NamedProduct(n2),
-            ) => n1.semantic_eq(n2),
+                StructSumPayloadMaterial::NamedProduct(n1),
+                StructSumPayloadMaterial::NamedProduct(n2),
+            ) => n1.observationally_equal(n2),
             _ => false,
         },
         (None, None) => true,
@@ -392,19 +400,19 @@ fn sum_payload_shape_semantic_eq(
 /// Each alternative has a label (branch name), an optional payload shape,
 /// and provenance.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SumPatternAlternative {
+pub struct StructSumAlternative {
     pub label: String,
-    pub payload_shape: Option<SumPatternPayloadShape>,
+    pub payload_shape: Option<StructSumPayloadMaterial>,
     pub provenance: Provenance,
 }
 
 /// The payload shape carried by a sum-pattern alternative.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SumPatternPayloadShape {
+pub enum StructSumPayloadMaterial {
     Unit,
     ValuePoint,
-    Product(ProductNormalFormShape),
-    NamedProduct(NamedProductExtractionShape),
+    Product(ObservedProductContent),
+    NamedProduct(NamedObservedProduct),
 }
 
 // ---------------------------------------------------------------------------
@@ -415,14 +423,14 @@ pub enum SumPatternPayloadShape {
 ///
 /// Used as the selector in guarded-branch evaluation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SelectedSumPattern {
-    pub space: SumPatternSpaceShape,
+pub struct SelectedStructAlternative {
+    pub space: StructSumSyntaxMaterial,
     pub selected_label: String,
-    pub payload: Option<crate::extraction_view::EvalResultNormalForm>,
+    pub payload: Option<crate::extraction_view::ObservedArgumentContent>,
     pub provenance: Provenance,
 }
 
-impl SelectedSumPattern {
+impl SelectedStructAlternative {
     /// Validate that `selected_label` belongs to `self.space`.
     pub fn validate(&self) -> Result<(), Diagnostic> {
         let found = self
@@ -449,7 +457,7 @@ impl SelectedSumPattern {
 // Derive sum pattern space from type-pattern expression
 // ---------------------------------------------------------------------------
 
-/// Derive a `SumPatternSpaceShape` from a `TypePatternExprShape`.
+/// Derive a `StructSumSyntaxMaterial` from a `StructPatternSyntaxMaterial`.
 ///
 /// Rules:
 /// - `Sum([...])` → alternatives from each direct alternative.
@@ -461,57 +469,59 @@ impl SelectedSumPattern {
 ///   with ValuePoint payload.
 /// - `Product(...)` → `None` (not a sum pattern space by itself).
 /// - `Leaf { .. }` → `None` (not a sum pattern space by itself).
-pub fn derive_sum_pattern_space(expr: &TypePatternExprShape) -> Option<SumPatternSpaceShape> {
+pub fn derive_struct_sum_material(
+    expr: &StructPatternSyntaxMaterial,
+) -> Option<StructSumSyntaxMaterial> {
     let expr = expr.transparent_singleton();
     match expr {
-        TypePatternExprShape::Sum {
+        StructPatternSyntaxMaterial::Sum {
             alternatives,
             provenance,
         } => {
-            let alts: Vec<SumPatternAlternative> = alternatives
+            let alts: Vec<StructSumAlternative> = alternatives
                 .iter()
                 .filter_map(alt_to_sum_alternative)
                 .collect();
             if alts.is_empty() {
                 None
             } else {
-                Some(SumPatternSpaceShape {
+                Some(StructSumSyntaxMaterial {
                     alternatives: alts,
                     provenance: provenance.clone(),
                 })
             }
         }
-        TypePatternExprShape::Named {
+        StructPatternSyntaxMaterial::Named {
             child,
             pattern_name,
             provenance,
             ..
         } => match child.as_ref() {
-            TypePatternExprShape::Sum {
+            StructPatternSyntaxMaterial::Sum {
                 alternatives,
                 provenance: child_prov,
             } => {
-                let alts: Vec<SumPatternAlternative> = alternatives
+                let alts: Vec<StructSumAlternative> = alternatives
                     .iter()
                     .filter_map(alt_to_sum_alternative)
                     .collect();
                 if alts.is_empty() {
                     None
                 } else {
-                    Some(SumPatternSpaceShape {
+                    Some(StructSumSyntaxMaterial {
                         alternatives: alts,
                         provenance: child_prov.clone(),
                     })
                 }
             }
-            TypePatternExprShape::Product {
+            StructPatternSyntaxMaterial::Product {
                 elements,
                 provenance: child_prov,
             } => {
                 let payload =
-                    SumPatternPayloadShape::Product(product_payload_from_elements(elements));
-                Some(SumPatternSpaceShape {
-                    alternatives: vec![SumPatternAlternative {
+                    StructSumPayloadMaterial::Product(product_payload_from_elements(elements));
+                Some(StructSumSyntaxMaterial {
+                    alternatives: vec![StructSumAlternative {
                         label: pattern_name.clone(),
                         payload_shape: Some(payload),
                         provenance: provenance.clone(),
@@ -519,16 +529,16 @@ pub fn derive_sum_pattern_space(expr: &TypePatternExprShape) -> Option<SumPatter
                     provenance: child_prov.clone(),
                 })
             }
-            TypePatternExprShape::Leaf {
+            StructPatternSyntaxMaterial::Leaf {
                 local_pattern_name: _,
                 provenance: child_prov,
                 ..
             } => {
                 // Named leaf is one constructor alternative with ValuePoint payload
-                Some(SumPatternSpaceShape {
-                    alternatives: vec![SumPatternAlternative {
+                Some(StructSumSyntaxMaterial {
+                    alternatives: vec![StructSumAlternative {
                         label: pattern_name.clone(),
-                        payload_shape: Some(SumPatternPayloadShape::ValuePoint),
+                        payload_shape: Some(StructSumPayloadMaterial::ValuePoint),
                         provenance: provenance.clone(),
                     }],
                     provenance: child_prov.clone(),
@@ -536,45 +546,47 @@ pub fn derive_sum_pattern_space(expr: &TypePatternExprShape) -> Option<SumPatter
             }
             // Named(Named(...)) or nested Named — recurse
             _non_leaf => {
-                let inner = derive_sum_pattern_space(child)?;
-                Some(SumPatternSpaceShape {
+                let inner = derive_struct_sum_material(child)?;
+                Some(StructSumSyntaxMaterial {
                     alternatives: inner.alternatives,
                     provenance: inner.provenance,
                 })
             }
         },
-        TypePatternExprShape::Product {
+        StructPatternSyntaxMaterial::Product {
             provenance: _,
             elements: _,
         } => None,
-        TypePatternExprShape::Leaf { .. } => None,
+        StructPatternSyntaxMaterial::Leaf { .. } => None,
     }
 }
 
-/// Convert a `TypePatternExprShape` alternative into a `SumPatternAlternative`.
+/// Convert a `StructPatternSyntaxMaterial` alternative into a `StructSumAlternative`.
 /// Returns `None` for variants that cannot be alternatives (bare Product, bare Sum).
-fn alt_to_sum_alternative(alt: &TypePatternExprShape) -> Option<SumPatternAlternative> {
+fn alt_to_sum_alternative(alt: &StructPatternSyntaxMaterial) -> Option<StructSumAlternative> {
     match alt {
-        TypePatternExprShape::Named {
+        StructPatternSyntaxMaterial::Named {
             child,
             pattern_name,
             provenance,
             ..
         } => {
             let payload = match child.as_ref() {
-                TypePatternExprShape::Product { elements, .. } => Some(
-                    SumPatternPayloadShape::Product(product_payload_from_elements(elements)),
+                StructPatternSyntaxMaterial::Product { elements, .. } => Some(
+                    StructSumPayloadMaterial::Product(product_payload_from_elements(elements)),
                 ),
-                TypePatternExprShape::Leaf { .. } => Some(SumPatternPayloadShape::ValuePoint),
+                StructPatternSyntaxMaterial::Leaf { .. } => {
+                    Some(StructSumPayloadMaterial::ValuePoint)
+                }
                 _ => None,
             };
-            Some(SumPatternAlternative {
+            Some(StructSumAlternative {
                 label: pattern_name.clone(),
                 payload_shape: payload,
                 provenance: provenance.clone(),
             })
         }
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             local_pattern_name,
             provenance,
             ..
@@ -582,39 +594,43 @@ fn alt_to_sum_alternative(alt: &TypePatternExprShape) -> Option<SumPatternAltern
             // A bare leaf alternative uses its local field/payload name as
             // the sum alternative label. Example: in `uint8 a | None`,
             // `a` is the leaf pattern name and becomes a valid alternative.
-            Some(SumPatternAlternative {
+            Some(StructSumAlternative {
                 label: local_pattern_name.clone(),
-                payload_shape: Some(SumPatternPayloadShape::ValuePoint),
+                payload_shape: Some(StructSumPayloadMaterial::ValuePoint),
                 provenance: provenance.clone(),
             })
         }
-        TypePatternExprShape::Sum { .. } => None,
-        TypePatternExprShape::Product { .. } => None,
+        StructPatternSyntaxMaterial::Sum { .. } => None,
+        StructPatternSyntaxMaterial::Product { .. } => None,
     }
 }
 
-/// Build a `ProductNormalFormShape` from type-pattern expression elements.
+/// Build a `ObservedProductContent` from type-pattern expression elements.
 /// Each leaf becomes a labelled element; empty product → nullary product.
-fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNormalFormShape {
-    let mut product_elems: Vec<ProductNormalFormElem> = Vec::new();
+fn product_payload_from_elements(
+    elements: &[StructPatternSyntaxMaterial],
+) -> ObservedProductContent {
+    let mut product_elems: Vec<ObservedProductElement> = Vec::new();
     let mut provenance = Provenance::new("product payload");
 
     for elem in elements {
         match elem {
-            TypePatternExprShape::Leaf {
+            StructPatternSyntaxMaterial::Leaf {
                 local_pattern_name,
                 provenance: p,
                 ..
             } => {
                 provenance = p.clone();
-                product_elems.push(ProductNormalFormElem {
+                product_elems.push(ObservedProductElement {
                     label: Some(local_pattern_name.clone()),
                     value_shape: Box::new(
-                        crate::extraction_view::EvalResultNormalForm::ValuePoint(ValuePointShape {
-                            value_kind: ValuePointKind::Leaf,
-                            extraction_interface: ExposedExtractionInterface::Leaf,
-                            provenance: p.clone(),
-                        }),
+                        crate::extraction_view::ObservedArgumentContent::ValuePoint(
+                            ObservedAtomContent {
+                                value_kind: ObservedAtomKind::Leaf,
+                                extraction_interface: ContentObservationInterface::Leaf,
+                                provenance: p.clone(),
+                            },
+                        ),
                     ),
                     type_value: None,
                     type_observation: None,
@@ -625,14 +641,16 @@ fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNo
             _ => {
                 // For non-leaf elements (nested Product/Named/Sum), create an
                 // opaque product element with no label.
-                product_elems.push(ProductNormalFormElem {
+                product_elems.push(ObservedProductElement {
                     label: None,
                     value_shape: Box::new(
-                        crate::extraction_view::EvalResultNormalForm::ValuePoint(ValuePointShape {
-                            value_kind: ValuePointKind::Leaf,
-                            extraction_interface: ExposedExtractionInterface::Leaf,
-                            provenance: Provenance::new("nested pattern element"),
-                        }),
+                        crate::extraction_view::ObservedArgumentContent::ValuePoint(
+                            ObservedAtomContent {
+                                value_kind: ObservedAtomKind::Leaf,
+                                extraction_interface: ContentObservationInterface::Leaf,
+                                provenance: Provenance::new("nested pattern element"),
+                            },
+                        ),
                     ),
                     type_value: None,
                     type_observation: None,
@@ -643,9 +661,9 @@ fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNo
         }
     }
 
-    ProductNormalFormShape {
+    ObservedProductContent {
         elements: product_elems,
-        product_kind: ProductNormalFormKind::Bare,
+        product_kind: ObservedProductKind::Bare,
         provenance,
     }
 }
@@ -666,41 +684,42 @@ fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNo
 ///
 /// This function constructs the inner type-pattern expression and derives
 /// the sum pattern space from it (not hand-built).
-pub fn bool_branch_space_for_tests(provenance: Provenance) -> SumPatternSpaceShape {
-    let if_alt = TypePatternExprShape::named(
-        TypePatternExprShape::product(vec![], Provenance::new("if payload")),
+pub fn bool_struct_sum_material_for_tests(provenance: Provenance) -> StructSumSyntaxMaterial {
+    let if_alt = StructPatternSyntaxMaterial::named(
+        StructPatternSyntaxMaterial::product(vec![], Provenance::new("if payload")),
         "if",
         Provenance::new("if branch"),
     );
-    let else_alt = TypePatternExprShape::named(
-        TypePatternExprShape::product(vec![], Provenance::new("else payload")),
+    let else_alt = StructPatternSyntaxMaterial::named(
+        StructPatternSyntaxMaterial::product(vec![], Provenance::new("else payload")),
         "else",
         Provenance::new("else branch"),
     );
-    let sum = TypePatternExprShape::sum(vec![if_alt, else_alt], Provenance::new("if | else sum"));
-    let bool_expr = TypePatternExprShape::named(sum, "bool", provenance);
+    let sum =
+        StructPatternSyntaxMaterial::sum(vec![if_alt, else_alt], Provenance::new("if | else sum"));
+    let bool_expr = StructPatternSyntaxMaterial::named(sum, "bool", provenance);
 
-    derive_sum_pattern_space(&bool_expr)
+    derive_struct_sum_material(&bool_expr)
         .expect("bool type-pattern expression must derive a valid sum pattern space")
 }
 
 /// Alias facts for the two ordinary value names associated with the bool
 /// Pattern symbols. They do not add alternatives to the bool Pattern space.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PatternSymbolAlias {
+pub struct StructPatternAlias {
     pub alias: String,
-    pub target: SymbolPathShape,
+    pub target: StructSymbolPathMaterial,
 }
 
-pub fn bool_pattern_aliases_for_tests() -> Vec<PatternSymbolAlias> {
+pub fn bool_struct_aliases_for_tests() -> Vec<StructPatternAlias> {
     vec![
-        PatternSymbolAlias {
+        StructPatternAlias {
             alias: "true".to_string(),
-            target: SymbolPathShape::new(vec!["if".to_string(), "bool".to_string()]),
+            target: StructSymbolPathMaterial::new(vec!["if".to_string(), "bool".to_string()]),
         },
-        PatternSymbolAlias {
+        StructPatternAlias {
             alias: "false".to_string(),
-            target: SymbolPathShape::new(vec!["else".to_string(), "bool".to_string()]),
+            target: StructSymbolPathMaterial::new(vec!["else".to_string(), "bool".to_string()]),
         },
     ]
 }

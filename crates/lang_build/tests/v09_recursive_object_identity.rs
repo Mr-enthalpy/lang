@@ -48,8 +48,8 @@ use lang_build::{
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
     Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
     RawArgShape, RawArgValueClass, ResolverContext, ReturnShape, SemanticSymbolIdentity,
-    SemanticTypeEnv, SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeMaterializationState,
-    TypeMemberFacet, TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
+    SemanticTypeEnv, SemanticValueId, SemanticWorld, StageSet, StructMaterializationState,
+    SymbolId, TypeMemberFacet, TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
 
@@ -692,7 +692,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
         .find(|raw| {
             matches!(
                 raw.value_class,
-                RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+                RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
             )
         })
         .expect("`f::T` classifies as a type object argument")
@@ -825,7 +825,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     let initializer = initializer_from_source("let probe = (0) g;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call site");
     let resolver = ResolverContext::new(NamespaceNodeId(0));
-    let mut materialization = TypeMaterializationState::default();
+    let mut materialization = StructMaterializationState::default();
 
     let mut sealed = OrdinaryInvocationContext::open_static(&[]);
     sealed.phase = Phase::SealStatic;

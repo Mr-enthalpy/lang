@@ -38,7 +38,7 @@ fn returned_struct_material(
     outcome: &InvocationOutcome,
 ) -> (
     &lang_build::ReturnedCompleteType,
-    &lang_build::GeneratedTypeDefinitionValue,
+    &lang_build::StructConstructionMaterial,
 ) {
     let lang_build::InvocationResult::SemanticResult {
         value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
@@ -222,7 +222,7 @@ fn struct_treats_bare_sum_names_as_pure_patterns_not_fields() {
         "pure Pattern names do not become value-bearing fields"
     );
     let labels = generated
-        .sum_pattern_space
+        .sum_struct_pattern_material
         .as_ref()
         .expect("the decoded pure sum remains an exposed sum Pattern")
         .alternatives

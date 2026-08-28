@@ -8,7 +8,7 @@ use lang_syntax::{
 
 use crate::{
     meta_body::selected_meta_delete_diagnostic,
-    meta_invocation::{ForwardedValue, MetaInvocationValue, ReturnViewShape},
+    meta_invocation::{ForwardedResultMaterial, MetaExecutionMaterial, ReturnViewShape},
     model::{
         Diagnostic, DiagnosticSeverity, ExecutionEnv, Provenance, ResolverCode,
         SourceCallableObject, SymbolObject,
@@ -393,7 +393,7 @@ pub(crate) fn evaluate_selected_source_meta_body(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedOverloadCandidate,
-) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
     match &selected.source_callable.closure.body {
         NormClosureBody::Delete(delete) => {
             let diagnostic = selected_meta_delete_diagnostic(
@@ -829,7 +829,7 @@ fn evaluate_contribution_rhs_name(
     selected: &SelectedOverloadCandidate,
     local_names: &BTreeSet<String>,
     rhs_name: &str,
-) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
     if local_names.contains(rhs_name) {
         return Err(selected_body_failure(
             selected,
@@ -862,7 +862,7 @@ fn evaluate_block_body(
     resolver_context: &ResolverContext,
     selected: &SelectedOverloadCandidate,
     program: &lang_syntax::NormProgram,
-) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
     // Single-value body evaluation for ordinary (non-meta-construction)
     // callables: exactly one terminal contribution.  Shares the per-form
     // helpers with the clustered contributions evaluator so both read the
@@ -1041,7 +1041,7 @@ fn forwarding_expr_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> 
 fn forwarded_type_value(
     selected: &SelectedOverloadCandidate,
     represented_type: Option<crate::TypeValueId>,
-) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
     let Some(represented_type) = represented_type else {
         return Err(unsupported_body(
             selected,
@@ -1049,15 +1049,17 @@ fn forwarded_type_value(
             "selected simple forwarding body requires an evaluated TypeValue",
         ));
     };
-    Ok(MetaInvocationValue::ForwardedValue(ForwardedValue {
-        type_value: represented_type,
-        // The restricted evaluator has no `&mut SemanticWorld` channel, so it
-        // cannot intern an observed `Addr(Norm_type)` here.  `Detached` never
-        // equals an observed address, so this can only under-merge.
-        type_observation: crate::CanonicalTypeObservation::Detached(represented_type),
-        return_view: ReturnViewShape::Leaf,
-        provenance: selected.source_callable.provenance.clone(),
-    }))
+    Ok(MetaExecutionMaterial::ForwardedResultMaterial(
+        ForwardedResultMaterial {
+            type_value: represented_type,
+            // The restricted evaluator has no `&mut SemanticWorld` channel, so it
+            // cannot intern an observed `Addr(Norm_type)` here.  `Detached` never
+            // equals an observed address, so this can only under-merge.
+            type_observation: crate::CanonicalTypeObservation::Detached(represented_type),
+            return_view: ReturnViewShape::Leaf,
+            provenance: selected.source_callable.provenance.clone(),
+        },
+    ))
 }
 
 fn unsupported_body(

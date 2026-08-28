@@ -2,7 +2,7 @@
 //!
 //! Consumes a `PreparedCallableCandidate` and dispatches to the appropriate
 //! primitive invocation. This step is graph-installation-free and binding-free:
-//! it produces a `MetaInvocationValue` but does **not** install
+//! it produces a `MetaExecutionMaterial` but does **not** install
 //! `NamespaceDelta`, bind declared symbols, or mutate the namespace graph. It
 //! may allocate or attach registry-backed materialization state.
 //!
@@ -12,20 +12,20 @@
 //! CandidatePrepResult::ApplicablePlaceholder
 //!   → MetaInvocationInput
 //!   → invoke_meta_callable
-//!   → MetaPrimitiveExecution::Material(MetaInvocationValue)
+//!   → MetaPrimitiveExecution::Material(MetaExecutionMaterial)
 //!     (no semantic result, graph installation, or binding)
 //!
-//! MetaInvocationValue
+//! MetaExecutionMaterial
 //!   → bind_meta_invocation_value_result (meta.rs)
 //!   → MetaExpansionResult  (declaration binding, with NamespaceDelta)
 //! ```
 //!
 //! `invoke_meta_callable_with_materialization_state` may populate
-//! `TypeMaterializationState` for values whose semantic identity is
-//! registry-backed, such as `GeneratedTypeDefinitionValue`. This is still
+//! `StructMaterializationState` for values whose semantic identity is
+//! registry-backed, such as `StructConstructionMaterial`. This is still
 //! graph-installation-free with respect to the namespace graph. The cache stores
 //! only replayable value material and strips concrete registry-backed
-//! `PatternHeadId`s before insertion; cache hits rematerialize heads in the
+//! `StructPatternMaterialId`s before insertion; cache hits rematerialize heads in the
 //! caller's current state.
 //!
 //! Production invocation reaches this primitive executor only after ordinary
@@ -39,22 +39,22 @@ use lang_syntax::{NormExpr, NormProductElem};
 
 use crate::{
     extraction_view::{
-        EvalResultNormalForm, ExposedExtractionInterface, ValuePointKind, ValuePointShape,
+        ContentObservationInterface, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
     },
     meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     meta_key::MetaInvocationMaterialKey,
     model::{Diagnostic, Provenance, SymbolId},
-    pattern_head::{
-        PatternFieldMaterialization, PatternHeadId, PatternMaterializationContext,
-        TypeMaterializationState,
-    },
-    pattern_space::{
-        derive_sum_pattern_space, StructuralMemberVisibility, SumPatternSpaceShape,
-        TypePatternExprShape,
-    },
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
     struct_decoder::DecodedStructPattern,
+    struct_pattern_material::{
+        derive_struct_sum_material, StructPatternSyntaxMaterial, StructSumSyntaxMaterial,
+        StructuralMemberVisibility,
+    },
+    struct_pattern_registry::{
+        StructFieldPatternMaterial, StructMaterializationState, StructPatternMaterialContext,
+        StructPatternMaterialId,
+    },
 };
 
 /// Input for formal meta invocation.
@@ -82,7 +82,7 @@ impl MetaInvocationInput {
     }
 }
 
-impl MetaInvocationValue {
+impl MetaExecutionMaterial {
     /// Semantic equality: compares identity material without provenance.
     ///
     /// Two invocation values with the same semantic identity but
@@ -91,20 +91,20 @@ impl MetaInvocationValue {
     pub fn semantic_eq(&self, other: &Self) -> bool {
         match (self, other) {
             (
-                MetaInvocationValue::ForwardedValue(lhs),
-                MetaInvocationValue::ForwardedValue(rhs),
+                MetaExecutionMaterial::ForwardedResultMaterial(lhs),
+                MetaExecutionMaterial::ForwardedResultMaterial(rhs),
             ) => lhs.type_observation == rhs.type_observation && lhs.return_view == rhs.return_view,
             (
-                MetaInvocationValue::GeneratedConstructionValue(lhs),
-                MetaInvocationValue::GeneratedConstructionValue(rhs),
+                MetaExecutionMaterial::UnaryConstructionMaterial(lhs),
+                MetaExecutionMaterial::UnaryConstructionMaterial(rhs),
             ) => {
                 lhs.construction_instance_id == rhs.construction_instance_id
                     && lhs.identity_material == rhs.identity_material
                     && lhs.return_view == rhs.return_view
             }
             (
-                MetaInvocationValue::GeneratedTypeDefinitionValue(lhs),
-                MetaInvocationValue::GeneratedTypeDefinitionValue(rhs),
+                MetaExecutionMaterial::StructConstructionMaterial(lhs),
+                MetaExecutionMaterial::StructConstructionMaterial(rhs),
             ) => {
                 lhs.type_definition_id == rhs.type_definition_id
                     && lhs.identity_material == rhs.identity_material
@@ -114,10 +114,13 @@ impl MetaInvocationValue {
                         .iter()
                         .zip(rhs.fields.iter())
                         .all(|(a, b)| a.semantic_eq(b))
-                    && lhs.pattern_heads == rhs.pattern_heads
+                    && lhs.pattern_materials == rhs.pattern_materials
                     && lhs.return_view == rhs.return_view
                     && type_pattern_expr_semantic_eq(&lhs.type_pattern_expr, &rhs.type_pattern_expr)
-                    && sum_pattern_space_semantic_eq(&lhs.sum_pattern_space, &rhs.sum_pattern_space)
+                    && sum_struct_pattern_material_semantic_eq(
+                        &lhs.sum_struct_pattern_material,
+                        &rhs.sum_struct_pattern_material,
+                    )
                     && lhs.canonical_pattern_override == rhs.canonical_pattern_override
             }
             _ => false,
@@ -125,7 +128,7 @@ impl MetaInvocationValue {
     }
 }
 
-impl GeneratedTypeDefinitionValue {
+impl StructConstructionMaterial {
     /// The generated definition's structural Pattern normal form.
     ///
     /// Construction callable identity, build identity, export metadata,
@@ -178,20 +181,20 @@ impl GeneratedTypeDefinitionValue {
 }
 
 fn canonicalize_struct_pattern(
-    pattern: &TypePatternExprShape,
+    pattern: &StructPatternSyntaxMaterial,
     enclosing: &crate::CanonicalFullNavigation,
     field_types: &BTreeMap<&str, crate::CanonicalTypeObservation>,
     layer_context: crate::PatternLayerContext,
 ) -> crate::CanonicalPatternValue {
     match pattern {
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             local_pattern_name, ..
         } => crate::CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Type(
             *field_types
                 .get(local_pattern_name.as_str())
                 .expect("every decoded struct leaf has one classified TypeValue"),
         )),
-        TypePatternExprShape::Named {
+        StructPatternSyntaxMaterial::Named {
             child,
             pattern_name,
             ..
@@ -200,7 +203,8 @@ fn canonicalize_struct_pattern(
             crate::CanonicalPatternValue::NamedPattern {
                 navigation: navigation.clone(),
                 body: Box::new(match child.as_ref() {
-                    TypePatternExprShape::Leaf { .. } | TypePatternExprShape::Named { .. } => {
+                    StructPatternSyntaxMaterial::Leaf { .. }
+                    | StructPatternSyntaxMaterial::Named { .. } => {
                         let child_navigation = complete_pattern_navigation(
                             direct_pattern_navigation(child)
                                 .expect("leaf and named child carry navigation"),
@@ -216,18 +220,17 @@ fn canonicalize_struct_pattern(
                             ),
                         )]))
                     }
-                    TypePatternExprShape::Product { .. } | TypePatternExprShape::Sum { .. } => {
-                        canonicalize_struct_pattern(
-                            child,
-                            &navigation,
-                            field_types,
-                            crate::PatternLayerContext::NamedPatternBody,
-                        )
-                    }
+                    StructPatternSyntaxMaterial::Product { .. }
+                    | StructPatternSyntaxMaterial::Sum { .. } => canonicalize_struct_pattern(
+                        child,
+                        &navigation,
+                        field_types,
+                        crate::PatternLayerContext::NamedPatternBody,
+                    ),
                 }),
             }
         }
-        TypePatternExprShape::Product { elements, .. } => {
+        StructPatternSyntaxMaterial::Product { elements, .. } => {
             let mut unordered = BTreeMap::new();
             let mut ordered = Vec::with_capacity(elements.len());
             let mut fully_named = true;
@@ -257,7 +260,7 @@ fn canonicalize_struct_pattern(
                 crate::CanonicalPatternValue::OrderedLayer(ordered)
             }
         }
-        TypePatternExprShape::Sum { alternatives, .. } => crate::CanonicalPatternValue::Sum(
+        StructPatternSyntaxMaterial::Sum { alternatives, .. } => crate::CanonicalPatternValue::Sum(
             alternatives
                 .iter()
                 .map(|alternative| {
@@ -273,13 +276,15 @@ fn canonicalize_struct_pattern(
     }
 }
 
-fn direct_pattern_navigation(pattern: &TypePatternExprShape) -> Option<&str> {
+fn direct_pattern_navigation(pattern: &StructPatternSyntaxMaterial) -> Option<&str> {
     match pattern {
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             local_pattern_name, ..
         } => Some(local_pattern_name),
-        TypePatternExprShape::Named { pattern_name, .. } => Some(pattern_name),
-        TypePatternExprShape::Product { .. } | TypePatternExprShape::Sum { .. } => None,
+        StructPatternSyntaxMaterial::Named { pattern_name, .. } => Some(pattern_name),
+        StructPatternSyntaxMaterial::Product { .. } | StructPatternSyntaxMaterial::Sum { .. } => {
+            None
+        }
     }
 }
 
@@ -293,22 +298,22 @@ fn complete_pattern_navigation(
 }
 
 fn type_pattern_expr_semantic_eq(
-    lhs: &Option<crate::pattern_space::TypePatternExprShape>,
-    rhs: &Option<crate::pattern_space::TypePatternExprShape>,
+    lhs: &Option<crate::struct_pattern_material::StructPatternSyntaxMaterial>,
+    rhs: &Option<crate::struct_pattern_material::StructPatternSyntaxMaterial>,
 ) -> bool {
     match (lhs, rhs) {
-        (Some(l), Some(r)) => l.semantic_eq(r),
+        (Some(l), Some(r)) => l.materially_equal(r),
         (None, None) => true,
         _ => false,
     }
 }
 
-fn sum_pattern_space_semantic_eq(
-    lhs: &Option<crate::pattern_space::SumPatternSpaceShape>,
-    rhs: &Option<crate::pattern_space::SumPatternSpaceShape>,
+fn sum_struct_pattern_material_semantic_eq(
+    lhs: &Option<crate::struct_pattern_material::StructSumSyntaxMaterial>,
+    rhs: &Option<crate::struct_pattern_material::StructSumSyntaxMaterial>,
 ) -> bool {
     match (lhs, rhs) {
-        (Some(l), Some(r)) => l.semantic_eq(r),
+        (Some(l), Some(r)) => l.materially_equal(r),
         (None, None) => true,
         _ => false,
     }
@@ -317,19 +322,19 @@ fn sum_pattern_space_semantic_eq(
 /// Replayable execution material produced behind the unified invocation
 /// result boundary.
 ///
-/// `ForwardedValue` is produced by the restricted evaluator's legacy
+/// `ForwardedResultMaterial` is produced by the restricted evaluator's legacy
 /// `IdentityType` forwarding proof. It is transitional transport, not the final
-/// formal meta-return model. `GeneratedConstructionValue` is produced by
+/// formal meta-return model. `UnaryConstructionMaterial` is produced by
 /// `UnaryConstructionPrototype` from argument-derived construction material.
-/// `GeneratedTypeDefinitionValue` is the replayable construction material
+/// `StructConstructionMaterial` is the replayable construction material
 /// produced while evaluating `struct`; it is not the semantic result of that
 /// callable.  The world-connected invocation path installs the material and
 /// returns a complete type value.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum MetaInvocationValue {
-    ForwardedValue(ForwardedValue),
-    GeneratedConstructionValue(GeneratedConstructionValue),
-    GeneratedTypeDefinitionValue(GeneratedTypeDefinitionValue),
+pub enum MetaExecutionMaterial {
+    ForwardedResultMaterial(ForwardedResultMaterial),
+    UnaryConstructionMaterial(UnaryConstructionMaterial),
+    StructConstructionMaterial(StructConstructionMaterial),
 }
 
 /// Result of executing a compiler primitive before semantic result
@@ -337,44 +342,44 @@ pub enum MetaInvocationValue {
 ///
 /// `Material` is replayable implementation material, not a value in any
 /// [`crate::DeclaredResultClass`].  In particular, a
-/// [`GeneratedTypeDefinitionValue`] must be installed and observed as a
+/// [`StructConstructionMaterial`] must be installed and observed as a
 /// [`crate::CompleteTypeValue`] before a
 /// [`crate::InvocationResult::SemanticResult`] with class
 /// [`crate::DeclaredResultClass::CompleteType`] may be formed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaPrimitiveExecution {
-    Material(MetaInvocationValue),
+    Material(MetaExecutionMaterial),
     Residual(crate::InvocationResidual),
     Diagnostic(Diagnostic),
 }
 
-impl MetaInvocationValue {
-    pub fn return_normal_form_shape(&self) -> EvalResultNormalForm {
+impl MetaExecutionMaterial {
+    pub fn return_normal_form_shape(&self) -> ObservedArgumentContent {
         match self {
-            MetaInvocationValue::ForwardedValue(value) => {
-                EvalResultNormalForm::ValuePoint(ValuePointShape {
-                    value_kind: ValuePointKind::Forwarded {
+            MetaExecutionMaterial::ForwardedResultMaterial(value) => {
+                ObservedArgumentContent::ValuePoint(ObservedAtomContent {
+                    value_kind: ObservedAtomKind::Forwarded {
                         type_value: value.type_value,
                     },
-                    extraction_interface: ExposedExtractionInterface::Leaf,
+                    extraction_interface: ContentObservationInterface::Leaf,
                     provenance: value.provenance.clone(),
                 })
             }
-            MetaInvocationValue::GeneratedConstructionValue(value) => {
-                EvalResultNormalForm::ValuePoint(ValuePointShape {
-                    value_kind: ValuePointKind::GeneratedConstruction {
+            MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
+                ObservedArgumentContent::ValuePoint(ObservedAtomContent {
+                    value_kind: ObservedAtomKind::GeneratedConstruction {
                         construction_instance_id: value.construction_instance_id,
                     },
-                    extraction_interface: ExposedExtractionInterface::Leaf,
+                    extraction_interface: ContentObservationInterface::Leaf,
                     provenance: value.provenance.clone(),
                 })
             }
-            MetaInvocationValue::GeneratedTypeDefinitionValue(value) => {
-                EvalResultNormalForm::ValuePoint(ValuePointShape {
-                    value_kind: ValuePointKind::GeneratedTypeDefinition {
+            MetaExecutionMaterial::StructConstructionMaterial(value) => {
+                ObservedArgumentContent::ValuePoint(ObservedAtomContent {
+                    value_kind: ObservedAtomKind::GeneratedTypeDefinition {
                         type_definition_id: value.type_definition_id,
                     },
-                    extraction_interface: ExposedExtractionInterface::Leaf,
+                    extraction_interface: ContentObservationInterface::Leaf,
                     provenance: value.provenance.clone(),
                 })
             }
@@ -390,7 +395,7 @@ impl MetaInvocationValue {
 /// through a graph Symbol does not make the carrier Symbol part of the
 /// invocation result.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ForwardedValue {
+pub struct ForwardedResultMaterial {
     /// The represented value itself. Even when evaluation reached it through a
     /// source name, the carrier Symbol is not part of this result identity.
     /// Symbol/place forwarding belongs to the separate `===` mechanism.
@@ -408,7 +413,7 @@ pub struct ForwardedValue {
 /// whose external identity is shielded by callee + canonical args + build
 /// identity. Reserved for future generative type constructors.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeneratedConstructionValue {
+pub struct UnaryConstructionMaterial {
     pub construction_instance_id: ConstructionInstanceId,
     pub identity_material: ConstructionIdentityMaterial,
     pub return_view: ReturnViewShape,
@@ -421,7 +426,7 @@ pub struct GeneratedConstructionValue {
 /// material may already be attached; the declared type symbol, associated
 /// namespace, and field projections are binding materialization artifacts.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeneratedTypeDefinitionValue {
+pub struct StructConstructionMaterial {
     /// Normalized struct body identity.  This is body material only:
     /// it never carries a canonical root by itself.  Two different meta
     /// functions with identical bodies share this id while their canonical
@@ -429,14 +434,14 @@ pub struct GeneratedTypeDefinitionValue {
     pub type_definition_id: TypeDefinitionInstanceId,
     pub identity_material: TypeDefinitionIdentityMaterial,
     pub fields: Vec<GeneratedFieldDefinition>,
-    pub pattern_heads: Option<TypeDefinitionPatternHeads>,
+    pub pattern_materials: Option<TypeDefinitionStructPatternMaterials>,
     pub return_view: ReturnViewShape,
     /// The decoded type-pattern expression shape, if the struct argument
     /// was successfully decoded by the struct-local decoder.
-    pub type_pattern_expr: Option<TypePatternExprShape>,
+    pub type_pattern_expr: Option<StructPatternSyntaxMaterial>,
     /// The sum pattern space derived from the type-pattern expression,
     /// if the expression contains a sum.
-    pub sum_pattern_space: Option<SumPatternSpaceShape>,
+    pub sum_struct_pattern_material: Option<StructSumSyntaxMaterial>,
     /// Canonical semantic TypeValue root assigned at meta-instance
     /// registration: `TypeValue = (OuterMetaInstanceRoot,
     /// NormalizedStructBody)`.  `None` until the invocation owner
@@ -452,15 +457,15 @@ pub struct GeneratedTypeDefinitionValue {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypeDefinitionPatternHeads {
-    pub owner_head: PatternHeadId,
-    pub field_heads: Vec<GeneratedFieldPatternHead>,
+pub struct TypeDefinitionStructPatternMaterials {
+    pub owner_head: StructPatternMaterialId,
+    pub field_heads: Vec<GeneratedFieldStructPatternMaterial>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeneratedFieldPatternHead {
+pub struct GeneratedFieldStructPatternMaterial {
     pub field_name: String,
-    pub field_head: PatternHeadId,
+    pub field_head: StructPatternMaterialId,
 }
 
 /// Deterministic build-local construction identity placeholder.
@@ -568,7 +573,7 @@ pub struct FieldSignatureMaterial {
     /// invocation boundary was world-connected, otherwise the `Detached`
     /// projection (which never equals an observed address).
     pub field_type_observation: crate::CanonicalTypeObservation,
-    /// Compatibility graph carrier retained for current PatternHead/field
+    /// Compatibility graph carrier retained for current StructPatternMaterial/field
     /// installation only. It is non-identity material.
     pub field_type_carrier_symbol: SymbolId,
     pub field_index: usize,
@@ -597,7 +602,7 @@ pub struct GeneratedFieldDefinition {
     pub type_carrier_symbol: SymbolId,
     pub index: usize,
     pub visibility: StructuralMemberVisibility,
-    pub pattern_head: Option<PatternHeadId>,
+    pub struct_pattern_registry: Option<StructPatternMaterialId>,
     pub provenance: Provenance,
 }
 
@@ -608,7 +613,7 @@ impl GeneratedFieldDefinition {
             && self.type_observation == other.type_observation
             && self.visibility == other.visibility
             && self.index == other.index
-            && self.pattern_head == other.pattern_head
+            && self.struct_pattern_registry == other.struct_pattern_registry
     }
 }
 
@@ -756,16 +761,16 @@ pub enum ReturnViewShape {
 /// — no graph mutation, no `NamespaceDelta` installation.
 pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaPrimitiveExecution {
     // Standalone compatibility entry point. It is suitable for one-off formal
-    // invocation tests but does not preserve PatternHeadRegistry continuity
+    // invocation tests but does not preserve StructPatternMaterialRegistry continuity
     // across calls. Callers that need registry-backed identity continuity must
     // use `invoke_meta_callable_with_materialization_state`.
-    let mut materialization_state = TypeMaterializationState::default();
+    let mut materialization_state = StructMaterializationState::default();
     invoke_meta_callable_with_materialization_state(input, &mut materialization_state)
 }
 
 pub fn invoke_meta_callable_with_materialization_state(
     input: MetaInvocationInput,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
 ) -> MetaPrimitiveExecution {
     let Some(primitive) = input.candidate.callee_primitive else {
         return MetaPrimitiveExecution::Diagnostic(
@@ -804,7 +809,7 @@ pub fn invoke_meta_callable_with_materialization_state(
 /// Cached variant: look up the key in the cache before invoking.
 ///
 /// On cache miss, invokes and inserts the result. On hit, returns the cached
-/// invocation value. The cache stores only `MetaInvocationValue` — no
+/// invocation value. The cache stores only `MetaExecutionMaterial` — no
 /// `NamespaceDelta`.
 pub fn invoke_meta_callable_cached(
     input: MetaInvocationInput,
@@ -815,7 +820,7 @@ pub fn invoke_meta_callable_cached(
     // values are rehydrated into this temporary state only; callers that need
     // to query the registry later must use the `_with_materialization_state`
     // variant.
-    let mut materialization_state = TypeMaterializationState::default();
+    let mut materialization_state = StructMaterializationState::default();
     invoke_meta_callable_cached_with_materialization_state(
         input,
         key,
@@ -828,7 +833,7 @@ pub fn invoke_meta_callable_cached_with_materialization_state(
     input: MetaInvocationInput,
     key: MetaInvocationMaterialKey,
     cache: &mut MetaInstanceCache,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
 ) -> MetaPrimitiveExecution {
     // Validate primitive before cache lookup — prevents a manually-inserted
     // cache entry for a no-primitive candidate from bypassing validation.
@@ -903,12 +908,14 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
         })
         .unwrap_or(crate::CanonicalTypeObservation::Detached(type_value));
 
-    MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(ForwardedValue {
-        type_value,
-        type_observation,
-        return_view: ReturnViewShape::Leaf,
-        provenance: input.provenance.clone(),
-    }))
+    MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(
+        ForwardedResultMaterial {
+            type_value,
+            type_observation,
+            return_view: ReturnViewShape::Leaf,
+            provenance: input.provenance.clone(),
+        },
+    ))
 }
 
 fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
@@ -955,8 +962,8 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaPrimi
     };
     let construction_instance_id = compute_construction_instance_id(&identity_material);
 
-    MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(
-        GeneratedConstructionValue {
+    MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(
+        UnaryConstructionMaterial {
             construction_instance_id,
             identity_material,
             return_view: ReturnViewShape::Leaf,
@@ -967,7 +974,7 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaPrimi
 
 fn invoke_struct_type_definition(
     input: &MetaInvocationInput,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
 ) -> MetaPrimitiveExecution {
     let candidate = &input.candidate;
     let mat =
@@ -1018,72 +1025,75 @@ fn invoke_struct_type_definition(
             type_carrier_symbol: field.field_type_carrier_symbol,
             index: field.field_index,
             visibility: field.visibility,
-            pattern_head: None,
+            struct_pattern_registry: None,
             provenance: field.provenance.clone(),
         })
         .collect();
-    let value = GeneratedTypeDefinitionValue {
+    let value = StructConstructionMaterial {
         type_definition_id,
         identity_material,
         fields,
-        pattern_heads: None,
+        pattern_materials: None,
         return_view: ReturnViewShape::Leaf,
         type_pattern_expr: input
             .struct_decoded_pattern
             .as_ref()
             .map(|p| p.type_pattern_expr.clone()),
-        sum_pattern_space: input
+        sum_struct_pattern_material: input
             .struct_decoded_pattern
             .as_ref()
-            .and_then(|p| derive_sum_pattern_space(&p.type_pattern_expr)),
+            .and_then(|p| derive_struct_sum_material(&p.type_pattern_expr)),
         canonical_type: None,
         canonical_pattern_override: None,
         provenance: input.provenance.clone(),
     };
-    match attach_type_definition_pattern_heads(
+    match attach_type_definition_pattern_materials(
         value,
         materialization_state,
         input.provenance.clone(),
     ) {
         Ok(value) => MetaPrimitiveExecution::Material(
-            MetaInvocationValue::GeneratedTypeDefinitionValue(value),
+            MetaExecutionMaterial::StructConstructionMaterial(value),
         ),
         Err(diagnostic) => MetaPrimitiveExecution::Diagnostic(diagnostic),
     }
 }
 
 fn cached_value_for_current_materialization_state(
-    value: MetaInvocationValue,
-    materialization_state: &mut TypeMaterializationState,
+    value: MetaExecutionMaterial,
+    materialization_state: &mut StructMaterializationState,
     provenance: Provenance,
 ) -> MetaPrimitiveExecution {
     match value {
-        MetaInvocationValue::GeneratedTypeDefinitionValue(value) => {
-            match attach_type_definition_pattern_heads(value, materialization_state, provenance) {
+        MetaExecutionMaterial::StructConstructionMaterial(value) => {
+            match attach_type_definition_pattern_materials(value, materialization_state, provenance)
+            {
                 Ok(value) => MetaPrimitiveExecution::Material(
-                    MetaInvocationValue::GeneratedTypeDefinitionValue(value),
+                    MetaExecutionMaterial::StructConstructionMaterial(value),
                 ),
                 Err(diagnostic) => MetaPrimitiveExecution::Diagnostic(diagnostic),
             }
         }
-        MetaInvocationValue::ForwardedValue(value) => {
-            MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(value))
+        MetaExecutionMaterial::ForwardedResultMaterial(value) => {
+            MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(value))
         }
-        MetaInvocationValue::GeneratedConstructionValue(value) => {
-            MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(value))
+        MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
+            MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(
+                value,
+            ))
         }
     }
 }
 
-fn cacheable_invocation_value(value: MetaInvocationValue) -> MetaInvocationValue {
+fn cacheable_invocation_value(value: MetaExecutionMaterial) -> MetaExecutionMaterial {
     match value {
-        MetaInvocationValue::GeneratedTypeDefinitionValue(mut value) => {
-            value.pattern_heads = None;
+        MetaExecutionMaterial::StructConstructionMaterial(mut value) => {
+            value.pattern_materials = None;
             value.canonical_type = None;
             for field in &mut value.fields {
-                field.pattern_head = None;
+                field.struct_pattern_registry = None;
             }
-            MetaInvocationValue::GeneratedTypeDefinitionValue(value)
+            MetaExecutionMaterial::StructConstructionMaterial(value)
         }
         other => other,
     }
@@ -1095,11 +1105,11 @@ fn cacheable_invocation_value(value: MetaInvocationValue) -> MetaInvocationValue
 /// Formal `struct` invocation is graph-installation-free and binding-free. It
 /// may allocate registry-backed material through this fallback before final
 /// resolved pattern-scope semantics are available.
-pub fn attach_type_definition_pattern_heads(
-    value: GeneratedTypeDefinitionValue,
-    materialization_state: &mut TypeMaterializationState,
+pub fn attach_type_definition_pattern_materials(
+    value: StructConstructionMaterial,
+    materialization_state: &mut StructMaterializationState,
     provenance: Provenance,
-) -> Result<GeneratedTypeDefinitionValue, Diagnostic> {
+) -> Result<StructConstructionMaterial, Diagnostic> {
     let type_definition_id = value.type_definition_id;
     let owner_display_name = value
         .type_pattern_expr
@@ -1111,10 +1121,10 @@ pub fn attach_type_definition_pattern_heads(
                 value.type_definition_id.as_u64()
             )
         });
-    attach_type_definition_pattern_heads_with_context(
+    attach_type_definition_pattern_materials_with_context(
         value,
         materialization_state,
-        PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id },
+        StructPatternMaterialContext::StructDefinition { type_definition_id },
         owner_display_name,
         provenance,
     )
@@ -1129,60 +1139,62 @@ pub fn attach_type_definition_pattern_heads(
 /// callers must not treat `Global`, `Namespace`, `Local`, or `Generated`
 /// contexts as final `ResolvedPatternScope` identities.
 ///
-/// The display name is diagnostic material only. The owner `PatternHeadId`
+/// The display name is diagnostic material only. The owner `StructPatternMaterialId`
 /// identity comes from `context`; callers must not derive identity from the
 /// bare source spelling.
 #[doc(hidden)]
-pub fn attach_type_definition_pattern_heads_with_context(
-    mut value: GeneratedTypeDefinitionValue,
-    materialization_state: &mut TypeMaterializationState,
-    context: PatternMaterializationContext,
+pub fn attach_type_definition_pattern_materials_with_context(
+    mut value: StructConstructionMaterial,
+    materialization_state: &mut StructMaterializationState,
+    context: StructPatternMaterialContext,
     owner_display_name: impl Into<String>,
     provenance: Provenance,
-) -> Result<GeneratedTypeDefinitionValue, Diagnostic> {
+) -> Result<StructConstructionMaterial, Diagnostic> {
     let pattern_fields = value
         .identity_material
         .field_signature_material
         .iter()
-        .map(|field| PatternFieldMaterialization {
+        .map(|field| StructFieldPatternMaterial {
             field_name: field.field_name.clone(),
             field_type_value: field.field_type_value,
             projection: crate::model::FieldProjection::Value,
             provenance: field.provenance.clone(),
         });
     let pattern_materialization = materialization_state
-        .pattern_heads
-        .materialize_struct_pattern_heads(
+        .pattern_materials
+        .materialize_struct_pattern(
             context,
             owner_display_name.into(),
             pattern_fields,
             provenance,
         )?;
-    let pattern_head_by_name = pattern_materialization
+    let struct_pattern_registry_by_name = pattern_materialization
         .field_heads
         .iter()
         .cloned()
         .collect::<std::collections::BTreeMap<_, _>>();
     for field in &mut value.fields {
-        field.pattern_head = pattern_head_by_name.get(&field.name).copied();
+        field.struct_pattern_registry = struct_pattern_registry_by_name.get(&field.name).copied();
     }
-    value.pattern_heads = Some(TypeDefinitionPatternHeads {
+    value.pattern_materials = Some(TypeDefinitionStructPatternMaterials {
         owner_head: pattern_materialization.owner_head,
         field_heads: pattern_materialization
             .field_heads
             .into_iter()
-            .map(|(field_name, field_head)| GeneratedFieldPatternHead {
-                field_name,
-                field_head,
-            })
+            .map(
+                |(field_name, field_head)| GeneratedFieldStructPatternMaterial {
+                    field_name,
+                    field_head,
+                },
+            )
             .collect(),
     });
     Ok(value)
 }
 
-fn owner_display_name_from_type_pattern_expr(expr: &TypePatternExprShape) -> Option<String> {
+fn owner_display_name_from_type_pattern_expr(expr: &StructPatternSyntaxMaterial) -> Option<String> {
     match expr {
-        TypePatternExprShape::Named { pattern_name, .. } => Some(pattern_name.clone()),
+        StructPatternSyntaxMaterial::Named { pattern_name, .. } => Some(pattern_name.clone()),
         _ => None,
     }
 }
@@ -1212,7 +1224,7 @@ fn field_signature_material_from_candidate(
     for raw_arg in &candidate.arg_product_shape.raw_args {
         if !matches!(
             raw_arg.value_class,
-            RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+            RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
         ) {
             return Err(Diagnostic::hard_error(
                 "struct field type did not resolve as TypeSymbol",
@@ -1278,11 +1290,11 @@ fn field_signature_material_from_candidate(
 }
 
 fn collect_decoded_struct_fields(
-    pattern: &TypePatternExprShape,
+    pattern: &StructPatternSyntaxMaterial,
     output: &mut Vec<(String, StructuralMemberVisibility, Provenance)>,
 ) {
     match pattern {
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             local_pattern_name,
             visibility,
             provenance,
@@ -1290,17 +1302,17 @@ fn collect_decoded_struct_fields(
         } => {
             output.push((local_pattern_name.clone(), *visibility, provenance.clone()));
         }
-        TypePatternExprShape::Product { elements, .. } => {
+        StructPatternSyntaxMaterial::Product { elements, .. } => {
             for element in elements {
                 collect_decoded_struct_fields(element, output);
             }
         }
-        TypePatternExprShape::Sum { alternatives, .. } => {
+        StructPatternSyntaxMaterial::Sum { alternatives, .. } => {
             for alternative in alternatives {
                 collect_decoded_struct_fields(alternative, output);
             }
         }
-        TypePatternExprShape::Named { child, .. } => {
+        StructPatternSyntaxMaterial::Named { child, .. } => {
             collect_decoded_struct_fields(child, output);
         }
     }

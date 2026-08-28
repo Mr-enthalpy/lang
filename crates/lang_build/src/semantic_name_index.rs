@@ -450,7 +450,7 @@ pub enum ResolveExpectation {
     Object,
     NamespaceSubspace,
     NamespaceCapableParent,
-    TypeObject,
+    CoreTypeProjection,
     MetaFunction,
     FieldFunction,
 }
@@ -491,7 +491,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// | `Object` | Terminal in the object/function role |
     /// | `NamespaceSubspace` | Terminal in the namespace-subspace role |
     /// | `NamespaceCapableParent` | Terminal must be a namespace-capable symbol (object with `namespace_node` or namespace-subspace) |
-    /// | `TypeObject` | Terminal with kind `Type` |
+    /// | `CoreTypeProjection` | Terminal with kind `Type` |
     /// | `MetaFunction` | Terminal with kind `MetaFunction` |
     /// | `FieldFunction` | Terminal with kind `FieldFunction` |
     ///
@@ -662,7 +662,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
 
     /// Resolve a terminal symbol whose kind is `Type`.
     ///
-    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::TypeObject)`.
+    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::CoreTypeProjection)`.
     pub fn resolve_type_object(
         &self,
         source_order_path: &str,
@@ -671,7 +671,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         self.resolve_str_with_expectation(
             source_order_path,
             context,
-            ResolveExpectation::TypeObject,
+            ResolveExpectation::CoreTypeProjection,
         )
     }
 
@@ -685,7 +685,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         self.resolve_str_with_policy(
             source_order_path,
             context,
-            ResolveExpectation::TypeObject,
+            ResolveExpectation::CoreTypeProjection,
             policy_env,
         )
     }
@@ -1051,9 +1051,9 @@ fn select_symbol_from_bucket<'symbols>(
                 .with_code(ResolverCode::Ambiguous))),
             }
         }
-        ResolveExpectation::TypeObject => {
+        ResolveExpectation::CoreTypeProjection => {
             select_unique_object_symbol(symbols, bucket, name, |symbol| {
-                symbol.kind == SymbolKind::Type
+                symbol.kind == SymbolKind::CompleteTypeProjection
             })
         }
         ResolveExpectation::MetaFunction => {

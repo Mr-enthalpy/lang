@@ -174,7 +174,7 @@ impl AtomicBuiltinTypeRegistry {
         key: AtomicBuiltinType,
         symbol: &SymbolObject,
     ) -> Result<(), AtomicBuiltinTypeRegistryFailure> {
-        if symbol.kind != SymbolKind::Type {
+        if symbol.kind != SymbolKind::CompleteTypeProjection {
             return Err(AtomicBuiltinTypeRegistryFailure::NotTypeSymbol {
                 key,
                 actual_kind: symbol.kind,
@@ -186,7 +186,7 @@ impl AtomicBuiltinTypeRegistry {
                 actual_name: symbol.name.clone(),
             });
         }
-        let crate::SymbolPayload::Type(type_object) = &symbol.payload else {
+        let crate::SymbolPayload::CompleteTypeProjection(type_object) = &symbol.payload else {
             return Err(AtomicBuiltinTypeRegistryFailure::NotTypeSymbol {
                 key,
                 actual_kind: symbol.kind,

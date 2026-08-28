@@ -8,24 +8,24 @@ use crate::{
     identity::TypeValueId,
     meta_invocation::{ConstructionInstanceId, TypeDefinitionInstanceId},
     model::{Diagnostic, FieldProjection, Provenance, SymbolId},
-    pattern_head::PatternHeadId,
+    struct_pattern_registry::StructPatternMaterialId,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum EvalResultNormalForm {
-    ValuePoint(ValuePointShape),
-    Product(ProductNormalFormShape),
+pub enum ObservedArgumentContent {
+    ValuePoint(ObservedAtomContent),
+    Product(ObservedProductContent),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ValuePointShape {
-    pub value_kind: ValuePointKind,
-    pub extraction_interface: ExposedExtractionInterface,
+pub struct ObservedAtomContent {
+    pub value_kind: ObservedAtomKind,
+    pub extraction_interface: ContentObservationInterface,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ValuePointKind {
+pub enum ObservedAtomKind {
     Leaf,
     Constructed {
         owner_type_value: Option<TypeValueId>,
@@ -44,14 +44,14 @@ pub enum ValuePointKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProductNormalFormShape {
-    pub elements: Vec<ProductNormalFormElem>,
-    pub product_kind: ProductNormalFormKind,
+pub struct ObservedProductContent {
+    pub elements: Vec<ObservedProductElement>,
+    pub product_kind: ObservedProductKind,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ProductNormalFormKind {
+pub enum ObservedProductKind {
     Bare,
     Named {
         owner_type_value: Option<TypeValueId>,
@@ -61,9 +61,9 @@ pub enum ProductNormalFormKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProductNormalFormElem {
+pub struct ObservedProductElement {
     pub label: Option<String>,
-    pub value_shape: Box<EvalResultNormalForm>,
+    pub value_shape: Box<ObservedArgumentContent>,
     /// Evaluated first-order type projection of this element.
     /// Transport/navigation material only: semantic equality consumes
     /// `type_observation`.
@@ -79,24 +79,24 @@ pub struct ProductNormalFormElem {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExposedExtractionInterface {
+pub enum ContentObservationInterface {
     Leaf,
-    Product(ProductNormalFormShape),
-    NamedProduct(NamedProductExtractionShape),
+    Product(ObservedProductContent),
+    NamedProduct(NamedObservedProduct),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NamedProductExtractionShape {
+pub struct NamedObservedProduct {
     pub owner_type_value: TypeValueId,
     /// Compatibility graph carrier used to navigate installed projections.
     pub owner_type_symbol_id: SymbolId,
-    pub owner_pattern_head: Option<PatternHeadId>,
-    pub fields: Vec<NamedExtractionField>,
+    pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
+    pub fields: Vec<NamedObservedField>,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NamedExtractionField {
+pub struct NamedObservedField {
     pub label: String,
     /// Evaluated first-order field type projection. Transport/registry
     /// material only: extraction-shape semantic equality consumes
@@ -109,59 +109,61 @@ pub struct NamedExtractionField {
     pub field_type_observation: crate::CanonicalTypeObservation,
     /// Compatibility graph carrier for current namespace projection.
     pub field_type_symbol_id: SymbolId,
-    pub field_pattern_head: Option<PatternHeadId>,
+    pub field_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub field_index: usize,
     pub projection: FieldProjection,
-    pub visibility: crate::pattern_space::StructuralMemberVisibility,
+    pub visibility: crate::struct_pattern_material::StructuralMemberVisibility,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypeExtractionInterface {
+pub struct TypeContentObservation {
     pub owner_type_value: TypeValueId,
     pub owner_type_symbol_id: SymbolId,
-    pub owner_pattern_head: Option<PatternHeadId>,
-    pub exposed_view: NamedProductExtractionShape,
+    pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
+    pub exposed_view: NamedObservedProduct,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExtractionViewResult {
-    NormalForm(EvalResultNormalForm),
+pub enum ObservedContentProjection {
+    NormalForm(ObservedArgumentContent),
     Diagnostic(Diagnostic),
 }
 
-pub fn question_view(shape: &EvalResultNormalForm) -> ExtractionViewResult {
+pub fn observe_content_projection(shape: &ObservedArgumentContent) -> ObservedContentProjection {
     match shape {
-        EvalResultNormalForm::Product(product) => {
-            ExtractionViewResult::NormalForm(EvalResultNormalForm::Product(product.clone()))
+        ObservedArgumentContent::Product(product) => {
+            ObservedContentProjection::NormalForm(ObservedArgumentContent::Product(product.clone()))
         }
-        EvalResultNormalForm::ValuePoint(value) => match &value.extraction_interface {
-            ExposedExtractionInterface::Leaf => {
-                ExtractionViewResult::NormalForm(EvalResultNormalForm::ValuePoint(value.clone()))
-            }
-            ExposedExtractionInterface::Product(product) => {
-                ExtractionViewResult::NormalForm(EvalResultNormalForm::Product(product.clone()))
-            }
-            ExposedExtractionInterface::NamedProduct(named) => ExtractionViewResult::NormalForm(
-                EvalResultNormalForm::Product(named_product_to_product_normal_form(named)),
+        ObservedArgumentContent::ValuePoint(value) => match &value.extraction_interface {
+            ContentObservationInterface::Leaf => ObservedContentProjection::NormalForm(
+                ObservedArgumentContent::ValuePoint(value.clone()),
             ),
+            ContentObservationInterface::Product(product) => ObservedContentProjection::NormalForm(
+                ObservedArgumentContent::Product(product.clone()),
+            ),
+            ContentObservationInterface::NamedProduct(named) => {
+                ObservedContentProjection::NormalForm(ObservedArgumentContent::Product(
+                    named_product_to_product_normal_form(named),
+                ))
+            }
         },
     }
 }
 
 pub fn named_product_to_product_normal_form(
-    named: &NamedProductExtractionShape,
-) -> ProductNormalFormShape {
-    ProductNormalFormShape {
+    named: &NamedObservedProduct,
+) -> ObservedProductContent {
+    ObservedProductContent {
         elements: named
             .fields
             .iter()
-            .map(|field| ProductNormalFormElem {
+            .map(|field| ObservedProductElement {
                 label: Some(field.label.clone()),
-                value_shape: Box::new(EvalResultNormalForm::ValuePoint(ValuePointShape {
-                    value_kind: ValuePointKind::Leaf,
-                    extraction_interface: ExposedExtractionInterface::Leaf,
+                value_shape: Box::new(ObservedArgumentContent::ValuePoint(ObservedAtomContent {
+                    value_kind: ObservedAtomKind::Leaf,
+                    extraction_interface: ContentObservationInterface::Leaf,
                     provenance: field.provenance.clone(),
                 })),
                 type_value: Some(field.field_type_value),
@@ -170,7 +172,7 @@ pub fn named_product_to_product_normal_form(
                 provenance: field.provenance.clone(),
             })
             .collect(),
-        product_kind: ProductNormalFormKind::Named {
+        product_kind: ObservedProductKind::Named {
             owner_type_value: Some(named.owner_type_value),
             owner_type_symbol_id: Some(named.owner_type_symbol_id),
         },
@@ -178,141 +180,65 @@ pub fn named_product_to_product_normal_form(
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum BindingPatternShape {
-    Binder,
-    Product { arity: usize, named: bool },
-    NamedProduct { labels: Vec<String> },
-}
+// Observation equality compares captured content without provenance. Pattern
+// applicability and extraction are owned exclusively by `pattern_relation`.
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum BindingShapeMatchResult {
-    Direct,
-    AfterExtraction,
-    Mismatch,
-}
-
-pub fn match_binding_pattern_shape(
-    pattern: &BindingPatternShape,
-    value: &EvalResultNormalForm,
-) -> BindingShapeMatchResult {
-    if matches!(pattern, BindingPatternShape::Binder) {
-        return BindingShapeMatchResult::Direct;
-    }
-
-    if let EvalResultNormalForm::Product(product) = value {
-        return if product_matches_pattern(pattern, product) {
-            BindingShapeMatchResult::Direct
-        } else {
-            BindingShapeMatchResult::Mismatch
-        };
-    }
-
-    let EvalResultNormalForm::ValuePoint(value_point) = value else {
-        unreachable!("all EvalResultNormalForm variants handled above");
-    };
-    match &value_point.extraction_interface {
-        ExposedExtractionInterface::Leaf => BindingShapeMatchResult::Mismatch,
-        ExposedExtractionInterface::Product(product) => {
-            if product_matches_pattern(pattern, product) {
-                BindingShapeMatchResult::AfterExtraction
-            } else {
-                BindingShapeMatchResult::Mismatch
-            }
-        }
-        ExposedExtractionInterface::NamedProduct(named) => {
-            let product = named_product_to_product_normal_form(named);
-            if product_matches_pattern(pattern, &product) {
-                BindingShapeMatchResult::AfterExtraction
-            } else {
-                BindingShapeMatchResult::Mismatch
-            }
-        }
-    }
-}
-
-fn product_matches_pattern(
-    pattern: &BindingPatternShape,
-    product: &ProductNormalFormShape,
-) -> bool {
-    match pattern {
-        BindingPatternShape::Binder => true,
-        BindingPatternShape::Product { arity, named } => {
-            product.elements.len() == *arity
-                && if *named {
-                    product.elements.iter().all(|elem| elem.label.is_some())
-                } else {
-                    matches!(product.product_kind, ProductNormalFormKind::Bare)
-                }
-        }
-        BindingPatternShape::NamedProduct { labels } => {
-            product.elements.len() == labels.len()
-                && product
-                    .elements
-                    .iter()
-                    .zip(labels)
-                    .all(|(elem, label)| elem.label.as_deref() == Some(label.as_str()))
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Semantic equality helpers — compare shape identity without provenance
-// ---------------------------------------------------------------------------
-
-impl EvalResultNormalForm {
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+impl ObservedArgumentContent {
+    pub fn observationally_equal(&self, other: &Self) -> bool {
         match (self, other) {
-            (EvalResultNormalForm::ValuePoint(v1), EvalResultNormalForm::ValuePoint(v2)) => {
-                v1.semantic_eq(v2)
+            (ObservedArgumentContent::ValuePoint(v1), ObservedArgumentContent::ValuePoint(v2)) => {
+                v1.observationally_equal(v2)
             }
-            (EvalResultNormalForm::Product(p1), EvalResultNormalForm::Product(p2)) => {
-                p1.semantic_eq(p2)
+            (ObservedArgumentContent::Product(p1), ObservedArgumentContent::Product(p2)) => {
+                p1.observationally_equal(p2)
             }
             _ => false,
         }
     }
 }
 
-impl ValuePointShape {
-    pub fn semantic_eq(&self, other: &Self) -> bool {
-        value_point_kind_semantic_eq(&self.value_kind, &other.value_kind)
+impl ObservedAtomContent {
+    pub fn observationally_equal(&self, other: &Self) -> bool {
+        value_point_kind_observationally_equal(&self.value_kind, &other.value_kind)
             && self
                 .extraction_interface
-                .semantic_eq(&other.extraction_interface)
+                .observationally_equal(&other.extraction_interface)
     }
 }
 
-fn value_point_kind_semantic_eq(left: &ValuePointKind, right: &ValuePointKind) -> bool {
+fn value_point_kind_observationally_equal(
+    left: &ObservedAtomKind,
+    right: &ObservedAtomKind,
+) -> bool {
     match (left, right) {
-        (ValuePointKind::Leaf, ValuePointKind::Leaf) => true,
+        (ObservedAtomKind::Leaf, ObservedAtomKind::Leaf) => true,
         (
-            ValuePointKind::Constructed {
+            ObservedAtomKind::Constructed {
                 owner_type_value: left,
                 ..
             },
-            ValuePointKind::Constructed {
+            ObservedAtomKind::Constructed {
                 owner_type_value: right,
                 ..
             },
         ) => left == right,
         (
-            ValuePointKind::Forwarded { type_value: left },
-            ValuePointKind::Forwarded { type_value: right },
+            ObservedAtomKind::Forwarded { type_value: left },
+            ObservedAtomKind::Forwarded { type_value: right },
         ) => left == right,
         (
-            ValuePointKind::GeneratedConstruction {
+            ObservedAtomKind::GeneratedConstruction {
                 construction_instance_id: left,
             },
-            ValuePointKind::GeneratedConstruction {
+            ObservedAtomKind::GeneratedConstruction {
                 construction_instance_id: right,
             },
         ) => left == right,
         (
-            ValuePointKind::GeneratedTypeDefinition {
+            ObservedAtomKind::GeneratedTypeDefinition {
                 type_definition_id: left,
             },
-            ValuePointKind::GeneratedTypeDefinition {
+            ObservedAtomKind::GeneratedTypeDefinition {
                 type_definition_id: right,
             },
         ) => left == right,
@@ -320,43 +246,47 @@ fn value_point_kind_semantic_eq(left: &ValuePointKind, right: &ValuePointKind) -
     }
 }
 
-impl ExposedExtractionInterface {
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+impl ContentObservationInterface {
+    pub fn observationally_equal(&self, other: &Self) -> bool {
         match (self, other) {
-            (ExposedExtractionInterface::Leaf, ExposedExtractionInterface::Leaf) => true,
-            (ExposedExtractionInterface::Product(p1), ExposedExtractionInterface::Product(p2)) => {
-                p1.semantic_eq(p2)
-            }
+            (ContentObservationInterface::Leaf, ContentObservationInterface::Leaf) => true,
             (
-                ExposedExtractionInterface::NamedProduct(n1),
-                ExposedExtractionInterface::NamedProduct(n2),
-            ) => n1.semantic_eq(n2),
+                ContentObservationInterface::Product(p1),
+                ContentObservationInterface::Product(p2),
+            ) => p1.observationally_equal(p2),
+            (
+                ContentObservationInterface::NamedProduct(n1),
+                ContentObservationInterface::NamedProduct(n2),
+            ) => n1.observationally_equal(n2),
             _ => false,
         }
     }
 }
 
-impl ProductNormalFormShape {
-    pub fn semantic_eq(&self, other: &Self) -> bool {
-        product_kind_semantic_eq(&self.product_kind, &other.product_kind)
+impl ObservedProductContent {
+    pub fn observationally_equal(&self, other: &Self) -> bool {
+        product_kind_observationally_equal(&self.product_kind, &other.product_kind)
             && self.elements.len() == other.elements.len()
             && self
                 .elements
                 .iter()
                 .zip(other.elements.iter())
-                .all(|(a, b)| a.semantic_eq(b))
+                .all(|(a, b)| a.observationally_equal(b))
     }
 }
 
-fn product_kind_semantic_eq(left: &ProductNormalFormKind, right: &ProductNormalFormKind) -> bool {
+fn product_kind_observationally_equal(
+    left: &ObservedProductKind,
+    right: &ObservedProductKind,
+) -> bool {
     match (left, right) {
-        (ProductNormalFormKind::Bare, ProductNormalFormKind::Bare) => true,
+        (ObservedProductKind::Bare, ObservedProductKind::Bare) => true,
         (
-            ProductNormalFormKind::Named {
+            ObservedProductKind::Named {
                 owner_type_value: left,
                 ..
             },
-            ProductNormalFormKind::Named {
+            ObservedProductKind::Named {
                 owner_type_value: right,
                 ..
             },
@@ -365,32 +295,32 @@ fn product_kind_semantic_eq(left: &ProductNormalFormKind, right: &ProductNormalF
     }
 }
 
-impl ProductNormalFormElem {
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+impl ObservedProductElement {
+    pub fn observationally_equal(&self, other: &Self) -> bool {
         self.label == other.label
-            && self.value_shape.semantic_eq(&other.value_shape)
+            && self.value_shape.observationally_equal(&other.value_shape)
             && self.type_observation == other.type_observation
     }
 }
 
-impl NamedProductExtractionShape {
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+impl NamedObservedProduct {
+    pub fn observationally_equal(&self, other: &Self) -> bool {
         self.owner_type_value == other.owner_type_value
-            && self.owner_pattern_head == other.owner_pattern_head
+            && self.owner_struct_pattern_registry == other.owner_struct_pattern_registry
             && self.fields.len() == other.fields.len()
             && self
                 .fields
                 .iter()
                 .zip(other.fields.iter())
-                .all(|(a, b)| a.semantic_eq(b))
+                .all(|(a, b)| a.observationally_equal(b))
     }
 }
 
-impl NamedExtractionField {
-    pub fn semantic_eq(&self, other: &Self) -> bool {
+impl NamedObservedField {
+    pub fn observationally_equal(&self, other: &Self) -> bool {
         self.label == other.label
             && self.field_type_observation == other.field_type_observation
-            && self.field_pattern_head == other.field_pattern_head
+            && self.field_struct_pattern_registry == other.field_struct_pattern_registry
             && self.field_index == other.field_index
             && self.projection == other.projection
             && self.visibility == other.visibility

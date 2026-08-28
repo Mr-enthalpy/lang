@@ -611,7 +611,7 @@ pub struct SemanticSymbolCell {
     /// These are not the Val2 of `pure_p`. Each sibling val has its own
     /// recursive Val1 × P × Val2 structure.
     ///
-    /// A `TypeObject` adapter value must never appear in this list.
+    /// A `CoreTypeProjection` adapter value must never appear in this list.
     pub sibling_vals: Vec<SemanticValueId>,
     /// Destination residency of each ordinary value member carried by this
     /// Symbol.  The semantic value may be shared with another binding, but
@@ -645,7 +645,7 @@ impl SemanticSymbolCell {
 
     /// This cluster symbol's own pure-P member view (`value = None`), the
     /// binding-level Policy authority of the pure P.  A globally reused
-    /// TypeObject adapter is transport material and never a substitute.
+    /// CoreTypeProjection adapter is transport material and never a substitute.
     pub fn pure_p_view(&self) -> Option<&PolicyResultEntry<SemanticValueId, PatternValueId>> {
         let pattern = self.pure_p_pattern()?;
         self.member_views
@@ -654,7 +654,7 @@ impl SemanticSymbolCell {
     }
 
     /// All sibling value ids (`Val1 ≠ ∅` members). A pure-P member never
-    /// contributes an id here: its TypeObject adapter is Val2 transport
+    /// contributes an id here: its CoreTypeProjection adapter is Val2 transport
     /// material only and must not enter `sibling_vals`.
     #[allow(dead_code)]
     pub fn all_value_ids(&self) -> Vec<SemanticValueId> {
@@ -776,7 +776,7 @@ pub enum SemanticValuePayload {
     /// associated `()` Val2.
     CallEntry(OrdinaryCallEntry),
     /// Existing first-order type-value material.
-    TypeObject {
+    CoreTypeProjection {
         represented_type: TypeValueId,
         represented_pattern: PatternValueId,
     },
@@ -2037,7 +2037,7 @@ impl SemanticWorld {
         let place = object.place;
         let pattern = object.pattern;
         match object.payload {
-            SemanticValuePayload::TypeObject {
+            SemanticValuePayload::CoreTypeProjection {
                 represented_pattern,
                 ..
             } => self.canonical_type_object_address(Some(place), represented_pattern, state),
@@ -2119,7 +2119,7 @@ impl SemanticWorld {
             return self.canonical_member_value_address(value, &mut state);
         }
         match &raw.value_class {
-            RawArgValueClass::NonValue(NonValueArgKind::TypeObject) => {
+            RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection) => {
                 if let Some(type_value) = raw.known_first_order_type_value {
                     if let Some(whole) = raw.known_complete_type_observation {
                         return Ok(whole);
@@ -2300,7 +2300,7 @@ impl SemanticWorld {
     /// Attach `Addr(Norm_type)` observations to the type arguments of an
     /// invocation at a world-connected boundary.
     ///
-    /// Only `NonValue(TypeObject)` arguments receive an observation; other
+    /// Only `NonValue(CoreTypeProjection)` arguments receive an observation; other
     /// argument classes keep `known_type_observation = None` so their
     /// projections stay `Detached` (under-merge only).  Failure surfaces the
     /// same cyclic-Val2 diagnostics as canonical argument normalization.
@@ -2312,7 +2312,7 @@ impl SemanticWorld {
         for raw in raw_args.iter_mut() {
             if matches!(
                 raw.value_class,
-                RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+                RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
             ) {
                 let addr = self.canonical_type_core_observation_address(
                     raw.known_first_order_type_value.ok_or_else(|| {
@@ -3193,7 +3193,7 @@ impl SemanticWorld {
     /// The transport-default pure-P member view of a Pattern.
     ///
     /// This is NOT a binding-level Policy authority. The Policy components
-    /// come from the Pattern's shared TypeObject adapter, which is interned
+    /// come from the Pattern's shared CoreTypeProjection adapter, which is interned
     /// per `TypeValueId` and therefore identical for every carrier of the same
     /// type: `P_a let T: type = X;` and `P_b let U: type = X;` share one
     /// adapter but have different pure-P member views. A caller that has a
@@ -3903,7 +3903,7 @@ impl SemanticWorld {
     ///
     /// The host factor is decided here, from the host's own binding-level
     /// member view (see [`PatternHostMember::exposed_at`]) — never from the
-    /// shared TypeObject adapter, which is transport material and carries no
+    /// shared CoreTypeProjection adapter, which is transport material and carries no
     /// per-binding Policy. The member factor stays where it already lives —
     /// the per-member exposure stage of the invocation pipeline — so member
     /// views pass through unmodified here. The host Policy is only READ; it is
@@ -4126,7 +4126,7 @@ impl SemanticWorld {
                     policy: policy.clone(),
                     mode: PolicyMode::Plain,
                     namespace_visibility: None,
-                    payload: SemanticValuePayload::TypeObject {
+                    payload: SemanticValuePayload::CoreTypeProjection {
                         represented_type,
                         represented_pattern,
                     },
@@ -4142,7 +4142,7 @@ impl SemanticWorld {
                 type_value,
                 pattern,
                 payload:
-                    SemanticValuePayload::TypeObject {
+                    SemanticValuePayload::CoreTypeProjection {
                         represented_type: existing,
                         ..
                     },
@@ -4279,7 +4279,7 @@ impl SemanticWorld {
                 policy: policy.clone(),
                 mode: root.policy_mode(),
                 namespace_visibility: None,
-                payload: SemanticValuePayload::TypeObject {
+                payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type: canonical_type,
                     represented_pattern: pattern,
                 },
@@ -4364,7 +4364,7 @@ impl SemanticWorld {
                 policy,
                 mode: PolicyMode::Plain,
                 namespace_visibility: None,
-                payload: SemanticValuePayload::TypeObject {
+                payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type: canonical_type,
                     represented_pattern: pattern,
                 },
@@ -6229,7 +6229,7 @@ impl SemanticWorld {
     /// written P1, exactly as on the ordinary value path — a type does not
     /// get a second P1 discipline for lacking a Val1. It is installed as
     /// `C_f`'s pure-P member view and is the Policy authority for this
-    /// binding. The ObjectPlace entry carries only the TypeObject transport
+    /// binding. The ObjectPlace entry carries only the CoreTypeProjection transport
     /// reference; that globally reused adapter is never a binding-Policy
     /// carrier. Exposure of `t::f` composes per layer at lookup
     /// (`Expose(T_t, φ) ∧ Expose(C_f member, φ)`; see
@@ -6341,7 +6341,7 @@ impl SemanticWorld {
         }
 
         // Transport reference only: the object-level Val2 container indexes
-        // by `SemanticValueId`, so a pure type object needs a TypeObject
+        // by `SemanticValueId`, so a pure type object needs a CoreTypeProjection
         // adapter to be navigable from the place. The adapter is globally
         // reused per TypeValue and is NEVER the binding-Policy carrier — the
         // member view installed below is.
@@ -7076,7 +7076,7 @@ impl SemanticWorld {
                 policy: transport_policy,
                 mode: PolicyMode::Plain,
                 namespace_visibility: None,
-                payload: SemanticValuePayload::TypeObject {
+                payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type,
                     represented_pattern,
                 },
@@ -7569,7 +7569,7 @@ mod tests {
     /// Pattern fallback and owned Val2 are different relations.
     ///
     /// A later member on the Pattern's canonical lookup place does not change
-    /// an existing TypeObject's normal form.  An explicit contribution to the
+    /// an existing CoreTypeProjection's normal form.  An explicit contribution to the
     /// object's own SemanticVal2Snapshot does.
     #[test]
     fn pure_p_with_different_val2_keeps_different_addresses() {
@@ -7588,7 +7588,7 @@ mod tests {
         let place_id = world.allocate_object_place();
         world.pattern_places.insert(pattern, place_id);
 
-        // Register a TypeObject value pointing to this pattern.
+        // Register a CoreTypeProjection value pointing to this pattern.
         let represented_type = TypeValueId(200);
         let type_rank = world.type_rank.unwrap_or(represented_type);
         let value_id = world.allocate_value_id();
@@ -7612,7 +7612,7 @@ mod tests {
                 policy: policy.clone(),
                 mode: PolicyMode::Plain,
                 namespace_visibility: None,
-                payload: SemanticValuePayload::TypeObject {
+                payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type,
                     represented_pattern: pattern,
                 },
@@ -7687,7 +7687,7 @@ mod tests {
 
         world
             .associate_existing_value_in_place(value_place, "member", injected_value)
-            .expect("the TypeObject receives one owned Val2 contribution");
+            .expect("the CoreTypeProjection receives one owned Val2 contribution");
         let addr_with_owned_val2 = world
             .canonical_argument_address(&raw, &product_atom)
             .expect("acyclic owned Val2 normalizes");

@@ -1,32 +1,34 @@
 use lang_syntax::{NormExpr, NormProduct, NormProductElem};
 
 use crate::{
-    extraction_view::{NamedExtractionField, NamedProductExtractionShape, TypeExtractionInterface},
+    extraction_view::{NamedObservedField, NamedObservedProduct, TypeContentObservation},
     meta_candidate::{
         prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
         CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
         CandidatePreparationContext, ParameterShape,
     },
     meta_invocation::{
-        attach_type_definition_pattern_heads, compute_type_definition_instance_id,
-        GeneratedFieldDefinition, GeneratedTypeDefinitionValue, MetaInvocationInput,
-        MetaInvocationValue, ReturnSlotSemantics,
+        attach_type_definition_pattern_materials, compute_type_definition_instance_id,
+        GeneratedFieldDefinition, MetaExecutionMaterial, MetaInvocationInput, ReturnSlotSemantics,
+        StructConstructionMaterial,
     },
     model::{
-        CallablePolicyViews, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
-        FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance,
-        SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
-        TypeField, TypeObject,
+        CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, ExecutionEnv,
+        FieldObject, FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv,
+        Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
+        SymbolPayload, TypeField,
     },
     normalized_call::NormalizedCallSite,
-    pattern_head::TypeMaterializationState,
-    pattern_space::{StructLeafTypeExprShape, StructuralMemberVisibility, TypePatternExprShape},
     policy_pair::{declared_policy_view, NamespaceVisibility, PolicyMode, PolicyStage},
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
         ProductMaterialRole,
     },
     semantic_name_index::{BuildError, ResolverContext, SemanticNameIndex},
+    struct_pattern_material::{
+        StructLeafSyntaxMaterial, StructPatternSyntaxMaterial, StructuralMemberVisibility,
+    },
+    struct_pattern_registry::StructMaterializationState,
     type_argument::{classify_type_arguments_env_with_report, TypeResolutionEnv},
 };
 
@@ -199,7 +201,7 @@ pub fn compile_time_assert(
 /// whole named Pattern expression.
 fn classify_decoded_struct_field_arguments(
     type_env: &dyn TypeResolutionEnv,
-    pattern: &TypePatternExprShape,
+    pattern: &StructPatternSyntaxMaterial,
     context: &ResolverContext,
     provenance: Provenance,
 ) -> Result<ArgProductShape, BuildError> {
@@ -214,7 +216,7 @@ fn classify_decoded_struct_field_arguments(
             summary: format!("decoded struct field `{field_name}`"),
             provenance: field_provenance.clone(),
         });
-        let StructLeafTypeExprShape::Path(path) = external_type_expr else {
+        let StructLeafSyntaxMaterial::Path(path) = external_type_expr else {
             diagnostics.push(Diagnostic::hard_error(
                 format!(
                     "invalid struct syntax: unsupported type expression for struct field `{field_name}`"
@@ -250,27 +252,27 @@ fn classify_decoded_struct_field_arguments(
 }
 
 fn collect_decoded_struct_leaves<'a>(
-    pattern: &'a TypePatternExprShape,
-    output: &mut Vec<(&'a StructLeafTypeExprShape, &'a str, &'a Provenance)>,
+    pattern: &'a StructPatternSyntaxMaterial,
+    output: &mut Vec<(&'a StructLeafSyntaxMaterial, &'a str, &'a Provenance)>,
 ) {
     match pattern {
-        TypePatternExprShape::Leaf {
+        StructPatternSyntaxMaterial::Leaf {
             external_type_expr,
             local_pattern_name,
             provenance,
             ..
         } => output.push((external_type_expr, local_pattern_name.as_str(), provenance)),
-        TypePatternExprShape::Product { elements, .. } => {
+        StructPatternSyntaxMaterial::Product { elements, .. } => {
             for element in elements {
                 collect_decoded_struct_leaves(element, output);
             }
         }
-        TypePatternExprShape::Sum { alternatives, .. } => {
+        StructPatternSyntaxMaterial::Sum { alternatives, .. } => {
             for alternative in alternatives {
                 collect_decoded_struct_leaves(alternative, output);
             }
         }
-        TypePatternExprShape::Named { child, .. } => {
+        StructPatternSyntaxMaterial::Named { child, .. } => {
             collect_decoded_struct_leaves(child, output);
         }
     }
@@ -310,7 +312,7 @@ fn insert_projection_namespace(
     parent: NamespaceNodeId,
     name: &str,
     owner_type_symbol_id: SymbolId,
-    owner_pattern_head: Option<crate::pattern_head::PatternHeadId>,
+    owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
     fields: &[GeneratedFieldDefinition],
     projection: FieldProjection,
     provenance: Provenance,
@@ -343,7 +345,7 @@ fn insert_projection_namespace(
         delta,
         node_id,
         owner_type_symbol_id,
-        owner_pattern_head,
+        owner_struct_pattern_registry,
         fields,
         projection,
         None,
@@ -354,7 +356,7 @@ fn insert_field_projection_layer(
     delta: &mut SemanticNameDelta,
     parent: NamespaceNodeId,
     owner_type_symbol_id: SymbolId,
-    owner_pattern_head: Option<crate::pattern_head::PatternHeadId>,
+    owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
     fields: &[GeneratedFieldDefinition],
     projection: FieldProjection,
     forced_provenance: Option<Provenance>,
@@ -390,11 +392,11 @@ fn insert_field_projection_layer(
         ));
         symbol.payload = SymbolPayload::FieldFunction(FieldObject {
             owner_type_symbol_id,
-            owner_pattern_head,
+            owner_struct_pattern_registry,
             field_name: field.name.clone(),
             field_type_value: field.type_value,
             field_type_symbol_id: field.type_carrier_symbol,
-            field_pattern_head: field.pattern_head,
+            field_struct_pattern_registry: field.struct_pattern_registry,
             projection,
             callable_policy: CallablePolicyViews {
                 body_entry_policy: declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain),
@@ -414,25 +416,25 @@ fn insert_field_projection_layer(
 /// This is the formal binding entry point. It dispatches on the invocation
 /// value type:
 ///
-/// - `ForwardedValue` with `TypeValue`: materializes a fresh declaration
+/// - `ForwardedResultMaterial` with `TypeValue`: materializes a fresh declaration
 ///   that binds the returned type value.
-/// - `GeneratedConstructionValue`: materialized by `bind_generated_construction_value`.
-/// - `GeneratedTypeDefinitionValue`: materialized by `bind_generated_type_definition_value`.
+/// - `UnaryConstructionMaterial`: materialized by `bind_generated_construction_value`.
+/// - `StructConstructionMaterial`: materialized by `bind_generated_type_definition_value`.
 ///
 /// Compatibility helper only. This creates a temporary
-/// `TypeMaterializationState`, so it is not suitable for registry-backed world
+/// `StructMaterializationState`, so it is not suitable for registry-backed world
 /// binding of generated type definitions. Callers that install generated type
 /// definitions into a `CompilationWorld` must use
 /// `bind_meta_invocation_value_result_with_materialization_state` so the
-/// world-owned `PatternHeadRegistry` remains authoritative.
+/// world-owned `StructPatternMaterialRegistry` remains authoritative.
 pub fn bind_meta_invocation_value_result(
-    value: MetaInvocationValue,
+    value: MetaExecutionMaterial,
     snapshot: &SemanticNameIndex,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
     provenance: Provenance,
 ) -> Result<MetaExpansionResult, BuildError> {
-    let mut materialization_state = TypeMaterializationState::default();
+    let mut materialization_state = StructMaterializationState::default();
     bind_meta_invocation_value_result_with_materialization_state(
         value,
         snapshot,
@@ -444,15 +446,15 @@ pub fn bind_meta_invocation_value_result(
 }
 
 pub fn bind_meta_invocation_value_result_with_materialization_state(
-    value: MetaInvocationValue,
+    value: MetaExecutionMaterial,
     snapshot: &SemanticNameIndex,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
     provenance: Provenance,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
 ) -> Result<MetaExpansionResult, BuildError> {
     match value {
-        MetaInvocationValue::ForwardedValue(fv) => {
+        MetaExecutionMaterial::ForwardedResultMaterial(fv) => {
             let represented_type = fv.type_value;
             let mut delta = snapshot.empty_delta();
             let declared_id = delta.allocate_symbol_id();
@@ -477,7 +479,7 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
             });
             let declared_symbol = SymbolObject {
                 id: declared_id,
-                kind: SymbolKind::Type,
+                kind: SymbolKind::CompleteTypeProjection,
                 name: binding_name.to_string(),
                 source_category: SourceCategory::DeclaredSymbol,
                 node_kind: Some(NamespaceNodeKind::Virtual),
@@ -491,13 +493,13 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
                     ..crate::model::VisibilityMetadata::default()
                 },
                 diagnostics: Vec::new(),
-                generation_origin: Some("ForwardedValue(TypeValue) binding".to_string()),
+                generation_origin: Some("ForwardedResultMaterial(TypeValue) binding".to_string()),
                 cache_key_fragment: None,
                 provenance: Provenance::new(format!("declared forwarding type `{binding_name}`")),
-                payload: SymbolPayload::Type(TypeObject {
+                payload: SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
                     carrier_symbol_id: declared_id,
                     represented_type,
-                    owner_pattern_head: None,
+                    owner_struct_pattern_registry: None,
                     fields: Vec::new(),
                     field_names: Vec::new(),
                     field_type_values: Vec::new(),
@@ -508,7 +510,9 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
                         "type-value binding `{binding_name}` from TypeValue({})",
                         represented_type.0
                     )),
-                    generation_origin: Some("ForwardedValue(TypeValue) adapter".to_string()),
+                    generation_origin: Some(
+                        "ForwardedResultMaterial(TypeValue) adapter".to_string(),
+                    ),
                     layout_slot: None,
                     abi_slot: None,
                 }),
@@ -521,14 +525,14 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
                 provenance,
             })
         }
-        MetaInvocationValue::GeneratedConstructionValue(gcv) => bind_generated_construction_value(
+        MetaExecutionMaterial::UnaryConstructionMaterial(gcv) => bind_generated_construction_value(
             &gcv,
             snapshot,
             parent_namespace,
             binding_name,
             provenance,
         ),
-        MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv) => {
+        MetaExecutionMaterial::StructConstructionMaterial(gtdv) => {
             bind_generated_type_definition_value(
                 gtdv,
                 snapshot,
@@ -542,18 +546,18 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
 }
 
 fn bind_generated_type_definition_value(
-    value: GeneratedTypeDefinitionValue,
+    value: StructConstructionMaterial,
     snapshot: &SemanticNameIndex,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
     provenance: Provenance,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
 ) -> Result<MetaExpansionResult, BuildError> {
     let expected = compute_type_definition_instance_id(&value.identity_material);
     if expected != value.type_definition_id {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: GeneratedTypeDefinitionValue has mismatched TypeDefinitionInstanceId (expected {}, got {})",
+                "meta hard error: StructConstructionMaterial has mismatched TypeDefinitionInstanceId (expected {}, got {})",
                 expected.as_u64(),
                 value.type_definition_id.as_u64()
             ),
@@ -562,7 +566,7 @@ fn bind_generated_type_definition_value(
     }
     if value.identity_material.return_slot_semantics != ReturnSlotSemantics::Generate {
         return Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: GeneratedTypeDefinitionValue must have Generate return-slot semantics",
+            "meta hard error: StructConstructionMaterial must have Generate return-slot semantics",
             Some(value.provenance.clone()),
         )));
     }
@@ -582,10 +586,10 @@ fn bind_generated_type_definition_value(
         value.type_definition_id.0 ^ 0x6f2d_79b9_a341_c8d5,
     ));
     let type_namespace_id = delta.allocate_node_id();
-    let value = if value.pattern_heads.is_some() {
+    let value = if value.pattern_materials.is_some() {
         value
     } else {
-        attach_type_definition_pattern_heads(value, materialization_state, provenance.clone())
+        attach_type_definition_pattern_materials(value, materialization_state, provenance.clone())
             .map_err(BuildError::single)?
     };
     delta.insert_node(NamespaceNode::new(
@@ -601,7 +605,7 @@ fn bind_generated_type_definition_value(
     let mut type_object = SymbolObject::placeholder(
         type_symbol_id,
         binding_name,
-        SymbolKind::Type,
+        SymbolKind::CompleteTypeProjection,
         SourceCategory::DeclaredSymbol,
         Some(parent_namespace),
         provenance.clone(),
@@ -615,10 +619,13 @@ fn bind_generated_type_definition_value(
     // cache_key_fragment is a temporary carrier;
     // TypeDefinitionInstanceId is the semantic identity.
     type_object.cache_key_fragment = Some(type_definition_fragment.clone());
-    type_object.payload = SymbolPayload::Type(TypeObject {
+    type_object.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_symbol_id,
         represented_type,
-        owner_pattern_head: value.pattern_heads.as_ref().map(|heads| heads.owner_head),
+        owner_struct_pattern_registry: value
+            .pattern_materials
+            .as_ref()
+            .map(|heads| heads.owner_head),
         fields: value
             .fields
             .iter()
@@ -626,7 +633,7 @@ fn bind_generated_type_definition_value(
                 name: field.name.clone(),
                 type_value: field.type_value,
                 type_symbol_id: field.type_carrier_symbol,
-                pattern_head: field.pattern_head,
+                struct_pattern_registry: field.struct_pattern_registry,
                 visibility: field.visibility,
                 provenance: field.provenance.clone(),
             })
@@ -646,7 +653,10 @@ fn bind_generated_type_definition_value(
         extraction_interface: Some(generated_type_extraction_interface(
             type_symbol_id,
             represented_type,
-            value.pattern_heads.as_ref().map(|heads| heads.owner_head),
+            value
+                .pattern_materials
+                .as_ref()
+                .map(|heads| heads.owner_head),
             &value.fields,
             provenance.clone(),
         )),
@@ -664,7 +674,10 @@ fn bind_generated_type_definition_value(
         &mut delta,
         type_namespace_id,
         type_symbol_id,
-        value.pattern_heads.as_ref().map(|heads| heads.owner_head),
+        value
+            .pattern_materials
+            .as_ref()
+            .map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Value,
         None,
@@ -674,7 +687,10 @@ fn bind_generated_type_definition_value(
         type_namespace_id,
         "ref",
         type_symbol_id,
-        value.pattern_heads.as_ref().map(|heads| heads.owner_head),
+        value
+            .pattern_materials
+            .as_ref()
+            .map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Ref,
         provenance.clone(),
@@ -684,7 +700,10 @@ fn bind_generated_type_definition_value(
         type_namespace_id,
         "share",
         type_symbol_id,
-        value.pattern_heads.as_ref().map(|heads| heads.owner_head),
+        value
+            .pattern_materials
+            .as_ref()
+            .map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Share,
         provenance.clone(),
@@ -701,27 +720,27 @@ fn bind_generated_type_definition_value(
 fn generated_type_extraction_interface(
     owner_type_symbol_id: SymbolId,
     owner_type_value: crate::TypeValueId,
-    owner_pattern_head: Option<crate::pattern_head::PatternHeadId>,
+    owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
     fields: &[GeneratedFieldDefinition],
     provenance: Provenance,
-) -> TypeExtractionInterface {
-    TypeExtractionInterface {
+) -> TypeContentObservation {
+    TypeContentObservation {
         owner_type_value,
         owner_type_symbol_id,
-        owner_pattern_head,
-        exposed_view: NamedProductExtractionShape {
+        owner_struct_pattern_registry,
+        exposed_view: NamedObservedProduct {
             owner_type_value,
             owner_type_symbol_id,
-            owner_pattern_head,
+            owner_struct_pattern_registry,
             fields: fields
                 .iter()
                 .filter(|field| field.visibility != StructuralMemberVisibility::Private)
-                .map(|field| NamedExtractionField {
+                .map(|field| NamedObservedField {
                     label: field.name.clone(),
                     field_type_value: field.type_value,
                     field_type_observation: field.type_observation,
                     field_type_symbol_id: field.type_carrier_symbol,
-                    field_pattern_head: field.pattern_head,
+                    field_struct_pattern_registry: field.struct_pattern_registry,
                     field_index: field.index,
                     projection: FieldProjection::Value,
                     visibility: field.visibility,
@@ -734,25 +753,25 @@ fn generated_type_extraction_interface(
     }
 }
 
-/// Bind a `GeneratedConstructionValue` into the namespace graph.
+/// Bind a `UnaryConstructionMaterial` into the namespace graph.
 ///
 /// Creates a declared type symbol under `binding_name`. The `SymbolObject`
 /// carries the `construction_instance_id` as a `cache_key_fragment`
 /// (temporary carrier — the identity model is `ConstructionInstanceId`,
 /// not the cache key).
 ///
-/// The `TypeObject` payload attached here is a binding projection of the
-/// `GeneratedConstructionValue`, not a carrier-derived identity. The
+/// The `CoreTypeProjection` payload attached here is a binding projection of the
+/// `UnaryConstructionMaterial`, not a carrier-derived identity. The
 /// construction result already supplies semantic construction identity;
 /// binding materializes its TypeValue projection under a fresh carrier.
 ///
-/// The declared TypeObject's `carrier_symbol_id` is a fresh `SymbolId`; neither
+/// The declared CoreTypeProjection's `carrier_symbol_id` is a fresh `SymbolId`; neither
 /// the construction identity nor its TypeValue is derived from that carrier.
 ///
 /// This function installs a `NamespaceDelta`. It is the binding layer —
 /// `invoke_meta_callable` remains pure.
 fn bind_generated_construction_value(
-    gcv: &crate::meta_invocation::GeneratedConstructionValue,
+    gcv: &crate::meta_invocation::UnaryConstructionMaterial,
     snapshot: &SemanticNameIndex,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
@@ -762,7 +781,7 @@ fn bind_generated_construction_value(
     if expected != gcv.construction_instance_id {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: GeneratedConstructionValue has mismatched construction_instance_id (expected {}, got {})",
+                "meta hard error: UnaryConstructionMaterial has mismatched construction_instance_id (expected {}, got {})",
                 expected.as_u64(),
                 gcv.construction_instance_id.as_u64()
             ),
@@ -773,7 +792,7 @@ fn bind_generated_construction_value(
         != crate::meta_invocation::ReturnSlotSemantics::Generate
     {
         return Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: GeneratedConstructionValue must have Generate return-slot semantics",
+            "meta hard error: UnaryConstructionMaterial must have Generate return-slot semantics",
             Some(gcv.provenance.clone()),
         )));
     }
@@ -782,7 +801,7 @@ fn bind_generated_construction_value(
     let declared_id = delta.allocate_symbol_id();
     let declared_symbol = SymbolObject {
         id: declared_id,
-        kind: SymbolKind::Type,
+        kind: SymbolKind::CompleteTypeProjection,
         name: binding_name.to_string(),
         source_category: SourceCategory::DeclaredSymbol,
         node_kind: None,
@@ -806,14 +825,14 @@ fn bind_generated_construction_value(
         provenance: Provenance::new(format!(
             "declared construction type `{binding_name}` via core::UnaryConstructionPrototype"
         )),
-        payload: SymbolPayload::Type(TypeObject {
+        payload: SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
             carrier_symbol_id: declared_id,
             // Compatibility lookup material for this replayable construction.
             // Construction identity and type lookup identity must not collapse.
             represented_type: crate::TypeValueId(
                 gcv.construction_instance_id.0 ^ 0x38c4_15ea_d792_b60f,
             ),
-            owner_pattern_head: None,
+            owner_struct_pattern_registry: None,
             fields: Vec::new(),
             field_names: Vec::new(),
             field_type_values: Vec::new(),

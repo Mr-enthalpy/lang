@@ -42,7 +42,7 @@ use crate::{
         SelfPosition,
     },
     meta_candidate::CandidateBuildIdentityPlaceholder,
-    meta_invocation::{MetaInvocationInput, MetaInvocationValue},
+    meta_invocation::{MetaExecutionMaterial, MetaInvocationInput},
     model::{
         Diagnostic, ExecutionEnv, PolicyEnv, Provenance, ResolverCode, SourceCategory, SymbolId,
         SymbolKind, SymbolObject,
@@ -55,7 +55,6 @@ use crate::{
         RestrictedOverloadFailure, RestrictedOverloadFailureKind, SelectedOverloadCandidate,
         VisibilityView,
     },
-    pattern_head::TypeMaterializationState,
     policy_migration::{
         compare_migration_endpoint_coordinates, project_migration_input_endpoint,
         project_migration_output_endpoint, PolicyMigrationRequest, PolicyPartialOrdering,
@@ -81,6 +80,7 @@ use crate::{
         ObjectPlaceId, OrdinaryCallEntry, OrdinaryCandidateRole, PatternValueId, ReturnShape,
         SemanticValuePayload, SemanticWorld, WritableContext,
     },
+    struct_pattern_registry::StructMaterializationState,
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
     InvocationResidual, NormalizedCallSite,
 };
@@ -392,7 +392,7 @@ pub struct SingleMemberResult {
     /// Exact semantic complete-type result, present iff the selected
     /// declaration's result class is `CompleteType`.  Binding consumers use
     /// this field directly; they never infer a type result or recover tau from
-    /// a `TypeObject` compatibility payload.
+    /// a `CoreTypeProjection` compatibility payload.
     pub complete_type: Option<crate::CompleteTypeValue>,
     /// CompleteResultDomain — the complete result P2 compatibility domain
     /// returned by the ordinary callable (type/pattern compatibility
@@ -538,7 +538,7 @@ pub struct ClusterSymbolResult {
     /// ref/share projection namespaces, extraction interface) instead of a
     /// bare bound-type-value carrier.  Forwarded members contribute no
     /// entry here.
-    pub generated_types: Vec<crate::GeneratedTypeDefinitionValue>,
+    pub generated_types: Vec<crate::StructConstructionMaterial>,
     /// The complete result P2 of the selected callable.  Carried per
     /// result shape: the shape variant states the aggregation form, this
     /// field keeps the independent Policy coordinate alongside it.
@@ -601,7 +601,7 @@ pub struct ReturnedCompleteType {
     pub complete_type: crate::CompleteTypeValue,
     pub carrier_value: SemanticValueId,
     pub pattern: PatternValueId,
-    pub construction_material: Option<crate::GeneratedTypeDefinitionValue>,
+    pub construction_material: Option<crate::StructConstructionMaterial>,
 }
 
 #[derive(Clone, Debug)]
@@ -612,7 +612,7 @@ pub struct PolicyMigrationResult {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrdinaryReturnedValue {
-    Meta(MetaInvocationValue),
+    Meta(MetaExecutionMaterial),
     CompleteType(ReturnedCompleteType),
     /// A source body returned an already-existing semantic value. Ordinary
     /// non-migration invocation preserves that value identity; atomic runtime
@@ -848,7 +848,7 @@ fn evaluate_meta_injection_rhs(
             }
             if let (Some(pattern), Some(type_value)) = (bound.pattern_value, bound.value_type) {
                 // The argument carried its own binding view in; the globally
-                // reused TypeObject adapter for this TypeValue is transport
+                // reused CoreTypeProjection adapter for this TypeValue is transport
                 // material and is only a last resort for Patterns that were
                 // never named by a carrier at all.
                 let complete_view = bound
@@ -1065,7 +1065,7 @@ fn canonical_meta_instance_key_for_selected(
 #[allow(clippy::too_many_arguments)]
 fn evaluate_source_meta_member_initializer(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
     resolver_context: &ResolverContext,
     source_shape: &ApplicableCandidate,
     meta_root: &crate::MetaInstanceRoot,
@@ -1074,7 +1074,7 @@ fn evaluate_source_meta_member_initializer(
     initializer: &lang_syntax::NormExpr,
     provenance: &Provenance,
     trace: &OrdinaryPipelineTrace,
-) -> Result<(PatternValueId, crate::GeneratedTypeDefinitionValue), OrdinaryInvocationFailure> {
+) -> Result<(PatternValueId, crate::StructConstructionMaterial), OrdinaryInvocationFailure> {
     use lang_syntax::NormExpr;
     if let NormExpr::Name { text, .. } = initializer {
         let names_existing_type_root = source_shape
@@ -1204,7 +1204,7 @@ fn evaluate_source_meta_member_initializer(
         }
     };
     match value {
-        MetaInvocationValue::GeneratedTypeDefinitionValue(mut value) => {
+        MetaExecutionMaterial::StructConstructionMaterial(mut value) => {
             // `OwnerStrategy::ExplicitPrivilegedOwnerRule`: a nested `struct`
             // inside a meta body never roots at `struct` itself — the outer
             // meta invocation injects its own MetaInstance root (meta
@@ -1333,7 +1333,7 @@ fn substitute_binding_type_names(
 
 pub fn invoke_policy_migration(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
     request: &PolicyMigrationRequest,
     resolver_context: &ResolverContext,
 ) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
@@ -1464,7 +1464,7 @@ pub fn invoke_policy_migration(
 /// per member view downstream.
 pub fn invoke_symbol_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
     symbol: SemanticSymbolIdentity,
     call_site: &NormalizedCallSite,
     resolver_context: &ResolverContext,
@@ -1504,7 +1504,7 @@ pub fn invoke_symbol_ordinary(
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_host_member_symbol_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
     hosts: &[crate::PatternHostMember],
     symbol: SemanticSymbolIdentity,
     call_site: &NormalizedCallSite,
@@ -1542,7 +1542,7 @@ pub fn invoke_host_member_symbol_ordinary(
 /// fabricated.
 pub fn invoke_pattern_associated_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
     pattern: PatternValueId,
     operation_name: &str,
     receiver_value: SemanticValueId,
@@ -1575,7 +1575,7 @@ pub fn invoke_pattern_associated_ordinary(
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_pattern_associated_value_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
     pattern: PatternValueId,
     operation_name: &str,
     receiver_value: SemanticValueId,
@@ -1658,7 +1658,7 @@ fn filter_callable(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn invoke_target_values(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
+    materialization_state: &mut StructMaterializationState,
     origin: OrdinaryCandidateOrigin,
     target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
     target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
@@ -2040,7 +2040,7 @@ pub(crate) fn invoke_target_values(
                 });
                 continue;
             };
-            let SemanticValuePayload::TypeObject {
+            let SemanticValuePayload::CoreTypeProjection {
                 represented_type: receiver_target,
                 ..
             } = &target.payload
@@ -2412,7 +2412,7 @@ pub(crate) fn invoke_target_values(
 
         // Generated type definitions harvested for the binding side's
         // namespace projection expansion (field layer, ref/share views).
-        let mut generated_types: Vec<crate::GeneratedTypeDefinitionValue> = Vec::new();
+        let mut generated_types: Vec<crate::StructConstructionMaterial> = Vec::new();
 
         // Each member contribution carries the member's own value Policy
         // and Pattern Policy (S1); nothing is degraded to a bare
@@ -2444,7 +2444,7 @@ pub(crate) fn invoke_target_values(
                 }
             };
             match &value {
-                MetaInvocationValue::ForwardedValue(value) => {
+                MetaExecutionMaterial::ForwardedResultMaterial(value) => {
                     // Core identity-forwarding primitives (builtin
                     // privileged contract, e.g. `IdentityType`): the
                     // cluster's unique type member is still navigated as
@@ -2470,7 +2470,7 @@ pub(crate) fn invoke_target_values(
                     semantic_world
                         .contribute_cluster_member_view(cid, pure_p_member_view(created.1));
                 }
-                MetaInvocationValue::GeneratedTypeDefinitionValue(value) => {
+                MetaExecutionMaterial::StructConstructionMaterial(value) => {
                     let installed = match owner_strategy {
                         crate::OwnerStrategy::AmbientStructScope => {
                             let ambient_owner = ambient_owner
@@ -2522,7 +2522,7 @@ pub(crate) fn invoke_target_values(
                         generated_types.push(value);
                     }
                 }
-                MetaInvocationValue::GeneratedConstructionValue(value) => {
+                MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
                     if let Some(pattern) = semantic_world.allocate_meta_result_pattern(
                         &meta_root,
                         canonical_instance_key
@@ -2581,7 +2581,7 @@ pub(crate) fn invoke_target_values(
                 /// re-projects the new value under this same binding.
                 projection: P1Projection,
                 view: PolicyResultEntry<SemanticValueId, PatternValueId>,
-                generated: crate::GeneratedTypeDefinitionValue,
+                generated: crate::StructConstructionMaterial,
             }
             let mut pending_members: Vec<PendingClusterMember> = Vec::new();
             // B3 — the effect index is the declaration event: replaying the
@@ -3087,8 +3087,8 @@ pub(crate) fn invoke_target_values(
         && matches!(
             returned,
             OrdinaryReturnedValue::Meta(
-                MetaInvocationValue::GeneratedTypeDefinitionValue(_)
-                    | MetaInvocationValue::GeneratedConstructionValue(_)
+                MetaExecutionMaterial::StructConstructionMaterial(_)
+                    | MetaExecutionMaterial::UnaryConstructionMaterial(_)
             )
         )
     {
@@ -3278,23 +3278,25 @@ fn classify_semantic_value_arguments(
             .filter_map(|view| {
                 let value = view.value?;
                 let object = semantic_world.value(value)?;
-                // This TypeObject filter is a defensive
+                // This CoreTypeProjection filter is a defensive
                 // guard, NOT ontology leakage.  Pure-P/type views carry
                 // `value=None` and are already skipped by `view.value?`
-                // above.  This branch only catches legacy TypeObject carriers
+                // above.  This branch only catches legacy CoreTypeProjection carriers
                 // that somehow ended up in a value-bearing view — ordinary
                 // invocation must never treat a type adapter as a runtime
-                // argument.  The filter proves TypeObject is NOT an
+                // argument.  The filter proves CoreTypeProjection is NOT an
                 // indispensable hidden Val1: ordinary algorithms explicitly
                 // reject it rather than depend on it.
-                if matches!(object.payload, SemanticValuePayload::TypeObject { .. })
-                    || !view
-                        .view
-                        .pair
-                        .value
-                        .stages
-                        .iter()
-                        .any(|stage| stage.visible_at(phase))
+                if matches!(
+                    object.payload,
+                    SemanticValuePayload::CoreTypeProjection { .. }
+                ) || !view
+                    .view
+                    .pair
+                    .value
+                    .stages
+                    .iter()
+                    .any(|stage| stage.visible_at(phase))
                 {
                     return None;
                 }
@@ -3549,7 +3551,7 @@ fn validate_explicit_value_type_annotations(
         if is_type_rank_annotation
             && matches!(
                 actual.value_class,
-                crate::RawArgValueClass::NonValue(crate::NonValueArgKind::TypeObject)
+                crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection)
             )
         {
             continue;
@@ -3784,7 +3786,7 @@ fn ordinary_result_identity(
     returned: &mut OrdinaryReturnedValue,
 ) -> Result<Option<(TypeValueId, PatternValueId, Option<SemanticValueId>)>, Diagnostic> {
     match returned {
-        OrdinaryReturnedValue::Meta(MetaInvocationValue::ForwardedValue(value)) => {
+        OrdinaryReturnedValue::Meta(MetaExecutionMaterial::ForwardedResultMaterial(value)) => {
             let represented = value.type_value;
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
@@ -3819,7 +3821,7 @@ fn ordinary_result_identity(
             });
             Ok(Some((represented, pattern, None)))
         }
-        OrdinaryReturnedValue::Meta(MetaInvocationValue::GeneratedTypeDefinitionValue(value)) => {
+        OrdinaryReturnedValue::Meta(MetaExecutionMaterial::StructConstructionMaterial(value)) => {
             // The generated definition id is normalized body material; the
             // result identity is either the ambient struct root or the
             // canonical meta-type root registered under the selected callable
@@ -3892,7 +3894,7 @@ fn ordinary_result_identity(
                 Some(carrier_value),
             )))
         }
-        OrdinaryReturnedValue::Meta(MetaInvocationValue::GeneratedConstructionValue(value)) => {
+        OrdinaryReturnedValue::Meta(MetaExecutionMaterial::UnaryConstructionMaterial(value)) => {
             let canonical_key = canonical_key
                 .expect("generated meta value identity requires a canonical MetaInstance key");
             let Some(placement_parent) =
@@ -3926,13 +3928,13 @@ fn ordinary_result_identity(
     }
 }
 
-fn compatibility_meta_material_type(value: &MetaInvocationValue) -> TypeValueId {
+fn compatibility_meta_material_type(value: &MetaExecutionMaterial) -> TypeValueId {
     match value {
-        MetaInvocationValue::ForwardedValue(value) => value.type_value,
-        MetaInvocationValue::GeneratedConstructionValue(value) => {
+        MetaExecutionMaterial::ForwardedResultMaterial(value) => value.type_value,
+        MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
             TypeValueId(value.construction_instance_id.0)
         }
-        MetaInvocationValue::GeneratedTypeDefinitionValue(_) => unreachable!(
+        MetaExecutionMaterial::StructConstructionMaterial(_) => unreachable!(
             "world-connected struct material must be installed and returned as complete tau"
         ),
     }

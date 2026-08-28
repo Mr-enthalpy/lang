@@ -10,12 +10,12 @@ use lang_build::{
     invoke_meta_callable_with_materialization_state, CandidateBuildIdentityPlaceholder,
     CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
     CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, CanonicalValueAddr, ExecutionEnv,
-    FieldProjection, GeneratedTypeDefinitionValue, MetaCallableIdentity, MetaInstanceCache,
-    MetaInvocationInput, MetaInvocationValue, MetaPrimitiveExecution, NamespaceNode,
-    NamespaceNodeKind, NonValueArgKind, ParameterShape, PatternHeadId, PlaceId, PolicyEnv,
-    PolicyStage, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
-    SemanticNameIndex, SemanticValueId, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
-    TypeMaterializationState, TypeValueBindingPlaceholder, TypeValueId,
+    FieldProjection, MetaCallableIdentity, MetaExecutionMaterial, MetaInstanceCache,
+    MetaInvocationInput, MetaPrimitiveExecution, NamespaceNode, NamespaceNodeKind, NonValueArgKind,
+    ParameterShape, PlaceId, PolicyEnv, PolicyStage, ProductMaterialRole, Provenance,
+    RawArgValueClass, ReturnViewShape, SemanticNameIndex, SemanticValueId, SourceCategory,
+    StructConstructionMaterial, StructMaterializationState, StructPatternMaterialId, SymbolId,
+    SymbolObject, SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
 };
 
 fn structural_cache_key(seed: u64) -> lang_build::MetaInvocationMaterialKey {
@@ -393,9 +393,9 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
         .capability()
         .resolve_type_object("T", &world.package_context())
         .expect("T should be resolved as type object in world from fixture");
-    assert_eq!(t.kind, lang_build::SymbolKind::Type);
+    assert_eq!(t.kind, lang_build::SymbolKind::CompleteTypeProjection);
     assert!(
-        matches!(t.payload, SymbolPayload::Type(_)),
+        matches!(t.payload, SymbolPayload::CompleteTypeProjection(_)),
         "t must carry Type payload (IdentityType result)"
     );
     assert_eq!(t.name, "T");
@@ -405,10 +405,10 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
         .capability()
         .resolve_type_object("uint8", &world.package_context())
         .expect("uint8 resolves as type object");
-    let SymbolPayload::Type(type_obj) = &t.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_obj) = &t.payload else {
         panic!("t payload is not Type");
     };
-    let SymbolPayload::Type(uint8_type) = &uint8.payload else {
+    let SymbolPayload::CompleteTypeProjection(uint8_type) = &uint8.payload else {
         panic!("uint8 payload is not Type");
     };
     assert_eq!(
@@ -440,7 +440,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
         fixture_meta_target(&world, &site.target).name,
         "IdentityType"
     );
-    let SymbolPayload::Type(uint8_type) = &uint8.payload else {
+    let SymbolPayload::CompleteTypeProjection(uint8_type) = &uint8.payload else {
         panic!("uint8 carries an explicit type projection");
     };
 
@@ -452,9 +452,9 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     assert!(
         matches!(
             classified.raw_args[0].value_class,
-            RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+            RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
         ),
-        "uint8 must be classified as NonValue(TypeObject)"
+        "uint8 must be classified as NonValue(CoreTypeProjection)"
     );
     assert!(
         classified.raw_args[0]
@@ -476,7 +476,10 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     let material =
         lang_build::CanonicalArgProductShapeMaterial::from_arg_product_shape(&classified);
     assert_eq!(material.arity, 1);
-    assert_eq!(material.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
+    assert_eq!(
+        material.atom_kinds[0],
+        CanonicalArgAtomKind::CoreTypeProjection
+    );
     assert_eq!(
         material.known_type_values[0],
         Some(uint8_type.represented_type),
@@ -502,9 +505,9 @@ fn identity_type_classifier_resolves_uint8_through_namespace_graph() {
     assert!(
         matches!(
             raw.value_class,
-            RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+            RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
         ),
-        "classify_type_arguments must resolve uint8 as TypeObject through namespace graph"
+        "classify_type_arguments must resolve uint8 as CoreTypeProjection through namespace graph"
     );
     let tv = raw
         .known_first_order_type_value
@@ -558,13 +561,13 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
     let raw = &candidate.arg_product_shape.raw_args[0];
     assert!(matches!(
         raw.value_class,
-        RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+        RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
     ));
     assert!(raw.known_first_order_type_value.is_some());
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
     assert_eq!(mat.arity, 1);
-    assert_eq!(mat.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
+    assert_eq!(mat.atom_kinds[0], CanonicalArgAtomKind::CoreTypeProjection);
     assert!(mat.known_type_values[0].is_some());
 }
 
@@ -600,10 +603,10 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("formal invocation"));
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(fv)) =
         invoke_meta_callable(invocation_input)
     else {
-        panic!("invoke_meta_callable should yield ForwardedValue");
+        panic!("invoke_meta_callable should yield ForwardedResultMaterial");
     };
     assert_eq!(fv.return_view, ReturnViewShape::Leaf);
     let forwarded_type = fv.type_value;
@@ -613,12 +616,12 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
         .capability()
         .resolve_type_object("uint8", &world.package_context())
         .expect("uint8 resolves");
-    let SymbolPayload::Type(expected_type) = expected_symbol.payload else {
+    let SymbolPayload::CompleteTypeProjection(expected_type) = expected_symbol.payload else {
         panic!("uint8 is a Type object");
     };
     assert_eq!(
         forwarded_type, expected_type.represented_type,
-        "ForwardedValue must carry uint8's type value rather than its carrier Symbol"
+        "ForwardedResultMaterial must carry uint8's type value rather than its carrier Symbol"
     );
 }
 
@@ -664,7 +667,7 @@ fn identity_type_binding_uses_invocation_value_boundary() {
         world.namespace_projection(),
         world.package_root_node(),
         "T",
-        Provenance::new("binding via ForwardedValue"),
+        Provenance::new("binding via ForwardedResultMaterial"),
     )
     .expect("bind_meta_invocation_value_result should succeed");
     assert!(
@@ -742,17 +745,19 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     assert!(cache.lookup(&key).is_none(), "cache should be empty");
 
     let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv1)) = result1 else {
-        panic!("invocation should yield ForwardedValue");
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(fv1)) =
+        result1
+    else {
+        panic!("invocation should yield ForwardedResultMaterial");
     };
 
     let cached = cache.lookup(&key).expect("entry should now be cached");
-    let MetaInvocationValue::ForwardedValue(fv_cached) = &cached.result else {
-        panic!("cached result should be ForwardedValue");
+    let MetaExecutionMaterial::ForwardedResultMaterial(fv_cached) = &cached.result else {
+        panic!("cached result should be ForwardedResultMaterial");
     };
     assert_eq!(
         fv1.type_value, fv_cached.type_value,
-        "cached ForwardedValue target must match invocation result"
+        "cached ForwardedResultMaterial target must match invocation result"
     );
 
     // Second invocation with same material (new candidate from same input)
@@ -774,8 +779,10 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("cache test 2"));
     let result2 =
         lang_build::invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv2)) = result2 else {
-        panic!("second invocation should yield ForwardedValue");
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(fv2)) =
+        result2
+    else {
+        panic!("second invocation should yield ForwardedResultMaterial");
     };
     assert_eq!(
         fv1.type_value, fv2.type_value,
@@ -816,15 +823,15 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("forwarded binding"));
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(fv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(fv)) =
         invoke_meta_callable(invocation_input)
     else {
-        panic!("IdentityType must yield ForwardedValue");
+        panic!("IdentityType must yield ForwardedResultMaterial");
     };
     let type_value = fv.type_value;
 
     let result = bind_meta_invocation_value_result(
-        MetaInvocationValue::ForwardedValue(fv),
+        MetaExecutionMaterial::ForwardedResultMaterial(fv),
         world.namespace_projection(),
         world.package_root_node(),
         "T",
@@ -836,11 +843,14 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
         !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
         "forwarded binding must install a NamespaceDelta"
     );
-    assert_eq!(result.replacement_object.kind, lang_build::SymbolKind::Type);
+    assert_eq!(
+        result.replacement_object.kind,
+        lang_build::SymbolKind::CompleteTypeProjection
+    );
     assert_eq!(result.replacement_object.name, "T");
     // Ordinary binding installs a fresh graph carrier while retaining exactly
     // the forwarded type value.
-    let SymbolPayload::Type(type_obj) = &result.replacement_object.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_obj) = &result.replacement_object.payload else {
         panic!("declared symbol must have Type payload");
     };
     assert_eq!(type_obj.carrier_symbol_id, result.replacement_object.id);
@@ -873,7 +883,7 @@ fn generated_construction_value_binding_materializes_declared_type_symbol() {
     let cid = gcv.construction_instance_id;
 
     let result = bind_meta_invocation_value_result(
-        MetaInvocationValue::GeneratedConstructionValue(gcv),
+        MetaExecutionMaterial::UnaryConstructionMaterial(gcv),
         world.namespace_projection(),
         world.package_root_node(),
         "T",
@@ -897,7 +907,7 @@ fn generated_construction_value_binding_rejects_mismatched_construction_instance
         canonical_args: lang_build::CanonicalArgProductShapeMaterial {
             arity: 1,
             unit_positions: vec![],
-            atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
+            atom_kinds: vec![lang_build::CanonicalArgAtomKind::CoreTypeProjection],
             known_type_values: vec![Some(TypeValueId(1))],
         },
         return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
@@ -908,8 +918,8 @@ fn generated_construction_value_binding_rejects_mismatched_construction_instance
     let real_cid = lang_build::compute_construction_instance_id(&identity_material);
     let fake_cid = lang_build::ConstructionInstanceId(real_cid.as_u64() + 1);
 
-    let gcv = lang_build::MetaInvocationValue::GeneratedConstructionValue(
-        lang_build::GeneratedConstructionValue {
+    let gcv = lang_build::MetaExecutionMaterial::UnaryConstructionMaterial(
+        lang_build::UnaryConstructionMaterial {
             construction_instance_id: fake_cid,
             identity_material,
             return_view: ReturnViewShape::Leaf,
@@ -973,7 +983,7 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     assert!(cache.lookup(&key).is_none());
 
     let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv1)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(gcv1)) =
         result1
     else {
         panic!("first invocation should yield GCV");
@@ -983,7 +993,7 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     let cached = cache.lookup(&key).expect("GCV entry should now be cached");
     assert!(matches!(
         cached.result,
-        MetaInvocationValue::GeneratedConstructionValue(_)
+        MetaExecutionMaterial::UnaryConstructionMaterial(_)
     ));
 
     // Second invocation with same material → cache hit.
@@ -1003,7 +1013,7 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     };
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("GCV cache 2"));
     let result2 = invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv2)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(gcv2)) =
         result2
     else {
         panic!("second invocation should yield GCV");
@@ -1057,10 +1067,10 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("UCPrototype invocation"));
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(gcv)) =
         invoke_meta_callable(invocation_input)
     else {
-        panic!("UCPrototype should yield GeneratedConstructionValue");
+        panic!("UCPrototype should yield UnaryConstructionMaterial");
     };
 
     assert_eq!(gcv.return_view, ReturnViewShape::Leaf);
@@ -1110,14 +1120,14 @@ fn generated_construction_value_carries_construction_instance_identity() {
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("GCV identity invocation"));
     let gcv = match invoke_meta_callable(invocation_input) {
-        MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) => {
+        MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(gcv)) => {
             gcv
         }
-        MetaPrimitiveExecution::Material(MetaInvocationValue::ForwardedValue(_)) => {
+        MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(_)) => {
             panic!("UCPrototype must NOT return a forwarded TypeValue")
         }
-        MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(_)) => {
-            panic!("UCPrototype must NOT return GeneratedTypeDefinitionValue")
+        MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(_)) => {
+            panic!("UCPrototype must NOT return StructConstructionMaterial")
         }
         MetaPrimitiveExecution::Residual(residual) => panic!("unexpected residual: {residual:?}"),
         MetaPrimitiveExecution::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
@@ -1125,7 +1135,7 @@ fn generated_construction_value_carries_construction_instance_identity() {
 
     assert!(
         gcv.construction_instance_id.as_u64() != 0,
-        "GeneratedConstructionValue must have a ConstructionInstanceId"
+        "UnaryConstructionMaterial must have a ConstructionInstanceId"
     );
     assert_eq!(
         gcv.identity_material.return_slot_semantics,
@@ -1170,7 +1180,7 @@ fn binding_layer_materializes_generated_construction_value() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("binding materialization"));
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(gcv)) =
         invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
@@ -1178,7 +1188,7 @@ fn binding_layer_materializes_generated_construction_value() {
     let cid = gcv.construction_instance_id;
 
     let result = bind_meta_invocation_value_result(
-        MetaInvocationValue::GeneratedConstructionValue(gcv),
+        MetaExecutionMaterial::UnaryConstructionMaterial(gcv),
         world.namespace_projection(),
         world.package_root_node(),
         "T",
@@ -1194,9 +1204,12 @@ fn binding_layer_materializes_generated_construction_value() {
     // The bound carrier explicitly stores its represented type lookup; neither
     // its Symbol identity nor the construction digest defines that type.
     let declared = &result.replacement_object;
-    assert_eq!(declared.kind, lang_build::SymbolKind::Type);
+    assert_eq!(
+        declared.kind,
+        lang_build::SymbolKind::CompleteTypeProjection
+    );
     assert_eq!(declared.name, "T");
-    let SymbolPayload::Type(type_object) = &declared.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_object) = &declared.payload else {
         panic!("generated construction binding carries a type projection");
     };
     let tv = type_object.represented_type;
@@ -1245,7 +1258,7 @@ fn generated_construction_identity_is_independent_of_binding_name() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("identity independence"));
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(gcv)) =
         invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
@@ -1255,7 +1268,7 @@ fn generated_construction_identity_is_independent_of_binding_name() {
     // Bind same GCV under two different names, installing the first to
     // advance the snapshot so the second gets a distinct SymbolId.
     let result_a = bind_meta_invocation_value_result(
-        MetaInvocationValue::GeneratedConstructionValue(gcv.clone()),
+        MetaExecutionMaterial::UnaryConstructionMaterial(gcv.clone()),
         world.namespace_projection(),
         world.package_root_node(),
         "A",
@@ -1270,7 +1283,7 @@ fn generated_construction_identity_is_independent_of_binding_name() {
         .expect("install A's delta");
 
     let result_b = bind_meta_invocation_value_result(
-        MetaInvocationValue::GeneratedConstructionValue(gcv),
+        MetaExecutionMaterial::UnaryConstructionMaterial(gcv),
         &snapshot_after_a,
         world.package_root_node(),
         "B",
@@ -1337,7 +1350,7 @@ fn produce_classified_shape(
     _context: &lang_build::ResolverContext,
     role: lang_build::ProductMaterialRole,
 ) -> lang_build::ArgProductShape {
-    let SymbolPayload::Type(type_object) = &type_symbol.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_object) = &type_symbol.payload else {
         panic!("fixture type symbol must carry an explicit represented type");
     };
     let site = v08_identity_type_call_site();
@@ -1363,7 +1376,7 @@ fn v08_identity_type_call_site() -> lang_build::NormalizedCallSite {
 fn produce_gcv(
     callee: &lang_build::SymbolObject,
     classified: lang_build::ArgProductShape,
-) -> lang_build::GeneratedConstructionValue {
+) -> lang_build::UnaryConstructionMaterial {
     let prep = prepare_candidate_from_fixture_symbol(
         &callee,
         classified,
@@ -1381,7 +1394,7 @@ fn produce_gcv(
     };
 
     let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("GCV production"));
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(gcv)) =
         invoke_meta_callable(invocation_input)
     else {
         panic!("should yield GCV");
@@ -1393,16 +1406,16 @@ fn produce_gcv(
 fn identity_type_initializer_expands_through_meta_invocation_driver() {
     let world = build_single_fixture_world("v08_identity_type", "app");
     let result = world
-        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("T", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("connected source build installs IdentityType result");
     let uint8 = world
-        .resolve_with_expectation("uint8", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("uint8 resolves");
     assert_eq!(result.name, "T");
-    let SymbolPayload::Type(type_object) = &result.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_object) = &result.payload else {
         panic!("replacement_object must be the declared binding symbol with Type payload");
     };
-    let SymbolPayload::Type(uint8_type) = &uint8.payload else {
+    let SymbolPayload::CompleteTypeProjection(uint8_type) = &uint8.payload else {
         panic!("uint8 is a Type object");
     };
     assert_eq!(type_object.carrier_symbol_id, result.id);
@@ -1426,10 +1439,10 @@ fn ordinary_construction_material_cannot_satisfy_a_complete_type_annotation() {
 fn struct_initializer_expands_through_generated_type_definition_value() {
     let world = build_single_fixture_world("v08_struct_uint8", "app");
     let result = world
-        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("T", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("connected source build installs struct result");
-    let SymbolPayload::Type(type_object) = &result.payload else {
-        panic!("struct binding must materialize a TypeObject");
+    let SymbolPayload::CompleteTypeProjection(type_object) = &result.payload else {
+        panic!("struct binding must materialize a CoreTypeProjection");
     };
     let type_namespace = type_object
         .type_associated_namespace
@@ -1458,10 +1471,10 @@ fn struct_primitive_produces_material_not_complete_type_semantic_result() {
     let invocation_input =
         struct_invocation_input(&world, &initializer, "uint8", "pure struct invocation");
 
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(gtdv)) =
         invoke_meta_callable(invocation_input)
     else {
-        panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
+        panic!("struct formal invocation must produce StructConstructionMaterial");
     };
 
     assert_ne!(gtdv.type_definition_id.as_u64(), 0);
@@ -1472,7 +1485,7 @@ fn struct_primitive_produces_material_not_complete_type_semantic_result() {
 }
 
 #[test]
-fn materialized_struct_type_definition_records_pattern_heads() {
+fn materialized_struct_type_definition_records_pattern_materials() {
     let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
         .expect("empty world with core");
     let initializer = parse_and_normalize_fixture_let_initializer(
@@ -1484,38 +1497,38 @@ fn materialized_struct_type_definition_records_pattern_heads() {
         "uint8",
         "pattern head materialization",
     );
-    let mut materialization_state = TypeMaterializationState::default();
+    let mut materialization_state = StructMaterializationState::default();
 
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(gtdv)) =
         invoke_meta_callable_with_materialization_state(
             invocation_input,
             &mut materialization_state,
         )
     else {
-        panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
+        panic!("struct formal invocation must produce StructConstructionMaterial");
     };
 
-    let pattern_heads = gtdv
-        .pattern_heads
+    let pattern_materials = gtdv
+        .pattern_materials
         .as_ref()
-        .expect("GeneratedTypeDefinitionValue records pattern heads");
-    let field_head = pattern_heads
+        .expect("StructConstructionMaterial records pattern heads");
+    let field_head = pattern_materials
         .field_heads
         .iter()
         .find(|field| field.field_name == "a")
         .expect("field `a` records a pattern head")
         .field_head;
-    assert_eq!(gtdv.fields[0].pattern_head, Some(field_head));
+    assert_eq!(gtdv.fields[0].struct_pattern_registry, Some(field_head));
     assert_eq!(
         materialization_state
-            .pattern_heads
-            .lookup_child(pattern_heads.owner_head, "a"),
+            .pattern_materials
+            .lookup_child(pattern_materials.owner_head, "a"),
         Some(field_head)
     );
 }
 
 #[test]
-fn generated_type_definition_semantic_eq_includes_pattern_heads() {
+fn generated_type_definition_semantic_eq_includes_pattern_materials() {
     let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
         .expect("empty world with core");
     let initializer = parse_and_normalize_fixture_let_initializer(
@@ -1523,40 +1536,41 @@ fn generated_type_definition_semantic_eq_includes_pattern_heads() {
     );
     let gtdv = produce_gtdv_from_struct_initializer(&world, &initializer, "uint8");
     let mut changed_heads = gtdv.clone();
-    let pattern_heads = changed_heads
-        .pattern_heads
+    let pattern_materials = changed_heads
+        .pattern_materials
         .as_mut()
         .expect("generated type definition records pattern heads");
-    pattern_heads.owner_head = PatternHeadId(pattern_heads.owner_head.0 + 1000);
-    pattern_heads.field_heads[0].field_head =
-        PatternHeadId(pattern_heads.field_heads[0].field_head.0 + 1000);
-    changed_heads.fields[0].pattern_head = Some(pattern_heads.field_heads[0].field_head);
+    pattern_materials.owner_head = StructPatternMaterialId(pattern_materials.owner_head.0 + 1000);
+    pattern_materials.field_heads[0].field_head =
+        StructPatternMaterialId(pattern_materials.field_heads[0].field_head.0 + 1000);
+    changed_heads.fields[0].struct_pattern_registry =
+        Some(pattern_materials.field_heads[0].field_head);
 
     assert!(
-        !MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv).semantic_eq(
-            &MetaInvocationValue::GeneratedTypeDefinitionValue(changed_heads)
+        !MetaExecutionMaterial::StructConstructionMaterial(gtdv).semantic_eq(
+            &MetaExecutionMaterial::StructConstructionMaterial(changed_heads)
         )
     );
 }
 
 #[test]
-fn source_struct_materialization_updates_world_pattern_head_registry() {
+fn source_struct_materialization_updates_world_struct_pattern_registry_registry() {
     let world = build_single_fixture_world("v08_struct_uint8", "app");
     let resolved = world.resolve("T").expect("T resolves");
-    let SymbolPayload::Type(type_object) = &resolved.payload else {
-        panic!("T must be a generated TypeObject");
+    let SymbolPayload::CompleteTypeProjection(type_object) = &resolved.payload else {
+        panic!("T must be a generated CoreTypeProjection");
     };
     let owner_head = type_object
-        .owner_pattern_head
-        .expect("source-built TypeObject records owner PatternHeadId");
+        .owner_struct_pattern_registry
+        .expect("source-built CoreTypeProjection records owner StructPatternMaterialId");
     let field_head = type_object.fields[0]
-        .pattern_head
-        .expect("source-built TypeField records field PatternHeadId");
+        .struct_pattern_registry
+        .expect("source-built TypeField records field StructPatternMaterialId");
 
     assert_eq!(
         world
             .type_materialization_state()
-            .pattern_heads
+            .pattern_materials
             .lookup_child(owner_head, "a"),
         Some(field_head)
     );
@@ -1573,7 +1587,7 @@ fn generated_type_definition_identity_is_independent_of_binding_name() {
     let type_definition_id = gtdv.type_definition_id;
 
     let result_a = bind_meta_invocation_value_result(
-        MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv.clone()),
+        MetaExecutionMaterial::StructConstructionMaterial(gtdv.clone()),
         world.namespace_projection(),
         world.package_root_node(),
         "A",
@@ -1585,7 +1599,7 @@ fn generated_type_definition_identity_is_independent_of_binding_name() {
         .install_delta(result_a.namespace_delta.clone())
         .expect("install A");
     let result_b = bind_meta_invocation_value_result(
-        MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
+        MetaExecutionMaterial::StructConstructionMaterial(gtdv),
         &snapshot_a,
         world.package_root_node(),
         "B",
@@ -1636,7 +1650,7 @@ fn type_definition_identity_material_equality_ignores_field_provenance() {
     let canonical_args = lang_build::CanonicalArgProductShapeMaterial {
         arity: 1,
         unit_positions: vec![],
-        atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
+        atom_kinds: vec![lang_build::CanonicalArgAtomKind::CoreTypeProjection],
         known_type_values: vec![Some(TypeValueId(2))],
     };
     let left = lang_build::TypeDefinitionIdentityMaterial {
@@ -1699,14 +1713,14 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
     let mut cache = MetaInstanceCache::new();
 
     let result1 = invoke_meta_callable_cached(invocation_input, key.clone(), &mut cache);
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(gtdv1)) =
         result1
     else {
-        panic!("first invocation should yield GeneratedTypeDefinitionValue");
+        panic!("first invocation should yield StructConstructionMaterial");
     };
     let cached = cache
         .lookup(&key)
-        .expect("GeneratedTypeDefinitionValue should be cached");
+        .expect("StructConstructionMaterial should be cached");
     let cached_debug = format!("{cached:?}");
     assert!(!cached_debug.contains("NamespaceDelta"));
     assert!(!cached_debug.contains("CachedStructBinding"));
@@ -1718,10 +1732,10 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
         "generated type definition cache hit",
     );
     let result2 = invoke_meta_callable_cached(invocation_input2, key.clone(), &mut cache);
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(gtdv2)) =
         result2
     else {
-        panic!("second invocation should yield GeneratedTypeDefinitionValue");
+        panic!("second invocation should yield StructConstructionMaterial");
     };
 
     assert_eq!(gtdv1.type_definition_id, gtdv2.type_definition_id);
@@ -1729,7 +1743,7 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
 }
 
 #[test]
-fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
+fn cached_struct_invocation_rematerializes_pattern_materials_in_current_state() {
     let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
         .expect("empty world with core");
     let initializer = parse_and_normalize_fixture_let_initializer(
@@ -1743,9 +1757,9 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
     );
     let key = structural_cache_key(1710);
     let mut cache = MetaInstanceCache::new();
-    let mut miss_state = TypeMaterializationState::default();
+    let mut miss_state = StructMaterializationState::default();
 
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(gtdv1)) =
         invoke_meta_callable_cached_with_materialization_state(
             invocation_input,
             key.clone(),
@@ -1753,24 +1767,24 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
             &mut miss_state,
         )
     else {
-        panic!("first invocation should yield GeneratedTypeDefinitionValue");
+        panic!("first invocation should yield StructConstructionMaterial");
     };
     let cached = cache
         .lookup(&key)
         .expect("cache stores replayable pure invocation material");
-    let MetaInvocationValue::GeneratedTypeDefinitionValue(cached_gtdv) = &cached.result else {
+    let MetaExecutionMaterial::StructConstructionMaterial(cached_gtdv) = &cached.result else {
         panic!("cached result should be a generated type definition");
     };
     assert!(
-        cached_gtdv.pattern_heads.is_none(),
-        "cache must not store concrete registry-backed PatternHeadId material"
+        cached_gtdv.pattern_materials.is_none(),
+        "cache must not store concrete registry-backed StructPatternMaterialId material"
     );
     assert!(
         cached_gtdv
             .fields
             .iter()
-            .all(|field| field.pattern_head.is_none()),
-        "cache must not store concrete field PatternHeadId material"
+            .all(|field| field.struct_pattern_registry.is_none()),
+        "cache must not store concrete field StructPatternMaterialId material"
     );
 
     let invocation_input2 = struct_invocation_input(
@@ -1779,14 +1793,14 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
         "uint8",
         "generated type definition cache state hit",
     );
-    let mut hit_state = TypeMaterializationState::default();
-    hit_state.pattern_heads.allocate_external_forward_head(
-        SymbolId(999),
+    let mut hit_state = StructMaterializationState::default();
+    hit_state.pattern_materials.allocate_generated_head(
+        lang_build::ConstructionInstanceId(999),
         "preexisting",
-        Provenance::new("preexisting pattern head"),
+        Provenance::new("preexisting struct pattern material"),
     );
 
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(gtdv2)) =
         invoke_meta_callable_cached_with_materialization_state(
             invocation_input2,
             key.clone(),
@@ -1794,22 +1808,27 @@ fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
             &mut hit_state,
         )
     else {
-        panic!("cache hit should yield GeneratedTypeDefinitionValue");
+        panic!("cache hit should yield StructConstructionMaterial");
     };
 
-    let heads1 = gtdv1.pattern_heads.as_ref().expect("miss result has heads");
+    let heads1 = gtdv1
+        .pattern_materials
+        .as_ref()
+        .expect("miss result has heads");
     let heads2 = gtdv2
-        .pattern_heads
+        .pattern_materials
         .as_ref()
         .expect("hit result rematerializes heads");
     assert_eq!(gtdv1.type_definition_id, gtdv2.type_definition_id);
     assert_ne!(
         heads1.owner_head, heads2.owner_head,
-        "cache hit must use current registry materialization, not stale cached PatternHeadId"
+        "cache hit must use current registry materialization, not stale cached StructPatternMaterialId"
     );
     let field_head2 = heads2.field_heads[0].field_head;
     assert_eq!(
-        hit_state.pattern_heads.lookup_child(heads2.owner_head, "a"),
+        hit_state
+            .pattern_materials
+            .lookup_child(heads2.owner_head, "a"),
         Some(field_head2),
         "current materialization state must contain replayed extraction child scope"
     );
@@ -1829,7 +1848,7 @@ fn struct_invocation_input(
         .capability()
         .resolve_type_object(field_type_name, &context)
         .expect("field type resolves");
-    let SymbolPayload::Type(type_object) = &type_symbol.payload else {
+    let SymbolPayload::CompleteTypeProjection(type_object) = &type_symbol.payload else {
         panic!("field type fixture must carry an explicit represented type");
     };
     let mut classified =
@@ -1865,13 +1884,13 @@ fn produce_gtdv_from_struct_initializer(
     world: &lang_build::CompilationWorld,
     initializer: &lang_syntax::NormExpr,
     field_type_name: &str,
-) -> GeneratedTypeDefinitionValue {
+) -> StructConstructionMaterial {
     let invocation_input =
         struct_invocation_input(world, initializer, field_type_name, "produce GTDV");
-    let MetaPrimitiveExecution::Material(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+    let MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(gtdv)) =
         invoke_meta_callable(invocation_input)
     else {
-        panic!("struct invocation should yield GeneratedTypeDefinitionValue");
+        panic!("struct invocation should yield StructConstructionMaterial");
     };
     gtdv
 }

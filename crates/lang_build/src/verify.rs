@@ -387,18 +387,25 @@ impl VerificationInvocation {
         let field_path = self.arg_path(0)?;
         let owner_path = self.arg_path(1)?;
         let field = self.resolve_field_payload(world, context, &field_path)?;
-        let owner =
-            resolve_expected_kind(world, context, &owner_path, SymbolKind::Type).map_err(|_| {
-                self.error(format!(
-                    "expected `{}` to resolve as type",
-                    owner_path.source_order_display()
-                ))
-            })?;
+        let owner = resolve_expected_kind(
+            world,
+            context,
+            &owner_path,
+            SymbolKind::CompleteTypeProjection,
+        )
+        .map_err(|_| {
+            self.error(format!(
+                "expected `{}` to resolve as type",
+                owner_path.source_order_display()
+            ))
+        })?;
         let field_owner_type = world
             .namespace_index()
             .symbol(field.owner_type_symbol_id)
             .and_then(|symbol| match &symbol.payload {
-                SymbolPayload::Type(type_object) => Some(type_object.represented_type),
+                SymbolPayload::CompleteTypeProjection(type_object) => {
+                    Some(type_object.represented_type)
+                }
                 _ => None,
             })
             .ok_or_else(|| {
@@ -408,7 +415,7 @@ impl VerificationInvocation {
                 ))
             })?;
         let expected_owner_type = match &owner.payload {
-            SymbolPayload::Type(type_object) => type_object.represented_type,
+            SymbolPayload::CompleteTypeProjection(type_object) => type_object.represented_type,
             _ => {
                 return Err(self.error(format!(
                     "expected `{}` to carry a type value",
@@ -436,15 +443,20 @@ impl VerificationInvocation {
         let field_path = self.arg_path(0)?;
         let type_path = self.arg_path(1)?;
         let field = self.resolve_field_payload(world, context, &field_path)?;
-        let field_type = resolve_expected_kind(world, context, &type_path, SymbolKind::Type)
-            .map_err(|_| {
-                self.error(format!(
-                    "expected `{}` to resolve as type",
-                    type_path.source_order_display()
-                ))
-            })?;
+        let field_type = resolve_expected_kind(
+            world,
+            context,
+            &type_path,
+            SymbolKind::CompleteTypeProjection,
+        )
+        .map_err(|_| {
+            self.error(format!(
+                "expected `{}` to resolve as type",
+                type_path.source_order_display()
+            ))
+        })?;
         let represented_type = match &field_type.payload {
-            SymbolPayload::Type(type_object) => type_object.represented_type,
+            SymbolPayload::CompleteTypeProjection(type_object) => type_object.represented_type,
             _ => {
                 return Err(self.error(format!(
                     "expected `{}` to carry a type value",
@@ -578,16 +590,17 @@ impl VerificationInvocation {
         world: &SemanticWorld,
         context: &ResolverContext,
         path: &SourcePath,
-    ) -> Result<crate::model::TypeObject, Diagnostic> {
+    ) -> Result<crate::model::CoreTypeProjection, Diagnostic> {
         let symbol =
-            resolve_expected_kind(world, context, path, SymbolKind::Type).map_err(|_| {
-                self.error(format!(
-                    "expected `{}` to resolve as type",
-                    path.source_order_display()
-                ))
-            })?;
+            resolve_expected_kind(world, context, path, SymbolKind::CompleteTypeProjection)
+                .map_err(|_| {
+                    self.error(format!(
+                        "expected `{}` to resolve as type",
+                        path.source_order_display()
+                    ))
+                })?;
         match symbol.payload {
-            SymbolPayload::Type(type_object) => Ok(type_object),
+            SymbolPayload::CompleteTypeProjection(type_object) => Ok(type_object),
             _ => Err(self.error(format!(
                 "expected `{}` to carry a type payload",
                 path.source_order_display()
@@ -999,7 +1012,7 @@ fn semantic_symbol_contains_policy(
 fn parse_symbol_kind(name: &str) -> Option<SymbolKind> {
     match name {
         "namespace" => Some(SymbolKind::Namespace),
-        "type" => Some(SymbolKind::Type),
+        "type" => Some(SymbolKind::CompleteTypeProjection),
         "meta_function" => Some(SymbolKind::MetaFunction),
         "field_function" => Some(SymbolKind::FieldFunction),
         "placeholder" => Some(SymbolKind::Placeholder),
@@ -1010,7 +1023,7 @@ fn parse_symbol_kind(name: &str) -> Option<SymbolKind> {
 fn symbol_kind_label(kind: SymbolKind) -> &'static str {
     match kind {
         SymbolKind::Namespace => "namespace",
-        SymbolKind::Type => "type",
+        SymbolKind::CompleteTypeProjection => "type",
         SymbolKind::MetaFunction => "meta_function",
         SymbolKind::FieldFunction => "field_function",
         SymbolKind::Placeholder => "placeholder",
