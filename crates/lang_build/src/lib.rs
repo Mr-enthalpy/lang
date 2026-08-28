@@ -5,9 +5,7 @@
 
 pub mod build;
 pub mod canonical_value;
-pub mod construction_value;
 pub mod control_flow_end;
-pub mod control_flow_meta;
 pub mod core;
 pub mod discovery;
 pub mod extraction_view;
@@ -66,24 +64,9 @@ pub use canonical_value::{
     ExtractionPatternParent, MissingExtractionNavigationAnchor, OpaqueVal1Id, PatternChildInput,
     PatternLayerContext, PatternNavigationInput, PatternOwnNavigation,
 };
-pub use construction_value::{
-    construct_field_value, construct_owner_value, constructed_question_view, leaf_value,
-    placeholder_field_constructor_head, placeholder_owner_constructor_head, question_view_peels,
-    ConstructedValue, ConstructorHead,
-};
 pub use control_flow_end::{
     compute_control_flow_end_report, ControlFlowEndDiagnostic, ControlFlowEndReport,
     ControlFlowTerminal,
-};
-pub use control_flow_meta::{
-    check_simple_policy, check_simple_type_predicate, evaluate_guarded_branches,
-    lookup_branch_local_symbol, select_branch_arm, validate_branch_arm_labels, BranchActionShape,
-    BranchArmShape, BranchLocalBinding, BranchLocalLookupResult, BranchLocalSymbol,
-    BranchLocalSymbolSpace, BranchSelectionResult, BranchTypeRequirement,
-    ControlFlowLocalEvalResult, ControlFlowLocalMetaContext, EvaluatedBranchAction,
-    GuardResidualReason, MetaInvocationPlanShape, SimpleCapability, SimplePolicyCheckResult,
-    SimplePolicyFacts, SimplePolicyRequirement, SimpleTypeCheckResult, SimpleTypeFacts,
-    SimpleTypePredicate, SimpleTypePredicateFact,
 };
 pub use discovery::{
     DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,
