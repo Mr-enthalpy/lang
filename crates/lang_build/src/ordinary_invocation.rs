@@ -56,9 +56,13 @@ use crate::{
         VisibilityView,
     },
     pattern_head::TypeMaterializationState,
+    policy_migration::{
+        compare_migration_endpoint_coordinates, project_migration_input_endpoint,
+        project_migration_output_endpoint, PolicyMigrationRequest, PolicyPartialOrdering,
+        SemanticValueRef,
+    },
     policy_overload::{
-        maximal_candidates, mutability_preference_rank, MutabilityActualFrame,
-        MutabilityFormalFrame, MutabilityPattern,
+        maximal_candidates, policy_mode_preference_rank, PolicyActualFrame, PolicyFormalFrame,
     },
     policy_pair::{
         derive_function_object_view, elaborate_binding_result_demand, elaborate_explicit_p1,
@@ -66,11 +70,6 @@ use crate::{
         ExplicitP1Position, FunctionObjectDeclarationPolicy, OutputModeDemand, P1Projection,
         PatternComponentPolicy, Phase, PolicyMode, PolicyPair, PolicyResultEntry, PolicyStage,
         PolicyView, ResultPolicyDemand, ValueComponentPolicy,
-    },
-    policy_transition::{
-        compare_migration_endpoint_coordinates, project_migration_input_endpoint,
-        project_migration_output_endpoint, PolicyMigrationRequest, PolicyPartialOrdering,
-        PolicyTransitionRequest, SemanticValueRef,
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
@@ -221,7 +220,7 @@ pub struct PreparedCallCandidate {
     /// If omitted, P1 is derived from P2.
     pub function_object_view: PolicyView,
     pub capability_realization: CapabilityRealization,
-    pub formal_policy_frame: MutabilityFormalFrame,
+    pub formal_policy_frame: PolicyFormalFrame,
     pub(crate) source_shape: Option<ApplicableCandidate>,
     pub(crate) core_invocation: Option<MetaInvocationInput>,
     pub(crate) intrinsic_body: Option<crate::semantic_world::OrdinaryIntrinsicBody>,
@@ -454,7 +453,7 @@ pub struct ExposedInvocationResult {
 impl ExposedInvocationResult {
     /// `CompleteResultDomain(P2) -> expose under callable P1`.
     ///
-    /// Every entry's stage / mutability window is intersected with the
+    /// Every entry's stage / Policy-mode window is intersected with the
     /// callable's canonical P1 before any consumer sees it; entries whose
     /// exposed window vanishes are not part of the outward result at all.
     /// When the canonical P1 is the P2 derivation (no explicit P1 written
@@ -610,10 +609,6 @@ pub struct PolicyMigrationResult {
     pub invocation: SingleMemberResult,
     pub demanded_view: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
 }
-
-/// Compatibility name for the legacy compile-to-runtime caller.  The result
-/// is produced by the general same-Type migration authority.
-pub type AtomicRuntimeMigrationResult = PolicyMigrationResult;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrdinaryReturnedValue {
@@ -1462,23 +1457,6 @@ pub fn invoke_policy_migration(
     })
 }
 
-/// Migration-only adapter for the historical bounded static-to-runtime
-/// request.  It supplies one canonical request and never owns selection.
-pub fn invoke_atomic_runtime_migration(
-    semantic_world: &mut SemanticWorld,
-    materialization_state: &mut TypeMaterializationState,
-    request: &PolicyTransitionRequest,
-    resolver_context: &ResolverContext,
-) -> Result<AtomicRuntimeMigrationResult, OrdinaryInvocationFailure> {
-    let request = PolicyMigrationRequest::from_atomic_runtime(request);
-    invoke_policy_migration(
-        semantic_world,
-        materialization_state,
-        &request,
-        resolver_context,
-    )
-}
-
 /// Invoke all value members of one resolved semantic Symbol.
 ///
 /// C0 is the resolved ClusterSymbol's canonical member views — not a flat
@@ -1976,7 +1954,7 @@ pub(crate) fn invoke_target_values(
                 first_diagnostic.get_or_insert(diagnostic);
                 continue;
             }
-            let formal_policy_frame = match formal_mutability_frame(&entry, provenance.clone()) {
+            let formal_policy_frame = match formal_policy_frame(&entry, provenance.clone()) {
                 Ok(frame) => frame,
                 Err(diagnostic) => {
                     first_diagnostic.get_or_insert(diagnostic);
@@ -2038,9 +2016,9 @@ pub(crate) fn invoke_target_values(
                 None,
                 Some(core_invocation),
                 None,
-                MutabilityFormalFrame {
-                    self_pattern: PolicyMode::Plain,
-                    explicit_parameter_patterns: vec![PolicyMode::Plain; frame_args.arity],
+                PolicyFormalFrame {
+                    self_mode: PolicyMode::Plain,
+                    explicit_parameter_modes: vec![PolicyMode::Plain; frame_args.arity],
                 },
                 // S7 — same canonical P1 authority as the source arm.  The
                 // core candidate's function-object P1 is the declared
@@ -2102,9 +2080,9 @@ pub(crate) fn invoke_target_values(
                 None,
                 None,
                 Some(intrinsic.clone()),
-                MutabilityFormalFrame {
-                    self_pattern: PolicyMode::Plain,
-                    explicit_parameter_patterns: vec![PolicyMode::Plain],
+                PolicyFormalFrame {
+                    self_mode: PolicyMode::Plain,
+                    explicit_parameter_modes: vec![PolicyMode::Plain],
                 },
                 entry.callable_view.pair.clone(),
                 NormOverloadStrategy::Ordinary,
@@ -2232,7 +2210,7 @@ pub(crate) fn invoke_target_values(
         .map(|candidate| candidate.call_entry_value)
         .collect();
 
-    let actual_frame = MutabilityActualFrame {
+    let actual_frame = PolicyActualFrame {
         caller_value: context.caller_mode,
         explicit_arguments: classified
             .classified_shape
@@ -3336,10 +3314,10 @@ fn classify_semantic_value_arguments(
     }
 }
 
-fn formal_mutability_frame(
+fn formal_policy_frame(
     entry: &OrdinaryCallEntry,
     provenance: Provenance,
-) -> Result<MutabilityFormalFrame, Diagnostic> {
+) -> Result<PolicyFormalFrame, Diagnostic> {
     let head = entry
         .closure
         .as_ref()
@@ -3351,11 +3329,11 @@ fn formal_mutability_frame(
             )
         })?;
     let frame = head.formal_frame();
-    let self_pattern = match frame.written_self {
+    let self_mode = match frame.written_self {
         // The written-self slot policy is explicit P1 material: stage /
         // presence / Pattern atoms are legal there and are
         // reconciled by `canonical_function_object_p1` at registration.
-        // The Bₚ' mutability frame only consumes the const/mut dimension.
+        // The Bₚ' Policy-mode frame only consumes the PolicyMode coordinate.
         Some(element) => match elaborate_explicit_p1(
             element_policy(element),
             &entry.callable_view.pair,
@@ -3364,26 +3342,26 @@ fn formal_mutability_frame(
         )?
         .and_then(|selection| selection.mode)
         {
-            Some(PolicyMode::Const) => MutabilityPattern::Const,
-            Some(PolicyMode::Mut) => MutabilityPattern::Mut,
+            Some(PolicyMode::Const) => PolicyMode::Const,
+            Some(PolicyMode::Mut) => PolicyMode::Mut,
             _ => PolicyMode::Plain,
         },
         None => PolicyMode::Plain,
     };
-    let explicit_parameter_patterns = frame
+    let explicit_parameter_modes = frame
         .explicit_parameters
         .iter()
         .map(|element| {
-            formal_mutability_pattern(
+            formal_policy_mode(
                 element_policy(element),
                 &entry.body_entry_view,
                 provenance.clone(),
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(MutabilityFormalFrame {
-        self_pattern,
-        explicit_parameter_patterns,
+    Ok(PolicyFormalFrame {
+        self_mode,
+        explicit_parameter_modes,
     })
 }
 
@@ -3610,24 +3588,24 @@ fn element_policy(element: &NormPatternElem) -> Option<&NormPolicySpec> {
     }
 }
 
-fn formal_mutability_pattern(
+fn formal_policy_mode(
     policy: Option<&NormPolicySpec>,
     inherited: &PolicyView,
     provenance: Provenance,
-) -> Result<MutabilityPattern, Diagnostic> {
+) -> Result<PolicyMode, Diagnostic> {
     Ok(elaborate_formal_policy_pattern(policy, inherited, provenance)?.mode)
 }
 
 fn bp_prime_dominates(
     better: &PreparedCallCandidate,
     worse: &PreparedCallCandidate,
-    actual: &MutabilityActualFrame,
+    actual: &PolicyActualFrame,
     phase: Phase,
     output_demand: OutputModeDemand,
     migration: Option<MigrationInvocationContext<'_>>,
 ) -> bool {
     let mut strictly_better = false;
-    match compare_mutability_frames(
+    match compare_policy_frames(
         &better.formal_policy_frame,
         &worse.formal_policy_frame,
         actual,
@@ -3647,8 +3625,8 @@ fn bp_prime_dominates(
         PolicyPartialOrdering::Equal => {}
     }
 
-    match mutability_preference_rank(better.complete_result_view.mode, output_demand.mode()).cmp(
-        &mutability_preference_rank(worse.complete_result_view.mode, output_demand.mode()),
+    match policy_mode_preference_rank(better.complete_result_view.mode, output_demand.mode()).cmp(
+        &policy_mode_preference_rank(worse.complete_result_view.mode, output_demand.mode()),
     ) {
         std::cmp::Ordering::Less => return false,
         std::cmp::Ordering::Greater => strictly_better = true,
@@ -3692,44 +3670,45 @@ fn bp_prime_dominates(
     strictly_better
 }
 
-fn compare_mutability_frames(
-    left: &MutabilityFormalFrame,
-    right: &MutabilityFormalFrame,
-    actual: &MutabilityActualFrame,
+fn compare_policy_frames(
+    left: &PolicyFormalFrame,
+    right: &PolicyFormalFrame,
+    actual: &PolicyActualFrame,
 ) -> PolicyPartialOrdering {
-    if left.explicit_parameter_patterns.len() != actual.explicit_arguments.len()
-        || right.explicit_parameter_patterns.len() != actual.explicit_arguments.len()
+    if left.explicit_parameter_modes.len() != actual.explicit_arguments.len()
+        || right.explicit_parameter_modes.len() != actual.explicit_arguments.len()
     {
         return PolicyPartialOrdering::Incomparable;
     }
     let mut left_better = false;
     let mut right_better = false;
-    compare_mutability_position(
-        left.self_pattern,
-        right.self_pattern,
+    compare_policy_mode_position(
+        left.self_mode,
+        right.self_mode,
         actual.caller_value,
         &mut left_better,
         &mut right_better,
     );
     for ((left, right), actual) in left
-        .explicit_parameter_patterns
+        .explicit_parameter_modes
         .iter()
-        .zip(&right.explicit_parameter_patterns)
+        .zip(&right.explicit_parameter_modes)
         .zip(&actual.explicit_arguments)
     {
-        compare_mutability_position(*left, *right, *actual, &mut left_better, &mut right_better);
+        compare_policy_mode_position(*left, *right, *actual, &mut left_better, &mut right_better);
     }
     ordering_from_advantages(left_better, right_better)
 }
 
-fn compare_mutability_position(
-    left: MutabilityPattern,
-    right: MutabilityPattern,
+fn compare_policy_mode_position(
+    left: PolicyMode,
+    right: PolicyMode,
     actual: PolicyMode,
     left_better: &mut bool,
     right_better: &mut bool,
 ) {
-    match mutability_preference_rank(left, actual).cmp(&mutability_preference_rank(right, actual)) {
+    match policy_mode_preference_rank(left, actual).cmp(&policy_mode_preference_rank(right, actual))
+    {
         std::cmp::Ordering::Greater => *left_better = true,
         std::cmp::Ordering::Less => *right_better = true,
         std::cmp::Ordering::Equal => {}

@@ -8,16 +8,16 @@ use lang_build::{
     elaborate_return_policy_pattern, expose_policy_slice, externally_visible,
     function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
     project_export_overload_sets, project_p1, project_resolved_export_view, publicly_reachable,
-    read_pattern, read_value, resolve_explicit_path, select_by_mutability_product,
+    read_pattern, read_value, resolve_explicit_path, select_by_policy_product,
     select_policy_overload, BuiltinPrivilegedSealFunction, CapabilityRealization,
     CapabilityRealizationCell, CompleteFlowNode, CompleteSymbolFlow, ExportAdmission,
-    FunctionObjectDeclarationPolicy, MutabilityActualFrame, MutabilityFormalFrame,
-    MutabilityPattern, NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility,
-    ObjectPlaceId, OutputModeDemand, P1Projection, PatternComponentPolicy, Phase,
-    PhaseOverloadCandidate, PolicyMode, PolicyOverloadCandidate, PolicyOverloadSelection,
-    PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, Provenance, ResolvedCandidatePolicy,
-    SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy,
-    ValuePresence, WpreRoots, WritableContext,
+    FunctionObjectDeclarationPolicy, NamespaceDeclarationPosition, NamespaceExportNode,
+    NamespaceVisibility, ObjectPlaceId, OutputModeDemand, P1Projection, PatternComponentPolicy,
+    Phase, PhaseOverloadCandidate, PolicyActualFrame, PolicyFormalFrame, PolicyMode,
+    PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyStage,
+    PolicyView, Provenance, ResolvedCandidatePolicy, SealWorldSnapshot, StageSet,
+    StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValuePresence, WpreRoots,
+    WritableContext,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -168,7 +168,7 @@ fn policy_algebra_rejects_cross_dimension_choice_and_same_dimension_conjunction(
 }
 
 #[test]
-fn absent_value_component_cannot_carry_stage_or_mutability_subdimensions() {
+fn absent_value_component_cannot_carry_stage_or_policy_mode_subdimensions() {
     let absent = normalize_p2_policy(
         &policy_spec("S : compile"),
         Provenance::new("valid absent P2"),
@@ -460,7 +460,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         NamespaceDeclarationPosition::DirectTopLevel,
         Provenance::new("type-only export"),
     )
-    .expect("a pure Pattern/type export has no value-mutability obligation");
+    .expect("a pure Pattern/type export has no value-policy_mode obligation");
     assert!(matches!(
         type_only.external_projection,
         Some(P1Projection::Pair(ref pair))
@@ -767,7 +767,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         .expect("pure Pattern/type candidate remains externally visible");
     assert_eq!(
         external_type[0].external_policy, external_type[0].internal_candidate.internal_policy,
-        "Pv=absent has no value-mutability projection obligation"
+        "Pv=absent has no value-policy_mode projection obligation"
     );
 
     assert!(views.resolve_internal(&"private_dependency").is_some());
@@ -1115,15 +1115,15 @@ fn compile_projection_is_mechanical_and_preserves_control_structure() {
 
 fn candidate(
     id: &'static str,
-    frame_patterns: Vec<MutabilityPattern>,
+    frame_patterns: Vec<PolicyMode>,
     is_delete: bool,
 ) -> PolicyOverloadCandidate<&'static str> {
     let mut frame_patterns = frame_patterns.into_iter();
     PolicyOverloadCandidate {
         id,
-        formal_frame: MutabilityFormalFrame {
-            self_pattern: frame_patterns.next().unwrap_or(MutabilityPattern::Plain),
-            explicit_parameter_patterns: frame_patterns.collect(),
+        formal_frame: PolicyFormalFrame {
+            self_mode: frame_patterns.next().unwrap_or(PolicyMode::Plain),
+            explicit_parameter_modes: frame_patterns.collect(),
         },
         result_policy: PolicyMode::Plain,
         is_delete,
@@ -1133,8 +1133,8 @@ fn candidate(
 fn actual_frame(
     caller_value: PolicyMode,
     explicit_arguments: Vec<PolicyMode>,
-) -> MutabilityActualFrame {
-    MutabilityActualFrame {
+) -> PolicyActualFrame {
+    PolicyActualFrame {
         caller_value,
         explicit_arguments,
     }
@@ -1143,12 +1143,12 @@ fn actual_frame(
 #[test]
 fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     let single = vec![
-        candidate("const", vec![MutabilityPattern::Const], false),
-        candidate("plain", vec![MutabilityPattern::Plain], false),
-        candidate("mut", vec![MutabilityPattern::Mut], false),
+        candidate("const", vec![PolicyMode::Const], false),
+        candidate("plain", vec![PolicyMode::Plain], false),
+        candidate("mut", vec![PolicyMode::Mut], false),
     ];
     assert_eq!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &single,
             &actual_frame(PolicyMode::Const, vec![]),
             OutputModeDemand::default(),
@@ -1156,7 +1156,7 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
         PolicyOverloadSelection::Selected("const")
     );
     assert_eq!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &single,
             &actual_frame(PolicyMode::Mut, vec![]),
             OutputModeDemand::default(),
@@ -1165,19 +1165,11 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     );
 
     let crossed = vec![
-        candidate(
-            "left",
-            vec![MutabilityPattern::Const, MutabilityPattern::Plain],
-            false,
-        ),
-        candidate(
-            "right",
-            vec![MutabilityPattern::Plain, MutabilityPattern::Const],
-            false,
-        ),
+        candidate("left", vec![PolicyMode::Const, PolicyMode::Plain], false),
+        candidate("right", vec![PolicyMode::Plain, PolicyMode::Const], false),
     ];
     assert!(matches!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &crossed,
             &actual_frame(PolicyMode::Const, vec![PolicyMode::Const]),
             OutputModeDemand::default()
@@ -1186,11 +1178,11 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     ));
 
     let delete = vec![
-        candidate("const-delete", vec![MutabilityPattern::Const], true),
-        candidate("plain", vec![MutabilityPattern::Plain], false),
+        candidate("const-delete", vec![PolicyMode::Const], true),
+        candidate("plain", vec![PolicyMode::Plain], false),
     ];
     assert_eq!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &delete,
             &actual_frame(PolicyMode::Const, vec![]),
             OutputModeDemand::default(),
@@ -1200,7 +1192,7 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
 }
 
 #[test]
-fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
+fn formal_p2_policy_mode_slice_is_exported_to_the_overload_product_order() {
     let inherited_p2 = normalize_p2_policy(
         &policy_spec("runtime:compile"),
         Provenance::new("overload formal P2"),
@@ -1230,9 +1222,9 @@ fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
     );
     assert_eq!(
         split.formal_frame,
-        MutabilityFormalFrame {
-            self_pattern: MutabilityPattern::Const,
-            explicit_parameter_patterns: vec![MutabilityPattern::Mut],
+        PolicyFormalFrame {
+            self_mode: PolicyMode::Const,
+            explicit_parameter_modes: vec![PolicyMode::Mut],
         },
         "the first written formal is the self policy position; only later formals consume explicit arguments"
     );
@@ -1259,7 +1251,7 @@ fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
     ];
 
     assert_eq!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &candidates,
             &actual_frame(PolicyMode::Const, vec![]),
             OutputModeDemand::default()
@@ -1267,7 +1259,7 @@ fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
         PolicyOverloadSelection::Selected("const")
     );
     assert_eq!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &candidates,
             &actual_frame(PolicyMode::Mut, vec![]),
             OutputModeDemand::default()
@@ -1281,25 +1273,25 @@ fn total_output_mode_demand_orders_candidate_results() {
     let candidates = vec![
         PolicyOverloadCandidate {
             id: "const-result",
-            formal_frame: MutabilityFormalFrame {
-                self_pattern: MutabilityPattern::Plain,
-                explicit_parameter_patterns: vec![],
+            formal_frame: PolicyFormalFrame {
+                self_mode: PolicyMode::Plain,
+                explicit_parameter_modes: vec![],
             },
             result_policy: PolicyMode::Const,
             is_delete: false,
         },
         PolicyOverloadCandidate {
             id: "mut-result",
-            formal_frame: MutabilityFormalFrame {
-                self_pattern: MutabilityPattern::Plain,
-                explicit_parameter_patterns: vec![],
+            formal_frame: PolicyFormalFrame {
+                self_mode: PolicyMode::Plain,
+                explicit_parameter_modes: vec![],
             },
             result_policy: PolicyMode::Mut,
             is_delete: false,
         },
     ];
     assert!(matches!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &candidates,
             &actual_frame(PolicyMode::Const, vec![]),
             OutputModeDemand::default()
@@ -1307,7 +1299,7 @@ fn total_output_mode_demand_orders_candidate_results() {
         PolicyOverloadSelection::Ambiguous(_)
     ));
     assert_eq!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &candidates,
             &actual_frame(PolicyMode::Const, vec![]),
             OutputModeDemand(PolicyMode::Const)
@@ -1322,9 +1314,9 @@ fn policy_mode_is_a_real_three_point_preference_and_plain_is_not_a_wildcard() {
         .into_iter()
         .map(|mode| PolicyOverloadCandidate {
             id: mode,
-            formal_frame: MutabilityFormalFrame {
-                self_pattern: PolicyMode::Plain,
-                explicit_parameter_patterns: vec![],
+            formal_frame: PolicyFormalFrame {
+                self_mode: PolicyMode::Plain,
+                explicit_parameter_modes: vec![],
             },
             result_policy: mode,
             is_delete: false,
@@ -1334,7 +1326,7 @@ fn policy_mode_is_a_real_three_point_preference_and_plain_is_not_a_wildcard() {
 
     for demand in [PolicyMode::Const, PolicyMode::Plain, PolicyMode::Mut] {
         assert_eq!(
-            select_by_mutability_product(&candidates, &actual, OutputModeDemand(demand),),
+            select_by_policy_product(&candidates, &actual, OutputModeDemand(demand),),
             PolicyOverloadSelection::Selected(demand),
             "the exact point must win for every total output demand"
         );
@@ -1346,7 +1338,7 @@ fn policy_mode_is_a_real_three_point_preference_and_plain_is_not_a_wildcard() {
         .cloned()
         .collect::<Vec<_>>();
     assert!(matches!(
-        select_by_mutability_product(
+        select_by_policy_product(
             &endpoints_only,
             &actual,
             OutputModeDemand(PolicyMode::Plain),
@@ -1403,12 +1395,12 @@ fn capability_realization_is_a_complete_policy_orthogonal_three_by_three_grid() 
 fn phase_stage_preference_is_part_of_the_partial_order() {
     let open = vec![
         PhaseOverloadCandidate {
-            candidate: candidate("meta", vec![MutabilityPattern::Const], false),
+            candidate: candidate("meta", vec![PolicyMode::Const], false),
             stage: PolicyStage::Meta,
             fully_admissible: true,
         },
         PhaseOverloadCandidate {
-            candidate: candidate("compile", vec![MutabilityPattern::Const], false),
+            candidate: candidate("compile", vec![PolicyMode::Const], false),
             stage: PolicyStage::Compile,
             fully_admissible: true,
         },
@@ -1425,12 +1417,12 @@ fn phase_stage_preference_is_part_of_the_partial_order() {
 
     let seal = vec![
         PhaseOverloadCandidate {
-            candidate: candidate("seal", vec![MutabilityPattern::Mut], false),
+            candidate: candidate("seal", vec![PolicyMode::Mut], false),
             stage: PolicyStage::Seal,
             fully_admissible: true,
         },
         PhaseOverloadCandidate {
-            candidate: candidate("compile", vec![MutabilityPattern::Mut], false),
+            candidate: candidate("compile", vec![PolicyMode::Mut], false),
             stage: PolicyStage::Compile,
             fully_admissible: true,
         },
@@ -1447,12 +1439,12 @@ fn phase_stage_preference_is_part_of_the_partial_order() {
 
     let crossed = vec![
         PhaseOverloadCandidate {
-            candidate: candidate("meta-plain", vec![MutabilityPattern::Plain], false),
+            candidate: candidate("meta-plain", vec![PolicyMode::Plain], false),
             stage: PolicyStage::Meta,
             fully_admissible: true,
         },
         PhaseOverloadCandidate {
-            candidate: candidate("compile-const", vec![MutabilityPattern::Const], false),
+            candidate: candidate("compile-const", vec![PolicyMode::Const], false),
             stage: PolicyStage::Compile,
             fully_admissible: true,
         },

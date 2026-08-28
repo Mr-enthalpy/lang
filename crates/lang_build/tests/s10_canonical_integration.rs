@@ -12,10 +12,10 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CompilationWorld, ExecutionEnv, InvocationOutcome,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
-    PatternClusterOwner, PatternComponentPolicy, Phase, PolicyEnv, PolicyMode, PolicyPair,
-    PolicyStage, PolicyTransitionRequest, Provenance, ResolveExpectation, ResolverCode,
-    ReturnShape, SemanticOwnerKind, SemanticValuePayload, StageSet, SymbolPayload,
-    ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
+    PatternClusterOwner, PatternComponentPolicy, Phase, PolicyEnv, PolicyMigrationRequest,
+    PolicyMode, PolicyPair, PolicyStage, Provenance, ResolveExpectation, ResolverCode, ReturnShape,
+    SemanticOwnerKind, SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot,
+    ValueComponentPolicy, ValuePresence,
 };
 
 use support::{
@@ -582,7 +582,7 @@ fn s10_08_meta_outcome_lands_in_ordinary_binding() {
 // ---------------------------------------------------------------------------
 // ⑨ Runtime migration full chain — the transport-bundle mount conflict that
 // previously blocked this chain is fixed, so the test now exercises the full
-// `install_semantic_value` → `invoke_atomic_runtime_migration` chain
+// `install_semantic_value` → `invoke_policy_migration` chain
 // (source value → transport member selection → migrated demanded view).
 // ---------------------------------------------------------------------------
 
@@ -634,7 +634,7 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
             Provenance::new("compile uint8 migration source"),
         )
         .expect("installed value reuses the uint8 PatternValue");
-    let request = PolicyTransitionRequest::new(
+    let request = PolicyMigrationRequest::new(
         lang_build::PolicyView {
             pair: source_policy,
             mode: PolicyMode::Const,
@@ -647,10 +647,10 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
         source,
         Provenance::new("const compile -> mut runtime demand"),
     )
-    .expect("legal atomic migration request");
+    .expect("legal migration request");
 
     let migration = world
-        .invoke_atomic_runtime_migration(&request)
+        .invoke_policy_migration(&request)
         .expect("source-backed transport member is selected and invoked");
     assert!(
         migration

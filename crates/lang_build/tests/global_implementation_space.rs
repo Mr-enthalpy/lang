@@ -3,8 +3,8 @@ mod support;
 use lang_build::{
     extract_single_call_site, ArgProductShape, BuildManifest, CompilationWorld,
     FlattenedProductInvariant, FlattenedProductObject, OrdinaryInvocationContext,
-    OrdinaryInvocationFailure, P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair,
-    PolicyStage, PolicyTransitionRequest, PolicyView, Provenance, ResolveExpectation,
+    OrdinaryInvocationFailure, P1Projection, PatternComponentPolicy, PolicyMigrationRequest,
+    PolicyMode, PolicyPair, PolicyStage, PolicyView, Provenance, ResolveExpectation,
     ResultPolicyDemand, SemanticValuePayload, SourceRoot, StageSet, SymbolPayload,
     ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
 };
@@ -305,7 +305,7 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
             Provenance::new("compile uint8 fixture value"),
         )
         .expect("installed value reuses uint8 PatternValue");
-    let request = PolicyTransitionRequest::new(
+    let request = PolicyMigrationRequest::new(
         PolicyView {
             pair: source_policy,
             mode: PolicyMode::Const,
@@ -318,10 +318,10 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
         source,
         Provenance::new("const compile -> mut runtime demand"),
     )
-    .expect("legal atomic migration request");
+    .expect("legal migration request");
 
     let migration = world
-        .invoke_atomic_runtime_migration(&request)
+        .invoke_policy_migration(&request)
         .expect("ordinary source-backed transport is selected and invoked");
     assert_eq!(migration.invocation.trace.a_fully_admissible.len(), 5);
     assert_eq!(migration.invocation.trace.bp_prime.len(), 1);
@@ -685,7 +685,7 @@ fn type_changing_migration_candidate_is_excluded_in_a_before_preference() {
             Provenance::new("same-Type A regression source"),
         )
         .expect("source value");
-    let request = PolicyTransitionRequest::new(
+    let request = PolicyMigrationRequest::new(
         source_view,
         ResultPolicyDemand {
             pair_query: P1Projection::Pair(pair(
@@ -701,7 +701,7 @@ fn type_changing_migration_candidate_is_excluded_in_a_before_preference() {
     )
     .expect("migration request");
     let migration = world
-        .invoke_atomic_runtime_migration(&request)
+        .invoke_policy_migration(&request)
         .expect("the less preferred same-Type candidate remains selectable");
     assert_eq!(
         migration.invocation.trace.a_fully_admissible.len(),

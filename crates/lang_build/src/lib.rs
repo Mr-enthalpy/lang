@@ -34,9 +34,9 @@ pub mod pattern_relation;
 pub mod pattern_space;
 pub mod phase_flow;
 pub mod policy_expr;
+pub mod policy_migration;
 pub mod policy_overload;
 pub mod policy_pair;
-pub mod policy_transition;
 pub mod product_shape;
 pub mod return_target;
 pub mod semantic_name_index;
@@ -151,13 +151,12 @@ pub use model::{
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{
-    invoke_atomic_runtime_migration, invoke_host_member_symbol_ordinary,
-    invoke_pattern_associated_ordinary, invoke_pattern_associated_value_ordinary,
-    invoke_policy_migration, invoke_symbol_ordinary, AtomicRuntimeMigrationResult, CallableTarget,
-    ClusterSymbolResult, DynamicLegalityDemand, DynamicLegalityProof, ExposedInvocationResult,
-    InvocationOutcome, MigrationInvocationContext, OrdinaryCandidateOrigin,
-    OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
-    OrdinaryReturnedValue, PolicyMigrationResult, PreparedCallCandidate,
+    invoke_host_member_symbol_ordinary, invoke_pattern_associated_ordinary,
+    invoke_pattern_associated_value_ordinary, invoke_policy_migration, invoke_symbol_ordinary,
+    CallableTarget, ClusterSymbolResult, DynamicLegalityDemand, DynamicLegalityProof,
+    ExposedInvocationResult, InvocationOutcome, MigrationInvocationContext,
+    OrdinaryCandidateOrigin, OrdinaryInvocationContext, OrdinaryInvocationFailure,
+    OrdinaryPipelineTrace, OrdinaryReturnedValue, PolicyMigrationResult, PreparedCallCandidate,
     ProjectedInvocationOutcome, ReturnedCompleteType, SealedSelectedInvocation, SingleMemberResult,
     UnitInvocationResult,
 };
@@ -208,10 +207,14 @@ pub use phase_flow::{
     StaticTaskDisposition, SymbolEntry, SymbolResolutionError,
 };
 pub use policy_expr::elaborate_declaration_policy_expr;
+pub use policy_migration::{
+    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, P1Elaboration,
+    P1ElaborationFailure, P1Origin, PolicyMigrationRequest, PolicyMigrationRequestFailure,
+    PolicyPartialOrdering, PureTypeP1Elaboration, SemanticValueRef,
+};
 pub use policy_overload::{
-    select_by_mutability_product, select_policy_overload, MutabilityActualFrame,
-    MutabilityFormalFrame, MutabilityPattern, PhaseOverloadCandidate, PolicyOverloadCandidate,
-    PolicyOverloadSelection,
+    select_by_policy_product, select_policy_overload, PhaseOverloadCandidate, PolicyActualFrame,
+    PolicyFormalFrame, PolicyOverloadCandidate, PolicyOverloadSelection,
 };
 pub use policy_pair::{
     body_entry_allows_execution, compute_export_retention_closure, compute_wpre,
@@ -230,19 +233,6 @@ pub use policy_pair::{
     PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, ResolvedCandidatePolicy,
     ResultPolicyDemand, ReturnPolicyPattern, ReturnShape, SealWorldSnapshot, StageSet,
     ValueComponentPolicy, ValuePresence, WpreRoots,
-};
-pub use policy_transition::{
-    assemble_transition_results, compare_policy_transition_candidates,
-    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, invoke_resolved_policy_bridge,
-    project_transition_policy_domain, qualify_policy_bridge, resolve_policy_bridge,
-    validate_runtime_transition, BridgeQualification, OrdinaryCallableTypeInput,
-    OrdinaryCallableTypeOutput, P1AssemblyFailure, P1Elaboration, P1ElaborationFailure, P1Origin,
-    PolicyBridgeBody, PolicyBridgeEffect, PolicyBridgeInvocationFailure,
-    PolicyBridgeInvocationResult, PolicyBridgeResolution, PolicyMigrationRequest,
-    PolicyMigrationRequestFailure, PolicyPartialOrdering, PolicyTransitionCallable,
-    PolicyTransitionDemand, PolicyTransitionFailure, PolicyTransitionRequest,
-    PolicyTransitionRequestFailure, PrototypeTransitionResultCarrier, PureTypeP1Elaboration,
-    ResolvedPolicyBridge, SemanticValueRef, TransitionTypeExpectation,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

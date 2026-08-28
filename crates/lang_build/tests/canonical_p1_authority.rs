@@ -20,8 +20,8 @@ mod support;
 use lang_build::{
     canonical_function_object_view, extract_single_call_site, BuildManifest, CompilationWorld,
     ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext, P1Projection,
-    PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair, PolicyResultEntry, PolicyStage,
-    PolicyTransitionRequest, PolicyView, Provenance, ResolveExpectation, ResultPolicyDemand,
+    PatternComponentPolicy, PatternValueId, PolicyMigrationRequest, PolicyMode, PolicyPair,
+    PolicyResultEntry, PolicyStage, PolicyView, Provenance, ResolveExpectation, ResultPolicyDemand,
     SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet, SymbolPayload,
     ToolchainGlobalSourceRoot, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
@@ -507,7 +507,7 @@ fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
             Provenance::new("B3 compile uint8 source value"),
         )
         .expect("installed source value");
-    let request = PolicyTransitionRequest::new(
+    let request = PolicyMigrationRequest::new(
         source_policy,
         ResultPolicyDemand {
             pair_query: P1Projection::Pair(target_policy.pair),
@@ -517,9 +517,9 @@ fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
         source,
         Provenance::new("B3 const compile -> mut runtime demand"),
     )
-    .expect("legal atomic migration request");
+    .expect("legal migration request");
     let migration = world
-        .invoke_atomic_runtime_migration(&request)
+        .invoke_policy_migration(&request)
         .expect("migration invocation succeeds");
     let invocation = &migration.invocation;
 

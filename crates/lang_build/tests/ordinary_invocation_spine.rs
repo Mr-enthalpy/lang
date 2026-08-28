@@ -3,7 +3,7 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
     CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
-    PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyTransitionRequest,
+    PatternComponentPolicy, PolicyMigrationRequest, PolicyMode, PolicyPair, PolicyStage,
     Provenance, ResolveExpectation, SemanticOwnerKind, SemanticValuePayload, StageSet,
     SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence, WritableContext,
 };
@@ -293,7 +293,7 @@ fn i9_slot0_is_selected_callable_function_object() {
             Provenance::new("I9 compile uint8 fixture value"),
         )
         .expect("installed source value");
-    let request = PolicyTransitionRequest::new(
+    let request = PolicyMigrationRequest::new(
         lang_build::PolicyView {
             pair: source_policy,
             mode: PolicyMode::Const,
@@ -306,10 +306,10 @@ fn i9_slot0_is_selected_callable_function_object() {
         source,
         Provenance::new("I9 const compile -> mut runtime demand"),
     )
-    .expect("legal atomic migration request");
+    .expect("legal migration request");
 
     let migration = world
-        .invoke_atomic_runtime_migration(&request)
+        .invoke_policy_migration(&request)
         .expect("I9: migration invocation succeeds");
 
     // c0_target_values must be the cluster sibling vals (slot-0 candidates),
@@ -412,7 +412,7 @@ fn i14_finalize_construction_separate_from_install() {
 fn i15_source_ordinary_call_begins_from_cluster_sibling_enumeration() {
     // Source ordinary call begins from ClusterSymbol sibling enumeration,
     // not from Pattern.Val2["()"].  This is structurally enforced by
-    // invoke_atomic_runtime_migration which reads target_values from
+    // the ordinary invocation trunk, which reads target_values from
     // the cluster's sibling_vals, not from associated_val2.
     let world = build_single_fixture_world("s10_cluster_exposure", "app");
     let pick = world

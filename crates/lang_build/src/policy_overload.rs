@@ -1,35 +1,31 @@
 use crate::policy_pair::{FormalPolicyPattern, OutputModeDemand, Phase, PolicyMode, PolicyStage};
 
-/// Compatibility type name. The semantic carrier is the concrete three-point
-/// PolicyMode and has no unspecified state.
-pub type MutabilityPattern = PolicyMode;
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyOverloadCandidate<I> {
     pub id: I,
-    pub formal_frame: MutabilityFormalFrame,
+    pub formal_frame: PolicyFormalFrame,
     pub result_policy: PolicyMode,
     pub is_delete: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MutabilityFormalFrame {
+pub struct PolicyFormalFrame {
     /// Policy Pattern of callable-frame slot 0. The first source-written
     /// formal occupies this position. If no formal is written, the implicit
-    /// self-position remains and uses the unspecified Pattern.
-    pub self_pattern: MutabilityPattern,
+    /// self-position remains and uses the primitive `plain` mode.
+    pub self_mode: PolicyMode,
     /// Policy Patterns for source-written positions after the first one.
     /// These consume the explicit call-site Product.
-    pub explicit_parameter_patterns: Vec<MutabilityPattern>,
+    pub explicit_parameter_modes: Vec<PolicyMode>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MutabilityActualFrame {
-    /// Mutability view of the caller object injected into invocation-frame
+pub struct PolicyActualFrame {
+    /// Whole-slot Policy mode of the caller object injected into invocation-frame
     /// slot 0. For a standalone function this is the function object; for an
     /// associated `()` entry it is the object whose type supplied that entry.
     pub caller_value: PolicyMode,
-    /// Mutability views supplied by the explicit call-site Product.
+    /// Whole-slot Policy modes supplied by the explicit call-site Product.
     pub explicit_arguments: Vec<PolicyMode>,
 }
 
@@ -44,13 +40,13 @@ impl<I> PolicyOverloadCandidate<I> {
         result_policy: PolicyMode,
         is_delete: bool,
     ) -> Self {
-        let mut patterns = parameters.iter().map(formal_mutability_pattern);
-        let self_pattern = patterns.next().unwrap_or(PolicyMode::Plain);
+        let mut modes = parameters.iter().map(formal_policy_mode);
+        let self_mode = modes.next().unwrap_or(PolicyMode::Plain);
         Self {
             id,
-            formal_frame: MutabilityFormalFrame {
-                self_pattern,
-                explicit_parameter_patterns: patterns.collect(),
+            formal_frame: PolicyFormalFrame {
+                self_mode,
+                explicit_parameter_modes: modes.collect(),
             },
             result_policy,
             is_delete,
@@ -58,13 +54,13 @@ impl<I> PolicyOverloadCandidate<I> {
     }
 }
 
-fn formal_mutability_pattern(formal: &FormalPolicyPattern) -> MutabilityPattern {
+fn formal_policy_mode(formal: &FormalPolicyPattern) -> PolicyMode {
     formal.mode
 }
 
 /// A candidate after heterogeneous entry enumeration. The phase-aware selector
 /// first removes candidates that are not fully admissible or whose stage is not
-/// exposed, then uses one product partial order across mutability positions and
+/// exposed, then uses one product partial order across Policy-mode positions and
 /// phase-local stage specificity.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PhaseOverloadCandidate<I> {
@@ -81,9 +77,9 @@ pub enum PolicyOverloadSelection<I> {
     NoCandidate,
 }
 
-pub fn select_by_mutability_product<I: Clone>(
+pub fn select_by_policy_product<I: Clone>(
     candidates: &[PolicyOverloadCandidate<I>],
-    actual_frame: &MutabilityActualFrame,
+    actual_frame: &PolicyActualFrame,
     target_result: OutputModeDemand,
 ) -> PolicyOverloadSelection<I> {
     let admissible = candidates
@@ -115,7 +111,7 @@ pub fn select_by_mutability_product<I: Clone>(
 
 pub fn select_policy_overload<I: Clone>(
     candidates: &[PhaseOverloadCandidate<I>],
-    actual_frame: &MutabilityActualFrame,
+    actual_frame: &PolicyActualFrame,
     target_result: OutputModeDemand,
     phase: Phase,
 ) -> PolicyOverloadSelection<I> {
@@ -153,7 +149,7 @@ pub fn select_policy_overload<I: Clone>(
 fn phase_dominates<I>(
     better: &PhaseOverloadCandidate<I>,
     worse: &PhaseOverloadCandidate<I>,
-    actual_frame: &MutabilityActualFrame,
+    actual_frame: &PolicyActualFrame,
     target_result: OutputModeDemand,
     phase: Phase,
 ) -> bool {
@@ -207,7 +203,7 @@ fn compare_stage_specificity(
 fn dominates<I>(
     better: &PolicyOverloadCandidate<I>,
     worse: &PolicyOverloadCandidate<I>,
-    actual_frame: &MutabilityActualFrame,
+    actual_frame: &PolicyActualFrame,
     target_result: OutputModeDemand,
 ) -> bool {
     let Some(mut strictly_better) =
@@ -229,29 +225,29 @@ fn dominates<I>(
     strictly_better
 }
 
-fn frame_arity_matches(formal: &MutabilityFormalFrame, actual: &MutabilityActualFrame) -> bool {
-    formal.explicit_parameter_patterns.len() == actual.explicit_arguments.len()
+fn frame_arity_matches(formal: &PolicyFormalFrame, actual: &PolicyActualFrame) -> bool {
+    formal.explicit_parameter_modes.len() == actual.explicit_arguments.len()
 }
 
 /// Compare the complete callable frame. The self-position participates in the
 /// same product partial order as every explicit argument, but it is supplied
 /// from `actual.caller_value`, never from the call-site Product.
 fn compare_frames(
-    better: &MutabilityFormalFrame,
-    worse: &MutabilityFormalFrame,
-    actual: &MutabilityActualFrame,
+    better: &PolicyFormalFrame,
+    worse: &PolicyFormalFrame,
+    actual: &PolicyActualFrame,
 ) -> Option<bool> {
     let mut strictly_better = false;
-    match compare_position(better.self_pattern, worse.self_pattern, actual.caller_value) {
+    match compare_position(better.self_mode, worse.self_mode, actual.caller_value) {
         PositionPreference::Worse => return None,
         PositionPreference::Better => strictly_better = true,
         PositionPreference::Equal => {}
     }
 
     for ((better_policy, worse_policy), argument) in better
-        .explicit_parameter_patterns
+        .explicit_parameter_modes
         .iter()
-        .zip(&worse.explicit_parameter_patterns)
+        .zip(&worse.explicit_parameter_modes)
         .zip(&actual.explicit_arguments)
     {
         match compare_position(*better_policy, *worse_policy, *argument) {
@@ -270,13 +266,9 @@ enum PositionPreference {
     Worse,
 }
 
-fn compare_position(
-    left: MutabilityPattern,
-    right: MutabilityPattern,
-    actual: PolicyMode,
-) -> PositionPreference {
-    let left_rank = mutability_preference_rank(left, actual);
-    let right_rank = mutability_preference_rank(right, actual);
+fn compare_position(left: PolicyMode, right: PolicyMode, actual: PolicyMode) -> PositionPreference {
+    let left_rank = policy_mode_preference_rank(left, actual);
+    let right_rank = policy_mode_preference_rank(right, actual);
     match left_rank.cmp(&right_rank) {
         std::cmp::Ordering::Greater => PositionPreference::Better,
         std::cmp::Ordering::Equal => PositionPreference::Equal,
@@ -284,12 +276,12 @@ fn compare_position(
     }
 }
 
-/// Ordinary actual-relative mutability preference used by Bp.
+/// Ordinary actual-relative Policy-mode preference used by Bp.
 ///
 /// Migration endpoint adapters must reuse this relation rather than treating
 /// opposite const/mut Patterns as hard-incompatible Policy domains.
-pub(crate) fn mutability_preference_rank(pattern: PolicyMode, demand: PolicyMode) -> u8 {
-    match (pattern, demand) {
+pub(crate) fn policy_mode_preference_rank(candidate: PolicyMode, demand: PolicyMode) -> u8 {
+    match (candidate, demand) {
         (PolicyMode::Const, PolicyMode::Const)
         | (PolicyMode::Plain, PolicyMode::Plain)
         | (PolicyMode::Mut, PolicyMode::Mut) => 2,

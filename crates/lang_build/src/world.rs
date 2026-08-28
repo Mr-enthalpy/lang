@@ -380,21 +380,6 @@ impl CompilationWorld {
             .install_plain_value(type_value, policy, provenance)
     }
 
-    /// Invoke the language-authorized atomic runtime migration through the
-    /// same Pattern-associated ordinary-call trunk used by source callables.
-    pub fn invoke_atomic_runtime_migration(
-        &mut self,
-        request: &crate::PolicyTransitionRequest,
-    ) -> Result<crate::AtomicRuntimeMigrationResult, crate::OrdinaryInvocationFailure> {
-        let resolver_context = self.root_context();
-        crate::invoke_atomic_runtime_migration(
-            &mut self.semantic_world,
-            &mut self.type_materialization_state,
-            request,
-            &resolver_context,
-        )
-    }
-
     /// Invoke one direct same-Type Policy migration through ordinary
     /// candidate enumeration and the sealed no-reopen invocation trunk.
     pub fn invoke_policy_migration(
@@ -1509,8 +1494,7 @@ impl CompilationWorld {
             explicit_p1,
             provenance.clone(),
         ) {
-            Ok(crate::P1Elaboration::Projected { selected, .. }) => selected,
-            Ok(crate::P1Elaboration::AtomicRuntimeMigration { .. }) => Vec::new(),
+            Ok(elaboration) => elaboration.selected,
             Err(failure) => {
                 return Err(BuildError::single(
                     Diagnostic::hard_error(
@@ -2130,15 +2114,14 @@ impl CompilationWorld {
         // Binding P1 has one deliberate pure-P rule: a value-presence
         // coordinate cannot require migration when the semantic result has
         // no Val1, but its requested stage slice still applies.  Reuse that
-        // binding elaboration here while discarding its legacy transition
-        // requests; all non-identity completion below goes through the one
-        // general same-Type migration entry.
+        // binding elaboration here; all non-identity completion below goes
+        // through the one general same-Type migration entry.
         let explicit_pair = (!matches!(demand.pair_query, crate::P1Projection::Infer))
             .then_some(&demand.pair_query);
         let pair_projected =
             match crate::elaborate_value_binding_p1(result, explicit_pair, provenance.clone()) {
-                Ok(crate::P1Elaboration::Projected { selected, .. }) => selected,
-                Ok(crate::P1Elaboration::AtomicRuntimeMigration { .. }) | Err(_) => Vec::new(),
+                Ok(elaboration) => elaboration.selected,
+                Err(_) => Vec::new(),
             };
         let projected = pair_projected
             .into_iter()
