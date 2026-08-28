@@ -33,7 +33,6 @@ pub mod pattern_head;
 pub mod pattern_relation;
 pub mod pattern_space;
 pub mod phase_flow;
-pub mod policy_expr;
 pub mod policy_migration;
 pub mod policy_overload;
 pub mod policy_pair;
@@ -139,15 +138,12 @@ pub use meta_key::{
     CanonicalFingerprint, MetaInvocationMaterialKey,
 };
 pub use model::{
-    callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
-    policy_set_compile, policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
-    policy_set_meta_runtime, policy_set_runtime, policy_set_seal, CallablePolicyMetadata,
-    ChildBucket, ChildLink, ChildNameRole, CoreMetaFunction, Diagnostic, DiagnosticSeverity,
-    ExecutionEnv, FieldObject, FieldProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
-    NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, PolicySet, Provenance, ResolverCode,
-    SemanticNameDelta, SourceCallableObject, SourceCategory, SymbolId, SymbolKind, SymbolObject,
-    SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive,
-    VisibilityMetadata,
+    policy_view_allows_execution, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
+    CoreMetaFunction, Diagnostic, DiagnosticSeverity, ExecutionEnv, FieldObject, FieldProjection,
+    MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance,
+    ResolverCode, SemanticNameDelta, SourceCallableObject, SourceCategory, SymbolId, SymbolKind,
+    SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
+    VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{
@@ -206,7 +202,6 @@ pub use phase_flow::{
     ExposedPolicyEntry, FacetView, ProjectedCompileFlow, RuntimeResidualFlow, StaticFlow,
     StaticTaskDisposition, SymbolEntry, SymbolResolutionError,
 };
-pub use policy_expr::elaborate_declaration_policy_expr;
 pub use policy_migration::{
     elaborate_pure_type_binding_p1, elaborate_value_binding_p1, P1Elaboration,
     P1ElaborationFailure, P1Origin, PolicyMigrationRequest, PolicyMigrationRequestFailure,
@@ -218,8 +213,8 @@ pub use policy_overload::{
 };
 pub use policy_pair::{
     body_entry_allows_execution, compute_export_retention_closure, compute_wpre,
-    derive_function_object_view, elaborate_binding_result_demand, elaborate_explicit_p1,
-    elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
+    declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
+    elaborate_explicit_p1, elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
     elaborate_return_policy_pattern, externally_visible, function_object_declaration_policy,
     normalize_p2_policy, policy_or, project_export_overload_sets, project_export_root_preview,
     project_p1, project_resolved_export_view, publicly_reachable, validate_return_shape,

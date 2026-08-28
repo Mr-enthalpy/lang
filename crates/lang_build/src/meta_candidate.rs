@@ -18,13 +18,13 @@
 //! boundaries, not full implementations of the future systems.
 
 use crate::{
-    callable_body_allows_execution,
     identity::TypeValueId,
+    model::policy_view_allows_execution,
     model::{
-        CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, PolicyMetadata, Provenance,
-        SymbolId, SymbolObject,
+        CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SymbolId, SymbolObject,
     },
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
+    PolicyView,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -95,15 +95,15 @@ pub struct CandidateBuildIdentityPlaceholder {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePolicyPlanes {
     pub lookup_env: PolicyEnv,
-    pub symbol_visibility_policy: PolicyMetadata,
+    pub symbol_policy_view: Option<PolicyView>,
     pub demanded_execution: ExecutionEnv,
-    pub body_entry_policy: PolicyMetadata,
-    pub return_object_policy: PolicyMetadata,
+    pub body_entry_policy: PolicyView,
+    pub return_object_policy: PolicyView,
 }
 
 impl CandidatePolicyPlanes {
     pub fn body_entry_allows_demanded_execution(&self) -> bool {
-        callable_body_allows_execution(&self.body_entry_policy, self.demanded_execution)
+        policy_view_allows_execution(&self.body_entry_policy, self.demanded_execution)
     }
 }
 
@@ -253,15 +253,15 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     callee: &SymbolObject,
     callable_kind: CallableCandidateKind,
     callee_primitive: Option<CoreMetaFunction>,
-    body_entry_policy: PolicyMetadata,
-    return_object_policy: PolicyMetadata,
+    body_entry_policy: PolicyView,
+    return_object_policy: PolicyView,
     arg_product_shape: ArgProductShape,
     parameter_shape: ParameterShape,
     context: CandidatePreparationContext,
 ) -> CandidatePrepResult {
     let policy_planes = CandidatePolicyPlanes {
         lookup_env: context.lookup_env,
-        symbol_visibility_policy: callee.policy_metadata.clone(),
+        symbol_policy_view: callee.policy_view.clone(),
         demanded_execution: context.demanded_execution,
         body_entry_policy,
         return_object_policy,

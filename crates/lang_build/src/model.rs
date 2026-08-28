@@ -1,8 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt,
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, fmt, path::PathBuf};
 
 use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
 
@@ -124,50 +120,13 @@ impl ChildBucket {
     }
 }
 
-/// Transitional flat policy flag used by the current resolver substrate.
-///
-/// Canonical policy semantics use `PolicyPair`; this enum only transports the
-/// stage/legacy export projection through code that has not migrated yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum PolicyFlag {
-    Export,
-    Meta,
-    Compile,
-    Seal,
-    Runtime,
-}
-
-/// Set of policy flags carried by a symbol.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PolicySet {
-    pub flags: BTreeSet<PolicyFlag>,
-}
-
-impl PolicySet {
-    pub fn new() -> Self {
-        Self {
-            flags: BTreeSet::new(),
-        }
-    }
-
-    pub fn contains(&self, flag: PolicyFlag) -> bool {
-        self.flags.contains(&flag)
-    }
-
-    pub fn insert(&mut self, flag: PolicyFlag) {
-        self.flags.insert(flag);
-    }
-}
-
 /// Resolver lookup visibility environment.
 ///
 /// This controls whether a symbol is visible to a resolver query. It does not
 /// grant permission to enter or evaluate a callable body.
 ///
-/// This is a flat compatibility projection of the canonical `Pv:Pp` slices.
-/// It deliberately has the same three execution phases as the canonical
-/// policy model. It does not grant body execution or privileged pre-seal
-/// scanning.
+/// It does not grant body execution or privileged pre-seal scanning; concrete
+/// exposure is read from a declaration's `PolicyView`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyEnv {
     OpenStatic,
@@ -186,92 +145,26 @@ pub enum ExecutionEnv {
     Runtime,
 }
 
-// ---------------------------------------------------------------------------
-// Policy-set helper constructors
-// ---------------------------------------------------------------------------
-
-pub fn policy_set_export_meta() -> PolicySet {
-    let mut set = PolicySet::new();
-    set.insert(PolicyFlag::Export);
-    set.insert(PolicyFlag::Meta);
-    set
-}
-
-pub fn policy_set_export_meta_runtime() -> PolicySet {
-    let mut set = PolicySet::new();
-    set.insert(PolicyFlag::Export);
-    set.insert(PolicyFlag::Meta);
-    set.insert(PolicyFlag::Runtime);
-    set
-}
-
-pub fn policy_set_runtime() -> PolicySet {
-    let mut set = PolicySet::new();
-    set.insert(PolicyFlag::Runtime);
-    set
-}
-
-pub fn policy_set_compile() -> PolicySet {
-    let mut set = PolicySet::new();
-    set.insert(PolicyFlag::Compile);
-    set
-}
-
-pub fn policy_set_seal() -> PolicySet {
-    let mut set = PolicySet::new();
-    set.insert(PolicyFlag::Seal);
-    set
-}
-
-pub fn policy_set_meta() -> PolicySet {
-    let mut set = PolicySet::new();
-    set.insert(PolicyFlag::Meta);
-    set
-}
-
-pub fn policy_set_meta_runtime() -> PolicySet {
-    let mut set = PolicySet::new();
-    set.insert(PolicyFlag::Meta);
-    set.insert(PolicyFlag::Runtime);
-    set
-}
-
-pub fn policy_metadata(policy_set: PolicySet) -> PolicyMetadata {
-    PolicyMetadata {
-        slots: BTreeMap::new(),
-        policy_set,
-    }
-}
-
-pub fn callable_body_allows_execution(callable_policy: &PolicyMetadata, env: ExecutionEnv) -> bool {
-    policy_set_allows_execution(&callable_policy.policy_set, env)
-}
-
-pub fn policy_set_allows_execution(policy_set: &PolicySet, env: ExecutionEnv) -> bool {
+pub fn policy_view_allows_execution(
+    policy_view: &crate::policy_pair::PolicyView,
+    env: ExecutionEnv,
+) -> bool {
+    let stages = &policy_view.pair.value.stages;
     match env {
         ExecutionEnv::OpenStatic => {
-            policy_set.contains(PolicyFlag::Meta) || policy_set.contains(PolicyFlag::Compile)
+            stages.contains(crate::PolicyStage::Meta)
+                || stages.contains(crate::PolicyStage::Compile)
         }
         ExecutionEnv::SealStatic => {
-            policy_set.contains(PolicyFlag::Seal) || policy_set.contains(PolicyFlag::Compile)
+            stages.contains(crate::PolicyStage::Seal)
+                || stages.contains(crate::PolicyStage::Compile)
         }
-        ExecutionEnv::Runtime => policy_set.contains(PolicyFlag::Runtime),
+        ExecutionEnv::Runtime => stages.contains(crate::PolicyStage::Runtime),
     }
-}
-
-/// Reserved policy metadata slot.
-///
-/// v0.6 preserves this data but does not interpret it.
-/// v0.7 adds `policy_set` for early policy-aware resolution.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PolicyMetadata {
-    pub slots: BTreeMap<String, String>,
-    pub policy_set: PolicySet,
 }
 
 /// Namespace visibility metadata. `namespace_visibility` and `export_root` are
-/// independent dimensions; the legacy `PolicyFlag::Export` transport must not
-/// be used to infer ordinary public/private reachability.
+/// independent from Policy stage and whole-slot mode.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VisibilityMetadata {
     pub slots: BTreeMap<String, String>,
@@ -432,7 +325,7 @@ pub struct NamespaceNode {
     pub source_category: SourceCategory,
     pub parent: Option<NamespaceNodeId>,
     pub children: BTreeMap<String, ChildBucket>,
-    pub policy_metadata: PolicyMetadata,
+    pub policy_view: Option<crate::policy_pair::PolicyView>,
     pub visibility_metadata: VisibilityMetadata,
     pub provenance: Provenance,
     pub diagnostics: Vec<Diagnostic>,
@@ -454,7 +347,7 @@ impl NamespaceNode {
             source_category,
             parent,
             children: BTreeMap::new(),
-            policy_metadata: PolicyMetadata::default(),
+            policy_view: None,
             visibility_metadata: VisibilityMetadata::default(),
             provenance,
             diagnostics: Vec::new(),
@@ -474,7 +367,7 @@ pub struct SymbolObject {
     pub source_category: SourceCategory,
     pub node_kind: Option<NamespaceNodeKind>,
     pub parent: Option<NamespaceNodeId>,
-    pub policy_metadata: PolicyMetadata,
+    pub policy_view: Option<crate::policy_pair::PolicyView>,
     pub visibility_metadata: VisibilityMetadata,
     pub provenance: Provenance,
     pub diagnostics: Vec<Diagnostic>,
@@ -499,7 +392,7 @@ impl SymbolObject {
             source_category,
             node_kind: None,
             parent,
-            policy_metadata: PolicyMetadata::default(),
+            policy_view: None,
             visibility_metadata: VisibilityMetadata::default(),
             provenance,
             diagnostics: Vec::new(),
@@ -525,7 +418,7 @@ impl SymbolObject {
             source_category,
             node_kind: Some(node_kind),
             parent,
-            policy_metadata: PolicyMetadata::default(),
+            policy_view: None,
             visibility_metadata: VisibilityMetadata::default(),
             provenance,
             diagnostics: Vec::new(),
@@ -618,16 +511,16 @@ pub struct TypeField {
     pub provenance: Provenance,
 }
 
-/// Policy metadata carried by callable payloads.
+/// Concrete Policy views carried by callable payloads.
 ///
 /// `body_entry_policy` controls whether a callable body may be entered in an
 /// execution environment. `return_object_policy` records the policy of the
 /// object produced by the callable. Neither field controls resolver visibility;
-/// that remains `SymbolObject.policy_metadata`.
+/// that remains the Symbol's own `policy_view`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CallablePolicyMetadata {
-    pub body_entry_policy: PolicyMetadata,
-    pub return_object_policy: PolicyMetadata,
+pub struct CallablePolicyViews {
+    pub body_entry_policy: crate::policy_pair::PolicyView,
+    pub return_object_policy: crate::policy_pair::PolicyView,
 }
 
 /// Placeholder field-function payload generated under a type namespace.
@@ -640,7 +533,7 @@ pub struct FieldObject {
     pub field_type_symbol_id: SymbolId,
     pub field_pattern_head: Option<PatternHeadId>,
     pub projection: FieldProjection,
-    pub callable_policy: CallablePolicyMetadata,
+    pub callable_policy: CallablePolicyViews,
     pub provenance: Provenance,
 }
 
@@ -658,9 +551,9 @@ pub struct MetaFunctionObject {
     pub function_symbol_id: SymbolId,
     pub primitive: Option<CoreMetaFunction>,
     pub source_callable: Option<SourceCallableObject>,
-    pub function_policy: PolicyMetadata,
-    pub body_entry_policy: PolicyMetadata,
-    pub return_object_policy: PolicyMetadata,
+    pub function_policy: crate::policy_pair::PolicyView,
+    pub body_entry_policy: crate::policy_pair::PolicyView,
+    pub return_object_policy: crate::policy_pair::PolicyView,
     /// Independent declared return-shape coordinate of
     /// `CallableSemantics = P1 × P2 × ReturnShape × Privilege`: built-ins
     /// state it per declaration; source declarations elaborate it once from

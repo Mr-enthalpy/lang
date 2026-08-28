@@ -121,6 +121,32 @@ pub enum PolicyMode {
     Mut,
 }
 
+/// Build one concrete declared view. Value stages are stated directly;
+/// Pattern stages are their static projection. This is a positive declaration
+/// constructor, not a projection into a second policy vocabulary.
+pub fn declared_policy_view(stages: &[PolicyStage], mode: PolicyMode) -> PolicyView {
+    let mut value_stages = StageSet::new();
+    let mut pattern_stages = StageSet::new();
+    for &stage in stages {
+        value_stages.insert(stage);
+        if stage.is_static() {
+            pattern_stages.insert(stage);
+        }
+    }
+    PolicyView {
+        pair: PolicyPair {
+            value: ValueComponentPolicy {
+                stages: value_stages,
+                presence: ValuePresence::Present,
+            },
+            pattern: PatternComponentPolicy {
+                stages: pattern_stages,
+            },
+        },
+        mode,
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct OutputModeDemand(pub PolicyMode);
 
@@ -360,12 +386,10 @@ pub struct DeclarationVisibility {
 /// callable's complete result P2 (`PolicyPair`).
 ///
 /// This replaces the declaration-projection
-/// `SymbolPayload::MetaFunction.body_entry_policy`
-/// read on the invocation spine.  The body-entry domain is the value stage
-/// set when present, otherwise the pattern stage set — the graph body-entry
-/// PolicySet was installed as exactly this projection
-/// (`legacy_policy_set_from_pair(&result_p2)`), so the judgement is
-/// equivalent, only sourced from the semantic call entry's own P2.
+/// `SymbolPayload::MetaFunction.body_entry_policy` read on the invocation
+/// spine. The body-entry domain is the value stage set when present,
+/// otherwise the pattern stage set, sourced directly from the semantic call
+/// entry's own P2.
 pub fn body_entry_allows_execution(p2: &PolicyPair, env: crate::model::ExecutionEnv) -> bool {
     use crate::model::ExecutionEnv;
     let stages = if p2.value.stages.is_empty() {

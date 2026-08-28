@@ -1,7 +1,7 @@
 mod support;
 use support::*;
 
-use lang_build::{PolicyFlag, ResolveExpectation, SourceCategory, SymbolPayload};
+use lang_build::{PolicyStage, ResolveExpectation, SourceCategory, SymbolPayload};
 
 #[test]
 fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
@@ -16,11 +16,12 @@ fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
     assert_eq!(symbol.name, "T");
     assert_eq!(symbol.source_category, SourceCategory::DeclaredSymbol);
     assert_eq!(symbol.parent, Some(world.package_root_node()));
-    assert!(symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
-    assert!(symbol
-        .policy_metadata
-        .policy_set
-        .contains(PolicyFlag::Runtime));
+    let view = symbol
+        .policy_view
+        .as_ref()
+        .expect("type binding Policy view");
+    assert!(view.pair.value.stages.contains(PolicyStage::Meta));
+    assert!(view.pair.value.stages.contains(PolicyStage::Runtime));
     let symbol_id = symbol.id;
 
     let SymbolPayload::Type(type_object) = symbol.payload else {

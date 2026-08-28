@@ -1,16 +1,13 @@
 use crate::{
     model::{
         CoreMetaFunction, MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
-        PolicyMetadata, PolicySet, Provenance, SemanticNameDelta, SourceCategory, SymbolId,
-        SymbolKind, SymbolObject, SymbolPayload, TypeObject, VerificationPrimitive,
+        Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
+        SymbolPayload, TypeObject, VerificationPrimitive,
     },
-    policy_metadata,
     policy_pair::{
         PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyView, StageSet,
         ValueComponentPolicy, ValuePresence,
     },
-    policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
-    policy_set_meta_runtime,
     semantic_name_index::{namespace_symbol, BuildError, SemanticNameIndex},
 };
 
@@ -21,7 +18,7 @@ pub const CORE_NAMESPACE: &str = "core";
 /// The bootstrap produces this roster directly so the semantic world is
 /// populated from the declaration itself; the compilation world no longer
 /// scans graph `SymbolPayload::MetaFunction` payloads and re-projects them
-/// through the flat legacy `PolicySet` carrier.
+/// through a secondary graph policy carrier.
 pub(crate) struct CoreCallableRegistration {
     pub(crate) namespace: NamespaceNodeId,
     pub(crate) name: String,
@@ -40,8 +37,7 @@ pub(crate) struct CoreCallableRegistration {
 /// The bootstrap spells the canonical PolicyPair next to the graph payload
 /// so the semantic world is populated from the declaration itself; the
 /// compilation world no longer rescans graph `SymbolPayload::Type` payloads
-/// through the flat legacy `PolicySet` projection
-/// (`sync_semantic_type_values` is deleted).
+/// through a secondary graph projection.
 pub(crate) struct CoreTypeRegistration {
     pub(crate) namespace: NamespaceNodeId,
     pub(crate) name: String,
@@ -78,7 +74,10 @@ pub(crate) fn install_core_bootstrap(
 
     for symbol in delta.symbols.values_mut() {
         if symbol.kind == SymbolKind::Namespace && symbol.name == CORE_NAMESPACE {
-            symbol.policy_metadata.policy_set = policy_set_export_meta_runtime();
+            symbol.policy_view = Some(core_declared_view(&[
+                PolicyStage::Meta,
+                PolicyStage::Runtime,
+            ]));
         }
     }
 
@@ -89,7 +88,7 @@ pub(crate) fn install_core_bootstrap(
         "struct",
         CoreMetaFunction::Struct,
         Provenance::new("core meta-function `struct`"),
-        policy_set_export_meta(),
+        core_declared_view(&[PolicyStage::Meta]),
     );
     insert_meta_function(
         &mut delta,
@@ -98,7 +97,7 @@ pub(crate) fn install_core_bootstrap(
         "assert",
         CoreMetaFunction::Assert,
         Provenance::new("core meta-function `assert`"),
-        policy_set_export_meta(),
+        core_declared_view(&[PolicyStage::Meta]),
     );
     insert_meta_function(
         &mut delta,
@@ -107,7 +106,7 @@ pub(crate) fn install_core_bootstrap(
         "IdentityType",
         CoreMetaFunction::IdentityType,
         Provenance::new("core meta-function `IdentityType`"),
-        policy_set_export_meta(),
+        core_declared_view(&[PolicyStage::Meta]),
     );
     insert_meta_function(
         &mut delta,
@@ -116,7 +115,7 @@ pub(crate) fn install_core_bootstrap(
         "UnaryConstructionPrototype",
         CoreMetaFunction::UnaryConstructionPrototype,
         Provenance::new("core meta-function `UnaryConstructionPrototype`"),
-        policy_set_export_meta(),
+        core_declared_view(&[PolicyStage::Meta]),
     );
     insert_verification_namespace(&mut delta, &mut core_callables, core_node);
 
@@ -141,7 +140,7 @@ pub(crate) fn install_core_bootstrap(
             core_node,
             name,
             Provenance::new(format!("core type symbol `{name}`")),
-            policy_set_export_meta_runtime(),
+            core_declared_view(&[PolicyStage::Meta, PolicyStage::Runtime]),
         );
     }
 
@@ -175,24 +174,28 @@ pub(crate) fn core_declared_pair(stages: &[PolicyStage], _export_root: bool) -> 
     }
 }
 
+fn core_declared_view(stages: &[PolicyStage]) -> PolicyView {
+    PolicyView {
+        pair: core_declared_pair(stages, false),
+        mode: PolicyMode::Plain,
+    }
+}
+
 /// Declared body-entry / return-object planes of one
 /// core built-in, spelled at the declaration site.  The invocation spine
 /// obtains these planes from the primitive identity instead of reading the
 /// graph `SymbolPayload::MetaFunction` payload.
 pub(crate) fn core_primitive_callable_planes(
     primitive: CoreMetaFunction,
-) -> (PolicyMetadata, PolicyMetadata) {
-    let return_policy = match primitive {
-        CoreMetaFunction::Struct => policy_set_meta_runtime(),
+) -> (PolicyView, PolicyView) {
+    let return_view = match primitive {
+        CoreMetaFunction::Struct => core_declared_view(&[PolicyStage::Meta, PolicyStage::Runtime]),
         CoreMetaFunction::Assert
         | CoreMetaFunction::Verify(_)
         | CoreMetaFunction::IdentityType
-        | CoreMetaFunction::UnaryConstructionPrototype => policy_set_meta(),
+        | CoreMetaFunction::UnaryConstructionPrototype => core_declared_view(&[PolicyStage::Meta]),
     };
-    (
-        policy_metadata(policy_set_meta()),
-        policy_metadata(return_policy),
-    )
+    (core_declared_view(&[PolicyStage::Meta]), return_view)
 }
 
 fn insert_meta_function(
@@ -202,7 +205,7 @@ fn insert_meta_function(
     name: &str,
     primitive: CoreMetaFunction,
     provenance: Provenance,
-    policy_set: PolicySet,
+    function_view: PolicyView,
 ) {
     let symbol_id = delta.allocate_symbol_id();
     let (body_entry_policy, return_object_policy) = core_primitive_callable_planes(primitive);
@@ -228,7 +231,7 @@ fn insert_meta_function(
         Some(parent),
         provenance,
     );
-    symbol.policy_metadata.policy_set = policy_set;
+    symbol.policy_view = Some(function_view.clone());
     // Declaration-boundary export fact: core callables are declared public by
     // the toolchain package, so external member views retain them and they
     // enter ordinary overload as normal candidates (no call-time bypass).
@@ -238,7 +241,7 @@ fn insert_meta_function(
         function_symbol_id: symbol_id,
         primitive: Some(primitive),
         source_callable: None,
-        function_policy: policy_metadata(symbol.policy_metadata.policy_set.clone()),
+        function_policy: function_view,
         body_entry_policy,
         return_object_policy,
         return_shape,
@@ -313,7 +316,9 @@ fn insert_verification_namespace(
         Some(core_node),
         provenance,
     );
-    symbol.policy_metadata.policy_set = policy_set_export_meta();
+    symbol.policy_view = Some(core_declared_view(&[PolicyStage::Meta]));
+    symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
+    symbol.visibility_metadata.export_root = true;
     symbol.payload = SymbolPayload::VerificationNamespace { node: node_id };
     delta.insert_symbol(core_node, symbol);
 
@@ -346,7 +351,7 @@ fn insert_verification_namespace(
             name,
             CoreMetaFunction::Verify(primitive),
             Provenance::new(format!("core verification operation `verify::{name}`")),
-            policy_set_export_meta(),
+            core_declared_view(&[PolicyStage::Meta]),
         );
     }
 }
@@ -357,7 +362,7 @@ pub(crate) fn insert_core_type(
     parent: NamespaceNodeId,
     name: &str,
     provenance: Provenance,
-    policy_set: PolicySet,
+    policy_view: PolicyView,
 ) {
     let symbol_id = delta.allocate_symbol_id();
     let associated_node = delta.allocate_node_id();
@@ -378,7 +383,7 @@ pub(crate) fn insert_core_type(
         Some(parent),
         provenance.clone(),
     );
-    symbol.policy_metadata.policy_set = policy_set;
+    symbol.policy_view = Some(policy_view);
     // Declaration-boundary export fact, mirroring `insert_meta_function`:
     // core type symbols are public members of the toolchain package.
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);

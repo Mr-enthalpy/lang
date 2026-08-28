@@ -1127,7 +1127,6 @@ fn evaluate_source_meta_member_initializer(
         }),
         explicit_mount_roots: resolver_context.explicit_mount_roots.clone(),
         default_mounts: resolver_context.default_mounts.clone(),
-        current_policy: resolver_context.current_policy.clone(),
     };
     let Some(target_path) = call_target_path(&site.target) else {
         return Err(unsupported_member_initializer(
@@ -1869,7 +1868,6 @@ pub(crate) fn invoke_target_values(
                 }),
                 explicit_mount_roots: resolver_context.explicit_mount_roots.clone(),
                 default_mounts: resolver_context.default_mounts.clone(),
-                current_policy: resolver_context.current_policy.clone(),
             };
             if let Some(migration) = context.migration {
                 // same-Type is hard migration applicability. A source

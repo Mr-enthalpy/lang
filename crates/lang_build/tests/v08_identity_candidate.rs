@@ -13,7 +13,7 @@ use lang_build::{
     FieldProjection, GeneratedTypeDefinitionValue, MetaCallableIdentity, MetaInstanceCache,
     MetaInvocationInput, MetaInvocationValue, MetaPrimitiveExecution, NamespaceNode,
     NamespaceNodeKind, NonValueArgKind, ParameterShape, PatternHeadId, PlaceId, PolicyEnv,
-    PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
+    PolicyStage, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
     SemanticNameIndex, SemanticValueId, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
     TypeMaterializationState, TypeValueBindingPlaceholder, TypeValueId,
 };
@@ -115,27 +115,35 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
     );
     assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::OpenStatic);
     assert_eq!(
-        candidate.policy_planes.symbol_visibility_policy,
-        callee.policy_metadata
+        candidate.policy_planes.symbol_policy_view,
+        callee.policy_view
     );
     assert!(candidate
         .policy_planes
-        .symbol_visibility_policy
-        .policy_set
-        .contains(PolicyFlag::Meta));
+        .symbol_policy_view
+        .as_ref()
+        .expect("callee Policy view")
+        .pair
+        .value
+        .stages
+        .contains(PolicyStage::Meta));
     assert!(candidate
         .policy_planes
         .body_entry_allows_demanded_execution());
     assert!(candidate
         .policy_planes
         .return_object_policy
-        .policy_set
-        .contains(PolicyFlag::Meta));
+        .pair
+        .value
+        .stages
+        .contains(PolicyStage::Meta));
     assert!(candidate
         .policy_planes
         .return_object_policy
-        .policy_set
-        .contains(PolicyFlag::Runtime));
+        .pair
+        .value
+        .stages
+        .contains(PolicyStage::Runtime));
     assert_eq!(
         candidate
             .build_identity
@@ -210,29 +218,38 @@ fn generated_field_function_from_build_fixture_keeps_policy_planes_separate() {
     assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::OpenStatic);
     assert!(candidate
         .policy_planes
-        .symbol_visibility_policy
-        .policy_set
-        .contains(PolicyFlag::Meta));
+        .symbol_policy_view
+        .as_ref()
+        .expect("field Symbol Policy view")
+        .pair
+        .value
+        .stages
+        .contains(PolicyStage::Meta));
     assert!(!candidate
         .policy_planes
         .body_entry_allows_demanded_execution());
     assert!(candidate
         .policy_planes
         .return_object_policy
-        .policy_set
-        .contains(PolicyFlag::Runtime));
+        .pair
+        .value
+        .stages
+        .contains(PolicyStage::Runtime));
     assert!(!candidate
         .policy_planes
         .return_object_policy
-        .policy_set
-        .contains(PolicyFlag::Meta));
+        .pair
+        .value
+        .stages
+        .contains(PolicyStage::Meta));
     assert_ne!(
-        candidate.policy_planes.symbol_visibility_policy, candidate.policy_planes.body_entry_policy,
+        candidate.policy_planes.symbol_policy_view.as_ref(),
+        Some(&candidate.policy_planes.body_entry_policy),
         "symbol visibility policy must not equal body-entry policy"
     );
     assert_ne!(
-        candidate.policy_planes.symbol_visibility_policy,
-        candidate.policy_planes.return_object_policy,
+        candidate.policy_planes.symbol_policy_view.as_ref(),
+        Some(&candidate.policy_planes.return_object_policy),
         "symbol visibility policy must not equal return-object policy"
     );
 }

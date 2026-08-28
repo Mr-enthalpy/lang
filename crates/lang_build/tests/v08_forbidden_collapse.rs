@@ -420,8 +420,8 @@ fn prepare_type_signature_candidate(shape: ArgProductShape) -> CandidatePrepResu
         &placeholder_callee,
         lang_build::CallableCandidateKind::MetaFunction,
         None,
-        empty_policy_metadata(),
-        empty_policy_metadata(),
+        test_policy_view(),
+        test_policy_view(),
         shape,
         ParameterShape::type_parameter_signature(Provenance::new("rejection test param")),
         CandidatePreparationContext {
@@ -633,22 +633,20 @@ fn meta_invocation_primitive_identity_is_derived_from_candidate() {
     );
 }
 
-fn empty_policy_metadata() -> lang_build::PolicyMetadata {
-    lang_build::PolicyMetadata {
-        slots: std::collections::BTreeMap::new(),
-        policy_set: lang_build::PolicySet {
-            flags: std::collections::BTreeSet::new(),
-        },
-    }
+fn test_policy_view() -> lang_build::PolicyView {
+    lang_build::declared_policy_view(
+        &[lang_build::PolicyStage::Meta],
+        lang_build::PolicyMode::Plain,
+    )
 }
 
 fn empty_policy_planes() -> lang_build::CandidatePolicyPlanes {
     lang_build::CandidatePolicyPlanes {
         lookup_env: PolicyEnv::OpenStatic,
-        symbol_visibility_policy: empty_policy_metadata(),
+        symbol_policy_view: Some(test_policy_view()),
         demanded_execution: ExecutionEnv::OpenStatic,
-        body_entry_policy: empty_policy_metadata(),
-        return_object_policy: empty_policy_metadata(),
+        body_entry_policy: test_policy_view(),
+        return_object_policy: test_policy_view(),
     }
 }
 

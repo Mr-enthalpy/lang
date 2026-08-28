@@ -13,7 +13,7 @@ use crate::{
         MetaInvocationValue, ReturnSlotSemantics,
     },
     model::{
-        CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
+        CallablePolicyViews, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
         FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance,
         SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
         TypeField, TypeObject,
@@ -21,9 +21,7 @@ use crate::{
     normalized_call::NormalizedCallSite,
     pattern_head::TypeMaterializationState,
     pattern_space::{StructLeafTypeExprShape, StructuralMemberVisibility, TypePatternExprShape},
-    policy_metadata,
-    policy_pair::NamespaceVisibility,
-    policy_set_meta_runtime, policy_set_runtime,
+    policy_pair::{declared_policy_view, NamespaceVisibility, PolicyMode, PolicyStage},
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
         ProductMaterialRole,
@@ -336,7 +334,10 @@ fn insert_projection_namespace(
         Some(parent),
         provenance,
     );
-    namespace_symbol.policy_metadata.policy_set = policy_set_meta_runtime();
+    namespace_symbol.policy_view = Some(declared_policy_view(
+        &[PolicyStage::Meta, PolicyStage::Runtime],
+        PolicyMode::Plain,
+    ));
     delta.insert_symbol(parent, namespace_symbol);
     insert_field_projection_layer(
         delta,
@@ -371,7 +372,10 @@ fn insert_field_projection_layer(
             Some(parent),
             provenance.clone(),
         );
-        symbol.policy_metadata.policy_set = policy_set_meta_runtime();
+        symbol.policy_view = Some(declared_policy_view(
+            &[PolicyStage::Meta, PolicyStage::Runtime],
+            PolicyMode::Plain,
+        ));
         symbol.visibility_metadata.namespace_visibility = Some(match field.visibility {
             StructuralMemberVisibility::Default | StructuralMemberVisibility::Public => {
                 NamespaceVisibility::Public
@@ -392,9 +396,12 @@ fn insert_field_projection_layer(
             field_type_symbol_id: field.type_carrier_symbol,
             field_pattern_head: field.pattern_head,
             projection,
-            callable_policy: CallablePolicyMetadata {
-                body_entry_policy: policy_metadata(policy_set_runtime()),
-                return_object_policy: policy_metadata(policy_set_runtime()),
+            callable_policy: CallablePolicyViews {
+                body_entry_policy: declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain),
+                return_object_policy: declared_policy_view(
+                    &[PolicyStage::Runtime],
+                    PolicyMode::Plain,
+                ),
             },
             provenance,
         });
@@ -457,7 +464,10 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
                 source_category: SourceCategory::DeclaredSymbol,
                 parent: Some(parent_namespace),
                 children: std::collections::BTreeMap::new(),
-                policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
+                policy_view: Some(declared_policy_view(
+                    &[PolicyStage::Meta, PolicyStage::Runtime],
+                    PolicyMode::Plain,
+                )),
                 visibility_metadata: crate::model::VisibilityMetadata {
                     slots: std::collections::BTreeMap::new(),
                     ..crate::model::VisibilityMetadata::default()
@@ -472,7 +482,10 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
                 source_category: SourceCategory::DeclaredSymbol,
                 node_kind: Some(NamespaceNodeKind::Virtual),
                 parent: Some(parent_namespace),
-                policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
+                policy_view: Some(declared_policy_view(
+                    &[PolicyStage::Meta, PolicyStage::Runtime],
+                    PolicyMode::Plain,
+                )),
                 visibility_metadata: crate::model::VisibilityMetadata {
                     slots: std::collections::BTreeMap::new(),
                     ..crate::model::VisibilityMetadata::default()
@@ -593,7 +606,10 @@ fn bind_generated_type_definition_value(
         Some(parent_namespace),
         provenance.clone(),
     );
-    type_object.policy_metadata.policy_set = policy_set_meta_runtime();
+    type_object.policy_view = Some(declared_policy_view(
+        &[PolicyStage::Meta, PolicyStage::Runtime],
+        PolicyMode::Plain,
+    ));
     type_object.node_kind = Some(NamespaceNodeKind::Virtual);
     type_object.generation_origin = Some("core::struct generated type definition".to_string());
     // cache_key_fragment is a temporary carrier;
@@ -771,7 +787,10 @@ fn bind_generated_construction_value(
         source_category: SourceCategory::DeclaredSymbol,
         node_kind: None,
         parent: Some(parent_namespace),
-        policy_metadata: crate::policy_metadata(policy_set_meta_runtime()),
+        policy_view: Some(declared_policy_view(
+            &[PolicyStage::Meta, PolicyStage::Runtime],
+            PolicyMode::Plain,
+        )),
         visibility_metadata: crate::model::VisibilityMetadata {
             slots: std::collections::BTreeMap::new(),
             ..crate::model::VisibilityMetadata::default()

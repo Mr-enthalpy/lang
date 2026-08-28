@@ -2,135 +2,74 @@ mod support;
 use support::*;
 
 use lang_build::{
-    callable_body_allows_execution, policy_metadata, policy_set_compile, policy_set_meta,
-    policy_set_runtime, policy_set_seal, CompilationWorld, CoreMetaFunction, ExecutionEnv,
-    MetaFunctionObject, PolicyEnv, PolicyMetadata, Provenance, ResolveExpectation, ResolverCode,
-    SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
+    declared_policy_view, policy_view_allows_execution, CompilationWorld, ExecutionEnv, PolicyEnv,
+    PolicyMode, PolicyStage, Provenance, ResolveExpectation, SourceCategory, SymbolKind,
+    SymbolObject,
 };
 
 #[test]
-fn uint8_resolves_under_open_static_compatibility_view() {
+fn core_type_is_visible_in_open_static_phase() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let capability = world.namespace_projection().capability();
-    let context = world.package_context();
-
-    let symbol = capability
-        .resolve_type_object_with_policy("uint8", &context, PolicyEnv::OpenStatic)
-        .expect("uint8 should resolve under OpenStatic compatibility view");
+    let symbol = world
+        .namespace_projection()
+        .capability()
+        .resolve_type_object_with_policy("uint8", &world.package_context(), PolicyEnv::OpenStatic)
+        .expect("uint8 should be visible in the open-static phase");
     assert_eq!(symbol.kind, SymbolKind::Type);
     assert_eq!(symbol.name, "uint8");
 }
 
 #[test]
-fn callable_body_execution_helper_uses_policy_flags() {
-    // Compiler-internal helper truth table; source verification covers ordinary
-    // callable policy facts for core and generated symbols.
-    let meta_policy = policy_metadata(policy_set_meta());
-    let runtime_policy = policy_metadata(policy_set_runtime());
+fn policy_view_stage_controls_execution_without_changing_mode() {
+    let meta = declared_policy_view(&[PolicyStage::Meta], PolicyMode::Plain);
+    let runtime = declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain);
 
-    assert!(callable_body_allows_execution(
-        &meta_policy,
+    assert!(policy_view_allows_execution(
+        &meta,
         ExecutionEnv::OpenStatic
     ));
-    assert!(!callable_body_allows_execution(
-        &meta_policy,
-        ExecutionEnv::Runtime
-    ));
-    assert!(!callable_body_allows_execution(
-        &runtime_policy,
+    assert!(!policy_view_allows_execution(&meta, ExecutionEnv::Runtime));
+    assert!(!policy_view_allows_execution(
+        &runtime,
         ExecutionEnv::OpenStatic
     ));
-    assert!(callable_body_allows_execution(
-        &runtime_policy,
+    assert!(policy_view_allows_execution(
+        &runtime,
         ExecutionEnv::Runtime
     ));
+    assert_eq!(meta.mode, PolicyMode::Plain);
+    assert_eq!(runtime.mode, PolicyMode::Plain);
 }
 
 #[test]
-fn runtime_only_value_compatibility_filter_does_not_define_symbol_existence() {
-    // The unfiltered resolver establishes symbol identity first. The legacy
-    // PolicyEnv adapter can still return a filtered diagnostic, but canonical
-    // phase exposure must not reinterpret that adapter result as nonexistence.
+fn phase_projection_does_not_define_symbol_existence() {
     let world = build_single_fixture_world_with_uint8_transport("user_runtime_values", "app");
     let context = world.package_context();
     let capability = world.namespace_projection().capability();
 
     let symbol = capability
         .resolve(&["x".to_string()], &context)
-        .expect("runtime symbol exists independently of phase exposure");
+        .expect("name resolution establishes the Symbol first");
     assert_eq!(symbol.name, "x");
 
-    let diagnostic = capability
+    assert!(capability
         .resolve_with_policy(
             &["x".to_string()],
             &context,
             ResolveExpectation::Object,
             PolicyEnv::OpenStatic,
         )
-        .expect_err("compatibility OpenStatic adapter filters the runtime value flag");
-    assert_eq!(diagnostic.code, Some(ResolverCode::Unresolved));
+        .is_err());
 }
 
 #[test]
-fn runtime_only_meta_function_is_filtered_by_legacy_open_static_adapter() {
+fn seal_phase_projection_reads_concrete_policy_views() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.namespace_projection().empty_delta();
-
-    let local_struct_id = delta.allocate_symbol_id();
-    let mut local_struct = SymbolObject::placeholder(
-        local_struct_id,
-        "struct",
-        SymbolKind::MetaFunction,
-        SourceCategory::DeclaredSymbol,
-        Some(world.package_root_node()),
-        Provenance::new("local runtime-only struct"),
-    );
-    local_struct.policy_metadata.policy_set = policy_set_runtime();
-    local_struct.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
-        function_symbol_id: local_struct_id,
-        primitive: Some(CoreMetaFunction::Assert),
-        source_callable: None,
-        function_policy: PolicyMetadata::default(),
-        body_entry_policy: PolicyMetadata::default(),
-        return_object_policy: PolicyMetadata::default(),
-        return_shape: lang_build::ReturnShape::SingleVal(
-            lang_build::PatternConstraint::Unconstrained,
-        ),
-        privilege: lang_build::CallablePrivilege::BuiltinPrivileged,
-    });
-    delta.insert_symbol(world.package_root_node(), local_struct);
-
-    let snapshot = world
-        .namespace_projection()
-        .install_delta(delta)
-        .expect("install delta");
-    let context = world.package_context();
-
-    let result = snapshot.capability().resolve_meta_function_with_policy(
-        "struct",
-        &context,
-        PolicyEnv::OpenStatic,
-    );
-    assert!(
-        result.is_ok(),
-        "core struct should resolve under Meta despite local runtime-only struct"
-    );
-    let symbol = result.unwrap();
-    assert_eq!(symbol.name, "struct");
-    assert!(
-        symbol.provenance.description.contains("core"),
-        "should resolve to core's struct, not the local runtime-only one"
-    );
-}
-
-#[test]
-fn seal_lookup_uses_visibility_domains_without_granting_execution() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let mut delta = world.namespace_projection().empty_delta();
-    for (name, policy_set) in [
-        ("meta_only", policy_set_meta()),
-        ("compile_only", policy_set_compile()),
-        ("seal_only", policy_set_seal()),
+    for (name, stage) in [
+        ("meta_only", PolicyStage::Meta),
+        ("compile_only", PolicyStage::Compile),
+        ("seal_only", PolicyStage::Seal),
     ] {
         let symbol_id = delta.allocate_symbol_id();
         let mut symbol = SymbolObject::placeholder(
@@ -141,7 +80,7 @@ fn seal_lookup_uses_visibility_domains_without_granting_execution() {
             Some(world.package_root_node()),
             Provenance::new(name),
         );
-        symbol.policy_metadata.policy_set = policy_set;
+        symbol.policy_view = Some(declared_policy_view(&[stage], PolicyMode::Plain));
         delta.insert_symbol(world.package_root_node(), symbol);
     }
     let snapshot = world

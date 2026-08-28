@@ -2,8 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
     ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceNode,
-    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, Provenance,
-    ResolverCode, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
+    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance, ResolverCode, SemanticNameDelta,
+    SourceCategory, SymbolId, SymbolKind, SymbolObject,
 };
 
 /// Immutable revision of the SemanticWorld-owned namespace-name index.
@@ -408,7 +408,6 @@ pub struct ResolverContext {
     pub current_namespace: NamespaceNodeId,
     pub explicit_mount_roots: Vec<NamespaceNodeId>,
     pub default_mounts: Vec<NamespaceNodeId>,
-    pub current_policy: PolicyMetadata,
 }
 
 impl ResolverContext {
@@ -417,7 +416,6 @@ impl ResolverContext {
             current_namespace,
             explicit_mount_roots: Vec::new(),
             default_mounts: Vec::new(),
-            current_policy: PolicyMetadata::default(),
         }
     }
 
@@ -429,7 +427,6 @@ impl ResolverContext {
             current_namespace,
             explicit_mount_roots: Vec::new(),
             default_mounts,
-            current_policy: PolicyMetadata::default(),
         }
     }
 
@@ -442,7 +439,6 @@ impl ResolverContext {
             current_namespace,
             explicit_mount_roots,
             default_mounts,
-            current_policy: PolicyMetadata::default(),
         }
     }
 }
@@ -815,43 +811,29 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         })
     }
 
-    /// LEGACY (demoted) — flat `SymbolObject.policy_metadata.policy_set`
-    /// gate used only by not-yet-migrated legacy resolution paths
-    /// (`resolve_with_policy` callers: early-meta expansion, verify entry,
-    /// early-meta expansion and verify entry). The flat PolicySet is transport/mirror
-    /// metadata; it is NOT the canonical cluster/member visibility
-    /// authority.  Canonical exposure is decided per member view by the
-    /// connected ordinary pipeline (`invoke_target_values` C1/C2 over
-    /// `SemanticSymbolCell.member_views`).  A negative here may hide a
-    /// legacy path result, but it must never be used to re-derive or
-    /// overwrite member-level Policy.
+    /// Resolve-time exposure reads the same concrete declaration view stored
+    /// on the Symbol. It never constructs another Policy representation and
+    /// never participates in overload preference or execution legality.
     fn symbol_satisfies_policy(
         &self,
         symbol: &SymbolObject,
         policy_env: Option<PolicyEnv>,
     ) -> bool {
-        match policy_env {
-            None => true,
-            Some(env) => match env {
-                PolicyEnv::OpenStatic => {
-                    symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta)
-                        || symbol
-                            .policy_metadata
-                            .policy_set
-                            .contains(PolicyFlag::Compile)
-                }
-                PolicyEnv::SealStatic => {
-                    symbol
-                        .policy_metadata
-                        .policy_set
-                        .contains(PolicyFlag::Compile)
-                        || symbol.policy_metadata.policy_set.contains(PolicyFlag::Seal)
-                }
-                PolicyEnv::Runtime => symbol
-                    .policy_metadata
-                    .policy_set
-                    .contains(PolicyFlag::Runtime),
-            },
+        let Some(env) = policy_env else { return true };
+        let Some(view) = &symbol.policy_view else {
+            return false;
+        };
+        let stages = &view.pair.value.stages;
+        match env {
+            PolicyEnv::OpenStatic => {
+                stages.contains(crate::PolicyStage::Meta)
+                    || stages.contains(crate::PolicyStage::Compile)
+            }
+            PolicyEnv::SealStatic => {
+                stages.contains(crate::PolicyStage::Compile)
+                    || stages.contains(crate::PolicyStage::Seal)
+            }
+            PolicyEnv::Runtime => stages.contains(crate::PolicyStage::Runtime),
         }
     }
 
@@ -910,7 +892,10 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             Some(parent),
             provenance,
         );
-        symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
+        symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
+            &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+            crate::PolicyMode::Plain,
+        ));
         delta.insert_node(node);
         delta.insert_symbol(parent, symbol);
         (node_id, delta)
@@ -1010,7 +995,10 @@ pub(crate) fn namespace_symbol(
         Some(parent),
         provenance,
     );
-    symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
+    symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
+        &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+        crate::PolicyMode::Plain,
+    ));
     delta.insert_node(node);
     delta.insert_symbol(parent, symbol);
     node_id

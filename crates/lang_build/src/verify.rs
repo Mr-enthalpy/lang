@@ -3,8 +3,7 @@ use lang_syntax::{NormExpr, NormForm, NormNavComponent, NormOrigin, NormProductE
 use crate::{
     model::{
         CoreMetaFunction, Diagnostic, FieldProjection, NamespaceNodeId, NamespaceNodeKind,
-        PolicyFlag, Provenance, ResolverCode, SymbolKind, SymbolObject, SymbolPayload,
-        VerificationPrimitive,
+        Provenance, ResolverCode, SymbolKind, SymbolObject, SymbolPayload, VerificationPrimitive,
     },
     semantic_name_index::{BuildError, ResolverContext},
     semantic_owner::SemanticSymbolIdentity,
@@ -13,6 +12,12 @@ use crate::{
 };
 
 const VERIFY_ERROR_PREFIX: &str = "source verification error:";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PolicyVerificationQuery {
+    ExportRoot,
+    Stage(PolicyStage),
+}
 
 pub fn evaluate_source_verifications(
     world: &SemanticWorld,
@@ -467,6 +472,26 @@ impl VerificationInvocation {
         self.expect_arity(2)?;
         let path = self.arg_path(0)?;
         let flag = self.arg_policy_flag(1)?;
+        if flag == PolicyVerificationQuery::ExportRoot {
+            let symbol = resolve_any_role(world, context, &path).map_err(|_| {
+                self.error(format!(
+                    "expected `{}` to resolve for export-root verification",
+                    path.source_order_display()
+                ))
+            })?;
+            let contains = symbol.visibility_metadata.export_root;
+            return match (check, contains) {
+                (PolicyCheck::Present, true) | (PolicyCheck::Absent, false) => Ok(()),
+                (PolicyCheck::Present, false) => Err(self.error(format!(
+                    "expected `{}` policy export",
+                    path.source_order_display()
+                ))),
+                (PolicyCheck::Absent, true) => Err(self.error(format!(
+                    "expected `{}` not to have policy export",
+                    path.source_order_display()
+                ))),
+            };
+        }
         let identity = resolve_semantic_identity(world, context, &path).map_err(|_| {
             self.error(format!(
                 "expected `{}` to resolve for policy verification",
@@ -484,12 +509,12 @@ impl VerificationInvocation {
             (PolicyCheck::Present, false) => Err(self.error(format!(
                 "expected `{}` policy {}",
                 path.source_order_display(),
-                policy_flag_label(flag)
+                policy_query_label(flag)
             ))),
             (PolicyCheck::Absent, true) => Err(self.error(format!(
                 "expected `{}` not to have policy {}",
                 path.source_order_display(),
-                policy_flag_label(flag)
+                policy_query_label(flag)
             ))),
         }
     }
@@ -530,20 +555,20 @@ impl VerificationInvocation {
                 )));
             }
         };
-        let contains = policy.policy_set.contains(flag);
+        let contains = policy_view_contains_query(policy, flag);
         match (should_contain, contains) {
             (true, true) | (false, false) => Ok(()),
             (true, false) => Err(self.error(format!(
                 "expected `{}` {} policy {}",
                 path.source_order_display(),
                 plane.label(),
-                policy_flag_label(flag)
+                policy_query_label(flag)
             ))),
             (false, true) => Err(self.error(format!(
                 "expected `{}` not to have {} policy {}",
                 path.source_order_display(),
                 plane.label(),
-                policy_flag_label(flag)
+                policy_query_label(flag)
             ))),
         }
     }
@@ -653,9 +678,9 @@ impl VerificationInvocation {
             .ok_or_else(|| self.error(format!("unknown namespace kind `{name}`")))
     }
 
-    fn arg_policy_flag(&self, index: usize) -> Result<PolicyFlag, Diagnostic> {
+    fn arg_policy_flag(&self, index: usize) -> Result<PolicyVerificationQuery, Diagnostic> {
         let name = self.arg_name(index)?;
-        parse_policy_flag(&name).ok_or_else(|| self.error(format!("unknown policy flag `{name}`")))
+        parse_policy_query(&name).ok_or_else(|| self.error(format!("unknown policy fact `{name}`")))
     }
 
     fn arg_field_projection(&self, index: usize) -> Result<FieldProjection, Diagnostic> {
@@ -938,31 +963,33 @@ fn semantic_symbol_is_open_static(world: &SemanticWorld, identity: SemanticSymbo
     world
         .projected_symbol_object(identity)
         .is_some_and(|symbol| {
-            symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta)
-                || symbol
-                    .policy_metadata
-                    .policy_set
-                    .contains(PolicyFlag::Compile)
+            symbol.policy_view.as_ref().is_some_and(|view| {
+                view.pair.value.stages.contains(PolicyStage::Meta)
+                    || view.pair.value.stages.contains(PolicyStage::Compile)
+            })
         })
 }
 
 fn semantic_symbol_contains_policy(
     world: &SemanticWorld,
     identity: SemanticSymbolIdentity,
-    flag: PolicyFlag,
+    query: PolicyVerificationQuery,
 ) -> Option<bool> {
     let symbol = world.symbol(identity)?;
-    if flag == PolicyFlag::Export || symbol.member_views.is_empty() {
+    if query == PolicyVerificationQuery::ExportRoot || symbol.member_views.is_empty() {
         return world
             .projected_symbol_object(identity)
-            .map(|projection| projection.policy_metadata.policy_set.contains(flag));
+            .map(|projection| match query {
+                PolicyVerificationQuery::ExportRoot => projection.visibility_metadata.export_root,
+                PolicyVerificationQuery::Stage(stage) => projection
+                    .policy_view
+                    .as_ref()
+                    .is_some_and(|view| policy_view_has_stage(view, stage)),
+            });
     }
-    let stage = match flag {
-        PolicyFlag::Meta => PolicyStage::Meta,
-        PolicyFlag::Compile => PolicyStage::Compile,
-        PolicyFlag::Seal => PolicyStage::Seal,
-        PolicyFlag::Runtime => PolicyStage::Runtime,
-        PolicyFlag::Export => unreachable!("handled above"),
+    let stage = match query {
+        PolicyVerificationQuery::Stage(stage) => stage,
+        PolicyVerificationQuery::ExportRoot => unreachable!("handled above"),
     };
     Some(symbol.member_views.iter().any(|view| {
         view.view.pair.value.stages.contains(stage) || view.view.pair.pattern.stages.contains(stage)
@@ -1007,24 +1034,35 @@ fn namespace_kind_label(kind: NamespaceNodeKind) -> &'static str {
     }
 }
 
-fn parse_policy_flag(name: &str) -> Option<PolicyFlag> {
+fn parse_policy_query(name: &str) -> Option<PolicyVerificationQuery> {
     match name {
-        "export" => Some(PolicyFlag::Export),
-        "meta" => Some(PolicyFlag::Meta),
-        "compile" => Some(PolicyFlag::Compile),
-        "seal" => Some(PolicyFlag::Seal),
-        "runtime" => Some(PolicyFlag::Runtime),
+        "export" => Some(PolicyVerificationQuery::ExportRoot),
+        "meta" => Some(PolicyVerificationQuery::Stage(PolicyStage::Meta)),
+        "compile" => Some(PolicyVerificationQuery::Stage(PolicyStage::Compile)),
+        "seal" => Some(PolicyVerificationQuery::Stage(PolicyStage::Seal)),
+        "runtime" => Some(PolicyVerificationQuery::Stage(PolicyStage::Runtime)),
         _ => None,
     }
 }
 
-fn policy_flag_label(flag: PolicyFlag) -> &'static str {
-    match flag {
-        PolicyFlag::Export => "export",
-        PolicyFlag::Meta => "meta",
-        PolicyFlag::Compile => "compile",
-        PolicyFlag::Seal => "seal",
-        PolicyFlag::Runtime => "runtime",
+fn policy_query_label(query: PolicyVerificationQuery) -> &'static str {
+    match query {
+        PolicyVerificationQuery::ExportRoot => "export",
+        PolicyVerificationQuery::Stage(PolicyStage::Meta) => "meta",
+        PolicyVerificationQuery::Stage(PolicyStage::Compile) => "compile",
+        PolicyVerificationQuery::Stage(PolicyStage::Seal) => "seal",
+        PolicyVerificationQuery::Stage(PolicyStage::Runtime) => "runtime",
+    }
+}
+
+fn policy_view_has_stage(view: &crate::PolicyView, stage: PolicyStage) -> bool {
+    view.pair.value.stages.contains(stage) || view.pair.pattern.stages.contains(stage)
+}
+
+fn policy_view_contains_query(view: &crate::PolicyView, query: PolicyVerificationQuery) -> bool {
+    match query {
+        PolicyVerificationQuery::ExportRoot => false,
+        PolicyVerificationQuery::Stage(stage) => policy_view_has_stage(view, stage),
     }
 }
 
@@ -1049,9 +1087,10 @@ fn field_projection_label(projection: FieldProjection) -> &'static str {
 mod tests {
     use super::*;
     use crate::{
+        declared_policy_view,
         model::{MetaFunctionObject, NamespaceNode, SourceCategory},
-        policy_metadata, policy_set_meta, policy_set_runtime,
         semantic_name_index::{ResolverContext, SemanticNameIndex},
+        PolicyMode,
     };
 
     #[test]
@@ -1078,7 +1117,10 @@ mod tests {
             Some(root),
             Provenance::new("test verify namespace"),
         );
-        verify.policy_metadata.policy_set = policy_set_meta();
+        verify.policy_view = Some(declared_policy_view(
+            &[PolicyStage::Meta],
+            PolicyMode::Plain,
+        ));
         verify.payload = SymbolPayload::VerificationNamespace { node: verify_node };
         delta.insert_symbol(root, verify);
 
@@ -1091,14 +1133,15 @@ mod tests {
             Some(verify_node),
             Provenance::new("runtime-only verify operation"),
         );
-        operation.policy_metadata.policy_set = policy_set_runtime();
+        let runtime_view = declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain);
+        operation.policy_view = Some(runtime_view.clone());
         operation.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
             function_symbol_id: operation_id,
             primitive: Some(CoreMetaFunction::Verify(VerificationPrimitive::Exists)),
             source_callable: None,
-            function_policy: policy_metadata(policy_set_runtime()),
-            body_entry_policy: policy_metadata(policy_set_runtime()),
-            return_object_policy: policy_metadata(policy_set_runtime()),
+            function_policy: runtime_view.clone(),
+            body_entry_policy: runtime_view.clone(),
+            return_object_policy: runtime_view,
             return_shape: crate::ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained),
             privilege: crate::CallablePrivilege::BuiltinPrivileged,
         });

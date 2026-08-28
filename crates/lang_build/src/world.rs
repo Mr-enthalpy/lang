@@ -13,21 +13,18 @@ use crate::{
     meta::bind_meta_invocation_value_result_with_materialization_state,
     model::{
         Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, PolicyFlag, PolicySet, Provenance, ResolverCode, SemanticNameDelta,
-        SourceCallableObject, SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
+        NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta, SourceCallableObject,
+        SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
     },
     pattern_head::TypeMaterializationState,
-    policy_expr::{elaborate_declaration_policy_expr, legacy_policy_set_from_pair},
-    policy_metadata,
     policy_pair::{
-        derive_function_object_view, elaborate_binding_result_demand,
+        declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
         elaborate_namespace_declaration_policy, elaborate_return_policy_pattern,
         function_object_declaration_policy, normalize_p2_policy, ExplicitP1Selection,
         NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyMode,
         PolicyView, ResultPolicyDemand, ValueComponentPolicy,
     },
     policy_pair::{PatternComponentPolicy, PolicyPair, PolicyStage, ValuePresence},
-    policy_set_meta_runtime, policy_set_runtime,
     return_target::{
         elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
         ReturnFrameOwner,
@@ -204,8 +201,7 @@ impl CompilationWorld {
         };
         // Core type carriers enter the semantic world
         // straight from the bootstrap's declared registration roster; the
-        // graph is never rescanned through a flat legacy PolicySet
-        // re-projection (`sync_semantic_type_values` is deleted).
+        // graph projection is not a semantic registration source.
         let type_rank = core_types
             .iter()
             .find(|registration| registration.name == "type")
@@ -229,7 +225,7 @@ impl CompilationWorld {
         world.register_builtin_literal_constructors()?;
         // Core callables enter the semantic world straight
         // from the bootstrap's declared registration roster; there is no
-        // graph-payload scan or legacy PolicySet re-projection step.
+        // graph-payload inference step.
         for registration in core_callables {
             world.semantic_world.register_core_callable(
                 registration.namespace,
@@ -456,8 +452,8 @@ impl CompilationWorld {
     /// Every installation point that
     /// carries a `TypeObject` registers its semantic type binding through the
     /// atomic [`SemanticNamespaceDelta`] path with the declared canonical
-    /// `PolicyPair`; the graph is never rescanned through a flat legacy
-    /// PolicySet re-projection, and the type-associated namespace is created
+    /// `PolicyPair`; the graph is not a registration source, and the
+    /// type-associated namespace is created
     /// by the semantic world itself instead of being read back from the
     /// graph.
     fn register_installed_type_carrier(
@@ -1247,15 +1243,12 @@ impl CompilationWorld {
             declaration_provenance.clone(),
         )
         .map_err(BuildError::single)?;
-        let explicit_policy = slot.policy.as_ref().map(|_| {
-            crate::policy_expr::legacy_policy_set_from_namespace_declaration(&namespace_declaration)
-        });
         // One complete binding result demand is formed before the RHS is
         // evaluated. The root producer consumes this same demand before
         // C2/A/Bp/maxima; binding projection/transfer may inspect it only
         // after that producer has been sealed.
         let result_policy_demand = binding_result_policy_demand(slot, &namespace_declaration);
-        let mut residual_binding_policy = None;
+        let mut residual_binding_view = None;
 
         if let Some(initializer) = slot.initializer.as_deref() {
             match self.evaluate_initializer_best_effort_connected(
@@ -1289,14 +1282,11 @@ impl CompilationWorld {
                 }
                 ConnectedInitializerOutcome::Residual { reason, provenance } => {
                     verify_residual_policy_compatible(
-                        explicit_policy.as_ref(),
+                        &result_policy_demand,
                         &reason,
                         provenance.clone(),
                     )?;
-                    if let Some(explicit_policy) = explicit_policy.as_ref() {
-                        residual_binding_policy =
-                            policy_projection(explicit_policy, &policy_set_runtime());
-                    }
+                    residual_binding_view = residual_policy_view(&result_policy_demand);
                     if is_type_annotation(slot.annotation.as_ref()) {
                         return Err(BuildError::single(Diagnostic::hard_error(
                             "UnsupportedDeferredTypeAssertion: `: type` assertion is deferred for a residual initializer, and deferred type assertions are not implemented in the restricted v0.8 initializer evaluator",
@@ -1337,19 +1327,19 @@ impl CompilationWorld {
             )
         };
         {
-            let policy_set = residual_binding_policy
-                .clone()
-                .or_else(|| explicit_policy.clone())
-                .unwrap_or_else(|| {
-                    if is_type_annotation(slot.annotation.as_ref()) {
-                        policy_set_meta_runtime()
-                    } else {
-                        policy_set_runtime()
-                    }
-                });
+            let policy_view = residual_binding_view.clone().unwrap_or_else(|| {
+                if is_type_annotation(slot.annotation.as_ref()) {
+                    declared_policy_view(
+                        &[PolicyStage::Meta, PolicyStage::Runtime],
+                        namespace_declaration.mode,
+                    )
+                } else {
+                    declared_policy_view(&[PolicyStage::Runtime], namespace_declaration.mode)
+                }
+            });
             for symbol in delta.symbols.values_mut() {
                 if symbol.name == binder_name {
-                    symbol.policy_metadata.policy_set = policy_set.clone();
+                    symbol.policy_view = Some(policy_view.clone());
                     symbol.visibility_metadata.namespace_visibility =
                         namespace_declaration.visibility;
                     symbol.visibility_metadata.export_root = namespace_declaration.export_root;
@@ -1611,7 +1601,7 @@ impl CompilationWorld {
             crate::MetaInvocationValue::GeneratedTypeDefinitionValue(value) => value.canonical_type,
             _ => None,
         };
-        let result_policy = legacy_policy_set_from_result_entries(selected);
+        let result_view = uniform_result_policy_view(selected);
         let mut expansion = bind_meta_invocation_value_result_with_materialization_state(
             value,
             self.semantic_world.namespace_index(),
@@ -1620,17 +1610,17 @@ impl CompilationWorld {
             provenance.clone(),
             &mut self.type_materialization_state,
         )?;
-        override_delta_binding_policy(
+        override_delta_binding_policy_view(
             &mut expansion.namespace_delta,
             binder_name,
-            result_policy.clone(),
+            result_view.clone(),
         );
         override_delta_binding_visibility(
             &mut expansion.namespace_delta,
             binder_name,
             namespace_declaration,
         );
-        expansion.replacement_object.policy_metadata.policy_set = result_policy;
+        expansion.replacement_object.policy_view = result_view;
         expansion
             .replacement_object
             .visibility_metadata
@@ -2156,7 +2146,7 @@ impl CompilationWorld {
                 Some(provenance),
             )));
         }
-        let policy = legacy_policy_set_from_result_entries(selected);
+        let policy_view = uniform_result_policy_view(selected);
         let mut declared_type_carrier = None;
         if selected.iter().all(|entry| entry.value.is_none()) {
             let pattern = first_pattern;
@@ -2187,7 +2177,7 @@ impl CompilationWorld {
                 ));
                 carrier.delta
             };
-            override_delta_binding_policy(&mut delta, binder_name, policy);
+            override_delta_binding_policy_view(&mut delta, binder_name, policy_view.clone());
             override_delta_binding_visibility(&mut delta, binder_name, namespace_declaration);
             let pure_selected: Vec<_> = selected
                 .iter()
@@ -2249,7 +2239,7 @@ impl CompilationWorld {
                 provenance.clone(),
             )
         };
-        override_delta_binding_policy(&mut delta, binder_name, policy);
+        override_delta_binding_policy_view(&mut delta, binder_name, policy_view);
         override_delta_binding_visibility(&mut delta, binder_name, namespace_declaration);
         let destination = self
             .semantic_world
@@ -2290,7 +2280,7 @@ impl CompilationWorld {
         semantic_complete_type: &crate::CompleteTypeValue,
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
-        let result_policy = legacy_policy_set_from_result_entries(selected);
+        let result_view = uniform_result_policy_view(selected);
         let mut expansion = bind_meta_invocation_value_result_with_materialization_state(
             crate::MetaInvocationValue::GeneratedTypeDefinitionValue(generated),
             self.semantic_world.namespace_index(),
@@ -2299,17 +2289,17 @@ impl CompilationWorld {
             provenance.clone(),
             &mut self.type_materialization_state,
         )?;
-        override_delta_binding_policy(
+        override_delta_binding_policy_view(
             &mut expansion.namespace_delta,
             binder_name,
-            result_policy.clone(),
+            result_view.clone(),
         );
         override_delta_binding_visibility(
             &mut expansion.namespace_delta,
             binder_name,
             namespace_declaration,
         );
-        expansion.replacement_object.policy_metadata.policy_set = result_policy;
+        expansion.replacement_object.policy_view = result_view;
         expansion
             .replacement_object
             .visibility_metadata
@@ -3108,20 +3098,6 @@ fn source_callable_delta(
     )
     .map_err(BuildError::single)?
     .effective_view;
-    let derived_symbol_policy = legacy_policy_set_from_pair(&derived_function_view.pair);
-    let explicit_symbol_policy = policy_expr
-        .map(|policy| elaborate_declaration_policy_expr(Some(policy), provenance.clone()))
-        .transpose()
-        .map_err(BuildError::single)?;
-    verify_explicit_policy_compatible(
-        explicit_symbol_policy.as_ref(),
-        &derived_symbol_policy,
-        provenance.clone(),
-    )?;
-    let symbol_policy =
-        final_binding_policy(explicit_symbol_policy.as_ref(), &derived_symbol_policy);
-    let body_entry_policy = legacy_policy_set_from_pair(&result_p2.pair);
-
     // Preserve explicitness information at the
     // declaration elaboration boundary. `outer_p1_explicit` is `Some` iff
     // the user wrote P1-relevant material in the `let name: policy = ...`
@@ -3134,9 +3110,7 @@ fn source_callable_delta(
     //   neither                        => canonical = derived
     //
     // The explicit P1 is the COMPLETE `Pv:Pp` selection: stage atoms in
-    // the prefix are an explicit value-stage selection (they double as
-    // declaration policy, already validated against the derived symbol
-    // policy above via `verify_explicit_policy_compatible`), while
+    // the prefix are an explicit value-stage selection, while
     // `public/private/export` remain namespace declaration attributes and
     // never enter the P1.
     let outer_p1_explicit: Option<ExplicitP1Selection> = crate::policy_pair::elaborate_explicit_p1(
@@ -3174,7 +3148,7 @@ fn source_callable_delta(
         Some(parent),
         provenance.clone(),
     );
-    symbol.policy_metadata.policy_set = symbol_policy.clone();
+    symbol.policy_view = Some(derived_function_view.clone());
     symbol.visibility_metadata.namespace_visibility = namespace_declaration.visibility;
     symbol.visibility_metadata.export_root = namespace_declaration.export_root;
     symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
@@ -3184,11 +3158,9 @@ fn source_callable_delta(
             closure: closure.clone(),
             provenance: provenance.clone(),
         }),
-        function_policy: policy_metadata(symbol_policy.clone()),
-        body_entry_policy: policy_metadata(body_entry_policy.clone()),
-        return_object_policy: policy_metadata(legacy_policy_set_from_pair(
-            &preliminary_return_view.pair,
-        )),
+        function_policy: derived_function_view.clone(),
+        body_entry_policy: result_p2.clone(),
+        return_object_policy: preliminary_return_view,
         return_shape,
         privilege: crate::CallablePrivilege::OrdinarySource,
     });
@@ -3204,15 +3176,14 @@ fn source_callable_delta(
     })
 }
 
-fn legacy_policy_set_from_result_entries<V, P>(
+fn uniform_result_policy_view<V, P>(
     entries: &[crate::PolicyResultEntry<V, P>],
-) -> PolicySet {
-    let mut policy = PolicySet::new();
-    for entry in entries {
-        let projected = legacy_policy_set_from_pair(&entry.view.pair);
-        policy.flags.extend(projected.flags);
-    }
-    policy
+) -> Option<PolicyView> {
+    let first = entries.first()?.view.clone();
+    entries
+        .iter()
+        .all(|entry| entry.view == first)
+        .then_some(first)
 }
 
 fn ordinary_invocation_failure_diagnostic(
@@ -3359,35 +3330,12 @@ fn assert_semantic_result_satisfies_annotation(
     Ok(())
 }
 
-fn verify_explicit_policy_compatible(
-    explicit_policy: Option<&PolicySet>,
-    result_policy: &PolicySet,
-    provenance: Provenance,
-) -> Result<(), BuildError> {
-    let Some(explicit_policy) = explicit_policy else {
-        return Ok(());
-    };
-    if policy_projection(explicit_policy, result_policy).is_some() {
-        Ok(())
-    } else {
-        Err(BuildError::single(Diagnostic::hard_error(
-            "ExplicitPolicyProjectionFailed: explicit binding policy selects an empty RHS slice",
-            Some(provenance),
-        )
-        .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
-    }
-}
-
 fn verify_residual_policy_compatible(
-    explicit_policy: Option<&PolicySet>,
+    demand: &ResultPolicyDemand,
     reason: &crate::ResidualReason,
     provenance: Provenance,
 ) -> Result<(), BuildError> {
-    let Some(explicit_policy) = explicit_policy else {
-        return Ok(());
-    };
-    let runtime = policy_set_runtime();
-    if policy_projection(explicit_policy, &runtime).is_some() {
+    if residual_policy_view(demand).is_some() {
         return Ok(());
     }
     Err(BuildError::single(Diagnostic::hard_error(
@@ -3399,56 +3347,16 @@ fn verify_residual_policy_compatible(
     .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
 }
 
-fn is_stage_flag(flag: PolicyFlag) -> bool {
-    matches!(
-        flag,
-        PolicyFlag::Meta | PolicyFlag::Compile | PolicyFlag::Seal | PolicyFlag::Runtime
-    )
-}
-
-fn policy_projection(requested: &PolicySet, available: &PolicySet) -> Option<PolicySet> {
-    let requested_stages = requested
-        .flags
-        .iter()
-        .copied()
-        .filter(|flag| is_stage_flag(*flag))
-        .collect::<Vec<_>>();
-    let mut selected = PolicySet::new();
-    if requested_stages.is_empty() {
-        selected.flags.extend(
-            available
-                .flags
-                .iter()
-                .copied()
-                .filter(|flag| is_stage_flag(*flag)),
-        );
-    } else {
-        selected.flags.extend(
-            requested_stages
-                .into_iter()
-                .filter(|flag| available.contains(*flag)),
-        );
-        if selected.flags.is_empty() {
-            return None;
-        }
-    }
-    if requested.contains(PolicyFlag::Export) {
-        selected.insert(PolicyFlag::Export);
-    }
-    Some(selected)
-}
-
-fn final_binding_policy(
-    explicit_policy: Option<&PolicySet>,
-    result_policy: &PolicySet,
-) -> PolicySet {
-    if let Some(explicit_policy) = explicit_policy {
-        return policy_projection(explicit_policy, result_policy)
-            .expect("explicit policy was verified before final binding projection");
-    }
-    let mut inferred = result_policy.clone();
-    inferred.flags.remove(&PolicyFlag::Export);
-    inferred
+fn residual_policy_view(demand: &ResultPolicyDemand) -> Option<PolicyView> {
+    let runtime = crate::PolicyResultEntry {
+        value: Some(()),
+        pattern: (),
+        view: declared_policy_view(&[PolicyStage::Runtime], demand.mode),
+    };
+    crate::policy_pair::project_p1(&demand.pair_query, &[runtime])
+        .into_iter()
+        .next()
+        .map(|entry| entry.view)
 }
 
 fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExpectation) -> bool {
@@ -3464,18 +3372,17 @@ fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExp
     }
 }
 
-/// Rewrites the flat `policy_metadata.policy_set` on declaration-projection
-/// records matched by name.  The flat PolicySet is compatibility metadata,
-/// not canonical member visibility authority, and must never be read back to
-/// derive or overwrite `SemanticSymbolCell.member_views`.
-fn override_delta_binding_policy(
+/// Mirrors one uniform result view onto declaration-projection records.
+/// Heterogeneous Symbol clusters keep their per-member views in the semantic
+/// Symbol and deliberately have no fabricated whole-Symbol Policy view.
+fn override_delta_binding_policy_view(
     delta: &mut SemanticNameDelta,
     binding_name: &str,
-    policy: PolicySet,
+    policy_view: Option<PolicyView>,
 ) {
     for symbol in delta.symbols.values_mut() {
         if symbol.name == binding_name {
-            symbol.policy_metadata.policy_set = policy.clone();
+            symbol.policy_view = policy_view.clone();
         }
     }
 }
