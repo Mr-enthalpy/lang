@@ -18,10 +18,10 @@ fn same_parent_same_role_object_conflict() {
     let a2 = delta.allocate_symbol_id();
     delta
         .symbols
-        .insert(a1, placeholder_symbol(a1, root, "X", "first X"));
+        .insert(a1, object_symbol(a1, root, "X", "first X"));
     delta
         .symbols
-        .insert(a2, placeholder_symbol(a2, root, "X", "second X"));
+        .insert(a2, object_symbol(a2, root, "X", "second X"));
     delta.child_links.push(ChildLink {
         parent: root,
         name: "X".into(),
@@ -70,7 +70,7 @@ fn cross_role_coexistence_non_namespace_capable() {
     let namespace_id = delta.allocate_symbol_id();
     delta.symbols.insert(
         object_id,
-        placeholder_symbol(object_id, root, "T", "object role"),
+        object_symbol(object_id, root, "T", "object role"),
     );
     delta.symbols.insert(
         namespace_id,
@@ -101,7 +101,7 @@ fn cross_role_coexistence_non_namespace_capable() {
         .capability()
         .resolve_str_with_expectation("T", &context, ResolveExpectation::Object)
         .expect("Object expectation resolves object-role symbol");
-    assert_eq!(by_object.kind, SymbolKind::Placeholder);
+    assert_eq!(by_object.kind, SymbolKind::Object);
 
     let by_namespace = snapshot
         .capability()
@@ -211,7 +211,7 @@ fn terminal_any_unique_ambiguous_with_both_roles() {
     let namespace_id = delta.allocate_symbol_id();
     delta.symbols.insert(
         object_id,
-        placeholder_symbol(object_id, root, "ref", "object-role ref"),
+        object_symbol(object_id, root, "ref", "object-role ref"),
     );
     delta.symbols.insert(
         namespace_id,
@@ -265,7 +265,7 @@ fn expectation_field_function_resolves_object_role() {
 
     let field_id = delta.allocate_symbol_id();
     let namespace_id = delta.allocate_symbol_id();
-    let mut field_symbol = placeholder_symbol(field_id, root, "ref", "field-function ref");
+    let mut field_symbol = object_symbol(field_id, root, "ref", "field-function ref");
     field_symbol.kind = SymbolKind::FieldFunction;
 
     delta.symbols.insert(field_id, field_symbol);
@@ -323,7 +323,7 @@ fn expectation_namespace_subspace_resolves_namespace_role() {
     let ns_id = delta.allocate_symbol_id();
     delta.symbols.insert(
         obj_id,
-        placeholder_symbol(obj_id, root, "Namespc", "object-role"),
+        object_symbol(obj_id, root, "Namespc", "object-role"),
     );
     delta.symbols.insert(
         ns_id,
@@ -381,13 +381,13 @@ fn intermediate_component_uses_namespace_capable_parent() {
 
     delta.symbols.insert(
         object_id,
-        placeholder_symbol(object_id, root, "ref", "object-role ref"),
+        object_symbol(object_id, root, "ref", "object-role ref"),
     );
     delta.symbols.insert(
         namespace_id,
         namespace_symbol(namespace_id, root, "ref", ns_node, "namespace-subspace ref"),
     );
-    let mut deep_child = placeholder_symbol(
+    let mut deep_child = object_symbol(
         deep_child_id,
         ns_node,
         "DeepChild",

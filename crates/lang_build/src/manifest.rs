@@ -82,9 +82,7 @@ pub struct SourceRoot {
     pub namespace_root: Vec<String>,
 }
 
-/// API-level dependency mount placeholder.
-///
-/// v0.6 can create synthetic mounted roots for tests without package solving.
+/// Explicit namespace mount supplied by the build manifest.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamespaceMount {
     pub from_package: String,
@@ -110,7 +108,7 @@ impl NamespaceMount {
     }
 }
 
-/// Synthetic symbol installed under a dependency mount placeholder.
+/// Synthetic symbol installed under an explicit namespace mount.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SyntheticMountSymbol {
     pub name: String,

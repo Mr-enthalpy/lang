@@ -322,7 +322,7 @@ impl RawArgShape {
     ///
     /// After this call, `is_value()` returns `Some(false)` and
     /// `receives_automatic_pass_action()` remains `false`.
-    /// This is an object-boundary placeholder operation — it does **not**
+    /// This is an object-boundary classification operation — it does **not**
     /// represent completed semantic non-value classification.
     pub fn as_non_value(self, kind: NonValueArgKind) -> Self {
         self.with_value_class(RawArgValueClass::NonValue(kind))
@@ -390,7 +390,7 @@ impl RawArgShape {
     /// projection. The argument material is a value; the type-value
     /// projection identifies the value's type.
     ///
-    /// This is an object-boundary placeholder operation. It does **not**
+    /// This is an object-boundary classification operation. It does **not**
     /// perform type checking.
     pub fn as_resolved_value_with_value_type(self, type_value: TypeValueId) -> Self {
         self.with_value_class(RawArgValueClass::Value)

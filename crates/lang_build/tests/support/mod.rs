@@ -296,16 +296,16 @@ fn copy_dir_recursive(src: &Path, dst: &Path) {
     }
 }
 
-pub fn placeholder_symbol(
+pub fn object_symbol(
     id: lang_build::SymbolId,
     parent: NamespaceNodeId,
     name: &str,
     provenance: &str,
 ) -> SymbolObject {
-    SymbolObject::placeholder(
+    SymbolObject::new(
         id,
         name,
-        SymbolKind::Placeholder,
+        SymbolKind::Object,
         SourceCategory::DeclaredSymbol,
         Some(parent),
         Provenance::new(provenance),
@@ -337,7 +337,7 @@ pub fn type_with_namespace(
     type_namespace_id: NamespaceNodeId,
     provenance: &str,
 ) -> SymbolObject {
-    let mut symbol = placeholder_symbol(type_id, parent, name, provenance);
+    let mut symbol = object_symbol(type_id, parent, name, provenance);
     symbol.kind = SymbolKind::CompleteTypeProjection;
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {

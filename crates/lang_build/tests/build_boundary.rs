@@ -45,7 +45,7 @@ fn declared_policy_view_is_preserved_by_namespace_installation() {
     let mut delta = snapshot.capability().declare(
         root,
         "policy_symbol",
-        SymbolKind::Placeholder,
+        SymbolKind::Object,
         SourceCategory::DeclaredSymbol,
         Provenance::new("policy test"),
     );

@@ -1281,7 +1281,7 @@ impl CompilationWorld {
         let mut declared_type_carrier = None;
         let mut delta = if is_type_annotation(slot.annotation.as_ref()) {
             let represented_type = self.semantic_world.allocate_type_lookup_index();
-            let carrier = declared_type_placeholder_delta(
+            let carrier = declared_type_projection_delta(
                 self.semantic_world.namespace_index(),
                 namespace,
                 &binder_name,
@@ -1298,7 +1298,7 @@ impl CompilationWorld {
             self.semantic_world.namespace_index().capability().declare(
                 namespace,
                 binder_name.clone(),
-                SymbolKind::Placeholder,
+                SymbolKind::Object,
                 SourceCategory::DeclaredSymbol,
                 Provenance::file("declared source symbol", file),
             )
@@ -2217,7 +2217,7 @@ impl CompilationWorld {
             self.semantic_world.namespace_index().capability().declare(
                 namespace,
                 binder_name.to_string(),
-                SymbolKind::Placeholder,
+                SymbolKind::Object,
                 SourceCategory::DeclaredSymbol,
                 provenance.clone(),
             )
@@ -2852,7 +2852,7 @@ fn ensure_namespace_path(
     Ok(current)
 }
 
-fn declared_type_placeholder_delta(
+fn declared_type_projection_delta(
     snapshot: &SemanticNameIndex,
     parent: NamespaceNodeId,
     name: &str,
@@ -2876,7 +2876,7 @@ fn declared_type_placeholder_delta(
         provenance.clone(),
     ));
 
-    let mut symbol = SymbolObject::placeholder(
+    let mut symbol = SymbolObject::new(
         type_symbol_id,
         name,
         SymbolKind::CompleteTypeProjection,
@@ -2946,7 +2946,7 @@ fn declared_bound_type_value_delta(
     provenance: Provenance,
 ) -> DeclaredTypeCarrierDelta {
     let mut carrier =
-        declared_type_placeholder_delta(snapshot, parent, name, represented_type, provenance);
+        declared_type_projection_delta(snapshot, parent, name, represented_type, provenance);
     let symbol = carrier
         .delta
         .symbols
@@ -3124,7 +3124,7 @@ fn source_callable_delta(
         });
     }
 
-    let mut symbol = SymbolObject::placeholder(
+    let mut symbol = SymbolObject::new(
         symbol_id,
         name,
         SymbolKind::MetaFunction,

@@ -98,7 +98,7 @@ fn omitted_policy_infers_selected_callable_return_policy() {
 }
 
 #[test]
-fn residual_type_name_annotation_is_deferred_not_placeholder() {
+fn residual_type_name_annotation_remains_deferred() {
     let err = build_fixture_error("v08_initializer_residual_type_name", "app");
     assert!(has_code(
         &err,

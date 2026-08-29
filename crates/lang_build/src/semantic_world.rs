@@ -21,9 +21,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use lang_syntax::{
-    NormClosure, NormClosurePlacement, NormExpr, NormPatternElem, NormPolicySpec,
-};
+use lang_syntax::{NormClosure, NormClosurePlacement, NormExpr, NormPatternElem, NormPolicySpec};
 
 use crate::{
     canonical_value::{
@@ -7057,7 +7055,7 @@ mod tests {
         let projection_only = world.namespace_index.capability().declare(
             root,
             "projection_only",
-            SymbolKind::Placeholder,
+            SymbolKind::Object,
             crate::SourceCategory::DeclaredSymbol,
             Provenance::new("projection-only declaration"),
         );

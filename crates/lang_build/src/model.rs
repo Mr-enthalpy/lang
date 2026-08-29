@@ -65,7 +65,7 @@ pub enum SourceCategory {
     DependencyMount,
 }
 
-/// Coarse symbol category used before full semantic analysis exists.
+/// Namespace-graph projection category for a Symbol.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SymbolKind {
     Namespace,
@@ -74,7 +74,8 @@ pub enum SymbolKind {
     CompleteTypeProjection,
     MetaFunction,
     FieldFunction,
-    Placeholder,
+    /// An object-name slot without a specialized graph projection kind.
+    Object,
 }
 
 /// Role used when a textual child name is installed under a namespace node.
@@ -380,7 +381,7 @@ pub struct SymbolObject {
 }
 
 impl SymbolObject {
-    pub fn placeholder(
+    pub fn new(
         id: SymbolId,
         name: impl Into<String>,
         kind: SymbolKind,
@@ -401,7 +402,7 @@ impl SymbolObject {
             diagnostics: Vec::new(),
             generation_origin: None,
             cache_key_fragment: None,
-            payload: SymbolPayload::Placeholder,
+            payload: SymbolPayload::None,
         }
     }
 
@@ -449,7 +450,7 @@ impl SymbolObject {
             SymbolKind::CompleteTypeProjection
             | SymbolKind::MetaFunction
             | SymbolKind::FieldFunction
-            | SymbolKind::Placeholder => ChildNameRole::Object,
+            | SymbolKind::Object => ChildNameRole::Object,
         }
     }
 
@@ -462,18 +463,23 @@ impl SymbolObject {
     }
 }
 
-/// Optional payload carried by a `SymbolObject`.
+/// Graph projection payload carried by a `SymbolObject`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SymbolPayload {
-    Namespace { node: NamespaceNodeId },
-    VerificationNamespace { node: NamespaceNodeId },
+    Namespace {
+        node: NamespaceNodeId,
+    },
+    VerificationNamespace {
+        node: NamespaceNodeId,
+    },
     CompleteTypeProjection(CoreTypeProjection),
     MetaFunction(MetaFunctionObject),
     FieldFunction(FieldObject),
-    Placeholder,
+    /// No specialized graph projection is attached to this Symbol.
+    None,
 }
 
-/// Placeholder type payload created by the v0.6 struct meta slice.
+/// First-order Core projection attached to a namespace graph Symbol.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CoreTypeProjection {
     /// Symbol/place carrier for this particular source-visible binding.
@@ -503,7 +509,7 @@ pub struct CoreTypeProjection {
     pub abi_slot: Option<String>,
 }
 
-/// Field entry recorded in a placeholder `CoreTypeProjection`.
+/// Field entry recorded in a `CoreTypeProjection`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeField {
     pub name: String,
@@ -528,7 +534,7 @@ pub struct CallablePolicyViews {
     pub return_object_policy: crate::policy_pair::PolicyView,
 }
 
-/// Placeholder field-function payload generated under a type namespace.
+/// Field-function projection generated under a type namespace.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldObject {
     pub owner_type_symbol_id: SymbolId,

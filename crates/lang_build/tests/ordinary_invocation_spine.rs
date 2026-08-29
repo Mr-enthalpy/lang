@@ -1637,7 +1637,7 @@ fn source_meta_body_contribution_stream_returns_cluster_construction() {
     // one to an open cluster, then finalizes one ClusterConstructionMaterial.
     // The construction-effect family is distinct: `let r = expr;` adds a
     // fresh member, `r = expr;` writes to an existing target (currently a
-    // placeholder overwrite scaffold), and the bare `r;` terminal delivers
+    // member-write surface), and the bare `r;` terminal delivers
     // the cluster — it is not a member event. Alias declarations never enter
     // this effect stream.
     //

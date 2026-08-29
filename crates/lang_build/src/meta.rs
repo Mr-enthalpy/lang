@@ -347,7 +347,7 @@ fn insert_field_projection_layer(
         let provenance = forced_provenance
             .clone()
             .unwrap_or_else(|| field.provenance.clone());
-        let mut symbol = SymbolObject::placeholder(
+        let mut symbol = SymbolObject::new(
             symbol_id,
             &field.name,
             SymbolKind::FieldFunction,
@@ -452,7 +452,7 @@ pub(crate) fn expand_struct_construction_material(
         provenance.clone(),
     ));
 
-    let mut type_projection = SymbolObject::placeholder(
+    let mut type_projection = SymbolObject::new(
         type_symbol_id,
         binding_name,
         SymbolKind::CompleteTypeProjection,

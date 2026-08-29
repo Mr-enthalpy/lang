@@ -847,8 +847,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     ) -> SemanticNameDelta {
         let mut delta = self.snapshot.empty_delta();
         let id = delta.allocate_symbol_id();
-        let symbol =
-            SymbolObject::placeholder(id, name, kind, source_category, Some(parent), provenance);
+        let symbol = SymbolObject::new(id, name, kind, source_category, Some(parent), provenance);
         delta.insert_symbol(parent, symbol);
         delta
     }

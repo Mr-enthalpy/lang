@@ -211,7 +211,7 @@ fn insert_meta_function(
             crate::ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained)
         }
     };
-    let mut symbol = SymbolObject::placeholder(
+    let mut symbol = SymbolObject::new(
         symbol_id,
         name,
         SymbolKind::MetaFunction,
@@ -360,7 +360,7 @@ pub(crate) fn insert_core_type(
         provenance.clone(),
     ));
 
-    let mut symbol = SymbolObject::placeholder(
+    let mut symbol = SymbolObject::new(
         symbol_id,
         name,
         SymbolKind::CompleteTypeProjection,

@@ -76,10 +76,10 @@ fn seal_phase_projection_reads_concrete_policy_views() {
         ("seal_only", PolicyStage::Seal),
     ] {
         let symbol_id = delta.allocate_symbol_id();
-        let mut symbol = SymbolObject::placeholder(
+        let mut symbol = SymbolObject::new(
             symbol_id,
             name,
-            SymbolKind::Placeholder,
+            SymbolKind::Object,
             SourceCategory::DeclaredSymbol,
             Some(world.package_root_node()),
             Provenance::new(name),

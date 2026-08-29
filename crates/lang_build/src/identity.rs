@@ -1,4 +1,4 @@
-//! Placeholder identity types for the v0.8 construction contract.
+//! Distinct identity coordinates used by the semantic world.
 //!
 //! Distinct lookup, value, callable, and residency identities used by the
 //! semantic model. No identity in this module can be reconstructed from

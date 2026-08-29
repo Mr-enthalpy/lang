@@ -1019,7 +1019,7 @@ fn parse_symbol_kind(name: &str) -> Option<SymbolKind> {
         "type" => Some(SymbolKind::CompleteTypeProjection),
         "meta_function" => Some(SymbolKind::MetaFunction),
         "field_function" => Some(SymbolKind::FieldFunction),
-        "placeholder" => Some(SymbolKind::Placeholder),
+        "object" => Some(SymbolKind::Object),
         _ => None,
     }
 }
@@ -1030,7 +1030,7 @@ fn symbol_kind_label(kind: SymbolKind) -> &'static str {
         SymbolKind::CompleteTypeProjection => "type",
         SymbolKind::MetaFunction => "meta_function",
         SymbolKind::FieldFunction => "field_function",
-        SymbolKind::Placeholder => "placeholder",
+        SymbolKind::Object => "object",
     }
 }
 
@@ -1142,7 +1142,7 @@ mod tests {
         delta.insert_symbol(root, verify);
 
         let operation_id = delta.allocate_symbol_id();
-        let mut operation = SymbolObject::placeholder(
+        let mut operation = SymbolObject::new(
             operation_id,
             "exists",
             SymbolKind::MetaFunction,

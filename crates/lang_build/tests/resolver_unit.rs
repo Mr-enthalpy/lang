@@ -30,11 +30,11 @@ fn short_and_explicit_core_paths_share_symbol_identity() {
 }
 
 #[test]
-fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
+fn explicit_dependency_mounts_are_visible_as_paths() {
     let mut manifest = empty_app_manifest();
     manifest.dependency_mounts.push(
         NamespaceMount::synthetic_root("std", vec!["std".to_string()])
-            .with_symbol("Vec", SymbolKind::Placeholder),
+            .with_symbol("Vec", SymbolKind::Object),
     );
 
     let world = CompilationWorld::from_manifest(&manifest).expect("build world with mount");
@@ -130,7 +130,7 @@ fn diagnostic_resolver_ambiguity_prefix() {
     let namespace_id = delta.allocate_symbol_id();
     delta.symbols.insert(
         object_id,
-        placeholder_symbol(object_id, root, "ambig", "object-role ambig"),
+        object_symbol(object_id, root, "ambig", "object-role ambig"),
     );
     delta.symbols.insert(
         namespace_id,

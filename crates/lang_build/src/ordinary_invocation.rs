@@ -958,10 +958,10 @@ fn resolve_semantic_core_primitive_entry(
                     name: entry.declaration_name.clone(),
                 };
             };
-            let callee = SymbolObject::placeholder(
+            let callee = SymbolObject::new(
                 entry.backing_declaration,
                 entry.declaration_name.clone(),
-                SymbolKind::Placeholder,
+                SymbolKind::Object,
                 SourceCategory::DeclaredSymbol,
                 entry.declaration_namespace,
                 entry.provenance.clone(),
@@ -1785,10 +1785,10 @@ pub(crate) fn invoke_target_values(
         if !body_entry_allows_execution(&entry.body_entry_view.pair, context.execution_env) {
             continue;
         }
-        let declaration_identity = SymbolObject::placeholder(
+        let declaration_identity = SymbolObject::new(
             entry.backing_declaration,
             entry.declaration_name.clone(),
-            SymbolKind::Placeholder,
+            SymbolKind::Object,
             SourceCategory::DeclaredSymbol,
             entry.declaration_namespace,
             entry.provenance.clone(),

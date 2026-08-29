@@ -1,6 +1,6 @@
 mut + runtime let x: uint8 = 1;
 
-verify kind x placeholder;
+verify kind x object;
 verify policy x runtime;
 verify not_policy x meta;
 verify not_policy x export;
