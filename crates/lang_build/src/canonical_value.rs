@@ -57,7 +57,7 @@ use lang_syntax::NormLiteralKind;
 
 use std::collections::BTreeMap;
 
-use crate::{identity::TypeValueId, semantic_owner::ResolvedPatternRootId};
+use crate::semantic_owner::ResolvedPatternRootId;
 
 /// `Norm_Val2(V) = Map_name(Norm_Cluster(V[name]))` — the recursive normal
 /// form of one object's Val2 at canonicalization time.
@@ -494,22 +494,16 @@ pub fn expand_extraction_navigation(
 /// Pattern identity consumes the ordinary Object observation of the core,
 /// never that lookup index and never the complete `V_tau` snapshot.
 ///
-/// - [`Self::Observed`] carries the interned `Addr(Norm(Core(tau)))`
-///   computed against the live [`SemanticWorld`] snapshot at the invocation
-///   boundary — the authoritative ordinary type-equality coordinate.
-/// - [`Self::Detached`] carries only the first-order projection, for
-///   world-free standalone formal invocation where no observation channel
-///   exists (and therefore no Val2 can be observed at all).
-///
-/// The two variants never compare equal, so a missing observation can only
-/// under-merge — it never collapses two different Val2 observations.
+/// The observation carries the interned `Addr(Norm(Core(tau)))` computed
+/// against the semantic world at the invocation boundary.  A first-order
+/// [`TypeValueId`] is only a lookup key and cannot stand in for this
+/// observation.
 ///
 /// [`SemanticWorld`]: crate::SemanticWorld
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CanonicalTypeObservation {
     /// Canonical Object address of `Core(tau)`.
     Observed(CanonicalValueAddr),
-    Detached(TypeValueId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -884,7 +878,7 @@ mod tests {
     #[test]
     fn inherited_and_explicit_navigation_normalize_to_the_same_pattern_value() {
         let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let enclosing = CanonicalFullNavigation::from_component("bool");
         let inherited = CanonicalPatternValue::direct_child_layer(
@@ -918,7 +912,7 @@ mod tests {
     #[test]
     fn unordered_pattern_identity_includes_the_complete_navigation_name() {
         let value = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let left = CanonicalPatternValue::unordered([(
             CanonicalFullNavigation::new(["t", "bool"]),
@@ -939,10 +933,10 @@ mod tests {
     #[test]
     fn named_pattern_body_is_unordered_only_when_every_child_is_named() {
         let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let b = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(2)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(2)),
         ));
         let no_enclosing = CanonicalFullNavigation::new(Vec::<String>::new());
         assert_eq!(
@@ -1025,10 +1019,10 @@ mod tests {
     #[test]
     fn naked_product_remains_ordered_even_when_every_child_is_named() {
         let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let b = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(2)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(2)),
         ));
         let no_enclosing = CanonicalFullNavigation::new(Vec::<String>::new());
         assert_ne!(
@@ -1214,7 +1208,7 @@ mod tests {
     #[test]
     fn one_shot_struct_and_privileged_incremental_contribution_normalize_equally() {
         let bool_pattern = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(7)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(7)),
         ));
 
         // `let t = ((bool inner)t) |> struct;`

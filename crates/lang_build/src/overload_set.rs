@@ -8,7 +8,7 @@ use lang_syntax::{
 
 use crate::{
     meta_body::selected_meta_delete_diagnostic,
-    meta_invocation::{ForwardedResultMaterial, MetaExecutionMaterial, ReturnViewShape},
+    meta_invocation::MetaExecutionMaterial,
     model::{
         Diagnostic, DiagnosticSeverity, ExecutionEnv, Provenance, ResolverCode,
         SourceCallableObject, SymbolObject,
@@ -787,7 +787,7 @@ fn evaluate_contribution_rhs_name(
         ));
     }
     if let Some(bound) = selected.bindings.get(rhs_name) {
-        return forwarded_type_value(selected, bound.value_type);
+        return forwarded_type_value(selected, bound.value_type, bound.complete_type_observation);
     }
     if selected.pack_bindings.contains_key(rhs_name) {
         return Err(unsupported_body(
@@ -797,7 +797,11 @@ fn evaluate_contribution_rhs_name(
         ));
     }
     match type_env.resolve_type_name(rhs_name, resolver_context) {
-        Some(resolution) => forwarded_type_value(selected, Some(resolution.represented_type)),
+        Some(resolution) => forwarded_type_value(
+            selected,
+            Some(resolution.represented_type),
+            resolution.complete_type_observation,
+        ),
         None => Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
@@ -990,22 +994,22 @@ fn forwarding_expr_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> 
 fn forwarded_type_value(
     selected: &SelectedOverloadCandidate,
     represented_type: Option<crate::TypeValueId>,
+    complete_type_observation: Option<crate::CanonicalValueAddr>,
 ) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
-    let Some(represented_type) = represented_type else {
+    let (Some(represented_type), Some(complete_type_observation)) =
+        (represented_type, complete_type_observation)
+    else {
         return Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected simple forwarding body requires an evaluated TypeValue",
+            "selected simple forwarding body requires a world-connected canonical type observation",
         ));
     };
     Ok(MetaExecutionMaterial::ForwardedResultMaterial(
-        ForwardedResultMaterial {
+        crate::ForwardedResultMaterial {
             type_value: represented_type,
-            // The restricted evaluator has no `&mut SemanticWorld` channel, so it
-            // cannot intern an observed `Addr(Norm_type)` here.  `Detached` never
-            // equals an observed address, so this can only under-merge.
-            type_observation: crate::CanonicalTypeObservation::Detached(represented_type),
-            return_view: ReturnViewShape::Leaf,
+            type_observation: crate::CanonicalTypeObservation::Observed(complete_type_observation),
+            return_view: crate::ReturnViewShape::Leaf,
             provenance: selected.source_callable.provenance.clone(),
         },
     ))

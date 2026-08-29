@@ -68,10 +68,8 @@ pub struct ObservedProductElement {
     /// Transport/navigation material only: semantic equality consumes
     /// `type_observation`.
     pub type_value: Option<TypeValueId>,
-    /// The element type's observation identity — `Addr(Norm_type)` when the
-    /// producing boundary was world-connected, otherwise the `Detached`
-    /// projection.  Semantic equality consumes this, never the bare
-    /// `type_value`.
+    /// The element type's observation identity. Semantic equality consumes
+    /// this, never the bare `type_value`.
     pub type_observation: Option<crate::CanonicalTypeObservation>,
     /// Graph projection carrier for navigation/provenance only.
     pub type_symbol_id: Option<SymbolId>,
@@ -104,8 +102,7 @@ pub struct NamedObservedField {
     /// carrier Symbol.
     pub field_type_value: TypeValueId,
     /// The field type's observation identity — `Addr(Norm_type)` including
-    /// the recursive Val2 read at the classifying boundary, otherwise the
-    /// `Detached` projection.  Semantic equality consumes this.
+    /// the recursive Val2 read at the classifying boundary.
     pub field_type_observation: crate::CanonicalTypeObservation,
     /// Graph projection carrier for current namespace projection.
     pub field_type_symbol_id: SymbolId,

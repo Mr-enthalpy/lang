@@ -7188,7 +7188,7 @@ mod tests {
         let structure = CanonicalPatternValue::unordered([(
             CanonicalFullNavigation::from_component("field"),
             CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-                crate::CanonicalTypeObservation::Detached(TypeValueId(41)),
+                crate::CanonicalTypeObservation::Observed(CanonicalValueAddr(41)),
             )),
         )])
         .expect("one unique field navigation");
@@ -7523,7 +7523,7 @@ mod tests {
 
         // Give the pattern a structural norm so canonical_pattern_norm succeeds.
         let structure = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            crate::CanonicalTypeObservation::Detached(TypeValueId(100)),
+            crate::CanonicalTypeObservation::Observed(CanonicalValueAddr(100)),
         ));
         world.pattern_structural_norms.insert(pattern, structure);
 

@@ -184,9 +184,8 @@ pub struct RawArgShape {
     /// The resolved carrier's own binding-level pure-P member view, when this
     /// argument was classified from a named type carrier.
     ///
-    /// A represented TypeValue is shared by every carrier binding it, and the
-    /// world-level CoreTypeProjection adapter for that TypeValue is created once and
-    /// reused, so neither can answer "what Policy did *this* binding expose?".
+    /// A represented TypeValue is shared by every carrier binding it, so it
+    /// cannot answer "what Policy did *this* binding expose?".
     /// The binding view therefore rides along with the argument instead of
     /// being reconstructed downstream.
     pub known_type_member_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
@@ -214,10 +213,8 @@ pub struct RawArgShape {
     /// When present, structural type-identity positions (struct pattern
     /// leaves, field signatures, extraction fields) consume this address
     /// instead of the bare `TypeValueId` projection, so two observations of
-    /// one TypeValue with different Val2 never over-merge.  When absent (no
-    /// `&mut SemanticWorld` channel), `type_observation()` degrades to the
-    /// `Detached` projection, which never equals any `Observed` address —
-    /// missing observation can only under-merge.
+    /// one TypeValue with different Val2 never over-merge.  When absent, no
+    /// canonical type observation is available to the consumer.
     pub known_type_observation: Option<CanonicalValueAddr>,
     /// Resolved Val1 identity when this source atom names an already-evaluated
     /// semantic value.  Policy slicing remains on the Symbol/value-view edge;
@@ -274,25 +271,18 @@ impl RawArgShape {
     /// The type observation carried by this argument for structural
     /// type-identity positions.
     ///
-    /// `Observed(addr)` is authoritative `Addr(Norm_type)` material; the
-    /// `Detached(type_value)` fallback is a bare projection that never equals
-    /// an interned address, so it can only make equality stricter.
+    /// `Observed(addr)` is authoritative `Addr(Norm_type)` material. A bare
+    /// `TypeValueId` never produces an observation.
     pub fn type_observation(&self) -> Option<CanonicalTypeObservation> {
-        match (
-            self.known_type_observation,
-            self.known_first_order_type_value,
-        ) {
-            (Some(addr), _) => Some(CanonicalTypeObservation::Observed(addr)),
-            (None, Some(type_value)) => Some(CanonicalTypeObservation::Detached(type_value)),
-            (None, None) => None,
-        }
+        self.known_type_observation
+            .map(CanonicalTypeObservation::Observed)
     }
 
     /// Returns true only after this argument has been positively classified as
     /// a value argument.
     ///
-    /// `UnknownExpression` returns false at the candidate-prep placeholder
-    /// boundary because mechanical pass insertion is not allowed before
+    /// `UnknownExpression` returns false because mechanical pass insertion is
+    /// not allowed before
     /// value/type/rank/meta/pattern classification. This is not a final
     /// semantic claim that ordinary expressions never receive automatic pass
     /// actions after later classification.
@@ -303,7 +293,7 @@ impl RawArgShape {
     /// Controlled refinement: replace the value class while preserving index,
     /// provenance, and existing type-value / pass-mode fields.
     ///
-    /// This is placeholder classification support, **not** type checking.
+    /// This records a completed classification step; it is **not** type checking.
     pub fn with_value_class(self, value_class: RawArgValueClass) -> Self {
         Self {
             value_class,
@@ -322,7 +312,7 @@ impl RawArgShape {
     /// Refine an `UnknownExpression` into a positively classified value.
     ///
     /// After this call, `receives_automatic_pass_action()` returns `true`.
-    /// This is an object-boundary placeholder operation — it does **not**
+    /// This is an object-boundary classification operation — it does **not**
     /// represent completed semantic value typing.
     pub fn as_resolved_value(self) -> Self {
         self.with_value_class(RawArgValueClass::Value)

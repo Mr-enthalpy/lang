@@ -3685,20 +3685,16 @@ fn ordinary_result_identity(
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
             };
-            let complete_type = match value.type_observation {
-                crate::CanonicalTypeObservation::Observed(whole) => semantic_world
-                    .complete_type_by_whole_observation(whole)
-                    .cloned()
-                    .ok_or_else(|| {
-                        Diagnostic::hard_error(
-                            "forwarded CompleteType observation is not interned in this semantic world",
-                            Some(value.provenance.clone()),
-                        )
-                    })?,
-                crate::CanonicalTypeObservation::Detached(_) => {
-                    semantic_world.observe_complete_type(represented, None)?
-                }
-            };
+            let crate::CanonicalTypeObservation::Observed(whole) = value.type_observation;
+            let complete_type = semantic_world
+                .complete_type_by_whole_observation(whole)
+                .cloned()
+                .ok_or_else(|| {
+                    Diagnostic::hard_error(
+                        "forwarded CompleteType observation is not interned in this semantic world",
+                        Some(value.provenance.clone()),
+                    )
+                })?;
             let carrier_value = semantic_world
                 .core_type_projection_value(represented)
                 .ok_or_else(|| {

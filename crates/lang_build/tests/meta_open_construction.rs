@@ -922,7 +922,7 @@ fn real_val1_production_closes_the_construction_window() {
         self_pattern,
         CanonicalFullNavigation::from_component("late"),
         CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(7)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(7)),
         )),
         provenance.clone(),
     );

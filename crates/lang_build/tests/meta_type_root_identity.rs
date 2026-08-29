@@ -219,7 +219,7 @@ fn same_root_conflicting_body_is_a_conflict_never_a_second_root() {
     let body_a = TypeDefinitionInstanceId(11);
     let body_b = TypeDefinitionInstanceId(22);
     let pattern = lang_build::CanonicalPatternValue::Atom(lang_build::CanonicalPatternAtom::Type(
-        lang_build::CanonicalTypeObservation::Detached(lang_build::TypeValueId(11)),
+        lang_build::CanonicalTypeObservation::Observed(CanonicalValueAddr(11)),
     ));
 
     let mismatch = world
@@ -340,7 +340,7 @@ fn distinct_meta_callables_under_one_carrier_symbol_get_distinct_roots() {
     };
     let body = TypeDefinitionInstanceId(11);
     let pattern = lang_build::CanonicalPatternValue::Atom(lang_build::CanonicalPatternAtom::Type(
-        lang_build::CanonicalTypeObservation::Detached(lang_build::TypeValueId(11)),
+        lang_build::CanonicalTypeObservation::Observed(CanonicalValueAddr(11)),
     ));
 
     let a = world
@@ -424,7 +424,7 @@ fn meta_root_is_parent_scoped_always_plain_and_not_writable() {
         "equal replay material under distinct parents has distinct semantic root identity"
     );
     let pattern = lang_build::CanonicalPatternValue::Atom(lang_build::CanonicalPatternAtom::Type(
-        lang_build::CanonicalTypeObservation::Detached(TypeValueId(11)),
+        lang_build::CanonicalTypeObservation::Observed(CanonicalValueAddr(11)),
     ));
     let package_value = world
         .install_generated_type_value(

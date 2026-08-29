@@ -397,10 +397,8 @@ pub struct ForwardedResultMaterial {
     /// source name, the carrier Symbol is not part of this result identity.
     /// Symbol/place forwarding belongs to the separate `===` mechanism.
     pub type_value: crate::TypeValueId,
-    /// The type OBSERVATION forwarded through this result — `Addr(Norm_type)`
-    /// when the invocation boundary was world-connected, otherwise the
-    /// `Detached` projection.  Semantic equality consumes this, never the bare
-    /// `type_value` projection.
+    /// The type OBSERVATION forwarded through this result. Semantic equality
+    /// consumes this, never the bare `type_value` projection.
     pub type_observation: crate::CanonicalTypeObservation,
     pub return_view: ReturnViewShape,
     pub provenance: Provenance,
@@ -558,9 +556,7 @@ pub struct FieldSignatureMaterial {
     /// carrier name used in source.
     pub field_type_value: crate::TypeValueId,
     /// The field type's observation identity — `Addr(Norm_type)` including
-    /// the recursive Val2 read at the argument's carrier place when the
-    /// invocation boundary was world-connected, otherwise the `Detached`
-    /// projection (which never equals an observed address).
+    /// the recursive Val2 read at the argument's carrier place.
     pub field_type_observation: crate::CanonicalTypeObservation,
     /// Graph projection carrier retained for current StructPatternMaterial/field
     /// installation only. It is non-identity material.
@@ -676,16 +672,8 @@ pub fn compute_type_definition_instance_id(
     h.write_field(&(material.field_signature_material.len() as u64).to_le_bytes());
     for field in &material.field_signature_material {
         h.write_str_field(&field.field_name);
-        match field.field_type_observation {
-            crate::CanonicalTypeObservation::Observed(addr) => {
-                h.write_field(&[1u8]);
-                h.write_field(&addr.0.to_le_bytes());
-            }
-            crate::CanonicalTypeObservation::Detached(type_value) => {
-                h.write_field(&[0u8]);
-                h.write_field(&type_value.0.to_le_bytes());
-            }
-        }
+        let crate::CanonicalTypeObservation::Observed(addr) = field.field_type_observation;
+        h.write_field(&addr.0.to_le_bytes());
         h.write_field(&(field.field_index as u64).to_le_bytes());
         h.write_field(&[match field.visibility {
             StructuralMemberVisibility::Default => 0,
@@ -781,7 +769,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
             );
         }
     };
-    let type_observation = candidate
+    let Some(type_observation) = candidate
         .arg_product_shape
         .raw_args
         .first()
@@ -790,7 +778,15 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
                 .map(crate::CanonicalTypeObservation::Observed)
                 .or_else(|| raw.type_observation())
         })
-        .unwrap_or(crate::CanonicalTypeObservation::Detached(type_value));
+    else {
+        return MetaPrimitiveExecution::Diagnostic(
+            Diagnostic::hard_error(
+                "IdentityType requires an exact canonical type observation",
+                Some(input.provenance.clone()),
+            )
+            .with_symbol_context(candidate.callee_symbol_id),
+        );
+    };
 
     MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(
         ForwardedResultMaterial {
@@ -1103,12 +1099,17 @@ fn field_signature_material_from_candidate(
             )
             .with_symbol_context(candidate.callee_symbol_id));
         }
+        let Some(field_type_observation) = raw_arg.type_observation() else {
+            return Err(Diagnostic::hard_error(
+                format!("struct field `{field_name}` requires an exact canonical type observation"),
+                Some(field_provenance),
+            )
+            .with_symbol_context(candidate.callee_symbol_id));
+        };
         fields.push(FieldSignatureMaterial {
             field_name,
             field_type_value: type_value,
-            field_type_observation: raw_arg
-                .type_observation()
-                .unwrap_or(crate::CanonicalTypeObservation::Detached(type_value)),
+            field_type_observation,
             field_type_carrier_symbol: type_symbol_id,
             field_index: raw_arg.index,
             visibility,
