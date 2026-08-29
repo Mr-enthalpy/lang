@@ -531,7 +531,7 @@ fn expose_result_entry(
 /// cluster construction (plural values under one name at one position).
 #[derive(Clone, Debug)]
 pub struct ClusterSymbolResult {
-    pub construction: crate::SymbolConstructionValue,
+    pub construction: crate::ClusterConstructionMaterial,
     /// Generated type definitions backing the construction's self-rooted
     /// type members, in member order.  The binding side uses these to
     /// expand the full namespace projection (field-function layer,

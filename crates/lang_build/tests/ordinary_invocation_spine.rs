@@ -347,8 +347,8 @@ fn i14_finalize_construction_separate_from_install() {
     //   begin:    begin_cluster_construction creates an Open cluster
     //   contribute: contribute_cluster_pure_p sets pure_p on the open cluster
     //   finalize: finalize_type_cluster produces a
-    //             SymbolConstructionValue (removes from open_clusters)
-    //   install:  the construction value is installed as a cluster Symbol
+    //             ClusterConstructionMaterial (removes from open_clusters)
+    //   install:  the material is installed as a cluster Symbol
     //             (upgrade_cluster_owner sets PatternClusterOwner::Installed)
     //
     // A cluster Symbol comes from a construction-family meta invocation
@@ -1634,14 +1634,14 @@ fn source_meta_body_contribution_stream_returns_cluster_construction() {
     // S5 — clustered return construction.  A source-defined meta body is
     // not a "single value wrapper": the body evaluator yields a stream of
     // construction effects and the invocation pipeline contributes each
-    // one to an open cluster, then finalizes one SymbolConstructionValue.
+    // one to an open cluster, then finalizes one ClusterConstructionMaterial.
     // The construction-effect family is distinct: `let r = expr;` adds a
     // fresh member, `r = expr;` writes to an existing target (currently a
     // placeholder overwrite scaffold), and the bare `r;` terminal delivers
     // the cluster — it is not a member event. Alias declarations never enter
     // this effect stream.
     //
-    // v0.9 pattern head identity: the cluster's unique type member is
+    // The cluster's unique type member is
     // navigated as the meta function itself plus its input arguments, so
     // the member carries a fresh MetaInstance-owned PatternValue built by
     // the body's own self-rooted `struct` construction; the argument

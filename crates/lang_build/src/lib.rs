@@ -233,18 +233,18 @@ pub use semantic_owner::{
 pub use semantic_world::{
     canonical_function_object_view, derived_cluster_policy, AmbientTypeBinder, BindConflict,
     BorrowFormationFailure, BorrowKind, BorrowOperand, BorrowView, BorrowViewId,
-    ClusterConstructionId, CompleteTypeValue, ConstructionAuthority, ConstructionEvaluationContext,
-    ConstructionState, ConstructionWindow, ImmutableTypeCallSpace, InjectedValueIdentity,
-    MemberCreationProof, MetaInstanceRoot, MetaInstanceRootKey, ObjectPlace, ObjectPlaceId,
-    OpenClusterConstruction, OpenHereFailure, OpenHereProof, OrdinaryCallEntry,
+    ClusterConstructionId, ClusterConstructionMaterial, CompleteTypeValue, ConstructionAuthority,
+    ConstructionEvaluationContext, ConstructionState, ConstructionWindow, ImmutableTypeCallSpace,
+    InjectedValueIdentity, MemberCreationProof, MetaInstanceRoot, MetaInstanceRootKey, ObjectPlace,
+    ObjectPlaceId, OpenClusterConstruction, OpenHereFailure, OpenHereProof, OrdinaryCallEntry,
     OrdinaryCandidateRole, OrdinaryOpenWindow, OwnerStrategy, PatternClusterOwner,
     PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector, ProjectionSlot,
     ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
     ResidentGeneration, ResidentIdentity, ResidualRuntimeEpoch, ResolvedExtractionTarget,
     ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticPatternValue,
     SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot, SemanticValueObject,
-    SemanticValuePayload, SemanticWorld, StableBorrowTarget, SymbolConstructionValue,
-    TypeMemberFacet, TypeMemberSnapshotEntry, WritableContext,
+    SemanticValuePayload, SemanticWorld, StableBorrowTarget, TypeMemberFacet,
+    TypeMemberSnapshotEntry, WritableContext,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{

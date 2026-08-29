@@ -1264,9 +1264,9 @@ impl OpenClusterConstruction {
     }
 }
 
-/// Result of finalizing a cluster construction.
+/// Replayable material produced by finalizing a cluster construction.
 #[derive(Clone, Debug)]
-pub struct SymbolConstructionValue {
+pub struct ClusterConstructionMaterial {
     pub identity: ClusterConstructionId,
     /// Canonical member facts carried over unchanged from the open
     /// construction.  Installation must preserve these views verbatim; it
@@ -1276,7 +1276,7 @@ pub struct SymbolConstructionValue {
     pub provenance: Provenance,
 }
 
-impl SymbolConstructionValue {
+impl ClusterConstructionMaterial {
     /// Derived pure-P projection over the canonical member views.
     pub fn pure_p(&self) -> Option<PatternValueId> {
         derived_pure_p(&self.member_views)
@@ -5926,9 +5926,9 @@ impl SemanticWorld {
     pub(crate) fn finalize_cluster_construction(
         &mut self,
         cluster: ClusterConstructionId,
-    ) -> Option<SymbolConstructionValue> {
+    ) -> Option<ClusterConstructionMaterial> {
         let construction = self.open_clusters.remove(&cluster)?;
-        Some(SymbolConstructionValue {
+        Some(ClusterConstructionMaterial {
             identity: construction.id,
             member_views: construction.member_views,
             owner: construction.owner,
@@ -5939,7 +5939,7 @@ impl SemanticWorld {
     /// Finalize a type cluster construction at the construction boundary.
     ///
     /// S9 — finalization only closes the open construction and yields the
-    /// accumulated member views as one `SymbolConstructionValue`.  Transport
+    /// accumulated member views as one `ClusterConstructionMaterial`.
     /// members (e.g. mut↔const transports) are ordinary sibling-member
     /// contributions with normal contribution semantics; they are injected
     /// through the contribution stream like any other member and are
@@ -5952,7 +5952,7 @@ impl SemanticWorld {
     pub fn finalize_type_cluster(
         &mut self,
         cluster: ClusterConstructionId,
-    ) -> Option<SymbolConstructionValue> {
+    ) -> Option<ClusterConstructionMaterial> {
         let construction = self.open_clusters.get_mut(&cluster)?;
         if construction.state == ConstructionState::Finalized {
             return None;
