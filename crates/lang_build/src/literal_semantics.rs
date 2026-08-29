@@ -3,9 +3,9 @@
 //! Literal evaluation first creates an exact value of `integer`, `real`, or
 //! `character` at compile Policy.  Concrete target Types are consulted only
 //! by the later construction boundary, and same-Type Policy materialization
-//! is a separate migration.  The older atomic/concrete registries remain
-//! lookup catalogs for that construction boundary; they do not contextually
-//! choose the literal's initial semantic Type.
+//! is a separate migration. Concrete type lookup is only a catalog for that
+//! construction boundary; it never chooses the literal's initial semantic
+//! Type.
 
 use std::collections::BTreeMap;
 
@@ -18,7 +18,7 @@ use crate::{
         PatternComponentPolicy, PolicyPair, PolicyStage, StageSet, ValueComponentPolicy,
         ValuePresence,
     },
-    CompilationWorld, Diagnostic, Provenance, SymbolKind, SymbolObject,
+    CompilationWorld, Diagnostic, Provenance,
 };
 
 /// Canonical compile-time literal families.  These are ordinary semantic
@@ -119,89 +119,6 @@ pub fn abstract_character_value(
         type_value,
         policy: compile_literal_policy(),
         provenance,
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum AtomicBuiltinType {
-    Uint,
-    Int,
-    Float,
-    Buffer,
-    Str,
-}
-
-impl AtomicBuiltinType {
-    pub const fn symbol_name(self) -> &'static str {
-        match self {
-            Self::Uint => "uint",
-            Self::Int => "int",
-            Self::Float => "float",
-            Self::Buffer => "buffer",
-            Self::Str => "str",
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AtomicBuiltinTypeRegistryFailure {
-    NotTypeSymbol {
-        key: AtomicBuiltinType,
-        actual_kind: SymbolKind,
-    },
-    SymbolNameMismatch {
-        key: AtomicBuiltinType,
-        actual_name: String,
-    },
-}
-
-/// Current first-order projections for installed atomic builtin Type symbols.
-///
-/// The key denotes the intended bootstrap type. The stored `TypeValueId` is an
-/// opaque Core lookup projection; complete type observations remain separate.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct AtomicBuiltinTypeRegistry {
-    types: BTreeMap<AtomicBuiltinType, TypeValueId>,
-}
-
-impl AtomicBuiltinTypeRegistry {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn insert_resolved_type_symbol(
-        &mut self,
-        key: AtomicBuiltinType,
-        symbol: &SymbolObject,
-    ) -> Result<(), AtomicBuiltinTypeRegistryFailure> {
-        if symbol.kind != SymbolKind::CompleteTypeProjection {
-            return Err(AtomicBuiltinTypeRegistryFailure::NotTypeSymbol {
-                key,
-                actual_kind: symbol.kind,
-            });
-        }
-        if symbol.name != key.symbol_name() {
-            return Err(AtomicBuiltinTypeRegistryFailure::SymbolNameMismatch {
-                key,
-                actual_name: symbol.name.clone(),
-            });
-        }
-        let crate::SymbolPayload::CompleteTypeProjection(type_projection) = &symbol.payload else {
-            return Err(AtomicBuiltinTypeRegistryFailure::NotTypeSymbol {
-                key,
-                actual_kind: symbol.kind,
-            });
-        };
-        self.types.insert(key, type_projection.represented_type);
-        Ok(())
-    }
-
-    pub fn get(&self, key: AtomicBuiltinType) -> Option<TypeValueId> {
-        self.types.get(&key).copied()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (AtomicBuiltinType, TypeValueId)> + '_ {
-        self.types.iter().map(|(key, value)| (*key, *value))
     }
 }
 

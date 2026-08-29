@@ -104,8 +104,7 @@ impl Ord for MetaInvocationMaterialKey {
 /// `MetaInvocationMaterialKey` and defines no semantic identity.
 ///
 /// The digest material is derived on demand from the candidate's argument
-/// product shape and build-identity fragments — there is no stored second
-/// "canonical key" definition.  The encoding is field-by-field with
+/// product shape. There is no stored second identity definition. The encoding is field-by-field with
 /// length-prefixing so that concatenation of neighbouring fields cannot
 /// produce false matches (e.g. `"ab" + "c"` must not collide with
 /// `"a" + "bc"`).
@@ -151,18 +150,6 @@ pub fn compute_candidate_fingerprint(
         }
     }
 
-    // Build/policy identity fragments
-    write_opt_str(&mut h, &candidate.build_identity.package_identity_fragment);
-    write_opt_str(&mut h, &candidate.build_identity.mount_identity_fragment);
-    write_opt_str(
-        &mut h,
-        &candidate.build_identity.build_config_fingerprint_fragment,
-    );
-    write_opt_str(
-        &mut h,
-        &candidate.build_identity.policy_export_fingerprint_fragment,
-    );
-
     CanonicalFingerprint::new(h.finish_hex())
 }
 
@@ -204,15 +191,5 @@ pub(crate) fn atom_kind_discriminant(kind: &CanonicalArgAtomKind) -> u8 {
         CanonicalArgAtomKind::PatternObject => 6,
         CanonicalArgAtomKind::ProductUnit => 7,
         CanonicalArgAtomKind::Unsupported => 8,
-    }
-}
-
-fn write_opt_str(h: &mut Fnv1a64, opt: &Option<String>) {
-    match opt {
-        None => h.write_field(&[0u8]),
-        Some(s) => {
-            h.write_field(&[1u8]);
-            h.write_str_field(s);
-        }
     }
 }

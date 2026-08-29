@@ -41,7 +41,6 @@ use crate::{
         InvocationCallableRef, InvocationExecutionEnv, InvocationFrame, InvocationLookupEnv,
         SelfPosition,
     },
-    meta_candidate::CandidateBuildIdentityPlaceholder,
     meta_invocation::{MetaExecutionMaterial, MetaInvocationInput},
     model::{
         Diagnostic, ExecutionEnv, PolicyEnv, Provenance, ResolverCode, SourceCategory, SymbolId,
@@ -1166,7 +1165,6 @@ fn evaluate_source_meta_member_initializer(
         &body_context,
         PolicyEnv::OpenStatic,
         ExecutionEnv::OpenStatic,
-        CandidateBuildIdentityPlaceholder::default(),
         provenance.clone(),
     ) {
         Ok(input) => input,
@@ -1998,7 +1996,6 @@ pub(crate) fn invoke_target_values(
                 resolver_context,
                 context.policy_env,
                 context.execution_env,
-                CandidateBuildIdentityPlaceholder::default(),
                 provenance.clone(),
             ) {
                 Ok(candidate) => candidate,

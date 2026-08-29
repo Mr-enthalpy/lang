@@ -78,9 +78,7 @@ pub use extraction_view::{
     TypeContentObservation,
 };
 pub use fingerprint::{fnv1a64_hex, Fnv1a64};
-pub use identity::{
-    MetaCallableIdentity, PlaceId, SemanticValueId, TypeValueBindingPlaceholder, TypeValueId,
-};
+pub use identity::{MetaCallableIdentity, PlaceId, SemanticValueId, TypeValueId};
 pub use initializer_eval::{
     binding_assertion_annotation_context, residual_diagnostic, AnnotationContext, EvalMode,
     ResidualReason,
@@ -101,9 +99,8 @@ pub use lifecycle::{
 pub use literal_semantics::{
     abstract_character_value, compile_literal_policy, form_abstract_literal_value,
     AbstractLiteralExactValue, AbstractLiteralFamily, AbstractLiteralFormationFailure,
-    AbstractLiteralValue, AtomicBuiltinType, AtomicBuiltinTypeRegistry,
-    AtomicBuiltinTypeRegistryFailure, BuiltinNumericConstructorSpec, ConstructionFamily,
-    ConstructionRequest, NumericFamily, NumericTypeKey, NumericTypeRegistry,
+    AbstractLiteralValue, BuiltinNumericConstructorSpec, ConstructionFamily, ConstructionRequest,
+    NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
 pub use meta::MetaExpansionResult;
@@ -114,10 +111,9 @@ pub use meta_body::{
 pub use meta_cache::{CachedMetaInstance, MetaInstanceCache};
 pub use meta_candidate::{
     prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
-    CandidateBuildIdentityPlaceholder, CandidatePolicyPlanes, CandidatePrepDeferredReason,
-    CandidatePrepResult, CandidatePreparationContext, CanonicalArgAtomKind,
-    CanonicalArgProductShapeMaterial, ParameterArgRequirement, ParameterShape,
-    PreparedCallableCandidate,
+    CandidatePolicyPlanes, CandidatePrepDeferredReason, CandidatePrepResult,
+    CandidatePreparationContext, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
+    ParameterArgRequirement, ParameterShape, PreparedCallableCandidate,
 };
 pub use meta_invocation::{
     compute_construction_instance_id, compute_type_definition_instance_id,

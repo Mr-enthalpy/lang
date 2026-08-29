@@ -4,8 +4,8 @@ use crate::{
     extraction_view::{NamedObservedField, NamedObservedProduct, TypeContentObservation},
     meta_candidate::{
         prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
-        CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-        CandidatePreparationContext, ParameterShape,
+        CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+        ParameterShape,
     },
     meta_invocation::{
         attach_type_definition_pattern_materials, compute_type_definition_instance_id,
@@ -55,7 +55,6 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
     resolver_context: &ResolverContext,
     lookup_env: PolicyEnv,
     demanded_execution: ExecutionEnv,
-    build_identity: CandidateBuildIdentityPlaceholder,
     provenance: Provenance,
 ) -> Result<MetaInvocationInput, BuildError> {
     let primitive_name = match primitive {
@@ -141,11 +140,10 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
         CandidatePreparationContext {
             lookup_env,
             demanded_execution,
-            build_identity,
             provenance: provenance.clone(),
         },
     ) {
-        CandidatePrepResult::ApplicablePlaceholder(candidate) => *candidate,
+        CandidatePrepResult::Applicable(candidate) => *candidate,
         CandidatePrepResult::Deferred { reason, .. } => {
             let message = match reason {
                 CandidatePrepDeferredReason::BodyEntryPolicyMismatch => {

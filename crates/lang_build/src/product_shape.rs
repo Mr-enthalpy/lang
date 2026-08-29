@@ -12,12 +12,8 @@
 //! - Unit is preserved;
 //! - provenance is preserved.
 //!
-//! `RawArgShape` refinement API is placeholder classification support. It is
-//! **not** type checking.
-//!
-//! The current implementation boundary lives in `lang_build::product_shape`,
-//! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
-//! boundaries, not full implementations of the future systems.
+//! `RawArgShape` refinement records observed argument content. It is **not**
+//! type checking.
 
 use lang_syntax::{NormError, NormExpr, NormOrigin, NormProduct, NormProductElem};
 
@@ -76,8 +72,6 @@ pub enum ProductMaterialRole {
     CallableArgumentProduct,
     /// Meta-construction argument product.
     MetaConstructionArgumentProduct,
-    /// Temporary boundary only.
-    Placeholder,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

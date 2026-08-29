@@ -2803,17 +2803,6 @@ impl SemanticWorld {
         })
     }
 
-    /// Canonical pattern comparison used by the
-    /// extraction matcher: two Patterns match exactly when their canonical
-    /// pattern norms are equal.  `None` when either Pattern is unknown.
-    pub fn extraction_pattern_matches(
-        &self,
-        target: PatternValueId,
-        subject: PatternValueId,
-    ) -> Option<bool> {
-        Some(self.canonical_pattern_norm(target)? == self.canonical_pattern_norm(subject)?)
-    }
-
     /// Semantic path→Symbol resolution.
     ///
     /// This is the terminal-Symbol projection of

@@ -28,7 +28,7 @@
 
 use crate::{
     identity::{SemanticValueId, TypeValueId},
-    model::{Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SymbolId},
+    model::{Diagnostic, ExecutionEnv, PolicyEnv, Provenance},
     product_shape::ArgProductShape,
 };
 
@@ -95,7 +95,6 @@ pub enum SelfSlotKind {
     StandaloneFunctionObject,
     AssociatedCallReceiver,
     PrimitiveCoreObject,
-    Placeholder,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -179,7 +178,6 @@ impl InvocationFrame {
 pub enum InvocationCallableRef {
     /// Ordinary associated `()` value selected from semantic Val2.
     SemanticValue(SemanticValueId),
-    Placeholder,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -191,29 +189,6 @@ pub struct SelfPosition {
 }
 
 impl SelfPosition {
-    pub fn placeholder_from_call_entry(provenance: Provenance) -> Self {
-        Self {
-            slot_index: SELF_SLOT_INDEX,
-            source: SelfPositionSource::PlaceholderFromCallEntry,
-            receiver_type: ReceiverTypeRef::UnresolvedFromCaller,
-            provenance,
-        }
-    }
-
-    /// Record the resolved receiver type of an associated `()` entry.
-    ///
-    /// This constructor deliberately does not compare that type with the first
-    /// written formal. The ordinary invocation/type checker owns that match;
-    /// a future call-entry-specific message may only refine its failure.
-    pub fn from_associated_call_entry(receiver_type: SymbolId, provenance: Provenance) -> Self {
-        Self {
-            slot_index: SELF_SLOT_INDEX,
-            source: SelfPositionSource::PlaceholderFromCallEntry,
-            receiver_type: ReceiverTypeRef::ResolvedTypeSymbol(receiver_type),
-            provenance,
-        }
-    }
-
     pub fn from_semantic_associated_call_entry(
         receiver_value: SemanticValueId,
         receiver_type: TypeValueId,
@@ -239,15 +214,12 @@ impl SelfPosition {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReceiverTypeRef {
-    UnresolvedFromCaller,
-    ResolvedTypeSymbol(SymbolId),
     TypeValue(TypeValueId),
     PrimitiveCoreType,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelfPositionSource {
-    PlaceholderFromCallEntry,
     SemanticAssociatedValue(SemanticValueId),
     PrimitiveCoreObject,
 }

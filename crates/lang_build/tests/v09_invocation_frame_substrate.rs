@@ -3,7 +3,7 @@ use lang_build::{
     ArgProductShape, CallableFrameShape, ExecutionEnv, FlattenedProductInvariant,
     FlattenedProductObject, InvocationCallableRef, InvocationExecutionEnv, InvocationFrame,
     InvocationLookupEnv, PolicyEnv, ProductAtom, Provenance, ReceiverTypeRef, ReturnTargetShape,
-    SelfPosition, SelfPositionSource, SelfSlotKind, SymbolId, TypeValueId,
+    SelfPosition, SelfPositionSource, SelfSlotKind, TypeValueId,
 };
 
 fn empty_arg_product_shape() -> ArgProductShape {
@@ -85,54 +85,6 @@ fn self_is_not_counted_in_explicit_argument_product() {
     assert_eq!(frame.explicit_arg_product.arity, original_user_arity);
     assert_eq!(frame.explicit_arg_product.arity, 1);
     assert_eq!(frame.self_position.slot_index, 0);
-}
-
-#[test]
-fn declaration_context_call_entry_placeholder_uses_same_frame_model() {
-    // This is a frame-substrate test only. It models the empty explicit
-    // product of a declaration-context `()` call entry such as
-    // `let ()::ref::T = (object: T ref) => { ... }` without claiming that
-    // source-level call-entry injection is implemented in this PR.
-    let frame = InvocationFrame::new(
-        InvocationCallableRef::Placeholder,
-        SelfPosition::placeholder_from_call_entry(Provenance::new("call-entry self")),
-        empty_arg_product_shape(),
-        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
-        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
-        Provenance::new("unit callable placeholder frame"),
-    )
-    .expect("valid placeholder invocation frame");
-
-    assert_eq!(frame.self_position.slot_index, 0);
-    assert_eq!(
-        frame.self_position.source,
-        SelfPositionSource::PlaceholderFromCallEntry
-    );
-    assert_eq!(
-        frame.self_position.receiver_type,
-        ReceiverTypeRef::UnresolvedFromCaller
-    );
-    assert_eq!(frame.explicit_arg_product.arity, 0);
-}
-
-#[test]
-fn associated_call_entry_binds_slot_zero_to_the_invoked_object_type() {
-    let receiver_type = SymbolId(88);
-    let frame = InvocationFrame::new(
-        InvocationCallableRef::Placeholder,
-        SelfPosition::from_associated_call_entry(receiver_type, Provenance::new("ref::T caller")),
-        empty_arg_product_shape(),
-        InvocationLookupEnv::new(PolicyEnv::Runtime),
-        InvocationExecutionEnv::new(ExecutionEnv::Runtime),
-        Provenance::new("associated call-entry frame"),
-    )
-    .expect("valid associated call-entry frame");
-
-    assert_eq!(frame.self_position.slot_index, 0);
-    assert_eq!(
-        frame.self_position.receiver_type,
-        ReceiverTypeRef::ResolvedTypeSymbol(receiver_type)
-    );
 }
 
 #[test]

@@ -11,11 +11,7 @@
 //! - The resolver does **not** flatten products.
 //!
 //! `CanonicalArgProductShapeMaterial` records structural input material
-//! derived from the argument product shape. It is not final hash.
-//!
-//! The current implementation boundary lives in `lang_build::product_shape`,
-//! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
-//! boundaries, not full implementations of the future systems.
+//! derived from the argument product shape.
 
 use crate::{
     identity::TypeValueId,
@@ -80,16 +76,7 @@ pub enum ParameterArgRequirement {
 pub struct CandidatePreparationContext {
     pub lookup_env: PolicyEnv,
     pub demanded_execution: ExecutionEnv,
-    pub build_identity: CandidateBuildIdentityPlaceholder,
     pub provenance: Provenance,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct CandidateBuildIdentityPlaceholder {
-    pub package_identity_fragment: Option<String>,
-    pub mount_identity_fragment: Option<String>,
-    pub build_config_fingerprint_fragment: Option<String>,
-    pub policy_export_fingerprint_fragment: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -116,7 +103,6 @@ pub struct PreparedCallableCandidate {
     pub arg_product_shape: ArgProductShape,
     pub parameter_shape: ParameterShape,
     pub policy_planes: CandidatePolicyPlanes,
-    pub build_identity: CandidateBuildIdentityPlaceholder,
     pub provenance: Provenance,
 }
 
@@ -217,8 +203,8 @@ pub enum CanonicalArgAtomKind {
 
 /// Candidate preparation result before formal meta invocation.
 ///
-/// `ApplicablePlaceholder` means the candidate passed the current placeholder
-/// arity and body-entry checks. It is not a completed invocation result and it
+/// `Applicable` means the candidate passed arity and body-entry checks. It is
+/// not a completed invocation result and it
 /// does not produce an `InvocationResult`, `MetaExpansionResult`, or
 /// `NamespaceDelta`.
 ///
@@ -231,7 +217,7 @@ pub enum CandidatePrepResult {
         candidate: Box<PreparedCallableCandidate>,
         reason: CandidatePrepDeferredReason,
     },
-    ApplicablePlaceholder(Box<PreparedCallableCandidate>),
+    Applicable(Box<PreparedCallableCandidate>),
     Diagnostic(Diagnostic),
 }
 
@@ -274,7 +260,6 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
         arg_product_shape,
         parameter_shape,
         policy_planes,
-        build_identity: context.build_identity,
         provenance: context.provenance,
     };
 
@@ -337,5 +322,5 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
         };
     }
 
-    CandidatePrepResult::ApplicablePlaceholder(Box::new(candidate))
+    CandidatePrepResult::Applicable(Box::new(candidate))
 }

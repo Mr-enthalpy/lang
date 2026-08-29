@@ -1,14 +1,8 @@
 //! Placeholder identity types for the v0.8 construction contract.
 //!
-//! This module provides provisional lookup and residency identities.  The
-//! former alias-query placeholders were removed when declaration aliases lost
-//! semantic authority; alias syntax remains a frontend-preserved shape only.
-//!
-//! The current implementation boundary lives in `lang_build::identity`,
-//! `lang_build::product_shape`, and `lang_build::meta_candidate`. These are
-//! substrate boundaries, not full implementations of the future systems.
-
-use crate::model::{Provenance, SymbolId};
+//! Distinct lookup, value, callable, and residency identities used by the
+//! semantic model. No identity in this module can be reconstructed from
+//! another coordinate.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeValueId(pub u64);
@@ -21,10 +15,8 @@ impl TypeValueId {
 
 /// Snapshot-local identity of a semantic value.
 ///
-/// This is deliberately distinct from [`TypeValueId`], [`PlaceId`], and
-/// `SymbolId`.  The current transition slice uses it to preserve the identity
-/// of the source value across candidate preparation without pretending that a
-/// value is its type, binding place, or declaring symbol.
+/// This is deliberately distinct from [`TypeValueId`], [`PlaceId`], and a
+/// graph Symbol identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SemanticValueId(pub u64);
 
@@ -56,29 +48,5 @@ pub struct PlaceId(pub u64);
 impl PlaceId {
     pub const fn as_u64(self) -> u64 {
         self.0
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypeValueBindingPlaceholder {
-    pub symbol: SymbolId,
-    pub place: PlaceId,
-    pub type_value: TypeValueId,
-    pub provenance: Provenance,
-}
-
-impl TypeValueBindingPlaceholder {
-    pub fn new(
-        symbol: SymbolId,
-        place: PlaceId,
-        type_value: TypeValueId,
-        provenance: Provenance,
-    ) -> Self {
-        Self {
-            symbol,
-            place,
-            type_value,
-            provenance,
-        }
     }
 }

@@ -9,7 +9,7 @@
 //! ## Separation of concerns
 //!
 //! ```text
-//! CandidatePrepResult::ApplicablePlaceholder
+//! CandidatePrepResult::Applicable
 //!   → MetaInvocationInput
 //!   → invoke_meta_callable
 //!   → MetaPrimitiveExecution::Material(MetaExecutionMaterial)
@@ -501,8 +501,8 @@ pub enum ReturnSlotSemantics {
 
 /// Material that determines a generated construction value's identity.
 ///
-/// Same callee + same canonical args + same return-slot semantics + same
-/// build/policy identity → same `ConstructionInstanceId`.
+/// Same callee + same canonical args + same return-slot semantics produce the
+/// same build-local material identifier.
 ///
 /// `provenance` is non-identity diagnostic material. It does not participate
 /// in `compute_construction_instance_id` and must not be treated as part of
@@ -512,8 +512,6 @@ pub struct ConstructionIdentityMaterial {
     pub callee_symbol_id: SymbolId,
     pub canonical_args: CanonicalArgProductShapeMaterial,
     pub return_slot_semantics: ReturnSlotSemantics,
-    pub build_identity_fragment: Option<String>,
-    pub policy_export_fingerprint_fragment: Option<String>,
     pub provenance: Provenance,
 }
 
@@ -522,8 +520,6 @@ impl PartialEq for ConstructionIdentityMaterial {
         self.callee_symbol_id == other.callee_symbol_id
             && self.canonical_args == other.canonical_args
             && self.return_slot_semantics == other.return_slot_semantics
-            && self.build_identity_fragment == other.build_identity_fragment
-            && self.policy_export_fingerprint_fragment == other.policy_export_fingerprint_fragment
     }
 }
 
@@ -539,8 +535,6 @@ pub struct TypeDefinitionIdentityMaterial {
     pub canonical_args: CanonicalArgProductShapeMaterial,
     pub field_signature_material: Vec<FieldSignatureMaterial>,
     pub return_slot_semantics: ReturnSlotSemantics,
-    pub build_identity_fragment: Option<String>,
-    pub policy_export_fingerprint_fragment: Option<String>,
     pub provenance: Provenance,
 }
 
@@ -550,8 +544,6 @@ impl PartialEq for TypeDefinitionIdentityMaterial {
             && self.canonical_args == other.canonical_args
             && self.field_signature_material == other.field_signature_material
             && self.return_slot_semantics == other.return_slot_semantics
-            && self.build_identity_fragment == other.build_identity_fragment
-            && self.policy_export_fingerprint_fragment == other.policy_export_fingerprint_fragment
     }
 }
 
@@ -649,20 +641,6 @@ pub fn compute_construction_instance_id(
         ReturnSlotSemantics::Generate => 1u8,
     };
     h.write_field(&[sem]);
-    match &material.build_identity_fragment {
-        None => h.write_field(&[0u8]),
-        Some(s) => {
-            h.write_field(&[1u8]);
-            h.write_str_field(s);
-        }
-    }
-    match &material.policy_export_fingerprint_fragment {
-        None => h.write_field(&[0u8]),
-        Some(s) => {
-            h.write_field(&[1u8]);
-            h.write_str_field(s);
-        }
-    }
     let raw = u64::from_str_radix(&h.finish_hex(), 16)
         .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
     // Non-zero invariant: 0 is reserved as an invalid sentinel.
@@ -720,20 +698,6 @@ pub fn compute_type_definition_instance_id(
         ReturnSlotSemantics::Generate => 1u8,
     };
     h.write_field(&[sem]);
-    match &material.build_identity_fragment {
-        None => h.write_field(&[0u8]),
-        Some(s) => {
-            h.write_field(&[1u8]);
-            h.write_str_field(s);
-        }
-    }
-    match &material.policy_export_fingerprint_fragment {
-        None => h.write_field(&[0u8]),
-        Some(s) => {
-            h.write_field(&[1u8]);
-            h.write_str_field(s);
-        }
-    }
     let raw = u64::from_str_radix(&h.finish_hex(), 16)
         .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
     TypeDefinitionInstanceId(if raw == 0 { 1 } else { raw })
@@ -873,11 +837,6 @@ fn invoke_unary_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecut
         callee_symbol_id: candidate.callee_symbol_id,
         canonical_args: mat.clone(),
         return_slot_semantics: ReturnSlotSemantics::Generate,
-        build_identity_fragment: candidate.build_identity.package_identity_fragment.clone(),
-        policy_export_fingerprint_fragment: candidate
-            .build_identity
-            .policy_export_fingerprint_fragment
-            .clone(),
         provenance: input.provenance.clone(),
     };
     let construction_instance_id = compute_construction_instance_id(&identity_material);
@@ -928,11 +887,6 @@ fn invoke_struct_type_definition(
         canonical_args: mat.clone(),
         field_signature_material: field_signature_material.clone(),
         return_slot_semantics: ReturnSlotSemantics::Generate,
-        build_identity_fragment: candidate.build_identity.package_identity_fragment.clone(),
-        policy_export_fingerprint_fragment: candidate
-            .build_identity
-            .policy_export_fingerprint_fragment
-            .clone(),
         provenance: input.provenance.clone(),
     };
     let type_definition_id = compute_type_definition_instance_id(&identity_material);
