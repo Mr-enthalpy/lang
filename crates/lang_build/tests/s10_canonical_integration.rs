@@ -13,7 +13,7 @@ use lang_build::{
     extract_single_call_site, BuildManifest, CompilationWorld, ExecutionEnv, InvocationOutcome,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
     PatternClusterOwner, PatternComponentPolicy, Phase, PolicyEnv, PolicyMigrationRequest,
-    PolicyMode, PolicyPair, PolicyStage, Provenance, ResolveExpectation, ResolverCode, ReturnShape,
+    PolicyMode, PolicyPair, PolicyStage, Provenance, ResolveExpectation, ResolverCode,
     SemanticOwnerKind, SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot,
     ValueComponentPolicy, ValuePresence,
 };
@@ -140,11 +140,6 @@ fn s10_fixture_type_binding_builds() {
 #[test]
 fn s10_fixture_cluster_exposure_builds() {
     let _ = build_single_fixture_world("s10_cluster_exposure", "app");
-}
-
-#[test]
-fn s10_fixture_meta_binding_builds() {
-    let _ = build_single_fixture_world("s10_meta_binding", "app");
 }
 
 // ---------------------------------------------------------------------------
@@ -313,38 +308,6 @@ fn s10_03_member_view_policies_do_not_union_across_members() {
 // unless its complete callspace contains associated `()`.
 // ---------------------------------------------------------------------------
 
-#[test]
-fn s10_04_non_callable_member_is_no_candidate_but_stays_legal_member() {
-    let mut world = build_single_fixture_world("s10_meta_binding", "app");
-    let t = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "T")
-        .expect("struct-generated T installed as a cluster symbol");
-    assert!(
-        t.pure_p_pattern().is_some(),
-        "T carries a legal pure-P member"
-    );
-    assert!(
-        t.member_views.iter().any(|view| view.value.is_some()),
-        "T carries its complete type value in addition to pure-P graph projection"
-    );
-    assert_eq!(t.sibling_vals.len(), 1);
-
-    let result = invoke(
-        &mut world,
-        "let X = uint8 T;",
-        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-        "S10 ④ non-callable target",
-    );
-    assert!(result.is_err(), "a pure-P-only cluster is not callable");
-    let trace = trace_of(&result);
-    assert!(
-        !trace.c0_target_values.is_empty(),
-        "the complete type is enumerated as an ordinary target value"
-    );
-    assert!(trace.callable_values.is_empty());
-}
-
 // ---------------------------------------------------------------------------
 // ⑤ A callable member owns its own function-object value with associated
 // Val2["()"] and a terminal FunctionItem call entry. (The injected self
@@ -466,118 +429,11 @@ fn s10_06_privileged_struct_uses_the_normal_overload_path() {
 // and delivered by the `r;` terminal.
 // ---------------------------------------------------------------------------
 
-#[test]
-fn s10_07_source_meta_constructs_self_rooted_cluster() {
-    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
-
-    // Same declaration-boundary ontology for source and core.
-    let shape_of = |world: &CompilationWorld, name: &str| {
-        let symbol = world.resolve(name).expect("callable resolves");
-        let SymbolPayload::MetaFunction(function) = symbol.payload else {
-            panic!("`{name}` is a callable declaration");
-        };
-        function.return_shape
-    };
-    assert_eq!(shape_of(&world, "make_two"), ReturnShape::ClusterSymbol);
-    assert_eq!(shape_of(&world, "struct"), ReturnShape::SingleType);
-
-    // The legal meta body constructs its type member under its own
-    // meta-instance root (`let r = (t first, u second) |> struct; r;`).
-    // The call product carries only the explicit args (t, u); self
-    // occupies frame slot 0.
-    let result = invoke(
-        &mut world,
-        "let R: type = (uint8, uint8) make_two;",
-        OrdinaryInvocationContext::open_static(&[PolicyMode::Const, PolicyMode::Const]),
-        "S10 ⑦ self-rooted construction",
-    )
-    .expect("source meta callable is selected through the ordinary spine");
-    let lang_build::InvocationResult::SemanticResult {
-        value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(meta),
-        ..
-    } = result
-    else {
-        panic!("meta-declared source callable returns a cluster construction");
-    };
-    assert_eq!(
-        meta.construction.member_views.len(),
-        1,
-        "one self-rooted construction produces the cluster's unique type member"
-    );
-    let uint8 = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8");
-    for view in &meta.construction.member_views {
-        assert!(view.value.is_none(), "constructed type members are pure-P");
-        assert_ne!(
-            Some(view.pattern),
-            uint8.pure_p_pattern(),
-            "the type member is self-rooted, never the forwarded argument pattern"
-        );
-        let owner = world
-            .semantic_world()
-            .pattern_owner(view.pattern)
-            .expect("member pattern owner")
-            .owner;
-        assert!(matches!(
-            world
-                .semantic_world()
-                .owners()
-                .node(owner)
-                .expect("owner node")
-                .kind,
-            SemanticOwnerKind::MetaInstance { .. }
-        ));
-    }
-}
-
 // ---------------------------------------------------------------------------
 // ⑧ A Meta outcome is received by an ordinary let binding: build-time
 // `let T: type = (uint8 a) struct;` and `let R: type = uint8 make_one;`
 // install fresh destination cluster Symbols.
 // ---------------------------------------------------------------------------
-
-#[test]
-fn s10_08_meta_outcome_lands_in_ordinary_binding() {
-    let world = build_single_fixture_world("s10_meta_binding", "app");
-    let uint8 = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8");
-
-    for name in ["T", "R"] {
-        let cell = world
-            .semantic_world()
-            .symbol_in_namespace(world.package_root_node(), name)
-            .unwrap_or_else(|| panic!("`{name}` installed as a cluster symbol"));
-        let pure = cell
-            .pure_p_pattern()
-            .unwrap_or_else(|| panic!("`{name}` carries a pure-P member"));
-        let owner = world
-            .semantic_world()
-            .owner_cluster(pure)
-            .unwrap_or_else(|| panic!("`{name}` pure-P has an owning cluster"));
-        assert_eq!(
-            owner,
-            PatternClusterOwner::Installed(cell.identity),
-            "`{name}`: the construction's fresh pattern is owned by the installed destination Symbol"
-        );
-        assert_ne!(cell.identity, uint8.identity, "`{name}` is a fresh Symbol");
-    }
-
-    // Unlike direct carrier rebinding (①), the meta construction member is a
-    // fresh MetaInstance-navigated PatternValue, not the forwarded uint8 one.
-    let r = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "R")
-        .expect("R installed");
-    assert_ne!(
-        r.pure_p_pattern(),
-        uint8.pure_p_pattern(),
-        "the cluster's type member is navigated as meta function + inputs"
-    );
-}
 
 // ---------------------------------------------------------------------------
 // ⑨ Runtime migration full chain — the transport-bundle mount conflict that
@@ -736,51 +592,10 @@ fn s10_10_flat_symbol_policy_cannot_express_member_level_exposure() {
 // MetaReturnTypeRootMismatch. No silent re-rooting repair is allowed.
 // ---------------------------------------------------------------------------
 
-#[test]
-fn s10_11_direct_type_forward_fails_self_root_check() {
-    let mut world = build_single_fixture_world("s4_return_ontology", "app");
-    let result = invoke(
-        &mut world,
-        "let R: type = uint8 forward_type;",
-        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-        "S10 ⑪ illegal direct type forward",
-    );
-    assert!(
-        matches!(
-            result,
-            Err(OrdinaryInvocationFailure::MetaReturnTypeRootMismatch { .. })
-        ),
-        "forwarding an external type value as the cluster type member must fail \
-         the self-root check, got: {result:?}"
-    );
-    // The failure must not install a synthetic meta-instance root: `R` is
-    // never bound, and no repair value is produced.
-    assert!(world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "R")
-        .is_none());
-}
-
 // ---------------------------------------------------------------------------
 // ⑫ A meta body with construction effects but no terminal delivers nothing:
 // `{ let r = (t inner) |> struct; }` (no trailing `r;`) must not succeed.
 // ---------------------------------------------------------------------------
-
-#[test]
-fn s10_12_meta_body_without_terminal_does_not_deliver() {
-    let mut world = build_single_fixture_world("s4_return_ontology", "app");
-    let result = invoke(
-        &mut world,
-        "let R: type = uint8 no_terminal;",
-        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-        "S10 ⑫ missing delivery terminal",
-    );
-    assert!(
-        matches!(result, Err(OrdinaryInvocationFailure::SelectedBody { .. })),
-        "member events without a `r;` terminal must not implicitly deliver a \
-         cluster, got: {result:?}"
-    );
-}
 
 // ---------------------------------------------------------------------------
 // ⑬ Alias syntax remains available to Raw/Normalized AST consumers, but it

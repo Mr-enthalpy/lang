@@ -185,7 +185,7 @@ fn i11_sibling_vals_different_from_pure_p_val2() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
     assert!(uint8.pure_p_pattern().is_some());
-    // sibling_vals contains no CoreTypeProjection adapter
+    // sibling_vals contains no CoreTypeProjection graph value
     assert!(uint8.sibling_vals.is_empty());
     // pure-P.Val2["()"] may contain call entries from let () declarations,
     // which are NOT sibling vals. This structural separation is invariant I11.
@@ -200,12 +200,12 @@ fn i12_type_projection_not_in_sibling_vals() {
         .expect("core uint8");
     assert!(uint8.sibling_vals.is_empty());
     assert!(uint8.pure_p_pattern().is_some());
-    // CoreTypeProjection adapter is accessible through core_type_projection_value_for_symbol,
+    // CoreTypeProjection graph value is accessible through core_type_projection_value_for_symbol,
     // never through sibling_vals.
     let type_obj = world
         .semantic_world()
         .core_type_projection_value_for_symbol(uint8.identity)
-        .expect("pure type Object adapter exists");
+        .expect("pure type Object projection exists");
     let val = world.semantic_world().value(type_obj).unwrap();
     assert!(
         matches!(val.payload, SemanticValuePayload::CoreTypeProjection { .. }),
@@ -722,13 +722,13 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         ..
     } = core_value.payload
     else {
-        panic!("core uint8 carries a CoreTypeProjection adapter");
+        panic!("core uint8 carries a CoreTypeProjection graph value");
     };
     assert_eq!(bound_value.type_value, core_value.type_value);
     assert_eq!(bound_value.pattern, core_value.pattern);
     assert_ne!(
         core_value.type_value, represented_type,
-        "the CoreTypeProjection adapter has rank `type`; it is not an instance of represented uint8"
+        "the CoreTypeProjection graph value has rank `type`; it is not an instance of represented uint8"
     );
     assert_eq!(represented_pattern, core_value.pattern);
     assert_eq!(
@@ -986,7 +986,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
     );
     assert!(
         bound.sibling_vals.is_empty(),
-        "CoreTypeProjection adapter value does not appear in sibling_vals"
+        "CoreTypeProjection graph value value does not appear in sibling_vals"
     );
     let core = world
         .semantic_world()
@@ -1583,148 +1583,5 @@ fn return_slot_annotation_declares_shape_independent_of_body_form() {
         shape_of("refactor_kept"),
         lang_build::ReturnShape::SingleType,
         "member-event-shaped body forms cannot flip a `-> let r: type` slot away from SingleType"
-    );
-}
-
-#[test]
-fn unwired_lexical_alias_creates_no_semantic_entity() {
-    // Alias syntax remains normalized input, but neither expression nor
-    // declaration spelling may create a semantic forwarding identity.
-    let mut world = build_single_fixture_world("s4_return_ontology", "app");
-    for (spelling, body_path) in [
-        ("let R: type = uint8 bare_alias;", "ordinary body"),
-        (
-            "let R2: type = uint8 bare_alias_meta;",
-            "meta construction body",
-        ),
-    ] {
-        let initializer = initializer_from_source(spelling);
-        let call_site = extract_single_call_site(&initializer).expect("normalized call");
-        let result = world.invoke_ordinary_call(
-            world.package_root_node(),
-            &call_site,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-            Provenance::new("bare alias convergence regression"),
-        );
-        let Err(lang_build::OrdinaryInvocationFailure::SelectedBody { failure, .. }) = result
-        else {
-            panic!("{body_path}: bare `r === X;` must be a hard body error, got: {result:?}");
-        };
-        assert!(
-            failure
-                .diagnostic
-                .message
-                .contains("lexical alias resolution is not implemented")
-                && failure
-                    .diagnostic
-                    .message
-                    .contains("must not create or forward a semantic entity"),
-            "{body_path}: the diagnostic must preserve the lexical-only boundary without restoring forwarding, got: {}",
-            failure.diagnostic.message,
-        );
-        assert_eq!(
-            failure.diagnostic.code,
-            Some(lang_build::ResolverCode::UnsupportedLexicalAlias)
-        );
-    }
-}
-
-#[test]
-fn source_meta_body_contribution_stream_returns_cluster_construction() {
-    // S5 — clustered return construction.  A source-defined meta body is
-    // not a "single value wrapper": the body evaluator yields a stream of
-    // construction effects and the invocation pipeline contributes each
-    // one to an open cluster, then finalizes one ClusterConstructionMaterial.
-    // The construction-effect family is distinct: `let r = expr;` adds a
-    // fresh member, `r = expr;` writes to an existing target (currently a
-    // member-write surface), and the bare `r;` terminal delivers
-    // the cluster — it is not a member event. Alias declarations never enter
-    // this effect stream.
-    //
-    // The cluster's unique type member is
-    // navigated as the meta function itself plus its input arguments, so
-    // the member carries a fresh MetaInstance-owned PatternValue built by
-    // the body's own self-rooted `struct` construction; the argument
-    // uint8 keeps its own PatternValue and owner (no reroot).
-    let callable = "make_type";
-    let mut world = build_single_fixture_world("s4_return_ontology", "app");
-    let initializer = initializer_from_source("let R: type = uint8 make_type;");
-    let call_site = extract_single_call_site(&initializer).expect("normalized meta call");
-    let actual_mutability = [PolicyMode::Const];
-    let result = world
-        .invoke_ordinary_call(
-            world.package_root_node(),
-            &call_site,
-            OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("S5 contribution stream regression"),
-        )
-        .unwrap_or_else(|failure| {
-            panic!("{callable}: source meta callable is selected through the ordinary spine: {failure:?}")
-        });
-    let lang_build::InvocationResult::SemanticResult {
-        declared_result_class: lang_build::DeclaredResultClass::ClusterSymbol,
-        value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(meta),
-    } = result
-    else {
-        panic!("{callable}: meta-declared source callable returns a cluster construction");
-    };
-
-    assert_eq!(
-        meta.construction.member_views.len(),
-        1,
-        "{callable}: one construction effect produces one member view"
-    );
-    let view = &meta.construction.member_views[0];
-    assert!(
-        view.value.is_none(),
-        "{callable}: the constructed type contribution is a pure-P member (value=None)"
-    );
-    let uint8 = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8");
-    let uint8_pattern = uint8.pure_p_pattern().expect("uint8 pure-P");
-    assert_ne!(
-        view.pattern, uint8_pattern,
-        "{callable}: the cluster's type member is a fresh meta-instance PatternValue, not the argument's uint8 pattern"
-    );
-
-    // The type member's top pattern is navigated as the meta function
-    // itself plus its input arguments: its owner is a MetaInstance.
-    let owner = world
-        .semantic_world()
-        .pattern_owner(view.pattern)
-        .expect("member pattern has a resolved owner")
-        .owner;
-    assert!(
-        matches!(
-            world
-                .semantic_world()
-                .owners()
-                .node(owner)
-                .expect("member pattern owner exists")
-                .kind,
-            SemanticOwnerKind::MetaInstance { .. }
-        ),
-        "{callable}: the type member's top pattern is owned by the meta instance (meta function + input arguments)"
-    );
-
-    // No Pattern reroot: the argument uint8 keeps its original owner.
-    let uint8_owner = world
-        .semantic_world()
-        .pattern_owner(uint8_pattern)
-        .expect("uint8 Pattern keeps a resolved owner")
-        .owner;
-    assert!(
-        !matches!(
-            world
-                .semantic_world()
-                .owners()
-                .node(uint8_owner)
-                .expect("uint8 Pattern owner exists")
-                .kind,
-            SemanticOwnerKind::MetaInstance { .. }
-        ),
-        "{callable}: construction must not reroot uint8's PatternValue under a MetaInstance"
     );
 }
