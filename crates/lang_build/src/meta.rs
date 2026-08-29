@@ -9,7 +9,7 @@ use crate::{
     },
     meta_invocation::{
         attach_type_definition_pattern_materials, compute_type_definition_instance_id,
-        GeneratedFieldDefinition, MetaExecutionMaterial, MetaInvocationInput, ReturnSlotSemantics,
+        GeneratedFieldDefinition, MetaInvocationInput, ReturnSlotSemantics,
         StructConstructionMaterial,
     },
     model::{
@@ -396,118 +396,14 @@ fn insert_field_projection_layer(
     }
 }
 
-/// Bind a meta invocation value into a declaration expansion.
+/// Expand replayable `struct` execution material as a namespace projection of
+/// an already formed complete type value.
 ///
-/// This is the formal binding entry point. It dispatches on the invocation
-/// value type:
-///
-/// - `ForwardedResultMaterial` with `TypeValue`: materializes a fresh declaration
-///   that binds the returned type value.
-/// - `UnaryConstructionMaterial`: materialized by `bind_generated_construction_value`.
-/// - `StructConstructionMaterial`: materialized by `bind_generated_type_definition_value`.
-///
-pub(crate) fn bind_meta_invocation_value_result_with_materialization_state(
-    value: MetaExecutionMaterial,
-    snapshot: &SemanticNameIndex,
-    parent_namespace: NamespaceNodeId,
-    binding_name: &str,
-    provenance: Provenance,
-    materialization_state: &mut StructMaterializationState,
-) -> Result<MetaExpansionResult, BuildError> {
-    match value {
-        MetaExecutionMaterial::ForwardedResultMaterial(fv) => {
-            let represented_type = fv.type_value;
-            let mut delta = snapshot.empty_delta();
-            let declared_id = delta.allocate_symbol_id();
-            let type_namespace_id = delta.allocate_node_id();
-            delta.insert_node(NamespaceNode {
-                id: type_namespace_id,
-                name: format!("{binding_name}<type-associated>"),
-                kind: NamespaceNodeKind::Virtual,
-                source_category: SourceCategory::DeclaredSymbol,
-                parent: Some(parent_namespace),
-                children: std::collections::BTreeMap::new(),
-                policy_view: Some(declared_policy_view(
-                    &[PolicyStage::Meta, PolicyStage::Runtime],
-                    PolicyMode::Plain,
-                )),
-                visibility_metadata: crate::model::VisibilityMetadata {
-                    slots: std::collections::BTreeMap::new(),
-                    ..crate::model::VisibilityMetadata::default()
-                },
-                provenance: provenance.clone(),
-                diagnostics: Vec::new(),
-            });
-            let declared_symbol = SymbolObject {
-                id: declared_id,
-                kind: SymbolKind::CompleteTypeProjection,
-                name: binding_name.to_string(),
-                source_category: SourceCategory::DeclaredSymbol,
-                node_kind: Some(NamespaceNodeKind::Virtual),
-                parent: Some(parent_namespace),
-                policy_view: Some(declared_policy_view(
-                    &[PolicyStage::Meta, PolicyStage::Runtime],
-                    PolicyMode::Plain,
-                )),
-                visibility_metadata: crate::model::VisibilityMetadata {
-                    slots: std::collections::BTreeMap::new(),
-                    ..crate::model::VisibilityMetadata::default()
-                },
-                diagnostics: Vec::new(),
-                generation_origin: Some("ForwardedResultMaterial(TypeValue) binding".to_string()),
-                cache_key_fragment: None,
-                provenance: Provenance::new(format!("declared forwarding type `{binding_name}`")),
-                payload: SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
-                    carrier_symbol_id: declared_id,
-                    represented_type,
-                    owner_struct_pattern_registry: None,
-                    fields: Vec::new(),
-                    field_names: Vec::new(),
-                    field_type_values: Vec::new(),
-                    field_type_symbol_ids: Vec::new(),
-                    type_associated_namespace: Some(type_namespace_id),
-                    extraction_interface: None,
-                    provenance: Provenance::new(format!(
-                        "type-value binding `{binding_name}` from TypeValue({})",
-                        represented_type.0
-                    )),
-                    generation_origin: Some(
-                        "ForwardedResultMaterial(TypeValue) adapter".to_string(),
-                    ),
-                    layout_slot: None,
-                    abi_slot: None,
-                }),
-            };
-            delta.insert_symbol(parent_namespace, declared_symbol.clone());
-            Ok(MetaExpansionResult {
-                replacement_object: declared_symbol,
-                namespace_delta: delta,
-                diagnostics: Vec::new(),
-                provenance,
-            })
-        }
-        MetaExecutionMaterial::UnaryConstructionMaterial(gcv) => bind_generated_construction_value(
-            &gcv,
-            snapshot,
-            parent_namespace,
-            binding_name,
-            provenance,
-        ),
-        MetaExecutionMaterial::StructConstructionMaterial(gtdv) => {
-            bind_generated_type_definition_value(
-                gtdv,
-                snapshot,
-                parent_namespace,
-                binding_name,
-                provenance,
-                materialization_state,
-            )
-        }
-    }
-}
-
-fn bind_generated_type_definition_value(
+/// The complete type is an input to this rendering boundary. Construction
+/// material cannot manufacture a type lookup key or whole-type identity.
+pub(crate) fn expand_struct_construction_material(
     value: StructConstructionMaterial,
+    complete_type: &crate::CompleteTypeValue,
     snapshot: &SemanticNameIndex,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
@@ -534,18 +430,16 @@ fn bind_generated_type_definition_value(
 
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
-    // The namespace projection represents the canonical meta-type root when
-    // the invocation owner registered one (`TypeValue = (OuterMetaInstance
-    // Root, NormalizedStructBody)`); the raw definition-id projection is a
-    // standalone-binding fallback for unregistered expansion, never a root
-    // shared across meta functions.
-    // Replay lookup material for replaying a generated type-definition
-    // projection before a world-connected complete tau is supplied. This is
-    // deliberately domain-separated from TypeDefinition, Symbol, and whole
-    // tau identity.
-    let represented_type = value.canonical_type.unwrap_or(crate::TypeValueId(
-        value.type_definition_id.0 ^ 0x6f2d_79b9_a341_c8d5,
-    ));
+    if value
+        .canonical_type
+        .is_some_and(|lookup| lookup != complete_type.lookup_key)
+    {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            "struct construction material does not belong to the supplied complete type",
+            Some(value.provenance.clone()),
+        )));
+    }
+    let represented_type = complete_type.lookup_key;
     let type_namespace_id = delta.allocate_node_id();
     let value = if value.pattern_materials.is_some() {
         value
@@ -562,7 +456,6 @@ fn bind_generated_type_definition_value(
         provenance.clone(),
     ));
 
-    let type_definition_fragment = format!("type-definition:{}", value.type_definition_id.as_u64());
     let mut type_projection = SymbolObject::placeholder(
         type_symbol_id,
         binding_name,
@@ -577,9 +470,7 @@ fn bind_generated_type_definition_value(
     ));
     type_projection.node_kind = Some(NamespaceNodeKind::Virtual);
     type_projection.generation_origin = Some("core::struct generated type definition".to_string());
-    // cache_key_fragment is a temporary carrier;
-    // TypeDefinitionInstanceId is the semantic identity.
-    type_projection.cache_key_fragment = Some(type_definition_fragment.clone());
+    type_projection.cache_key_fragment = None;
     type_projection.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_symbol_id,
         represented_type,
@@ -712,109 +603,4 @@ fn generated_type_extraction_interface(
         },
         provenance,
     }
-}
-
-/// Bind a `UnaryConstructionMaterial` into the namespace graph.
-///
-/// Creates a declared type symbol under `binding_name`. The `SymbolObject`
-/// carries the `construction_instance_id` as a `cache_key_fragment`
-/// (temporary carrier — the identity model is `ConstructionInstanceId`,
-/// not the cache key).
-///
-/// The `CoreTypeProjection` payload attached here is a binding projection of the
-/// `UnaryConstructionMaterial`, not a carrier-derived identity. The
-/// construction result already supplies semantic construction identity;
-/// binding materializes its TypeValue projection under a fresh carrier.
-///
-/// The declared CoreTypeProjection's `carrier_symbol_id` is a fresh `SymbolId`; neither
-/// the construction identity nor its TypeValue is derived from that carrier.
-///
-/// This function installs a `NamespaceDelta`. It is the binding layer —
-/// `invoke_meta_callable` remains pure.
-fn bind_generated_construction_value(
-    gcv: &crate::meta_invocation::UnaryConstructionMaterial,
-    snapshot: &SemanticNameIndex,
-    parent_namespace: NamespaceNodeId,
-    binding_name: &str,
-    provenance: Provenance,
-) -> Result<MetaExpansionResult, BuildError> {
-    let expected = crate::meta_invocation::compute_construction_instance_id(&gcv.identity_material);
-    if expected != gcv.construction_instance_id {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            format!(
-                "meta hard error: UnaryConstructionMaterial has mismatched construction_instance_id (expected {}, got {})",
-                expected.as_u64(),
-                gcv.construction_instance_id.as_u64()
-            ),
-            Some(gcv.provenance.clone()),
-        )));
-    }
-    if gcv.identity_material.return_slot_semantics
-        != crate::meta_invocation::ReturnSlotSemantics::Generate
-    {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: UnaryConstructionMaterial must have Generate return-slot semantics",
-            Some(gcv.provenance.clone()),
-        )));
-    }
-
-    let mut delta = snapshot.empty_delta();
-    let declared_id = delta.allocate_symbol_id();
-    let declared_symbol = SymbolObject {
-        id: declared_id,
-        kind: SymbolKind::CompleteTypeProjection,
-        name: binding_name.to_string(),
-        source_category: SourceCategory::DeclaredSymbol,
-        node_kind: None,
-        parent: Some(parent_namespace),
-        policy_view: Some(declared_policy_view(
-            &[PolicyStage::Meta, PolicyStage::Runtime],
-            PolicyMode::Plain,
-        )),
-        visibility_metadata: crate::model::VisibilityMetadata {
-            slots: std::collections::BTreeMap::new(),
-            ..crate::model::VisibilityMetadata::default()
-        },
-        diagnostics: Vec::new(),
-        generation_origin: Some("core::UnaryConstruction generated construction".to_string()),
-        cache_key_fragment: Some(format!(
-            "construction:{}",
-            gcv.construction_instance_id.as_u64()
-        )),
-        provenance: Provenance::new(format!(
-            "declared construction type `{binding_name}` via core::UnaryConstruction"
-        )),
-        payload: SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
-            carrier_symbol_id: declared_id,
-            // Replay lookup material for this replayable construction.
-            // Construction identity and type lookup identity must not collapse.
-            represented_type: crate::TypeValueId(
-                gcv.construction_instance_id.0 ^ 0x38c4_15ea_d792_b60f,
-            ),
-            owner_struct_pattern_registry: None,
-            fields: Vec::new(),
-            field_names: Vec::new(),
-            field_type_values: Vec::new(),
-            field_type_symbol_ids: Vec::new(),
-            type_associated_namespace: None,
-            extraction_interface: None,
-            provenance: Provenance::new(format!(
-                "generated construction type `{binding_name}` (construction instance {})",
-                gcv.construction_instance_id.as_u64()
-            )),
-            generation_origin: Some(
-                "core::UnaryConstruction generated construction type".to_string(),
-            ),
-            layout_slot: None,
-            abi_slot: None,
-        }),
-    };
-    delta.insert_symbol(parent_namespace, declared_symbol.clone());
-
-    Ok(MetaExpansionResult {
-        replacement_object: declared_symbol,
-        namespace_delta: delta,
-        diagnostics: Vec::new(),
-        provenance,
-    })
 }

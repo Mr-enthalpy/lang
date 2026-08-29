@@ -10,7 +10,7 @@ use crate::{
     discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
     initializer_eval::EvalMode,
     manifest::{BuildManifest, NamespaceMount},
-    meta::bind_meta_invocation_value_result_with_materialization_state,
+    meta::expand_struct_construction_material,
     model::{
         CoreTypeProjection, Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceNode,
         NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
@@ -481,30 +481,6 @@ impl CompilationWorld {
                     provenance,
                 }],
             })
-    }
-
-    /// Registers the semantic type binding for a meta-expansion replacement
-    /// object when (and only when) it carries a `CoreTypeProjection` payload.
-    fn register_expansion_type_carrier(
-        &mut self,
-        replacement_object: &SymbolObject,
-        namespace: NamespaceNodeId,
-        policy: PolicyPair,
-    ) -> Result<(), BuildError> {
-        if let SymbolPayload::CompleteTypeProjection(type_projection) = &replacement_object.payload
-        {
-            self.register_installed_type_carrier(
-                namespace,
-                &replacement_object.name,
-                replacement_object.id,
-                type_projection.represented_type,
-                None,
-                type_projection.type_associated_namespace,
-                policy,
-                replacement_object.provenance.clone(),
-            )?;
-        }
-        Ok(())
     }
 
     pub fn package_context(&self) -> ResolverContext {
@@ -1598,13 +1574,25 @@ impl CompilationWorld {
         semantic_complete_type: Option<&crate::CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
-        let generated_type = match &value {
-            crate::MetaExecutionMaterial::StructConstructionMaterial(value) => value.canonical_type,
-            _ => None,
+        let (material, complete_type) = match (value, semantic_complete_type) {
+            (
+                crate::MetaExecutionMaterial::StructConstructionMaterial(material),
+                Some(complete_type),
+            ) => (material, complete_type),
+            (material, _) => {
+                return Err(BuildError::single(Diagnostic::hard_error(
+                    format!(
+                        "meta execution material has no canonical binding projection: {material:?}"
+                    ),
+                    Some(provenance),
+                )));
+            }
         };
+        let generated_type = material.canonical_type;
         let result_view = uniform_result_policy_view(selected);
-        let mut expansion = bind_meta_invocation_value_result_with_materialization_state(
-            value,
+        let mut expansion = expand_struct_construction_material(
+            material,
+            complete_type,
             self.semantic_world.namespace_index(),
             namespace,
             binder_name,
@@ -1635,30 +1623,22 @@ impl CompilationWorld {
         // graph rendering.
         if let Some(entry) = selected.first() {
             let pair = declared_pair_from_result_entry(entry, namespace_declaration);
-            if let Some(complete_type) = semantic_complete_type {
-                let associated_namespace = match &expansion.replacement_object.payload {
-                    SymbolPayload::CompleteTypeProjection(adapter) => {
-                        adapter.type_associated_namespace
-                    }
-                    _ => None,
-                };
-                self.register_installed_type_carrier(
-                    namespace,
-                    &expansion.replacement_object.name,
-                    expansion.replacement_object.id,
-                    complete_type.lookup_key,
-                    Some(complete_type.whole),
-                    associated_namespace,
-                    pair,
-                    expansion.replacement_object.provenance.clone(),
-                )?;
-            } else {
-                self.register_expansion_type_carrier(
-                    &expansion.replacement_object,
-                    namespace,
-                    pair,
-                )?;
-            }
+            let associated_namespace = match &expansion.replacement_object.payload {
+                SymbolPayload::CompleteTypeProjection(projection) => {
+                    projection.type_associated_namespace
+                }
+                _ => None,
+            };
+            self.register_installed_type_carrier(
+                namespace,
+                &expansion.replacement_object.name,
+                expansion.replacement_object.id,
+                complete_type.lookup_key,
+                Some(complete_type.whole),
+                associated_namespace,
+                pair,
+                expansion.replacement_object.provenance.clone(),
+            )?;
         }
         self.semantic_world
             .register_generated_projection_symbols(&expansion.namespace_delta)?;
@@ -2284,8 +2264,9 @@ impl CompilationWorld {
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
         let result_view = uniform_result_policy_view(selected);
-        let mut expansion = bind_meta_invocation_value_result_with_materialization_state(
-            crate::MetaExecutionMaterial::StructConstructionMaterial(generated),
+        let mut expansion = expand_struct_construction_material(
+            generated,
+            semantic_complete_type,
             self.semantic_world.namespace_index(),
             namespace,
             binder_name,

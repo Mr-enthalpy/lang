@@ -3116,18 +3116,11 @@ pub(crate) fn invoke_target_values(
         trace: trace.clone(),
     })?;
     let Some((result_type, pattern, returned_value)) = identity else {
-        let result_type = match &returned {
-            OrdinaryReturnedValue::Meta(value) => meta_material_type_projection(value),
-            OrdinaryReturnedValue::CompleteType(value) => value.complete_type.lookup_key,
-            OrdinaryReturnedValue::ForwardedSemanticValue(value) => {
-                semantic_world
-                    .value(*value)
-                    .expect("forwarded receiver exists")
-                    .type_value
-            }
-        };
-        return Err(OrdinaryInvocationFailure::ResultTypeHasNoPattern {
-            type_value: result_type,
+        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+            diagnostic: Diagnostic::hard_error(
+                "selected callable did not form a canonical semantic result",
+                Some(provenance),
+            ),
             trace,
         });
     };
@@ -3897,27 +3890,10 @@ fn ordinary_result_identity(
             )))
         }
         OrdinaryReturnedValue::Meta(MetaExecutionMaterial::UnaryConstructionMaterial(value)) => {
-            let canonical_key = canonical_key
-                .expect("generated meta value identity requires a canonical MetaInstance key");
-            let Some(placement_parent) =
-                semantic_world.callable_declaration_environment(selected.call_entry_value)
-            else {
-                return Ok(None);
-            };
-            let meta_root = crate::MetaInstanceRoot {
-                meta_callable: canonical_key.callable,
-                placement_parent,
-            };
-            let Some(pattern) = semantic_world.allocate_meta_result_pattern(
-                &meta_root,
-                canonical_key.clone(),
-                value.provenance.clone(),
-            ) else {
-                return Ok(None);
-            };
-            Ok(semantic_world
-                .symbol_rank()
-                .map(|rank| (rank, pattern, None)))
+            Err(Diagnostic::hard_error(
+                "UnaryConstruction did not form a canonical semantic result",
+                Some(value.provenance.clone()),
+            ))
         }
         OrdinaryReturnedValue::ForwardedSemanticValue(value) => Ok(semantic_world
             .value(*value)
@@ -3927,18 +3903,6 @@ fn ordinary_result_identity(
             value.pattern,
             Some(value.carrier_value),
         ))),
-    }
-}
-
-fn meta_material_type_projection(value: &MetaExecutionMaterial) -> TypeValueId {
-    match value {
-        MetaExecutionMaterial::ForwardedResultMaterial(value) => value.type_value,
-        MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
-            TypeValueId(value.construction_instance_id.0)
-        }
-        MetaExecutionMaterial::StructConstructionMaterial(_) => unreachable!(
-            "world-connected struct material must be installed and returned as complete tau"
-        ),
     }
 }
 
