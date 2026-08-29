@@ -8,16 +8,6 @@
 //!   admits no view of a pure-P generated type member, which is a hard error
 //!   instead of silently collapsing onto the callable's function P2.
 //!
-//! The placeholder write (`r = expr;`, internally `PlaceholderOverwrite`)
-//! cannot be exercised at world
-//! level yet: the frozen v0.2 grammar has no expression-level `=` operator,
-//! so the fixed write spelling is unparseable today.  Its scaffold selection
-//! and
-//! harvest-shape behavior (not a final write algebra) are pinned by unit
-//! tests in `ordinary_invocation.rs`
-//! (`select_overwrite_target`) and `overload_set.rs`
-//! (`overwrite_assignment_rhs`).
-//!
 //! A positive member-specific P1 over a pure-P type member is also not
 //! spellable: the `Absent` value-component policy has no frozen source
 //! spelling, and every spellable value-component P1 (`const`, stage prefixes)

@@ -429,10 +429,6 @@ pub(crate) fn evaluate_selected_source_meta_body(
 /// Alias declarations are deliberately absent: the frontend preserves their
 /// shape, but the canonical evaluator rejects them instead of producing a
 /// construction effect.
-/// * `r = expr;`       → `PlaceholderOverwrite` — the current-stage
-///   placeholder encoding of a write to an existing target (see the
-///   variant doc; it does not define the final `=` write algebra).
-///
 /// Effects carry their *unevaluated* initializer material plus the
 /// member's own written binding P1: the caller that owns
 /// the open cluster construction evaluates each effect and projects the
@@ -455,20 +451,6 @@ pub(crate) enum MetaConstructionEffect {
         initializer: NormExpr,
         binding_p1: Option<NormPolicySpec>,
     },
-    /// `r = expr;` — CURRENT PLACEHOLDER, not the final write rule.
-    ///
-    /// Expression-level `=` does not exist yet, so this effect only
-    /// exists to exercise existing-target addressing inside a meta
-    /// body.  This stage freezes just two boundaries: `let` (creation)
-    /// is not `=` (write to an existing target), and a return event is
-    /// not a binding/write.  It deliberately does NOT freeze
-    /// `Write(ClusterSymbol, RHS) = overwrite-the-unique-existing-member`;
-    /// the real ClusterSymbol write algebra (how RHS shape adds or
-    /// replaces type facets / val siblings) is defined by the future
-    /// expression-level `=` work.  The placeholder's own behavior —
-    /// unique-facet target selection, value-not-binding replacement —
-    /// is an internal scaffold choice and carries no language authority.
-    PlaceholderOverwrite { initializer: NormExpr },
     /// `let member::r = RHS;` — evaluate RHS first, then dispatch by its
     /// semantic object shape. `null × P × Val2` contributes to the target
     /// Pattern normal form; `Val1 × P × Val2` installs an ordinary
@@ -622,24 +604,16 @@ fn collect_block_body_execution(
             }
             NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
-                // `r = expr;` — the placeholder write to the existing
-                // member (see `PlaceholderOverwrite`).  The bare
-                // `r === X;` expression spelling is illegal: alias
+                // The bare `r === X;` expression spelling is illegal: alias
                 // member creation is the `let r === path;` declaration
                 // form only.
-                if let Some(initializer) =
-                    overwrite_assignment_rhs(expr, &selected.return_slot_name)
-                {
-                    effects.push(MetaConstructionEffect::PlaceholderOverwrite { initializer });
-                    continue;
-                }
                 if bare_alias_equality_shape(expr, &selected.return_slot_name) {
                     return Err(bare_alias_spelling_failure(selected));
                 }
                 return Err(unsupported_body(
                     selected,
                     RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                    "selected meta body contains an expression form that is not a member effect; expected `let r = expr;`, `let r === path;`, `r = expr;`, or the `r;` terminal",
+                    "selected meta body contains an expression form that is not a supported member effect or return-target terminal",
                 ));
             }
             NormForm::Let(lang_syntax::NormDecl::Error(_))
@@ -703,31 +677,6 @@ fn collect_block_body_execution(
     }
 
     Ok(MetaBodyExecution { effects })
-}
-
-/// Shape test: `r = expr;` — overwrite of the return-target member
-/// (`Call { target: OperatorTarget("="), source: [Name(r), rhs] }`).
-fn overwrite_assignment_rhs(expr: &NormExpr, return_slot_name: &str) -> Option<NormExpr> {
-    let NormExpr::Call { source, target, .. } = expr else {
-        return None;
-    };
-    let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
-        return None;
-    };
-    if spelling != "=" || source.elements.len() != 2 {
-        return None;
-    }
-    let lhs = match &source.elements[0] {
-        NormProductElem::Expr(NormExpr::Name { text, .. }) => text,
-        _ => return None,
-    };
-    if lhs != return_slot_name {
-        return None;
-    }
-    match &source.elements[1] {
-        NormProductElem::Expr(expr) => Some(expr.clone()),
-        _ => None,
-    }
 }
 
 /// Evaluate one local `let` form inside a restricted selected body.
@@ -1142,63 +1091,5 @@ fn expr_refs_selected_or_local_binding(
                 })
         }
         _ => false,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::overwrite_assignment_rhs;
-    use lang_syntax::{NormExpr, NormOperatorFixity, NormOrigin, NormProduct, NormProductElem};
-
-    fn origin() -> NormOrigin {
-        NormOrigin::Source(lang_syntax::Span::new(0, 0, 1, 1))
-    }
-
-    fn name(text: &str) -> NormExpr {
-        NormExpr::Name {
-            text: text.to_string(),
-            origin: origin(),
-        }
-    }
-
-    fn binary(spelling: &str, lhs: NormExpr, rhs: NormExpr) -> NormExpr {
-        NormExpr::Call {
-            source: NormProduct {
-                elements: vec![NormProductElem::Expr(lhs), NormProductElem::Expr(rhs)],
-                origin: origin(),
-            },
-            target: Box::new(NormExpr::OperatorTarget {
-                spelling: spelling.to_string(),
-                fixity: NormOperatorFixity::Binary,
-                arity: 2,
-                origin: origin(),
-            }),
-            origin: origin(),
-        }
-    }
-
-    /// The harvested placeholder-write shape is
-    /// `Call { target: OperatorTarget("="), source: [Name(r), rhs] }`.
-    /// The frozen v0.2 grammar has no expression-level `=` operator yet,
-    /// so the shape is pinned here programmatically until the source
-    /// spelling `r = expr;` becomes parseable.
-    #[test]
-    fn assignment_shape_to_the_return_slot_yields_its_rhs() {
-        let rhs = overwrite_assignment_rhs(&binary("=", name("r"), name("t")), "r")
-            .expect("`r = t` addresses the return slot");
-        assert!(matches!(rhs, NormExpr::Name { text, .. } if text == "t"));
-    }
-
-    /// Only the return-slot name on the left and only the `=` spelling
-    /// select the overwrite effect; everything else stays an ordinary
-    /// expression form.
-    #[test]
-    fn non_overwrite_shapes_are_not_recognized() {
-        // Wrong left-hand name.
-        assert!(overwrite_assignment_rhs(&binary("=", name("x"), name("t")), "r").is_none());
-        // Wrong operator spelling (`===` is the alias form, not overwrite).
-        assert!(overwrite_assignment_rhs(&binary("===", name("r"), name("t")), "r").is_none());
-        // Not an operator call at all.
-        assert!(overwrite_assignment_rhs(&name("r"), "r").is_none());
     }
 }

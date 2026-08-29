@@ -751,38 +751,6 @@ fn unsupported_member_initializer(
     }
 }
 
-/// Placeholder overwrite target selection (scaffold).
-///
-/// `facet_matches[i]` states whether pending member `i` carries the
-/// overwritten facet.  The placeholder accepts exactly one match and
-/// rejects zero or several matches — a deliberately conservative choice
-/// so the scaffold never silently picks a target.  This 0/1/many rule is
-/// NOT the final ClusterSymbol write algebra; how a real expression-level
-/// `=` selects or extends targets on a cluster is future work.
-///
-/// The source spelling `r = expr;` is fixed by the construction-effect
-/// family, but the frozen v0.2 grammar has no expression-level `=`
-/// operator yet, so today this selection is reachable only through
-/// harvested effects, never from parsed fixture source.
-fn select_overwrite_target(facet_matches: &[bool]) -> Result<usize, &'static str> {
-    let mut targets = facet_matches
-        .iter()
-        .enumerate()
-        .filter(|(_, matches)| **matches)
-        .map(|(index, _)| index);
-    let Some(index) = targets.next() else {
-        return Err(
-            "member overwrite (`r = expr;`) requires an existing member of the overwritten facet to replace",
-        );
-    };
-    if targets.next().is_some() {
-        return Err(
-            "member overwrite (`r = expr;`) is ambiguous: several members carry the overwritten facet, and overwrite never falls back to declaration order",
-        );
-    }
-    Ok(index)
-}
-
 /// Semantic resolution of a nested member-initializer call target.
 enum SemanticCorePrimitiveResolution {
     CorePrimitive {
@@ -2567,19 +2535,8 @@ pub(crate) fn invoke_target_values(
             };
             // B5 — full member-view ledger: every pending member carries
             // its own projected member view (value, value Policy, Pattern,
-            // Pattern Policy) plus the binding projection it was created
-            // under, never just a bare type id.  The executable slice is
-            // still narrow — self-rooted generated type members only; val
-            // members and alias members remain explicit future work — but
-            // the ledger itself is member-view shaped, so widening the
-            // slice never reshapes the ledger.  The three effects are
-            // distinct and never collapse into one "append" mechanism;
-            // the ledger is contributed once at the end so an overwrite
-            // really replaces instead of stacking.
+            // Pattern Policy), never just a bare type id.
             struct PendingClusterMember {
-                /// The member's binding P1 projection; an overwrite
-                /// re-projects the new value under this same binding.
-                projection: P1Projection,
                 view: PolicyResultEntry<SemanticValueId, PatternValueId>,
                 generated: crate::StructConstructionMaterial,
             }
@@ -2632,62 +2589,7 @@ pub(crate) fn invoke_target_values(
                                 &trace,
                             ));
                         };
-                        pending_members.push(PendingClusterMember {
-                            projection,
-                            view,
-                            generated,
-                        });
-                    }
-                    MetaConstructionEffect::PlaceholderOverwrite { initializer } => {
-                        let (pattern, generated) = evaluate_source_meta_member_initializer(
-                            semantic_world,
-                            materialization_state,
-                            resolver_context,
-                            source_shape,
-                            &meta_root,
-                            canonical_instance_key
-                                .as_ref()
-                                .expect("source meta construction has an instance key"),
-                            &selected.complete_result_view.pair,
-                            initializer,
-                            &provenance,
-                            &trace,
-                        )?;
-                        // Placeholder target selection (scaffold, not the
-                        // final ClusterSymbol write algebra): while
-                        // expression-level `=` does not exist, the write
-                        // addresses the unique existing pure-P member so
-                        // existing-target addressing itself is exercised.
-                        let index = select_overwrite_target(
-                            &pending_members
-                                .iter()
-                                .map(|member| member.view.value.is_none())
-                                .collect::<Vec<_>>(),
-                        )
-                        .map_err(|message| {
-                            unsupported_member_initializer(message.to_string(), &provenance, &trace)
-                        })?;
-                        // Scaffold behavior: the placeholder replaces the
-                        // member's value under the member's own binding P1.
-                        // Whether the final `=` on a ClusterSymbol replaces,
-                        // adds facets, or rebinds is NOT decided here.
-                        let projection = pending_members[index].projection.clone();
-                        let Some(view) = project_p1(&projection, &[pure_p_member_view(pattern)])
-                            .into_iter()
-                            .next()
-                        else {
-                            return Err(unsupported_member_initializer(
-                                "the overwritten member's binding P1 admits no view of the new value"
-                                    .to_string(),
-                                &provenance,
-                                &trace,
-                            ));
-                        };
-                        pending_members[index] = PendingClusterMember {
-                            projection,
-                            view,
-                            generated,
-                        };
+                        pending_members.push(PendingClusterMember { view, generated });
                     }
                     MetaConstructionEffect::InjectMember {
                         member_name,
@@ -3905,7 +3807,7 @@ fn ordinary_result_identity(
 
 #[cfg(test)]
 mod tests {
-    use super::{result_pair_demand_admits, select_overwrite_target};
+    use super::result_pair_demand_admits;
     use crate::{
         P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyView,
         StageSet, ValueComponentPolicy, ValuePresence,
@@ -3966,46 +3868,6 @@ mod tests {
         assert_ne!(
             runtime.mode, compile.mode,
             "mode remains a separate Bp coordinate"
-        );
-    }
-
-    /// Placeholder scaffold pin — the overwrite target is the unique member
-    /// carrying the written facet, by member resolution rather than
-    /// position: the match may sit anywhere in the ledger.  This pins the
-    /// scaffold's own conservative behavior, not a final write rule.
-    #[test]
-    fn unique_facet_match_is_selected_wherever_it_sits() {
-        assert_eq!(select_overwrite_target(&[true]), Ok(0));
-        assert_eq!(select_overwrite_target(&[false, true, false]), Ok(1));
-        assert_eq!(select_overwrite_target(&[false, false, true]), Ok(2));
-    }
-
-    /// Placeholder scaffold pin — the placeholder never creates: with no
-    /// member of the written facet the selection is a hard error.
-    #[test]
-    fn zero_facet_matches_is_a_hard_error() {
-        for ledger in [&[] as &[bool], &[false], &[false, false]] {
-            let message = select_overwrite_target(ledger).unwrap_err();
-            assert!(
-                message.contains("requires an existing member of the overwritten facet"),
-                "zero-target overwrite names the missing-facet rule, got: {message}"
-            );
-        }
-    }
-
-    /// Placeholder scaffold pin — several facet matches make the placeholder
-    /// write ambiguous; the scaffold rejects rather than falling back to
-    /// declaration order.
-    #[test]
-    fn several_facet_matches_never_fall_back_to_declaration_order() {
-        let message = select_overwrite_target(&[true, false, true]).unwrap_err();
-        assert!(
-            message.contains("is ambiguous"),
-            "multi-target overwrite is reported as ambiguous, got: {message}"
-        );
-        assert!(
-            message.contains("never falls back to declaration order"),
-            "the diagnostic states the no-declaration-order rule, got: {message}"
         );
     }
 }
