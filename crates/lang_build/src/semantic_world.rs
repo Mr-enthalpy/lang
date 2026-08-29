@@ -22,7 +22,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use lang_syntax::{
-    NormClosure, NormClosurePlacement, NormExpr, NormLiteralKind, NormPatternElem, NormPolicySpec,
+    NormClosure, NormClosurePlacement, NormExpr, NormPatternElem, NormPolicySpec,
 };
 
 use crate::{
@@ -5335,44 +5335,6 @@ impl SemanticWorld {
         Some(id)
     }
 
-    /// Install a simple literal semantic value carrying its canonical
-    /// content normal form.
-    ///
-    /// Argument normalization re-derives `Norm(<Val1, P, Val2>)` from the stored
-    /// family + normalized content, so two materialized literal values with
-    /// equal content merge to one canonical address instead of staying
-    /// identity-opaque like [`Self::install_plain_value`] material.
-    pub fn install_simple_literal_value(
-        &mut self,
-        type_value: TypeValueId,
-        policy: PolicyPair,
-        kind: NormLiteralKind,
-        text: &str,
-        provenance: Provenance,
-    ) -> Option<SemanticValueId> {
-        let pattern = self.type_value(type_value)?.pattern;
-        let CanonicalNormForm::Object(CanonicalObjectNorm {
-            val1: Some(CanonicalVal1Norm::Literal { family, normalized }),
-            ..
-        }) = canonical_literal_norm(kind, text)
-        else {
-            return None;
-        };
-        let id = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
-            id,
-            type_value,
-            pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
-            policy,
-            mode: PolicyMode::Plain,
-            namespace_visibility: None,
-            payload: SemanticValuePayload::SimpleLiteral { family, normalized },
-            provenance,
-        });
-        Some(id)
-    }
-
     /// Install an exact abstract semantic literal under `integer`, `real`, or
     /// `character`.  Concrete target Types are intentionally absent.
     pub fn install_abstract_literal_value(
@@ -8018,11 +7980,9 @@ mod tests {
             },
         };
         let member = world
-            .install_simple_literal_value(
+            .install_plain_value(
                 member_type,
                 empty_policy,
-                NormLiteralKind::Int,
-                "1",
                 Provenance::new("direct member value"),
             )
             .expect("member value installs");
@@ -8084,20 +8044,16 @@ mod tests {
             },
         };
         let local = world
-            .install_simple_literal_value(
+            .install_plain_value(
                 lookup,
                 policy.clone(),
-                NormLiteralKind::Int,
-                "1",
                 Provenance::new("symbol-local candidate"),
             )
             .expect("local candidate installs");
         let type_member = world
-            .install_simple_literal_value(
+            .install_plain_value(
                 lookup,
                 policy.clone(),
-                NormLiteralKind::Int,
-                "2",
                 Provenance::new("TypeMember candidate"),
             )
             .expect("TypeMember candidate installs");
@@ -8174,20 +8130,12 @@ mod tests {
             },
         };
         let old_value = world
-            .install_simple_literal_value(
-                lookup,
-                policy.clone(),
-                NormLiteralKind::Int,
-                "1",
-                Provenance::new("old tau value"),
-            )
+            .install_plain_value(lookup, policy.clone(), Provenance::new("old tau value"))
             .expect("old value forms before the TypeMember");
         let call_member = world
-            .install_simple_literal_value(
+            .install_plain_value(
                 lookup,
                 policy.clone(),
-                NormLiteralKind::Int,
-                "2",
                 Provenance::new("V_tau-only call member"),
             )
             .expect("member value");
@@ -8209,13 +8157,7 @@ mod tests {
         );
 
         let new_value = world
-            .install_simple_literal_value(
-                lookup,
-                policy,
-                NormLiteralKind::Int,
-                "3",
-                Provenance::new("new tau value"),
-            )
+            .install_plain_value(lookup, policy, Provenance::new("new tau value"))
             .expect("new value forms after the TypeMember");
         assert_eq!(
             world.callable_entries_for_value(new_value),
@@ -8244,7 +8186,7 @@ mod tests {
             world.pattern_types.insert(pattern, id);
         }
         let value = world
-            .install_simple_literal_value(
+            .install_plain_value(
                 foreign_type,
                 PolicyPair {
                     value: crate::ValueComponentPolicy {
@@ -8255,8 +8197,6 @@ mod tests {
                         stages: crate::StageSet::new(),
                     },
                 },
-                NormLiteralKind::Int,
-                "2",
                 Provenance::new("foreign member"),
             )
             .expect("foreign member value installs");

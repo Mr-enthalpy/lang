@@ -560,16 +560,18 @@ fn source_meta_key_normalizes_arguments_and_carries_no_formal_names() {
     assert_eq!(key_dec.arguments, args_dec);
 }
 
-/// Already-materialized simple literal values normalize by
-/// CONTENT, not by value identity: two distinct `SimpleLiteral` semantic
+/// Abstract literal values normalize by content: two distinct semantic
 /// values with normalization-equivalent spellings share one canonical
 /// argument address (and merge with the un-materialized literal spelling),
 /// while content-free `PlainValue` material receives a dedicated opaque Val1
 /// leaf.  That leaf is stable for one semantic value and never merges two
 /// different values; it is not a Place, Symbol, or Type lookup identity.
 #[test]
-fn materialized_simple_literals_normalize_by_content_not_identity() {
-    use lang_build::{canonical_literal_norm, ProductAtom, RawArgShape};
+fn abstract_literals_normalize_by_content_not_identity() {
+    use lang_build::{
+        canonical_literal_content, canonical_literal_norm, AbstractLiteralExactValue,
+        AbstractLiteralFamily, ProductAtom, RawArgShape,
+    };
     use lang_syntax::NormLiteralKind;
 
     let mut world = SemanticWorld::new("unit");
@@ -605,20 +607,26 @@ fn materialized_simple_literals_normalize_by_content_not_identity() {
     // Two DISTINCT materialized literal values, normalization-equivalent
     // spellings: one canonical address.
     let dec = world
-        .install_simple_literal_value(
+        .install_abstract_literal_value(
+            AbstractLiteralFamily::Integer,
+            AbstractLiteralExactValue::Integer(canonical_literal_content(
+                NormLiteralKind::Int,
+                "4096",
+            )),
             TypeValueId(0),
             policy.clone(),
-            NormLiteralKind::Int,
-            "4096",
             provenance.clone(),
         )
         .expect("literal value installs against the registered type");
     let hex = world
-        .install_simple_literal_value(
+        .install_abstract_literal_value(
+            AbstractLiteralFamily::Integer,
+            AbstractLiteralExactValue::Integer(canonical_literal_content(
+                NormLiteralKind::Int,
+                "0x1000",
+            )),
             TypeValueId(0),
             policy.clone(),
-            NormLiteralKind::Int,
-            "0x1000",
             provenance.clone(),
         )
         .expect("literal value installs against the registered type");
@@ -641,11 +649,14 @@ fn materialized_simple_literals_normalize_by_content_not_identity() {
         "same Val1 content under different P keeps different addresses"
     );
     let other = world
-        .install_simple_literal_value(
+        .install_abstract_literal_value(
+            AbstractLiteralFamily::Integer,
+            AbstractLiteralExactValue::Integer(canonical_literal_content(
+                NormLiteralKind::Int,
+                "2",
+            )),
             TypeValueId(0),
             policy.clone(),
-            NormLiteralKind::Int,
-            "2",
             provenance.clone(),
         )
         .expect("literal value installs against the registered type");
