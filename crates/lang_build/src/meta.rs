@@ -32,13 +32,12 @@ use crate::{
     type_argument::{classify_type_arguments_env_with_report, TypeResolutionEnv},
 };
 
-/// Result of a successful early meta expansion.
+/// Namespace installation material for a completed struct construction.
 #[derive(Clone, Debug)]
-pub struct MetaExpansionResult {
+pub(crate) struct StructProjectionInstall {
     pub replacement_object: SymbolObject,
     pub namespace_delta: SemanticNameDelta,
     pub diagnostics: Vec<Diagnostic>,
-    pub provenance: Provenance,
 }
 
 /// Primitive-explicit variant for the canonical A-stage.
@@ -62,7 +61,6 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
         CoreMetaFunction::Assert => "assert",
         CoreMetaFunction::Verify(_) => "verify",
         CoreMetaFunction::IdentityType => "IdentityType",
-        CoreMetaFunction::UnaryConstruction => "UnaryConstruction",
     };
 
     let arg_product_shape =
@@ -70,7 +68,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
     let mut unresolved_type_names = Vec::new();
     let mut struct_decoded_pattern: Option<crate::struct_decoder::DecodedStructPattern> = None;
     let (classified_shape, parameter_shape) = match primitive {
-        CoreMetaFunction::IdentityType | CoreMetaFunction::UnaryConstruction => {
+        CoreMetaFunction::IdentityType => {
             let report = classify_type_arguments_env_with_report(
                 &arg_product_shape,
                 type_env,
@@ -407,7 +405,7 @@ pub(crate) fn expand_struct_construction_material(
     binding_name: &str,
     provenance: Provenance,
     materialization_state: &mut StructMaterializationState,
-) -> Result<MetaExpansionResult, BuildError> {
+) -> Result<StructProjectionInstall, BuildError> {
     let expected = compute_type_definition_instance_id(&value.identity_material);
     if expected != value.type_definition_id {
         return Err(BuildError::single(Diagnostic::hard_error(
@@ -559,11 +557,10 @@ pub(crate) fn expand_struct_construction_material(
         provenance.clone(),
     );
 
-    Ok(MetaExpansionResult {
+    Ok(StructProjectionInstall {
         replacement_object: type_projection,
         namespace_delta: delta,
         diagnostics: Vec::new(),
-        provenance,
     })
 }
 

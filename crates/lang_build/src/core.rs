@@ -108,15 +108,6 @@ pub(crate) fn install_core_bootstrap(
         Provenance::new("core meta-function `IdentityType`"),
         core_declared_view(&[PolicyStage::Meta]),
     );
-    insert_meta_function(
-        &mut delta,
-        &mut core_callables,
-        core_node,
-        "UnaryConstruction",
-        CoreMetaFunction::UnaryConstruction,
-        Provenance::new("core meta-function `UnaryConstruction`"),
-        core_declared_view(&[PolicyStage::Meta]),
-    );
     insert_verification_namespace(&mut delta, &mut core_callables, core_node);
 
     for name in [
@@ -190,10 +181,9 @@ pub(crate) fn core_primitive_callable_planes(
 ) -> (PolicyView, PolicyView) {
     let return_view = match primitive {
         CoreMetaFunction::Struct => core_declared_view(&[PolicyStage::Meta, PolicyStage::Runtime]),
-        CoreMetaFunction::Assert
-        | CoreMetaFunction::Verify(_)
-        | CoreMetaFunction::IdentityType
-        | CoreMetaFunction::UnaryConstruction => core_declared_view(&[PolicyStage::Meta]),
+        CoreMetaFunction::Assert | CoreMetaFunction::Verify(_) | CoreMetaFunction::IdentityType => {
+            core_declared_view(&[PolicyStage::Meta])
+        }
     };
     (core_declared_view(&[PolicyStage::Meta]), return_view)
 }
@@ -211,15 +201,13 @@ fn insert_meta_function(
     let (body_entry_policy, return_object_policy) = core_primitive_callable_planes(primitive);
     // Independent declared shape/privilege coordinates for each built-in:
     // `struct` and `identity_type` return complete type values;
-    // `assert` / `verify` / `UnaryConstruction` return a single
+    // `assert` / `verify` return a single
     // ordinary value.  All core primitives are privileged built-ins (they
     // may consume raw/meta material); privilege implies nothing about the
     // shape and neither coordinate is re-derived at call time.
     let return_shape = match primitive {
         CoreMetaFunction::Struct | CoreMetaFunction::IdentityType => crate::ReturnShape::SingleType,
-        CoreMetaFunction::Assert
-        | CoreMetaFunction::Verify(_)
-        | CoreMetaFunction::UnaryConstruction => {
+        CoreMetaFunction::Assert | CoreMetaFunction::Verify(_) => {
             crate::ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained)
         }
     };
@@ -276,10 +264,7 @@ fn insert_meta_function(
                 }
                 CoreMetaFunction::Assert
                 | CoreMetaFunction::Verify(_)
-                | CoreMetaFunction::IdentityType
-                | CoreMetaFunction::UnaryConstruction => {
-                    core_declared_pair(&[PolicyStage::Meta], false)
-                }
+                | CoreMetaFunction::IdentityType => core_declared_pair(&[PolicyStage::Meta], false),
             },
             mode: PolicyMode::Plain,
         },

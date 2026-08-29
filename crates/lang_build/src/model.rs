@@ -587,7 +587,6 @@ pub enum CoreMetaFunction {
     Assert,
     Verify(VerificationPrimitive),
     IdentityType,
-    UnaryConstruction,
 }
 
 /// Core source-verification primitive resolved through the namespace graph.

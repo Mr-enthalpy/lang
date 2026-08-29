@@ -1156,12 +1156,6 @@ fn evaluate_source_meta_member_initializer(
         materialization_state,
     ) {
         crate::MetaPrimitiveExecution::Material(value) => value,
-        crate::MetaPrimitiveExecution::Residual(residual) => {
-            return Err(OrdinaryInvocationFailure::Residual {
-                residual,
-                trace: trace.clone(),
-            });
-        }
         crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
             return Err(OrdinaryInvocationFailure::SelectedCoreBody {
                 diagnostic,
@@ -2399,12 +2393,6 @@ pub(crate) fn invoke_target_values(
                     materialization_state,
                 ) {
                     crate::MetaPrimitiveExecution::Material(value) => value,
-                    crate::MetaPrimitiveExecution::Residual(residual) => {
-                        return Err(OrdinaryInvocationFailure::Residual {
-                            residual,
-                            trace: trace.clone(),
-                        });
-                    }
                     crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
                         return Err(OrdinaryInvocationFailure::SelectedCoreBody {
                             diagnostic,
@@ -2489,19 +2477,6 @@ pub(crate) fn invoke_target_values(
                         let mut value = value.clone();
                         value.canonical_type = Some(canonical_type);
                         generated_types.push(value);
-                    }
-                }
-                MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
-                    if let Some(pattern) = semantic_world.allocate_meta_result_pattern(
-                        &meta_root,
-                        canonical_instance_key
-                            .as_ref()
-                            .expect("ordinary generated meta value has an instance key")
-                            .clone(),
-                        value.provenance.clone(),
-                    ) {
-                        semantic_world
-                            .contribute_cluster_member_view(cid, pure_p_member_view(pattern));
                     }
                 }
             }
@@ -2906,9 +2881,6 @@ pub(crate) fn invoke_target_values(
             materialization_state,
         ) {
             crate::MetaPrimitiveExecution::Material(value) => OrdinaryReturnedValue::Meta(value),
-            crate::MetaPrimitiveExecution::Residual(residual) => {
-                return Err(OrdinaryInvocationFailure::Residual { residual, trace });
-            }
             crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
                 return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
             }
@@ -2987,10 +2959,7 @@ pub(crate) fn invoke_target_values(
         && !is_ambient_struct
         && matches!(
             returned,
-            OrdinaryReturnedValue::Meta(
-                MetaExecutionMaterial::StructConstructionMaterial(_)
-                    | MetaExecutionMaterial::UnaryConstructionMaterial(_)
-            )
+            OrdinaryReturnedValue::Meta(MetaExecutionMaterial::StructConstructionMaterial(_))
         )
     {
         canonical_instance_key = Some(canonical_meta_instance_key_for_selected(
@@ -3783,12 +3752,6 @@ fn ordinary_result_identity(
                 pattern,
                 Some(carrier_value),
             )))
-        }
-        OrdinaryReturnedValue::Meta(MetaExecutionMaterial::UnaryConstructionMaterial(value)) => {
-            Err(Diagnostic::hard_error(
-                "UnaryConstruction did not form a canonical semantic result",
-                Some(value.provenance.clone()),
-            ))
         }
         OrdinaryReturnedValue::ForwardedSemanticValue(value) => Ok(semantic_world
             .value(*value)

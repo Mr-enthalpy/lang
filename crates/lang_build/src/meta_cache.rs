@@ -2,7 +2,7 @@
 //!
 //! Stores replayable `MetaExecutionMaterial` material keyed directly by the
 //! parent-neutral structural `MetaInvocationMaterialKey`.
-//! Does **not** store `NamespaceDelta`, `MetaExpansionResult`, declared
+//! Does **not** store namespace installation material, declared
 //! symbols, binding names, or concrete registry-backed `StructPatternMaterialId`
 //! material.
 //!

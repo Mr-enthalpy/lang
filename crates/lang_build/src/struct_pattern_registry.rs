@@ -10,7 +10,7 @@ use lang_syntax::{NormNavComponent, NormOrigin};
 
 use crate::{
     identity::TypeValueId,
-    meta_invocation::{ConstructionInstanceId, TypeDefinitionInstanceId},
+    meta_invocation::TypeDefinitionInstanceId,
     model::{Diagnostic, FieldProjection, Provenance, ResolverCode, SymbolId},
 };
 
@@ -49,9 +49,6 @@ pub enum StructPatternMaterialOrigin {
         field_type_value: TypeValueId,
         projection: FieldProjection,
     },
-    Construction {
-        construction_instance_id: ConstructionInstanceId,
-    },
     StructDefinition {
         type_definition_id: TypeDefinitionInstanceId,
     },
@@ -79,9 +76,6 @@ pub enum StructPatternMaterialContext {
     },
     Local {
         place_id: LocalPatternPlaceId,
-    },
-    Construction {
-        construction_instance_id: ConstructionInstanceId,
     },
     StructDefinition {
         type_definition_id: TypeDefinitionInstanceId,
@@ -175,14 +169,6 @@ impl StructPatternMaterialRegistry {
                     display_name: display_name.clone(),
                 },
             ),
-            StructPatternMaterialContext::Construction {
-                construction_instance_id,
-            } => (
-                StructPatternMaterialKind::Construction,
-                StructPatternMaterialOrigin::Construction {
-                    construction_instance_id,
-                },
-            ),
             StructPatternMaterialContext::StructDefinition { type_definition_id } => (
                 StructPatternMaterialKind::Construction,
                 StructPatternMaterialOrigin::StructDefinition { type_definition_id },
@@ -229,22 +215,6 @@ impl StructPatternMaterialRegistry {
         );
         self.child_scopes.insert(child_key, field_head);
         Ok(field_head)
-    }
-
-    pub fn allocate_generated_head(
-        &mut self,
-        construction_instance_id: ConstructionInstanceId,
-        display_name: impl Into<String>,
-        provenance: Provenance,
-    ) -> StructPatternMaterialId {
-        self.allocate_head(
-            StructPatternMaterialKind::Construction,
-            StructPatternMaterialOrigin::Construction {
-                construction_instance_id,
-            },
-            display_name.into(),
-            provenance,
-        )
     }
 
     pub fn materialize_struct_pattern(

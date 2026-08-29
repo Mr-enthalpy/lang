@@ -103,7 +103,6 @@ pub use literal_semantics::{
     NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
-pub use meta::MetaExpansionResult;
 pub use meta_body::{
     check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
     selected_meta_delete_diagnostic, ClosureBodyExecutionEnv, SelectedMetaBodyEvaluation,
@@ -115,14 +114,11 @@ pub use meta_candidate::{
     CandidatePreparationContext, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
     ParameterArgRequirement, ParameterShape, PreparedCallableCandidate,
 };
-pub use meta_invocation::{
-    compute_construction_instance_id, compute_type_definition_instance_id,
-    ConstructionIdentityMaterial, ConstructionInstanceId, FieldSignatureMaterial,
-    ForwardedResultMaterial, GeneratedFieldDefinition, GeneratedFieldStructPatternMaterial,
-    MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution, ReturnSlotSemantics,
-    ReturnViewShape, StructConstructionMaterial, TypeDefinitionIdentityMaterial,
-    TypeDefinitionInstanceId, TypeDefinitionStructPatternMaterials, UnaryConstructionMaterial,
+pub(crate) use meta_invocation::{
+    ForwardedResultMaterial, MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution,
+    ReturnViewShape,
 };
+pub use meta_invocation::{StructConstructionMaterial, TypeDefinitionInstanceId};
 pub use meta_key::{
     compute_candidate_fingerprint, compute_meta_invocation_material_key, CanonicalFingerprint,
     MetaInvocationMaterialKey,

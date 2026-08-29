@@ -6,7 +6,7 @@
 
 use crate::{
     identity::TypeValueId,
-    meta_invocation::{ConstructionInstanceId, TypeDefinitionInstanceId},
+    meta_invocation::TypeDefinitionInstanceId,
     model::{Diagnostic, FieldProjection, Provenance, SymbolId},
     struct_pattern_registry::StructPatternMaterialId,
 };
@@ -34,9 +34,6 @@ pub enum ObservedAtomKind {
     },
     Forwarded {
         type_value: TypeValueId,
-    },
-    GeneratedConstruction {
-        construction_instance_id: ConstructionInstanceId,
     },
     StructConstruction {
         type_definition_id: TypeDefinitionInstanceId,
@@ -222,14 +219,6 @@ fn value_point_kind_observationally_equal(
         (
             ObservedAtomKind::Forwarded { type_value: left },
             ObservedAtomKind::Forwarded { type_value: right },
-        ) => left == right,
-        (
-            ObservedAtomKind::GeneratedConstruction {
-                construction_instance_id: left,
-            },
-            ObservedAtomKind::GeneratedConstruction {
-                construction_instance_id: right,
-            },
         ) => left == right,
         (
             ObservedAtomKind::StructConstruction {

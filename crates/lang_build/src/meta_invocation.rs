@@ -17,7 +17,7 @@
 //!
 //! MetaExecutionMaterial
 //!   → bind_meta_invocation_value_result (meta.rs)
-//!   → MetaExpansionResult  (declaration binding, with NamespaceDelta)
+//!   → namespace installation material
 //! ```
 //!
 //! `invoke_meta_callable_with_materialization_state` may populate
@@ -76,52 +76,6 @@ impl MetaInvocationInput {
             candidate,
             provenance,
             struct_decoded_pattern: None,
-        }
-    }
-}
-
-impl MetaExecutionMaterial {
-    /// Semantic equality: compares identity material without provenance.
-    ///
-    /// Two invocation values with the same semantic identity but
-    /// different provenance compare equal here. This is distinct
-    /// from `PartialEq` which includes provenance.
-    pub fn semantic_eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                MetaExecutionMaterial::ForwardedResultMaterial(lhs),
-                MetaExecutionMaterial::ForwardedResultMaterial(rhs),
-            ) => lhs.type_observation == rhs.type_observation && lhs.return_view == rhs.return_view,
-            (
-                MetaExecutionMaterial::UnaryConstructionMaterial(lhs),
-                MetaExecutionMaterial::UnaryConstructionMaterial(rhs),
-            ) => {
-                lhs.construction_instance_id == rhs.construction_instance_id
-                    && lhs.identity_material == rhs.identity_material
-                    && lhs.return_view == rhs.return_view
-            }
-            (
-                MetaExecutionMaterial::StructConstructionMaterial(lhs),
-                MetaExecutionMaterial::StructConstructionMaterial(rhs),
-            ) => {
-                lhs.type_definition_id == rhs.type_definition_id
-                    && lhs.identity_material == rhs.identity_material
-                    && lhs.fields.len() == rhs.fields.len()
-                    && lhs
-                        .fields
-                        .iter()
-                        .zip(rhs.fields.iter())
-                        .all(|(a, b)| a.semantic_eq(b))
-                    && lhs.pattern_materials == rhs.pattern_materials
-                    && lhs.return_view == rhs.return_view
-                    && type_pattern_expr_semantic_eq(&lhs.type_pattern_expr, &rhs.type_pattern_expr)
-                    && sum_struct_pattern_material_semantic_eq(
-                        &lhs.sum_struct_pattern_material,
-                        &rhs.sum_struct_pattern_material,
-                    )
-                    && lhs.canonical_pattern_override == rhs.canonical_pattern_override
-            }
-            _ => false,
         }
     }
 }
@@ -295,34 +249,11 @@ fn complete_pattern_navigation(
     )
 }
 
-fn type_pattern_expr_semantic_eq(
-    lhs: &Option<crate::struct_pattern_material::StructPatternSyntaxMaterial>,
-    rhs: &Option<crate::struct_pattern_material::StructPatternSyntaxMaterial>,
-) -> bool {
-    match (lhs, rhs) {
-        (Some(l), Some(r)) => l.materially_equal(r),
-        (None, None) => true,
-        _ => false,
-    }
-}
-
-fn sum_struct_pattern_material_semantic_eq(
-    lhs: &Option<crate::struct_pattern_material::StructSumSyntaxMaterial>,
-    rhs: &Option<crate::struct_pattern_material::StructSumSyntaxMaterial>,
-) -> bool {
-    match (lhs, rhs) {
-        (Some(l), Some(r)) => l.materially_equal(r),
-        (None, None) => true,
-        _ => false,
-    }
-}
-
 /// Replayable execution material produced behind the unified invocation
 /// result boundary.
 ///
 /// `ForwardedResultMaterial` records an `IdentityType` forwarding proof for
-/// later result formation. `UnaryConstructionMaterial` is produced by
-/// `UnaryConstruction` from argument-derived construction material.
+/// later result formation.
 /// `StructConstructionMaterial` is the replayable construction material
 /// produced while evaluating `struct`; it is not the semantic result of that
 /// callable.  The world-connected invocation path installs the material and
@@ -330,7 +261,6 @@ fn sum_struct_pattern_material_semantic_eq(
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaExecutionMaterial {
     ForwardedResultMaterial(ForwardedResultMaterial),
-    UnaryConstructionMaterial(UnaryConstructionMaterial),
     StructConstructionMaterial(StructConstructionMaterial),
 }
 
@@ -346,7 +276,6 @@ pub enum MetaExecutionMaterial {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaPrimitiveExecution {
     Material(MetaExecutionMaterial),
-    Residual(crate::InvocationResidual),
     Diagnostic(Diagnostic),
 }
 
@@ -357,15 +286,6 @@ impl MetaExecutionMaterial {
                 ObservedArgumentContent::ValuePoint(ObservedAtomContent {
                     value_kind: ObservedAtomKind::Forwarded {
                         type_value: value.type_value,
-                    },
-                    extraction_interface: ContentObservationInterface::Leaf,
-                    provenance: value.provenance.clone(),
-                })
-            }
-            MetaExecutionMaterial::UnaryConstructionMaterial(value) => {
-                ObservedArgumentContent::ValuePoint(ObservedAtomContent {
-                    value_kind: ObservedAtomKind::GeneratedConstruction {
-                        construction_instance_id: value.construction_instance_id,
                     },
                     extraction_interface: ContentObservationInterface::Leaf,
                     provenance: value.provenance.clone(),
@@ -407,14 +327,6 @@ pub struct ForwardedResultMaterial {
 /// Generated construction value — the call returns a new construction value
 /// whose external identity is shielded by callee + canonical args + build
 /// identity. Reserved for future generative type constructors.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct UnaryConstructionMaterial {
-    pub construction_instance_id: ConstructionInstanceId,
-    pub identity_material: ConstructionIdentityMaterial,
-    pub return_view: ReturnViewShape,
-    pub provenance: Provenance,
-}
-
 /// Generated type-definition value produced by formal `struct` invocation.
 ///
 /// This is graph-installation-free and binding-free invocation output. Registry
@@ -463,22 +375,7 @@ pub struct GeneratedFieldStructPatternMaterial {
     pub field_head: StructPatternMaterialId,
 }
 
-/// Deterministic build-local construction identity placeholder.
-///
-/// Produced by `compute_construction_instance_id`. Distinct from `SymbolId`
-/// and the type-value projection — two different symbols may carry the same
-/// construction instance identity. This is a placeholder; a stable
-/// will use a different key derivation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ConstructionInstanceId(pub u64);
-
-impl ConstructionInstanceId {
-    pub const fn as_u64(self) -> u64 {
-        self.0
-    }
-}
-
-/// Deterministic build-local generated type-definition identity placeholder.
+/// Build-local identifier for replayable struct construction material.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeDefinitionInstanceId(pub u64);
 
@@ -496,32 +393,6 @@ pub enum ReturnSlotSemantics {
     /// `r = arg` — generated construction value.
     Generate,
 }
-
-/// Material that determines a generated construction value's identity.
-///
-/// Same callee + same canonical args + same return-slot semantics produce the
-/// same build-local material identifier.
-///
-/// `provenance` is non-identity diagnostic material. It does not participate
-/// in `compute_construction_instance_id` and must not be treated as part of
-/// construction identity equality.
-#[derive(Clone, Debug)]
-pub struct ConstructionIdentityMaterial {
-    pub callee_symbol_id: SymbolId,
-    pub canonical_args: CanonicalArgProductShapeMaterial,
-    pub return_slot_semantics: ReturnSlotSemantics,
-    pub provenance: Provenance,
-}
-
-impl PartialEq for ConstructionIdentityMaterial {
-    fn eq(&self, other: &Self) -> bool {
-        self.callee_symbol_id == other.callee_symbol_id
-            && self.canonical_args == other.canonical_args
-            && self.return_slot_semantics == other.return_slot_semantics
-    }
-}
-
-impl Eq for ConstructionIdentityMaterial {}
 
 /// Material that determines a generated type definition's identity.
 ///
@@ -600,47 +471,6 @@ impl GeneratedFieldDefinition {
             && self.index == other.index
             && self.struct_pattern_registry == other.struct_pattern_registry
     }
-}
-
-/// Compute a deterministic build-local `ConstructionInstanceId` from identity
-/// material.
-///
-/// Uses a placeholder FNV-1a hash. Must be replaced with a stable
-/// construction-instance key derivation when cross-build identity is
-/// implemented.
-pub fn compute_construction_instance_id(
-    material: &ConstructionIdentityMaterial,
-) -> ConstructionInstanceId {
-    use crate::fingerprint::Fnv1a64;
-    let mut h = Fnv1a64::new();
-    h.write_str_field("v08:construction");
-    h.write_field(&material.callee_symbol_id.0.to_le_bytes());
-    h.write_field(&(material.canonical_args.arity as u64).to_le_bytes());
-    h.write_field(&(material.canonical_args.unit_positions.len() as u64).to_le_bytes());
-    for pos in &material.canonical_args.unit_positions {
-        h.write_field(&(*pos as u64).to_le_bytes());
-    }
-    for kind in &material.canonical_args.atom_kinds {
-        h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
-    }
-    for type_value in &material.canonical_args.known_type_values {
-        match type_value {
-            None => h.write_field(&[0u8]),
-            Some(type_value) => {
-                h.write_field(&[1u8]);
-                h.write_field(&type_value.0.to_le_bytes());
-            }
-        }
-    }
-    let sem = match material.return_slot_semantics {
-        ReturnSlotSemantics::Forward => 0u8,
-        ReturnSlotSemantics::Generate => 1u8,
-    };
-    h.write_field(&[sem]);
-    let raw = u64::from_str_radix(&h.finish_hex(), 16)
-        .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
-    // Non-zero invariant: 0 is reserved as an invalid sentinel.
-    ConstructionInstanceId(if raw == 0 { 1 } else { raw })
 }
 
 pub fn compute_type_definition_instance_id(
@@ -722,7 +552,6 @@ pub(crate) fn invoke_meta_callable_with_materialization_state(
 
     match primitive {
         crate::model::CoreMetaFunction::IdentityType => invoke_identity_type(&input),
-        crate::model::CoreMetaFunction::UnaryConstruction => invoke_unary_construction(&input),
         crate::model::CoreMetaFunction::Struct => {
             invoke_struct_type_definition(&input, materialization_state)
         }
@@ -792,55 +621,6 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
         ForwardedResultMaterial {
             type_value,
             type_observation,
-            return_view: ReturnViewShape::Leaf,
-            provenance: input.provenance.clone(),
-        },
-    ))
-}
-
-fn invoke_unary_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
-    let candidate = &input.candidate;
-    let mat =
-        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
-
-    if mat.arity != 1 {
-        return MetaPrimitiveExecution::Diagnostic(
-            Diagnostic::hard_error(
-                format!(
-                    "UnaryConstruction: expected exactly 1 type argument, got {}",
-                    mat.arity
-                ),
-                Some(input.provenance.clone()),
-            )
-            .with_symbol_context(candidate.callee_symbol_id),
-        );
-    }
-
-    let _type_value = match mat.known_type_values.first().and_then(|value| *value) {
-        Some(value) => value,
-        None => {
-            return MetaPrimitiveExecution::Diagnostic(
-                Diagnostic::hard_error(
-                    "UnaryConstruction: argument is not a classified pure type Object with a TypeValue",
-                    Some(input.provenance.clone()),
-                )
-                .with_symbol_context(candidate.callee_symbol_id),
-            );
-        }
-    };
-
-    let identity_material = ConstructionIdentityMaterial {
-        callee_symbol_id: candidate.callee_symbol_id,
-        canonical_args: mat.clone(),
-        return_slot_semantics: ReturnSlotSemantics::Generate,
-        provenance: input.provenance.clone(),
-    };
-    let construction_instance_id = compute_construction_instance_id(&identity_material);
-
-    MetaPrimitiveExecution::Material(MetaExecutionMaterial::UnaryConstructionMaterial(
-        UnaryConstructionMaterial {
-            construction_instance_id,
-            identity_material,
             return_view: ReturnViewShape::Leaf,
             provenance: input.provenance.clone(),
         },

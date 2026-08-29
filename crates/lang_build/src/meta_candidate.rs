@@ -205,7 +205,7 @@ pub enum CanonicalArgAtomKind {
 ///
 /// `Applicable` means the candidate passed arity and body-entry checks. It is
 /// not a completed invocation result and it
-/// does not produce an `InvocationResult`, `MetaExpansionResult`, or
+/// does not produce an `InvocationResult` or namespace installation material,
 /// `NamespaceDelta`.
 ///
 /// `Deferred` means later pattern/type/policy/meta-invocation machinery must
