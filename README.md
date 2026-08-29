@@ -97,10 +97,10 @@ documents remain present, but they are not part of the normal public reading pat
 | Contract / handoff | `spec/contracts/` | `v0.3-normalization-handoff-checklist.md` | v0.3 normalization handoff: may-assume, must-not-assume, required inputs, open v0.3 questions |
 | Contract / handoff | `spec/contracts/` | `frontend-semantic-amendment-v0.5-a.md` | Classifies the post-freeze structural corrections and new syntax amendments |
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-v0.5.md` | Current Raw AST shape and validated normalization handoff |
-| Contract / handoff | `spec/contracts/` | `v0.6-cross-policy-value-transition.md` | Implementation boundary for T/Tnum, Existing-First demand preparation, the connected ordinary Symbol/Val2/associated-`()` invocation spine, source-backed atomic migration, and retained algebra-only transition fixtures |
-| Contract / handoff | `spec/contracts/` | `v0.8-symbolic-construction-values-and-extraction-interfaces.md` | Transitional construction/extraction contract; old formal meta-return split superseded by the symbol-first design |
-| Contract / handoff | `spec/contracts/` | `v0.8-meta-construction-agent-constraints.md` | Draft v0.8-adjacent guardrails for shared build/symbol/product/policy/meta construction boundaries |
-| Contract / handoff | `spec/contracts/` | `v0.9-pattern-head-identity-and-explicit-navigation.md` | Bare-name/explicit-navigation contract plus current registry-backed PatternHeadId substrate and future owner-resolution handoff |
+| Semantic contract | `spec/contracts/` | `policy-migration.md` | Same-Type, candidate-driven Policy migration and existing-view-first completion |
+| Semantic contract | `spec/contracts/` | `semantic-values-and-extraction-interfaces.md` | Unified Object/result universe and relational extraction boundary |
+| Semantic contract | `spec/contracts/` | `meta-construction-boundary.md` | Meta execution material, semantic result, owner, and binding boundaries |
+| Semantic contract | `spec/contracts/` | `pattern-root-identity-and-explicit-navigation.md` | Stable Pattern-root identity and resolve-once explicit navigation |
 | Design / history | `spec/history/v0.1/` | `operator-design.md` | Operator syntax design and implementation boundaries — historical reference |
 | Design / history | `spec/history/v0.1/` | `resolved-questions.md` | Design decisions — resolved for v0.1 |
 | Design / history | `spec/history/v0.1/` | `frontend-v0.1.md` | Pipeline overview — historical reader entry point |
@@ -109,17 +109,16 @@ documents remain present, but they are not part of the normal public reading pat
 
 ### Design blocks
 
-Forward-looking design material is staged under `spec/design/` (a transitional
-design-fusion staging area; non-normative, not current behavior). Start at
+Canonical semantic design is organized under `spec/design/`. Start at
 `spec/design/README.md`.
 
 | Block | Purpose |
 |---|---|
 | `spec/design/build-package/` | Package/build layer, manifest, namespace-graph projection, mounts, physical contribution authority, export surface, provenance |
-| `spec/design/symbol-world/` | Canonical Object roles and Symbol `<Q?,V>` projections, `Pv:Pp` plus whole-slot `PolicyMode`, three-point preference and 3×3 capability realization, stable external candidate facts plus selected-invocation dynamic legality, current-phase P1-stage-follow-P2 default, optional explicit PolicyLet boundary, call-local nested Policy closure, abstract scalar literal denotations/concrete construction and ranked string `str@compile`, compile-flow projection, companions, meta pure-role self-root, pattern scopes, `struct -> τ` followed by binding/installation into a Symbol, pure `extend`, place-level `inject`, namespace origin/construction ownership, and retired-alias boundaries |
+| `spec/design/symbol-world/` | Canonical Object roles, complete type values, Symbol projections, Policy, invocation, abstract literals, construction, Place operations, stable owners, and lexical alias boundaries |
 | `spec/design/patterns-overload/` | Pattern normalization, candidate shapes, specificity, overload vision, static pattern spaces |
 | `spec/design/meta-invocation/` | Symbol-first callable invocation, policy-pair handoff, partial/strict demand, and residualization |
-| `spec/design/policy-capability/` | Mapping from current flat/2×2 implementation carriers to canonical pairs, whole-slot PolicyMode, and capability realization |
+| `spec/design/policy-capability/` | Canonical Policy pairs, whole-slot PolicyMode, contextual demand, and 3×3 capability realization |
 | `spec/design/lifetime/` | Continuation-relative LifeName/Region semantics, first-class ordinary `LifetimeValue`, and the boundary that prevents lifetime failure from reopening type/compile overload selection |
 | `spec/design/mechanical-lowering/` | Canonical move/copy pass-action core; future automatic selection/lowering, return normalization, and normal/tco/loop call modes |
 
@@ -222,7 +221,7 @@ frozen `spec/public/v0.2/` syntax specs.
 │   │   ├── raw-ast-contract-freeze-v0.2.md
 │   │   ├── v0.3-normalization-handoff-checklist.md
 │   │   ├── v0.4-normalization-prototype-notes.md
-│   │   └── v0.8-meta-construction-agent-constraints.md
+│   │   └── meta-construction-boundary.md
 │   ├── history/
 │   │   ├── v0.1/
 │   │   │   ├── frontend-v0.1.md

@@ -63,7 +63,7 @@ The current frontend no longer claims to be the unchanged v0.2 parser. Read:
 | `contracts/frontend-semantic-amendment-v0.5-a.md` | Normative versioned amendment | Classifies hard structural corrections and new syntax, including the expression-level PolicyLet boundary, while preserving the v0.1/v0.2/v0.3 historical snapshots. |
 | `contracts/raw-ast-contract-v0.5.md` | Normative current Raw AST contract | Defines the amended lexer/parser/Raw-AST surface, independent closure placement/provenance, and `PatternValidatedNormProgram` handoff. |
 | `contracts/v0.6-semantic-owner-namespace-graph.md` | Normative current semantic/build amendment | Defines callable/meta semantic owners, Pattern-root alpha identity, namespace views, structural member visibility, package boundaries, and mount redirects; supersedes the v0.5 active-ancestor no-shadow claim. |
-| `contracts/v0.6-cross-policy-value-transition.md` | Normative for the bounded connected implementation slice | Records T/Tnum helpers, complete-choice projection followed by runtime-branch extraction, semantic Symbol/Val2/TypeValue/Pattern-owner/associated-`()` routing, one connected Bp' carrier, source-backed atomic migration, fixture coverage for a future pre-Bp fallback strategy that current source cannot construct, and the retained algebra-only transition prototype. |
+| `contracts/policy-migration.md` | Current semantic implementation contract | Records existing-view-first, candidate-driven same-Type Policy migration through the ordinary invocation boundary. |
 
 ## Frozen v0.2 frontend input history
 
@@ -113,10 +113,10 @@ ordinary syntax understanding.
 | `v0.3-normalization-handoff-checklist.md` | Normative for v0.3 handoff readiness; non-normative for final Normalized AST design | Checklist of may-assume, must-not-assume, required input families, diagnostic/recovery inputs, normalization obligations, and open v0.3 questions. |
 | `v0.4-normalization-prototype-notes.md` | Normative for the v0.4 normalization boundary | Records what the v0.4 Raw AST → Normalized AST prototype/hardening delivered and the boundary it must not cross (value/pattern separation, annotation patterns, unresolved operator/alias targets, `Unsupported` visibility, no pattern-space/semantic behavior). |
 | `v0.6-semantic-owner-namespace-graph.md` | Normative for current v0.6 identity and namespace substrate | Defines semantic-owner identity, PatternRoot alpha boundaries, Full/External/DefaultExtraction views, struct member visibility, package boundaries, mount redirects, typed failures, and deferred integration gates. |
-| `v0.6-cross-policy-value-transition.md` | Normative for the bounded connected implementation slice | Records helper algebra, the connected ordinary invocation/migration substrate, Gsrc-backed transport evidence, and explicit remaining integration boundaries; canonical policy, invocation, overload, Pattern, and type-value owners still define language semantics. |
-| `v0.8-symbolic-construction-values-and-extraction-interfaces.md` | Transitional construction/extraction contract; not current public behavior | Preserves extraction and current v0.8/v0.9 construction-substrate boundaries; its old formal `r =`/`r ===` return split is superseded by the canonical symbol-first design note. |
-| `v0.8-meta-construction-agent-constraints.md` | Draft construction contract for v0.8-adjacent work; not current public behavior | Cross-block guardrails requiring no-bypass namespace graph use, `ProductObject` / `ArgProductShape`, symbol/place/pattern-value separation, transitional policy metadata aligned toward `P1` / `P2`, rank-directed keys, resolved pattern owners, and `NamespaceDelta` atomicity. |
-| `v0.9-pattern-head-identity-and-explicit-navigation.md` | Mixed implemented-substrate/future handoff contract | Preserves bare-name vs explicit-`::` navigation and documents the current registry-backed `PatternHeadId` attachment substrate; final `ResolvedPatternScope`, binding-independent `struct` ownership, and `inject` are future. |
+| `policy-migration.md` | Current semantic implementation contract | Same-Type Policy migration through existing-view-first and ordinary candidate selection. |
+| `semantic-values-and-extraction-interfaces.md` | Current semantic implementation contract | Unified Object/result universe and relational Pattern extraction interfaces. |
+| `meta-construction-boundary.md` | Current semantic implementation contract | Shared InvocationResult, semantic owner, materialization, and binding boundaries. |
+| `pattern-root-identity-and-explicit-navigation.md` | Current semantic implementation contract | Stable Pattern-root identity and resolve-once navigation. |
 | `v0.9-control-flow-end-events.md` | Handoff contract for `TailValue`/`ReturnEvent` terminal forms and deferred target resolution | v0.9 control-flow end events contract (implemented syntax/normalized structure, deferred semantic resolution). Covers the three return terminal form spellings, non-expression guarantees, terminal block enforcement, and consumer handoff expectations. Target resolution and D-reduction are explicitly deferred. |
 
 ## Historical design notes
@@ -148,14 +148,11 @@ route and decisions.
 |---|---|---|
 | `README.md` | Non-normative historical summary | v0.4 prototype/hardening route, `Unsupported`-audit and value/pattern hardening decisions; points to the v0.4 prototype notes and golden tests. |
 
-## Transitional design-fusion staging
+## Canonical semantic design
 
-**`spec/design/`** is a transitional staging area, not a long-term authority
-tier. These blocks are temporary staging buckets. They exist to avoid a flat
-`future/` pile while the symbol / pattern / meta-invocation world is still being
-fused. They should shrink as material is promoted into public specs, converted
-into contracts, moved into planning, or archived into history. Start at
-`spec/design/README.md`.
+**`spec/design/`** contains the current canonical semantic topic owners. Start
+at `spec/design/README.md`; each block identifies its closed relations, pending
+consumers, and intentionally open representation boundaries.
 
 | Block | Role |
 |---|---|
@@ -163,7 +160,7 @@ into contracts, moved into planning, or archived into history. Start at
 | `spec/design/symbol-world/` | Namespace graph world model: recursive `Object = <Val1?,P,Val2>`, Symbol `<tau?,V_S?>` role/member projections, canonical `Pv:Pp` plus whole-slot `PolicyMode`, contextual P1/P2 elaboration, current-phase P1-stage-follow-P2 default plus optional explicit PolicyLet boundary, call-local nested Policy closure, seal visibility/snapshot, three-point preference and capability realization, stable candidate facts plus selected-invocation dynamic legality, compile-flow projection, abstract scalar literal denotations/concrete construction and ranked string `str@compile`, companions, automatic require, identities, explicit borrow views (`ref` / `share` / `rebind`), `compile` / `meta`, meta return self-root, construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) state, resolved pattern scopes, `struct` forming complete type values, pure `extend`, place-level `inject`, namespace origin/construction ownership, binding/install, and the early-meta bootstrap. |
 | `spec/design/patterns-overload/` | Canonical relational Pattern semantics, observation/extraction, structural incidence, binderless Patterns and annotation interaction; candidate adaptation and overload vision; later residual/`Done`/control-pattern consumers. The canonical entry is `pattern-values-relational-semantics-and-extraction.md`. |
 | `spec/design/meta-invocation/` | Policy-governed invocation: heterogeneous value candidates, canonical pair handoff, partial vs strict demand, residualization, and policy-staged pattern matching. |
-| `spec/design/policy-capability/` | Mapping from current flat policy metadata to canonical `Pv:Pp` plus whole-slot `PolicyMode`, contextual P1/P2 elaboration, seal boundaries, and 3×3 capability realization; no final `P3`. Flat/2×2 carriers are implementation subsets. |
+| `spec/design/policy-capability/` | Canonical `Pv:Pp`, independent whole-slot `PolicyMode`, position overlays, contextual result demand, seal boundaries, and 3×3 capability realization. |
 | `spec/design/lifetime/` | Canonical owner of continuation-relative `@ = ReifyLife(NameOf(actual), Pos(SemanticContinuation))`, LifeName/NameView, `LifetimeValue` as an ordinary first-class semantic value whose runtime materialization still uses the ordinary callspace rule, pairwise-distinct exclusive-write and same-root shared-read defaults plus finite Pre patch, exact move-origin and gapless Region boundaries, copy lifecycle inherited from the selected share/rebind-plus-clone realization with no extra default origin equation, cleanup, Pre/Post summaries, extensible global Color vocabulary with finite/monotone committed-universe relations, escape checking, and the post-overload boundary. `ref` / `share` alone retain `PrivilegedActualPlace`; `@` is neither a borrow nor a place-acquisition operation. Concrete IR/checker, summary compression, access-tree integration, diagnostics, and extended Horae logic remain future work. |
 | `spec/design/control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only |
 | `spec/design/mechanical-lowering/` | Canonical `CanonicalMechanicalPassCore` for move/copy action meaning and move fixed point; non-normative future selection/lowering frameworks for automatic argument passing, return normalization/error policy, and `normal`/`tco`/`loop` call modes. |

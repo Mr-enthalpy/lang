@@ -236,7 +236,7 @@ P let a |> f       == P let (a |> f)
 The last two forms are distinct. Parentheses close the local Policy context.
 At a form start, a depth-aware non-consuming classification preserves the
 existing declaration path when the material after `PolicySpec let` contains a
-top-level `=`. A top-level `===` continues to select the frozen legacy alias
+top-level `=`. A top-level `===` continues to select the frozen alias
 Raw-AST path only; no alias semantics are restored. Without either delimiter,
 the form is an expression `PolicyLet`. In a pure expression context,
 `PolicySpec let` is always `PolicyLet`, and a following top-level `=`/`===` is
@@ -454,7 +454,7 @@ operand is normalized under that same environment. The node introduces no
 binder, place, declaration, or new hole scope. It is not lowered to
 `NormDecl`, an ordinary `const`/`mut` call, or a hidden temporary binding.
 Value-side structural visitors recurse through its operand while retaining the
-wrapper. Call/target/struct semantic prototypes treat the wrapper as an opaque
+wrapper. Call/target/struct semantic consumers treat the wrapper as an opaque
 unsupported boundary until a later Policy elaborator exists. In a Pattern or
 annotation position the value-side node becomes explicit `PatternUnsupported`
 rather than a value call.

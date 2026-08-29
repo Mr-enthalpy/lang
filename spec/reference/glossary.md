@@ -2694,34 +2694,15 @@ coordinates as absent/default/delete/custom; the current four-member 2×2
 fixture is only an implementation subset. More specific Pattern members may
 refine or delete regions of that relation.
 
-The demand-preparation helper implements only the binding-P1 entry point. It projects
-the complete original query first, then derives a runtime-only target branch:
-
-```text
-PolicyTransitionRequest {
-  source_policy,
-  target_query,
-  source_type,
-  source_value,
-  provenance
-}
-```
-
-The connected build slice consumes such a request through the source
-`PatternValue`'s resolved owner and associated `()` Val2, then uses the same
-`PreparedCallCandidate`, `InvocationFrame`, and ordinary result path as source
-calls. Its Bp' dominance relation composes the implemented ordinary
-formal/phase coordinates with optional input/output migration endpoints before
-one maximal-element selection. Without those optional coordinates it reduces
-to the connected ordinary order; a source regression preserves the older
-restricted selector's winner identity.
-
-The older caller-supplied candidate-ordering carrier remains algebra-only
-fixture material. Its endpoint-only maxima helper is private and not
-sequentially composable with ordinary Bp. Crossed advantages are ambiguous and
-declaration order is irrelevant. Absent Val1 cannot construct the request.
-Candidate output Type must equal source Type, so migration cannot search `ref`
-or another structure-changing operation to repair applicability.
+`PolicyMigrationRequest` carries the source `PolicyView`, target
+`ResultPolicyDemand`, source complete type, source semantic value, and
+provenance. It enters the same `PreparedCallCandidate`, `InvocationFrame`, and
+ordinary result path as source calls. Bp' composes ordinary formal/phase
+coordinates with input/output migration endpoints before one maximal-element
+selection. Crossed advantages remain ambiguous and declaration order is
+irrelevant. Absent Val1 cannot form a value migration request. Candidate output
+Type must equal source Type, so migration cannot search `ref` or another
+structure-changing operation to repair applicability.
 
 Input and output Policy slicing bracket the directed migration:
 
@@ -2743,7 +2724,7 @@ ordinary Symbol/Val2/associated-`()`/InvocationFrame routing itself is now
 connected.
 
 _See also: Policy Binding, Policy Pair,
-`spec/contracts/v0.6-cross-policy-value-transition.md`._
+`spec/contracts/policy-migration.md`._
 
 ---
 

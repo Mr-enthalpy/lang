@@ -1,762 +1,195 @@
 # Roadmap
 
-This document defines the stage model for the `lang` compiler. It
-distinguishes implementation stages from semantic research stages.
+This document records current implementation frontiers. Canonical meaning is
+owned by the topic documents under `spec/design/`; unresolved decisions are
+owned by `spec/planning/open-questions.md`.
 
-Stages before v1.0 may overlap in time. The boundaries are scope boundaries,
-not strict chronological gates.
+## Completed frontend stages
 
-## Stage model
-
-```
-v0.1   — Raw AST Frontend — completed
-v0.1.w — Raw AST Stability Window — closed
-v0.2   — Raw AST Contract Freeze / Public Frontend Syntax Specification — closed
-v0.3   — Normalized AST Specification — completed specification baseline
-v0.4   — Raw AST → Normalized AST Prototype / Hardening — completed
-v0.5   — Normalized Surface Semantics Stabilization and Public Documentation Reset — completed public baseline
-v0.6   — Build / Namespace Graph Bootstrap — started / partial vertical slice
-v0.7   — Early Meta-Function Bootstrap — future
-v0.8   — Compile / Symbol Construction Interpreter Bootstrap — future
-v0.9+  — Resumed semantic design (canonical forms, pattern spaces, meta with control flow, type/kind, closure materialization, NLL, semantic prototype, HIR, codegen) — future
-```
-
-Raw AST is surface-preserving and non-desugared.
-Normalized AST is desugared but still non-semantic.
-HIR is later than Normalized AST.
-Type checking is later than Normalized AST.
-Name resolution is later than Normalized AST.
-Canonical matching is later than Normalized AST.
-Closure materialization is later than Normalized AST.
-NLL/drop insertion is later than Normalized AST.
-
-The current v0.6 slice includes typed semantic-owner identity, callable and
-meta-instance owner nesting, Pattern-root alpha boundaries, owner-qualified
-hole handoff, Full/External/DefaultExtraction views, explicit package-boundary
-metadata, identity-preserving mount redirects, and narrow struct-member
-visibility carriers. It does not claim persistent manifest parsing, general
-name resolution, custom `?`, closure materialization, or backend integration.
-
----
-
-### v0.1 — Raw AST Frontend — completed
-
-**Goal**: `source text → tokens → Raw AST → diagnostics`
-
-v0.1 delivered a complete Raw AST frontend with lexer, parser, AST,
-dumper, diagnostics, and golden tests.
-
-**What v0.1 delivered:**
-
-A syntax frontend that:
-
-- Lexes source text into tokens (Name, Literal, Symbol, Trivia, Invalid, Eof).
-- Parses tokens into raw AST (forms, lets, expressions, closures, canonical
-  skeletons, deduce lists).
-- Handles errors gracefully (produces ErrorAst + diagnostic, continues).
-- Dumps all three outputs (tokens, AST, diagnostics) in stable, hand-written
-  formats suitable for golden testing.
-
-**v0.1 completed deliverables:**
-
-- Crate `lang_syntax` with lexer, parser, AST, dumper, diagnostics.
-- Crate `lang_cli` with CLI subcommands: `tokens`, `ast`, `diag`.
-- Golden test suite covering all syntax rules.
-- Specification documents for AST construction and diagnostics.
-- Operator expression parsing as raw AST sugar.
-- Operator names in binder and innermost navigation-component positions.
-- Alias binding (`let binder === EntityRef`) as raw AST preservation.
-- EntityRef parser for alias RHS.
-- 32 DiagnosticCode variants across lexer, parser, return, operator, and alias categories.
-
-For the authoritative factual inventory of v0.1 delivered features,
-see `spec/implementation/v0.1/implementation-status-v0.1.md`. For the Raw AST contract
-that future normalization passes may rely on, see
-`spec/contracts/raw-ast-contract-v0.1.md`.
-
----
-
-### v0.1.w — Raw AST Stability Window — closed
-
-`v0.1.w` was a maintenance and contract-stabilization window that repaired and
-completed the remaining Raw AST stability-window questions. During this window:
-
-- Richer literal spelling was implemented (radix integers, digit separators,
-  scientific notation, hexadecimal floats, ranked quote-boundary strings).
-- The pipe branch-name shorthand was accepted as the only local mechanical
-  whole-shape sugar. Its v0.1.w snapshot used `(_ name)`; the current
-  binderless authority supersedes that expansion with `(<> name)` while the
-  frozen v0.1/v0.2 records remain unchanged.
-- The final current-stage open question was closed.
-
-`v0.1.w` is now complete. The project then entered v0.2; v0.2 is now closed.
-
----
-
-### v0.2 — Raw AST Contract Freeze / Public Frontend Syntax Specification — closed
-
-v0.2 froze the Raw AST contract and prepared the v0.3 handoff boundary.
-The following deliverables were completed during v0.2:
-
----
-
-### v0.3 — Normalized AST Specification — completed specification baseline
-
-**Goal**: Define the Normalized AST node set and document how Raw AST
-constructs desugar into Normalized AST.
-
-Normalized AST unifies:
-
-- call/product forms (product, pipe, operator sugar) into simple normalized nodes
-- extraction forms (canonical skeletons, deduce lists) into pattern nodes
-- declaration forms (simple let, extract let, alias let) into declaration nodes
-
-Define:
-
-- Normalized form for let bindings, preserving optional `with { ... }` syntax
-  without lifetime semantics, and unifying simple/extract.
-- Normalized form for pipe expressions (flattened segments, preserved product placement).
-- Normalized form for operator sugar (lowered to named operator calls).
-- Normalized form for closure heads (canonicalized clause order).
-- Normalized form for canonical skeletons (pattern representation, not matching).
-- Normalized form for member/double-dot selector sugar.
-- Normalized form for alias bindings (preserved as unresolved entity references).
-
-v0.3 completed the Normalized AST specification baseline. Implementation of the
-Raw AST → Normalized AST lowering followed in v0.4.
-
-Normalized AST is **not** HIR. It is desugared but still non-semantic.
-
----
-
-### v0.4 — Raw AST → Normalized AST Prototype / Hardening — completed
-
-**Goal**: Implement and harden a Raw AST → Normalized AST lowering pass.
-
-v0.4 delivered:
-
-- Raw AST → Normalized AST lowering loop.
-- A stable normalized dump and a CLI normalized dump path.
-- Golden tests and structural invariant tests.
-- Boundary hardening and error recovery through normalization.
-- Explicit `Unsupported` visibility (unsupported Raw AST subshapes remain
-  visible in the dump instead of being silently erased).
-- Value-side `NormExpr` / pattern-side `NormPattern` boundary preservation.
-
-The output is a Normalized AST, not a type-checked or name-resolved tree. The
-v0.4 normalization boundary is recorded in
-`spec/contracts/v0.4-normalization-prototype-notes.md`.
-
-v0.4 did **not** implement name resolution, type checking, operator lookup,
-alias-target resolution, pattern-head resolution, canonical matching, or closure
-materialization. Forwarding/entity alias semantics have since been retired;
-`LetAliasAst` remains frozen parser material and its target semantic use is a
-later block-local lexical resolver mapping that creates no semantic entity.
-
----
-
-### v0.5 — Normalized Surface Semantics Stabilization and Public Documentation Reset — completed
-
-**Goal**: Turn the v0.4 prototype/hardening result into a stable public
-documentation structure and stabilize the normalized surface semantics that are
-already implemented.
-
-v0.5 turns the v0.4 result into a stable public documentation structure:
-
-- history absorbs route / design / discussion material;
-- public docs explain current language behavior;
-- agent docs explain how to interpret source without importing C / Rust / Python
-  call assumptions;
-- future docs retain v0.6+ semantic designs.
-
-v0.5 is still **non-semantic** in the later-compiler sense. It stabilizes the
-normalized surface semantics and the public documentation. It does **not**
-implement type checking, name resolution, operator lookup, pattern-head
-resolution, HIR, closure materialization, runtime evaluation, or code
-generation.
-
-Future pattern-space and extraction-chain semantics (see
-`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`) motivate the
-current normalized boundaries, but they are **not** implemented by the v0.5
-normalizer. `Done`, residual propagation, pattern-space subtraction, `operator+`
-meta-reduction, `match` closing, and pattern-head resolution are not current
-behavior.
-
-v0.5 proceeded in incremental PRs. v0.5-1 established the documentation
-authority structure and the stage reset; v0.5-2 published the normalized
-call / product / pipe binding semantics; v0.5-3 published the value-side /
-pattern-side / annotation / alias boundary semantics; v0.5-4 closes the public
-documentation reset by moving route/design material toward history and
-finalizing the public documentation status. The public normalized surface
-semantics are published.
-
-The current public v0.5 documentation entry point is `spec/public/v0.5/`.
-
-#### v0.5-A — versioned frontend semantic amendment
-
-Later v0.5 semantic-surface work required parser and Raw AST changes. Those
-changes do not rewrite the closed v0.1/v0.2/v0.3 documents. They are versioned
-by:
-
-```text
-spec/contracts/frontend-semantic-amendment-v0.5-a.md
-spec/contracts/raw-ast-contract-v0.5.md
-```
-
-The amendment classifies closure placement orthogonalization as a hard
-structural correction, first-class DotClosure as a normalization-driven
-extension, and let-shaped capture binding, Ellipsis/Pack (including canonical
-Sequence children), plus callable-tail alternatives as new syntax amendments.
-It also records the intentional contraction from arbitrary delete-message
-expressions to string literals. The current syntax crate version is `0.5.0`;
-the v0.2 freeze remains a historical 19-Symbol/32-diagnostic snapshot.
-
----
-
-### v0.6+ — Build, namespace graph, meta-functions, then resumed semantic design
-
-v0.5 closes the normalized surface semantics. The next stages build the
-infrastructure that the language's symbol graph and metaprogramming depend on,
-before resuming the deferred semantic design.
-
-Narrative:
-
-- v0.5 closes normalized surface semantics.
-- v0.6 builds package / namespace graph infrastructure.
-- v0.7 introduces early meta-function lookup and expansion.
-- v0.8 evolves the restricted type-shaped evaluator toward `compile`
-  `PatternValue` computation and `meta` ordinary-Symbol construction; the
-  current `SymbolConstruction` is an implementation carrier only.
-- Later stages resume canonical forms, pattern spaces, value-directed
-  compile/meta control flow, type/kind checking, closure materialization,
-  ownership/NLL, the semantic prototype, HIR, and codegen.
-
-The canonical detailed direction for v0.6–v0.8 is
-`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`, building on
-`spec/design/build-package/build-system-design.md`, `spec/design/build-package/namespace-assembly-v0.md`,
-and `spec/design/build-package/package-manifest-v0.md`. Future field-projection and
-extension-place constraints are recorded in
-`spec/design/symbol-world/type-associated-function-objects-and-access-trees.md`.
-
-Before formal meta object invocation can become stable, package/manifest records
-must provide package identity, mount identity, export-surface boundaries, and
-candidate provenance.
-
-The active design route (documented under `spec/design/`) is:
-
-```text
-package/manifest identity
-  -> namespace graph / SymbolCell (current substrate: SymbolObject)
-  -> SymbolId / PlaceId / PatternValue / TypeValueId / borrow views
-  -> ProductObject / ArgProductShape
-  -> pattern normalization + first-order candidate shapes
-  -> compile PatternValue computation
-  -> Object-closed container PatternValues: bare Product / T*N / T*omega /
-     product / Symbol (no compiler-private collection identity)
-  -> meta Symbol-valued construction (current SymbolConstruction is substrate)
-  -> ResolvedPatternScope / struct forming complete type values / pure extend / place inject
-  -> let-only creation + existing-place writes + NamespaceDelta install
-  -> formal invocation demand/policy integration
-  -> mechanical lowering family
-  -> later runtime lookup
-  -> first-order type check
-```
-
-Two distinctions matter for sequencing:
-
-- Pattern/overload work is split. The earlier `pattern normalization +
-  first-order type candidate adaptation` subset serves the formal meta object
-  invocation model and comes before it. The later, fuller runtime overload
-  resolution remains further out and is not required for meta invocation.
-- Runtime lookup and first-order type checking are deliberately later than the
-  pattern / type-value / meta-invocation work; they consume its results rather
-  than re-deriving them.
-
-The mechanical lowering family (see `spec/design/mechanical-lowering/`) includes:
-
-```text
-automatic argument passing
-automatic return normalization / error policy
-call mode insertion: normal / tco / loop
-```
-
-### Documentation fusion note
-
-`spec/design/` is a temporary staging area introduced to break up the former
-flat `spec/future/` pile. It is not intended to become the permanent home of
-the symbol / pattern / meta-invocation semantics. As those semantics stabilize:
-
-- user-visible stable behavior moves to `spec/public/`;
-- implementation-stage obligations and handoff invariants move to `spec/contracts/`;
-- sequencing, deferrals, and open scope remain in `spec/planning/`;
-- superseded alternatives and absorbed ADR material move to `spec/history/`.
-
-#### v0.6 — Build / Namespace Graph Bootstrap
-
-**Goal**: a minimal working build system and a namespace graph world model.
-The namespace graph is a persistent, diagnosable, transactional world object,
-not a temporary file index. Every future phase (resolver, early meta, type
-checker, policy, seal, IDE, cache, HIR lowering) shares this model. Names such
-as `struct`, `assert`, `type`, `namespace`, `uint8`, `ref`, `share` enter as
-ordinary `SymbolObject`s resolvable through the graph, not as hardcoded compiler
-branches.
-
-Must cover:
-
-- package manifest skeleton
-- source root / namespace root
-- core package default mount
-- namespace mount table
-- physical namespace skeleton from directories
-- implementation file as source fragment; file name does not contribute a
-  namespace segment
-- namespace-role Object creation has exactly one origin: physical directory, one
-  source construction unit, or one canonical meta construction unit
-- physical directory namespaces define contribution authority: only files in
-  that directory may create their direct contents
-- each source file is one closed construction unit; parallel files may create
-  distinct direct children but may not reopen one another's namespace/type/
-  pattern/value subtrees
-- declared symbol harvesting
-- SymbolObject model
-- physical / declared / virtual `NamespaceNode` kind
-- resolver returning a `SymbolObject`, not a string path
-- provenance and diagnostic attachment
-- role-aware child-name buckets: object/function role and namespace-subspace
-  role; same-role conflicts are hard errors. This remains generic graph
-  substrate and is not a semantic `ref` / `share` projection-space model
-- ordinary source authority begins at direct children; one source unit may fully
-  construct a new child subtree in its own delta, while parallel files may not
-  reopen that subtree
-- no source-level import/use/include/module
-- policy metadata slots on symbols, contexts, and namespace graph nodes,
-  including the legacy flat resolver adapter now mapped onto OpenStatic,
-  SealStatic, and Runtime visibility; full pair plus whole-slot PolicyMode
-  storage on every entry and
-  end-to-end checking remain future work (see
-  `spec/design/policy-capability/policy-visibility-symbols.md`)
-- a bounded cross-Policy implementation prototype: T/Tnum concrete-target
-  lookup helper (not abstract literal semantics),
-  existing-view-first projection over mixed result collections,
-  projection-only absent entries, runtime-branch extraction after a complete
-  choice projects empty, a prototype ordinary-result-shaped carrier, typed
-  Runtime Val1 legality, callable-owned PolicyMode endpoints using the existing
-  actual-relative ordinary preference rather than hard domain intersection,
-  a fixture for the future pre-Bp fallback strategy, complete ordinary result
-  Policy separated from the demanded output view, and transition endpoint input × output Policy
-  before Pattern specificity without transitive search; the endpoint-only
-  maxima helper is private and typed qualification keeps delete rejection
-  distinct from availability
-- namespace graph is a persistent, diagnosable, transactional world model shared
-  by all future phases (not a temporary scan or file index)
-- conflict is a hard error by default; no merge / overlay / duplicate /
-  overload-set semantics or package overlay in v0.6
-- current cross-file closure forbids type-child, namespace-child, ordinary
-  value-member, and overload-entry extension into an existing symbol; value
-  overload union may be reconsidered only after explicit merge authority and
-  stable candidate identity are designed
-- engineering invariants: snapshot + transaction delta discipline,
-  symbol-identity-as-object, core bootstrap boundary, meta-expansion atomicity,
-  phase-freeze vocabulary, no-bypass rule, invariant-targeted test philosophy
-  (see `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §"Namespace
-  Graph World Model Invariants")
-
-Non-goals: full version solving; remote package retrieval; lockfile
-completeness; dynamic/static distribution distinction; full access-control
-lattice; full policy checking; full type checking; full meta-function execution.
-
-**Implementation status:** started. The `lang_build` crate implements the first
-v0.6 vertical slice: API-level `BuildManifest`, `CompilationWorld`,
-transactional `NamespaceGraphSnapshot` / `NamespaceDelta`, `NamespaceNode`,
-`SymbolObject`, resolver contexts with a default core mount, source-root
-collection, physical directory namespace skeletons, direct-child declaration
-harvesting, role-aware child buckets, expectation-aware resolver lookup, core
-bootstrap symbols, and invariant tests. It also includes a minimal early-meta
-closure for `core::struct` / `core::assert` lookup so the world model can prove
-generated type-associated namespaces are installed atomically. v0.7-prep has
-implemented policy-aware resolver visibility and callable policy-plane
-clarification: `PolicyEnv` is resolver visibility, not callable execution
-permission, and generated field functions are `meta+runtime` visible symbols
-with runtime-only bodies. The current implementation's legacy projection nodes
-are transitional; target field access uses one same-name associated Symbol with
-`T` / `T ref` / `T share` receiver candidates.
-The crate also implements a bounded cross-Policy pair-view demand preparer.
-Canonical semantics additionally require binding spelling to form concrete
-output mode (`plain` for bare `let`) before RHS call selection; that first-class
-mode carrier is not implemented by this helper. After demand-aware selection,
-ordinary omitted P1 preserves the complete RHS pair view; explicit P1 first uses the canonical
-non-empty projection rule, absent entries lack transition capability without
-invalidating value-bearing siblings. Only after the complete query projects
-nothing can an accepted runtime alternative be extracted as the derived
-runtime-only target and paired with an eligible static input view after
-Pattern-Policy stage/domain slicing. Separate helpers cover T/Tnum concrete
-target lookup, prototype ordinary-result-shaped fixtures, typed runtime failures,
-callable-owned PolicyMode endpoints, and an endpoint-product fixture before
-its Pattern-specificity stand-in. Opposite const/mut endpoint Patterns remain
-admissible and reuse ordinary `matching > plain > opposite` preference; a
-plain demand with only const/mut maxima remains ambiguous. The four default
-transport members are only a 2×2 connected subset of the canonical 3×3
-capability space and declare complete
-`(compile || runtime):compile` input/output Policies; `Project_in` and
-`Project_out` select the compile and runtime views around the ordinary result.
-Current source has no fallback role (`D = A`). The prototype fixture verifies
-that if/when such a future declaration-side strategy exists, suppression runs
-after full admissibility and before Bp', and an admissible non-fallback delete
-suppresses fallback without retry. A distinct future call-site annotation acts
-before candidate generation; only this pipeline position is closed here.
-The retained endpoint-only maxima helper is private. The connected
-`PreparedCallCandidate` path now composes the implemented ordinary
-formal/phase coordinates and optional migration endpoint coordinates in one
-Bp' product before a single maxima pass.
-Policy migration cannot repair Type/Pattern structural failure; explicit
-`ref`/`share`/`rebind` mechanical operations remain separate ordinary calls.
-T and Tnum registries
-carry current first-order
-TypeValue projections derived from installed Type symbols, not final canonical
-type-value identity. They do not define source literal Types: the target path is
-exact abstract `integer`/`real`/`character` denotation, ordinary construction
-to a concrete machine Type, then optional same-Type materialization for that
-concrete Type. The three abstract denotation Types themselves have intrinsic
-deleted compile-to-runtime materialization cells; the current registries do not
-implement those Types or cells. The
-implemented consumer is binding P1; future consumers
-must project the complete accepted choice first, then may construct its
-runtime branch only when the complete existing projection is empty.
-Source callables are now installed as one semantic Symbol with heterogeneous
-function-object values. Each value reaches its TypeValue, PatternValue owner,
-associated `()`, `InvocationFrame`, ordinary candidate pipeline, and complete
-result entries. Pattern-owner-authorized calls enter the same trunk with an
-explicit semantic receiver. A typed `ToolchainGlobalSourceRoot` supplies
-source-visible root construction authority (`Gsrc`); ordinary packages retain
-a non-empty install prefix and cannot install direct root members. `Gsrc` is not
-a prelude and cross-package calls still require public visibility.
-
-Atomic Runtime migration can consume a checked request through source-backed
-associated `()` members installed under the existing `uint8` Pattern owner.
-The legacy `PolicyTransitionCallable` path remains algebra/test fixture
-material rather than a second resolver. Binding-P1 source lowering now calls
-this connected migration adapter after complete existing-view projection
-fails and the demand accepts runtime. Other consumer kinds do not yet share a
-consumer-neutral demand satisfier.
-
-This does **not** complete v0.7 or v0.8: only the narrow
-`(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
-package manager, type checker, policy checker, final cross-build canonical
-type-value equality, access-tree
-construction, general runtime overload resolution, consumer-neutral
-parameter/result migration routing, runtime lowering, or general
-meta interpretation is present. Mixed-stage Policy-domain existence,
-phase-dependent readability, early binding/evaluation of compile-readable
-dependencies, runtime residualization, and continuation of the same resolved
-invocation are fixed. Residual IR, effect sequencing, residual-frame physical
-representation, continuation ABI, and capability/effect composition remain
-open.
-
-#### v0.7 — Early Meta-Function Bootstrap
-
-**Goal**: implement the early meta-function call loop on the v0.6 namespace
-graph, so an early meta target is found by the resolver, not by a parser /
-normalizer special case.
-
-Must cover:
-
-- early meta-function lookup from the namespace graph
-- closed `SyntaxObject` passing
-- `assert` as a compile-time hard-check primitive
-- `struct` as the first real globally visible
-  `BuiltinPrivilegedAstMetaFunction` object from the core namespace, forming a
-  complete type value whose core `Q_struct` satisfies `TypeRole` plus generated
-  partner families entering `V_τ` at formation
-- current meta call replacement adapter
-- current `MetaExpansionResult` transport (replacement object / namespace delta /
-  diagnostics / provenance); final formal invocation returns an uninstalled
-  construction and outer binding performs delta installation
-- an ordinary canonical meta invocation owns one closed
-  `MetaConstructionUnit` and may build its complete virtual subtree without
-  cross-unit reopening; compiler-known privileged AST meta functions use only
-  their separately bounded construction capability
-- generated child namespace installation; no arbitrary rewrite of parent /
-  sibling / global namespace
-- `struct` consumes AST by a private checker; failure is a meta hard error, not
-  a parser / normalizer error
-- policy fields on callable objects retained as transitional symbol,
-  body-entry, and result metadata; final source semantics use canonical
-  `Pv:Pp`, contextual P1 projection, P2 result normalization, and no independent
-  arbitrary complete `P3`. Parameters form `P_in = Overlay(P2, Delta_in)` and
-  returns form `P_out = Overlay(P1, Delta_out)`: omitted mode inherits its base,
-  explicit mode may refine that coordinate, and evaluation stage plus all other
-  Policy dimensions remain inherited. These declaration-local position views
-  are distinct from caller result demand and never propagate across a call.
-  The typed pair substrate now exists, while migration of every legacy
-  `PolicySet` consumer and end-to-end execution checking remain future work (see
-  `spec/design/policy-capability/policy-visibility-symbols.md`)
-
-Non-goals: general `compile` PatternValue execution; value-directed meta construction;
-arbitrary control flow in meta bodies; full generic system; full pattern-space
-semantics; HIR/codegen integration beyond placeholder nodes.
-
-#### v0.8 — Compile / Symbol Construction Interpreter Bootstrap
-
-**Goal**: evolve the earliest restricted type-shaped evaluator toward the
-canonical value-level `compile` and symbol-level `meta` capabilities. Bodies
-consume the source file's already-produced structured AST/Normalized AST under
-policy; this is not a separate DSL or text macro.
-
-Must cover:
-
-- implement the symbol-first construction boundary defined in
-  `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`;
-- implement namespace origin and construction ownership in the order defined by
-  `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`;
-- preserve the future layered-policy boundary defined in
-  `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` while
-  deferring full compile-flow projection, companions, and automatic require;
-- keep normalized body material, current policy metadata, canonical instance keys, and
-  outer atomic installation as explicit stage boundaries;
-- first-class generic classes such as `(T Vec)`, `(T Option)`, `(A, B Pair)`
-- preserve canonical policy as `Pv:Pp` plus independent whole-slot
-  `PolicyMode={const,plain,mut}`: `P1` is contextual binding projection,
-  `P2` is result-pair normalization, and function-object stage views are
-  derived from `P2`; current flat symbol/body/result fields remain transitional;
-- preserve legal runtime bindings and keep any non-runtime
-  projection-source premise local to its specific compile-determined rule;
-- preserve typed policy dimensions (stage, PolicyMode, value presence,
-  ordinary namespace visibility, export-root, and capability realization)
-  rather than flattening atoms;
-- preserve three phases: OpenStatic exposes meta/compile, SealStatic exposes
-  seal/compile, Runtime exposes runtime values; privileged seal scans consume
-  fixed Wpre and never Wseal
-
-Before implementing ordinary generic type-style meta-functions, the v0.8
-construction contract must be absorbed:
-`spec/contracts/v0.8-meta-construction-agent-constraints.md`. The following are
-preconditions, not optional local conveniences: `ProductObject` /
-`ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / borrow views,
-transitional `SymbolConstruction` transport / `ResolvedPatternScope`, contextual P1 projection,
-P2 pair normalization and function-object stage derivation while preserving
-current metadata transport,
-canonical meta instance key, and `NamespaceDelta` atomic install. This does not
-make a full generic system, full overload resolution, or full type checker a
-v0.8 requirement.
-
-Non-goals: unrestricted/general compile-time execution; unrestricted
-compile-time IO; runtime execution; full borrow/lifetime checking; full
-pattern-space subtraction / exhaustiveness; complete operator overload semantics
-(the overload resolution pipeline is specified in
-`spec/design/patterns-overload/overload-resolution-design.md`; overload resolution is gated on
-v0.10+ pattern-space infrastructure).
-
-#### v0.9 — Canonical form specification
-
-Define value/type canonical forms and universal extraction matching. Document the
-relationship between deduce lists and canonical forms. Do not implement matching
-yet.
-
-#### v0.10+ — Pattern-space and extraction-chain semantics
-
-Design pattern spaces as static objects generated by canonical pattern
-constructors: sum patterns, structural pattern-space operations, extraction
-chains, residual propagation, the `Done` isolation layer, explicit result
-consumption, postfix `?` as a one-layer top-Pattern view, and conventional
-closing consumers such as `match`.
-
-This phase provides the pattern-space infrastructure that overload resolution
-depends on: extraction-pattern specificity (§4 of `overload-resolution-design.md`)
-requires construction-expression-tree depth scoring, which in turn requires
-canonical pattern-space construction and extraction-chain matching. Overload
-resolution is not implemented before this phase.
-
-Before formal meta object invocation can select callables, an earlier pattern
-normalization and first-order type-value candidate-preparation layer is needed;
-see `spec/design/patterns-overload/pattern-normalization-and-first-order-overload.md`.
-
-Automatic return normalization and `noerror` / `Error`-handler semantics require
-first-order type predicates and policy-aware invocation, so they are future work
-after the meta invocation model; see
-`spec/design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md`.
-
-Future first-order lowering also needs explicit call-mode insertion
-(`normal` / `tco` / `loop`) for recursion-based repetition, since the language
-has no loop core; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-lowering.md`.
-
-The v0.4 normalizer only preserves the Normalized AST boundaries these phases
-need: value-side material remains `NormExpr`, pattern-side material remains
-`NormPattern`, annotations remain annotation patterns, branch names in extraction
-position remain pattern material, and operator names remain unresolved structural
-targets. Detailed design note:
-`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
-
-#### v0.11+ — Value-directed compile/meta control flow
-
-Extend `compile` PatternValue computation and `meta` ordinary-Symbol
-construction with value-directed control flow beyond the v0.8 restricted
-bootstrap. `SymbolConstruction` remains an implementation substrate until it is
-lowered into that ordinary value domain.
-
-This later track owns implementation planning for mechanical compile-flow
-projection over ordinary call nodes, complete derived `Val2` compile-companion
-objects, fully admissible overload preparation, the
-`must_select_if_qualified` overload strategy, intrinsic D/Done match flow,
-coarse inferred-require extraction, and shared require/body compile evaluation.
-Recursive calls remain ordinary call evaluation and are not a separate summary
-system. Internal unresolved-call bookkeeping or finer require atoms may be
-introduced as implementation IR when useful, but they are not frozen language
-objects.
-
-Overload-strategy source syntax is fixed by the callable implementation tail:
-`=> strategy_name { ... }`, or `[[strategy_name]] { ... }` where omitting
-`=>` requires explicit disambiguation. `#` has no strategy role. The catalog
-and comparison semantics of future named strategies remain open. Explicit
-compile-companion association syntax remains open. Whether default companion
-suppression is ever allowed, and what equivalent compile Pattern/contract
-interface it would require, also remains open rather than an implementation
-commitment.
-
-#### Bootstrap semantic-authority debt
-
-Compiler implementation is not evidence that a language operation is a
-permanent semantic primitive. Every builtin/intrinsic family must carry one of
-these migration classifications:
-
-```text
-BootstrapRequired
-SourceExpressibleNotMigrated
-IntrinsicOnly
-SemanticPrimitiveByNecessity
-```
-
-`SemanticPrimitiveByNecessity` requires an explicit non-bootstrappability
-argument. When a source definition can start without circularly requiring the
-operation it defines, semantic authority must migrate to that source
-definition; a builtin may remain as a bootstrap seed, lowering target, or
-optimization only.
-
-Current debt classification is deliberately conservative:
-
-| Family | Current classification | Authority boundary |
+| Stage | Result | Authority |
 |---|---|---|
-| token spelling → exact abstract literal | `BootstrapRequired` | frontend/bootstrap supplies exact input material; it does not choose a concrete target Type |
-| concrete literal constructors/converters | `SourceExpressibleNotMigrated` | ordinary candidates already decide legality; Rust bodies are provisional realizations |
-| construction and same-Type Policy migration families | `SourceExpressibleNotMigrated` | ordinary selection remains authority; registered builtin bodies are bootstrap implementations |
-| capability realization entries | `SourceExpressibleNotMigrated` pending family-by-family audit | table facts are declaration/candidate facts, not compiler-wide legality or Policy inclusion |
-| Pattern primitive extractors / `StructuralDefault` providers | `SourceExpressibleNotMigrated` pending extractor bootstrap audit | `R_Gamma` remains semantic authority; registry code is not the Pattern ontology |
-| lifecycle move/copy/drop algebra | `SourceExpressibleNotMigrated` | source algebra should ultimately define the operation; continuation/event commit hooks may remain intrinsic lowering support |
-| identity interning, graph allocation, exact continuation position observation | `IntrinsicOnly` | implementation mechanism/observation, never a rule making a program legal |
+| v0.1–v0.2 | Raw AST frontend and frozen input contract | `spec/public/v0.2/` |
+| v0.3–v0.4 | Raw AST → Normalized AST lowering | `spec/contracts/` and `spec/history/v0.3/` |
+| v0.5 | normalized surface and public documentation | `spec/public/v0.5/` |
 
-No current family is declared `SemanticPrimitiveByNecessity`. Future work may
-change a row only with the required proof and must preserve ordinary candidate
-selection, DynamicLegality, and no-reopen boundaries.
+The frontend pipeline is:
 
-#### Canonical implementation-status matrix
+```text
+source text -> tokens -> Raw AST -> Normalized AST (+ diagnostics)
+```
 
-This table is implementation bookkeeping, not a second semantic authority.
-“Carrier exists” never implies that the production evaluator consumes it.
+Raw AST preserves source shape. Normalized AST is desugared but remains
+non-semantic; it is not HIR and does not perform lookup, type checking,
+Pattern interpretation, lifetime validation, or evaluation.
 
-| Semantic relation | Carrier/substrate | Production consumer | Remaining boundary |
+## Current semantic architecture
+
+The semantic pipeline is:
+
+```text
+Normalized AST
+  -> typed owner / namespace resolution
+  -> canonical semantic entities and views
+  -> candidate enumeration and relational Pattern applicability
+  -> Policy preference
+  -> unique sealed invocation
+  -> DynamicLegality
+  -> execution
+  -> InvocationResult
+```
+
+The implementation in `crates/lang_build` establishes the following positive
+semantic vocabulary:
+
+- `Object = <Val1?, Pattern, Val2>` with complete ordinary normalization;
+- proof-relevant `R_Gamma(P,c,rho)` Pattern applicability and Hole valuation;
+- complete `tau = bind alpha.<Core(tau), V_tau[alpha]>` with immutable callspace
+  snapshots;
+- separate Symbol, semantic value, Place, resident generation, and
+  ProjectionSlot identities;
+- `PolicyPair`, primitive `PolicyMode = {const, plain, mut}`,
+  `ResultPolicyDemand`, and independent 3×3 `CapabilityRealization`;
+- one name-resolution result followed by context projection;
+- value → exact complete type → associated `()` call projection;
+- sealed candidate selection, post-selection DynamicLegality, and no reopen;
+- candidate-driven same-Type Policy migration and PolicyLet result-demand
+  boundaries;
+- exact abstract literal values followed by ordinary construction;
+- `OpenHere`, ConstructionAuthority, Writable, pure `extend`, and place-level
+  `inject`;
+- unified `InvocationResult`, complete-type `struct` result, and structural
+  MetaInstance root identity;
+- shared SemanticContinuation substrate with LifeName, Region, Pre/Post, and
+  an extensible directed Color algebra.
+
+Implementation carriers for storage, graph rendering, and primitive execution
+do not define identity, selection, result class, or legality.
+
+## Current frontier: canonical semantic reset
+
+This frontier answers “what semantic entities and relations exist?” Its merge
+conditions are:
+
+```text
+CanonicalTreePurity
+and SinglePositiveAuthority
+and PositiveDocumentation
+and PositiveInvariantTests
+```
+
+| Relation | Carrier | Production consumer | Status after this frontier |
 |---|---|---|---|
-| complete `tau`, Core/whole identity, immutable `V_tau` | implemented | direct ordinary call reads the exact snapshot captured at value formation | derived `ref`/`share` associated forwarding is not implemented; final lookup-key encoding remains Open |
-| `R_Gamma` base applicability and Hole valuation | implemented | ordinary parameter A-stage connected | full Pattern-space representation remains Open |
-| DirectPatternChild + StructuralDefault | implemented | **not connected** to production structural extraction | generated getter family + protected pre-C0 filter missing |
-| post-selection DynamicLegality/no-reopen | implemented | connected when premises are supplied | operation-driven capability/Writable/lifecycle premise formation partial |
-| SemanticContinuation/LifeName/Region/Color | implemented | `CompilationWorld` owns one machine and registers real values | source use/move/drop/@, cleanup placement, action commit/Post missing |
-| Value / binding Place separation | implemented | ordinary `let` preserves value identity while allocating a fresh destination Place; Writable reads the selected residency | source ref/share and broader place-operation inference remain partial |
-| OpenHere/ConstructionAuthority/Writable | implemented | meta construction/inject paths connected | broader source operation coverage deferred |
-| abstract literal construction/migration | implemented | ordinary candidate path connected | contextual target inference remains Open |
-| unified InvocationResult and `struct -> tau` | implemented | primitive execution returns replayable `MetaPrimitiveExecution` material only; world-connected installation produces exact `CompleteTypeValue`, ordinary semantic success carries that whole tau explicitly, and binding consumes it without reverse recovery from `TypeObject` | selected ordinary Residual/Diagnostic transport and residual representation remain partial/Open |
-| meta invocation material/root identity split | implemented | cache keys parent-neutral material; generated roots key parent × material | persistent root encoding remains Open |
+| Object Norm | Val1/Pattern/owned-Val2 observation | equality, Core and argument identity | Implemented |
+| complete tau | Core + immutable V_tau + whole observation | type binding and ordinary call projection | Implemented |
+| base R_Gamma and Hole valuation | relational proof | ordinary parameter A-stage | Implemented |
+| DirectPatternChild + StructuralDefault | relation interfaces | protected structural extraction | Consumer pending |
+| PolicyMode / demand / preference | explicit PolicyView and ResultPolicyDemand | ordinary selection, migration, PolicyLet | Implemented |
+| CapabilityRealization | candidate-local 3×3 table | selected operation premise formation | Consumer pending |
+| Place / resident generation | Place and ProjectionSlot | binding, Writable and borrow substrate | Implemented; source operation coverage pending |
+| DynamicLegality | sealed post-selection validator | supplied capability/place/lifecycle premises | Implemented; automatic premise formation pending |
+| InvocationResult | declared result class + semantic payload/residual/diagnostic | connected ordinary and core/meta invocation | Implemented; residual transport remains Open |
+| OpenHere / construction | authority, window, Writable and write algebra | meta construction and inject | Implemented |
+| abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
+| SemanticContinuation | lifecycle machine and event ledger | world-owned registration | source action/cleanup wiring pending |
+| Color/access | extensible directed relations and provider interface | lifecycle Pre validation | access-tree construction Open |
 
-Topic-document status must be read per row. A canonical relation can have an
-implemented carrier and a partial consumer; missing consumer wiring must not be
-reported as a completed authority cut-over.
+“Consumer pending” means the canonical relation exists and no substitute
+relation is used; it does not mean the language rule is undecided.
 
-#### Later stages
+## Next frontier: canonical semantic wiring
 
-The following remain deferred and are not numbered precisely here:
+The next implementation frontier connects source occurrences to the existing
+relations without changing their meaning:
 
-- general value-to-value `compile` PatternValue execution
-- block-local `let ===` lexical resolver entries; this creates no Symbol,
-  Object, Place, `V_S`, `V_tau`, or runtime identity, and must not restore
-  `AliasChain`/forwarding semantics
-- migrate `SourceExpressibleNotMigrated` builtin families to source authority
-  while retaining intrinsics only as bootstrap/lowering/optimization support
-- generate fresh direct-home derived associated forwarders for `T ref` / `T share`,
-  capture the base complete-type snapshot, and keep the forwarded-name/capability
-  filter explicit; foreign TypeMembers must never be copied into the derived scope
-- type / kind checking integration
-- closure materialization model (ClosureAST → ClosureObject; capture
-  environment layout and capture admissibility)
-  - preserve the v0.5-A syntax-directed capture binding: every ordinary
-    capture is a `NormCapture { slot, initializer }`, inferred shorthand has
-    exactly one distinct free non-call bare name, and initializers are
-    simultaneous in the pre-capture environment;
-  - preserve `InPlace` as an embedded callable-candidate kind with no capture
-    list, independently of whether the Raw/Normalized closure has a head;
-  - defer unresolved outer reads to the selected embedding layer, while
-    requiring ordinary authority for outer writes;
-  - place in-place-over-non-in-place preference after
-    first-order-over-instantiated and before named strategy filtering;
-- result delivery over callable return binding Patterns: direct output writes
-  remain per binder, while bare tails and targeted returns match one value as
-  `let ResultPattern = expr`;
-- ownership / NLL / drop / lifetime design (including any future semantics for
-  `with { ... }`); lifetime-policy checking/refinement is after first-order
-  type/compile overload selection and is bounded by
-  `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`
-- storing canonical `Pv:Pp` on every semantic object and wiring full P1
-  projection, P2 result validation, function-object views, and compile/runtime/
-  seal namespace lookup; formal parameter elaboration must feed the same
-  P2-inherited `PolicyMode` both to body entry and to the candidate's
-  external policy product-order position, while return elaboration applies the
-  symmetric P1-inherited mode-only refinement;
-- seal dependency ordering, complete reflection objects, and any future policy
-  stage beyond the current three-phase model;
-- integrating the three-point PolicyMode product order and independent 3×3
-  capability realization into the complete overload resolver, plus
-  effect/error/panic and resource-capability policy
-  (see `spec/design/policy-capability/policy-visibility-symbols.md`)
-- first semantic compiler prototype integrating selected passes
-- the named-strategy catalog/semantics and public syntax for explicit
-  compile-companion replacement
-- any permitted companion-suppression rule and its required replacement
-  interface
-- finer-grained require atom identity, if later implementation needs it
-- the bounded future member set of `BuiltinPrivilegedAstMetaFunction`
-- HIR
-- code generation
+1. protected structural extraction through `StructuralDefault` before C0;
+2. operation-driven capability, Writable, authority, and lifecycle premises;
+3. source `ref` / `share` / `rebind` and invalidation actions;
+4. source use/move/drop/`@` events on the world-owned continuation;
+5. cleanup placement before lifecycle observation;
+6. Residual and Diagnostic transport through the unified invocation boundary;
+7. derived associated forwarding that captures the base complete-type
+   snapshot and creates fresh direct-home members;
+8. block-local `let ===` lexical entries that create no semantic entity.
 
----
+Each wiring step must preserve unique selection and no reopen.
 
-## xtask
+## Later frontier: serial compile evaluation
 
-`xtask` is optional tooling, not part of v0.1 semantics. It exists as a
-placeholder for build automation tasks. The workspace compiles without it
-if removed.
+After source operations are connected, the evaluator may execute them along a
+single semantic continuation:
 
-## Build-system / namespace-graph track
+```text
+resolved operation
+  -> Pre
+  -> committed action
+  -> Post
+  -> next SemanticContinuation position
+```
 
-The build system assembles a namespace graph from package manifests, directory
-structure, and source fragments. The source language has no
-import/use/include/module syntax; source code refers directly to mounted
-namespace paths.
+This frontier owns control-flow sequencing, fixed cleanup placement, residual
+continuation transport, and serial compile evaluation. It does not create a
+separate meta value ontology or lifetime universe.
 
-This track was previously documented as a parallel side-track. As of the v0.6+
-re-sequencing it is the active implementation stage: v0.6 — Build / Namespace
-Graph Bootstrap (see the v0.6 stage above and
-`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`). The current code is
-a partial vertical slice in `crates/lang_build`, not a complete build system.
+## Bootstrap and source authority
 
-### Scope discipline
+A compiler implementation is not evidence that an operation is a permanent
+semantic primitive. Every builtin family is classified by its target role:
 
-Build/package work is still gated out of the completed v0.1–v0.5 frontend /
-normalizer. It must not change the lexer, parser, Raw AST, or Normalized AST,
-and it must not introduce source-level import/use/include/mod/package/export
-syntax. Namespace resolution, dependency solving, and declaration indexing are
-v0.6+ work, implemented under the v0.6–v0.8 stage boundaries, not retrofitted
-into the frontend.
+| Role | Meaning |
+|---|---|
+| `BootstrapSeed` | establishes the initial source-expressible environment |
+| `SourceDefinitionPending` | language semantics can express the operation; source definition is not connected yet |
+| `IntrinsicObservation` | exposes implementation facts that source cannot synthesize, without deciding legality |
+| `SemanticPrimitive` | permanent authority, requiring an explicit non-bootstrappability proof |
 
-### Deferred within v0.6–v0.8
+Current families:
 
-- full version solving, remote package retrieval, lockfile completeness
-- dynamic/static distribution distinction, full access-control lattice
-- full policy checking, full type checking
-- full (value-level) meta-function execution
+| Family | Role | Semantic authority |
+|---|---|---|
+| exact abstract-literal formation | `BootstrapSeed` | exact spelling/family observation |
+| concrete literal constructors | `SourceDefinitionPending` | ordinary candidate selection |
+| construction and same-Type migration families | `SourceDefinitionPending` | ordinary selection + DynamicLegality |
+| capability realization entries | `SourceDefinitionPending` | candidate declarations |
+| StructuralDefault providers | `SourceDefinitionPending` | `R_Gamma` |
+| lifecycle move/copy/drop algebra | `SourceDefinitionPending` | lifecycle Pre/commit/Post relations |
+| interning, graph allocation, continuation-position observation | `IntrinsicObservation` | canonical relations consuming those observations |
+
+No current family is classified as `SemanticPrimitive`.
+
+## Open representation boundaries
+
+The implementation must provide extension points without choosing final forms
+for:
+
+- `TypeValueId` storage encoding;
+- full Pattern canonical-space representation;
+- Color syntax and storage;
+- access-tree construction;
+- persistent owner/root encoding;
+- complete later overload filters and named strategies;
+- Residual IR and continuation ABI;
+- cleanup scheduling IR;
+- character surface and machine type catalog;
+- closure capture layout, HIR, backend lowering, and code generation.
+
+These questions remain in `spec/planning/open-questions.md`. Missing source
+wiring is not an open semantic question.
+
+## Build/package track
+
+The build system assembles a namespace graph from package manifests, source
+roots, physical namespaces, explicit mounts, and source contributions. Source
+filenames are not namespace segments. The language has no source-level
+import/use/include/module/package syntax.
+
+The current build slice provides package identity, transactional namespace
+deltas, provenance, typed owner qualification, role-aware name admission,
+default core mounting, and cache validation. Remote retrieval, full version
+solving, lockfiles, package distribution policy, and persistent root encoding
+remain future work.
+
+## Historical implementation records
+
+Completed-stage narratives and the PR103 authority-transfer audit belong under
+`spec/history/`. They are not prerequisites for interpreting the current
+semantic architecture.

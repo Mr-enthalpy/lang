@@ -311,10 +311,8 @@ inserting `a` then `b` and inserting `b` then `a` produce the same Symbol normal
 form exactly when the stored `tau` (if any) and every normalized `V_S[T_c]` set are
 equal.
 
-There is no case split in which one Object component is ignored. Earlier revisions
-normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` objects as
-`⟨Val1, P⟩` with `Val2` discarded; that bifurcation is retired. A value-bearing
-Object whose `Val2` differs is a different Object, and a pure core `Q` whose
+There is no case split in which one Object component is ignored. A value-bearing
+Object whose `Val2` differs is a different Object, and a pure Core `Q` whose
 `Val1?` is `null` still normalizes its `P` and `Val2` fully. `Norm(Q)` is the
 ordinary three-component Object normal form. `Norm_type(tau)`, defined in §2.2,
 is instead the normal form of the complete `<Q,V_τ>` closure and must not be
@@ -1059,8 +1057,7 @@ P/Val2 formation and transformation
   do not apply UniverseSuccessor
 ```
 
-This replaces the retired “everything is an Object” formulation as the
-long-term structural invariant. It does not introduce a fourth Object
+This is the structural invariant. It does not introduce a fourth Object
 coordinate; `P` and `Val2` are structural material within
 `Object = <Val1?, P, Val2>`, and their description activity stays at rank 0.
 
@@ -1839,10 +1836,7 @@ obtains the actual's place via its privilege (§5.1.0).
 #### 5.1.0 The selected borrow-forming default obtains a privileged actual place
 
 The selected borrow-forming default of `ref` (or `share`) obtains the place of
-the actual — not a second place source derived from `Read(E)`. The old
-`ObjectPlace(value) ≠ CarrierPlace(E)` binary is retired: it existed only
-because `ref` was assumed unable to observe the actual place while the retired
-model assigned that privilege to `@`. The replacement gives `ref` and `share`
+the actual — not a second place source derived from `Read(E)`. `ref` and `share`
 `PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`;
 continuation-relative `@` does not acquire a place.
 
@@ -2110,8 +2104,7 @@ E |> (type ref) is undefined when E has no carrier place (a freshly computed tem
 t |> (type ref) is not a general PlaceOf(E) available on every expression
 ```
 
-The former carrier-borrow `@` group that yielded `type ref` is retired: `@` is
-a continuation-relative name-reification operation that yields a lifetime value, never a
+`@` is a continuation-relative name-reification operation that yields a lifetime value, never a
 borrow view and never a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2.1). Reaching the
 carrier slot explicitly uses `t |> (type ref)` or `(S ref).type`.
@@ -2157,9 +2150,9 @@ that yield a borrow instance, the view's referent is the complete object that
 `Read` produced (§5.1); the pure `type` row yields a TypeValue, not a view.
 
 Consequently the compile stage offers no implicit borrow formation for an
-operand that has a `Val1` payload — `s ref` already does that job. The retired
-`@` carrier-borrow group is not a fallback for `ref`, and `@` is not a borrow
-constructor at all (`NoImplicitBorrowFormation`).
+operand that has a `Val1` payload — `s ref` already does that job. `@` is not a
+fallback for `ref` and is not a borrow constructor
+(`NoImplicitBorrowFormation`).
 
 ### 5.3 Borrow constructors have fixed points
 
@@ -2196,12 +2189,9 @@ rank(t share)                  = rank(t)
 rank(t ref/share rebind)       = rank(t)
 ```
 
-The former `@` fixed points (`type ref@ = type ref`, `type share@ = type share`)
-and the former value-instance rule `t@ = lifetime(t)` are retired: `@` is
-`ReifyLife(NameOf(actual), Pos(SemanticContinuation))`, yields a lifetime value
-uniformly, and is never a borrow constructor
-(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1). The old blanket
-equation “`@@` is identity on every borrow view” does not return.
+`@` is `ReifyLife(NameOf(actual), Pos(SemanticContinuation))`, yields a lifetime
+value uniformly, and is never a borrow constructor
+(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1).
 
 Idempotence is the consequence of providing the equal-capability overload, not a
 rule that contradicts it:
@@ -2412,10 +2402,8 @@ TypeOf(type)   = type_1
 TypeOf(symbol) = type
 ```
 
-The old `typeof(type) = symbol` / `typeof(type |> type) = type_1` path is
-retired: `type` is no longer a `symbol` whose callable members must be reached
-through the Symbol's shared `V`. With `tau = <Q, V_τ>`, `type` carries its own
-callspace, so `TypeOf(type) = type_1` directly.
+With `tau = <Q, V_τ>`, `type` carries its own callspace, so
+`TypeOf(type) = type_1` directly; no Symbol recovery participates.
 
 The designated positions are:
 
@@ -2792,38 +2780,18 @@ If the observed object is not visible or not usable under the current
 Re-export or wrapper semantics that intentionally re-expose a target under a
 different policy is a separate, later design and is **not** defined here.
 
-## 10. Relation to current implementation
+## 10. Implementation boundary
 
-The `lang_build` semantic spine implements the identity core of this document
-only through its existing type-core/`Val2` substrate: opaque-`Val1` Object
-normalization, first-order `TypeValueId`, per-carrier places, and meta return
-self-root validation. It does not yet represent the complete immutable
-`tau=<Q,V_τ>` closure or use `Norm_type(tau)` for equality/keying/copying. The
-current `TypeObject` adapter is implementation transport, never the canonical
-complete type model or a binding-level policy authority.
+`lang_build` represents complete Object normalization, Core/whole complete-type
+observations, immutable callspaces, separate Place/resident generations,
+ProjectionSlot identity, Writable, and borrow/lifecycle substrate. Unknown
+Val1 content uses an identity-stable opaque leaf and therefore only
+under-merges.
 
-Registered implementation debt — semantics closed here, not yet built:
-
-```text
-full three-component Norm(x) including recursive Norm_Val1?
-  (current normalizer keeps an opaque Val1 leaf)
-ref / share / @ / rebind operations and their overloads
-type ref and type share values, and ValidContext for them
-the independent writability and construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgments of §6
-the = assignment operator and its four-layer check (§4.5.1 there)
-construction-unit ownership enforcement
-```
-
-Whole-snapshot comparison is required only at independently specified
-snapshot-sensitive positions; ordinary type equality/keying keeps observing
-`Core(tau) = Q` by default (minimal-change rule, §2.2). Migrating the remaining
-first-order comparison consumers is therefore not outstanding implementation
-debt.
-
-The retired alias-forwarding model (`AliasChain`, symbol/place forwarding, and
-alias-forwarded extension places) is not
-implementation debt. It is removed from the target semantics and must not be
-revived as future work.
+Source-operation wiring for ref/share/rebind/`@` and full access validation is
+tracked in `spec/planning/roadmap.md`. Representation questions are tracked in
+`spec/planning/open-questions.md`; they do not alter the equations in this
+document.
 
 ## 11. Non-goals
 
@@ -2834,7 +2802,6 @@ No full lifetime/access-tree checker.
 No runtime lookup implementation.
 No package re-export semantics.
 No permission escalation through borrow views.
-No revival of symbol-alias or place-forwarding declaration forms.
 ```
 
 ## 12. Relationship to other documents
@@ -2857,9 +2824,8 @@ meaning.
   same-name receiver overloads and access-tree work. It references
   this document for the canonical value / place / borrow-view distinction rather
   than restating it.
-- `early-meta-functions-and-namespace-graph.md` — the build / namespace graph and
-  early-meta slice, including the v0.6 placeholder `TypeObject` representation
-  this document supersedes as the long-term semantics.
+- `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
+  and bootstrap consumers of complete type and Place observations.
 - `symbol-construction-units-and-namespace-origin.md` — canonical
   `NamespaceOrigin`, construction-unit ownership, physical contribution
   authority, pure/type role refinement, and cross-file closure rules.

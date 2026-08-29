@@ -6,9 +6,9 @@ note for symbol-first resolution, Symbol role/member projections, `compile` / `m
 boundaries, meta return self-root identity (§4.4), resolved pattern scopes,
 `struct`, pure `extend`, place-level `inject`, and the binding/install boundary.
 
-The current implementation is a transitional substrate described in §13. In
-particular, the current `PatternHeadId` attachment path must not be read as the
-final owner-resolution rule.
+The implementation status is summarized in §13. Owner resolution is expressed
+through resolved Pattern scopes and stable semantic owners; registry allocation
+details do not participate in semantic identity.
 
 This document builds on, without replacing:
 
@@ -19,7 +19,7 @@ This document builds on, without replacing:
   `WindowLive_Σ`) judgments;
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
   positive overloads of `@`, escape checking, and the lifetime-rule boundary;
-- `spec/contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` for
+- `spec/contracts/pattern-root-identity-and-explicit-navigation.md` for
   the preserved bare-name versus explicit-`::` distinction and the current
   registry-backed substrate;
 - `spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
@@ -390,10 +390,8 @@ materialized at runtime. This is
 not a general recursive-Object rule; the complete normalization contract is
 owned by `type-values-places-and-borrow-views.md` §2.1–§2.2.
 
-An implementation may cache role projections in separate buckets, but those
-caches are transitional substrate, not two semantic Objects. This is not a
-requirement that this PR refactor the current Rust `SymbolObject` into these
-exact fields.
+An implementation may cache role projections in separate buckets, but storage
+partitioning never creates additional semantic Objects.
 
 Resolution is always:
 
@@ -429,8 +427,7 @@ family is applicable exactly when the Symbol carries `τ` and
 `TypeValueRole(τ)` holds (equivalently `TypeRole(Core(τ))`):
 `S.type` reads the complete type snapshot by value, `(S ref).type` projects
 `type ref`, and `(S share).type` projects `type share`. Reaching the
-type-level place of an already-pure type slot uses `t |> (type ref)`, not `@`
-(the retired carrier-slot form `t@` does not return).
+type-level place of an already-pure type slot uses `t |> (type ref)`, not `@`.
 
 Each cluster member carries its own complete Policy view; the cluster itself
 stores no flat Symbol-level Policy. The cluster-level Policy exists only as a
@@ -741,15 +738,15 @@ the producer mode. See the canonical binding judgment in
 `symbol-policy-and-compile-flow-projection.md` §3.1. The destination does not
 inherit the RHS mode or make runtime the only way to obtain a runtime binding.
 
-The bounded migration prototype does not reinterpret a P1 query as an exact
-target. Any non-empty `ProjectP1` result completes the binding and makes
+Policy migration does not reinterpret a P1 query as an exact target. Any
+non-empty `ProjectP1` result completes the binding and makes
 migration unreachable. Only after the complete query projects nothing may an
 accepted runtime branch be extracted and paired with an eligible static input
 view for one language-authorized atomic migration. The compiler mandates the
 static-to-runtime stage edge; candidate-declared endpoint `PolicyMode` belongs to
 ordinary overload. Empty queries with no runtime alternative fail, and no
 Policy failure searches structure-changing operations. See
-`../../contracts/v0.6-cross-policy-value-transition.md`.
+`../../contracts/policy-migration.md`.
 
 The unannotated form:
 
@@ -993,9 +990,9 @@ callable's declared result class — `Result(F)` follows
 `DeclaredResultClass(F)` — and consumers must not maintain separate narrow
 hand-written enumerations of what `compile` or `meta` can return.
 
-There is no private SymbolConstruction result ontology. A value of type `symbol` is an ordinary
-`PatternValue` (§4.7), so a declared `symbol` result is a statement about which
-pattern value is returned, not about a separate ontological class.
+A value of type `symbol` is an ordinary `PatternValue` (§4.7), so a declared
+`symbol` result is a statement about which Pattern value is returned, not about
+a separate ontological class.
 
 `MetaPartial` / `MetaStrict` describe evaluation demand. They do not define the
 meaning of `compile` or `meta`, and they do not determine the successful result
@@ -1052,8 +1049,7 @@ The callable/argument pair may remain a reusable `MetaInstanceKey`, but a root
 cache must scope that key by `ParentSemanticOwner`; equal callable and argument
 material under distinct stable owners denotes distinct roots.
 
-Root consistency is not encoded by the retired `export => const` crop. It is a
-positive invariant of meta-root formation:
+Root consistency is a positive invariant of meta-root formation:
 
 ```text
 MetaInstanceRootAlwaysPlain:
@@ -1116,11 +1112,9 @@ projection of the default result and hence always present. An
 implementation may retain a carrier to accumulate those members,
 but may not expose that carrier as a callable result ontology.
 
-`ClusterSymbol` and `ReturnShape::ClusterSymbol` survive in the current
-implementation as a **transitional carrier** for the multi-member return of a
-meta construction. They are not an ontological category of the target semantics
-and must not be treated as one. Three roles that the single name `ClusterSymbol`
-has been used to conflate are distinct:
+A cluster-shaped invocation outcome transports multi-member construction
+material after semantic result-class formation. It is not an ontological result
+category. The following three roles remain distinct:
 
 ```text
 Symbol value ontology          — an ordinary PatternValue (§4.7)
@@ -1742,8 +1736,7 @@ The right sides are valid external type values, but their `PatternValue` roots
 belong to external scopes. Resolving `symbol(t)` or `symbol(uint8)` and reading
 its value does not make that external root identical to `(t f)` or `(t fn)`.
 Neither value may directly replace the returned result's required role root.
-The failure is the hard diagnostic `MetaReturnRoleRootMismatch` (the current
-implementation may retain `MetaReturnTypeRootMismatch` as a transitional code). An
+The failure is the hard diagnostic `MetaReturnRoleRootMismatch`. An
 implementation must not silently repair the mismatch by wrapping the external
 value in a synthetic self-rooted node; check failure is failure.
 
@@ -1789,9 +1782,8 @@ refinement (imported judgment); namespace-only `Q` is not required to define Val
 Target semantics do not give the spelling of a return slot a special creation
 meaning. A meta body computes its result value (`τ` by default); `let` creates its local
 members, `=` writes existing places, and the return event transfers that value.
-The current execution substrate still maps the explicit return-slot spelling
-`r` onto an open construction carrier. That mapping is transitional
-compatibility encoding only.
+The explicit return-slot spelling `r` denotes the declared return position; it
+does not create a construction-value ontology.
 
 Formal meta return material is a family of distinct construction-effect forms,
 not one spelling-insensitive binding. The *family split* — create / write /
@@ -2048,26 +2040,13 @@ invariant.
 This distinction does not cancel `let f::(t |> (type ref)) = expr` for an
 already-pure type slot, or `let f::((S ref).type) = expr` for a Symbol whose
 `Q` satisfies `TypeRole` (ordinary `Val2` member creation at an explicit type
-place), and does not change the `r;` terminal semantics. The current
-`let r =` binding-to-return-value with no-shadow is a transitional encoding, not
-the target rule.
+place), and does not change the `r;` terminal semantics.
 
-A construction value is not restricted to newly generated structure
-definitions. It may describe a fresh returned result with its own `SymbolId` and,
-once bound, a potentially independent `PlaceId`; it may also reuse existing
-values as ordinary value-facet material or as members of a newly self-rooted
-type construction:
-
-```text
-SymbolConstruction {
-    return_symbol_identity,
-    assigned_role_or_value_members,
-    optional_child_contributions,
-    provenance,
-}
-
-assigned non-root value/member may equal an already existing PatternValue
-```
+A successful construction returns the semantic entity declared by the selected
+callable's result class. A fresh returned Symbol has its own `SymbolId` and, once
+bound, a fresh destination `PlaceId`; its ordinary value or member material may
+reuse existing Pattern values. Construction effects and replay provenance are
+execution material, not a second value ontology.
 
 Value equality remains independent of source name and navigation path and does
 not merge symbol or place identity. However, that general identity separation
@@ -2889,9 +2868,8 @@ CallSpace(tau) = V_τ
 ```
 
 A copied or extracted type value retains the `V_τ` of that immutable `tau`
-snapshot. The
-retired `HomeSymbol(TypeValue)`, `RecoverSymbol(TypeValue)`, most-recent carrier,
-source-place, and reverse-`AsType` routes are not deferred alternatives.
+snapshot. A complete type has no home Symbol and no reverse carrier, source-place,
+or `AsType` identity route.
 
 Open authority does not propagate along owned field relations. Each
 PatternValue's open authority is determined independently by stack-relative
@@ -3996,10 +3974,9 @@ P(C_f) = P(P_x) || P(w_1) || ... || P(w_m)
 the associated type is the member view of `C_f` — the RHS complete pure-P
 view already restricted by the binding's written P1, exactly as on the
 ordinary value path; a type does not get a second P1 discipline for lacking
-a Val1. The current `ObjectPlace` substrate may carry a `TypeObject` transport
-reference for its first-order core. That adapter is not complete `tau`, is not
-canonical identity, and is never a binding-Policy carrier. The target
-type-valued slot preserves its own whole `tau=<Q,V_τ>` snapshot.
+a Val1. The target type-valued slot preserves its own whole
+`tau=<Q,V_τ>` snapshot. Core lookup projections are derived from that snapshot
+and never recover or define the complete type value.
 
 A pure P is a real object, so the place is per carrier, never per
 PatternValue:
@@ -4040,8 +4017,8 @@ time, and a deeper path `g::f::T` composes the whole chain
 or writes `P(x)` back into `P(T_t)`. The conjunction is a phase predicate
 applied per layer, not a stage-set intersection: a `meta` host legitimately
 carries `compile` members, and it is each host's own binding-level view — not
-the current first-order `TypeObject` adapter and not the Pattern — that decides that layer's
-factor. Explicit navigation therefore carries the resolved host chain (each
+the Pattern — that decides that layer's factor. Explicit navigation therefore
+carries the resolved host chain (each
 layer's carrier Symbol, its object place, its member view) along with the
 selected `C_f`, so the invocation pipeline applies every host factor before
 member selection and refuses the target when any layer is hidden; a bare name
@@ -4591,10 +4568,8 @@ value members V:
   do not infer cross-construction-unit merge authority
 ```
 
-The phrase “pure role member” below is a retired historical label; it referred to
-`Core(τ)`. Any active rule about a “unique pure role member” is replaced by the
-rules above. When `struct` establishes a type-role `Q` inside an already resolved
-owner pattern scope, an existing incompatible core is a hard conflict.
+When `struct` establishes a type-role `Q` inside an already resolved owner
+Pattern scope, an existing incompatible Core is a hard conflict.
 Same-origin, same-material cache replay may reuse the existing core.
 
 In particular, an ordinary symbol place receives its type core at most once:
@@ -4689,133 +4664,38 @@ that place. Pattern owner/root/scope continue to come from ordinary result
 construction semantics. Likewise, generated storage placement is not
 source-visible `NamespaceGraph` symbol installation.
 
-## 13. Current Implementation Substrate
+## 13. Implementation Status
 
-The PR #94 implementation remains a neutral transitional
-identity/materialization substrate. It currently provides:
+The current semantic core provides:
 
-- a doc-hidden explicit context attachment helper for generated type-definition
-  pattern heads, retained publicly only for integration-test support;
-- categorical `Generated`, `GeneratedTypeDefinition`, `Global`, `Namespace`,
-  and `Local` materialization contexts as low-level registry test/materialization
-  categories, not final language owner scopes;
-- `GeneratedTypeDefinition` as the formal-invocation and binding-time fallback
-  for cache-safe anonymous reattachment;
-- binding that preserves already attached provisional material and does not
-  derive owner identity from the destination global/namespace path;
-- registry-backed owner/field `PatternHeadId` allocation and bounded child
-  lookup.
+- stable `SemanticOwner` and resolved Pattern-root identities;
+- complete type values with separate Core and whole-snapshot observations;
+- unified `InvocationResult` with `struct` producing a complete type value;
+- contextual `OpenHere_Σ`, independent `Writable`, pure `extend`, and
+  read--extend--write `inject` boundaries;
+- distinct ordinary member, TypeMember, and structural-incidence relations;
+- atomic namespace installation and canonical meta-instance root identity.
 
-This substrate does **not** implement:
+Source-level structural extraction, automatic operation-to-legality premise
+formation, and full lifecycle/control-flow consumers are wiring work. They must
+consume the relations above directly and may not introduce fallback owner,
+construction, or result ontologies.
 
-- `PatternScopeId` or `ResolvedPatternScope`;
-- `MetaInstanceScopeId` or a meta-instance pattern scope such as `(t f)`;
-- meta return type-core self-root validation;
-- the canonical meta-invocation navigation atom;
-- type-core `Core(τ)` projection and any corresponding implementation caches;
-- the `compile` / `meta` capability split specified here;
-- the default meta result `τ` (the current `SymbolConstruction` carrier is
-  transitional; an ordinary Symbol remains only an explicit `symbol`-typed
-  result);
-- pure value `extend`;
-- place-level `inject` with independent `OpenHere_Σ(Read(ref))` and writability;
-- contribution-expectation-driven pattern-child versus namespace-value cache
-  selection;
-- an explicit sum construction/extension API;
-- the final owner-resolution rule for `struct`;
-- fully named
-  `Map<CanonicalFullNavigation, CanonicalPatternValue>` versus ordered
-  pattern-layer representation;
-- namespace-origin uniqueness or source/meta construction-unit ownership;
-- physical-directory contribution authority or cross-file reopening checks;
-- the structural `Pure`-implies-`NamespaceRole` and `TypeRole` refinement judgments and their
-  implementation enforcement;
-- the distinction between ordinary namespace value members and
-  pattern-material leaves as implemented facets;
-- full place / writability / borrow-view checking;
-- graph installation from the construction model in this document.
+## 14. Non-Goals and Open Representation Boundaries
 
-The categorical global/namespace/local contexts remain available only to the
-doc-hidden low-level attachment helper and registry tests. They are not a
-stable external owner-construction capability. The ordinary binding path does
-not select among them: it preserves attached provisional owner
-material, or restores stripped material under the anonymous
-`GeneratedTypeDefinition(type_definition_id)` fallback. It must not be
-described as determining or rerooting `struct` pattern-owner identity or a meta
-return role member's root. In final semantics, the meta instance's own symbol scope
-anchors that root.
+This document does not change Raw or Normalized AST syntax, introduce a general
+macro system, expose unrestricted AST rewriting, or choose the final storage
+representation for Pattern space, owner persistence, access trees, or
+continuations.
 
-Formal `struct` invocation currently may allocate or attach registry material
-under `GeneratedTypeDefinition`. It remains graph-installation-free and
-binding-free. The target operation is referentially pure; this allocation is a
-non-semantic implementation record rather than mutation of language-visible
-input or installation of a graph delta.
-
-## 14. Non-Goals of This Note
-
-This document does not:
-
-- change the parser, Raw AST, or Normalized AST;
-- introduce traditional call syntax;
-- implement `extend` or `inject`;
-- define a general macro system;
-- allow users to define new `BuiltinPrivilegedAstMetaFunction` members;
-- expose arbitrary AST or token rewriting;
-- implement type checking, name resolution, overload resolution, pattern-space
-  execution, extraction execution, D/Done, ownership, runtime evaluation, or
-  code generation;
-- require the current Rust `SymbolObject`, `PatternHeadId`, or meta invocation
-  enums to implement the future objects defined here. PR #94 only neutralizes
-  destination-derived owner attachment in the existing substrate.
-
-## 15. Required Direction for Later Implementation
-
-Future implementation should converge in this order:
+The following semantic distinctions are fixed even while those representations
+remain open:
 
 ```text
-type-core `Core(τ)` projection / typed-value-member resolution
-  -> PatternValue identity and rank-directed canonical arguments
-  -> ordinary Symbol result (current carrier: transitional SymbolConstruction)
-  -> ResolvedPatternScope / PatternScopeId / MetaInstanceScopeId
-  -> namespace origin and construction-unit ownership
-  -> meta return self-root validation (§4.4)
-  -> struct owner resolution independent of binding place
-  -> = operator (distinct from let =)
-  -> pure child-only extend and read--extend--write inject
-  -> explicit sum construction/extension
-  -> fully named canonical navigation map / ordered-layer representation
-  -> writable let binding and Pattern extension
-  -> NamespaceDelta atomic installation
+complete type != Symbol != Place
+construction material != semantic result
+ordinary member != TypeMember != structural field
+extend = pure transformation
+inject = read + extend + write
+OpenHere != Writable != PolicyMode
 ```
-
-### 15.1 Registered implementation debt for `extend` and `inject`
-
-The semantics of `extend` and `inject` are settled by §8; what is missing is implementation.
-The ordering dependency is a build-order fact, not a semantic condition:
-
-```text
-extend is a pure value function      -- settled (§8.2)
-extend needs OpenHere_Σ(old), not a place -- settled (§8.2.2)
-inject needs a writable type ref     -- settled (§8.2.3)
-inject = read + extend + write       -- settled (§8.2.3)
-ordinary `=` is not yet implemented  -- shared implementation debt
-```
-
-The consequences are:
-
-- `extend` is implementable and testable without `=`, because it writes nothing;
-- `inject` depends on the ordinary write machinery but never on member creation;
-- `=` is independently required by several unrelated features — writing an
-  existing member, writing an explicit return slot, and updating an ordinary
-  value — so that machinery is not an `inject`-specific ontology;
-- the current `let`-only substrate is a transitional state. Documentation and
-  implementation must not treat `let`-only behavior as the target rule, and must
-  not restate the missing `=` as a semantic restriction on `extend`.
-
-Remaining engineering questions in this area are about representation, not about
-meaning: the exact ordinary write algebra for the optional Q member and val siblings
-(§13), and how Anchor/open-window/stack applicability is tracked efficiently
-without entering canonical value identity.
-
-Until those objects exist, the current attachment registry is useful substrate,
-but documentation must keep the substrate/final-semantics gap explicit.

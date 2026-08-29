@@ -192,9 +192,8 @@ Candidates(args |> t) = CallSpace(TypeValue(t)) = V_τ
 ```
 
 Copied/extracted type-as-callee lookup selects candidates from that immutable
-`V_τ` snapshot. `HomeSymbol(TypeValue)`, defining-Symbol recovery, most-recent
-carrier provenance, and reverse `AsType` provenance are retired designs, not
-deferred candidate entrances.
+`V_τ` snapshot. Complete type values have no HomeSymbol, defining-Symbol
+recovery, most-recent carrier, or reverse `AsType` candidate entrance.
 
 Associated source navigation obeys the same forward-only rule. If:
 
@@ -208,13 +207,9 @@ navigated member may additionally be selected through `Q`/`Val2` under the
 normal navigation rules. Neither path inspects provenance or searches for
 `Symbol(uint8)`.
 
-The older `PolicyTransitionCallable` Rust carrier remains bounded algebra/test
-fixture material. Its caller-supplied result Pattern proves only fixture
-transport and does not establish canonical TypeValue/PatternValue/owner/
-constructor coherence. The connected path instead obtains the result
-PatternValue from the already registered result TypeValue; full
-constructor/extractor result construction and materialization-place lowering
-remain incomplete.
+Migration callables obtain their result Pattern and complete type observations
+from registered semantic entities. Constructor/extractor materialization and
+place lowering consume those observations through the ordinary call boundary.
 
 For source-backed transport members, the callable/member value Policy,
 first-formal Policy Pattern, and complete result P2 remain distinct. The member

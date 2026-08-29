@@ -319,7 +319,7 @@ three distinct trees.
 
 At a declaration-capable form start, a top-level `=` after `PolicySpec let`
 selects the existing declaration parser. A top-level `===` selects only the
-frozen legacy alias-preservation path. Delimiters inside parentheses, products,
+frozen alias-preservation path. Delimiters inside parentheses, products,
 or closures do not participate. Without either delimiter the form is a
 PolicyLet expression. Pure expression contexts never admit a nested
 declaration through this prefix.

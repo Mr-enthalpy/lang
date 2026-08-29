@@ -375,8 +375,8 @@ textual child name -> object/function role + namespace-subspace role
 
 Same parent + same textual child name + same role is a hard conflict. An
 object/function symbol without a namespace node may coexist with a pure
-namespace-subspace symbol of the same textual name. This is generic transitional
-graph capability; it is not required for borrow observations. Target `struct`
+namespace-subspace symbol of the same textual name. This graph capability is
+not required for borrow observations. Target `struct`
 fields named `ref` or `share` are ordinary associated Symbols, while receiver
 observation kind is represented in their overload candidates.
 
@@ -386,11 +386,11 @@ namespace subspace of the same textual name in the same parent. That case would
 make intermediate path traversal ambiguous before the resolver expectation API
 is fully designed.
 
-This bucket representation is transitional. In the final symbol-first model a
-name first resolves to one Symbol; its optional `Q` supplies namespace and,
+In the symbol-first model a name first resolves to one Symbol; its optional `Q`
+supplies namespace and,
 when `TypeRole(Q)`, type projection, while heterogeneous value members occupy
-typed buckets. Role-aware current lookup must not be
-generalized into final mutually exclusive `SymbolKind`s.
+typed buckets. Role-aware lookup must not be generalized into mutually
+exclusive `SymbolKind`s.
 
 ### 7.2 Type-associated namespace
 

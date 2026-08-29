@@ -41,7 +41,7 @@ not required to begin extraction and is not a special conditional entrance.
 Older examples in this block that spell `?` use that optional explicit view.
 
 ## For v0.8-adjacent compile/meta construction work, read
-`spec/contracts/v0.8-meta-construction-agent-constraints.md` first. Its
+`spec/contracts/meta-construction-boundary.md` first. Its
 non-value argument boundary applies here: type objects, rank objects, namespace
 objects, meta objects, and pattern objects are not value arguments and must not
 receive automatic pass insertion.

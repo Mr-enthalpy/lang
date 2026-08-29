@@ -50,10 +50,8 @@ Identity(resolve(x::mount_path)) = Identity(resolve(x::target_path))
 Crossing from the query package into the mounted target package switches
 subsequent lookup from `FullNameView` to `ExternalNameView` and retains typed
 failure causes such as private path, non-retention, missing target, and missing
-package boundary. The current compatibility adapter's
-`NoExternallyEligibleCandidate` remains a legacy typed failure only; a later
-consumer Policy-selection or dynamic-legality failure does not redefine stable
-namespace lookup.
+package boundary. Consumer Policy-selection or dynamic-legality failure does
+not redefine stable namespace lookup.
 
 The notation above follows source order: the selected inner symbol is leftmost
 and the outer mount/namespace components follow to the right. A graph resolver

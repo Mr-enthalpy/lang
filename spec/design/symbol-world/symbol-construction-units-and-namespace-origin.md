@@ -514,31 +514,21 @@ Pv = absent
 PolicyMode remains independently const | plain | mut
 ```
 
-The projection helper reports an error when a flat compatibility carrier
-violates its narrower prototype invariants; those errors do not redefine the
-canonical absent-slot × PolicyMode matrix.
+Projection errors do not redefine the canonical absent-slot × PolicyMode
+matrix.
 
 The helper no longer returns cloned internal policies as external views.
 Full namespace-graph installation and external resolver routing remain later
 integration work.
 
-## 12. Current Implementation Substrate
+## 12. Implementation boundary
 
-The existing build slice already has physical directory skeleton collection,
-`SymbolObject`, role-aware namespace nodes, transactional `NamespaceDelta`
-installation, provenance slots, and a conservative direct-child harvesting
-restriction. Those are useful prerequisites, not an implementation of this
-document.
+The build world provides physical directory skeleton collection, role-aware
+namespace nodes, transactional namespace deltas, typed owner qualification,
+provenance, and direct-child contribution checks. Pattern materialization and
+complete-type installation consume explicit resolved owner identities.
 
-PR #94 remains a neutral `PatternHeadId` registry/materialization substrate.
-Its generated/global/namespace/local contexts are transitional categorical
-registry inputs for explicit low-level attachment and tests. Ordinary binding
-preserves attached provisional material or restores stripped material through
-the `GeneratedTypeDefinition` fallback; it does not derive a context from the
-destination path. None of this establishes final namespace origin,
-construction ownership, or meta return root identity.
-
-Not implemented:
+Consumer work:
 
 ```text
 meta return self-root checking

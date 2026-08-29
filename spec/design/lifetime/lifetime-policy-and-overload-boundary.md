@@ -295,16 +295,6 @@ E@ : LifetimeValue
 E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
 ```
 
-The retired forms do not return:
-
-```text
-Val1?(x) ≠ null  ->  LifetimeFact        (retired as a separate @ group)
-Val1?(x) = null  ->  P ref               (retired: @ is not a borrow constructor)
-t@ : type ref                            (retired)
-type ref@ = type ref                     (retired)
-type share@ = type share                 (retired)
-```
-
 `@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
 binding evaluates to the complete closure `tau`; an ordinary/namespace consumer observes the projection `Core(tau)=Q`. Reaching the type-level
 place is done explicitly with `t |> (type ref)` (or `(S ref).type` for a Symbol),
@@ -857,10 +847,7 @@ Still genuinely open engineering questions, not closed by this document:
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff
 objects, ABI equivalence classes used for selection, or a lifetime-driven
-ordinary resolver. The retired `@` forms — the two instance
-groups (`Val1?(x) ≠ null -> LifetimeFact`, `Val1?(x) = null -> P ref`),
-`t@ : type ref`, and the borrow-type fixed points `type ref@ = type ref` /
-`type share@ = type share` — do not return.
+ordinary resolver.
 
 Related canonical contracts:
 

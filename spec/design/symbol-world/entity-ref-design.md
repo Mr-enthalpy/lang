@@ -15,18 +15,15 @@ namespace-resolution, or semantic lookup feature in this window.
 
 > **Semantic direction notice.** Every mention of "alias" below names the frozen
 > *parser* position `let binder === EntityRef` (`Symbol::TripleEqual` +
-> `LetAliasAst`), which stays in the v0.2 frozen surface. The forwarding/entity
-> alias model — symbol/place forwarding, `AliasChain`, and alias-inherited
-> writability — is retired. A later semantic pass may consume this strong RHS
-> solely to create the block-local lexical resolver mapping specified in
+> `LetAliasAst`). A semantic pass consumes this strong RHS solely to create the
+> block-local lexical resolver mapping specified in
 > [`entity-alias-design.md`](entity-alias-design.md). Shared observation of
 > another object is expressed by a borrow view (`ref` / `share`);
 > continuation-relative `@` yields a `LifetimeValue` and is not a
 > borrow view. The canonical owner is
 > [`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md).
-> Operator-name binding is not a surviving semantic exception. Operator values
-> use ordinary copy/shadow/Symbol algebra; the frozen operator-binder branch is
-> parser-preserved history only.
+> Operator values use ordinary copy/shadow/Symbol algebra; the operator-binder
+> branch remains parser-preserved surface material.
 
 This document records the future compile-time entity reference syntax used by
 later parser/design phases (Phase 4.2 design). Phase 4.4 implements a raw
@@ -128,10 +125,9 @@ component capability:
 EntityComponent ::= Name | OperatorName
 ```
 
-This does not implement operator lookup. It does not check that the operator
-exists and receives no future operator-alias identity validation: the semantic
-alias family is retired. Any future operator environment is an ordinary value
-environment, not an `EntityRef` alias pass.
+This does not implement operator lookup or check that the operator exists. An
+operator environment is an ordinary value environment, not an `EntityRef`
+alias pass.
 
 The current `<` operator-binder ambiguity documented in
 `spec/history/v0.1/operator-design.md` concerns `let` binder syntax. It does not by itself
