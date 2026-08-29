@@ -3445,29 +3445,19 @@ impl SemanticWorld {
         self.associated_namespace_patterns.get(&namespace).copied()
     }
 
-    /// Follow the canonical forward path from a semantic value's own
-    /// per-object Val2 place. Each value has an independent place even if
-    /// it shares a Pattern with other values.
+    /// Read one semantic value's owned Val2 snapshot.
+    ///
+    /// Each value has an independent place even if it shares a Pattern with
+    /// other values. Type-level navigation is a separate query and is never a
+    /// fallback for missing owned content.
     pub fn associated_values_for_value(
         &self,
         value: SemanticValueId,
         name: &str,
     ) -> Option<&[SemanticValueId]> {
         let value = self.value(value)?;
-        // First check the value's own per-object place.
-        if let Some(entries) = self
-            .places
-            .get(&value.place)
-            .and_then(|p| p.associated_val2.get(name))
-        {
-            if !entries.is_empty() {
-                return Some(entries.as_slice());
-            }
-        }
-        // Fall back to the pattern's canonical type-level place.
-        let place_id = self.pattern_places.get(&value.pattern)?;
         self.places
-            .get(place_id)?
+            .get(&value.place)?
             .associated_val2
             .get(name)
             .map(Vec::as_slice)
@@ -3918,10 +3908,6 @@ impl SemanticWorld {
             .complete_type
             .and_then(|whole| self.complete_types.get(&whole))
             .map(|complete| &complete.call_space)
-            .or_else(|| {
-                self.type_for_pattern(host.pattern)
-                    .and_then(|lookup| self.direct_type_members.get(&lookup))
-            })
             .and_then(|call_space| call_space.get(name))
             .map(|entries| entries.iter().map(|entry| entry.value).collect::<Vec<_>>())
             .unwrap_or_default();
@@ -3929,7 +3915,6 @@ impl SemanticWorld {
 
         let transported = self
             .associated_values_in_place(host.place, name)
-            .or_else(|| self.associated_values_for_pattern(host.pattern, name))
             .map(<[SemanticValueId]>::to_vec)
             .unwrap_or_default();
         projected.extend(self.member_views_for_values(&transported));
@@ -8189,9 +8174,15 @@ mod tests {
             .admit_direct_type_member(pattern, pattern, "()", TypeMemberFacet::Value, type_member)
             .expect("direct TypeMember call candidate is admitted");
 
-        let host = world
+        let mut host = world
             .host_member_for_pattern(pattern)
             .expect("compiler Pattern host exists");
+        host.complete_type = Some(
+            world
+                .observe_complete_type(lookup, Some(host.place))
+                .expect("call projection consumes an exact complete type")
+                .whole,
+        );
         let projected =
             world.associated_member_views_for_host(&host, "()", crate::Phase::OpenStatic);
         assert_eq!(
