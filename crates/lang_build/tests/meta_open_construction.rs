@@ -5,13 +5,13 @@
 //! OpenMeta --Observe(P)-->      OpenMeta
 //! OpenMeta --Transform(Val2)--> OpenMeta
 //! OpenMeta --Inject-->          OpenMeta
-//! OpenMeta --UseForVal1-->      Frozen
+//! OpenMeta --UseForVal1-->      Closed
 //! ```
 //!
-//! Only `UseForVal1` freezes an open *meta-window* construction, and only
-//! explicit boundary delivery (`t;`) finalizes it.  Ambient ordinary
+//! Only `UseForVal1` closes an active *meta-window* construction. Explicit
+//! boundary delivery (`t;`) removes it. Ambient ordinary
 //! constructions live in a separate ordinary window that additionally
-//! freezes on first semantic use and on residual-runtime fork/end (see
+//! closes on first semantic use and on residual-runtime fork/end (see
 //! the `ordinary_window_*` tests).  The `meta_open_injection`
 //! fixture covers the acceptance shape end to end:
 //!
@@ -32,8 +32,8 @@ use lang_build::{
     derived_cluster_policy, extract_single_call_site, policy_or, CanonicalFullNavigation,
     CanonicalPatternAtom, CanonicalPatternNorm, CanonicalPatternValue, CanonicalTypeObservation,
     CanonicalValueAddr, ClusterConstructionId, ClusterSymbolResult, CompilationWorld,
-    ConstructionAuthority, ConstructionEvaluationContext, ConstructionState, ConstructionWindow,
-    Diagnostic, MetaCallableIdentity, MetaInstanceRoot, MetaInvocationMaterialKey, NamespaceNodeId,
+    ConstructionAuthority, ConstructionEvaluationContext, ConstructionWindow, Diagnostic,
+    MetaCallableIdentity, MetaInstanceRoot, MetaInvocationMaterialKey, NamespaceNodeId,
     OrdinaryInvocationContext, PatternComponentPolicy, Phase, PolicyMode, PolicyPair,
     PolicyResultEntry, PolicyStage, PolicyView, Provenance, ReturnShape, SemanticValueId,
     SemanticValuePayload, SemanticWorld, StageSet, SymbolId, TypeValueId, ValueComponentPolicy,
@@ -129,7 +129,7 @@ fn open_here_test_diagnostic(
 ) -> Diagnostic {
     let message = match failure {
         lang_build::OpenHereFailure::WindowClosed(_) => {
-            "construction is frozen or already delivered at its construction boundary".to_string()
+            "construction window is closed or already delivered".to_string()
         }
         lang_build::OpenHereFailure::UnknownPattern(_)
         | lang_build::OpenHereFailure::NoLiveConstruction(_) => {
@@ -528,15 +528,14 @@ fn pure_p_view(
     }
 }
 
-/// State machine unit coverage: observation never changes the state,
-/// `UseForVal1` freezes (rejecting further contribution and injection),
-/// and boundary delivery from `Frozen` still finalizes.
+/// Window coverage: observation keeps the window live, `UseForVal1` closes it,
+/// and boundary delivery remains available after closure.
 #[test]
-fn use_for_val1_freezes_and_only_boundary_delivery_finalizes() {
+fn use_for_val1_closes_the_window_and_delivery_consumes_it() {
     let mut world = SemanticWorld::new("unit");
     world.bind_package_namespace(NamespaceNodeId(0));
     let policy = static_type_pair();
-    let provenance = Provenance::new("open-meta state machine");
+    let provenance = Provenance::new("meta construction window");
     let (_symbol, _value, pattern) = world
         .register_type_symbol(
             NamespaceNodeId(0),
@@ -572,27 +571,25 @@ fn use_for_val1_freezes_and_only_boundary_delivery_finalizes() {
         "an open construction accepts member contribution"
     );
 
-    // Observe(P): the derived Pattern is visible and the state stays Open.
+    // Observe(P): the derived Pattern is visible and the window stays live.
     assert_eq!(
         world.observe_cluster_pattern(cid),
         Some(pattern),
         "observation exposes the constructed pure-P Pattern"
     );
-    assert_eq!(
-        world.open_cluster(cid).expect("open construction").state,
-        ConstructionState::Open,
-        "OpenMeta --Observe(P)--> OpenMeta"
-    );
+    assert!(world
+        .open_cluster(cid)
+        .expect("open construction")
+        .window_is_live(world.residual_runtime_epoch()));
 
-    // UseForVal1: the only freezing transition.
+    // UseForVal1 closes the meta construction window.
     assert!(world.use_cluster_for_val1(cid).is_some());
-    assert_eq!(
-        world.open_cluster(cid).expect("frozen construction").state,
-        ConstructionState::Frozen,
-        "OpenMeta --UseForVal1--> Frozen"
-    );
+    assert!(!world
+        .open_cluster(cid)
+        .expect("closed construction")
+        .window_is_live(world.residual_runtime_epoch()));
 
-    // Frozen rejects further contribution and Val2 injection. In particular,
+    // A closed window rejects further contribution and Val2 injection. In particular,
     // this is the would-be intersection case: if an RHS value's own
     // P × Val2 is the constructed target type, producing its Val1 has already
     // called UseForVal1, so it cannot subsequently be injected back into the
@@ -601,7 +598,7 @@ fn use_for_val1_freezes_and_only_boundary_delivery_finalizes() {
         world
             .contribute_cluster_member_view(cid, pure_p_view())
             .is_none(),
-        "a frozen construction rejects member contribution"
+        "a closed construction window rejects member contribution"
     );
     let NormExprClosure(closure) = injection_closure();
     let rejected = world.inject_associated_function_member(
@@ -618,23 +615,22 @@ fn use_for_val1_freezes_and_only_boundary_delivery_finalizes() {
         provenance.clone(),
     );
     let Err(diagnostic) = rejected else {
-        panic!("a frozen construction must reject Val2 injection");
+        panic!("a closed construction window must reject Val2 injection");
     };
     assert!(
-        diagnostic.message.contains("frozen"),
-        "the rejection names the freeze rule: {}",
+        diagnostic.message.contains("closed"),
+        "the rejection names the closed window: {}",
         diagnostic.message
     );
 
-    // Boundary delivery from Frozen still succeeds — freezing blocks
-    // transformation, not delivery — and a second delivery is rejected.
+    // Boundary delivery after closure still succeeds and a second delivery is rejected.
     assert!(
         world.finalize_type_cluster(cid).is_some(),
-        "boundary delivery finalizes a frozen construction"
+        "boundary delivery consumes a closed construction"
     );
     assert!(
         world.finalize_type_cluster(cid).is_none(),
-        "a finalized construction cannot be delivered twice"
+        "a delivered construction cannot be delivered twice"
     );
 }
 
@@ -852,11 +848,10 @@ fn open_self_typed_construction(
             },
         )
         .expect("an open construction accepts its pure-P member");
-    assert_eq!(
-        world.open_cluster(cid).expect("open construction").state,
-        ConstructionState::Open,
-        "contribution alone never freezes"
-    );
+    assert!(world
+        .open_cluster(cid)
+        .expect("open construction")
+        .window_is_live(world.residual_runtime_epoch()));
     (cid, type_value, pattern)
 }
 
@@ -864,54 +859,49 @@ fn open_self_typed_construction(
 /// production primitive, not by an evaluator's manual courtesy call:
 ///
 /// ```text
-/// TypeView(v) = τ  ∧  Val1(v) ≠ null   ⟹   State(τ) = Frozen
+/// TypeView(v) = τ  ∧  Val1(v) ≠ null   ⟹   ¬WindowLive(τ)
 /// ```
 ///
 /// This test never calls `use_cluster_for_val1`.  Producing a plain value of
-/// the self type through `install_plain_value` freezes the open construction
+/// the self type through `install_plain_value` closes the construction window
 /// automatically, and later member contribution / Pattern injection are
 /// rejected.  Producing a value of an *unrelated* type leaves the
-/// construction Open.
+/// construction window live.
 #[test]
-fn real_val1_production_freezes_the_open_construction_automatically() {
+fn real_val1_production_closes_the_construction_window() {
     let mut world = SemanticWorld::new("unit");
     world.bind_package_namespace(NamespaceNodeId(0));
     let policy = static_type_pair();
-    let provenance = Provenance::new("automatic freeze on Val1 production");
+    let provenance = Provenance::new("window closure on Val1 production");
 
     let (cid, self_type, self_pattern) =
         open_self_typed_construction(&mut world, 900, &policy, &provenance);
     // An unrelated construction-generated type: its values must never
-    // freeze the construction under test.
+    // close the construction under test.
     let (_other_cid, other_type, _other_pattern) =
         open_self_typed_construction(&mut world, 950, &policy, &provenance);
 
-    // Control: a Val1 of an unrelated type does not freeze this construction.
+    // Control: a Val1 of an unrelated type does not close this window.
     world
         .install_plain_value(other_type, policy.clone(), provenance.clone())
         .expect("unrelated plain value installs");
-    assert_eq!(
-        world.open_cluster(cid).expect("construction").state,
-        ConstructionState::Open,
-        "a foreign-typed Val1 never freezes this construction"
-    );
+    assert!(world
+        .open_cluster(cid)
+        .expect("construction")
+        .window_is_live(world.residual_runtime_epoch()));
 
     // Real value production of the self type — no manual freeze call.
     world
         .install_plain_value(self_type, policy.clone(), provenance.clone())
         .expect("self-typed plain value installs");
     let construction = world.open_cluster(cid).expect("construction");
-    assert_eq!(
-        construction.state,
-        ConstructionState::Frozen,
-        "materializing a self-typed Val1 froze the construction automatically"
-    );
+    assert!(!construction.window_is_live(world.residual_runtime_epoch()));
     assert!(
         construction.use_observation.has_been_used_for_val1,
-        "the freeze is recorded as UseForVal1"
+        "the closing event is recorded as UseForVal1"
     );
 
-    // Frozen: later member contribution is rejected.
+    // Closed: later member contribution is rejected.
     assert!(
         world
             .contribute_cluster_member_view(
@@ -923,10 +913,10 @@ fn real_val1_production_freezes_the_open_construction_automatically() {
                 },
             )
             .is_none(),
-        "a frozen construction rejects member contribution"
+        "a closed construction window rejects member contribution"
     );
 
-    // Frozen: later pure-P injection is rejected with the freeze rule.
+    // Closed: later pure-P injection is rejected.
     let rejected = world.inject_pattern_value_member(
         cid,
         self_pattern,
@@ -937,11 +927,11 @@ fn real_val1_production_freezes_the_open_construction_automatically() {
         provenance.clone(),
     );
     let Err(diagnostic) = rejected else {
-        panic!("a frozen construction must reject Pattern injection");
+        panic!("a closed construction window must reject Pattern injection");
     };
     assert!(
-        diagnostic.message.contains("frozen"),
-        "the rejection names the freeze rule: {}",
+        diagnostic.message.contains("closed"),
+        "the rejection names the closed window: {}",
         diagnostic.message
     );
 }
@@ -1175,7 +1165,7 @@ fn meta_invocation_authority(
 }
 
 /// An ambient ordinary construction lives in an ordinary window:
-/// `Open --FirstUse--> Frozen`.  Compile-only branching is transparent,
+/// `WindowLive --FirstUse--> closed`. Compile-only branching is transparent,
 /// injection works while open, and after the first semantic use the
 /// construction rejects contribution/injection while boundary delivery
 /// stays legal.
@@ -1205,28 +1195,23 @@ fn ordinary_window_closes_on_first_semantic_use() {
 
     // Compile-only branching never closes an ordinary window.
     world.note_compile_only_branch();
-    assert_eq!(
-        world.open_cluster(cid).expect("open").state,
-        ConstructionState::Open,
-        "compile-only branching is transparent"
-    );
+    assert!(world
+        .open_cluster(cid)
+        .expect("open")
+        .window_is_live(world.residual_runtime_epoch()));
 
-    // FirstUse freezes.
+    // FirstUse closes the ordinary window.
     world
         .note_first_semantic_use(cid)
         .expect("first-use event lands on the live construction");
-    let construction = world.open_cluster(cid).expect("frozen construction");
-    assert_eq!(
-        construction.state,
-        ConstructionState::Frozen,
-        "Open --FirstUse--> Frozen in the ordinary window"
-    );
+    let construction = world.open_cluster(cid).expect("closed construction");
+    assert!(!construction.window_is_live(world.residual_runtime_epoch()));
     let ConstructionWindow::Ordinary(window) = construction.window else {
         panic!("window kind never changes");
     };
     assert!(window.first_use_seen, "the closing event is recorded");
 
-    // Frozen: injection and contribution are rejected; delivery stays legal.
+    // Closed: injection and contribution are rejected; delivery stays legal.
     let rejected = world.inject_associated_type_member(
         cid,
         target_pattern,
@@ -1236,11 +1221,11 @@ fn ordinary_window_closes_on_first_semantic_use() {
         provenance.clone(),
     );
     let Err(diagnostic) = rejected else {
-        panic!("a first-use-frozen ordinary construction must reject injection");
+        panic!("a first-use-closed ordinary construction must reject injection");
     };
     assert!(
-        diagnostic.message.contains("frozen"),
-        "the rejection names the freeze rule: {}",
+        diagnostic.message.contains("closed"),
+        "the rejection names the closed window: {}",
         diagnostic.message
     );
     assert!(
@@ -1254,7 +1239,7 @@ fn ordinary_window_closes_on_first_semantic_use() {
                 },
             )
             .is_none(),
-        "a frozen ordinary construction rejects member contribution"
+        "a closed ordinary construction rejects member contribution"
     );
     assert!(
         world.finalize_type_cluster(cid).is_some(),
@@ -1274,19 +1259,15 @@ fn ordinary_window_closes_on_residual_runtime_fork_or_end() {
     let epoch_before = world.residual_runtime_epoch();
     world.note_compile_only_branch();
     assert_eq!(world.residual_runtime_epoch(), epoch_before);
-    assert_eq!(
-        world.open_cluster(cid).expect("open").state,
-        ConstructionState::Open
-    );
+    assert!(world
+        .open_cluster(cid)
+        .expect("open")
+        .window_is_live(world.residual_runtime_epoch()));
 
     // A residual-runtime fork/end closes every earlier ordinary window.
     world.note_residual_runtime_fork_or_end();
-    let construction = world.open_cluster(cid).expect("frozen construction");
-    assert_eq!(
-        construction.state,
-        ConstructionState::Frozen,
-        "an ordinary window never survives a residual-runtime fork/end"
-    );
+    let construction = world.open_cluster(cid).expect("closed construction");
+    assert!(!construction.window_is_live(world.residual_runtime_epoch()));
     let ConstructionWindow::Ordinary(window) = construction.window else {
         panic!("window kind never changes");
     };
@@ -1307,8 +1288,8 @@ fn ordinary_window_closes_on_residual_runtime_fork_or_end() {
         panic!("injection across a residual-runtime fork must fail");
     };
     assert!(
-        diagnostic.message.contains("frozen"),
-        "the rejection names the freeze rule: {}",
+        diagnostic.message.contains("closed"),
+        "the rejection names the closed window: {}",
         diagnostic.message
     );
 
@@ -1324,7 +1305,7 @@ fn ordinary_window_closes_on_residual_runtime_fork_or_end() {
         provenance.clone(),
     );
     let fresh = world.open_cluster(cid2).expect("fresh construction");
-    assert_eq!(fresh.state, ConstructionState::Open);
+    assert!(fresh.window_is_live(world.residual_runtime_epoch()));
     let ConstructionWindow::Ordinary(window) = fresh.window else {
         panic!("an AmbientScope construction lives in an ordinary window");
     };
@@ -1336,10 +1317,10 @@ fn ordinary_window_closes_on_residual_runtime_fork_or_end() {
 
     // The next fork closes it too.
     world.note_residual_runtime_fork_or_end();
-    assert_eq!(
-        world.open_cluster(cid2).expect("construction").state,
-        ConstructionState::Frozen
-    );
+    assert!(!world
+        .open_cluster(cid2)
+        .expect("construction")
+        .window_is_live(world.residual_runtime_epoch()));
 }
 
 /// A meta construction spans static control flow:
@@ -1362,11 +1343,7 @@ fn meta_window_ignores_ordinary_window_events() {
         .note_first_semantic_use(cid)
         .expect("the event lands on the live construction");
     let construction = world.open_cluster(cid).expect("still open");
-    assert_eq!(
-        construction.state,
-        ConstructionState::Open,
-        "fork/end and first-use never freeze a meta window"
-    );
+    assert!(construction.window_is_live(world.residual_runtime_epoch()));
     assert!(
         construction
             .use_observation
@@ -1386,15 +1363,14 @@ fn meta_window_ignores_ordinary_window_events() {
         )
         .expect("the meta window stays open for Val2 modification");
 
-    // Only UseForVal1 freezes the meta window.
+    // Only UseForVal1 closes the meta window.
     world
         .use_cluster_for_val1(cid)
         .expect("UseForVal1 lands on the live construction");
-    assert_eq!(
-        world.open_cluster(cid).expect("frozen").state,
-        ConstructionState::Frozen,
-        "UseForVal1 is the meta-window freeze"
-    );
+    assert!(!world
+        .open_cluster(cid)
+        .expect("closed")
+        .window_is_live(world.residual_runtime_epoch()));
 }
 
 /// `let inner::t = some_val`: the target Pattern's
@@ -1412,15 +1388,14 @@ fn associated_value_injection_keeps_target_pattern_norm_unchanged() {
         .expect("registered target pattern has a canonical norm");
 
     // Evaluate the RHS: a plain value of the unrelated type `m`.  This is
-    // a foreign-typed Val1 and never freezes the construction under test.
+    // a foreign-typed Val1 and never closes the construction under test.
     let value = world
         .install_plain_value(TypeValueId(1), policy.clone(), provenance.clone())
         .expect("RHS value installs");
-    assert_eq!(
-        world.open_cluster(cid).expect("construction").state,
-        ConstructionState::Open,
-        "a foreign-typed Val1 never freezes this construction"
-    );
+    assert!(world
+        .open_cluster(cid)
+        .expect("construction")
+        .window_is_live(world.residual_runtime_epoch()));
 
     world
         .inject_associated_existing_value_member(
@@ -1449,11 +1424,10 @@ fn associated_value_injection_keeps_target_pattern_norm_unchanged() {
         "the sibling val appears under the target's Val2"
     );
     // The construction is still open: injection is Transform, not UseForVal1.
-    assert_eq!(
-        world.open_cluster(cid).expect("construction").state,
-        ConstructionState::Open,
-        "associated injection keeps the meta window open"
-    );
+    assert!(world
+        .open_cluster(cid)
+        .expect("construction")
+        .window_is_live(world.residual_runtime_epoch()));
 }
 
 /// `let f::t = pure_type`: Val2 is not a name → raw value list map, it stays

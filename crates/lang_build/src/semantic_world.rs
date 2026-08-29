@@ -1018,8 +1018,7 @@ pub enum ConstructionAuthority {
 ///
 /// The vector is ordered nearest-first and contains only authority-bearing
 /// frames; transparent compile/intrinsic frames have already been erased by
-/// the evaluator.  Keeping this coordinate outside `ConstructionState` is
-/// essential: a live window does not by itself prove that the current
+/// the evaluator. A live window does not by itself prove that the current
 /// continuation owns the value's construction anchor.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ConstructionEvaluationContext {
@@ -1144,22 +1143,6 @@ pub enum AmbientTypeBinder {
     CallableParameter(String),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConstructionState {
-    Open,
-    /// The construction window closed before boundary delivery.  A frozen
-    /// construction rejects further member contribution and Val2
-    /// injection, while boundary delivery (`finalize_type_cluster`) stays
-    /// legal.  How a window closes depends on [`ConstructionWindow`]:
-    /// a meta window freezes only on `UseForVal1`; an ordinary window
-    /// freezes on first semantic use and on any residual-runtime
-    /// fork/end boundary.
-    Frozen,
-    /// Boundary delivery happened: the construction left its formal
-    /// construction boundary and was handed to the outer layer.
-    Finalized,
-}
-
 /// Monotone coordinate of the residual runtime serial flow.
 ///
 /// After `compile` stripping, the residual runtime flow is a serial
@@ -1171,28 +1154,26 @@ pub struct ResidualRuntimeEpoch(pub u64);
 
 /// Open-window discipline of one cluster construction.
 ///
-/// The freeze rules are NOT one uniform state machine.  The conservative
-/// `Open --UseForVal1--> Frozen` family is the *meta construction
-/// window* only; an ambient ordinary construction lives in an *ordinary
-/// window* with its own closing coordinates:
+/// A meta construction window and an ambient ordinary construction window
+/// have distinct closing coordinates:
 ///
 /// ```text
 /// MetaInvocation window:
 ///     Observe(P) / Transform(Val2)      keep open
-///     UseForVal1                        freeze
+///     UseForVal1                        close
 ///     static/compile-only branching     transparent
 ///
 /// Ambient ordinary window:
-///     FirstUse                          freeze
-///     residual runtime fork / end       freeze
-///     compile-only branching            transparent (never freezes)
+///     FirstUse                          close
+///     residual runtime fork / end       close
+///     compile-only branching            transparent
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConstructionWindow {
     /// Meta construction window: a meta-invocation or build-root
     /// construction transaction.  Observation and Val2 transformation
-    /// keep it open across static control flow; only producing a Val1
-    /// of the constructed type freezes it.
+    /// keep it open across static control flow; producing a Val1 of the
+    /// constructed type closes it.
     Meta,
     /// Ambient ordinary construction window (`AmbientScope` authority).
     Ordinary(OrdinaryOpenWindow),
@@ -1216,9 +1197,8 @@ pub struct OrdinaryOpenWindow {
 
 /// Tracking of how a cluster construction has been used or observed.
 ///
-/// In an ordinary window, the first semantic use freezes the
-/// construction.  In a meta window, `ObserveOrTransform(P,Val2)` never
-/// freezes; only `UseForVal1` does.
+/// In an ordinary window, the first semantic use closes the window. In a meta
+/// window, `ObserveOrTransform(P,Val2)` keeps it live; `UseForVal1` closes it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct UseObservationKind {
     pub has_been_used_for_val1: bool,
@@ -1238,15 +1218,25 @@ pub struct OpenClusterConstruction {
     /// projections of this list; no parallel field can diverge from it,
     /// and no per-member Policy coordinate is unioned across members.
     pub member_views: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
-    pub state: ConstructionState,
-    /// The open-window discipline governing when this construction
-    /// freezes; derived from `authority` at `begin_cluster_construction`.
+    /// The active-window discipline derived from `authority` at
+    /// `begin_cluster_construction`.
     pub window: ConstructionWindow,
     pub use_observation: UseObservationKind,
     pub provenance: Provenance,
 }
 
 impl OpenClusterConstruction {
+    pub fn window_is_live(&self, current_epoch: ResidualRuntimeEpoch) -> bool {
+        match self.window {
+            ConstructionWindow::Meta => !self.use_observation.has_been_used_for_val1,
+            ConstructionWindow::Ordinary(window) => {
+                !window.first_use_seen
+                    && !window.closed_by_fork_or_end
+                    && window.creation_flow_segment == current_epoch
+            }
+        }
+    }
+
     /// Derived pure-P projection over the canonical member views.
     pub fn pure_p(&self) -> Option<PatternValueId> {
         derived_pure_p(&self.member_views)
@@ -3113,13 +3103,7 @@ impl SemanticWorld {
                     .open_clusters
                     .get_mut(&cluster)
                     .expect("an open Pattern owner must name a live construction");
-                assert_ne!(
-                    construction.state,
-                    ConstructionState::Finalized,
-                    "a finalized construction cannot materialize a new Val1"
-                );
                 construction.use_observation.has_been_used_for_val1 = true;
-                construction.state = ConstructionState::Frozen;
             }
         }
         if let Ok(complete) = self.observe_complete_type(object.type_value, Some(object.place)) {
@@ -5679,8 +5663,9 @@ impl SemanticWorld {
         cluster: ClusterConstructionId,
         view: PolicyResultEntry<SemanticValueId, PatternValueId>,
     ) -> Option<()> {
+        let current_epoch = self.residual_runtime_epoch;
         let construction = self.open_clusters.get_mut(&cluster)?;
-        if construction.state != ConstructionState::Open {
+        if !construction.window_is_live(current_epoch) {
             return None;
         }
         if view.value.is_none() {
@@ -5808,7 +5793,6 @@ impl SemanticWorld {
                 owner,
                 authority,
                 member_views: Vec::new(),
-                state: ConstructionState::Open,
                 window,
                 use_observation: UseObservationKind::default(),
                 provenance,
@@ -5817,10 +5801,8 @@ impl SemanticWorld {
         id
     }
 
-    /// Evaluate the contextual construction-authority judgment for a
-    /// Pattern value.  `ConstructionState::Open` contributes only the
-    /// `WindowLive` half; authority is resolved independently from the
-    /// current evaluation frames.
+    /// Evaluate the contextual construction-authority judgment for a Pattern
+    /// value. Window liveness and authority matching are independent facts.
     pub fn open_here(
         &self,
         target_pattern: PatternValueId,
@@ -5865,17 +5847,7 @@ impl SemanticWorld {
     }
 
     fn construction_window_is_live(&self, construction: &OpenClusterConstruction) -> bool {
-        if construction.state != ConstructionState::Open {
-            return false;
-        }
-        match construction.window {
-            ConstructionWindow::Meta => true,
-            ConstructionWindow::Ordinary(window) => {
-                !window.first_use_seen
-                    && !window.closed_by_fork_or_end
-                    && window.creation_flow_segment == self.residual_runtime_epoch
-            }
-        }
+        construction.window_is_live(self.residual_runtime_epoch)
     }
 
     fn revalidate_open_here(&self, proof: &OpenHereProof) -> Result<(), OpenHereFailure> {
@@ -5921,17 +5893,12 @@ impl SemanticWorld {
     ///
     /// This is the explicit result delivery / construction-boundary
     /// transition: observation, transformation, and injection never call
-    /// it.  Both `Open` and `Frozen` (post-`UseForVal1`) constructions can
-    /// be delivered; only an already-finalized construction returns `None`.
+    /// it. Both live and closed windows can be delivered; delivery removes the
+    /// construction, so a second delivery returns `None`.
     pub fn finalize_type_cluster(
         &mut self,
         cluster: ClusterConstructionId,
     ) -> Option<ClusterConstructionMaterial> {
-        let construction = self.open_clusters.get_mut(&cluster)?;
-        if construction.state == ConstructionState::Finalized {
-            return None;
-        }
-        construction.state = ConstructionState::Finalized;
         self.finalize_cluster_construction(cluster)
     }
 
@@ -5953,11 +5920,10 @@ impl SemanticWorld {
         derived_pure_p(&construction.member_views)
     }
 
-    /// Use the constructed type to generate a Val1: `OpenMeta
-    /// --UseForVal1--> Frozen`.
+    /// Use the constructed type to generate a Val1 and close its meta window.
     ///
-    /// In the meta window this is the only transition that freezes an
-    /// open construction (ordinary windows additionally freeze on first
+    /// In the meta window this is the only event that closes an active
+    /// construction (ordinary windows additionally close on first
     /// semantic use and residual-runtime fork/end; see
     /// [`ConstructionWindow`]).  After it, member contribution and Val2
     /// injection are rejected; boundary delivery
@@ -5966,16 +5932,12 @@ impl SemanticWorld {
     /// This also makes Pattern injection and ordinary value injection
     /// disjoint. If an injected `Val1 × P × Val2` has this constructed type
     /// as its own `P × Val2`, producing that Val1 necessarily performs
-    /// `UseForVal1` first. The type is therefore Frozen before injection can
+    /// `UseForVal1` first. The window is therefore closed before injection can
     /// be attempted; it cannot simultaneously receive the value as a new
     /// Pattern contribution.
     pub fn use_cluster_for_val1(&mut self, cluster: ClusterConstructionId) -> Option<()> {
         let construction = self.open_clusters.get_mut(&cluster)?;
-        if construction.state == ConstructionState::Finalized {
-            return None;
-        }
         construction.use_observation.has_been_used_for_val1 = true;
-        construction.state = ConstructionState::Frozen;
         Some(())
     }
 
@@ -5986,7 +5948,7 @@ impl SemanticWorld {
 
     /// The residual runtime serial flow forked or a serial segment ended.
     ///
-    /// Advances the flow-segment coordinate and freezes every still-open
+    /// Advances the flow-segment coordinate and closes every active
     /// ordinary-window construction created in an earlier segment: an
     /// ambient ordinary construction never survives past the end or fork
     /// of the residual runtime flow it was created in.  Meta windows are
@@ -6005,13 +5967,9 @@ impl SemanticWorld {
         );
         let boundary = self.residual_runtime_epoch;
         for construction in self.open_clusters.values_mut() {
-            if construction.state != ConstructionState::Open {
-                continue;
-            }
             if let ConstructionWindow::Ordinary(window) = &mut construction.window {
                 if window.creation_flow_segment < boundary {
                     window.closed_by_fork_or_end = true;
-                    construction.state = ConstructionState::Frozen;
                 }
             }
         }
@@ -6027,20 +5985,16 @@ impl SemanticWorld {
     /// First semantic use of the constructed type outside its own
     /// construction stream.
     ///
-    /// Ordinary window: `Open --FirstUse--> Frozen`.  Meta window: a use
+    /// Ordinary window: first use closes the window. Meta window: a use
     /// that does not produce a Val1 is an observation and keeps the
     /// window open (`use_cluster_for_val1` is the meta freeze).  Returns
     /// `None` when the construction does not exist or was already
     /// delivered.
     pub fn note_first_semantic_use(&mut self, cluster: ClusterConstructionId) -> Option<()> {
         let construction = self.open_clusters.get_mut(&cluster)?;
-        if construction.state == ConstructionState::Finalized {
-            return None;
-        }
         match &mut construction.window {
             ConstructionWindow::Ordinary(window) => {
                 window.first_use_seen = true;
-                construction.state = ConstructionState::Frozen;
             }
             ConstructionWindow::Meta => {
                 construction
@@ -6483,7 +6437,7 @@ impl SemanticWorld {
     /// operation rejects it; only a value of another type can remain an
     /// ordinary associated-Val2 injection while the target stays Open.
     /// Ordinary value injection transforms Val2
-    /// without freezing: the construction stays open until boundary
+    /// without closing its window: the construction stays open until boundary
     /// delivery.
     ///
     /// The injected value's identity is the declaration event, never the
