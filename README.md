@@ -359,8 +359,8 @@ Read these only when working on future design topics.
 1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` — Canonical Object roles, Symbol `<Q?,V>`, compile/meta, pattern scope, struct/extend/inject, and install boundary.
 2. `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md` — Canonical namespace origin, physical authority, and source/meta construction ownership.
 3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` — Canonical layered policy, contextual P1 binding projection, P2 result normalization, mechanical call projection, derived compile-companion objects, match staging, and coarse inferred require.
-4. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.
-5. `spec/design/symbol-world/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+4. `spec/design/symbol-world/entity-ref-design.md` — EntityRef syntax and strong-context boundary.
+5. `spec/design/symbol-world/entity-alias-design.md` — Block-local lexical alias contract; resolver consumer pending.
 6. `spec/planning/roadmap.md` — Understand scope boundaries.
 7. `spec/planning/open-questions.md` — Recognize known gaps.
 

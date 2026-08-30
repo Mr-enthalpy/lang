@@ -135,8 +135,8 @@ selected static source
   -> Project_out(runtime demand)
 ```
 
-The migration adapter selects views around an ordinary call; it does not
-rewrite the callable's complete P2 into a migration edge.
+Policy migration selects views around an ordinary call; it does not rewrite
+the callable's complete P2 into a migration edge.
 
 Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
 match, or search an arbitrary operation graph. `ref` and `share` remain
@@ -454,9 +454,9 @@ target Object ontology.
 This does not inject callable-local declarations into the named receiver
 type's namespace. Nested owner paths use source navigation order:
 current/innermost `Self` first and outermost `Self` last. This spelling is not
-identity and does not assert that each receiver type is anonymous. The former
-synthetic `__inner_space` / `__inner_namespace` component is removed from
-canonical ownership.
+identity and does not assert that each receiver type is anonymous. Canonical
+ownership contains no synthetic `__inner_space` or `__inner_namespace`
+component.
 
 A local `struct` evaluated by an ordinary or `compile` callable uses the
 current callable owner as its ambient Pattern owner. A `compile` invocation
@@ -752,8 +752,6 @@ explicit materialization consumer. Likewise, a declaration initializer is a
 materialization consumer when it binds that carrier. Normalization itself
 creates only a closure carrier; an arbitrary surrounding expression does not
 eagerly turn the carrier into a value or allocate its environment.
-
-The current implementation uses a documented shortcut (v0.8): the resolved target `SymbolObject` is treated as the callable entry directly, via `ResolvedCallTarget { temporary_direct_callable_shortcut: true }`. This shortcut will be replaced when function-object types and associated call-entry insertion are implemented.
 
 ## 10. Invariants
 

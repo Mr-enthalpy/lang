@@ -446,8 +446,7 @@ Leading, doubled, or trailing commas create explicit unit product elements.
 These unit elements are not omitted, not wildcards, and not implicit discards.
 
 The parser does not decide whether a product is constructible, destructible,
-layout-compatible, type-compatible, or callable. ArgPack and ArgPackRole are
-removed historical terms and are not language-level concepts.
+layout-compatible, type-compatible, or callable.
 
 _See also: ProductExtract, Segment, PipeExpr._
 
@@ -891,11 +890,8 @@ a stage; it does not name one.
 
 This boundary is *not* a claim that `@` lacks semantics. `@` reifies a
 continuation-relative `LifeName` as a `LifetimeValue`, never a borrow view and
-never a `type ref`; its former two instance groups
-(`LifetimeFact` for value instances and `P ref` for borrowable pure pattern
-slots), `t@ : type ref`, and the borrow-type fixed points `type ref@ = type
-ref` / `type share@ = type share` are retired. `ref` and `share` are the borrow
-constructors (`PrivilegedActualPlace(ref-family)` /
+never a `type ref`. `ref` and `share` are the borrow constructors
+(`PrivilegedActualPlace(ref-family)` /
 `PrivilegedActualPlace(share-family)`); `@` does not share that place-acquisition
 privilege. Explicit higher-level selection uses
 `t |> (type ref)` / `t |> (type share)`. Borrow-constructor composition
@@ -1056,8 +1052,8 @@ The four ordinary ordered-container cases used by the value model:
 | homogeneous | `T * N` | `T * omega` |
 | heterogeneous | bare Product | `product` |
 
-`T * N` and `T * omega` are finite homogeneous ordered Object containers; the
-former includes `N` in classifier identity and converts to the latter. Their
+`T * N` and `T * omega` are finite homogeneous ordered Object containers.
+`T * N` includes `N` in classifier identity and converts to `T * omega`. Their
 mechanical `[]` value/ref/share members are bounds-domain partial projections
 over ordinal `ProjectionSlot`s. Ordinal topology is fixed:
 `CanCreateMember(sequence,pos_i)=false`. Stage is the ordinary dependency meet
@@ -1352,12 +1348,9 @@ argument, while an ordinary user function cannot. `@` does not use that
 privilege. A freshly computed temporary may receive a generated `LifeName`, so
 absence of a carrier place is not an `@` failure.
 
-`@` is **not** a general `PlaceOf(E)` defined on every expression. The former
-two instance groups (`Val1?(x) ≠ null -> LifetimeFact`,
-`Val1?(x) = null -> P ref`), the carrier-slot form `t@ : type ref`, and the
-borrow-type fixed points (`type ref@ = type ref`, `type share@ = type share`)
-are retired and do not return. Reaching the type-level place of a type-valued
-binding explicitly uses `t |> (type ref)` or `(S ref).type`, not `@`.
+`@` is **not** a general `PlaceOf(E)` defined on every expression. Reaching the
+type-level place of a type-valued binding explicitly uses
+`t |> (type ref)` or `(S ref).type`, not `@`.
 
 `@` never projects a `Symbol` constructor value to its type member. Symbol supplies the ordinary
 same-name family `S.type : type`, `(S ref).type : type ref`, and
@@ -1535,10 +1528,11 @@ the expression `t ref` is the type-forming overload and yields the TypeValue
 `uint8 ref`, not a borrow instance over the slot.
 `OwnedClosure(x)` excludes every `ref` / `share` edge.
 
-Borrow views replace the retired alias-forwarding model. Canonical owner:
+Borrow views provide target-preserving shared observation through the explicit
+`ref` and `share` operations. Canonical owner:
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
-_See also: `@`, Escape check, Alias binding (retired semantics), `type ref`._
+_See also: `@`, Escape check, Local lexical alias, `type ref`._
 
 ---
 
@@ -1696,9 +1690,8 @@ Borrow type constructors are universe fixed points:
 `rank(type ref/share) = rank(type)`, `type ref ref = type ref`,
 `type share share = type share`,
 `type ref rebind rebind = type ref rebind`, and
-`type share rebind rebind = type share rebind`. The former `@` fixed points
-(`type ref@ = type ref`, `type share@ = type share`) are retired; `@` yields a
-lifetime value uniformly and is not a borrow constructor.
+`type share rebind rebind = type share rebind`. `@` yields a lifetime value
+uniformly and is not a borrow constructor.
 
 _See also: `@`, `extend`, `inject`, Borrow view, Escape check, Open authority._
 
@@ -1777,7 +1770,7 @@ is not a runtime expression, not a `PipeExpr`, not a product form, not a
 closure, and not resolved by the parser. EntityRef parsing is not a general
 expression parser mode.
 
-Provisional grammar:
+Grammar:
 
 ```text
 EntityRef ::= EntityComponent ("::" EntityOuterComponent)*
@@ -1792,9 +1785,9 @@ _See also: NavPath, NavComponent._
 
 ## Compile-time entity reference
 
-The conceptual role of `EntityRef`: a source-level reference to a compile-time
-entity that may later be resolved by semantic/name-resolution phases. It does
-not denote a runtime value and is not checked for existence by the parser.
+The semantic role of `EntityRef`: a source-level reference resolved once to a
+terminal `Symbol` in a strong compile-time context. It does not denote a
+runtime value and is not checked for existence by the parser.
 
 _See also: EntityRef, NavPath._
 
@@ -1802,7 +1795,7 @@ _See also: EntityRef, NavPath._
 
 ## EntityRef navigation
 
-The navigation syntax inside a future `EntityRef`:
+The navigation syntax inside an `EntityRef`:
 
 ```text
 EntityComponent ::= Name | OperatorName
@@ -1823,59 +1816,35 @@ _See also: NavPath, OperatorName, EntityRef._
 
 ## Alias binding
 
-The frozen *parser* declaration form `let binder === EntityRef`. Phase 4.4
-implements raw parser preservation: the parser produces `LetAliasAst` with
-`AliasBinderAst` and `EntityRefAst`. Alias binding is not runtime value binding,
-not an expression, not equality, not operator syntax, and not package import
-syntax. No target resolution, operator identity validation, or entity lookup is
-performed.
+The block-local lexical form `let binder === EntityRef`. The parser produces
+`LetAliasAst` with `AliasBinderAst` and `EntityRefAst`; the semantic resolver
+resolves the complete RHS once and maps the local spelling to that same
+terminal `Symbol` for the remainder of the block.
 
-> **Semantic direction: retired.** The semantic reading of this form — a
-> compile-time lookup alias that forwards symbol identity, place, or writability
-> to a target — is retired, not deferred. There is no declaration form that
-> forwards a `Symbol` constructor value or a place. `let a = b` creates a fresh binding in a fresh
-> place carrying `b`'s value (`SymbolId(a) ≠ SymbolId(b)`,
-> `PlaceId(a) ≠ PlaceId(b)`, `Value(a) = Value(b)`). Shared observation of another
-> object is expressed only by a borrow view (`ref` / `share`); to reify its
-> continuation-relative lifetime name, apply `@` (yields `LifetimeValue`). No
-> operator-name exception survives: operator environments are ordinary values
-> under the global `operator` type, with lexical copy/shadow and Symbol algebra.
-> See
-> `spec/design/symbol-world/entity-alias-design.md` (retirement notice) and
-> `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
+Alias binding is not runtime value binding, an expression, equality, operator
+syntax, or package import syntax. It creates no `Symbol`, Object, Place,
+runtime identity, `V_S`, or `V_tau` member. Its semantic resolver consumer is
+not connected yet; until it is connected the build evaluator reports the form
+as unsupported and installs nothing.
 
-> **Distinction**: Alias binding is implemented as raw parser preservation
-> only. It is not an ordinary `let name: annotation = expr`. It has no `=`
-> value expression, no declaration annotation, no `guard`, and no `with`.
-> EntityRef parsing is implemented only inside alias-let RHS.
-
-_See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef,
+_See also: Local lexical alias, AliasBinder, Operator alias, EntityRef,
 Borrow view._
 
 ---
 
-## Lexical alias
+## Local lexical alias
 
-**Retired semantic term.** It named a compile-time lookup name introduced by
-alias binding into a lexical scope, shadowing previous bindings of the same name
-without mutating the original entity. That forwarding-based scope/target model is
-retired: no declaration form forwards lookup. Ordinary shadowing by a fresh `let`
-binding covers the shadowing behavior; observing another object is a borrow view.
-The `LetAliasAst` shape it described remains a frozen parser fact.
+A block-scoped lexical environment entry created by `let n === q` after the
+complete entity reference `q` resolves to a terminal `Symbol` `S`:
 
-_See also: Alias binding, Entity alias, Borrow view._
+```text
+Resolve_Gamma(n) = Resolve_Gamma(q) = S
+```
 
----
+It creates no independently addressable semantic entity and does not
+participate in ordinary binding freshness.
 
-## Entity alias
-
-**Retired semantic term.** It named a lexical alias whose target is a
-compile-time entity reference (`EntityRef`), binding a name or operator to a
-compile-time entity path. Target resolution for this reading is retired, not
-future work. `EntityRefAst` preservation in alias-let RHS remains a frozen parser
-fact.
-
-_See also: Alias binding, Lexical alias, EntityRef._
+_See also: Alias binding, EntityRef, Borrow view._
 
 ---
 
@@ -2284,8 +2253,7 @@ lifetime name, apply `@` (yields `LifetimeValue`).
 At the semantic layer this is also the only missing-member creation operation.
 Navigation may yield a prospective ProjectionSlot containing `None`; `let` may
 instantiate it. Bare `=` writes only an already existing place, and a return
-event performs only control transfer. A return-name `let`/overwrite cluster in
-the current evaluator is a transitional compatibility encoding, not this rule.
+event performs only control transfer.
 
 _See also: Declaration, BindingSlot, BindingAnnotation._
 
@@ -2395,9 +2363,9 @@ neutral/default point and is not `const || mut`. This restriction leaves
 pair/view choices such as `compile || runtime` unchanged. In result-demand
 context, absence of a written ModeAtom independently defaults to `plain` and
 does not erase that residual pair/view choice.
-Whether a colon spelling with an empty residual side is
-rejected or contextually completed is still a surface question; the current
-rejection examples are provisional rather than a consequence of orthogonality.
+Whether a colon spelling with an empty residual side is rejected or
+contextually completed remains Open; current parser rejection does not follow
+from PolicyMode orthogonality.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
 
@@ -2420,11 +2388,8 @@ At namespace direct top level, `export` derives an external view without
 cropping the complete internal `Pv:Pp` or rewriting `PolicyMode`.
 That stable view depends on export retention and public path reachability, not a
 future consumer's capability or Policy demand. A pure `absent:Pp` slot still
-has a whole-slot mode; absence removes
-value stages and `SemanticValueId`, not the mode coordinate. The former
-universal `Project_const` export rule is retired semantic vocabulary; any
-remaining const-projected adapter is an explicitly bounded implementation
-subset.
+has a whole-slot mode; absence removes value stages and `SemanticValueId`, not
+the mode coordinate.
 
 _See also: PolicyBinding,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
@@ -2588,7 +2553,7 @@ OverloadResolutionPipeline._
 
 ## PolicyLet
 
-The expression-level term former:
+The expression-level term form:
 
 ```text
 PolicySpec let PipeExpression
@@ -2960,8 +2925,7 @@ closure `tau = bind alpha.<Q,V_τ[alpha]>`. For an already complete type value
 `tau`, it is the identity. Bare `Q` is the type-capable core, not the complete type.
 It never searches a namespace-role Object for a hidden type member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
-reaching the type-level place of a pure type slot uses `t |> (type ref)` (not the
-retired `t@`).
+reaching the type-level place of a pure type slot uses `t |> (type ref)`.
 
 `TypeOf(E)` is classifier extraction and may move to the next universe. Its
 explicit source family is `let <typeof> x : typeof = RHS`, not ordinary
@@ -3220,9 +3184,8 @@ NormReturnTargetSyntax ::=
   | Explicit(NormExpr)
 ```
 
-`ImplicitNearest` is a historical marker name preserved by the frozen
-normalized surface; it carries no resolved target. Its confirmed semantic
-interpretation is a return to the outermost enclosing function layer (while a
+`ImplicitNearest` carries no resolved target. Its semantic interpretation is a
+return to the outermost enclosing function layer (while a
 plain tail `expr;` delivers to the directly enclosing layer, and
 `Explicit(T)` selects the layer named by the function-object type `T`). The
 current restricted build pass binds it to an active `ReturnTargetFrame`; full
@@ -3234,12 +3197,10 @@ _See also: ReturnEvent._
 
 ## ImplicitNearest return target
 
-A return target marker whose name is historical: in the parser and normalizer,
-`ImplicitNearest` is an unresolved marker, and the confirmed semantics of the
-source form `E return;` is a return to the outermost enclosing function layer,
-not the nearest one. Implementations must not extend behavior based on the
-older nearest-enclosing reading. A restricted post-normalization binder
-resolves the active frame; result Pattern delivery remains deferred.
+In the parser and normalizer, `ImplicitNearest` is an unresolved marker for the
+source form `E return;`. Its semantic target is the outermost enclosing
+function layer. A restricted post-normalization binder resolves the active
+frame; result Pattern delivery remains deferred.
 
 _See also: ReturnTargetSyntax, Explicit return target._
 
@@ -3250,10 +3211,9 @@ in the AST. In the parser, `Explicit(ExprAst)`; in the
 normalizer, `Explicit(NormExpr)`. Source forms are
 `E |> (T return);` and `E (T return);`.
 
-The explicit target syntax `T` is not resolved by parser or
-normalizer. The restricted build binder supports active name targets through a
-temporary spelling identity; full lexical self-capability resolution is
-deferred.
+The explicit target syntax `T` is not resolved by parser or normalizer. The
+build binder accepts only a stable callable-owner identity supplied by a
+semantic resolver. Without that identity the event remains unbound.
 
 _See also: ReturnTargetSyntax, ImplicitNearest return target._
 

@@ -437,8 +437,8 @@ PolicyAtom
 
 The parser is a strong-context parser. `meta`, `compile`, `seal`, `runtime`,
 `public`, `private`, and `export` remain ordinary names to the lexer. The token
-spelling for `AbsentValuePattern` is provisional; implementation fixtures may
-use `S`, but source spelling is not frozen.
+spelling for `AbsentValuePattern` remains Open. Implementation fixtures use
+`S`; that fixture spelling does not freeze the public surface.
 
 Elaboration assigns atoms to typed coordinates. `const`, `plain`, and `mut`
 are the three atoms of the whole-slot PolicyMode pattern; none is stored inside
@@ -502,13 +502,13 @@ preserved by Raw/Normalized syntax but rejected by typed Policy elaboration.
 
 How a written colon whose factorization leaves an empty residual side is handled
 is a separate surface decision, not a theorem of PolicyMode orthogonality. The
-current provisional surface rule rejects `const:compile`, `runtime:const`,
-and `const:mut`; a later surface amendment may instead
+current parser rule rejects `const:compile`, `runtime:const`, and `const:mut`;
+the Open surface question may instead
 define an unambiguous contextual shorthand while still satisfying the closed
 coordinate rules above. No semantic elaborator may place a mode atom in `Pv` or
 `Pp`, regardless of which surface completion is selected. Independently,
 `const || mut:compile` is invalid because its mode choice violates
-`NoMultiPointPolicyModeChoice`, not because of the provisional empty-side rule. This
+`NoMultiPointPolicyModeChoice`, not because of the current empty-side rule. This
 factorization does not require the frozen Raw/Normalized Policy AST carrier to
 change.
 

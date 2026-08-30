@@ -390,7 +390,7 @@ P == e              // false
 P A== e             // true under named constructor / pattern A, if A reconstructs e
 ```
 
-`A==` is provisional notation for constructor/pattern mediated equality. It is
+`A==` is schematic notation for constructor/pattern mediated equality. It is
 not ordinary value equality and does not imply that equality inserts `?`.
 
 ## 5. Named Pattern View Is Not Bare Product Extraction

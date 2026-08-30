@@ -499,10 +499,7 @@ For each admitted symbol, canonical semantics preserve candidate identity,
 resolved `PolicyPair`, whole-slot `PolicyMode`, declaration/intrinsic
 `CapabilityRealization` facts, and provenance. Consumer Policy demand and
 `DynamicLegality_Γ_consumer` are formed after lookup and ordinary invocation
-selection and do not universally project mode to const. The
-currently connected helper still admits candidates
-through a const-projected 2×2 compatibility carrier. That is an implementation
-subset only, not export semantics.
+selection and do not universally project mode to const.
 
 An absent value component is structurally empty:
 

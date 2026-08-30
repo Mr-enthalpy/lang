@@ -98,7 +98,3 @@ The current implementation must not use this form to create a forwarding
 Symbol, value, Place, member, or writable relation. Shared place observation is
 expressed by the ordinary `ref`, `share`, and `@` relations defined in
 [`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md).
-
-Historical entity-forwarding proposals are recorded in
-[`spec/history/pr103-semantic-migration/entity-alias-history.md`](../../history/pr103-semantic-migration/entity-alias-history.md)
-and are not required to interpret this contract.

@@ -224,10 +224,10 @@ preserved as value material unless that closure is explicitly elaborated as
 its own returnable body. Therefore a return inside an unmaterialized nested
 closure is not bound to the outer frame.
 
-The current `ReturnSelfIdentity` is a placeholder derived from normalized
-binder spelling because full lexical self-slot / function-object identity is
-not wired into this substrate yet. Future explicit self-target resolution
-must use lexical slot identity, not text equality on the spelling `self`.
+`ReturnSelfIdentity` uses the callable's normalized semantic owner. Written
+binder spelling is diagnostic material only and never participates in target
+identity. Explicit self-target resolution must supply that stable owner
+identity; without it the event remains unbound.
 
 `ReturnSlotRef.binding_slot` deliberately retains the complete
 `NormBindingSlot`. `ReturnSlotRef.name` is only a convenience for the current

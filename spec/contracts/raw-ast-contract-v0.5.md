@@ -324,9 +324,8 @@ or closures do not participate. Without either delimiter the form is a
 PolicyLet expression. Pure expression contexts never admit a nested
 declaration through this prefix.
 
-This strong-context amendment also means a former expression ending in
-`P let` (including inferred capture shorthand such as `[x let]`) is a
-PolicyLet with a missing operand and receives `ExpectedPolicyLetOperand`.
+An expression ending in `P let`, including `[x let]`, is a PolicyLet with a
+missing operand and receives `ExpectedPolicyLetOperand`.
 
 ## 5. Dot closure and member forms
 
@@ -496,7 +495,7 @@ later binders are not visible in Ti
 active hole names cannot be redeclared or shadowed
 ```
 
-Raw AST carries lexical structure, surface spelling, and provisional canonical
+Raw AST carries lexical structure, surface spelling, and pre-semantic name
 roles. Normalized alpha conversion, not the parser and not a source span,
 allocates each `HoleBinderId`; every named `HoleRef` then targets one exact
 owner-local ordinal identity. Here the owner is one root normalization and its

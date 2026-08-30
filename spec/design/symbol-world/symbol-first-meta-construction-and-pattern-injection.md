@@ -141,15 +141,15 @@ A `Symbol` constructor value with `<None, None>` has nothing to project; it rema
 name/candidate-bearing node. The Symbol never forms a type from its own
 contents: `tau` is formed before installation and carried as a whole value.
 
-The canonical namespace object of a `Symbol` constructor value is the core of its installed type
-value (the former “distinguished pure member” label):
+The canonical namespace projection of a `Symbol` constructor value is the core
+of its installed type value:
 
 ```text
-DistinguishedPureMember(S) =
+NamespaceCoreProjection(S) =
     Some(Core(tau))   if tau is present
     None              otherwise
 
-NamespaceProjection(S) = DistinguishedPureMember(S)
+NamespaceProjection(S) = NamespaceCoreProjection(S)
 TypeProjection(S)      = tau  iff tau present and TypeValueRole(tau)
                                (undefined otherwise)
 ```
@@ -308,7 +308,7 @@ any future derived construction — and is not an exception to `WellFormedTau`.
 Projections over the Symbol value are:
 
 ```text
-NamespaceProjection(S) = DistinguishedPureMember(S)   (§2.1)
+NamespaceProjection(S) = NamespaceCoreProjection(S)   (§2.1)
 TypeProjection(S)       = tau_S   iff tau_S present and TypeValueRole(tau_S)
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
@@ -1767,7 +1767,7 @@ let fn = (self, t: type): meta -> r: symbol => {
 
 keeps `(t fn)` as the returned result's root and includes the externally owned
 `bool::` value as a member beneath that root. It must not be summarized as
-`DistinguishedPureMember(r) = bool::`.
+`NamespaceCoreProjection(r) = bool::`.
 
 The self-root check is conditional on the installed type core `Core(τ) = Q`, not
 on `TypeRole(Q)`. A namespace-only `Q` — `NamespaceRole(Q)` and
@@ -1786,54 +1786,27 @@ The explicit return-slot spelling `r` denotes the declared return position; it
 does not create a construction-value ontology.
 
 Formal meta return material is a family of distinct construction-effect forms,
-not one spelling-insensitive binding. The *family split* — create / write /
-deliver are three distinct events that never collapse — is fixed. The
-*spellings* below live on two different layers and must not be read as one rule:
+not one spelling-insensitive binding. Create, write, and deliver are distinct
+events that never collapse:
 
 ```text
-Current execution encoding (this stage, while expression-level `=` does
-not exist):
-
-    let r = expr;     -> AddMember — return-slot compatibility encoding:
-                         one fresh member event on the returned result;
-                         ordinary locals may not shadow the explicit
-                         return slot
-    r = expr;         -> PlaceholderOverwrite — placeholder write to an
-                         existing target
-    r;                -> terminal: deliver the construction (not a member
-                         event)
-
-Target orthogonal semantics (future, once `=` is semantic):
-
     let x = expr;     -> creates a fresh Symbol/member according to the
-                         declaration context; a binder spelled r is ordinary
+                         declaration context
     target = expr;    -> Write(existing target, expr)
     return event      -> control transfer only
 ```
 
-- `let r = expr;` contributes a fresh member binding under the current
-  encoding. Repeated `let r = ...` forms do not shadow one binder; each adds
-  one more member event on the same open Symbol. This
-  spelling-directed reading — and the no-shadow restriction that protects
-  it — is the return-slot compatibility encoding removed when
-  expression-level `=` becomes semantic (§4.5.1); it is
-  not a permanent rule that `let` on a return-slot name means member
-  contribution.
-- `r = expr;` writes to an existing target; a write is not append, and a
+- `target = expr;` writes to an existing target; a write is not append, and a
   construction model that only supports appending cannot express
-  `let r = first; r = second; r;`. The current implementation of this
-  effect (internally `PlaceholderOverwrite`) is a placeholder scaffold
-  while expression-level `=` does not exist: it replaces the unique
-  existing member of the written facet, purely to validate
-  existing-target addressing. That unique-member replacement rule is not
-  the final write algebra for a multi-member symbol — how a real `=` adds or
-  replaces the core / val siblings by RHS shape is registered
-  implementation debt in §13.
-- In the current compatibility encoding, `r;` is the TailValue terminal. It
-  delivers the constructed symbol to the directly enclosing layer. It is not a
-  member contribution, and a meta body with member events but no terminal does
-  not implicitly deliver anything. The target return event is only control
-  transfer and does not give the spelling `r` special binding semantics.
+  `let x = first; x = second; return x` by treating both operations as
+  contributions.
+- A return event delivers its value to the selected enclosing layer. It is not
+  a member contribution and does not give the return-slot spelling special
+  binding semantics.
+
+Source wiring for expression-level write and general construction effects is
+pending. An unavailable source operation does not acquire a spelling-directed
+substitute.
 
 The terminal family follows the general control-flow end model: `expr;`
 delivers to the directly enclosing layer, `expr return;` returns to the
@@ -3924,9 +3897,6 @@ ordinary let -> produces the first two only
 struct / extend -> can produce the third and fourth, with privilege
 ```
 
-This distinction supersedes the previous text which described Pattern-value
-injection as a possible outcome of associated-member `let`:
-
 ```text
 Privileged structural registration (struct inline / extend ONLY):
   Core(tau) = Q or other admitted pure Pattern material
@@ -4119,8 +4089,7 @@ AuthorityFrame_Σ(v)
   -- the nearest still-active frame owning Anchor(v),
      resolved per regime (below)
 
-CurrentAuthority_Γ     -- typing-context form of the same judgment, unifying
-                          the former `CurrentConstructionAuthority_Gamma`
+CurrentAuthority_Γ     -- typing-context form of the same judgment
 ```
 
 For a **meta** context, walk the compile-time stack in reverse, skipping

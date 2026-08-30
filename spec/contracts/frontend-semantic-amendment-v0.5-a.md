@@ -218,7 +218,7 @@ while `=> ("reason") delete` remains valid.
 
 ### 4.1 Expression-level Policy context
 
-The amended expression grammar adds one low-precedence term former:
+The amended expression grammar adds one low-precedence term form:
 
 ```text
 Expression          ::= PolicyLetExpression | PipeExpression
@@ -244,9 +244,8 @@ invalid expression material rather than a nested declaration.
 
 `const`, `plain`, `mut`, and `let` remain weak-lexer `Name` tokens. A missing
 operand emits `ExpectedPolicyLetOperand` and preserves an error operand.
-Consequently a former inferred-capture expression ending in the exact strong
-shape `P let`, such as `[x let]`, is now a malformed PolicyLet rather than a
-two-name capture-inference expression.
+Consequently an expression ending in the exact strong shape `P let`, such as
+`[x let]`, is a malformed PolicyLet with a missing operand.
 
 ## 5. Raw AST amendment
 

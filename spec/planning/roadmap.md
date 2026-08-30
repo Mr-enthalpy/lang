@@ -62,22 +62,13 @@ semantic vocabulary:
 - shared SemanticContinuation substrate with LifeName, Region, Pre/Post, and
   an extensible directed Color algebra.
 
-Implementation carriers for storage, graph rendering, and primitive execution
-do not define identity, selection, result class, or legality.
+Storage, graph rendering, and primitive execution are implementation layers;
+identity, selection, result class, and legality remain properties of the
+semantic relations above.
 
-## Current frontier: canonical semantic reset
+## Semantic substrate coverage
 
-This frontier answers “what semantic entities and relations exist?” Its merge
-conditions are:
-
-```text
-CanonicalTreePurity
-and SinglePositiveAuthority
-and PositiveDocumentation
-and PositiveInvariantTests
-```
-
-| Relation | Carrier | Production consumer | Status after this frontier |
+| Relation | Carrier | Production consumer | Status |
 |---|---|---|---|
 | Object Norm | Val1/Pattern/owned-Val2 observation | equality, Core and argument identity | Implemented |
 | complete tau | Core + immutable V_tau + whole observation | type binding and ordinary call projection | Implemented |
@@ -96,7 +87,7 @@ and PositiveInvariantTests
 “Consumer pending” means the canonical relation exists and no substitute
 relation is used; it does not mean the language rule is undecided.
 
-## Next frontier: canonical semantic wiring
+## Source and evaluator connection frontier
 
 The next implementation frontier connects source occurrences to the existing
 relations without changing their meaning:
@@ -113,7 +104,7 @@ relations without changing their meaning:
 
 Each wiring step must preserve unique selection and no reopen.
 
-## Later frontier: serial compile evaluation
+## Serial compile evaluation
 
 After source operations are connected, the evaluator may execute them along a
 single semantic continuation:
@@ -187,9 +178,3 @@ deltas, provenance, typed owner qualification, role-aware name admission,
 default core mounting, and cache validation. Remote retrieval, full version
 solving, lockfiles, package distribution policy, and persistent root encoding
 remain future work.
-
-## Historical implementation records
-
-Completed-stage narratives and the PR103 authority-transfer audit belong under
-`spec/history/`. They are not prerequisites for interpreting the current
-semantic architecture.

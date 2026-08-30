@@ -523,7 +523,7 @@ one extraction retain the containing root. Hole scope is separate from ordinary
 value-binder scope; a value binder with the same spelling does not retarget a
 Pattern-context hole occurrence.
 
-Raw AST preserves lexical scope shape, spelling, and provisional name role.
+Raw AST preserves lexical scope shape, spelling, and pre-semantic name role.
 After structural normalization, an alpha-normalization pass allocates callable
 owners, `PatternRoot` identities, and root-local binder ordinals, then rewrites
 every scoped Pattern/policy occurrence to an exact `HoleBinderId`. Source spans

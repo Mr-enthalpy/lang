@@ -94,8 +94,7 @@ PatternValue identity
                 -- implementation/index key, not semantic equality
 
   Core(tau) = Q -- default observation for ordinary type-rank equality,
-                    keying, and type-argument identity, exactly as under the
-                    former `type = Q` rules (minimal-change rule, §2.2)
+                    keying, and type-argument identity
 
   Addr(Norm_type(tau)) = bind alpha.<Norm(Q), Norm_V^alpha(V_τ)>
                 -- whole-snapshot identity; used to tell shared-root snapshots
@@ -502,8 +501,8 @@ references to one value share an address while two content-equal but distinct
 values stay distinct. This is a safe under-merge, never a claim of a stronger
 equivalence than the implementation actually decides, and never a licence to
 treat `Val1` as excluded from the normal form: the target rule is that `Val1?`
-normalizes recursively like every other component, and the opaque leaf is a
-placeholder for content normalization that is not yet implemented. It does not
+normalizes recursively like every other component. The opaque leaf preserves
+safe under-merge until a content normalizer is available. It does not
 override a defined Pattern-specific quotient such as `P_symbol` above.
 
 Complete type values contain one tightly scoped normal-form binder
@@ -2716,7 +2715,7 @@ pattern compatibility. (The candidate-preparation layer that consumes type
 values is specified in `pattern-normalization-and-first-order-overload.md`;
 this document defines what a type-value identity is.) Under the minimal-change
 rule (§2.2), `Core(τ) = Q` observation is the default for ordinary type
-matching, not a provisional stand-in; whole-snapshot identity
+matching. Whole-snapshot identity
 `Addr(Norm_type(tau))` is used only where the language has independently frozen
 whole-snapshot semantics.
 
