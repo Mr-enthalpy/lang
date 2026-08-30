@@ -747,15 +747,15 @@ pub struct HoleBinderId {
 }
 
 impl HoleBinderId {
-    fn provisional_source() -> Self {
+    fn pre_alpha_source() -> Self {
         Self {
-            repr: HoleBinderIdRepr::ProvisionalSource,
+            repr: HoleBinderIdRepr::PreAlphaSource,
         }
     }
 
-    fn provisional_generated(key: GeneratedHoleKey) -> Self {
+    fn pre_alpha_generated(key: GeneratedHoleKey) -> Self {
         Self {
-            repr: HoleBinderIdRepr::ProvisionalGenerated(key),
+            repr: HoleBinderIdRepr::PreAlphaGenerated(key),
         }
     }
 
@@ -767,8 +767,8 @@ impl HoleBinderId {
 
     fn generated_key(self) -> Option<GeneratedHoleKey> {
         match self.repr {
-            HoleBinderIdRepr::ProvisionalGenerated(key) => Some(key),
-            HoleBinderIdRepr::Alpha { .. } | HoleBinderIdRepr::ProvisionalSource => None,
+            HoleBinderIdRepr::PreAlphaGenerated(key) => Some(key),
+            HoleBinderIdRepr::Alpha { .. } | HoleBinderIdRepr::PreAlphaSource => None,
         }
     }
 
@@ -776,8 +776,8 @@ impl HoleBinderId {
     pub fn local_ordinal(self) -> u32 {
         match self.repr {
             HoleBinderIdRepr::Alpha { local_binder, .. } => local_binder,
-            HoleBinderIdRepr::ProvisionalSource | HoleBinderIdRepr::ProvisionalGenerated(_) => {
-                panic!("provisional hole identity has no local alpha ordinal")
+            HoleBinderIdRepr::PreAlphaSource | HoleBinderIdRepr::PreAlphaGenerated(_) => {
+                panic!("pre-alpha hole identity has no local alpha ordinal")
             }
         }
     }
@@ -785,8 +785,8 @@ impl HoleBinderId {
     pub fn pattern_root(self) -> PatternRootId {
         match self.repr {
             HoleBinderIdRepr::Alpha { root, .. } => root,
-            HoleBinderIdRepr::ProvisionalSource | HoleBinderIdRepr::ProvisionalGenerated(_) => {
-                panic!("provisional hole identity has no PatternRoot")
+            HoleBinderIdRepr::PreAlphaSource | HoleBinderIdRepr::PreAlphaGenerated(_) => {
+                panic!("pre-alpha hole identity has no PatternRoot")
             }
         }
     }
@@ -798,8 +798,8 @@ enum HoleBinderIdRepr {
         root: PatternRootId,
         local_binder: u32,
     },
-    ProvisionalSource,
-    ProvisionalGenerated(GeneratedHoleKey),
+    PreAlphaSource,
+    PreAlphaGenerated(GeneratedHoleKey),
 }
 
 /// Hygienic, generated-syntax-local key used before alpha normalization.
@@ -1279,21 +1279,21 @@ impl HoleAlphaNormalizer {
                 self.normalize_pattern(&mut annotation.pattern, &visible, root, declared);
             }
 
-            let provisional_key = hole.id.generated_key();
+            let pre_alpha_key = hole.id.generated_key();
             let id = self.fresh_id(root);
-            let duplicate_of = provisional_key
+            let duplicate_of = pre_alpha_key
                 .is_none()
                 .then(|| declared.get(&hole.name).copied())
                 .flatten();
             hole.id = id;
             hole.duplicate_of = duplicate_of;
             if duplicate_of.is_none() {
-                if provisional_key.is_none() {
+                if pre_alpha_key.is_none() {
                     declared.insert(hole.name.clone(), id);
                 }
                 visible.push(VisibleHole {
                     id,
-                    key: provisional_key.map_or_else(
+                    key: pre_alpha_key.map_or_else(
                         || VisibleHoleKey::SourceName(hole.name.clone()),
                         VisibleHoleKey::Generated,
                     ),
@@ -1511,7 +1511,7 @@ impl HoleAlphaNormalizer {
                         origin: origin.clone(),
                     };
                 } else if *role == NormCanonicalNameRole::Hole {
-                    // Raw roles are provisional lexical hints only.
+                    // Raw roles are pre-semantic lexical hints only.
                     *role = NormCanonicalNameRole::Unknown;
                 }
             }
@@ -2845,7 +2845,7 @@ fn normalize_deduce_list(
 
     if let Some(deduce) = deduce {
         for binder in &deduce.binders {
-            let id = HoleBinderId::provisional_source();
+            let id = HoleBinderId::pre_alpha_source();
             let annotation = binder
                 .annotation
                 .as_ref()
@@ -2893,10 +2893,10 @@ fn find_visible_generated_hole(
 
 fn find_visible_hole_ref<'a>(
     holes: &'a [VisibleHole],
-    provisional_target: HoleBinderId,
+    pre_alpha_target: HoleBinderId,
     display_name: &str,
 ) -> Option<&'a VisibleHole> {
-    provisional_target.generated_key().map_or_else(
+    pre_alpha_target.generated_key().map_or_else(
         || find_visible_source_hole(holes, display_name),
         |key| find_visible_generated_hole(holes, key),
     )
@@ -3427,7 +3427,7 @@ fn generated_prefix_negative_closure(span: Span) -> NormClosure {
 }
 
 fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -> NormClosure {
-    let type_hole_id = HoleBinderId::provisional_generated(GeneratedHoleKey {
+    let type_hole_id = HoleBinderId::pre_alpha_generated(GeneratedHoleKey {
         rule,
         local_ordinal: 0,
     });

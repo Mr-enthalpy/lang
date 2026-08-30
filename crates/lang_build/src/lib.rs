@@ -5,10 +5,10 @@
 
 pub mod build;
 pub mod canonical_value;
+mod content_observation;
 pub mod control_flow_end;
 pub mod core;
 pub mod discovery;
-mod extraction_view;
 pub mod fingerprint;
 pub mod identity;
 pub mod initializer_eval;
@@ -63,6 +63,12 @@ pub use canonical_value::{
     ExtractionPatternParent, MissingExtractionNavigationAnchor, OpaqueVal1Id, PatternChildInput,
     PatternLayerContext, PatternNavigationInput, PatternOwnNavigation,
 };
+pub use content_observation::{
+    observe_content_projection, ContentObservationInterface, NamedObservedField,
+    NamedObservedProduct, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
+    ObservedContentProjection, ObservedProductContent, ObservedProductElement, ObservedProductKind,
+    TypeContentObservation,
+};
 pub use control_flow_end::{
     compute_control_flow_end_report, ControlFlowEndDiagnostic, ControlFlowEndReport,
     ControlFlowTerminal,
@@ -70,12 +76,6 @@ pub use control_flow_end::{
 pub use discovery::{
     DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,
     SourceRootRequest,
-};
-pub use extraction_view::{
-    observe_content_projection, ContentObservationInterface, NamedObservedField,
-    NamedObservedProduct, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
-    ObservedContentProjection, ObservedProductContent, ObservedProductElement, ObservedProductKind,
-    TypeContentObservation,
 };
 pub use fingerprint::{fnv1a64_hex, Fnv1a64};
 pub use identity::{MetaCallableIdentity, PlaceId, SemanticValueId, TypeValueId};
@@ -115,10 +115,10 @@ pub use meta_candidate::{
     ParameterArgRequirement, ParameterShape, PreparedCallableCandidate,
 };
 pub(crate) use meta_invocation::{
-    ForwardedResultMaterial, MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution,
+    IdentityTypeMaterial, MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution,
     ReturnViewShape,
 };
-pub use meta_invocation::{StructConstructionMaterial, TypeDefinitionInstanceId};
+pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterialId};
 pub use meta_key::{
     compute_candidate_fingerprint, compute_meta_invocation_material_key, CanonicalFingerprint,
     MetaInvocationMaterialKey,

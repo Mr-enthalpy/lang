@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt, path::PathBuf};
 use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
 
 use crate::{
-    extraction_view::TypeContentObservation, identity::TypeValueId,
+    content_observation::TypeContentObservation, identity::TypeValueId,
     struct_pattern_registry::StructPatternMaterialId,
 };
 

@@ -1,14 +1,14 @@
 use lang_syntax::{NormExpr, NormProduct, NormProductElem};
 
 use crate::{
-    extraction_view::{NamedObservedField, NamedObservedProduct, TypeContentObservation},
+    content_observation::{NamedObservedField, NamedObservedProduct, TypeContentObservation},
     meta_candidate::{
         prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
         CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
         ParameterShape,
     },
     meta_invocation::{
-        attach_type_definition_pattern_materials, compute_type_definition_instance_id,
+        attach_struct_pattern_materials, compute_struct_construction_material_id,
         GeneratedFieldDefinition, MetaInvocationInput, StructConstructionMaterial,
     },
     model::{
@@ -264,7 +264,7 @@ fn validate_struct_source_product(product: &NormProduct) -> Result<(), BuildErro
         match element {
             NormProductElem::Expr(NormExpr::Product(nested)) => {
                 diagnostics.push(Diagnostic::hard_error(
-                    "invalid struct syntax: nested product fields are not supported in v0.8",
+                    "invalid struct syntax: nested product fields are not supported by the struct decoder",
                     Some(Provenance::from_norm_origin(
                         "nested struct field product",
                         &nested.origin,
@@ -405,13 +405,13 @@ pub(crate) fn expand_struct_construction_material(
     provenance: Provenance,
     materialization_state: &mut StructMaterializationState,
 ) -> Result<StructProjectionInstall, BuildError> {
-    let expected = compute_type_definition_instance_id(&value.identity_material);
-    if expected != value.type_definition_id {
+    let expected = compute_struct_construction_material_id(&value.identity_material);
+    if expected != value.material_id {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: StructConstructionMaterial has mismatched TypeDefinitionInstanceId (expected {}, got {})",
+                "meta hard error: StructConstructionMaterial has mismatched material identity (expected {}, got {})",
                 expected.as_u64(),
-                value.type_definition_id.as_u64()
+                value.material_id.as_u64()
             ),
             Some(value.provenance.clone()),
         )));
@@ -432,7 +432,7 @@ pub(crate) fn expand_struct_construction_material(
     let value = if value.pattern_materials.is_some() {
         value
     } else {
-        attach_type_definition_pattern_materials(value, materialization_state, provenance.clone())
+        attach_struct_pattern_materials(value, materialization_state, provenance.clone())
             .map_err(BuildError::single)?
     };
     delta.insert_node(NamespaceNode::new(
@@ -457,7 +457,7 @@ pub(crate) fn expand_struct_construction_material(
         PolicyMode::Plain,
     ));
     type_projection.node_kind = Some(NamespaceNodeKind::Virtual);
-    type_projection.generation_origin = Some("core::struct generated type definition".to_string());
+    type_projection.generation_origin = Some("core::struct construction".to_string());
     type_projection.cache_key_fragment = None;
     type_projection.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_symbol_id,
@@ -502,8 +502,8 @@ pub(crate) fn expand_struct_construction_material(
         )),
         provenance: provenance.clone(),
         generation_origin: Some(format!(
-            "core::struct generated type definition {}",
-            value.type_definition_id.as_u64()
+            "core::struct construction material {}",
+            value.material_id.as_u64()
         )),
         layout_slot: None,
         abi_slot: None,

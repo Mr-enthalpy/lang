@@ -38,7 +38,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use lang_syntax::{NormExpr, NormProductElem};
 
 use crate::{
-    extraction_view::{
+    content_observation::{
         ContentObservationInterface, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
     },
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
@@ -84,7 +84,7 @@ impl StructConstructionMaterial {
     /// The generated definition's structural Pattern normal form.
     ///
     /// Construction callable identity, build identity, export metadata,
-    /// provenance, and the FNV-derived `type_definition_id` are deliberately
+    /// provenance, and the FNV-derived construction material id are deliberately
     /// absent.  A naked struct Product remains an ordered layer even when all
     /// fields are named.  Only a fully named Product used as the body of a
     /// named Pattern becomes an unordered map keyed by each field's complete
@@ -252,15 +252,15 @@ fn complete_pattern_navigation(
 /// Replayable execution material produced behind the unified invocation
 /// result boundary.
 ///
-/// `ForwardedResultMaterial` records an `IdentityType` forwarding proof for
-/// later result formation.
+/// `IdentityTypeMaterial` records an `IdentityType` proof for later result
+/// formation.
 /// `StructConstructionMaterial` is the replayable construction material
 /// produced while evaluating `struct`; it is not the semantic result of that
 /// callable.  The world-connected invocation path installs the material and
 /// returns a complete type value.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaExecutionMaterial {
-    ForwardedResultMaterial(ForwardedResultMaterial),
+    IdentityType(IdentityTypeMaterial),
     StructConstructionMaterial(StructConstructionMaterial),
 }
 
@@ -282,9 +282,9 @@ pub enum MetaPrimitiveExecution {
 impl MetaExecutionMaterial {
     pub fn return_normal_form_shape(&self) -> ObservedArgumentContent {
         match self {
-            MetaExecutionMaterial::ForwardedResultMaterial(value) => {
+            MetaExecutionMaterial::IdentityType(value) => {
                 ObservedArgumentContent::ValuePoint(ObservedAtomContent {
-                    value_kind: ObservedAtomKind::Forwarded {
+                    value_kind: ObservedAtomKind::IdentityType {
                         type_value: value.type_value,
                     },
                     extraction_interface: ContentObservationInterface::Leaf,
@@ -294,7 +294,7 @@ impl MetaExecutionMaterial {
             MetaExecutionMaterial::StructConstructionMaterial(value) => {
                 ObservedArgumentContent::ValuePoint(ObservedAtomContent {
                     value_kind: ObservedAtomKind::StructConstruction {
-                        type_definition_id: value.type_definition_id,
+                        material_id: value.material_id,
                     },
                     extraction_interface: ContentObservationInterface::Leaf,
                     provenance: value.provenance.clone(),
@@ -304,20 +304,17 @@ impl MetaExecutionMaterial {
     }
 }
 
-/// Forwarded existing value used by the restricted evaluator's `IdentityType`
-/// proof path. The final formal meta-return model does not expose this as a
-/// separate source-level forwarding category.
+/// Existing type value and observation proven by the `IdentityType` primitive.
 ///
 /// The target carries the forwarded TypeValue directly. Reaching that value
 /// through a graph Symbol does not make the carrier Symbol part of the
 /// invocation result.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ForwardedResultMaterial {
+pub struct IdentityTypeMaterial {
     /// The represented value itself. Even when evaluation reached it through a
     /// source name, the carrier Symbol is not part of this result identity.
-    /// Symbol/place forwarding belongs to the separate `===` mechanism.
     pub type_value: crate::TypeValueId,
-    /// The type OBSERVATION forwarded through this result. Semantic equality
+    /// The type observation carried by this result. Semantic equality
     /// consumes this, never the bare `type_value` projection.
     pub type_observation: crate::CanonicalTypeObservation,
     pub return_view: ReturnViewShape,
@@ -327,8 +324,6 @@ pub struct ForwardedResultMaterial {
 /// Generated construction value — the call returns a new construction value
 /// whose external identity is shielded by callee + canonical args + build
 /// identity. Reserved for future generative type constructors.
-/// Generated type-definition value produced by formal `struct` invocation.
-///
 /// This is graph-installation-free and binding-free invocation output. Registry
 /// material may already be attached; the declared type symbol, associated
 /// namespace, and field projections are binding materialization artifacts.
@@ -338,10 +333,10 @@ pub struct StructConstructionMaterial {
     /// it never carries a canonical root by itself.  Two different meta
     /// functions with identical bodies share this id while their canonical
     /// TypeValue roots stay distinct.
-    pub type_definition_id: TypeDefinitionInstanceId,
-    pub identity_material: TypeDefinitionIdentityMaterial,
+    pub material_id: StructConstructionMaterialId,
+    pub identity_material: StructConstructionIdentityMaterial,
     pub fields: Vec<GeneratedFieldDefinition>,
-    pub pattern_materials: Option<TypeDefinitionStructPatternMaterials>,
+    pub pattern_materials: Option<StructConstructionPatternMaterials>,
     pub return_view: ReturnViewShape,
     /// The decoded type-pattern expression shape, if the struct argument
     /// was successfully decoded by the struct-local decoder.
@@ -364,7 +359,7 @@ pub struct StructConstructionMaterial {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypeDefinitionStructPatternMaterials {
+pub struct StructConstructionPatternMaterials {
     pub owner_head: StructPatternMaterialId,
     pub field_heads: Vec<GeneratedFieldStructPatternMaterial>,
 }
@@ -376,28 +371,30 @@ pub struct GeneratedFieldStructPatternMaterial {
 }
 
 /// Build-local identifier for replayable struct construction material.
+///
+/// This is neither complete-type identity nor meta-instance identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TypeDefinitionInstanceId(pub u64);
+pub struct StructConstructionMaterialId(pub u64);
 
-impl TypeDefinitionInstanceId {
+impl StructConstructionMaterialId {
     pub const fn as_u64(self) -> u64 {
         self.0
     }
 }
 
-/// Material that determines a generated type definition's identity.
+/// Material that determines replayable struct-construction identity.
 ///
 /// `provenance` is diagnostic material and is excluded from equality and
 /// identity computation.
 #[derive(Clone, Debug)]
-pub struct TypeDefinitionIdentityMaterial {
+pub struct StructConstructionIdentityMaterial {
     pub callee_symbol_id: SymbolId,
     pub canonical_args: CanonicalArgProductShapeMaterial,
     pub field_signature_material: Vec<FieldSignatureMaterial>,
     pub provenance: Provenance,
 }
 
-impl PartialEq for TypeDefinitionIdentityMaterial {
+impl PartialEq for StructConstructionIdentityMaterial {
     fn eq(&self, other: &Self) -> bool {
         self.callee_symbol_id == other.callee_symbol_id
             && self.canonical_args == other.canonical_args
@@ -405,7 +402,7 @@ impl PartialEq for TypeDefinitionIdentityMaterial {
     }
 }
 
-impl Eq for TypeDefinitionIdentityMaterial {}
+impl Eq for StructConstructionIdentityMaterial {}
 
 #[derive(Clone, Debug)]
 pub struct FieldSignatureMaterial {
@@ -462,12 +459,12 @@ impl GeneratedFieldDefinition {
     }
 }
 
-pub fn compute_type_definition_instance_id(
-    material: &TypeDefinitionIdentityMaterial,
-) -> TypeDefinitionInstanceId {
+pub fn compute_struct_construction_material_id(
+    material: &StructConstructionIdentityMaterial,
+) -> StructConstructionMaterialId {
     use crate::fingerprint::Fnv1a64;
     let mut h = Fnv1a64::new();
-    h.write_str_field("v08:type-definition");
+    h.write_str_field("struct-construction-material");
     h.write_field(&material.callee_symbol_id.0.to_le_bytes());
     h.write_field(&(material.canonical_args.arity as u64).to_le_bytes());
     h.write_field(&(material.canonical_args.unit_positions.len() as u64).to_le_bytes());
@@ -502,7 +499,7 @@ pub fn compute_type_definition_instance_id(
     }
     let raw = u64::from_str_radix(&h.finish_hex(), 16)
         .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
-    TypeDefinitionInstanceId(if raw == 0 { 1 } else { raw })
+    StructConstructionMaterialId(if raw == 0 { 1 } else { raw })
 }
 
 /// Return value shape marker.
@@ -601,14 +598,12 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
         );
     };
 
-    MetaPrimitiveExecution::Material(MetaExecutionMaterial::ForwardedResultMaterial(
-        ForwardedResultMaterial {
-            type_value,
-            type_observation,
-            return_view: ReturnViewShape::Leaf,
-            provenance: input.provenance.clone(),
-        },
-    ))
+    MetaPrimitiveExecution::Material(MetaExecutionMaterial::IdentityType(IdentityTypeMaterial {
+        type_value,
+        type_observation,
+        return_view: ReturnViewShape::Leaf,
+        provenance: input.provenance.clone(),
+    }))
 }
 
 fn invoke_struct_type_definition(
@@ -642,13 +637,13 @@ fn invoke_struct_type_definition(
         Err(diagnostic) => return MetaPrimitiveExecution::Diagnostic(diagnostic),
     };
 
-    let identity_material = TypeDefinitionIdentityMaterial {
+    let identity_material = StructConstructionIdentityMaterial {
         callee_symbol_id: candidate.callee_symbol_id,
         canonical_args: mat.clone(),
         field_signature_material: field_signature_material.clone(),
         provenance: input.provenance.clone(),
     };
-    let type_definition_id = compute_type_definition_instance_id(&identity_material);
+    let material_id = compute_struct_construction_material_id(&identity_material);
     let fields = field_signature_material
         .iter()
         .map(|field| GeneratedFieldDefinition {
@@ -663,7 +658,7 @@ fn invoke_struct_type_definition(
         })
         .collect();
     let value = StructConstructionMaterial {
-        type_definition_id,
+        material_id,
         identity_material,
         fields,
         pattern_materials: None,
@@ -680,11 +675,7 @@ fn invoke_struct_type_definition(
         canonical_pattern_override: None,
         provenance: input.provenance.clone(),
     };
-    match attach_type_definition_pattern_materials(
-        value,
-        materialization_state,
-        input.provenance.clone(),
-    ) {
+    match attach_struct_pattern_materials(value, materialization_state, input.provenance.clone()) {
         Ok(value) => MetaPrimitiveExecution::Material(
             MetaExecutionMaterial::StructConstructionMaterial(value),
         ),
@@ -697,32 +688,32 @@ fn invoke_struct_type_definition(
 /// Formal `struct` invocation is graph-installation-free and binding-free. It
 /// may allocate registry-backed material before a source-visible Pattern
 /// scope is installed.
-pub(crate) fn attach_type_definition_pattern_materials(
+pub(crate) fn attach_struct_pattern_materials(
     value: StructConstructionMaterial,
     materialization_state: &mut StructMaterializationState,
     provenance: Provenance,
 ) -> Result<StructConstructionMaterial, Diagnostic> {
-    let type_definition_id = value.type_definition_id;
+    let material_id = value.material_id;
     let owner_display_name = value
         .type_pattern_expr
         .as_ref()
         .and_then(owner_display_name_from_type_pattern_expr)
         .unwrap_or_else(|| {
             format!(
-                "generated-type-definition-{}",
-                value.type_definition_id.as_u64()
+                "struct-construction-material-{}",
+                value.material_id.as_u64()
             )
         });
-    attach_type_definition_pattern_materials_with_context(
+    attach_struct_pattern_materials_with_context(
         value,
         materialization_state,
-        StructPatternMaterialContext::StructDefinition { type_definition_id },
+        StructPatternMaterialContext::StructConstruction { material_id },
         owner_display_name,
         provenance,
     )
 }
 
-/// Attach pattern heads for a generated type definition under an explicit
+/// Attach Pattern material for a struct construction under an explicit
 /// materialization context.
 ///
 /// The materialization context is an implementation input; callers must not
@@ -731,7 +722,7 @@ pub(crate) fn attach_type_definition_pattern_materials(
 /// The display name is diagnostic material only. The owner `StructPatternMaterialId`
 /// identity comes from `context`; callers must not derive identity from the
 /// bare source spelling.
-fn attach_type_definition_pattern_materials_with_context(
+fn attach_struct_pattern_materials_with_context(
     mut value: StructConstructionMaterial,
     materialization_state: &mut StructMaterializationState,
     context: StructPatternMaterialContext,
@@ -764,7 +755,7 @@ fn attach_type_definition_pattern_materials_with_context(
     for field in &mut value.fields {
         field.struct_pattern_registry = struct_pattern_registry_by_name.get(&field.name).copied();
     }
-    value.pattern_materials = Some(TypeDefinitionStructPatternMaterials {
+    value.pattern_materials = Some(StructConstructionPatternMaterials {
         owner_head: pattern_materialization.owner_head,
         field_heads: pattern_materialization
             .field_heads
@@ -936,7 +927,7 @@ fn struct_field_name_from_atom(
     };
     if source.elements.len() != 1 {
         return Err(Diagnostic::hard_error(
-            "invalid struct syntax: nested product fields are not supported in v0.8",
+            "invalid struct syntax: nested product fields are not supported by the struct decoder",
             Some(Provenance::from_norm_origin(
                 "struct field source",
                 &source.origin,
@@ -947,7 +938,7 @@ fn struct_field_name_from_atom(
     match &source.elements[0] {
         NormProductElem::Expr(NormExpr::Product(product)) => {
             return Err(Diagnostic::hard_error(
-                "invalid struct syntax: nested product fields are not supported in v0.8",
+                "invalid struct syntax: nested product fields are not supported by the struct decoder",
                 Some(Provenance::from_norm_origin(
                     "nested struct field product",
                     &product.origin,

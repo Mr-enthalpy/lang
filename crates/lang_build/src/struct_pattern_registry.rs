@@ -10,7 +10,7 @@ use lang_syntax::{NormNavComponent, NormOrigin};
 
 use crate::{
     identity::TypeValueId,
-    meta_invocation::TypeDefinitionInstanceId,
+    meta_invocation::StructConstructionMaterialId,
     model::{Diagnostic, FieldProjection, Provenance, ResolverCode, SymbolId},
 };
 
@@ -49,8 +49,8 @@ pub enum StructPatternMaterialOrigin {
         field_type_value: TypeValueId,
         projection: FieldProjection,
     },
-    StructDefinition {
-        type_definition_id: TypeDefinitionInstanceId,
+    StructConstruction {
+        material_id: StructConstructionMaterialId,
     },
 }
 
@@ -77,8 +77,8 @@ pub enum StructPatternMaterialContext {
     Local {
         place_id: LocalPatternPlaceId,
     },
-    StructDefinition {
-        type_definition_id: TypeDefinitionInstanceId,
+    StructConstruction {
+        material_id: StructConstructionMaterialId,
     },
 }
 
@@ -169,9 +169,9 @@ impl StructPatternMaterialRegistry {
                     display_name: display_name.clone(),
                 },
             ),
-            StructPatternMaterialContext::StructDefinition { type_definition_id } => (
+            StructPatternMaterialContext::StructConstruction { material_id } => (
                 StructPatternMaterialKind::Construction,
-                StructPatternMaterialOrigin::StructDefinition { type_definition_id },
+                StructPatternMaterialOrigin::StructConstruction { material_id },
             ),
         };
         self.allocate_head(kind, origin, display_name, provenance)

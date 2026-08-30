@@ -101,14 +101,14 @@ fn toolchain_global_source_is_parsed_installed_and_invoked_through_ordinary_spin
         .expect("user initializer invoked explicit global implementation");
     assert_eq!(
         result.generation_origin, None,
-        "ordinary result binding is not an alias/forwarding declaration"
+        "ordinary result binding has no graph-generation origin"
     );
     let result_semantic = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "Result")
         .expect("Result semantic Symbol");
     // The fixture computes `Result` from `local global_identity::` where
-    // `local` is bound to core `uint8`; the forwarding body preserves that
+    // `local` is bound to core `uint8`; the identity body preserves that
     // TypeValue identity (core has no `int` bootstrap type).
     let uint8_semantic = world
         .semantic_world()
@@ -404,7 +404,7 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
             .expect("identity result carries Val1")
             .id,
         source,
-        "an ordinary forwarding body returns the existing value; invocation does not invent a wrapper value"
+        "an ordinary identity body returns the existing value without inventing a wrapper value"
     );
     assert_eq!(named.complete_result[0].pattern, pattern);
     assert_eq!(named.trace.c0_target_values.len(), 1);

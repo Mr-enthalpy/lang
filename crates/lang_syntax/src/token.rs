@@ -171,8 +171,9 @@ impl TokenKind {
 }
 
 // In expression/operator context, bare `<` and `>` are operator spellings
-// even though the lexer emits them as Symbol::Less / Symbol::Greater for
-// deduce-list compatibility. This helper unifies the two representations.
+// even though the lexer emits them as Symbol::Less / Symbol::Greater because
+// strong deduce-list contexts consume those structural tokens. This helper
+// unifies the two token representations.
 pub fn operator_spelling_in_expr_context(kind: &TokenKind) -> Option<OperatorSpelling> {
     match kind {
         TokenKind::Operator(op) => Some(*op),

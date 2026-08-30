@@ -172,8 +172,8 @@ fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
     );
 
     // Layered result exposure.  The complete result
-    // member view is the P2 compatibility domain (CompleteResultDomain):
-    // it carries the result P2 type/pattern compatibility information,
+    // member view is the complete P2 result view: it carries the result
+    // type/Pattern observations,
     // NOT the outward visibility of the invocation result.
     let view = &result.complete_result[0];
     assert_eq!(
@@ -278,7 +278,7 @@ fn assert_canonical_p1_unified(world: &lang_build::CompilationWorld, name: &str)
 // The exposure window is a real slice restriction and
 // the ordinary binding path must pass through it:
 //
-//   CompleteResultDomain(P2) -> expose under callable P1 -> outer binding P1
+//   CompleteResultView(P2) -> expose under callable P1 -> outer binding P1
 // ---------------------------------------------------------------------------
 
 fn stage_set(stages: &[PolicyStage]) -> StageSet {

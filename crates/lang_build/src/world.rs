@@ -1266,7 +1266,7 @@ impl CompilationWorld {
                     residual_binding_view = residual_policy_view(&result_policy_demand);
                     if is_type_annotation(slot.annotation.as_ref()) {
                         return Err(BuildError::single(Diagnostic::hard_error(
-                            "UnsupportedDeferredTypeAssertion: `: type` assertion is deferred for a residual initializer, and deferred type assertions are not implemented in the restricted v0.8 initializer evaluator",
+                            "UnsupportedDeferredTypeAssertion: `: type` assertion is deferred for a residual initializer, and deferred type assertions are not connected to the initializer evaluator",
                             Some(provenance),
                         )
                         .with_code(ResolverCode::UnsupportedDeferredTypeAssertion)));
@@ -1428,7 +1428,7 @@ impl CompilationWorld {
         // The ordinary binding path consumes the
         // exposure layer, never the raw complete result:
         //
-        //   CompleteResultDomain(P2) -> expose under callable P1
+        //   CompleteResultView(P2) -> expose under callable P1
         //                            -> outer binding P1
         //
         // The callable's canonical P1 is a real window here: material
@@ -2234,7 +2234,7 @@ impl CompilationWorld {
     }
 
     /// Installs a connected meta construction result whose unique type
-    /// member is backed by a generated type definition.  The namespace side
+    /// member is backed by struct construction material. The namespace side
     /// reuses the full generated-type expansion (CoreTypeProjection with fields,
     /// field-function projection layer, ref/share projection namespaces),
     /// while the semantic side binds the construction's member views under
@@ -2285,7 +2285,9 @@ impl CompilationWorld {
         // installed before their graph rendering.
         if let Some(entry) = selected.first() {
             let associated_namespace = match &expansion.replacement_object.payload {
-                SymbolPayload::CompleteTypeProjection(adapter) => adapter.type_associated_namespace,
+                SymbolPayload::CompleteTypeProjection(projection) => {
+                    projection.type_associated_namespace
+                }
                 _ => None,
             };
             self.register_installed_type_carrier(
@@ -2391,7 +2393,7 @@ impl CompilationWorld {
             {
                 // Unknown actuals have the primitive Plain view. A concrete
                 // argument resolved by the ordinary classifier replaces this
-                // fallback with its own PolicyView.mode; the world never
+                // default with its own PolicyView.mode; the world never
                 // fabricates Const.
                 let explicit_modes =
                     vec![crate::PolicyMode::Plain; call_site.source_product.elements.len()];

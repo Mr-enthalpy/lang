@@ -447,7 +447,7 @@ fn evaluate_body_local_let(
             return Err(selected_body_failure(
                 selected,
                 RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not connected to the source meta evaluator",
             ));
         }
         match type_env.check_body_local_initializer(
@@ -480,35 +480,24 @@ fn evaluate_body_local_let(
     Ok(())
 }
 
-/// Reject a non-name terminal expression of an ordinary body with the
-/// most specific diagnostic.  The bare `r === X;` expression spelling is
-/// categorically illegal: alias forwarding must converge to the
-/// `let r === X;` declaration form.
+/// Reject a non-name terminal expression of an ordinary body with the most
+/// specific diagnostic. `===` is legal only in the lexical-alias declaration
+/// form and never as an expression operator.
 fn evaluate_contribution_expr(
     selected: &SelectedOverloadCandidate,
     expr: &NormExpr,
 ) -> RestrictedOverloadFailure {
-    if forwarding_expr_is_canonical_sum(expr, &selected.return_slot_name) {
-        return unsupported_body(
-            selected,
-            RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,
-            "UnsupportedCanonicalSumPatternValue: unsupported canonical sum-pattern value in restricted v0.8 initializer meta evaluation",
-        );
-    }
-    if bare_alias_equality_shape(expr, &selected.return_slot_name) {
+    if lexical_alias_operator_shape(expr, &selected.return_slot_name) {
         return bare_alias_spelling_failure(selected);
     }
     unsupported_body(
         selected,
         RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-        "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
+        "selected meta body form is not supported by the source meta evaluator",
     )
 }
 
-/// Evaluate a cluster-member injection's right-hand-side name to its
-/// local result carrier.  Shared by the contribution creation forms
-/// (`let r === X;`, `let r = X;`) and the delivery terminal: the forms
-/// differ, but each resolves one name to a forwarded type value.
+/// Evaluate a direct-delivery terminal name to an identity-type result.
 fn evaluate_contribution_rhs_name(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
@@ -520,21 +509,21 @@ fn evaluate_contribution_rhs_name(
         return Err(selected_body_failure(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not connected to the source meta evaluator",
         ));
     }
     if let Some(bound) = selected.bindings.get(rhs_name) {
-        return forwarded_type_value(selected, bound.value_type, bound.complete_type_observation);
+        return identity_type_material(selected, bound.value_type, bound.complete_type_observation);
     }
     if selected.pack_bindings.contains_key(rhs_name) {
         return Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body pack forwarding relies on ordinary product normalization and is outside the restricted type-only evaluator",
+            "selected meta body pack delivery relies on ordinary product normalization and is outside the restricted type-only evaluator",
         ));
     }
     match type_env.resolve_type_name(rhs_name, resolver_context) {
-        Some(resolution) => forwarded_type_value(
+        Some(resolution) => identity_type_material(
             selected,
             Some(resolution.represented_type),
             resolution.complete_type_observation,
@@ -542,7 +531,7 @@ fn evaluate_contribution_rhs_name(
         None => Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
+            "selected meta body form is not supported by the source meta evaluator",
         )),
     }
 }
@@ -569,7 +558,7 @@ fn evaluate_block_body(
             }
             NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
-                if bare_alias_equality_shape(expr, &selected.return_slot_name) {
+                if lexical_alias_operator_shape(expr, &selected.return_slot_name) {
                     return Err(bare_alias_spelling_failure(selected));
                 }
                 return Err(unsupported_body(
@@ -632,7 +621,7 @@ fn evaluate_block_body(
             return Err(selected_body_failure(
                 selected,
                 RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not connected to the source meta evaluator",
             ));
         }
         return evaluate_contribution_rhs_name(
@@ -647,36 +636,8 @@ fn evaluate_block_body(
     Err(evaluate_contribution_expr(selected, &expr))
 }
 
-fn forwarding_equality_rhs(expr: &NormExpr, return_slot_name: &str) -> Option<String> {
-    let NormExpr::Call { source, target, .. } = expr else {
-        return None;
-    };
-    let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
-        return None;
-    };
-    if spelling != "===" || source.elements.len() != 2 {
-        return None;
-    }
-    let lhs = match &source.elements[0] {
-        NormProductElem::Expr(NormExpr::Name { text, .. }) => text,
-        _ => return None,
-    };
-    if lhs != return_slot_name {
-        return None;
-    }
-    match &source.elements[1] {
-        NormProductElem::Expr(NormExpr::Name { text, .. }) => Some(text.clone()),
-        NormProductElem::Expr(NormExpr::Call { target, .. }) => match target.as_ref() {
-            NormExpr::Name { text, .. } => Some(text.clone()),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-/// Shape test: bare `r === X;` — the illegal expression spelling of the
-/// alias forwarding declaration `let r === X;`.
-fn bare_alias_equality_shape(expr: &NormExpr, return_slot_name: &str) -> bool {
+/// Shape test for an illegal expression use of the lexical-alias delimiter.
+fn lexical_alias_operator_shape(expr: &NormExpr, return_slot_name: &str) -> bool {
     let NormExpr::Call { source, target, .. } = expr else {
         return false;
     };
@@ -692,8 +653,8 @@ fn bare_alias_equality_shape(expr: &NormExpr, return_slot_name: &str) -> bool {
     )
 }
 
-/// Alias-looking expression spellings cannot become a back door to the
-/// not-yet-implemented lexical-alias resolver mechanism.
+/// Expression spellings cannot become a back door to the lexical-alias
+/// declaration mechanism.
 fn bare_alias_spelling_failure(selected: &SelectedOverloadCandidate) -> RestrictedOverloadFailure {
     unsupported_lexical_alias_failure(selected)
 }
@@ -708,27 +669,7 @@ fn unsupported_lexical_alias_failure(
     )
 }
 
-fn forwarding_expr_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> bool {
-    let NormExpr::Call { source, target, .. } = expr else {
-        return false;
-    };
-    let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
-        return false;
-    };
-    if spelling != "|" || source.elements.is_empty() {
-        return false;
-    }
-    source.elements.iter().any(|element| {
-        matches!(
-            element,
-            NormProductElem::Expr(inner)
-                if forwarding_equality_rhs(inner, return_slot_name).is_some()
-                    || forwarding_expr_is_canonical_sum(inner, return_slot_name)
-        )
-    })
-}
-
-fn forwarded_type_value(
+fn identity_type_material(
     selected: &SelectedOverloadCandidate,
     represented_type: Option<crate::TypeValueId>,
     complete_type_observation: Option<crate::CanonicalValueAddr>,
@@ -739,11 +680,11 @@ fn forwarded_type_value(
         return Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected simple forwarding body requires a world-connected canonical type observation",
+            "selected identity-type body requires a world-connected canonical type observation",
         ));
     };
-    Ok(MetaExecutionMaterial::ForwardedResultMaterial(
-        crate::ForwardedResultMaterial {
+    Ok(MetaExecutionMaterial::IdentityType(
+        crate::IdentityTypeMaterial {
             type_value: represented_type,
             type_observation: crate::CanonicalTypeObservation::Observed(complete_type_observation),
             return_view: crate::ReturnViewShape::Leaf,

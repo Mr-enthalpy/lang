@@ -3,8 +3,8 @@
 //! A total consumer demand first attempts ordinary view projection.  If no
 //! existing view satisfies it, exactly one authorized ordinary migration
 //! family may be enumerated and selected by the shared invocation pipeline.
-//! This module defines no transition graph, runtime-special edge, bridge
-//! callable ontology, or retry path.
+//! The request is same-Type and direct: it enumerates one authorized family,
+//! selects once, and never retries.
 
 use std::{collections::BTreeSet, convert::Infallible};
 

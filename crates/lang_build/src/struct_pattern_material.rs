@@ -9,7 +9,7 @@
 //! install symbols into the namespace graph. It is a pure shape substrate.
 
 use crate::{
-    extraction_view::{
+    content_observation::{
         ContentObservationInterface, NamedObservedProduct, ObservedAtomContent, ObservedAtomKind,
         ObservedProductContent, ObservedProductElement, ObservedProductKind,
     },
@@ -426,7 +426,7 @@ pub enum StructSumPayloadMaterial {
 pub struct SelectedStructAlternative {
     pub space: StructSumSyntaxMaterial,
     pub selected_label: String,
-    pub payload: Option<crate::extraction_view::ObservedArgumentContent>,
+    pub payload: Option<crate::content_observation::ObservedArgumentContent>,
     pub provenance: Provenance,
 }
 
@@ -624,7 +624,7 @@ fn product_payload_from_elements(
                 product_elems.push(ObservedProductElement {
                     label: Some(local_pattern_name.clone()),
                     value_shape: Box::new(
-                        crate::extraction_view::ObservedArgumentContent::ValuePoint(
+                        crate::content_observation::ObservedArgumentContent::ValuePoint(
                             ObservedAtomContent {
                                 value_kind: ObservedAtomKind::Leaf,
                                 extraction_interface: ContentObservationInterface::Leaf,
@@ -644,7 +644,7 @@ fn product_payload_from_elements(
                 product_elems.push(ObservedProductElement {
                     label: None,
                     value_shape: Box::new(
-                        crate::extraction_view::ObservedArgumentContent::ValuePoint(
+                        crate::content_observation::ObservedArgumentContent::ValuePoint(
                             ObservedAtomContent {
                                 value_kind: ObservedAtomKind::Leaf,
                                 extraction_interface: ContentObservationInterface::Leaf,

@@ -1,4 +1,4 @@
-//! Return normal form and extraction-view substrate.
+//! Observed semantic content supplied to Pattern and invocation relations.
 //!
 //! This module is shape-only. It does not evaluate full expressions, perform
 //! destructuring, or install namespace graph material. Product normal form `P`
@@ -6,7 +6,7 @@
 
 use crate::{
     identity::TypeValueId,
-    meta_invocation::TypeDefinitionInstanceId,
+    meta_invocation::StructConstructionMaterialId,
     model::{Diagnostic, FieldProjection, Provenance, SymbolId},
     struct_pattern_registry::StructPatternMaterialId,
 };
@@ -32,11 +32,11 @@ pub enum ObservedAtomKind {
         /// Graph projection carrier only.
         owner_type_symbol_id: Option<SymbolId>,
     },
-    Forwarded {
+    IdentityType {
         type_value: TypeValueId,
     },
     StructConstruction {
-        type_definition_id: TypeDefinitionInstanceId,
+        material_id: StructConstructionMaterialId,
     },
 }
 
@@ -217,16 +217,12 @@ fn value_point_kind_observationally_equal(
             },
         ) => left == right,
         (
-            ObservedAtomKind::Forwarded { type_value: left },
-            ObservedAtomKind::Forwarded { type_value: right },
+            ObservedAtomKind::IdentityType { type_value: left },
+            ObservedAtomKind::IdentityType { type_value: right },
         ) => left == right,
         (
-            ObservedAtomKind::StructConstruction {
-                type_definition_id: left,
-            },
-            ObservedAtomKind::StructConstruction {
-                type_definition_id: right,
-            },
+            ObservedAtomKind::StructConstruction { material_id: left },
+            ObservedAtomKind::StructConstruction { material_id: right },
         ) => left == right,
         _ => false,
     }

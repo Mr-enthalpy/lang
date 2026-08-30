@@ -389,9 +389,9 @@ pub struct SingleMemberResult {
     /// this field directly; they never infer a type result or recover tau from
     /// a `CoreTypeProjection` graph payload.
     pub complete_type: Option<crate::CompleteTypeValue>,
-    /// CompleteResultDomain — the complete result P2 compatibility domain
-    /// returned by the ordinary callable (type/pattern compatibility
-    /// information), before any consumer-specific `Project_out`.  This is
+    /// Complete result view returned by the ordinary callable, including its
+    /// P2 type/Pattern observations, before any consumer-specific
+    /// `Project_out`. This is
     /// NOT the outward exposure policy of the invocation result: outward
     /// visibility is the canonical P1 layer (`exposed()`).
     pub complete_result: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
@@ -408,7 +408,7 @@ impl SingleMemberResult {
     /// binding path, not a bypass query:
     ///
     /// ```text
-    /// CompleteResultDomain(P2) -> expose under callable P1 -> outer binding P1
+    /// CompleteResultView(P2) -> expose under callable P1 -> outer binding P1
     /// ```
     pub fn exposed(&self) -> ExposedInvocationResult {
         ExposedInvocationResult::expose(
@@ -424,8 +424,7 @@ impl SingleMemberResult {
 /// of letting one `PolicyResultEntry` field mean three things at once:
 ///
 /// ```text
-/// CompleteResultDomain    = P2 compatibility domain
-///                           (type/pattern compatibility information)
+/// CompleteResultView      = P2 type/Pattern observations
 /// ExposedInvocationResult = outward_policy (canonical P1)
 ///                           + material (the completed result entries)
 /// ```
@@ -446,7 +445,7 @@ pub struct ExposedInvocationResult {
 }
 
 impl ExposedInvocationResult {
-    /// `CompleteResultDomain(P2) -> expose under callable P1`.
+    /// `CompleteResultView(P2) -> expose under callable P1`.
     ///
     /// Every entry's stage / Policy-mode window is intersected with the
     /// callable's canonical P1 before any consumer sees it; entries whose
@@ -527,8 +526,8 @@ fn expose_result_entry(
 #[derive(Clone, Debug)]
 pub struct ClusterSymbolResult {
     pub construction: crate::ClusterConstructionMaterial,
-    /// Generated type definitions backing the construction's self-rooted
-    /// type members, in member order.  The binding side uses these to
+    /// Struct construction materials backing the construction's self-rooted
+    /// type members, in member order. The binding side uses these to
     /// expand the full namespace projection (field-function layer,
     /// ref/share projection namespaces, extraction interface) instead of a
     /// bare bound-type-value carrier.  Forwarded members contribute no
@@ -1806,7 +1805,7 @@ pub(crate) fn invoke_target_values(
         // callable body supplies its innermost anonymous function object's
         // Self scope owner, so two ordinary functions in one namespace never
         // share an ambient struct root; the resolver's namespace node is
-        // only the degenerate top-level fallback.
+        // only the top-level declaration case.
         let ambient_owner = ambient_construction_owner;
         let (authority, owner) = match owner_strategy {
             crate::OwnerStrategy::AmbientStructScope => {
@@ -1842,7 +1841,7 @@ pub(crate) fn invoke_target_values(
         };
         let cid = semantic_world.begin_cluster_construction(authority, owner, provenance.clone());
 
-        // Generated type definitions harvested for the binding side's
+        // Struct construction materials harvested for the binding side's
         // namespace projection expansion (field layer, ref/share views).
         let mut generated_types: Vec<crate::StructConstructionMaterial> = Vec::new();
 
@@ -1874,7 +1873,7 @@ pub(crate) fn invoke_target_values(
                     }
                 };
             match &value {
-                MetaExecutionMaterial::ForwardedResultMaterial(value) => {
+                MetaExecutionMaterial::IdentityType(value) => {
                     // Core identity-forwarding primitives (builtin
                     // privileged contract, e.g. `IdentityType`): the
                     // cluster's unique type member is still navigated as
@@ -1906,7 +1905,7 @@ pub(crate) fn invoke_target_values(
                             let ambient_owner = ambient_owner
                                 .expect("AmbientStructScope construction carries an ambient owner");
                             if let Some((_existing, binder)) = semantic_world
-                                .ambient_struct_collision(ambient_owner, value.type_definition_id)
+                                .ambient_struct_collision(ambient_owner, value.material_id)
                             {
                                 return Err(OrdinaryInvocationFailure::SelectedCoreBody {
                                     diagnostic: Diagnostic::hard_error(
@@ -1918,7 +1917,7 @@ pub(crate) fn invoke_target_values(
                             }
                             semantic_world.install_ambient_struct_type_value(
                                 ambient_owner,
-                                value.type_definition_id,
+                                value.material_id,
                                 value.canonical_pattern_value(),
                                 selected.complete_result_view.pair.clone(),
                                 value.provenance.clone(),
@@ -1930,7 +1929,7 @@ pub(crate) fn invoke_target_values(
                                 .as_ref()
                                 .expect("ordinary generated meta type has an instance key")
                                 .clone(),
-                            value.type_definition_id,
+                            value.material_id,
                             value.canonical_pattern_value(),
                             selected.complete_result_view.pair.clone(),
                             value.provenance.clone(),
@@ -2180,8 +2179,8 @@ pub(crate) fn invoke_target_values(
         }
     }
 
-    // CompleteResultDomain — these entries carry the result P2
-    // (type/pattern compatibility information) only.  The outward
+    // CompleteResultView — these entries carry the result P2 type/Pattern
+    // observations only. The outward
     // visibility of the invocation result is NOT this P2: it is the
     // canonical P1 layer, derived on demand by
     // `SingleMemberResult::exposed()`.
@@ -2819,7 +2818,7 @@ fn ordinary_result_identity(
     Diagnostic,
 > {
     match returned {
-        SelectedBodyOutput::Material(MetaExecutionMaterial::ForwardedResultMaterial(value)) => {
+        SelectedBodyOutput::Material(MetaExecutionMaterial::IdentityType(value)) => {
             let represented = value.type_value;
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
@@ -2859,7 +2858,7 @@ fn ordinary_result_identity(
         )) => {
             let installed = if let Some(ambient_owner) = ambient_struct_owner {
                 if let Some((_existing, binder)) =
-                    semantic_world.ambient_struct_collision(ambient_owner, value.type_definition_id)
+                    semantic_world.ambient_struct_collision(ambient_owner, value.material_id)
                 {
                     return Err(Diagnostic::hard_error(
                         ambient_struct_collision_message(binder),
@@ -2868,7 +2867,7 @@ fn ordinary_result_identity(
                 }
                 semantic_world.install_ambient_struct_type_value(
                     ambient_owner,
-                    value.type_definition_id,
+                    value.material_id,
                     value.canonical_pattern_value(),
                     selected.complete_result_view.pair.clone(),
                     value.provenance.clone(),
@@ -2888,7 +2887,7 @@ fn ordinary_result_identity(
                 semantic_world.install_generated_type_value(
                     &meta_root,
                     canonical_key.clone(),
-                    value.type_definition_id,
+                    value.material_id,
                     value.canonical_pattern_value(),
                     selected.complete_result_view.pair.clone(),
                     value.provenance.clone(),

@@ -93,7 +93,7 @@ pub struct PolicyConjunctionAst {
 
 /// Alternatives within one policy dimension. `runtime || S` is the one
 /// special value-presence form that combines a stage alternative with the
-/// provisional absent-value pattern.
+/// absent-value pattern whose public spelling remains Open.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyChoiceAst {
     pub atoms: Vec<PolicyAtomAst>,
@@ -107,8 +107,8 @@ pub enum PolicyAtomAst {
         conjunction: Box<PolicyConjunctionAst>,
         span: Span,
     },
-    /// Provisional source spelling `S` in the strong policy parser. The final
-    /// public spelling remains intentionally unfrozen.
+    /// Current strong-parser spelling `S` for the absent-value pattern. The
+    /// canonical public spelling remains Open.
     AbsentValuePattern {
         span: Span,
     },

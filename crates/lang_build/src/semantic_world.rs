@@ -31,7 +31,7 @@ use crate::{
         CanonicalTypeCallSpaceNorm, CanonicalVal1Norm, CanonicalValueAddr, ExtractionPatternParent,
     },
     identity::{MetaCallableIdentity, SemanticValueId, TypeValueId},
-    meta_invocation::TypeDefinitionInstanceId,
+    meta_invocation::StructConstructionMaterialId,
     meta_key::MetaInvocationMaterialKey,
     model::{
         CoreMetaFunction, NamespaceNodeId, Provenance, SemanticNameDelta, SymbolId, SymbolKind,
@@ -266,10 +266,9 @@ fn projection_storage_key(selector: &ProjectionSelector) -> String {
 ///   this object, including compiler-installed anonymous entries such as
 ///   `()` call entries that never allocate a scope-local Symbol.
 ///
-/// A source-visible name may appear in both channels during the current
-/// transition (the Symbol is the authority, the value vector is the
-/// navigable transport reference); the value vector must never become a
-/// parallel member world with its own Policy facts.
+/// A source-visible name is recorded in both indexes: the Symbol owns the
+/// language member and the value vector supplies its navigable transport
+/// reference. The value vector never owns independent Policy facts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ObjectPlace {
     pub id: ObjectPlaceId,
@@ -1422,18 +1421,18 @@ pub struct SemanticWorld {
     core_type_projection_values: BTreeMap<TypeValueId, SemanticValueId>,
     pattern_types: BTreeMap<PatternValueId, TypeValueId>,
     /// Canonical meta-type roots: `MetaRootKey = parent SemanticOwner + meta
-    /// function + normalized arguments`. The stored `TypeDefinitionInstanceId` is body material
+    /// function + normalized arguments`. The stored construction-material id
     /// used only for the idempotence/conflict split under one root (equal
     /// body ⇒ reuse, different body ⇒ construction conflict).  Two meta
     /// functions whose bodies produce the same normalized struct body
     /// material share the body, never the root:
     /// `Root(f(args)) != Root(g(args))` while `Body(f(args)) = Body(g(args))`.
-    meta_type_roots: BTreeMap<MetaInstanceRootKey, (TypeValueId, TypeDefinitionInstanceId)>,
+    meta_type_roots: BTreeMap<MetaInstanceRootKey, (TypeValueId, StructConstructionMaterialId)>,
     /// Ambient struct generations: one generated type per (declaration
     /// level, normalized navigation shape).  A second direct `struct`
     /// generation with the same key at the same level is a hard error, not
     /// a silent reuse.
-    ambient_struct_types: BTreeMap<(SemanticOwnerId, TypeDefinitionInstanceId), TypeValueId>,
+    ambient_struct_types: BTreeMap<(SemanticOwnerId, StructConstructionMaterialId), TypeValueId>,
     /// Diagnostic-only binder records for ambient struct generations.  The
     /// binder never participates in type identity; it exists so a
     /// collision can point at the existing source-visible binding.
@@ -4116,7 +4115,7 @@ impl SemanticWorld {
         &mut self,
         root: &MetaInstanceRoot,
         canonical_key: MetaInvocationMaterialKey,
-        normalized_body: TypeDefinitionInstanceId,
+        normalized_body: StructConstructionMaterialId,
         canonical_pattern: CanonicalPatternValue,
         policy: PolicyPair,
         provenance: Provenance,
@@ -4217,7 +4216,7 @@ impl SemanticWorld {
     pub fn ambient_struct_collision(
         &self,
         ambient_owner: SemanticOwnerId,
-        normalized_body: TypeDefinitionInstanceId,
+        normalized_body: StructConstructionMaterialId,
     ) -> Option<(TypeValueId, Option<&AmbientTypeBinder>)> {
         let existing = self
             .ambient_struct_types
@@ -4237,7 +4236,7 @@ impl SemanticWorld {
     pub fn install_ambient_struct_type_value(
         &mut self,
         ambient_owner: SemanticOwnerId,
-        normalized_body: TypeDefinitionInstanceId,
+        normalized_body: StructConstructionMaterialId,
         canonical_pattern: CanonicalPatternValue,
         policy: PolicyPair,
         provenance: Provenance,
@@ -7554,8 +7553,8 @@ mod tests {
         );
     }
 
-    /// Death test for the pre-cut-over rule that ignored Val2 on ordinary
-    /// values: equal Val1 and Pattern diverge when their owned Val2 differs.
+    /// Ordinary Object identity observes owned Val2: equal Val1 and Pattern
+    /// diverge when their owned Val2 differs.
     #[test]
     fn ordinary_value_norm_observes_val1_pattern_and_val2() {
         let mut world = SemanticWorld::new("app");
