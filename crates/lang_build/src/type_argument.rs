@@ -27,7 +27,7 @@ use crate::{
 ///
 /// For each `UnknownExpression` argument whose corresponding atom is a
 /// `NormExpr::Name`, resolves the name through the supplied name-resolution
-/// resolver as a pure type Object under the given policy. Successfully resolved
+/// resolver as a complete type value under the given policy. Successfully resolved
 /// arguments are refined
 /// to `NonValue(CoreTypeProjection)` with independent carrier-Symbol and represented
 /// type-value identities.
@@ -91,7 +91,7 @@ pub struct TypeArgumentClassificationReport {
 /// Classify type-object arguments and record unresolved names for diagnostics.
 ///
 /// Same logic as `classify_type_arguments`, but also returns a list of
-/// names that could not be resolved as pure type Objects. Callers can surface
+/// names that could not be resolved as complete type values. Callers can surface
 /// these as near-cause diagnostics.
 pub fn classify_type_arguments_with_report(
     shape: &ArgProductShape,
@@ -199,14 +199,14 @@ pub enum BodyLocalInitializerCheck {
 /// behind the same interface. Callers never read
 /// `SemanticNameIndex` / `SymbolPayload::CompleteTypeProjection` directly.
 pub trait TypeResolutionEnv {
-    /// Resolve one bare name as a pure type Object under open-static policy.
+    /// Resolve one bare name as a complete type value under open-static policy.
     fn resolve_type_name(
         &self,
         name: &str,
         context: &ResolverContext,
     ) -> Option<NamedTypeResolution>;
 
-    /// Resolve one complete inner-to-outer navigation as a pure type Object.
+    /// Resolve one complete inner-to-outer navigation as a complete type value.
     ///
     /// A navigated type argument (`f::T`) must reach the same terminal Symbol
     /// as the same path in any other use context; only the projected facet

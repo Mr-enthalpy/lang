@@ -278,7 +278,7 @@ fn compare_position(left: PolicyMode, right: PolicyMode, actual: PolicyMode) -> 
 
 /// Ordinary actual-relative Policy-mode preference used by Bp.
 ///
-/// Migration endpoint adapters must reuse this relation rather than treating
+/// Migration endpoint projections must reuse this relation rather than treating
 /// opposite const/mut Patterns as hard-incompatible Policy domains.
 pub(crate) fn policy_mode_preference_rank(candidate: PolicyMode, demand: PolicyMode) -> u8 {
     match (candidate, demand) {
@@ -293,7 +293,7 @@ pub(crate) fn policy_mode_preference_rank(candidate: PolicyMode, demand: PolicyM
 
 /// Shared maximal-element selection for ordinary typed partial orders.
 ///
-/// Candidate adapters own admissibility and comparison dimensions; this
+/// Candidate projections own admissibility and comparison dimensions; this
 /// function owns the common "retain every non-dominated maximum" rule. It
 /// intentionally has no declaration-order fallback.
 pub(crate) fn maximal_candidates<'a, T, F>(candidates: &[&'a T], mut dominates: F) -> Vec<&'a T>

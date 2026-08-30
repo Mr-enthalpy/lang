@@ -47,7 +47,7 @@ impl ParameterShape {
         }
     }
 
-    /// Single-parameter signature requiring a pure type Object argument.
+    /// Single-parameter signature requiring a complete type value argument.
     pub fn type_parameter_signature(provenance: Provenance) -> Self {
         Self {
             expected_arity: Some(1),
@@ -185,7 +185,7 @@ pub enum CanonicalArgAtomKind {
     ExpressionBarrier,
     /// Positively classified as a value argument.
     ResolvedValue,
-    /// Classified as a pure type Object argument.
+    /// Classified as a complete type projection argument.
     CoreTypeProjection,
     /// Classified as a rank object argument.
     RankObject,

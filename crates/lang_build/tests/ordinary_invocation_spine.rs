@@ -1211,7 +1211,7 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         result.complete_result[0].pattern,
         uint8.pure_p_pattern().unwrap()
     );
-    let lang_build::OrdinaryReturnedValue::CompleteType(value) = result.returned else {
+    let lang_build::ReturnedSemanticEntity::CompleteType(value) = result.returned else {
         panic!("IdentityType returns the evaluated complete type value");
     };
     let uint8_type = world
@@ -1434,7 +1434,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
     // `MetaInstance(struct, arguments)` scope of its own, so the generated
     // Pattern owner is the ambient declaration environment (the caller's
     // package root), not a MetaInstance.
-    let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
+    let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
         panic!("world-connected struct must return complete tau, not private meta material");
     };
     assert_eq!(

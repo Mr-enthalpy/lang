@@ -385,15 +385,6 @@ impl TypeDefinitionInstanceId {
     }
 }
 
-/// Return-slot semantics for the meta callable.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ReturnSlotSemantics {
-    /// `r === arg` — forwarded existing value.
-    Forward,
-    /// `r = arg` — generated construction value.
-    Generate,
-}
-
 /// Material that determines a generated type definition's identity.
 ///
 /// `provenance` is diagnostic material and is excluded from equality and
@@ -403,7 +394,6 @@ pub struct TypeDefinitionIdentityMaterial {
     pub callee_symbol_id: SymbolId,
     pub canonical_args: CanonicalArgProductShapeMaterial,
     pub field_signature_material: Vec<FieldSignatureMaterial>,
-    pub return_slot_semantics: ReturnSlotSemantics,
     pub provenance: Provenance,
 }
 
@@ -412,7 +402,6 @@ impl PartialEq for TypeDefinitionIdentityMaterial {
         self.callee_symbol_id == other.callee_symbol_id
             && self.canonical_args == other.canonical_args
             && self.field_signature_material == other.field_signature_material
-            && self.return_slot_semantics == other.return_slot_semantics
     }
 }
 
@@ -511,11 +500,6 @@ pub fn compute_type_definition_instance_id(
             StructuralMemberVisibility::Private => 2,
         }]);
     }
-    let sem = match material.return_slot_semantics {
-        ReturnSlotSemantics::Forward => 0u8,
-        ReturnSlotSemantics::Generate => 1u8,
-    };
-    h.write_field(&[sem]);
     let raw = u64::from_str_radix(&h.finish_hex(), 16)
         .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
     TypeDefinitionInstanceId(if raw == 0 { 1 } else { raw })
@@ -591,7 +575,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
         None => {
             return MetaPrimitiveExecution::Diagnostic(
                 Diagnostic::hard_error(
-                    "IdentityType: argument is not a classified pure type Object with a TypeValue",
+                    "IdentityType: argument is not a classified complete type value",
                     Some(input.provenance.clone()),
                 )
                 .with_symbol_context(candidate.callee_symbol_id),
@@ -662,7 +646,6 @@ fn invoke_struct_type_definition(
         callee_symbol_id: candidate.callee_symbol_id,
         canonical_args: mat.clone(),
         field_signature_material: field_signature_material.clone(),
-        return_slot_semantics: ReturnSlotSemantics::Generate,
         provenance: input.provenance.clone(),
     };
     let type_definition_id = compute_type_definition_instance_id(&identity_material);
@@ -709,12 +692,11 @@ fn invoke_struct_type_definition(
     }
 }
 
-/// Attach pattern heads for a generated type definition under its anonymous
-/// generated fallback context.
+/// Attach struct Pattern material under the construction's material scope.
 ///
 /// Formal `struct` invocation is graph-installation-free and binding-free. It
-/// may allocate registry-backed material through this fallback before final
-/// resolved pattern-scope semantics are available.
+/// may allocate registry-backed material before a source-visible Pattern
+/// scope is installed.
 pub(crate) fn attach_type_definition_pattern_materials(
     value: StructConstructionMaterial,
     materialization_state: &mut StructMaterializationState,

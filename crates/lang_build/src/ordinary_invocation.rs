@@ -383,7 +383,7 @@ pub struct OrdinaryPipelineTrace {
 #[derive(Clone, Debug)]
 pub struct SingleMemberResult {
     pub selected: SealedSelectedInvocation,
-    pub returned: OrdinaryReturnedValue,
+    pub returned: ReturnedSemanticEntity,
     /// Exact semantic complete-type result, present iff the selected
     /// declaration's result class is `CompleteType`.  Binding consumers use
     /// this field directly; they never infer a type result or recover tau from
@@ -606,14 +606,15 @@ pub struct PolicyMigrationResult {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum OrdinaryReturnedValue {
-    Meta(MetaExecutionMaterial),
+pub enum ReturnedSemanticEntity {
     CompleteType(ReturnedCompleteType),
-    /// A source body returned an already-existing semantic value. Ordinary
-    /// non-migration invocation preserves that value identity; atomic runtime
-    /// migration uses it as the migration source input (slot 1 in the
-    /// invocation frame), not as a freshly-constructed result.
-    ForwardedSemanticValue(SemanticValueId),
+    OrdinaryValue(SemanticValueId),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SelectedBodyOutput {
+    Material(MetaExecutionMaterial),
+    OrdinaryValue(SemanticValueId),
 }
 
 #[derive(Clone, Debug)]
@@ -1992,7 +1993,7 @@ pub(crate) fn invoke_target_values(
         ));
     }
 
-    let mut returned = if let Some(source_shape) = &selected.source_shape {
+    let returned = if let Some(source_shape) = &selected.source_shape {
         // S8 — carrier construction only; see the meta-construction arm above.
         let selected_body_input = SelectedOverloadCandidate {
             symbol: source_shape.symbol.clone(),
@@ -2005,14 +2006,14 @@ pub(crate) fn invoke_target_values(
         };
         if !selected.is_delete() {
             if let Some(value) = forwarded_semantic_body_value(&selected) {
-                OrdinaryReturnedValue::ForwardedSemanticValue(value)
+                SelectedBodyOutput::OrdinaryValue(value)
             } else {
                 match evaluate_selected_source_meta_body(
                     &SemanticTypeEnv::new(&*semantic_world),
                     resolver_context,
                     &selected_body_input,
                 ) {
-                    Ok(value) => OrdinaryReturnedValue::Meta(value),
+                    Ok(value) => SelectedBodyOutput::Material(value),
                     Err(failure) => {
                         return Err(OrdinaryInvocationFailure::SelectedBody { failure, trace });
                     }
@@ -2024,7 +2025,7 @@ pub(crate) fn invoke_target_values(
                 resolver_context,
                 &selected_body_input,
             ) {
-                Ok(value) => OrdinaryReturnedValue::Meta(value),
+                Ok(value) => SelectedBodyOutput::Material(value),
                 Err(failure) => {
                     return Err(OrdinaryInvocationFailure::SelectedDelete {
                         selected: selected.call_entry_value,
@@ -2041,7 +2042,7 @@ pub(crate) fn invoke_target_values(
             core_input,
             materialization_state,
         ) {
-            crate::MetaPrimitiveExecution::Material(value) => OrdinaryReturnedValue::Meta(value),
+            crate::MetaPrimitiveExecution::Material(value) => SelectedBodyOutput::Material(value),
             crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
                 return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
             }
@@ -2090,7 +2091,7 @@ pub(crate) fn invoke_target_values(
                         trace,
                     });
                 };
-                OrdinaryReturnedValue::ForwardedSemanticValue(constructed)
+                SelectedBodyOutput::OrdinaryValue(constructed)
             }
             crate::semantic_world::OrdinaryIntrinsicBody::Delete => {
                 return Err(OrdinaryInvocationFailure::SelectedDelete {
@@ -2120,7 +2121,7 @@ pub(crate) fn invoke_target_values(
         && !is_ambient_struct
         && matches!(
             returned,
-            OrdinaryReturnedValue::Meta(MetaExecutionMaterial::StructConstructionMaterial(_))
+            SelectedBodyOutput::Material(MetaExecutionMaterial::StructConstructionMaterial(_))
         )
     {
         canonical_instance_key = Some(canonical_meta_instance_key_for_selected(
@@ -2138,13 +2139,13 @@ pub(crate) fn invoke_target_values(
         is_ambient_struct
             .then_some(ambient_construction_owner)
             .flatten(),
-        &mut returned,
+        returned,
     )
     .map_err(|diagnostic| OrdinaryInvocationFailure::SelectedCoreBody {
         diagnostic,
         trace: trace.clone(),
     })?;
-    let Some((result_type, pattern, returned_value)) = identity else {
+    let Some((result_type, pattern, returned_value, returned)) = identity else {
         return Err(OrdinaryInvocationFailure::SelectedCoreBody {
             diagnostic: Diagnostic::hard_error(
                 "selected callable did not form a canonical semantic result",
@@ -2185,7 +2186,7 @@ pub(crate) fn invoke_target_values(
     // canonical P1 layer, derived on demand by
     // `SingleMemberResult::exposed()`.
     let semantic_complete_type = match &returned {
-        OrdinaryReturnedValue::CompleteType(value) => Some(value.complete_type.clone()),
+        ReturnedSemanticEntity::CompleteType(value) => Some(value.complete_type.clone()),
         _ => None,
     };
     if matches!(selected.return_shape, ReturnShape::SingleType) != semantic_complete_type.is_some()
@@ -2807,10 +2808,18 @@ fn ordinary_result_identity(
     selected: &PreparedCallCandidate,
     canonical_key: Option<&crate::MetaInvocationMaterialKey>,
     ambient_struct_owner: Option<SemanticOwnerId>,
-    returned: &mut OrdinaryReturnedValue,
-) -> Result<Option<(TypeValueId, PatternValueId, Option<SemanticValueId>)>, Diagnostic> {
+    returned: SelectedBodyOutput,
+) -> Result<
+    Option<(
+        TypeValueId,
+        PatternValueId,
+        Option<SemanticValueId>,
+        ReturnedSemanticEntity,
+    )>,
+    Diagnostic,
+> {
     match returned {
-        OrdinaryReturnedValue::Meta(MetaExecutionMaterial::ForwardedResultMaterial(value)) => {
+        SelectedBodyOutput::Material(MetaExecutionMaterial::ForwardedResultMaterial(value)) => {
             let represented = value.type_value;
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
@@ -2833,19 +2842,21 @@ fn ordinary_result_identity(
                         Some(value.provenance.clone()),
                     )
                 })?;
-            *returned = OrdinaryReturnedValue::CompleteType(ReturnedCompleteType {
-                complete_type,
-                carrier_value,
+            Ok(Some((
+                represented,
                 pattern,
-                construction_material: None,
-            });
-            Ok(Some((represented, pattern, None)))
+                None,
+                ReturnedSemanticEntity::CompleteType(ReturnedCompleteType {
+                    complete_type,
+                    carrier_value,
+                    pattern,
+                    construction_material: None,
+                }),
+            )))
         }
-        OrdinaryReturnedValue::Meta(MetaExecutionMaterial::StructConstructionMaterial(value)) => {
-            // The generated definition id is normalized body material; the
-            // result identity is either the ambient struct root or the
-            // canonical meta-type root registered under the selected callable
-            // plus its arguments.  Neither branch uses the body id as tau.
+        SelectedBodyOutput::Material(MetaExecutionMaterial::StructConstructionMaterial(
+            mut value,
+        )) => {
             let installed = if let Some(ambient_owner) = ambient_struct_owner {
                 if let Some((_existing, binder)) =
                     semantic_world.ambient_struct_collision(ambient_owner, value.type_definition_id)
@@ -2901,27 +2912,28 @@ fn ordinary_result_identity(
                 })?;
             let complete_type =
                 semantic_world.observe_complete_type(canonical_type, Some(carrier_place))?;
-            let construction_material = value.clone();
-            *returned = OrdinaryReturnedValue::CompleteType(ReturnedCompleteType {
-                complete_type: complete_type.clone(),
-                carrier_value,
-                pattern,
-                construction_material: Some(construction_material),
-            });
             Ok(Some((
                 complete_type.lookup_key,
                 pattern,
                 Some(carrier_value),
+                ReturnedSemanticEntity::CompleteType(ReturnedCompleteType {
+                    complete_type,
+                    carrier_value,
+                    pattern,
+                    construction_material: Some(value),
+                }),
             )))
         }
-        OrdinaryReturnedValue::ForwardedSemanticValue(value) => Ok(semantic_world
-            .value(*value)
-            .map(|value| (value.type_value, value.pattern, Some(value.id)))),
-        OrdinaryReturnedValue::CompleteType(value) => Ok(Some((
-            value.complete_type.lookup_key,
-            value.pattern,
-            Some(value.carrier_value),
-        ))),
+        SelectedBodyOutput::OrdinaryValue(value_id) => {
+            Ok(semantic_world.value(value_id).map(|value| {
+                (
+                    value.type_value,
+                    value.pattern,
+                    Some(value.id),
+                    ReturnedSemanticEntity::OrdinaryValue(value.id),
+                )
+            }))
+        }
     }
 }
 

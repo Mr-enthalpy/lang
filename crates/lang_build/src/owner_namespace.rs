@@ -1,8 +1,8 @@
 //! Owner-aware namespace views, package boundaries, and mount redirects.
 //!
-//! This is the canonical typed substrate for the persistent namespace forest.
-//! The temporary `SemanticNameIndex` remains a projection adapter while
-//! v0.6 consumers migrate to this model.
+//! This typed graph carries persistent namespace ownership and name views.
+//! `SemanticNameIndex` stores the namespace topology and declaration records
+//! installed atomically with the semantic world.
 
 use std::collections::BTreeMap;
 

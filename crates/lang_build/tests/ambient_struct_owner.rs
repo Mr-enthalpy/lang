@@ -47,7 +47,7 @@ fn returned_struct_material(
     else {
         panic!("direct struct invocation returns one complete tau value");
     };
-    let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
+    let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
         panic!("struct result must not expose private meta construction material as its value");
     };
     let material = returned

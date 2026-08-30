@@ -375,9 +375,8 @@ pub(crate) fn insert_core_type(
     symbol.visibility_metadata.export_root = true;
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
     // Core lookup indices come from a type registry namespace disjoint from
-    // graph Symbol allocation.  Their opaque representation is provisional;
-    // the only hard property here is that no SymbolId conversion defines type
-    // identity.
+    // graph Symbol allocation. Their encoding is opaque; no SymbolId
+    // conversion defines type identity.
     let represented_type = crate::TypeValueId((1u64 << 62) | core_types.len() as u64);
     // Declared semantic registration fact: core type carriers are declared
     // `export meta runtime`, spelled as the canonical pair directly.

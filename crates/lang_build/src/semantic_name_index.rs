@@ -8,9 +8,8 @@ use crate::model::{
 
 /// Immutable revision of the SemanticWorld-owned namespace-name index.
 ///
-/// This index stores namespace topology and declaration records used by
-/// projection adapters.  It is not a second world and is never committed
-/// independently of its owning SemanticWorld.
+/// This index stores namespace topology and declaration records. It is never
+/// committed independently of its owning SemanticWorld.
 #[derive(Clone, Debug)]
 pub struct SemanticNameIndex {
     snapshot_id: u64,

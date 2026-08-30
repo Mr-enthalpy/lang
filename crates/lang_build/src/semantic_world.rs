@@ -1568,9 +1568,9 @@ impl SemanticWorld {
             next_cluster: 0,
             next_callable: 0,
             next_value: 0,
-            // Anonymous type values live in a disjoint provisional allocation
-            // range.  This is representation only; semantic equality remains
-            // the TypeValueId itself and never a SymbolId conversion.
+            // Core lookup keys live in a range disjoint from graph Symbol
+            // allocation. Type equality observes `Core(tau)`; this counter is
+            // only an opaque lookup index.
             next_anonymous_type: 1u64 << 63,
             next_pattern: 0,
             next_scope: 0,
@@ -3521,8 +3521,8 @@ impl SemanticWorld {
         }
     }
 
-    /// Explicit retargeting of the borrow value held by `borrow`.  This never
-    /// follows the old referent and never infers a target from a temporary.
+    /// Explicit retargeting of the borrow value held by `borrow`. This uses
+    /// only the supplied target and never infers one from another value.
     pub fn rebind_borrow(
         &mut self,
         borrow: BorrowViewId,

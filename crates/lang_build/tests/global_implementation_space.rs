@@ -395,7 +395,7 @@ fn source_backed_transport_family_uses_pattern_owner_and_ordinary_spine() {
     };
     assert!(matches!(
         named.returned,
-        lang_build::OrdinaryReturnedValue::ForwardedSemanticValue(value)
+        lang_build::ReturnedSemanticEntity::OrdinaryValue(value)
             if value == source
     ));
     assert_eq!(

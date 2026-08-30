@@ -9,8 +9,7 @@ use crate::{
     },
     meta_invocation::{
         attach_type_definition_pattern_materials, compute_type_definition_instance_id,
-        GeneratedFieldDefinition, MetaInvocationInput, ReturnSlotSemantics,
-        StructConstructionMaterial,
+        GeneratedFieldDefinition, MetaInvocationInput, StructConstructionMaterial,
     },
     model::{
         CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, ExecutionEnv,
@@ -417,13 +416,6 @@ pub(crate) fn expand_struct_construction_material(
             Some(value.provenance.clone()),
         )));
     }
-    if value.identity_material.return_slot_semantics != ReturnSlotSemantics::Generate {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: StructConstructionMaterial must have Generate return-slot semantics",
-            Some(value.provenance.clone()),
-        )));
-    }
-
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     if value

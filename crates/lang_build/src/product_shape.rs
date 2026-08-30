@@ -333,7 +333,7 @@ impl RawArgShape {
     ///
     /// Ordinary `let T: type = uint8` passes the fresh carrier `T` together
     /// with the already-existing `uint8` TypeValue.  Candidate identity and
-    /// type equality consume the latter; the former remains graph/place
+    /// type equality consume the TypeValue; the carrier remains graph/place
     /// material only.
     pub fn as_complete_type_projection_with_identity(
         self,

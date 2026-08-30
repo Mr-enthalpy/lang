@@ -393,7 +393,7 @@ fn s10_06_privileged_struct_uses_the_normal_overload_path() {
         result.trace.selected.is_some(),
         "privilege applies only after ordinary selection"
     );
-    let lang_build::OrdinaryReturnedValue::CompleteType(returned) = &result.returned else {
+    let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
         panic!("struct semantic result is complete tau");
     };
     assert!(result.complete_result[0].value.is_some());

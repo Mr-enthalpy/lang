@@ -427,14 +427,13 @@ fn detect_duplicate_identity(units: &[DiscoveredSourceUnit], diagnostics: &mut V
     }
 }
 
-/// Provisional v0.6 namespace component validation.
+/// Namespace component validation for filesystem discovery.
 ///
 /// Directory names that contribute namespace path components must be valid
-/// ordinary name components. Full lexical reuse from the parser is not wired in
-/// yet, so this uses a narrow, provisional ASCII rule: the first character must
-/// be an ASCII letter or `_`, and the rest ASCII alphanumeric or `_`. This is
-/// deliberately conservative and is not the final name rule. It must not invent
-/// escaping syntax and must not change parser/lexer behavior.
+/// ordinary name components. Filesystem discovery accepts a narrow ASCII
+/// subset: the first character must be an ASCII letter or `_`, and the rest
+/// ASCII alphanumeric or `_`. This boundary does not define language-level
+/// identifier syntax and does not change parser/lexer behavior.
 fn namespace_component_from_dir_name(name: &str, file: &Path) -> Result<String, Diagnostic> {
     let valid = !name.is_empty()
         && name.chars().enumerate().all(|(index, character)| {

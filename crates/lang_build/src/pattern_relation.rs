@@ -427,7 +427,7 @@ fn solve_annotation(
         NormPattern::Name { name, .. } if name == "type" => {
             if arg.is_value || arg.pattern_value.is_none() {
                 return Err(inapplicable(
-                    "type annotation expected a complete type Object",
+                    "type annotation expected a complete type value",
                     arg,
                 ));
             }

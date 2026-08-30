@@ -18,8 +18,8 @@ use crate::{Diagnostic, Provenance};
 /// Semantic class declared for one callable result.
 ///
 /// `Extension` is an explicit future-work gate.  It lets later canonical
-/// result classes cross this boundary without treating this provisional Rust
-/// representation as a closed language ontology.
+/// result classes cross this boundary while the Rust carrier remains an open
+/// representation of the declared result-class universe.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DeclaredResultClass {
     Unit,

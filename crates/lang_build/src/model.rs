@@ -491,8 +491,8 @@ pub struct CoreTypeProjection {
     /// The type value carried by this Symbol.
     ///
     /// This is deliberately independent from `carrier_symbol_id`: for
-    /// `let T: type = uint8`, the former is the fresh carrier `T` while this
-    /// projection is exactly the value read from `uint8`.
+    /// `let T: type = uint8`, `T` is a fresh carrier while this projection is
+    /// exactly the value read from `uint8`.
     pub represented_type: TypeValueId,
     pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub fields: Vec<TypeField>,

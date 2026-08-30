@@ -1480,10 +1480,7 @@ impl CompilationWorld {
             .collect::<Vec<_>>();
         if !selected.is_empty() {
             match result.returned {
-                crate::OrdinaryReturnedValue::Meta(
-                    crate::MetaExecutionMaterial::ForwardedResultMaterial(_),
-                )
-                | crate::OrdinaryReturnedValue::ForwardedSemanticValue(_) => self
+                crate::ReturnedSemanticEntity::OrdinaryValue(_) => self
                     .install_connected_semantic_binding(
                         namespace,
                         binder_name,
@@ -1493,17 +1490,7 @@ impl CompilationWorld {
                         provenance,
                     )
                     .map(|_| ()),
-                crate::OrdinaryReturnedValue::Meta(value) => self
-                    .bind_connected_meta_material_result(
-                        namespace,
-                        binder_name,
-                        namespace_declaration,
-                        &selected,
-                        value,
-                        None,
-                        provenance,
-                    ),
-                crate::OrdinaryReturnedValue::CompleteType(value) => {
+                crate::ReturnedSemanticEntity::CompleteType(value) => {
                     let complete_type = complete_type_authority.as_ref().ok_or_else(|| {
                         BuildError::single(Diagnostic::hard_error(
                             "CompleteType binding lost its exact semantic tau",
