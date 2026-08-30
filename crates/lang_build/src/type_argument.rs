@@ -2,10 +2,10 @@
 //!
 //! Classifies `UnknownExpression` arguments in an `ArgProductShape` by
 //! resolving their corresponding product-atom names through a supplied
-//! type-resolution environment. Classification sets `NonValue(CoreTypeProjection)` and
-//! records both its carrier `SymbolId` and its represented `TypeValueId`.
-//! Type equality and canonical argument material consume the value identity;
-//! the carrier remains place/navigation material.
+//! `TypeResolutionEnv`. Classification records the complete-type observation,
+//! Core lookup handle, binding view, and carrier Place required by later
+//! consumers. `NonValue(CoreTypeProjection)` is the argument-role tag; Pattern
+//! applicability is supplied separately by `R_Gamma`.
 //!
 //! This module does **not** resolve call targets, does **not** perform type
 //! checking, does **not** insert mechanical pass actions, and does **not**
@@ -15,70 +15,13 @@ use lang_syntax::NormExpr;
 
 use crate::{
     identity::SemanticValueId,
-    model::{Diagnostic, NamespaceNodeId, PolicyEnv, Provenance, SymbolId, SymbolPayload},
+    model::{Diagnostic, NamespaceNodeId, Provenance, SymbolId},
     policy_pair::PolicyResultEntry,
     product_shape::{ArgProductShape, ProductAtom, RawArgValueClass},
-    semantic_name_index::{ResolverContext, SemanticNameResolver},
+    semantic_name_index::ResolverContext,
     semantic_world::{ObjectPlaceId, PatternValueId, SemanticWorld},
     TypeValueId,
 };
-
-/// Classify type-object arguments within an `ArgProductShape`.
-///
-/// For each `UnknownExpression` argument whose corresponding atom is a
-/// `NormExpr::Name`, resolves the name through the supplied name-resolution
-/// resolver as a complete type value under the given policy. Successfully resolved
-/// arguments are refined
-/// to `NonValue(CoreTypeProjection)` with independent carrier-Symbol and represented
-/// type-value identities.
-/// Unresolved names remain `UnknownExpression`.
-///
-/// Index, provenance, and pass-action boundaries are preserved. Unit and
-/// Expression-barrier atoms are passed through unchanged.
-pub fn classify_type_arguments(
-    shape: &ArgProductShape,
-    capability: &SemanticNameResolver<'_>,
-    context: &ResolverContext,
-) -> ArgProductShape {
-    let mut args = shape.raw_args.clone();
-    for raw_arg in &mut args {
-        if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
-            continue;
-        }
-        let atom = match shape.flattened.atoms.get(raw_arg.index) {
-            Some(atom) => atom,
-            None => continue,
-        };
-        let name = match atom {
-            ProductAtom::Expression {
-                expr: NormExpr::Name { text, .. },
-                ..
-            } => text.clone(),
-            _ => continue,
-        };
-        let Ok(type_symbol) = capability.resolve_complete_type_projection_with_policy(
-            &name,
-            context,
-            PolicyEnv::OpenStatic,
-        ) else {
-            continue;
-        };
-        let (carrier_symbol, represented_type) = match &type_symbol.payload {
-            SymbolPayload::CompleteTypeProjection(type_projection) => (
-                type_projection.carrier_symbol_id,
-                type_projection.represented_type,
-            ),
-            _ => continue,
-        };
-        *raw_arg = raw_arg
-            .clone()
-            .as_complete_type_projection_with_identity(carrier_symbol, represented_type);
-    }
-    ArgProductShape {
-        raw_args: args,
-        ..shape.clone()
-    }
-}
 
 /// Classification report: carries the classified shape alongside unresolved
 /// type-name entries for near-cause diagnostics.
@@ -88,71 +31,10 @@ pub struct TypeArgumentClassificationReport {
     pub unresolved_names: Vec<String>,
 }
 
-/// Classify type-object arguments and record unresolved names for diagnostics.
-///
-/// Same logic as `classify_type_arguments`, but also returns a list of
-/// names that could not be resolved as complete type values. Callers can surface
-/// these as near-cause diagnostics.
-pub fn classify_type_arguments_with_report(
-    shape: &ArgProductShape,
-    capability: &SemanticNameResolver<'_>,
-    context: &ResolverContext,
-) -> TypeArgumentClassificationReport {
-    let mut args = shape.raw_args.clone();
-    let mut unresolved = Vec::new();
-    for raw_arg in &mut args {
-        if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
-            continue;
-        }
-        let atom = match shape.flattened.atoms.get(raw_arg.index) {
-            Some(atom) => atom,
-            None => continue,
-        };
-        let name = match atom {
-            ProductAtom::Expression {
-                expr: NormExpr::Name { text, .. },
-                ..
-            } => text.clone(),
-            _ => continue,
-        };
-        match capability.resolve_complete_type_projection_with_policy(
-            &name,
-            context,
-            PolicyEnv::OpenStatic,
-        ) {
-            Ok(type_symbol) => {
-                let (carrier_symbol, represented_type) = match &type_symbol.payload {
-                    SymbolPayload::CompleteTypeProjection(type_projection) => (
-                        type_projection.carrier_symbol_id,
-                        type_projection.represented_type,
-                    ),
-                    _ => {
-                        unresolved.push(name);
-                        continue;
-                    }
-                };
-                *raw_arg = raw_arg
-                    .clone()
-                    .as_complete_type_projection_with_identity(carrier_symbol, represented_type);
-            }
-            Err(_) => {
-                unresolved.push(name);
-            }
-        }
-    }
-    TypeArgumentClassificationReport {
-        classified_shape: ArgProductShape {
-            raw_args: args,
-            ..shape.clone()
-        },
-        unresolved_names: unresolved,
-    }
-}
-
 /// Result of resolving one bare name as a type in some resolution
-/// environment. Identity flows only through `represented_type`; the
-/// carrier Symbol is graph place/navigation material and is absent
-/// for semantic-world resolutions.
+/// environment. `represented_type` is an opaque Core lookup handle; complete
+/// type identity flows through `complete_type_observation`. The carrier Symbol
+/// is graph navigation material and is absent for semantic-world resolutions.
 ///
 /// `effective_view` is the resolved carrier's own binding-level pure-P member
 /// view.  It travels with the resolution because a represented TypeValue is
@@ -346,11 +228,10 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
     }
 }
 
-/// Environment-based variant of `classify_type_arguments_with_report`.
+/// Classifies argument content through a semantic type-resolution environment.
 ///
-/// Same classification loop, but name resolution flows through a
-/// `TypeResolutionEnv`. Successful hits record the source pattern name for
-/// binder substitution alongside the represented type value.
+/// Successful hits record the source pattern name for binder substitution
+/// alongside the complete type observation.
 ///
 /// A navigated argument (`f::T`) is classified through the same shared
 /// recursive Symbol navigation as a bare name: the path denotes one terminal

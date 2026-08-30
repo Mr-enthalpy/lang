@@ -130,18 +130,23 @@ fn different_normalized_body_does_not_collide_at_the_same_level() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
             .expect("core semantic world builds");
-    invoke_struct(
+    let body_a = invoke_struct(
         &mut world,
         "let T: type = (uint8 a) struct;",
         "ambient collision: shape a",
     )
     .expect("first shape generates");
-    invoke_struct(
+    let body_b = invoke_struct(
         &mut world,
         "let U: type = (uint8 b) struct;",
         "ambient collision: shape b",
     )
     .expect("a distinct normalized body is a distinct ambient generation");
+    assert_ne!(
+        returned_struct_material(&body_a).1.material_id,
+        returned_struct_material(&body_b).1.material_id,
+        "different canonical body content has different replay material identity"
+    );
 }
 
 fn canonical_struct_pattern(spelling: &str) -> CanonicalPatternValue {
@@ -376,6 +381,11 @@ fn different_function_self_owners_do_not_share_an_ambient_struct_root() {
 
     let (pattern_f, type_f) = generated_root(&world, &under_f);
     let (pattern_g, type_g) = generated_root(&world, &under_g);
+    assert_eq!(
+        returned_struct_material(&under_f).1.material_id,
+        returned_struct_material(&under_g).1.material_id,
+        "equal canonical bodies share material identity across distinct roots"
+    );
     assert_ne!(
         type_f, type_g,
         "same namespace, different function Self -> different ambient roots"

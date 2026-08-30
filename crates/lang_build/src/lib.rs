@@ -19,7 +19,6 @@ pub mod literal_semantics;
 pub mod manifest;
 mod meta;
 pub mod meta_body;
-mod meta_cache;
 mod meta_candidate;
 mod meta_invocation;
 mod meta_key;
@@ -107,7 +106,6 @@ pub use meta_body::{
     check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
     selected_meta_delete_diagnostic, ClosureBodyExecutionEnv, SelectedMetaBodyEvaluation,
 };
-pub use meta_cache::{CachedMetaInstance, MetaInstanceCache};
 pub use meta_candidate::{
     prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
     CandidatePolicyPlanes, CandidatePrepDeferredReason, CandidatePrepResult,
@@ -119,10 +117,7 @@ pub(crate) use meta_invocation::{
     ReturnViewShape,
 };
 pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterialId};
-pub use meta_key::{
-    compute_candidate_fingerprint, compute_meta_invocation_material_key, CanonicalFingerprint,
-    MetaInvocationMaterialKey,
-};
+pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};
 pub use model::{
     policy_view_allows_execution, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
     CoreMetaFunction, CoreTypeProjection, Diagnostic, DiagnosticSeverity, ExecutionEnv,
@@ -257,8 +252,7 @@ pub use struct_pattern_registry::{
     StructPatternMaterialization,
 };
 pub use type_argument::{
-    classify_type_arguments, classify_type_arguments_env_with_report,
-    classify_type_arguments_with_report, BodyLocalInitializerCheck, NamedTypeResolution,
+    classify_type_arguments_env_with_report, BodyLocalInitializerCheck, NamedTypeResolution,
     SemanticTypeEnv, TypeArgumentClassificationReport, TypeResolutionEnv,
 };
 pub use verify::evaluate_source_verifications;

@@ -1,39 +1,12 @@
-//! Parent-neutral meta invocation material key and fingerprint.
+//! Parent-neutral meta invocation material key.
 //!
 //! `MetaInvocationMaterialKey = MetaCallableIdentity × CanonicalArgumentProductAddr`
-//! the key STORES its structural coordinates and defines
-//! equality/ordering directly on them.  The FNV fingerprint is a derived
-//! digest for display/transport only — it never defines semantic equality.
-//!
-//! Prepared-candidate fingerprints are opaque cache indices and never produce
-//! a semantic root key.
+//! stores its structural coordinates and defines equality/ordering directly on
+//! them.
 
 use crate::{
-    canonical_value::CanonicalValueAddr,
-    fingerprint::Fnv1a64,
-    identity::MetaCallableIdentity,
-    meta_candidate::{
-        CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, PreparedCallableCandidate,
-    },
-    model::Provenance,
+    canonical_value::CanonicalValueAddr, identity::MetaCallableIdentity, model::Provenance,
 };
-
-/// Deterministic canonical fingerprint prefixed with version marker.
-///
-/// A fingerprint is DERIVED display, transport, and cache-index material. It
-/// never defines equality of any semantic identity.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CanonicalFingerprint {
-    pub value: String,
-}
-
-impl CanonicalFingerprint {
-    pub fn new(hex: String) -> Self {
-        Self {
-            value: format!("v08:{hex}"),
-        }
-    }
-}
 
 /// Parent-neutral structural key for replayable meta invocation material.
 ///
@@ -60,22 +33,6 @@ impl MetaInvocationMaterialKey {
     fn coords(&self) -> (MetaCallableIdentity, CanonicalValueAddr) {
         (self.callable, self.arguments)
     }
-
-    /// Derived display/transport fingerprint of the structural coordinates.
-    ///
-    /// This digest NEVER defines equality; it is recomputed from the stored
-    /// structural coordinates on demand.
-    pub fn fingerprint(&self) -> CanonicalFingerprint {
-        let mut h = Fnv1a64::new();
-        // Version marker for the normalized canonical meta key encoding.
-        h.write_str_field("v09-source-meta-norm");
-        // Selected function object value identity + selected call entry.
-        h.write_field(&self.callable.selected_function_value.as_u64().to_le_bytes());
-        h.write_field(&self.callable.selected_call_entry.as_u64().to_le_bytes());
-        // The whole argument tuple as one interned Product address.
-        h.write_field(&self.arguments.as_u64().to_le_bytes());
-        CanonicalFingerprint::new(h.finish_hex())
-    }
 }
 
 impl PartialEq for MetaInvocationMaterialKey {
@@ -96,61 +53,6 @@ impl Ord for MetaInvocationMaterialKey {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.coords().cmp(&other.coords())
     }
-}
-
-/// Cache fingerprint of a prepared meta candidate.
-///
-/// This opaque digest is used ONLY by `MetaInstanceCache`. It is not a
-/// `MetaInvocationMaterialKey` and defines no semantic identity.
-///
-/// The digest material is derived on demand from the candidate's argument
-/// product shape. There is no stored second identity definition. The encoding is field-by-field with
-/// length-prefixing so that concatenation of neighbouring fields cannot
-/// produce false matches (e.g. `"ab" + "c"` must not collide with
-/// `"a" + "bc"`).
-pub fn compute_candidate_fingerprint(
-    candidate: &PreparedCallableCandidate,
-) -> CanonicalFingerprint {
-    let material =
-        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
-    let mut h = Fnv1a64::new();
-
-    // Version marker
-    h.write_str_field("v08");
-
-    // Callee identity
-    h.write_field(&candidate.callee_symbol_id.0.to_le_bytes());
-
-    // Argument arity
-    h.write_field(&(material.arity as u64).to_le_bytes());
-
-    // Unit positions
-    h.write_field(&(material.unit_positions.len() as u64).to_le_bytes());
-    for pos in &material.unit_positions {
-        h.write_field(&(*pos as u64).to_le_bytes());
-    }
-
-    // Atom kinds
-    h.write_field(&(material.atom_kinds.len() as u64).to_le_bytes());
-    for kind in &material.atom_kinds {
-        let discriminant = atom_kind_discriminant(kind);
-        h.write_field(&[discriminant]);
-    }
-
-    // Known type values. Name/carrier navigation has already been evaluated
-    // and must not affect canonical invocation identity.
-    h.write_field(&(material.known_type_values.len() as u64).to_le_bytes());
-    for type_value in &material.known_type_values {
-        match type_value {
-            None => h.write_field(&[0u8]),
-            Some(type_value) => {
-                h.write_field(&[1u8]);
-                h.write_field(&type_value.0.to_le_bytes());
-            }
-        }
-    }
-
-    CanonicalFingerprint::new(h.finish_hex())
 }
 
 /// Compute the parent-neutral material key of one meta invocation from the
@@ -177,19 +79,5 @@ pub fn compute_meta_invocation_material_key(
         callable,
         arguments: arguments_product_addr,
         provenance,
-    }
-}
-
-pub(crate) fn atom_kind_discriminant(kind: &CanonicalArgAtomKind) -> u8 {
-    match kind {
-        CanonicalArgAtomKind::ExpressionBarrier => 0,
-        CanonicalArgAtomKind::ResolvedValue => 1,
-        CanonicalArgAtomKind::CoreTypeProjection => 2,
-        CanonicalArgAtomKind::RankObject => 3,
-        CanonicalArgAtomKind::NamespaceObject => 4,
-        CanonicalArgAtomKind::MetaObject => 5,
-        CanonicalArgAtomKind::PatternObject => 6,
-        CanonicalArgAtomKind::ProductUnit => 7,
-        CanonicalArgAtomKind::Unsupported => 8,
     }
 }

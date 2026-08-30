@@ -1143,16 +1143,12 @@ impl CompilationWorld {
                     declaration_provenance.clone(),
                 )?;
 
-                // Explicit ContributeSiblingVal target.  A
-                // declaration contributes as a cluster sibling val ONLY when
-                // its binder name matches an existing cluster Symbol (a
-                // Symbol whose `pure_p` is set) in the same namespace.  This
-                // is the explicit boundary: `const let uint8 = (self, ...) =>
-                // {...}` contributes to the `uint8` cluster, but `let identity
-                // = ...` does NOT match any cluster Symbol and is registered as
-                // an ordinary source callable (Val2[name]).  The previous
-                // namespace-membership heuristic that contributed every
-                // callable in an associated namespace as a sibling is deleted.
+                // A declaration contributes as a cluster sibling exactly when
+                // its binder names an existing cluster Symbol (a Symbol whose
+                // `pure_p` is set) in the same namespace. For example,
+                // `const let uint8 = (self, ...) => {...}` contributes to the
+                // `uint8` cluster, while `let identity = ...` is installed as
+                // an ordinary Val2 callable under its own name.
                 let cluster_symbol = self
                     .semantic_world
                     .symbol_in_namespace(namespace, &binder_name)

@@ -38,9 +38,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use lang_syntax::{NormExpr, NormProductElem};
 
 use crate::{
-    content_observation::{
-        ContentObservationInterface, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
-    },
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     model::{Diagnostic, Provenance, SymbolId},
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
@@ -95,32 +92,7 @@ impl StructConstructionMaterial {
         if let Some(value) = &self.canonical_pattern_override {
             return value.clone();
         }
-        if let Some(pattern) = self.type_pattern_expr.as_ref() {
-            let field_types = self
-                .fields
-                .iter()
-                .map(|field| (field.name.as_str(), field.type_observation))
-                .collect::<BTreeMap<_, _>>();
-            return canonicalize_struct_pattern(
-                pattern.transparent_singleton(),
-                &crate::CanonicalFullNavigation::new(std::iter::empty::<String>()),
-                &field_types,
-                crate::PatternLayerContext::NakedProduct,
-            );
-        }
-        crate::CanonicalPatternValue::OrderedLayer(
-            self.fields
-                .iter()
-                .map(|field| crate::CanonicalOrderedPatternEntry {
-                    navigation: Some(crate::CanonicalFullNavigation::from_component(
-                        field.name.clone(),
-                    )),
-                    value: crate::CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Type(
-                        field.type_observation,
-                    )),
-                })
-                .collect(),
-        )
+        canonical_struct_body_pattern(self.type_pattern_expr.as_ref(), &self.fields)
     }
 
     /// Mirror a successful incremental pure-P contribution on the returned
@@ -130,6 +102,37 @@ impl StructConstructionMaterial {
     pub fn set_canonical_pattern_value(&mut self, value: crate::CanonicalPatternValue) {
         self.canonical_pattern_override = Some(value);
     }
+}
+
+fn canonical_struct_body_pattern(
+    pattern: Option<&StructPatternSyntaxMaterial>,
+    fields: &[GeneratedFieldDefinition],
+) -> crate::CanonicalPatternValue {
+    if let Some(pattern) = pattern {
+        let field_types = fields
+            .iter()
+            .map(|field| (field.name.as_str(), field.type_observation))
+            .collect::<BTreeMap<_, _>>();
+        return canonicalize_struct_pattern(
+            pattern.transparent_singleton(),
+            &crate::CanonicalFullNavigation::new(std::iter::empty::<String>()),
+            &field_types,
+            crate::PatternLayerContext::NakedProduct,
+        );
+    }
+    crate::CanonicalPatternValue::OrderedLayer(
+        fields
+            .iter()
+            .map(|field| crate::CanonicalOrderedPatternEntry {
+                navigation: Some(crate::CanonicalFullNavigation::from_component(
+                    field.name.clone(),
+                )),
+                value: crate::CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Type(
+                    field.type_observation,
+                )),
+            })
+            .collect(),
+    )
 }
 
 fn canonicalize_struct_pattern(
@@ -279,31 +282,6 @@ pub enum MetaPrimitiveExecution {
     Diagnostic(Diagnostic),
 }
 
-impl MetaExecutionMaterial {
-    pub fn return_normal_form_shape(&self) -> ObservedArgumentContent {
-        match self {
-            MetaExecutionMaterial::IdentityType(value) => {
-                ObservedArgumentContent::ValuePoint(ObservedAtomContent {
-                    value_kind: ObservedAtomKind::IdentityType {
-                        type_value: value.type_value,
-                    },
-                    extraction_interface: ContentObservationInterface::Leaf,
-                    provenance: value.provenance.clone(),
-                })
-            }
-            MetaExecutionMaterial::StructConstructionMaterial(value) => {
-                ObservedArgumentContent::ValuePoint(ObservedAtomContent {
-                    value_kind: ObservedAtomKind::StructConstruction {
-                        material_id: value.material_id,
-                    },
-                    extraction_interface: ContentObservationInterface::Leaf,
-                    provenance: value.provenance.clone(),
-                })
-            }
-        }
-    }
-}
-
 /// Existing type value and observation proven by the `IdentityType` primitive.
 ///
 /// The target carries the forwarded TypeValue directly. Reaching that value
@@ -321,12 +299,11 @@ pub struct IdentityTypeMaterial {
     pub provenance: Provenance,
 }
 
-/// Generated construction value — the call returns a new construction value
-/// whose external identity is shielded by callee + canonical args + build
-/// identity. Reserved for future generative type constructors.
-/// This is graph-installation-free and binding-free invocation output. Registry
-/// material may already be attached; the declared type symbol, associated
-/// namespace, and field projections are binding materialization artifacts.
+/// Replayable normalized body material produced by `struct` execution.
+///
+/// This is graph-installation-free and binding-free. The declared type Symbol,
+/// meta-instance root, associated namespace, and field projections are formed
+/// at their respective semantic boundaries and never enter body identity.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StructConstructionMaterial {
     /// Normalized struct body identity.  This is body material only:
@@ -388,16 +365,14 @@ impl StructConstructionMaterialId {
 /// identity computation.
 #[derive(Clone, Debug)]
 pub struct StructConstructionIdentityMaterial {
-    pub callee_symbol_id: SymbolId,
-    pub canonical_args: CanonicalArgProductShapeMaterial,
+    pub canonical_pattern: crate::CanonicalPatternValue,
     pub field_signature_material: Vec<FieldSignatureMaterial>,
     pub provenance: Provenance,
 }
 
 impl PartialEq for StructConstructionIdentityMaterial {
     fn eq(&self, other: &Self) -> bool {
-        self.callee_symbol_id == other.callee_symbol_id
-            && self.canonical_args == other.canonical_args
+        self.canonical_pattern == other.canonical_pattern
             && self.field_signature_material == other.field_signature_material
     }
 }
@@ -465,26 +440,7 @@ pub fn compute_struct_construction_material_id(
     use crate::fingerprint::Fnv1a64;
     let mut h = Fnv1a64::new();
     h.write_str_field("struct-construction-material");
-    h.write_field(&material.callee_symbol_id.0.to_le_bytes());
-    h.write_field(&(material.canonical_args.arity as u64).to_le_bytes());
-    h.write_field(&(material.canonical_args.unit_positions.len() as u64).to_le_bytes());
-    for pos in &material.canonical_args.unit_positions {
-        h.write_field(&(*pos as u64).to_le_bytes());
-    }
-    h.write_field(&(material.canonical_args.atom_kinds.len() as u64).to_le_bytes());
-    for kind in &material.canonical_args.atom_kinds {
-        h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
-    }
-    h.write_field(&(material.canonical_args.known_type_values.len() as u64).to_le_bytes());
-    for type_value in &material.canonical_args.known_type_values {
-        match type_value {
-            None => h.write_field(&[0u8]),
-            Some(type_value) => {
-                h.write_field(&[1u8]);
-                h.write_field(&type_value.0.to_le_bytes());
-            }
-        }
-    }
+    hash_canonical_pattern(&mut h, &material.canonical_pattern);
     h.write_field(&(material.field_signature_material.len() as u64).to_le_bytes());
     for field in &material.field_signature_material {
         h.write_str_field(&field.field_name);
@@ -500,6 +456,70 @@ pub fn compute_struct_construction_material_id(
     let raw = u64::from_str_radix(&h.finish_hex(), 16)
         .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
     StructConstructionMaterialId(if raw == 0 { 1 } else { raw })
+}
+
+fn hash_navigation(
+    h: &mut crate::fingerprint::Fnv1a64,
+    navigation: &crate::CanonicalFullNavigation,
+) {
+    h.write_field(&(navigation.components().len() as u64).to_le_bytes());
+    for component in navigation.components() {
+        h.write_str_field(component);
+    }
+}
+
+fn hash_canonical_pattern(
+    h: &mut crate::fingerprint::Fnv1a64,
+    pattern: &crate::CanonicalPatternValue,
+) {
+    use crate::{CanonicalPatternAtom, CanonicalPatternValue, CanonicalTypeObservation};
+    match pattern {
+        CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+            CanonicalTypeObservation::Observed(addr),
+        )) => {
+            h.write_field(&[0]);
+            h.write_field(&addr.0.to_le_bytes());
+        }
+        CanonicalPatternValue::Atom(CanonicalPatternAtom::Unit) => h.write_field(&[1]),
+        CanonicalPatternValue::NamedPattern { navigation, body } => {
+            h.write_field(&[2]);
+            hash_navigation(h, navigation);
+            hash_canonical_pattern(h, body);
+        }
+        CanonicalPatternValue::OrderedLayer(entries) => {
+            h.write_field(&[3]);
+            h.write_field(&(entries.len() as u64).to_le_bytes());
+            for entry in entries {
+                match &entry.navigation {
+                    Some(navigation) => {
+                        h.write_field(&[1]);
+                        hash_navigation(h, navigation);
+                    }
+                    None => h.write_field(&[0]),
+                }
+                hash_canonical_pattern(h, &entry.value);
+            }
+        }
+        CanonicalPatternValue::UnorderedLayer(entries) => {
+            h.write_field(&[4]);
+            h.write_field(&(entries.len() as u64).to_le_bytes());
+            for (navigation, value) in entries {
+                hash_navigation(h, navigation);
+                hash_canonical_pattern(h, value);
+            }
+        }
+        CanonicalPatternValue::Sum(alternatives) => {
+            h.write_field(&[5]);
+            h.write_field(&(alternatives.len() as u64).to_le_bytes());
+            for alternative in alternatives {
+                hash_canonical_pattern(h, alternative);
+            }
+        }
+        CanonicalPatternValue::Hole(hole) => {
+            h.write_field(&[6]);
+            h.write_field(&hole.to_le_bytes());
+        }
+    }
 }
 
 /// Return value shape marker.
@@ -637,13 +657,6 @@ fn invoke_struct_type_definition(
         Err(diagnostic) => return MetaPrimitiveExecution::Diagnostic(diagnostic),
     };
 
-    let identity_material = StructConstructionIdentityMaterial {
-        callee_symbol_id: candidate.callee_symbol_id,
-        canonical_args: mat.clone(),
-        field_signature_material: field_signature_material.clone(),
-        provenance: input.provenance.clone(),
-    };
-    let material_id = compute_struct_construction_material_id(&identity_material);
     let fields = field_signature_material
         .iter()
         .map(|field| GeneratedFieldDefinition {
@@ -656,17 +669,24 @@ fn invoke_struct_type_definition(
             struct_pattern_registry: None,
             provenance: field.provenance.clone(),
         })
-        .collect();
+        .collect::<Vec<_>>();
+    let type_pattern_expr = input
+        .struct_decoded_pattern
+        .as_ref()
+        .map(|pattern| pattern.type_pattern_expr.clone());
+    let identity_material = StructConstructionIdentityMaterial {
+        canonical_pattern: canonical_struct_body_pattern(type_pattern_expr.as_ref(), &fields),
+        field_signature_material: field_signature_material.clone(),
+        provenance: input.provenance.clone(),
+    };
+    let material_id = compute_struct_construction_material_id(&identity_material);
     let value = StructConstructionMaterial {
         material_id,
         identity_material,
         fields,
         pattern_materials: None,
         return_view: ReturnViewShape::Leaf,
-        type_pattern_expr: input
-            .struct_decoded_pattern
-            .as_ref()
-            .map(|p| p.type_pattern_expr.clone()),
+        type_pattern_expr,
         sum_struct_pattern_material: input
             .struct_decoded_pattern
             .as_ref()

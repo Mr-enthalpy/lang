@@ -112,11 +112,11 @@ pub enum CallableCandidateKind {
     FieldFunction,
 }
 
-/// Fingerprint input material for the canonical meta instance key.
+/// Prepared argument-shape material consumed by primitive execution.
 ///
 /// Captures the structural argument product shape at candidate-preparation
 /// time. Contains **no** source text, **no** normalized dump, and **no**
-/// hash. This is input material only — the final key derivation is future work.
+/// hash. It is structural execution input, not semantic invocation identity.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CanonicalArgProductShapeMaterial {
     pub arity: usize,
