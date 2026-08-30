@@ -133,13 +133,13 @@ fn seal_static(explicit_argument_mutability: &[PolicyMode]) -> OrdinaryInvocatio
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_fixture_type_binding_builds() {
-    let _ = build_single_fixture_world("s10_type_binding", "app");
+fn fixture_type_binding_builds() {
+    let _ = build_single_fixture_world("type_binding", "app");
 }
 
 #[test]
-fn s10_fixture_cluster_exposure_builds() {
-    let _ = build_single_fixture_world("s10_cluster_exposure", "app");
+fn fixture_cluster_exposure_builds() {
+    let _ = build_single_fixture_world("cluster_exposure", "app");
 }
 
 // ---------------------------------------------------------------------------
@@ -148,8 +148,8 @@ fn s10_fixture_cluster_exposure_builds() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_01_type_binding_is_fresh_symbol_no_alias_no_reroot() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
+    let world = build_single_fixture_world("type_binding", "app");
     let t = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "T")
@@ -190,8 +190,8 @@ fn s10_01_type_binding_is_fresh_symbol_no_alias_no_reroot() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_02_cluster_exposure_filters_per_member_view_by_phase() {
-    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+fn cluster_exposure_filters_per_member_view_by_phase() {
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
     let muts = [PolicyMode::Const];
 
     // OpenStatic: both the meta-P2 member and the compile-P2 member are
@@ -271,8 +271,8 @@ fn s10_02_cluster_exposure_filters_per_member_view_by_phase() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_03_member_view_policies_do_not_union_across_members() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+fn member_view_policies_do_not_union_across_members() {
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -315,8 +315,8 @@ fn s10_03_member_view_policies_do_not_union_across_members() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_05_callable_member_owns_function_object_and_terminal_call_entry() {
-    let world = build_single_fixture_world("s4_return_ontology", "app");
+fn callable_member_owns_function_object_and_terminal_call_entry() {
+    let world = build_single_fixture_world("return_ontology", "app");
     let make_type = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "make_type")
@@ -365,7 +365,7 @@ fn s10_05_callable_member_owns_function_object_and_terminal_call_entry() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_06_privileged_struct_uses_the_normal_overload_path() {
+fn privileged_struct_uses_the_normal_overload_path() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
             .expect("core semantic world builds");
@@ -436,14 +436,13 @@ fn s10_06_privileged_struct_uses_the_normal_overload_path() {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// ⑨ Runtime migration full chain — the transport-bundle mount conflict that
-// previously blocked this chain is fixed, so the test now exercises the full
+// ⑨ Runtime migration full chain — exercise the complete
 // `install_semantic_value` → `invoke_policy_migration` chain
 // (source value → transport member selection → migrated demanded view).
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
+fn runtime_migration_full_chain_through_source_backed_transport() {
     let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
     manifest
         .global_implementation_roots
@@ -538,8 +537,8 @@ fn s10_09_runtime_migration_full_chain_through_source_backed_transport() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_10_flat_symbol_policy_cannot_express_member_level_exposure() {
-    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+fn flat_symbol_policy_cannot_express_member_level_exposure() {
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -603,7 +602,7 @@ fn s10_10_flat_symbol_policy_cannot_express_member_level_exposure() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn s10_13_unwired_lexical_alias_creates_no_semantic_entity() {
+fn unwired_lexical_alias_creates_no_semantic_entity() {
     let error = build_fixture_error("lexical_alias_unwired", "app");
     assert_eq!(error.diagnostics.len(), 1);
     assert_eq!(

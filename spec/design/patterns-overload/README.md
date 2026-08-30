@@ -1,8 +1,9 @@
 # patterns-overload
 
-**Status: Target-semantic design block. Not implemented as a current pattern
-matcher, type checker, or overload resolver.** The relational Pattern calculus
-has one canonical owner in
+**Status: Canonical Pattern and overload design. Base relational applicability
+and Hole valuation feed ordinary candidate selection. Structural extraction
+and later Pattern/control consumers remain pending.** The relational Pattern
+calculus has one canonical owner in
 `pattern-values-relational-semantics-and-extraction.md`; the remaining files
 consume that authority for candidate preparation, overload ordering, return
 delivery, or later residual/control-pattern design.

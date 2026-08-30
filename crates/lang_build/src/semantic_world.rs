@@ -872,7 +872,7 @@ pub(crate) enum OrdinaryIntrinsicBody {
 /// `outer_explicit` is `Some` only when the user wrote P1-relevant
 /// material in the declaration prefix (`compile let f = ...`,
 /// `mut let f = ...`).  A stage-only prefix IS an explicit value-stage
-/// selection — it no longer silently degrades to "no explicit P1".
+/// selection and always remains an explicit P1 fact.
 /// `public/private/export` remain namespace declaration attributes and
 /// never enter the P1; visibility/export of the canonical pair always
 /// come from `outer_derived`.
@@ -4320,8 +4320,8 @@ impl SemanticWorld {
 
     /// Install the unique type member of a meta-instance cluster.
     ///
-    /// v0.9 pattern head identity: the type member of a cluster returned by
-    /// a meta invocation is navigated as the meta function itself plus its
+    /// The type member of a cluster returned by a meta invocation is navigated
+    /// as the meta function itself plus its
     /// input arguments, so its PatternValue is allocated under the
     /// `MetaInstance` owner and paired with a fresh anonymous TypeValue.
     /// A type forwarded by the body keeps its own PatternValue and owner
@@ -4946,9 +4946,8 @@ impl SemanticWorld {
             .push(function_value);
         // Member_views.value_policy/pattern_policy must read
         // the same canonical P1 as SemanticValueObject.policy and
-        // OrdinaryCallEntry.callable_value_policy. Previously this used
-        // function_policy (the un-canonicalized outer P1), creating a split
-        // between "object policy = canonical P1" and "member view = outer P1".
+        // OrdinaryCallEntry.callable_value_policy. The object and member view
+        // therefore observe one canonical P1.
         self.symbols
             .get_mut(&symbol)
             .expect("interned semantic symbol exists")
@@ -6354,8 +6353,8 @@ impl SemanticWorld {
     ///
     /// `backing_declaration` is NOT identity material.  It is the outer
     /// meta function's declaration Symbol, carried only as the A-stage
-    /// declaration-environment transport on the terminal call entry until
-    /// the semantic name index fully replaces the graph-backed lookup.
+    /// declaration-environment transport on the terminal call entry. It is
+    /// not identity material.
     #[allow(clippy::too_many_arguments)]
     pub fn replay_associated_function_member(
         &self,

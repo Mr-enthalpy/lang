@@ -1574,8 +1574,7 @@ Thus a ranked string denotes `str@compile`; it does not first denote
 does not imply `str ref`, hidden storage, or a lifetime extension. The current
 `LiteralFamily::String` carrier preserves that source family. Whether the core
 bootstrap has installed a concrete `str` Type symbol is an implementation
-availability question recorded by the v0.6 transition contract, not the owner
-of this semantic path.
+availability question, not the owner of this semantic path.
 
 The frozen lexer continues to preserve spelling only. It does not choose
 width, signedness, precision, encoding, overflow behavior, or a machine type.
@@ -1629,9 +1628,8 @@ character != char16
 character != char32
 ```
 
-This section does not add a character token to the frozen v0.2 lexer. The final
-source spelling, escape rules, and whether the carrier is exactly the Unicode
-scalar-value set require a current/future surface amendment. Ranked strings
+The final character source spelling, escape rules, and whether the carrier is
+exactly the Unicode scalar-value set remain Open. Ranked strings
 remain the independent `str@compile` path above and are not reinterpreted as
 character tokens.
 

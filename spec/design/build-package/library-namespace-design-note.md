@@ -1,6 +1,6 @@
 # Library and Namespace Design Note
 
-**Status: Non-normative future design note. This is not a v0.1 parser rule.**
+**Status: Canonical library/namespace design note. This is not parser syntax.**
 
 See also `spec/design/build-package/build-system-design.md` for the current build-system
 architecture document.
@@ -127,7 +127,7 @@ corresponding filesystem directory.
 
 `let ns1: namespace = ...` is a language-level namespace object declaration
 or description, not a package mount or import. The source name `namespace`
-is an ordinary `Name` token in v0.1.
+is an ordinary `Name` token in the weak lexer.
 
 ## 10. Export model
 
@@ -168,7 +168,7 @@ currently forbidden. See `spec/design/build-package/build-system-design.md` §9,
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4, and
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
-This is a future meta-function / metaprogramming capability. It is not v0.1
+This is a meta-function / metaprogramming capability. It is not parser
 and must not be assumed as general language semantics.
 
 ## 14. Versioning and caching
@@ -178,13 +178,13 @@ Version resolution and artifact caching are package-layer operations.
 
 ## 15. Relationship to `namespace` in source
 
-The source name `namespace` is an ordinary `Name` token in v0.1. It carries
+The source name `namespace` is an ordinary `Name` token. It carries
 no special lexical or parser status. It may appear in declaration annotation
 position as a source-level token. Future semantic passes may interpret it.
 
-## 16. Relationship to v0.1
+## 16. Frontend boundary
 
-v0.1 must not implement package resolution, namespace resolution, imports,
+The frontend does not implement package resolution, namespace resolution, imports,
 exports, visibility, versioning, caching, filesystem lookup, namespace
 graph assembly, dependency resolution, access control, or metaprogramming
 injection.

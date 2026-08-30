@@ -1,10 +1,10 @@
 /// Source span with byte offsets and 1-based source position.
 ///
-/// v0.1 lexing normalizes CRLF and CR to LF before tokenization. `byte_start`
+/// Lexing normalizes CRLF and CR to LF before tokenization. `byte_start`
 /// and `byte_end` are offsets into that normalized LF source text, not
 /// necessarily the raw file bytes as checked out on disk. `byte_start` is
 /// inclusive and `byte_end` is exclusive. `line` and `column` are computed over
-/// normalized LF text, and `column` is a 1-based byte column for v0.1.
+/// normalized LF text, and `column` is a 1-based byte column.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Span {
     pub byte_start: usize,

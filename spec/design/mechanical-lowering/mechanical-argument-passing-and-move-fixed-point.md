@@ -220,8 +220,8 @@ Semantic points:
    implement a full trait solver, target ABI decision, borrow checker, copy
    legality checker, or concrete pass-selection algorithm.
 
-`T |> get_default_pass` is a source-shaped placeholder for the future static
-selection procedure. Its result domain is `move | copy`; it may depend on
+`T |> get_default_pass` denotes the static pass-selection interface. Its result
+domain is `move | copy`; it may depend on
 `Copyable`, layout/size, target facts, and
 policy. Those details are not the inserted action's surface shape. The inserted
 argument action is still explicit after lowering; the IR must not receive an
@@ -400,8 +400,8 @@ As judgments:
 ```
 
 An explicit argument pass dominates automatic pass. A parameter's pass
-expectation participates in candidate compatibility. Automatic `in` is only a
-pre-lowering placeholder, never a canonical automatic action. It appears only
+expectation participates in candidate compatibility. Automatic `in` is an
+unresolved pre-lowering marker, never a canonical automatic action. It appears only
 when there is no explicit argument pass and must resolve to one concrete action
 in `{move, copy}`.
 
@@ -497,7 +497,7 @@ modes, but this document does not define call modes.
 When `tco` actively moves arguments, what it moves are argument objects that have
 *already* completed pass normalization. `loop` requires stronger slot
 compatibility and may depend on whether an argument object is already reusable in
-place. These are cross-reference placeholders only; this document does not expand
+place. These are cross-references only; this document does not expand
 ABI or tail-call checking.
 
 ## 13. Non-goals

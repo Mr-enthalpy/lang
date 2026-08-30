@@ -1,13 +1,11 @@
-# v0.9 Control-Flow End Events Contract
+# Control-flow end events contract
 
-Contract for implemented v0.9 syntax and normalized structure for
-control-flow end events (return terminal forms, tail values).
+Contract for the syntax and normalized structure of control-flow end events
+(return terminal forms and tail values).
 
 **Status:** Implemented syntax/normalized structure plus restricted build-layer
 return-target binding. Full self-capability resolution, result Pattern
 delivery, D-reduction, Done_Return, and return execution are not implemented.
-
-**Associated PRs:** PR86 (syntax/normalizer), PR2 (docs).
 
 ## 1. Scope
 
@@ -41,7 +39,7 @@ Control-flow end event :=
 | Event | Meaning | Norm form |
 |---|---|---|
 | `TailValue(E)` | Block result / tail value delivered to the directly enclosing layer. Not early return. | `NormForm::TailValue(NormExpr)` |
-| `ReturnEvent(E, ImplicitNearest)` | Early return to the outermost enclosing function layer. Target unresolved; the marker name `ImplicitNearest` is historical and does not mean nearest-enclosing semantics. | `NormForm::ReturnEvent(NormReturnEvent { target: ImplicitNearest })` |
+| `ReturnEvent(E, ImplicitNearest)` | Early return whose target is unresolved. Semantic binding selects the outermost enclosing function layer. | `NormForm::ReturnEvent(NormReturnEvent { target: ImplicitNearest })` |
 | `ReturnEvent(E, Explicit(T))` | Early return to the layer selected by the function-object type target `T`. Target unresolved. | `NormForm::ReturnEvent(NormReturnEvent { target: Explicit(NormExpr) })` |
 
 TailValue is the implicit control-flow end for the final expression in

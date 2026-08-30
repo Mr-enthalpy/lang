@@ -15,10 +15,8 @@ pub const CORE_NAMESPACE: &str = "core";
 
 /// One declared core callable registration fact.
 ///
-/// The bootstrap produces this roster directly so the semantic world is
-/// populated from the declaration itself; the compilation world no longer
-/// scans graph `SymbolPayload::MetaFunction` payloads and re-projects them
-/// through a secondary graph policy carrier.
+/// The bootstrap produces this roster directly. The semantic world is
+/// populated from the declaration and its canonical Policy view.
 pub(crate) struct CoreCallableRegistration {
     pub(crate) namespace: NamespaceNodeId,
     pub(crate) name: String,
@@ -34,10 +32,8 @@ pub(crate) struct CoreCallableRegistration {
 
 /// One declared core type registration fact.
 ///
-/// The bootstrap spells the canonical PolicyPair next to the graph payload
-/// so the semantic world is populated from the declaration itself; the
-/// compilation world no longer rescans graph `SymbolPayload::CompleteTypeProjection` payloads
-/// through a secondary graph projection.
+/// The bootstrap spells the canonical PolicyPair next to the graph payload so
+/// the semantic world is populated directly from the declaration.
 pub(crate) struct CoreTypeRegistration {
     pub(crate) namespace: NamespaceNodeId,
     pub(crate) name: String,

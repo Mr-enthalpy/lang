@@ -120,7 +120,7 @@ fn i1_let_parens_never_changes_sibling_vals() {
 
 #[test]
 fn i2_every_callable_sibling_is_function_object() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -136,7 +136,7 @@ fn i2_every_callable_sibling_is_function_object() {
 
 #[test]
 fn i8_call_entry_is_terminal_function_item() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -414,7 +414,7 @@ fn i15_source_ordinary_call_begins_from_cluster_sibling_enumeration() {
     // not from Pattern.Val2["()"].  This is structurally enforced by
     // the ordinary invocation trunk, which reads target_values from
     // the cluster's sibling_vals, not from associated_val2.
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -436,7 +436,7 @@ fn i15_source_ordinary_call_begins_from_cluster_sibling_enumeration() {
 
 #[test]
 fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
-    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
     let initializer = initializer_from_source("let R: type = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
@@ -467,7 +467,7 @@ fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
 
 #[test]
 fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
-    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
     let initializer = initializer_from_source("let R: type = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
@@ -506,7 +506,7 @@ fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
 
 #[test]
 fn configured_capability_cell_is_proof_material_not_policy_preference() {
-    let mut world = build_single_fixture_world("s4_return_ontology", "app");
+    let mut world = build_single_fixture_world("return_ontology", "app");
     let keep = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "keep")
@@ -561,7 +561,7 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
 
 #[test]
 fn mut_policy_mode_does_not_grant_writable() {
-    let mut world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
     let initializer = initializer_from_source("let R: type = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
@@ -640,7 +640,7 @@ fn return_position_cannot_override_inherited_stage() {
 
 #[test]
 fn one_semantic_symbol_preserves_distinct_function_object_identities() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -1000,7 +1000,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
 
     // Ordinary callable declarations cluster by name into a Symbol whose
     // pure_p is absent — the `pick` overloads live in the s10 fixture.
-    let pick_world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let pick_world = build_single_fixture_world("cluster_exposure", "app");
     let pick = pick_world
         .semantic_world()
         .symbol_in_namespace(pick_world.package_root_node(), "pick")
@@ -1017,7 +1017,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
 
 #[test]
 fn callable_sibling_has_own_type_and_terminal_call_entry() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -1495,10 +1495,10 @@ fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
     // elaborated once at the declaration boundary
     // (`declared_return_shape_from_closure`) and stored in the
     // MetaFunctionObject payload; no coordinate is projected from another.
-    // The `s4_return_ontology` fixture declares `-> r: symbol` and
+    // The `return_ontology` fixture declares `-> r: symbol` and
     // ordinary-slot source callables and performs no build-time struct
     // invocation, so it builds before the S6 meta-binding hookup lands.
-    let world = build_single_fixture_world("s4_return_ontology", "app");
+    let world = build_single_fixture_world("return_ontology", "app");
 
     let coordinates_of = |name: &str| {
         let symbol = world.resolve(name).expect("declared callable resolves");
@@ -1559,7 +1559,7 @@ fn return_slot_annotation_declares_shape_independent_of_body_form() {
     // body: a `-> r: symbol` callable with zero member events is still a
     // cluster construction, and a body full of member-event-shaped forms
     // cannot flip a `-> let r: type` slot away from SingleType.
-    let world = build_single_fixture_world("s4_return_ontology", "app");
+    let world = build_single_fixture_world("return_ontology", "app");
 
     let shape_of = |name: &str| {
         let symbol = world.resolve(name).expect("declared callable resolves");
@@ -1575,7 +1575,7 @@ fn return_slot_annotation_declares_shape_independent_of_body_form() {
         lang_build::ReturnShape::ClusterSymbol,
         "a `-> r: symbol` callable with an effect-free body is still a cluster construction"
     );
-    // Same body shape as the old `forward_type` (`let r = t; r;`) but a
+    // This body shape (`let r = t; r;`) has a
     // `-> let r: type` slot: body refactoring never changes the shape,
     // and a meta P2 with a SingleType shape is a legal declaration
     // (`Validate(P2, Shape)` accepts it — one position, pure-P type).

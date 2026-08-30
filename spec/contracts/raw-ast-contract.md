@@ -1,23 +1,6 @@
-# Raw AST Contract v0.5
+# Raw AST contract
 
-Status: current amended Raw AST and validated-normalization input contract.
-
-This contract is defined as:
-
-```text
-closed Raw AST v0.2 freeze
-+ Frontend Semantic Amendment v0.5-A
-+ v0.6 Semantic Owner / Namespace Graph Amendment
-= current Raw AST contract v0.5
-```
-
-The v0.1/v0.2/v0.3 documents are historical snapshots and are not edited to
-retroactively contain this surface. The complete change classification and
-migration boundary are recorded in
-[`frontend-semantic-amendment-v0.5-a.md`](frontend-semantic-amendment-v0.5-a.md).
-The later owner/view refinement and its narrow member-view syntax are recorded
-in
-[`v0.6-semantic-owner-namespace-graph.md`](v0.6-semantic-owner-namespace-graph.md).
+Status: current Raw AST and validated-normalization input contract.
 
 ## 1. Pipeline and boundary
 
@@ -48,8 +31,8 @@ const / plain / mut / let
 
 are not lexer keywords.
 
-There are 20 structural `Symbol` variants in the amended implementation.
-`Ellipsis` is the only v0.5-A addition.
+There are 20 structural `Symbol` variants. `Ellipsis` is structural Pattern
+syntax.
 
 Dot-family maximal munch is:
 
@@ -148,7 +131,7 @@ obj[[cap] => { cap }]
 (a + b)[[cap] => { cap }]
 ```
 
-The v0.6 amendment reserves exactly two complete atom-postfix shapes:
+Exactly two complete atom-postfix shapes are reserved:
 
 ```text
 MemberViewAnnotation
@@ -178,12 +161,9 @@ other Name without Block      -> Error
 Consequently `default` and `delete` remain weak names and may be named
 strategies when followed by a block.
 
-The parenthesized delete-message form is a deliberate contraction from the
-historical `=> (message_expr) delete` surface to
-`=> (StringLiteral) delete`. Delete messages are static compiler diagnostic
-text, not evaluated expressions. The v0.2/v0.8 documents remain historical
-records of the broader accepted shape; v0.5 intentionally rejects
-`=> (reason) delete`.
+The parenthesized delete-message form accepts only a `StringLiteral`. Delete
+messages are static compiler diagnostic text, not evaluated expressions, so
+`=> (reason) delete` is rejected.
 
 ## 4. Closure Raw AST
 
@@ -282,7 +262,7 @@ formal parameters. `[let x = E]` and `[x = E]` are equivalent; a policy prefix
 requires the `let` anchor, for example `[runtime let x = E]`. Alias `===`
 remains form-level and is rejected after capture `let`.
 
-The old `[E]` surface is retained only as inferable shorthand. It normalizes to
+`[E]` is inferable shorthand. It normalizes to
 `[let n = E]` exactly when the normalized expression contains one distinct
 free bare name `n` in non-call-target position. Occurrences are deduplicated;
 a name may also appear as a call target without losing its non-call evidence.
@@ -318,8 +298,8 @@ scope, so `P let a |> f`, `(P let a |> f) |> g`, and `(P let a) |> f` retain
 three distinct trees.
 
 At a declaration-capable form start, a top-level `=` after `PolicySpec let`
-selects the existing declaration parser. A top-level `===` selects only the
-frozen alias-preservation path. Delimiters inside parentheses, products,
+selects the declaration parser. A top-level `===` selects only alias
+preservation. Delimiters inside parentheses, products,
 or closures do not participate. Without either delimiter the form is a
 PolicyLet expression. Pure expression contexts never admit a nested
 declaration through this prefix.
@@ -479,29 +459,21 @@ require those properties need distinct resolved-stage checks or certificates.
 
 ## 9. Deduce telescope and capture dependency boundary
 
-> Historical v0.5 snapshot. The v0.6 semantic-owner amendment supersedes this
-> section's active-ancestor no-shadow rule and whole-normalization-root alpha
-> owner. Current semantics use same-`PatternRoot` uniqueness, cross-root
-> lexical shadowing, callable semantic owners, and owner/root-qualified hole
-> identity. Raw AST shape remains historical input; semantic identity is not a
-> Raw AST fact.
-
 Normalized DeduceLists are left-to-right telescopes:
 
 ```text
 Ti in <A1:T1, ..., Ai:Ti> sees inherited holes and A1..A(i-1)
 Ai is not visible in Ti
 later binders are not visible in Ti
-active hole names cannot be redeclared or shadowed
+same-PatternRoot hole names cannot be redeclared
 ```
 
 Raw AST carries lexical structure, surface spelling, and pre-semantic name
 roles. Normalized alpha conversion, not the parser and not a source span,
 allocates each `HoleBinderId`; every named `HoleRef` then targets one exact
-owner-local ordinal identity. Here the owner is one root normalization and its
-complete normalized tree, not each nested closure-body `NormProgram`. The
-display spelling and span are provenance data; bare local IDs from distinct
-`AlphaOwner`s are not directly comparable.
+owner/root-local ordinal identity. Each callable allocates a semantic owner and
+Pattern root. Independent roots may shadow inherited spellings. Display
+spelling and span are provenance data.
 Generated receiver holes use a hygienic generated key rather than their
 display spelling. `_` is an anonymous hole and targets no declaration.
 
@@ -512,8 +484,9 @@ ordinary value-side names and navigation components remain unresolved.
 
 A callable head DeduceList remains active through capture clauses and
 initializers, parameters, call policy, return slot, head clauses, and the
-complete body. Nested callables inherit the active environment and extend it
-with their own telescope. Ordinary value binders do not shadow hole identity.
+complete body. Nested callables inherit outer references, allocate their own
+owner/root, and extend the environment with their own telescope. Ordinary
+value binders do not alter hole identity.
 
 Normalized source capture items are explicit let-shaped bindings. `[x]` is
 explicit shorthand for `[let x = x]` with the unwritten `plain` mode; it is not
@@ -538,10 +511,8 @@ storage while preserving binder, policy, and provenance.
 
 ## 10. Diagnostics
 
-The amended implementation has 34 `DiagnosticCode` variants. The v0.2 frozen
-diagnostic inventory remains 32 because it is a historical snapshot.
-
-The post-v0.2 codes are:
+The implementation has 34 `DiagnosticCode` variants. Pattern validation and
+PolicyLet operand recovery use:
 
 ```text
 MultiplePackPatternsAtSameLevel

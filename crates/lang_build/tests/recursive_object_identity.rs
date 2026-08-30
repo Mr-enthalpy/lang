@@ -872,8 +872,8 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         "the inner host f is visible; only the dropped outer host T was gating: {leaked:?}"
     );
 
-    // With every host exposed the chain gate no longer blocks: the call falls
-    // through to member processing (`g` carries no callable value here).
+    // With every host exposed, the call reaches member processing (`g` carries
+    // no callable value here).
     let open = OrdinaryInvocationContext::open_static(&[]);
     let passed = invoke_host_member_symbol_ordinary(
         &mut world,

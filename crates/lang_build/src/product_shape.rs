@@ -1,4 +1,4 @@
-//! Product / argument-shape boundary from the v0.8 construction contract.
+//! Product and argument-content observation boundary.
 //!
 //! This module is the product/argument-shape boundary between normalized surface
 //! syntax and later candidate preparation.

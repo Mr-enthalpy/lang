@@ -1,9 +1,8 @@
 # Symbol Construction Units and Namespace Origin
 
-**Status: Canonical future-design note for type-core namespace origin,
-construction-unit ownership, physical contribution authority, and cross-file
-reopening. These rules are not implemented by the current v0.6–v0.9
-substrate.**
+**Status: Canonical design for type-core namespace origin, construction-unit
+ownership, physical contribution authority, and cross-file reopening.
+Consumer coverage is recorded in `spec/planning/roadmap.md`.**
 
 This document owns the future rules that answer:
 
@@ -19,7 +18,7 @@ The Symbol role/member, `compile` / `meta`, meta return self-root, `struct`, pur
 `symbol-first-meta-construction-and-pattern-injection.md`. The build projection
 and assembly phases are described in
 `../build-package/build-system-design.md` and
-`../build-package/namespace-assembly-v0.md`. This note supplies the shared
+`../build-package/namespace-assembly.md`. This note supplies the shared
 construction-origin contract used by both tracks.
 
 Policy pairs, binding `P1`, result `P2`, seal visibility, compile-flow projection, derived
@@ -514,9 +513,9 @@ PolicyMode remains independently const | plain | mut
 Projection errors do not redefine the canonical absent-slot × PolicyMode
 matrix.
 
-The helper no longer returns cloned internal policies as external views.
-Full namespace-graph installation and external resolver routing remain later
-integration work.
+The helper returns external views derived from public path reachability and
+retention. Full namespace-graph installation and external resolver routing
+remain consumer work.
 
 ## 12. Implementation boundary
 

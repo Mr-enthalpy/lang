@@ -67,7 +67,7 @@ pub struct ReturnTargetFrame {
     /// Lexical owner of the callable-local `Self` space and return frame.
     ///
     /// This is present for every alpha-normalized callable, including in-place
-    /// closures, independently of the temporary written-self binder path. It
+    /// closures, independently of any written self binder. It
     /// does not encode the callable's invocation receiver type.
     pub callable_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
     pub origin: NormOrigin,
@@ -429,7 +429,7 @@ fn resolve_explicit_return_target(
         )),
         ExplicitReturnTargetResolution::Unsupported => Err(return_diagnostic(
             ResolverCode::UnsupportedReturnTargetForm,
-            "UnsupportedReturnTargetForm: explicit return target form is outside the restricted v0.9 return target binder",
+            "UnsupportedReturnTargetForm: explicit return target form is outside the restricted return-target binder",
             expr_origin(target),
         )),
     }

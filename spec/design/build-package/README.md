@@ -1,7 +1,7 @@
 # build-package
 
-**Status: Non-normative future design with a partial implementation note. An
-API-level vertical slice exists in `crates/lang_build`; manifest files,
+**Status: Canonical build/package design. The typed owner/namespace graph,
+transactional deltas, mounts, and cache validation are implemented; manifest files,
 dependency solving, lockfiles, remote retrieval, linking, and binary metadata
 are not implemented.**
 
@@ -36,8 +36,8 @@ into a separate repository remains possible only after those APIs stabilize.
 ## Documents
 
 - `build-system-design.md` — the package/build layer and namespace-graph projection.
-- `package-manifest-v0.md` — manifest records and their semantic role.
-- `namespace-assembly-v0.md` — assembly pipeline and phase split.
+- `package-manifest.md` — manifest records and their semantic role.
+- `namespace-assembly.md` — assembly pipeline and phase split.
 - `library-namespace-design-note.md` — library/namespace/no-import model.
 
 Cross-block canonical construction contract:

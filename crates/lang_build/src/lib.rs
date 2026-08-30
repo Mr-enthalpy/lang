@@ -1,4 +1,4 @@
-//! v0.6 connected SemanticWorld bootstrap.
+//! Connected build graph and canonical semantic substrate.
 //!
 //! This crate intentionally sits after `lang_syntax`: it consumes parsed and
 //! normalized source fragments, but does not add parser or normalizer rules.

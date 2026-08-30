@@ -40,7 +40,7 @@ use crate::world::CompilationWorld;
 
 /// Cache format version salt. Bumping this invalidates all cache keys without
 /// changing package fingerprints.
-const CACHE_FORMAT_VERSION: &str = "lang-build-cache-v0.6-static-graph-1";
+const CACHE_FORMAT_VERSION: &str = "lang-build-cache-static-graph-1";
 
 /// Stable diagnostic prefix for build-graph hard errors.
 const BUILD_GRAPH_ERROR_PREFIX: &str = "build graph error:";

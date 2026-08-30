@@ -1,7 +1,8 @@
 # meta-invocation
 
-**Status: Non-normative future design. Not implemented as a full invocation
-engine.**
+**Status: Canonical invocation/result design. The sealed ordinary invocation
+spine, declared result classes, MetaInstance identity, and InvocationResult are
+implemented; Residual transport and full source execution remain pending.**
 
 ## Scope
 

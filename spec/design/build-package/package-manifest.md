@@ -1,11 +1,11 @@
-# Package Manifest v0
+# Package manifest
 
-**Status: Provisional non-normative future design. Not a v0.1 parser rule. Not an
-implemented manifest file format.**
+**Status: Open manifest-format design. This is not parser syntax and does not
+specify an implemented manifest file format.**
 
 ## 1. Scope
 
-This document describes the provisional build-manifest design surface needed to
+This document describes the open build-manifest design surface needed to
 guide future build-system work. It does not finalize a complete manifest schema.
 
 The manifest is an input to the **package/build layer**. It does not define
@@ -41,7 +41,7 @@ identity.
 | Lockfile relationship | Resolved dependency versions, hashes, and conflict resolutions for reproducible builds. |
 | Distribution form | `static`, `dynamic`, `source`, or `interface+binary`. |
 | Cache/fingerprint metadata | Keys for build-artifact caching (package version, compiler version, feature set, instantiation arguments). |
-| Trust/access policy placeholder | Reserved slot for future trust/access policy on the package. |
+| Trust/access policy | Reserved package-level policy field. |
 
 ## 3. Semantic role of each record
 
@@ -84,7 +84,7 @@ namespace graph projection and in future meta object invocation.
   It must not change the namespace path spelling that source code writes.
 - **Cache/fingerprint metadata** — supplies the keys that let generated and
   instantiated namespace nodes be cached and correctly invalidated.
-- **Trust/access policy placeholder** — a reserved slot for future package-level
+- **Trust/access policy** — a reserved field for package-level
   trust/access policy; it does not define any current behavior.
 
 ## 4. Manifest is not source import
@@ -118,7 +118,7 @@ binary metadata are future work and are not implemented.
 
 - No source-level import syntax.
 - No package declarations in source files.
-- No namespace resolution in v0.1.
+- No namespace resolution in the parser.
 - No type checking.
 - No linking.
 - No remote package retrieval.

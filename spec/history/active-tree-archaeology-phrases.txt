@@ -1,0 +1,17 @@
+# Lowercase phrases that describe repository evolution rather than current meaning.
+this replaces the
+previous convention
+former semantic
+retired semantic
+legacy semantic
+legacy compatibility
+supersedes the
+semantic reset
+authority transfer
+migration scaffold
+compatibility adapter
+temporary carrier
+pre-pr
+historical v0
+current v0.
+v0.6 vertical slice

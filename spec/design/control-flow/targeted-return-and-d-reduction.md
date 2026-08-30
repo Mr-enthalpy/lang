@@ -189,9 +189,9 @@ The current implementation checks only whether the requested target is
 active in the current `ReturnTargetStack`. It does not propagate
 completions or perform D-reduction.
 
-## 7. Relationship to Current Implementation
+## 7. Consumer coverage
 
-| Concept | Current (v0.9) | Future (design) |
+| Concept | Connected consumer | Canonical relation |
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
 | Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full callable-frame self capability |

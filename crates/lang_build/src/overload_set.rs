@@ -703,7 +703,7 @@ fn unsupported_body(
 
 /// B9 — explicit execution-gap record for the three control-flow
 /// end events.  The syntax/normalizer contract distinguishes them
-/// (`spec/contracts/v0.9-control-flow-end-events.md`):
+/// (`spec/contracts/control-flow-end-events.md`):
 ///
 /// ```text
 /// expr;              deliver to the directly enclosing layer

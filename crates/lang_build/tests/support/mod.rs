@@ -437,21 +437,21 @@ pub fn parse_and_normalize_fixture_let_initializer(path: PathBuf) -> NormExpr {
     }
 }
 
-/// Convenience path to the v0.8 product fixture directory.
-pub fn v08_fixture_path(name: &str) -> PathBuf {
-    fixture_root().join("v08").join(name)
+/// Convenience path to the product-shape fixture directory.
+pub fn product_fixture_path(name: &str) -> PathBuf {
+    fixture_root().join("product_shape").join(name)
 }
 
-/// Extract a `NormalizedCallSite` from a committed v0.8 product fixture.
+/// Extract a `NormalizedCallSite` from a committed product-shape fixture.
 ///
 /// The fixture is expected to normalize to a single call expression.
 pub fn fixture_call_site(name: &str) -> NormalizedCallSite {
-    let expr = parse_and_normalize_fixture_expr(v08_fixture_path(name));
+    let expr = parse_and_normalize_fixture_expr(product_fixture_path(name));
     lang_build::extract_single_call_site(&expr)
         .unwrap_or_else(|diagnostic| panic!("fixture `{name}` is not a call: {diagnostic:?}"))
 }
 
-/// Produce an `ArgProductShape` from a committed v0.8 product fixture.
+/// Produce an `ArgProductShape` from a committed product-shape fixture.
 ///
 /// The fixture is expected to normalize to a single call expression.
 /// The call site source product is wrapped in a `ProductObject` with the
@@ -464,23 +464,23 @@ pub fn fixture_arg_product_shape(
     site.to_arg_product_shape(role)
 }
 
-/// Build the v0.8 candidate fixture world (`v08_candidate` / `app`).
-pub fn v08_candidate_world() -> CompilationWorld {
-    build_single_fixture_world("v08_candidate", "app")
+/// Build the candidate fixture world (`candidate_world` / `app`).
+pub fn candidate_fixture_world() -> CompilationWorld {
+    build_single_fixture_world("candidate_world", "app")
 }
 
-/// Extract the single `NormalizedCallSite` from the v0.8 candidate fixture's
+/// Extract the single `NormalizedCallSite` from the candidate fixture's
 /// let initializer (`let T: type = (<product>) |> struct`).
-pub fn v08_candidate_call_site() -> NormalizedCallSite {
+pub fn candidate_fixture_call_site() -> NormalizedCallSite {
     let expr = parse_and_normalize_fixture_let_initializer(
-        fixture_source_root("v08_candidate", "app").join("main.lang"),
+        fixture_source_root("candidate_world", "app").join("main.lang"),
     );
     lang_build::extract_single_call_site(&expr).unwrap_or_else(|diagnostic| {
-        panic!("v08 candidate initializer is not a call: {diagnostic:?}")
+        panic!("candidate fixture initializer is not a call: {diagnostic:?}")
     })
 }
 
-/// Build the v0.8 identity type fixture world (`v08_identity_type` / `app`).
-pub fn v08_identity_type_world() -> CompilationWorld {
-    build_single_fixture_world("v08_identity_type", "app")
+/// Build the identity-type fixture world (`identity_type` / `app`).
+pub fn identity_type_fixture_world() -> CompilationWorld {
+    build_single_fixture_world("identity_type", "app")
 }

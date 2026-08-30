@@ -400,8 +400,8 @@ fn callable_tail_outer_composition() {
 }
 
 #[test]
-fn capture_binding_and_sequence_pack_v05() {
-    assert_norm_case("capture_binding_and_sequence_pack_v05", false);
+fn capture_binding_and_sequence_pack() {
+    assert_norm_case("capture_binding_and_sequence_pack", false);
 }
 
 #[test]

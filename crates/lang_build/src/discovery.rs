@@ -1,4 +1,4 @@
-//! Physical source discovery layer for the v0.6 build slice.
+//! Physical source discovery layer.
 //!
 //! This module is the lowest physical input layer below SemanticWorld
 //! namespace assembly. It finds `.lang` source files on the filesystem and records their
@@ -34,9 +34,8 @@ const DISCOVERY_ERROR_PREFIX: &str = "source discovery error:";
 
 /// Configuration for the physical source discovery layer.
 ///
-/// Source roots remain API-level for v0.6: there is intentionally no manifest
-/// file parser. Discovery consumes already-structured source-root requests and
-/// reads the filesystem.
+/// There is no manifest file parser. Discovery consumes already-structured
+/// source-root requests and reads the filesystem.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SourceDiscoveryConfig {
     pub roots: Vec<SourceRootRequest>,
@@ -216,7 +215,7 @@ fn discover_root(
 
 /// Recursively walk a physical directory, collecting `.lang` source units.
 ///
-/// Symlink policy (conservative v0.6 rule):
+/// Symlink policy:
 ///
 /// ```text
 /// directory symlinks: not followed

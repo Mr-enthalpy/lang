@@ -23,13 +23,12 @@ Other documents may define consumers of this relation. In particular:
   values, places, `ProjectionSlot`, and borrow observations;
 - `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
   owns Symbol construction, `struct`, `extend`, `inject`, and installation;
-- `../../contracts/v0.6-semantic-owner-namespace-graph.md` owns
+- `../../contracts/semantic-owner-namespace-graph.md` owns
   `SemanticOwnerId`, `PatternRoot`, and `HoleBinderId` identity.
 
-The v0.1--v0.5 public, history, and frozen contract documents remain records of
-their frontend and normalization stages. Their statements that matching or
-Pattern-head resolution was not performed remain true for those stages; they
-do not define the later target semantics in this document.
+The frontend and normalization stages preserve Pattern material without
+performing matching or Pattern-head resolution. This document owns the later
+semantic relation.
 
 ## 1. Scope and authority
 

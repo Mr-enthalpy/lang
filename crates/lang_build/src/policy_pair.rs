@@ -256,7 +256,7 @@ pub enum PatternConstraint {
 /// Privilege states what special operations a callable may perform (for
 /// example consuming raw/meta AST material).  It implies nothing about
 /// the return shape and nothing about the Policy stage: `struct` is a
-/// privileged built-in whose shape is `ClusterSymbol`, while `assert` /
+/// privileged built-in whose shape is `SingleType`, while `assert` /
 /// `verify` / `identity_type` are privileged built-ins with ordinary
 /// single-position shapes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -385,11 +385,9 @@ pub struct DeclarationVisibility {
 /// Body-entry admissibility judged directly on the
 /// callable's complete result P2 (`PolicyPair`).
 ///
-/// This replaces the declaration-projection
-/// `SymbolPayload::MetaFunction.body_entry_policy` read on the invocation
-/// spine. The body-entry domain is the value stage set when present,
-/// otherwise the pattern stage set, sourced directly from the semantic call
-/// entry's own P2.
+/// The body-entry domain is the value stage set when present, otherwise the
+/// pattern stage set. Both coordinates come directly from the semantic call
+/// entry's P2.
 pub fn body_entry_allows_execution(p2: &PolicyPair, env: crate::model::ExecutionEnv) -> bool {
     use crate::model::ExecutionEnv;
     let stages = if p2.value.stages.is_empty() {

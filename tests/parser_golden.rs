@@ -1045,8 +1045,8 @@ fn closure_capture_multiple() {
 }
 
 #[test]
-fn closure_capture_bindings_v05() {
-    assert_parser_case("closure_capture_bindings_v05", false);
+fn closure_capture_bindings() {
+    assert_parser_case("closure_capture_bindings", false);
 }
 
 #[test]

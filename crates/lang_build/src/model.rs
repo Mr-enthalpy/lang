@@ -9,8 +9,8 @@ use crate::{
 
 /// Stable identity for a namespace node inside one graph snapshot.
 ///
-/// v0.6 IDs are snapshot-local numeric identities. Cross-build stable IDs are
-/// intentionally deferred until cache/fingerprint design exists.
+/// Namespace-node IDs are snapshot-local. Persistent owner representation is
+/// an open design question.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NamespaceNodeId(pub u64);
 

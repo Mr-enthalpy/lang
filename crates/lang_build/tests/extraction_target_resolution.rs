@@ -43,7 +43,7 @@ fn nav(components: &[&str]) -> CanonicalFullNavigation {
 
 #[test]
 fn top_omitted_navigation_is_exact_global_never_bare_name() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
 
     // Control fact: `uint8` IS visible from the package root through the
@@ -96,7 +96,7 @@ fn top_omitted_navigation_is_exact_global_never_bare_name() {
 
 #[test]
 fn nearest_explicit_anchor_wins_in_real_resolution() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
     let uint8 = semantic
         .symbol_in_namespace(world.core_node(), "uint8")
@@ -151,7 +151,7 @@ fn nearest_explicit_anchor_wins_in_real_resolution() {
 
 #[test]
 fn intermediate_absent_layer_extends_the_completed_path() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
 
     // subject `exists`, an Absent layer named `verify`, then an explicit
@@ -182,7 +182,7 @@ fn intermediate_absent_layer_extends_the_completed_path() {
 
 #[test]
 fn anchorless_parent_chain_is_a_hard_diagnostic() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
 
     let parents = [

@@ -1,11 +1,11 @@
-# Normalized Surface Semantics v0.5
+# Normalized surface semantics
 
-> **Status:** Published and amended. The v0.5 public normalized surface semantics are
-> complete. §1–§7 define call / product / pipe binding; §8–§10 define
+> **Status:** Current public normalized-surface contract. §1–§7 define call /
+> product / pipe binding; §8–§10 define
 > value-side / pattern-side / annotation / alias boundaries; §11 defines
 > origin / generated / derived / unsupported visibility; §12–§13 define the
-> non-goals and the v0.6+ future-boundary separation. Every example below is
-> cross-checked against the v0.4 normalized dumps in `tests/cases/norm/`.
+> non-goals and the semantic-consumer boundary. Examples are cross-checked
+> against the normalized dumps in `tests/cases/norm/`.
 
 This document explains the current normalized surface behavior for both human
 readers and coding/documentation agents. Where a rule has an implementation
@@ -35,10 +35,7 @@ type checking, operator lookup, or runtime evaluation.
 It explains the structure the normalizer builds. It does not explain what any
 name, operator, field, method, or type *means*.
 
-## 2. Stage Boundary
-
-v0.5 stabilizes the public explanation of behavior already produced by the v0.4
-normalizer. The structure is fixed; this document makes it readable.
+## 2. Normalization boundary
 
 ```text
 The normalizer does not decide whether a target exists.
@@ -356,7 +353,7 @@ carrier without allocating a function object or capture environment.
 
 ### Narrow structural member-view annotation
 
-The v0.6 owner/view amendment adds one exact postfix Raw shape:
+The Raw surface has one narrow structural member-view postfix shape:
 
 ```lang
 E name [[public]]
@@ -456,9 +453,9 @@ A value does not implicitly become a pattern.
 A pattern does not implicitly become a value.
 ```
 
-A value enters pattern space only through an explicit bridge in a later phase
-(for example postfix `?` or another explicit value-to-pattern operation; that
-operation's semantics are v0.6+ and are not defined here). A pattern exposes
+A value enters pattern space only through an explicit bridge outside
+normalization (for example postfix `?` or another explicit value-to-pattern
+operation). A pattern exposes
 values only through explicit extraction, binding, passing, or returning.
 
 What each side is:
@@ -535,8 +532,8 @@ Here `T` and `Option::std` are pattern-side material (see §9), not value-side
 call material.
 
 The normalizer does not perform pattern-head resolution, extraction
-applicability checks, exhaustiveness checking, or residual propagation. Those
-are v0.6+ (see §13).
+applicability checks, exhaustiveness checking, or residual propagation (see
+§13).
 
 ## 9. Annotation Patterns and DeduceList Holes
 
@@ -611,7 +608,7 @@ syntax does not preclassify the binder as a type. Use `-> _: A` when no result
 symbol is bound. A prefix-shaped `-> A r` remains an extraction Pattern; it is
 not a type annotation on `r`.
 
-Raw AST preserves spelling, lexical scope shape, and provisional canonical
+Raw AST preserves spelling, lexical scope shape, and pre-alpha canonical
 roles. A distinct alpha-normalization step after structural normalization
 allocates callable owners, `PatternRoot` boundaries, and root-local binder
 ordinals, then rewrites scoped Pattern/policy occurrences to exact
@@ -925,7 +922,7 @@ while preserving binder identity, policy, and provenance.
 
 ### Semantic-owner and namespace-view handoff
 
-The v0.6 build handoff derives long-lived identity from a parent-linked
+The build handoff derives long-lived identity from a parent-linked
 `SemanticOwner`, not a file, span, or printable path. Every callable, including
 an in-place closure, has a `CallableOwner` and callable-local `Self` space.
 Standalone function-object materialization derives an anonymous callable type
@@ -982,7 +979,7 @@ Delete(message: optional String)    -> selected-candidate rejection
 ```
 
 `=> strategy { ... }` and the no-`=>` escape `[[strategy]] { ... }` normalize
-to the same `NamedBlock`. The legacy-looking `() -> r name { ... }` is not
+to the same `NamedBlock`. In `() -> r name { ... }`, `name` is not
 reinterpreted: `name` remains return extraction material. This layer preserves
 strategy metadata but does not execute a strategy, synthesize a default body,
 or perform overload selection.
@@ -1027,9 +1024,8 @@ The message-bearing form is intentionally limited to a source string literal:
 => ("message") delete
 ```
 
-The historical `(message_expr) delete` surface is not retained in v0.5 because
-delete messages are static compiler diagnostic text rather than evaluated
-expressions.
+Delete messages accept only a source string literal because they are static
+compiler diagnostic text rather than evaluated expressions.
 
 Normalized closure placement and origin are separate fields:
 
@@ -1169,9 +1165,7 @@ A source Product is never a conventional argument list. There is no callee-first
 call, method dispatch, field lookup, resolved function call, operator overload
 resolution, or ADL at the normalized layer.
 
-Backing: `spec/contracts/v0.4-normalization-prototype-notes.md`.
-
-## 13. Relation to v0.6+ Future Semantics
+## 13. Semantic-consumer boundary
 
 Later pattern-space and extraction-chain semantics
 (`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`) motivate the

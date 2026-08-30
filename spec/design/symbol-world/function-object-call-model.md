@@ -625,7 +625,7 @@ capabilities. The prohibition is specifically direct outer-place mutation.
 Because an in-place closure has neither a capture list nor an automatic capture
 set, there is no syntax or materialization step that can grant an exception.
 The resolved embedding check owns this rule. The Normalized AST only preserves
-`InPlace` and, for ordinary closures, elaborates the v0.5-A let-shaped capture
+`InPlace` and, for ordinary closures, elaborates the let-shaped capture
 syntax. Its free non-call-name inference is shape-directed; it performs no
 lookup, capture-environment layout, or capture admissibility analysis.
 
@@ -738,9 +738,10 @@ cache, not the semantic cause: removing the cache entry does not remove
 `CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that
 entry alone.
 
-## 9. Relation to v0.8 substrate
+## 9. Normalized call-site handoff
 
-For v0.8 construction substrate, `NormalizedCallSite.target` is not itself the `()` method — it is the callable object expression. The full pipeline is:
+`NormalizedCallSite.target` is the callable object expression, not the `()`
+member. The full pipeline is:
 
 ```text
 target expression → target value → target type →

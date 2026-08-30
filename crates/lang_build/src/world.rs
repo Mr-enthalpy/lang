@@ -102,7 +102,7 @@ fn policy_let_target_demand(demand: &ResultPolicyDemand, source: &PolicyPair) ->
     }
 }
 
-/// Build/namespace world object for the v0.6 vertical slice.
+/// Build and namespace world.
 ///
 /// This is the canonical holder for source fragments, the default core mount,
 /// and one connected [`SemanticWorld`].  Namespace topology is owned by that
@@ -129,7 +129,7 @@ impl CompilationWorld {
     pub fn from_manifest(manifest: &BuildManifest) -> Result<Self, BuildError> {
         if !manifest.default_core_mount {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "build manifest error: default core mount is required for v0.6 bootstrap",
+                "build manifest error: the default core mount is required",
                 Some(Provenance::new("build manifest")),
             )));
         }
@@ -278,8 +278,8 @@ impl CompilationWorld {
         Ok(world)
     }
 
-    /// Read-only graph projection for diagnostics and historical
-    /// boundary tests. Namespace allocation, installation, and invocation
+    /// Read-only graph projection for diagnostics and graph-boundary tests.
+    /// Namespace allocation, installation, and invocation
     /// authority remain inside the connected SemanticWorld.
     pub fn namespace_projection(&self) -> &SemanticNameIndex {
         self.semantic_world.namespace_index()
@@ -801,7 +801,7 @@ impl CompilationWorld {
     /// declaration harvesting.
     ///
     /// Only directories containing discovered `.lang` source units contribute
-    /// physical namespace nodes. Empty directories are ignored by v0.6 source
+    /// physical namespace nodes. Empty directories are ignored by source
     /// discovery and do not create "empty namespace existence". If explicit
     /// empty-namespace nodes are ever required (e.g. package manifests or
     /// explicit namespace declarations) that must be a separate semantic
@@ -1121,7 +1121,7 @@ impl CompilationWorld {
             }
             _ => {
                 return Err(BuildError::single(Diagnostic::hard_error(
-                    "source contribution error: unsupported top-level declaration binder in v0.6 vertical slice",
+                    "source contribution error: unsupported top-level declaration binder",
                     Some(Provenance::from_norm_origin(
                         "top-level declaration binder",
                         pattern_origin(&slot.value_pattern),
@@ -3096,10 +3096,9 @@ fn source_callable_delta(
 
     let mut delta = snapshot.empty_delta();
     let symbol_id = delta.allocate_symbol_id();
-    // Current v0.9 integration is validation-only at source harvesting time.
-    // Bound return events are not stored in SourceCallableObject yet; later
-    // evaluators may re-run the return-target binder when they need the bound
-    // event stream for completion/result semantics.
+    // Return targets are validated during source harvesting. Bound return
+    // events are not stored in SourceCallableObject; execution wiring remains
+    // outside this source-harvesting boundary.
     let return_target_report = elaborate_return_targets_in_returnable_closure(
         closure,
         ReturnFrameOwner::SourceCallable {

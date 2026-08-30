@@ -204,10 +204,9 @@ postcondition: after the error handler invokes `self..return(error)`, the
 current branch is complete, `Done(unit)` is contributed to the local pattern
 space, and `Done(error)` is contributed to the final return accumulator.
 
-## 8. Not implemented
+## 8. Consumer frontier
 
-The following are future work and must not be implemented in the current
-construction phase:
+The following consumers remain pending:
 
 - `self..return(d)` as a runtime capability object;
 - the anonymous function-object type that carries `return`;

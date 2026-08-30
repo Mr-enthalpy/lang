@@ -4,13 +4,7 @@ This document records current implementation frontiers. Canonical meaning is
 owned by the topic documents under `spec/design/`; unresolved decisions are
 owned by `spec/planning/open-questions.md`.
 
-## Completed frontend stages
-
-| Stage | Result | Authority |
-|---|---|---|
-| v0.1–v0.2 | Raw AST frontend and frozen input contract | `spec/public/v0.2/` |
-| v0.3–v0.4 | Raw AST → Normalized AST lowering | `spec/contracts/` and `spec/history/v0.3/` |
-| v0.5 | normalized surface and public documentation | `spec/public/v0.5/` |
+## Frontend
 
 The frontend pipeline is:
 
@@ -173,7 +167,7 @@ roots, physical namespaces, explicit mounts, and source contributions. Source
 filenames are not namespace segments. The language has no source-level
 import/use/include/module/package syntax.
 
-The current build slice provides package identity, transactional namespace
+The build layer provides package identity, transactional namespace
 deltas, provenance, typed owner qualification, role-aware name admission,
 default core mounting, and cache validation. Remote retrieval, full version
 solving, lockfiles, package distribution policy, and persistent root encoding

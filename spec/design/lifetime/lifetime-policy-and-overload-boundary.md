@@ -1,9 +1,9 @@
 # Lifetime Policy, `@`, and the Overload Boundary
 
-Status: canonical target semantics for the `@` operation, the core lifetime
-value algebra, and the lifetime/ordinary-overload boundary. These semantics are
-not implemented; §6 registers the representation and checker debt. The semantic
-relations are closed here even though their Rust/IR encoding remains deferred.
+Status: canonical semantics for `@`, the lifetime value algebra, and the
+lifetime/ordinary-overload boundary. `LifecycleMachine` implements the shared
+continuation, LifeName, Region, Pre/Post, and Color substrate. Source operation,
+cleanup scheduling, and access-tree consumers remain pending.
 
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by

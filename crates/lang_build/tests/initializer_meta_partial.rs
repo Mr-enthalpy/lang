@@ -36,7 +36,7 @@ fn assert_symbol_not_stage(symbol: &lang_build::SymbolObject, stage: PolicyStage
 
 #[test]
 fn let_type_annotation_is_post_rhs_assertion_not_meta_trigger() {
-    let err = build_fixture_error("v08_initializer_annotation_not_trigger", "app");
+    let err = build_fixture_error("initializer_annotation_non_trigger", "app");
     assert!(has_code(
         &err,
         ResolverCode::UnsupportedDeferredTypeAssertion
@@ -48,7 +48,7 @@ fn let_type_annotation_is_post_rhs_assertion_not_meta_trigger() {
 
 #[test]
 fn omitted_policy_is_inferred_runtime_for_residual_initializer() {
-    let world = build_single_fixture_world("v08_initializer_omitted_policy_residual", "app");
+    let world = build_single_fixture_world("initializer_default_policy_residual", "app");
     let symbol = world
         .resolve_with_expectation("runtime_residual", lang_build::ResolveExpectation::Object)
         .expect("runtime residual symbol");
@@ -58,7 +58,7 @@ fn omitted_policy_is_inferred_runtime_for_residual_initializer() {
 
 #[test]
 fn missing_meta_visible_candidate_residualizes_under_meta_partial() {
-    let world = build_single_fixture_world("v08_initializer_missing_candidate_residual", "app");
+    let world = build_single_fixture_world("initializer_missing_candidate_residual", "app");
     let symbol = world
         .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
         .expect("runtime residual symbol");
@@ -68,7 +68,7 @@ fn missing_meta_visible_candidate_residualizes_under_meta_partial() {
 
 #[test]
 fn explicit_p1_projects_runtime_slice_from_residual_initializer() {
-    let world = build_single_fixture_world("v08_initializer_explicit_policy_fail", "app");
+    let world = build_single_fixture_world("initializer_explicit_policy_failure", "app");
     let symbol = world
         .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
         .expect("runtime P1 slice");
@@ -78,7 +78,7 @@ fn explicit_p1_projects_runtime_slice_from_residual_initializer() {
 
 #[test]
 fn residual_type_name_annotation_remains_deferred() {
-    let err = build_fixture_error("v08_initializer_residual_type_name", "app");
+    let err = build_fixture_error("initializer_residual_type_name", "app");
     assert!(has_code(
         &err,
         ResolverCode::UnsupportedDeferredTypeAssertion
@@ -87,7 +87,7 @@ fn residual_type_name_annotation_remains_deferred() {
 
 #[test]
 fn runtime_body_declaration_may_contain_local_meta_shaped_initializer() {
-    let world = build_single_fixture_world("v08_initializer_runtime_body_local_meta", "app");
+    let world = build_single_fixture_world("initializer_runtime_body_local_meta", "app");
     let runtime_body = world
         .resolve_with_expectation("runtime_body", lang_build::ResolveExpectation::MetaFunction)
         .expect("runtime_body callable");
@@ -110,7 +110,7 @@ fn runtime_body_declaration_may_contain_local_meta_shaped_initializer() {
 
 #[test]
 fn ambiguity_does_not_residualize_under_meta_partial() {
-    let err = build_fixture_error("v08_initializer_ambiguous", "app");
+    let err = build_fixture_error("initializer_ambiguous", "app");
     assert!(has_code(&err, ResolverCode::AmbiguousMetaCandidate));
 }
 
@@ -123,7 +123,7 @@ fn ambiguity_does_not_residualize_under_meta_partial() {
 // pure-P return slots.
 #[test]
 fn runtime_only_pure_p_return_slot_declaration_is_hard_error() {
-    let err = build_fixture_error("v09_runtime_slice_no_value_dimension", "app");
+    let err = build_fixture_error("runtime_slice_no_value_dimension", "app");
     assert!(has_code(
         &err,
         ResolverCode::RuntimeSliceWithoutValueDimension

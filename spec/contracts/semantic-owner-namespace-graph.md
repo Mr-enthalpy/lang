@@ -1,11 +1,6 @@
-# v0.6 Semantic Owner and Namespace Graph Contract
+# Semantic owner and namespace graph contract
 
-**Status: current v0.6 semantic/build contract.**
-
-This contract supersedes the v0.5-A statements that made one root
-`normalize_program` tree the final alpha owner and forbade a nested callable
-from reusing an inherited hole spelling. It does not rewrite the historical
-v0.2/v0.5 snapshots.
+**Status: current semantic/build contract.**
 
 The language-level Pattern relation, binderless Pattern semantics, and the
 distinction between ordinary `Val2` presence and direct structural incidence
@@ -379,7 +374,7 @@ Deferred:
   `SemanticOwnerQualification` currently proves only that an exact frontend
   owner has a mapping and that a repeated mapping does not conflict. It must
   not be described as validating the complete owner-tree embedding;
-- end-to-end migration of every namespace snapshot consumer;
+- end-to-end connection of every namespace snapshot consumer;
 - wiring owner-namespace admission to the canonical
   `ResolvedCandidateSnapshot` / `ExportCandidateView` payload and complete
   external overload routing. That payload retains identity, pair, mode,

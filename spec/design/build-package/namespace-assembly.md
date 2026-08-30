@@ -1,6 +1,7 @@
-# Namespace Assembly v0
+# Namespace assembly
 
-**Status: Provisional non-normative future design. Not a v0.1 parser rule.**
+**Status: Canonical namespace-assembly design with consumer wiring pending.
+This is not parser syntax.**
 
 The canonical namespace-origin and construction-unit ownership contract is
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
@@ -32,7 +33,7 @@ dependency graph.
 From the package graph, produce a mount table mapping each dependency's
 namespace root to its resolved origin. Resolve mount conflicts by policy.
 
-The v0.6 typed substrate models namespace assembly as an ownership/containment
+The typed substrate models namespace assembly as an ownership/containment
 forest plus redirect edges:
 
 ```text
@@ -134,7 +135,7 @@ One source unit may fully construct a new direct-child subtree in its own delta.
 One ordinary canonical meta invocation is one `MetaConstructionUnit` and may
 fully construct its virtual subtree. Compiler-defined privileged AST meta
 functions operate only through their bounded current-unit capability. Parallel
-units may not reopen either subtree. This is post-v0.1 semantic work.
+units may not reopen either subtree. This is semantic build work.
 
 At the current specification stage, cross-file type-child, namespace-child,
 ordinary value-member, and overload-entry injection are all forbidden. A future
@@ -146,11 +147,11 @@ unorderedness alone is not the reason for the current restriction.
 - **Build Phase A, B, C** may start after parser phase 2 (deduce/canonical/extract-let).
 - **Build Phase D** should wait until closure AST is stable enough for ordinary
   source fragment indexing (i.e., after parser phase 3).
-- **Build Phase E** is post-v0.1 semantic work.
+- **Build Phase E** is semantic build work.
 
 ## Non-goals
 
-- No namespace resolution in v0.1.
-- No declaration indexing implementation in v0.1.
+- No namespace resolution in the parser.
+- No declaration indexing in the parser.
 - No semantic resolver, visibility checker, version solver, or cache validator
   until their respective phases.

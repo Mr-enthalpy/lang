@@ -538,15 +538,15 @@ fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
 
 /// Boundary fact — a stage-only outer declaration prefix
 /// (`compile let narrow = ...`) IS an explicit canonical P1 value-stage
-/// selection: the complete `Pv:Pp` elaboration no longer degrades a
-/// stage-only policy to "no explicit P1".  The canonical P1 value window is
+/// selection: complete `Pv:Pp` elaboration keeps a stage-only policy as an
+/// explicit P1. The canonical P1 value window is
 /// cropped to `compile`, so the downstream `meta let X` result demand rejects
 /// the producer before maxima (or, equivalently for a non-call result, cannot
 /// satisfy the completed view). The build must fail either way; it may not
 /// widen the declared P1.
 #[test]
 fn stage_only_outer_prefix_is_an_explicit_canonical_p1() {
-    let error = build_fixture_error("s4_stage_prefix_is_p1", "app");
+    let error = build_fixture_error("stage_prefix_is_p1", "app");
     let found = error.diagnostics.iter().any(|d| {
         d.message.contains("cannot satisfy binding P1")
             || d.message
@@ -570,7 +570,7 @@ fn stage_only_outer_prefix_is_an_explicit_canonical_p1() {
 /// succeeds through the same gated path.
 #[test]
 fn binding_inside_the_exposure_window_succeeds() {
-    let world = build_single_fixture_world("s4_exposure_window_pass", "app");
+    let world = build_single_fixture_world("exposure_window_pass", "app");
     assert!(
         world
             .semantic_world()

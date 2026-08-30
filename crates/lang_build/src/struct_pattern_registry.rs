@@ -297,7 +297,7 @@ impl StructPatternMaterialRegistry {
             } => {
                 if expectation != StructPatternLookupExpectation::ExtractionChild {
                     return Err(Diagnostic::hard_error(
-                        "restricted v0.9 pattern lookup only supports AutoName as an extraction child",
+                        "restricted pattern lookup only supports AutoName as an extraction child",
                         Some(provenance),
                     )
                     .with_code(ResolverCode::UnsupportedStructPatternLookupExpectation));
@@ -320,7 +320,7 @@ impl StructPatternMaterialRegistry {
             } => {
                 let names = explicit_nav_names(&components).ok_or_else(|| {
                     Diagnostic::hard_error(
-                        "unsupported explicit pattern navigation component in restricted v0.9 resolver",
+                        "unsupported explicit pattern navigation component in the restricted resolver",
                         Some(provenance.clone()),
                     )
                     .with_code(ResolverCode::UnsupportedOverloadTarget)

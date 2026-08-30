@@ -1,8 +1,8 @@
-# Agent Interpretation Guide v0.5
+# Agent interpretation guide
 
-> **Status:** Published — v0.5 public guide. This guide is normative for
+> **Status:** Current public guide. This guide is normative for
 > coding/documentation agents working on `lang`. The call-binding semantics are
-> published in `normalized-surface-semantics-v0.5.md` §3–§7; the value/pattern,
+> published in `normalized-surface-semantics.md` §3–§7; the value/pattern,
 > annotation, and alias boundaries in §8–§10; node origins in §11.
 
 ## 1. Read This Before Editing Language Semantics
@@ -10,15 +10,13 @@
 `lang` does not use conventional call syntax. Before editing any language
 behavior, normalization, or documentation, read:
 
-- `spec/public/v0.5/normalized-surface-semantics-v0.5.md` — the normalized
-  surface;
-- `spec/history/v0.3/normalized-ast-specification-v0.3.md` — the v0.3 design
-  baseline (historical route);
-- `spec/contracts/v0.4-normalization-prototype-notes.md` — the v0.4 boundary.
+- `spec/public/normalized-surface-semantics.md` — the normalized surface;
+- `spec/contracts/raw-ast-contract.md` — the enforced syntax handoff;
+- `spec/design/README.md` — the canonical semantic topic-owner map.
 
-If a change requires semantics (resolution, checking, lookup), stop at the
-normalized structural boundary and leave the semantics as a documented future
-pass.
+When editing the frontend, stop at the normalized structural boundary.
+Resolution, checking, lookup, and evaluation belong to the canonical semantic
+layer and must not be implemented inside parsing or normalization.
 
 ## 2. Do Not Import Conventional Call Syntax Assumptions
 
@@ -40,7 +38,7 @@ Do not add name resolution, type checking, operator lookup, or pattern-head reso
 
 ## 3. Call Binding Rules to Preserve
 
-See `normalized-surface-semantics-v0.5.md` §3–§7 for the full rules. Preserve:
+See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
 
 - The core rule is `Product1 |> TargetExpr Product2 => (Product1, Product2) |> TargetExpr`
   (conceptual: source-product continuation; dump label: `ProductMerge`).
@@ -86,7 +84,7 @@ Incoming source Product, no following Product?  -> first legality repair (PipeFa
 
 ## 4. Value/Pattern Boundary Rules to Preserve
 
-See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preserve:
+See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
 
 - Value-side material stays `NormExpr`; pattern-side material stays `NormPattern`.
   The same source name dumps as `Name` in value position but `PatternName` in
@@ -200,12 +198,11 @@ lookup but may not directly write an outer place.
 
 ## 7. Where to Put New Material
 
-- Current public language behavior → `spec/public/` (current stage `v0.5`).
-- Stage/implementation constraints → `spec/contracts/`.
-- Implementation inventory/status → `spec/implementation/`.
-- Route, discussion, alternatives, audit trail → `spec/history/`.
-- Later semantic design (v0.6+) → `spec/design/`.
+- Current public language behavior → `spec/public/`.
+- Enforced implementation handoffs → `spec/contracts/`.
+- Canonical semantic topic owners → `spec/design/`.
+- Non-authoritative snapshots and design history → `spec/history/`.
 - Roadmap and open questions → `spec/planning/`.
 
-If public docs and history conflict, public docs define current behavior. Future
-docs must not be read as implemented behavior.
+Current public docs and canonical topic owners define meaning. The roadmap
+states which consumers are connected.

@@ -591,7 +591,7 @@ pub enum CanonicalNormForm {
 ///   deterministic separator-stripped lowercase fallback: safe under-merge,
 ///   exact decoding for those forms is registered future work);
 /// - string spellings are decoded from their ranked quote boundaries
-///   (`\\`^k `"` … `\\`^k `"`) to the raw content bytes — the v0.2 string
+///   (`\\`^k `"` … `\\`^k `"`) to the raw content bytes — the ranked string
 ///   form has no escape decoding, so equal content across boundary ranks
 ///   shares one normal form.
 ///
@@ -740,7 +740,7 @@ fn exact_decimal_float_norm(lower: &str) -> Option<String> {
 
 /// Decode a ranked quote-boundary string spelling to its content bytes.
 ///
-/// The v0.2 string form is `\\`^k `"` content `\\`^k `"` with NO escape
+/// The ranked string form is `\\`^k `"` content `\\`^k `"` with NO escape
 /// decoding inside content (backslashes participate only in the boundary),
 /// so the content slice `text[k+1 .. len-1-k]` IS the string value.  A
 /// malformed spelling (unclosed string recovered by the lexer) keeps the

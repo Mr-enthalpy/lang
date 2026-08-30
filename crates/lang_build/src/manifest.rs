@@ -1,7 +1,7 @@
 use crate::model::SymbolKind;
 use std::path::PathBuf;
 
-/// API-level manifest used by the v0.6 vertical slice.
+/// In-memory build manifest.
 ///
 /// There is intentionally no manifest file parser yet.
 #[derive(Clone, Debug, PartialEq, Eq)]

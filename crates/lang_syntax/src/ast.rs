@@ -1,6 +1,6 @@
 use crate::Span;
 
-// v0.2 Raw AST. The completed Raw AST frontend covers forms, let/alias-let
+// The Raw AST covers forms, let/alias-let
 // bindings, expression skeleton (pipe/segment/product), operator sugar,
 // navigation/member/double-dot/bracket-call suffix sugar, closure AST,
 // canonical skeletons, and deduce lists.

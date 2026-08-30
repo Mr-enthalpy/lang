@@ -133,7 +133,7 @@ fn cluster_symbol_requires_a_pure_meta_domain() {
 
 #[test]
 fn cluster_symbol_shape_without_meta_p2_fails_at_declaration() {
-    let error = build_fixture_error("s4_shape_validate_error", "app");
+    let error = build_fixture_error("shape_validate_error", "app");
     assert!(
         error.diagnostics.iter().any(|diagnostic| diagnostic
             .message

@@ -40,7 +40,7 @@ Explicit `cond?` is also valid when one top Pattern peel is desired, but `?` is
 not required to begin extraction and is not a special conditional entrance.
 Older examples in this block that spell `?` use that optional explicit view.
 
-## For v0.8-adjacent compile/meta construction work, read
+## For compile/meta construction work, read
 `spec/contracts/meta-construction-boundary.md` first. Its
 non-value argument boundary applies here: type objects, rank objects, namespace
 objects, meta objects, and pattern objects are not value arguments and must not

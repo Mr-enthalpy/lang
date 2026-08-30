@@ -390,7 +390,7 @@ let f = (written_self): runtime -> r: int => {
 
 #[test]
 fn top_level_return_reports_structured_diagnostic_through_build_pipeline() {
-    let error = support::build_fixture_error("v09_return_outside", "app");
+    let error = support::build_fixture_error("return_outside", "app");
     assert_eq!(error.diagnostics.len(), 1);
     assert_eq!(
         error.diagnostics[0].code,

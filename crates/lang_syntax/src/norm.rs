@@ -1,10 +1,9 @@
-//! v0.4 Normalized AST prototype.
+//! Non-semantic Raw AST to Normalized AST transformation.
 //!
 //! Value-side `NormExpr` and pattern-side `NormPattern` remain distinct. Raw
 //! expression-shaped syntax is normalized as pattern material only when the
 //! surrounding syntactic context is pattern, annotation, or extraction.
-//! This prototype records that boundary; explicit bridge syntax/lowering is
-//! future work unless it is already present in Raw AST.
+//! Explicit value-to-Pattern operations belong to later semantic consumers.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -712,9 +711,8 @@ pub struct NormHoleDecl {
 /// Opaque identity of one root normalization tree.
 ///
 /// It prevents accidental equality between local identities produced by
-/// distinct normalization invocations. It is not a source-unit identity and
-/// is replaced/qualified by the persistent semantic owner graph at build
-/// integration.
+/// distinct normalization invocations. It is not a source-unit identity. The
+/// build handoff qualifies it through the persistent semantic owner graph.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AlphaOwnerId(u64);
 
