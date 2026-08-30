@@ -15,3 +15,13 @@ pre-pr
 historical v0
 current v0.
 v0.6 vertical slice
+this pr defines
+this pr does
+in this pr
+pre-fix
+not ontology leakage
+older api
+old type behavior
+old q-consuming
+hardening
+unsupported_audit

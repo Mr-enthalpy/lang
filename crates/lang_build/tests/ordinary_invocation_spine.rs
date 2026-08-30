@@ -353,7 +353,7 @@ fn i14_finalize_construction_separate_from_install() {
     //
     // A cluster Symbol comes from a construction-family meta invocation
     // (`(uint8 field) struct`).  Ordinary callable declarations (e.g. the
-    // s10 `pick` overloads) contribute sibling vals to their name Symbol
+    // `pick` overloads) contribute sibling vals to their name Symbol
     // and never open a cluster themselves.
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let direct = world
@@ -999,7 +999,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
     );
 
     // Ordinary callable declarations cluster by name into a Symbol whose
-    // pure_p is absent — the `pick` overloads live in the s10 fixture.
+    // pure_p is absent; the `pick` overloads live in the candidate fixture.
     let pick_world = build_single_fixture_world("cluster_exposure", "app");
     let pick = pick_world
         .semantic_world()
@@ -1094,7 +1094,7 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
             world.package_root_node(),
             &call_site,
             OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("core IdentityType ordinary-spine regression"),
+            Provenance::new("core IdentityType ordinary invocation"),
         )
         .expect("core primitive uses the ordinary function-object trunk");
     let lang_build::InvocationResult::SemanticResult {
@@ -1187,7 +1187,7 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
             world.package_root_node(),
             &call_site,
             OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-            Provenance::new("type-value-not-carrier regression"),
+            Provenance::new("complete-type value authority"),
         )
         .expect("IdentityType accepts the value read through U");
     let lang_build::InvocationResult::SemanticResult {
@@ -1401,7 +1401,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
             world.package_root_node(),
             &call_site,
             OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("core struct ordinary-spine regression"),
+            Provenance::new("core struct ordinary invocation"),
         )
         .expect("privileged AST decoding is an ordinary call-entry body capability");
     let lang_build::InvocationResult::SemanticResult {
@@ -1487,17 +1487,16 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
 
 #[test]
 fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
-    // S4 — `CallableSemantics = P1 × P2 × ReturnShape ×
-    // Privilege`.  The return shape and the privilege are two independent
+    // `CallableSemantics = P1 × P2 × ReturnShape × Privilege`. The return
+    // shape and the privilege are two independent
     // declared coordinates: source callables spell the shape on the
     // return-slot annotation (`-> r: symbol` declares a ClusterSymbol
     // return), built-ins state both per primitive declaration.  Each is
     // elaborated once at the declaration boundary
     // (`declared_return_shape_from_closure`) and stored in the
     // MetaFunctionObject payload; no coordinate is projected from another.
-    // The `return_ontology` fixture declares `-> r: symbol` and
-    // ordinary-slot source callables and performs no build-time struct
-    // invocation, so it builds before the S6 meta-binding hookup lands.
+    // The `return_ontology` fixture declares `-> r: symbol` and ordinary-slot
+    // source callables without performing a build-time struct invocation.
     let world = build_single_fixture_world("return_ontology", "app");
 
     let coordinates_of = |name: &str| {

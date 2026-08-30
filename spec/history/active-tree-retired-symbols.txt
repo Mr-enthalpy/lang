@@ -1,0 +1,24 @@
+# Lowercase semantic symbols that have no place in the active model.
+policyset
+policyflag
+mutabilitypattern
+valuemutability
+concrete_policy_mode
+policytransitionrequest
+policytransitioncallable
+policybridgebody
+atomicruntimemigration
+typeobject
+symbolkind::type
+symbolidtotypevalueid
+metainvocationresult
+metaexpansionresult
+generatedtypedefinitionvalue
+constructedvalue
+evalresultnormalform
+patternheadkind
+patternspaceshape
+constructionstate
+unspecifiedpolicy
+typevaluebindingplaceholder
+candidatebuildidentityplaceholder

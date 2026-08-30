@@ -14,12 +14,12 @@ no-bypass, phase vocabulary, test philosophy), see
 
 ## Implementation coverage
 
-`crates/lang_build` now contains the first implementation slice of this design.
-The public Rust API names currently match the design vocabulary:
+`crates/lang_build` implements the connected build and namespace substrate.
+Its public Rust API includes:
 `BuildManifest`, `CompilationWorld`, `NamespaceGraphSnapshot`,
 `NamespaceDelta`, `NamespaceNode`, `SymbolObject`, `SourceCategory`,
 `PolicyMetadata`, `VisibilityMetadata`, `Provenance`, `Diagnostic`,
-`SyntaxObject`, and `MetaExpansionResult`.
+`SyntaxObject`, and `InvocationResult`.
 
 The implemented manifest surface is API-level only: tests construct
 `BuildManifest` values directly. The source collector mounts a package source

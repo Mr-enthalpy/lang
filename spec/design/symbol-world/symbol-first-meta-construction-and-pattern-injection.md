@@ -106,8 +106,8 @@ Consequences:
    None installs a new global root; only `inject` mutates an existing slot. A
    `let` binding or installation path that later carries `struct`'s result is
    what creates a Symbol; it does not retroactively make `struct` a
-   symbol-producing generator. A current registry allocation used to represent
-   a result is non-semantic substrate bookkeeping, not an observable effect.
+   symbol-producing generator. Registry allocation is implementation
+   bookkeeping and is not an observable semantic effect.
 6. A `let` binding or installation path chooses the installation place. It does
    not retroactively choose or reroot the pattern owner carried by the value.
 
@@ -1074,10 +1074,9 @@ ShapeOfTypeSymbol(v) = Σ = ⟨ τ?, V_S ⟩  -- shape of a `symbol`-typed value
 
 `DefaultMetaResult = τ` is a default, not a constraint
 (`OnlyMetaResult = τ` is false): an explicit `f : … -> symbol` is legal
-because `symbol : type` is a first-class type. The old design's problem was
-not favoring `symbol` but demoting `τ` to a half-complete entity that had to
-parasitize a Symbol. `let t = meta_expr;` merely binds `τ_M` to a name;
-binding does not retroactively prove the meta expression returns a Symbol.
+because `symbol : type` is a first-class type. `τ` is complete independently
+of any Symbol. `let t = meta_expr;` merely binds `τ_M` to a name; binding does
+not retroactively prove the meta expression returns a Symbol.
 `struct(P) → τ_P` follows the same default-result principle — `struct` is a
 special built-in meta constructor.
 
@@ -1301,8 +1300,8 @@ transport of an open PatternValue
 evaluation reentry of that PatternValue
 ```
 
-Transporting an open PatternValue through `compile` remains subject to
-`NoOpenEvaluationReentry` (PR99; `OpenEvalReentry_κ`, type-values §2.1.1):
+Transporting an open PatternValue through `compile` is subject to
+`NoOpenEvaluationReentry` (`OpenEvalReentry_κ`, type-values §2.1.1):
 the value may be passed, but no active evaluation edge may be re-entered into
 it. This is the complement of §4.3.3's argument boundary.
 
@@ -1681,9 +1680,8 @@ Canonical argument identity follows parameter rank:
 
 ```text
 symbol parameter -> SymbolId / symbol-place identity
-type parameter   -> default Core(tau) = Q observation, exactly as the old
-                    `type = Q` rules did; `TypeValueId` is only the
-                    implementation/index projection, not semantic equality;
+type parameter   -> default Core(tau) = Q observation; `TypeValueId` is only
+                    the implementation/index projection, not semantic equality;
                     whole-snapshot Addr(Norm_type(tau)) identity applies only
                     where the language has independently frozen it
 value parameter  -> PatternValue identity
@@ -2177,9 +2175,9 @@ let p: product = (a, b, c);
 Val1(p) = (a, b, c)
 ```
 
-No element information is erased from `Val1`. This PR defines no general
-runtime `product[]`; a sound result needs dependent/existential result material
-or a type witness and remains deferred. The four ordered-container cases are:
+No element information is erased from `Val1`. General runtime `product[]`
+remains undefined because a sound result needs dependent/existential result
+material or a type witness. The four ordered-container cases are:
 
 | element shape | fixed concrete outer shape | erased outer shape |
 | --- | --- | --- |
@@ -2524,8 +2522,8 @@ MetaInstanceNavigationAtom :=
     '(' ArgumentProduct MetaCalleePath ')'
 ```
 
-This is a future semantic/navigation rule. It does not change the current lexer,
-parser, Raw AST, or Normalized AST in this PR.
+This semantic/navigation rule is not part of the current lexer, parser, Raw
+AST, or Normalized AST surface.
 
 ## 7. `struct`
 
@@ -2921,14 +2919,11 @@ normalized leaf value. It erases only how the child's navigation was obtained
 (inherited versus explicit) and how the child was formed (internal versus
 extended) — never the Pattern entity identity of `inner`.
 
-> **Correction:** Ordinary navigated
-> `let inner::(s |> (type ref)) = bool::;` does **not** produce the same PatternValue.
-> It only installs `bool::` as an associated type (Val2 member) named
-> `inner` under `t`'s scope, without registering `inner` into `t`'s
-> Pattern canonical structure. Registering a member into the Pattern
-> structure is a privilege held exclusively by `struct` inline construction and
-> the `extend` primitive (directly or through `inject`). See §12.1 for the full
-> privilege boundary.
+Ordinary navigated `let inner::(s |> (type ref)) = bool::;` installs `bool::`
+as an associated type (Val2 member) named `inner` under `t`'s scope. It does not
+register `inner` in `t`'s Pattern structure. Pattern-member registration is a
+privilege of `struct` inline construction and the `extend` primitive (directly
+or through `inject`). See §12.1 for the full privilege boundary.
 
 ## 8. `extend` and `inject`
 
@@ -4423,8 +4418,8 @@ meta instance itself (§4.3.1). Meta navigation is transparent for authority:
 `ActiveInlineClosurePath_meta` is quotient/erased (`VisibleInlinePath_meta(path)
 = ε`), so meta evaluation never produces the opaque nested state that triggers
 `Reject` for non-meta inline closures. The meta space is governed by
-`NearestMetaRoot`, `MetaArgumentAdmissible`, `GlobalSurvivable`, PR99 reentry,
-and seal/promotion rules instead:
+`NearestMetaRoot`, `MetaArgumentAdmissible`, `GlobalSurvivable`,
+`NoOpenEvaluationReentry`, and seal/promotion rules instead:
 
 ```text
 inside M (MetaGenerated material):

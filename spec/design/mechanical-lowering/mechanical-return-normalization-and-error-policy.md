@@ -428,7 +428,8 @@ return normalization depends on:
 ```text
 No parser syntax change.
 No current normalizer behavior change.
-No Rust implementation change in this PR.
+Implementation scope: this document defines lowering obligations and does not
+change the Rust implementation.
 No full effect checker.
 No full noerror checker.
 No full panic/error policy lattice implementation.

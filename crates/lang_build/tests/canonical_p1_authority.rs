@@ -111,14 +111,12 @@ fn canonical_p1_neither_unifies_all_authorities() {
     assert_canonical_p1_unified(&world, "bad");
 }
 
-/// S7 — no independent complete P3: the invocation-time candidate carries exactly the canonical
-/// P1 as its `function_object_p1`.  For a core candidate the declared
-/// function policy (canonical P1) and the result P2 genuinely differ
-/// (`IdentityType` is exported at P1 but its result P2 is not), so this
-/// test proves the candidate does not smuggle the result P2 — or any fresh
-/// third policy — into the function-object P1 authority.
+/// An invocation candidate carries the declared canonical P1 as its
+/// `function_object_p1`. For a core candidate the declared function policy and
+/// result P2 differ (`IdentityType` is exported at P1 but its result P2 is not),
+/// so the test distinguishes the two coordinates.
 #[test]
-fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
+fn invocation_candidate_function_object_p1_matches_declared_p1() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
             .expect("core semantic world builds");
@@ -129,7 +127,7 @@ fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
             world.package_root_node(),
             &call_site,
             OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-            Provenance::new("S7 no-independent-P3 regression"),
+            Provenance::new("canonical function-object P1"),
         )
         .expect("core primitive is selected through the ordinary spine");
     let lang_build::InvocationResult::SemanticResult {

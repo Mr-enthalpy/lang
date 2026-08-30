@@ -1641,10 +1641,10 @@ impl CompilationWorld {
         Ok(())
     }
 
-    /// S6 — project the unified invocation success carrying ClusterSymbol
-    /// material into the ordinary let binding path. The finalized cluster construction's member views are
-    /// the canonical result facts; they flow through the same annotation check,
-    /// P1 elaboration, and installation as any other connected result.
+    /// Project a unified invocation success carrying ClusterSymbol material
+    /// into the ordinary let-binding path. The finalized cluster construction's
+    /// member views are the canonical result facts; they flow through the same
+    /// annotation check, P1 elaboration, and installation as any other result.
     /// Installation creates a fresh destination Symbol; patterns generated
     /// by this construction flip from `Open(cluster)` to `Installed`, while
     /// forwarded patterns keep their original owner (no reroot, no alias of

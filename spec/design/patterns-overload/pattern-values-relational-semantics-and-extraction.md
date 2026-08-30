@@ -390,10 +390,9 @@ different Pattern child identity
 -> equal after deleting the child or its name
 ```
 
-For a child `inner`, an explicit/external route used to compare with inherited
-formation must still complete to the same canonical entry `inner::bool` and
-the same child identity. Exact source spelling follows the current grammar; no
-example may delete `inner` merely to make two normal forms appear equal.
+For a child `inner`, explicit/external and inherited formation routes complete
+to the same canonical entry `inner::bool` and the same child identity. Exact
+source spelling follows the current grammar; normalization preserves `inner`.
 
 ## 7. Ordered bare Product is the unnamed-value calculus
 

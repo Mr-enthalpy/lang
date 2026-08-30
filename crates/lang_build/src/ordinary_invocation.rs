@@ -222,15 +222,13 @@ pub struct PreparedCallCandidate {
     pub return_shape: ReturnShape,
     pub candidate_role: OrdinaryCandidateRole,
     pub overload_strategy: NormOverloadStrategy,
-    /// Migration input endpoint — projected from the Source formal, i.e. the
-    /// first explicit Product formal after slot0.  NOT `function_object_p1`
-    /// and NOT the self policy.  Computed once at A-stage so that A
-    /// (admissibility) and Bp' (preference product) share the same coordinate.
+    /// Migration input endpoint projected from the first explicit Product
+    /// formal after slot 0. It is computed once at A-stage so admissibility and
+    /// Bp' preference observe the same source-formal coordinate.
     pub migration_input_endpoint: Option<PolicyPair>,
-    /// Migration output endpoint — projected from the canonical P1 /
-    /// `callable_value_policy` of the selected callable.  NOT a fresh P3 or
-    /// `return_policy3`/`output_visibility_policy`/`migration_output_policy`.
-    /// Computed once at A-stage alongside the input endpoint.
+    /// Migration output endpoint projected from the selected callable's
+    /// canonical P1 (`callable_value_policy`). It is computed once at A-stage
+    /// alongside the input endpoint.
     pub migration_output_endpoint: Option<PolicyPair>,
 }
 
@@ -436,8 +434,8 @@ impl SingleMemberResult {
 /// Policy and are a third, separate coordinate.
 #[derive(Clone, Debug)]
 pub struct ExposedInvocationResult {
-    /// Canonical P1 of the selected callable — the invocation result's
-    /// outward visibility policy.  Never the result P2, never a fresh P3.
+    /// Canonical P1 of the selected callable: the invocation result's outward
+    /// visibility policy.
     pub outward_policy: PolicyPair,
     /// The completed result material (the P2-domain entries), exposed
     /// under the callable P1 window.
@@ -1450,9 +1448,9 @@ pub(crate) fn invoke_target_values(
                     self_mode: PolicyMode::Plain,
                     explicit_parameter_modes: vec![PolicyMode::Plain; frame_args.arity],
                 },
-                // S7 — same canonical P1 authority as the source arm.  The
-                // core candidate's function-object P1 is the declared
-                // canonical P1 (`callable_value_policy`), NOT the result P2.
+                // Core and source candidates use the same P1 coordinate. The
+                // core candidate's function-object view is its declared
+                // canonical P1 (`callable_value_policy`).
                 entry.callable_view.pair.clone(),
                 NormOverloadStrategy::Ordinary,
                 frame_args,
@@ -1527,9 +1525,8 @@ pub(crate) fn invoke_target_values(
         // re-interpretation of the candidate downstream.
         //
         // §4.1 input endpoint = Source formal = first explicit Product formal
-        //     after slot0.  NOT `function_object_p1`, NOT self policy.
+        //     after slot0.
         // §4.2 output endpoint = canonical P1 / `callable_value_policy`.
-        //     NOT a fresh P3 or return_policy3/output_visibility_policy.
         let (migration_input_endpoint, migration_output_endpoint) = match context.migration {
             Some(migration) => {
                 let source_formal_p1 = entry
@@ -1845,9 +1842,8 @@ pub(crate) fn invoke_target_values(
         // namespace projection expansion (field layer, ref/share views).
         let mut generated_types: Vec<crate::StructConstructionMaterial> = Vec::new();
 
-        // Each member contribution carries the member's own value Policy
-        // and Pattern Policy (S1); nothing is degraded to a bare
-        // PatternValueId.
+        // Each member contribution carries the member's own value Policy and
+        // Pattern Policy together with its Pattern identity.
         let pure_p_member_view = |pattern| PolicyResultEntry {
             value: None,
             pattern,
@@ -1993,7 +1989,7 @@ pub(crate) fn invoke_target_values(
     }
 
     let returned = if let Some(source_shape) = &selected.source_shape {
-        // S8 — carrier construction only; see the meta-construction arm above.
+        // This arm constructs the selected source body's execution carrier.
         let selected_body_input = SelectedOverloadCandidate {
             symbol: source_shape.symbol.clone(),
             source_callable: source_shape.source_callable.clone(),
@@ -2169,11 +2165,9 @@ pub(crate) fn invoke_target_values(
                 trace,
             });
         }
-        // The migration output endpoint has exactly one
-        // authority: the coordinate projected from the canonical P1
-        // (`callable_value_policy`) at A-stage and stored on the candidate.
-        // Do not re-project from the result P2 here; that would be a second
-        // output authority (a de-facto P3).
+        // The candidate stores its migration output endpoint after projecting
+        // the canonical P1 (`callable_value_policy`) at A-stage. Execution
+        // consumes that stored coordinate unchanged.
         if selected.migration_output_endpoint.is_none() {
             return Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed { trace });
         }
@@ -2302,15 +2296,10 @@ fn classify_semantic_value_arguments(
             .filter_map(|view| {
                 let value = view.value?;
                 let object = semantic_world.value(value)?;
-                // This CoreTypeProjection filter is a defensive
-                // guard, NOT ontology leakage.  Pure-P/type views carry
-                // `value=None` and are already skipped by `view.value?`
-                // above. This branch catches CoreTypeProjection carriers that
-                // ended up in a value-bearing view — ordinary invocation must
-                // never treat a projection as a runtime
-                // argument.  The filter proves CoreTypeProjection is NOT an
-                // indispensable hidden Val1: ordinary algorithms explicitly
-                // reject it rather than depend on it.
+                // CoreTypeProjection is projection material, not an ordinary
+                // value argument. Pure-P/type views carry `value=None`; this
+                // check also excludes projection material stored in a
+                // value-bearing transport view.
                 if matches!(
                     object.payload,
                     SemanticValuePayload::CoreTypeProjection { .. }

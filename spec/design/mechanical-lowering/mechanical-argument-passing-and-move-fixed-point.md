@@ -505,7 +505,8 @@ ABI or tail-call checking.
 ```text
 No parser syntax change.
 No current normalizer behavior change.
-No Rust implementation change in this PR.
+Implementation scope: this document defines lowering obligations and does not
+change the Rust implementation.
 No full trait solver.
 No full type checker.
 No borrow checker implementation.

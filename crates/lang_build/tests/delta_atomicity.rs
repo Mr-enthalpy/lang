@@ -192,25 +192,27 @@ fn diagnostic_delta_duplicate_child_prefix() {
     let snapshot = snapshot.install_delta(delta).expect("base");
 
     let mut conflict = snapshot.empty_delta();
-    let s1 = conflict.allocate_symbol_id();
-    let s2 = conflict.allocate_symbol_id();
-    conflict
-        .symbols
-        .insert(s1, object_symbol(s1, root, "existing", "first conflict"));
-    conflict
-        .symbols
-        .insert(s2, object_symbol(s2, root, "existing", "second conflict"));
+    let first_symbol = conflict.allocate_symbol_id();
+    let second_symbol = conflict.allocate_symbol_id();
+    conflict.symbols.insert(
+        first_symbol,
+        object_symbol(first_symbol, root, "existing", "first conflict"),
+    );
+    conflict.symbols.insert(
+        second_symbol,
+        object_symbol(second_symbol, root, "existing", "second conflict"),
+    );
     conflict.child_links.push(ChildLink {
         parent: root,
         name: "existing".into(),
-        symbol: s1,
+        symbol: first_symbol,
         role: ChildNameRole::Object,
         provenance: Provenance::new("first link"),
     });
     conflict.child_links.push(ChildLink {
         parent: root,
         name: "existing".into(),
-        symbol: s2,
+        symbol: second_symbol,
         role: ChildNameRole::Object,
         provenance: Provenance::new("second link"),
     });

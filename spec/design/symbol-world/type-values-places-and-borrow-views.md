@@ -595,7 +595,7 @@ applies.
 
 ### 2.2 Complete type values are closed snapshots over Object cores
 
-The ordinary pure Object `Q` keeps the old type behavior:
+The ordinary pure Object `Q` supplies the Core of a complete type value:
 
 ```text
 Q in Object
@@ -821,7 +821,7 @@ needs, and no rule silently re-reads `tau` as `Q`:
 ```text
 Read(type-valued place) = tau
 
-old Q-consuming rule observed type = Q
+Core-consuming operation
   -> consume Core(tau) = Q        (equality, keying, type-argument identity,
                                    ordinary compatibility, ordinary Pattern
                                    and namespace observation)
@@ -1242,9 +1242,8 @@ ordinary binding path may recover associated operations by mapping
 
 The same separation applies inside derived semantic material. A struct field,
 callable signature, canonical argument key, or extraction view that denotes a
-type observes the default `Core(tau)=Q`, exactly as the old `type = Q` rules
-did; `Addr(Norm_type(tau))` remains available where the language has
-independently frozen whole-snapshot identity (transport, distinguishing
+type observes `Core(tau)=Q`; `Addr(Norm_type(tau))` remains available where the
+language requires whole-snapshot identity (transport and distinguishing
 shared-root snapshots):
 
 ```text

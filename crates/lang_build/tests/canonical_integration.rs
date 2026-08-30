@@ -1,6 +1,6 @@
-//! S10 — canonical semantic-spine integration regression tests.
+//! Canonical semantic-spine integration tests.
 //!
-//! These tests pin the canonical invariants established in S1–S9 end to end:
+//! These tests pin the canonical invariants end to end:
 //! one resolved cluster Symbol per call target, member views as the canonical
 //! fact (never a flat Symbol/Policy aggregate), declaration-time return
 //! ontology shared by core and source, ordinary let-binding of meta outcomes
@@ -129,7 +129,7 @@ fn seal_static(explicit_argument_mutability: &[PolicyMode]) -> OrdinaryInvocatio
 }
 
 // ---------------------------------------------------------------------------
-// Fixture build smoke: the committed S10 fixture workspaces must build.
+// Fixture build smoke: the committed semantic workspaces must build.
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -200,7 +200,7 @@ fn cluster_exposure_filters_per_member_view_by_phase() {
         &mut world,
         "let R: type = uint8 pick;",
         OrdinaryInvocationContext::open_static(&muts),
-        "S10 ② open-static exposure",
+        "open-static exposure",
     );
     let open_trace = trace_of(&open);
     assert_eq!(
@@ -231,7 +231,7 @@ fn cluster_exposure_filters_per_member_view_by_phase() {
         &mut world,
         "let R: type = uint8 pick;",
         seal_static(&muts),
-        "S10 ② seal-static exposure",
+        "seal-static exposure",
     );
     let seal_trace = trace_of(&seal);
     assert_eq!(
@@ -373,7 +373,7 @@ fn privileged_struct_uses_the_normal_overload_path() {
         &mut world,
         "let T: type = (uint8 a) struct;",
         OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-        "S10 ⑥ privileged struct",
+        "privileged struct",
     )
     .expect("struct is selected through the ordinary spine");
     let lang_build::InvocationResult::SemanticResult {
@@ -574,7 +574,7 @@ fn flat_symbol_policy_cannot_express_member_level_exposure() {
         &mut world,
         "let R: type = uint8 pick;",
         seal_static(&muts),
-        "S10 ⑩ member-level authority",
+        "member-level authority",
     );
     let trace = trace_of(&seal);
     assert!(trace
@@ -588,7 +588,7 @@ fn flat_symbol_policy_cannot_express_member_level_exposure() {
 // ---------------------------------------------------------------------------
 // ⑪ Direct forwarding of an external type value out of a meta body violates
 // the self-root invariant: `{ let r = t; r; }` must fail with
-// MetaReturnTypeRootMismatch. No silent re-rooting repair is allowed.
+// MetaReturnTypeRootMismatch. Root mismatch is terminal.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------

@@ -227,8 +227,8 @@ For example `val const` logically:
 ```
 
 and `val mut` likewise produces a fresh `T` result carried by a result slot/view
-whose `PolicyMode` is `mut`. This does not assert `Writable(result)`. The old
-source-like schema remains usable as an explanatory realization:
+whose `PolicyMode` is `mut`. This does not assert `Writable(result)`. A
+source-like realization is:
 
 ```text
 const let const(self, object:T) -> T
@@ -1079,46 +1079,28 @@ Pp = compile
 It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
 
-Atomic runtime Policy migration is a conservative extension of this query
-rule. For the old pair-view projection judgment `ProjectP1` and the extended
-pair-view binding elaborator `ElabP1`:
+Result-view satisfaction is existing-view-first:
 
 ```text
-ElabP1(None, R) = R
-
-ElabP1(Some Q, R):
-  S = ProjectP1(Q, R)
+SatisfyResultView(source, demand):
+  S = ProjectResultPolicyDemand(demand, source)
   if S != empty:
-    return S
-  otherwise, only if Q accepts a runtime value branch:
-    Qr = RuntimeBranch(Q)
-    prepare one direct atomic runtime migration toward Qr
+    return ExistingView(S)
+  otherwise:
+    enumerate one authorized same-Type migration family
+    perform ordinary candidate selection exactly once
+    return SelectedMigration
 ```
 
-Therefore:
+An existing projection preserves the source semantic identity and does not
+enumerate migration candidates. Migration is considered only after the exact
+projection fails. A selected migration is sealed; projection, realization, or
+DynamicLegality failure never reopens selection. These rules apply to the
+complete `PolicyResultEntry[]`, including collections that mix value-bearing
+and absent-Val1 entries.
 
-```text
-Dom_old = {
-  (Q, R)
-  |
-  ProjectP1(Q, R) != empty
-}
-
-ProjectP1(Q, R) succeeds
-  => ElabP1(Some Q, R) = ProjectP1(Q, R)
-
-Dom_old is a subset of Dom(ElabP1)
-```
-
-The extension may add results only where the old projection was empty; it
-cannot change an old successful result or selected identity. In the old
-successful domain, migration candidate enumeration and invocation are
-semantically unreachable. This applies to the complete
-`PolicyResultEntry[]`, including collections that mix value-bearing and
-absent-Val1 entries.
-
-For pair query `Qv:Qp`, atomic migration preparation first slices only the
-Pattern-policy stage capability:
+For pair query `Qv:Qp`, result-view satisfaction slices the Pattern-policy stage
+capability before migration candidate enumeration:
 
 ```text
 Pp_selected = SlicePatternPolicyStages(Qp, source.Pp)
@@ -1130,11 +1112,10 @@ of PatternRoot/PatternScope. It preserves PatternValue identity and structural
 Pattern shape.
 
 Unselected alternatives in a written query are never obligations to
-manufacture every branch. However, after the complete query projects nothing,
-an accepted branch that the language explicitly defines as constructible may
-satisfy the choice. Runtime is currently the only such stage branch. The
-bounded implementation subset is recorded in
-`../../contracts/policy-migration.md`.
+manufacture every branch. When the complete query projects nothing, only an
+authorized direct same-Type migration may satisfy the demand. There is no
+transitive search or compiler-owned conversion table; the implementation
+contract is `../../contracts/policy-migration.md`.
 
 ### 3.2 Formal parameter policy pattern
 

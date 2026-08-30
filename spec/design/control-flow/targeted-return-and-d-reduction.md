@@ -65,11 +65,9 @@ capability. That capability is exposed through the callable-local `Self` space
 as an ordinary callable capability value, as described in
 `spec/design/symbol-world/function-object-self-and-return-capability.md`.
 
-Return is therefore not a parser keyword escape hatch, not an operator, and
-not a compiler-intrinsic control action. The target-binding pass in this PR
-does not execute or invoke that return capability. It only identifies the
-active frame that future completion semantics will use to reach the
-appropriate callable-frame return capability.
+Return is not a parser keyword escape hatch, an operator, or a
+compiler-intrinsic control action. The target-binding pass identifies the
+active frame; return-capability execution belongs to the completion consumer.
 
 The current target-binding pass records a `BoundReturnEvent` containing the
 return value expression, the unresolved target form, the resolved frame id,

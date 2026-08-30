@@ -1460,9 +1460,8 @@ pub struct SemanticWorld {
     associated_namespace_patterns: BTreeMap<NamespaceNodeId, PatternValueId>,
     backing_to_function_value: BTreeMap<SymbolId, SemanticValueId>,
     /// Projection-only link from a semantic Symbol to its source/core
-    /// declaration record.  Resolution chooses the semantic Symbol first;
-    /// this link is consulted only when an older API asks for a
-    /// `SymbolObject` rendering.
+    /// declaration record. Resolution chooses the semantic Symbol first; graph
+    /// rendering may then use this link to obtain a `SymbolObject`.
     symbol_backing_declarations: BTreeMap<SemanticSymbolIdentity, SymbolId>,
     registered_type_bindings: BTreeSet<SymbolId>,
     open_clusters: BTreeMap<ClusterConstructionId, OpenClusterConstruction>,
@@ -3756,9 +3755,9 @@ impl SemanticWorld {
     /// Render an already-selected semantic Symbol through the graph projection
     /// declaration projection.
     ///
-    /// The name index is deliberately not consulted for selection here:
-    /// semantic path/scope resolution must choose `symbol` before an older API
-    /// asks for its `SymbolObject` representation.
+    /// The name index is not consulted for selection here: semantic path/scope
+    /// resolution has already chosen `symbol`; this operation only renders its
+    /// graph projection.
     pub fn projected_symbol_object(
         &self,
         symbol: SemanticSymbolIdentity,
@@ -5787,8 +5786,8 @@ impl SemanticWorld {
 
     /// Finalize a type cluster construction at the construction boundary.
     ///
-    /// S9 — finalization only closes the open construction and yields the
-    /// accumulated member views as one `ClusterConstructionMaterial`.
+    /// Finalization closes the open construction and yields the accumulated
+    /// member views as one `ClusterConstructionMaterial`.
     /// members (e.g. mut↔const transports) are ordinary sibling-member
     /// contributions with normal contribution semantics; they are injected
     /// through the contribution stream like any other member and are

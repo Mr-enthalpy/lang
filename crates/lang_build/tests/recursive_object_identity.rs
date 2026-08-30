@@ -750,9 +750,8 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
 /// `g::f::T` navigates `[T, f]` as its host chain with `g` as the terminal
 /// Symbol.  A `meta`-only outer host `T` hides the whole call at
 /// `SealStatic`, even though the middle host `f` and the terminal `g` are
-/// both `compile`-visible there.  Collapsing the chain to the innermost host
-/// alone (the pre-fix single-host call target) would silently drop `T`'s
-/// navigability constraint and wrongly reach `g`.
+/// both `compile`-visible there. Every host contributes independently to the
+/// navigation judgment, so the terminal `g` is unreachable.
 #[test]
 fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     let mut world = SemanticWorld::new("unit");
@@ -851,9 +850,8 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         "a hidden OUTER host hides the whole navigation at SealStatic: {blocked:?}"
     );
 
-    // The exact regression: dropping the outer host (the pre-fix single-host
-    // behavior) reaches member processing instead — a DIFFERENT failure — so
-    // the outer host `T` was the only thing gating the call.
+    // Omitting the outer host reaches member processing instead, producing a
+    // different failure. This isolates `T` as the host that gates the call.
     let leaked = invoke_host_member_symbol_ordinary(
         &mut world,
         &mut materialization,

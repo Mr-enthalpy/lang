@@ -643,7 +643,7 @@ fn binding_demand_reaches_rhs_maxima_and_output_preference_reads_result_p2_mode(
                     mode: PolicyMode::Mut,
                 },
             ),
-            Provenance::new("crossed function-object/result mode regression"),
+            Provenance::new("function-object and result mode coordinates"),
         )
         .expect("mut result demand chooses one producer");
     let lang_build::InvocationResult::SemanticResult {
@@ -682,7 +682,7 @@ fn type_changing_migration_candidate_is_excluded_in_a_before_preference() {
         .install_semantic_value(
             uint8_type,
             source_view.pair.clone(),
-            Provenance::new("same-Type A regression source"),
+            Provenance::new("same-Type A-stage source"),
         )
         .expect("source value");
     let request = PolicyMigrationRequest::new(
