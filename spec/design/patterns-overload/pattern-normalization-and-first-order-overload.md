@@ -48,5 +48,5 @@ uses the protected `StructuralDefault` candidate family.
 ## 5. Result boundary
 
 Pattern extraction projects ordinary semantic values and complete types through
-the shared `InvocationResult`. It does not introduce generated-definition,
-question-view, or extraction-normal-form value classes.
+the shared `InvocationResult`. Its observations and derivations are
+proof/extraction material rather than semantic value classes.

@@ -9,7 +9,7 @@ use crate::{
     },
     meta_invocation::{
         attach_struct_pattern_materials, compute_struct_construction_material_id,
-        GeneratedFieldDefinition, MetaInvocationInput, StructConstructionMaterial,
+        MetaInvocationInput, StructConstructionMaterial, StructFieldConstructionMaterial,
     },
     model::{
         CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, ExecutionEnv,
@@ -293,7 +293,7 @@ fn insert_projection_namespace(
     name: &str,
     owner_type_symbol_id: SymbolId,
     owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
-    fields: &[GeneratedFieldDefinition],
+    fields: &[StructFieldConstructionMaterial],
     projection: FieldProjection,
     provenance: Provenance,
 ) {
@@ -337,7 +337,7 @@ fn insert_field_projection_layer(
     parent: NamespaceNodeId,
     owner_type_symbol_id: SymbolId,
     owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
-    fields: &[GeneratedFieldDefinition],
+    fields: &[StructFieldConstructionMaterial],
     projection: FieldProjection,
     forced_provenance: Option<Provenance>,
 ) {
@@ -560,7 +560,7 @@ fn struct_type_extraction_interface(
     owner_type_symbol_id: SymbolId,
     owner_type_value: crate::TypeValueId,
     owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
-    fields: &[GeneratedFieldDefinition],
+    fields: &[StructFieldConstructionMaterial],
     provenance: Provenance,
 ) -> TypeContentObservation {
     TypeContentObservation {

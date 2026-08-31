@@ -78,7 +78,7 @@ impl MetaInvocationInput {
 }
 
 impl StructConstructionMaterial {
-    /// The generated definition's structural Pattern normal form.
+    /// The struct construction material's structural Pattern normal form.
     ///
     /// Construction callable identity, build identity, export metadata,
     /// provenance, and the FNV-derived construction material id are deliberately
@@ -106,7 +106,7 @@ impl StructConstructionMaterial {
 
 fn canonical_struct_body_pattern(
     pattern: Option<&StructPatternSyntaxMaterial>,
-    fields: &[GeneratedFieldDefinition],
+    fields: &[StructFieldConstructionMaterial],
 ) -> crate::CanonicalPatternValue {
     if let Some(pattern) = pattern {
         let field_types = fields
@@ -312,7 +312,7 @@ pub struct StructConstructionMaterial {
     /// TypeValue roots stay distinct.
     pub material_id: StructConstructionMaterialId,
     pub identity_material: StructConstructionIdentityMaterial,
-    pub fields: Vec<GeneratedFieldDefinition>,
+    pub fields: Vec<StructFieldConstructionMaterial>,
     pub pattern_materials: Option<StructConstructionPatternMaterials>,
     pub return_view: ReturnViewShape,
     /// The decoded type-pattern expression shape, if the struct argument
@@ -338,11 +338,11 @@ pub struct StructConstructionMaterial {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StructConstructionPatternMaterials {
     pub owner_head: StructPatternMaterialId,
-    pub field_heads: Vec<GeneratedFieldStructPatternMaterial>,
+    pub field_heads: Vec<StructConstructionFieldPatternMaterial>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeneratedFieldStructPatternMaterial {
+pub struct StructConstructionFieldPatternMaterial {
     pub field_name: String,
     pub field_head: StructPatternMaterialId,
 }
@@ -410,7 +410,7 @@ impl PartialEq for FieldSignatureMaterial {
 impl Eq for FieldSignatureMaterial {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GeneratedFieldDefinition {
+pub struct StructFieldConstructionMaterial {
     pub name: String,
     pub type_value: crate::TypeValueId,
     /// The field type's observation identity; semantic equality consumes
@@ -423,7 +423,7 @@ pub struct GeneratedFieldDefinition {
     pub provenance: Provenance,
 }
 
-impl GeneratedFieldDefinition {
+impl StructFieldConstructionMaterial {
     /// Semantic equality: compares field identity material without provenance.
     pub fn semantic_eq(&self, other: &Self) -> bool {
         self.name == other.name
@@ -554,7 +554,7 @@ pub(crate) fn invoke_meta_callable_with_materialization_state(
     match primitive {
         crate::model::CoreMetaFunction::IdentityType => invoke_identity_type(&input),
         crate::model::CoreMetaFunction::Struct => {
-            invoke_struct_type_definition(&input, materialization_state)
+            invoke_struct_construction(&input, materialization_state)
         }
         _ => MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
@@ -626,7 +626,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     }))
 }
 
-fn invoke_struct_type_definition(
+fn invoke_struct_construction(
     input: &MetaInvocationInput,
     materialization_state: &mut StructMaterializationState,
 ) -> MetaPrimitiveExecution {
@@ -659,7 +659,7 @@ fn invoke_struct_type_definition(
 
     let fields = field_signature_material
         .iter()
-        .map(|field| GeneratedFieldDefinition {
+        .map(|field| StructFieldConstructionMaterial {
             name: field.field_name.clone(),
             type_value: field.field_type_value,
             type_observation: field.field_type_observation,
@@ -781,7 +781,7 @@ fn attach_struct_pattern_materials_with_context(
             .field_heads
             .into_iter()
             .map(
-                |(field_name, field_head)| GeneratedFieldStructPatternMaterial {
+                |(field_name, field_head)| StructConstructionFieldPatternMaterial {
                     field_name,
                     field_head,
                 },
