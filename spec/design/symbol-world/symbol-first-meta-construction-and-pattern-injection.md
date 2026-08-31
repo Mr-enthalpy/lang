@@ -1776,7 +1776,7 @@ refinement (imported judgment); namespace-only `Q` is not required to define Val
 
 ### 4.5 Formal return material
 
-Target semantics do not give the spelling of a return slot a special creation
+Canonical semantics do not give the spelling of a return slot a special creation
 meaning. A meta body computes its result value (`τ` by default); `let` creates its local
 members, `=` writes existing places, and the return event transfers that value.
 The explicit return-slot spelling `r` denotes the declared return position; it
@@ -4002,17 +4002,6 @@ A raw `PatternValueId → Vec<SemanticValueId>` read is transport material
 for compiler-installed entries that never allocated a scope-local Symbol
 (for example the `()` call entries of a materialized type); it is never the
 authoritative route for a source-visible associated name.
-
-Implementation state of this section: the per-carrier `ObjectPlace`, the
-per-object source-visible Val2 name ledger, the recursive `C_f` with its
-own member views, and the layered exposure conjunction on explicitly
-navigated targets are implemented in `crates/lang_build`. Still open debt:
-the associated-extension entry point is reached only through a still-open
-construction, so it resolves the target object from the constructed
-Pattern; source-level `let f::(U |> (type ref))` against an already installed
-pure-type rebinding carrier, navigation through that explicit `type ref` view,
-and writability checking of the selected place remain future implementation
-work. Bare `let f::U` is not shorthand for obtaining the type-level place.
 
 The two operations may target the same still-open construction, but one source
 value is not simultaneously interpreted under both judgments.

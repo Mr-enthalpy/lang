@@ -514,44 +514,20 @@ Projection errors do not redefine the canonical absent-slot × PolicyMode
 matrix.
 
 The helper returns external views derived from public path reachability and
-retention. Full namespace-graph installation and external resolver routing
-remain consumer work.
+retention.
 
-## 12. Implementation boundary
-
-The build world provides physical directory skeleton collection, role-aware
-namespace nodes, transactional namespace deltas, typed owner qualification,
-provenance, and direct-child contribution checks. Pattern materialization and
-complete-type installation consume explicit resolved owner identities.
-
-Consumer work:
-
-```text
-meta return self-root checking
-complete compile/meta language-level separation
-MetaInstanceScopeId
-ordinary canonical meta invocation navigation atom
-NamespaceOrigin uniqueness checking
-SourceConstructionUnit / MetaConstructionUnit ownership
-physical directory contribution authority checking
-cross-file reopening diagnostics
-ordinary namespace value vs pattern-material role/cache implementation
-Pure(x) => NamespaceRole(x) and TypeRole refinement enforcement
-explicit sum construction/extension API
-```
-
-In particular, the current binding/materialization destination must not be
+In particular, a binding/materialization destination must not be
 described as determining or rerooting a meta result role member's pattern
 identity. Final meta role-root identity is anchored by the meta instance's own
 symbol scope.
 
-## 13. Non-Goals
+## 12. Non-Goals
 
 This document does not:
 
 - modify the lexer, parser, Raw AST, or Normalized AST;
 - define source syntax for partial declarations or reopening;
-- implement `compile`, `extend`, `inject`, or a sum API;
+- define `compile`, `extend`, `inject`, or a sum API;
 - define final overload-entry identity or future mergeable-value syntax;
-- implement namespace-origin or construction-unit enforcement in Rust;
+- define a concrete namespace-origin or construction-unit carrier;
 - turn physical files or internal AST carriers into a macro system.

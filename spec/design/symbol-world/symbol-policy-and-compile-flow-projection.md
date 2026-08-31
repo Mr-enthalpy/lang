@@ -1619,8 +1619,7 @@ static evaluation frontier
   = first dependency/effect boundary not admissible in the current phase
 ```
 
-The following positive invariants constrain future integration even though
-their storage/lowering algorithms are not implemented:
+The following invariants hold independently of storage and lowering:
 
 - Crossing a compile value to runtime constructs a new runtime object. It does
   not extend the lifetime of a compile temporary.
@@ -2321,7 +2320,7 @@ introduce a competing specificity order.
 This is a restriction on lifetime *rules*, not a denial that `@` has overloads.
 `@` is resolved by the ordinary selection trunk of §12 like any other operation.
 
-## 14. Implementation boundary
+## 14. Migration comparator boundary
 
 Policy migration compares ordinary Bp coordinates and input/output endpoint
 Policy through one product/Pareto order. Endpoint maxima are not a sequentially
