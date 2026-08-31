@@ -1616,8 +1616,8 @@ impl CompilationWorld {
                 namespace,
                 &expansion.replacement_object.name,
                 expansion.replacement_object.id,
-                complete_type.lookup_key,
-                Some(complete_type.whole),
+                complete_type.lookup_key(),
+                Some(complete_type.whole()),
                 associated_namespace,
                 pair,
                 expansion.replacement_object.provenance.clone(),
@@ -1846,7 +1846,7 @@ impl CompilationWorld {
         };
         let target_receiver = self
             .semantic_world
-            .core_type_projection_value(request.target.lookup_key)
+            .core_type_projection_value(request.target.lookup_key())
             .ok_or_else(|| {
                 BuildError::single(Diagnostic::hard_error(
                     "literal construction target tau has no semantic receiver value",
@@ -1869,7 +1869,7 @@ impl CompilationWorld {
             });
         let candidate_values = request
             .target
-            .call_space
+            .call_space()
             .get(CONSTRUCT_OR_CONVERT_SELECTOR)
             .into_iter()
             .flatten()
@@ -1881,7 +1881,7 @@ impl CompilationWorld {
             .member_views_for_values(&candidate_values);
         let target_pattern = self
             .semantic_world
-            .type_value(request.target.lookup_key)
+            .type_value(request.target.lookup_key())
             .expect("complete target lookup key remains installed")
             .pattern;
 
@@ -1949,9 +1949,9 @@ impl CompilationWorld {
             crate::SemanticValuePayload::ConstructedLiteral {
                 target_complete_type,
                 ..
-            } if *target_complete_type == request.target.whole
+            } if *target_complete_type == request.target.whole()
         );
-        if result_ref.type_value != request.target.lookup_key || !exact_target {
+        if result_ref.type_value != request.target.lookup_key() || !exact_target {
             return Err(BuildError::single(Diagnostic::hard_error(
                 "selected literal constructor returned a value outside the demanded complete Type",
                 Some(provenance.clone()),
@@ -2117,7 +2117,7 @@ impl CompilationWorld {
         if selected.iter().all(|entry| entry.value.is_none()) {
             let pattern = first_pattern;
             let represented_type = match semantic_complete_type {
-                Some(complete) => complete.lookup_key,
+                Some(complete) => complete.lookup_key(),
                 None => self
                     .semantic_world
                     .type_for_pattern(pattern)
@@ -2166,7 +2166,7 @@ impl CompilationWorld {
                     binder_name,
                     symbol_id,
                     represented_type,
-                    semantic_complete_type.map(|complete| complete.whole),
+                    semantic_complete_type.map(|complete| complete.whole()),
                     Some(associated_namespace),
                     declared_pair_from_result_entry(&selected[0], namespace_declaration),
                     provenance,
@@ -2182,7 +2182,7 @@ impl CompilationWorld {
         // one-way `tau -> CoreTypeProjection` rendering and can never recover or
         // decide type identity.
         let mut delta = if let Some(complete_type) = semantic_complete_type {
-            let represented_type = complete_type.lookup_key;
+            let represented_type = complete_type.lookup_key();
             let carrier = declared_bound_type_value_delta(
                 self.semantic_world.namespace_index(),
                 namespace,
@@ -2219,7 +2219,7 @@ impl CompilationWorld {
                 binder_name,
                 symbol_id,
                 represented_type,
-                semantic_complete_type.map(|complete| complete.whole),
+                semantic_complete_type.map(|complete| complete.whole()),
                 Some(associated_namespace),
                 declared_pair_from_result_entry(&selected[0], namespace_declaration),
                 provenance,
@@ -2290,8 +2290,8 @@ impl CompilationWorld {
                 namespace,
                 &expansion.replacement_object.name,
                 expansion.replacement_object.id,
-                semantic_complete_type.lookup_key,
-                Some(semantic_complete_type.whole),
+                semantic_complete_type.lookup_key(),
+                Some(semantic_complete_type.whole()),
                 associated_namespace,
                 declared_pair_from_result_entry(entry, namespace_declaration),
                 expansion.replacement_object.provenance.clone(),
@@ -3488,13 +3488,9 @@ mod literal_construction_tests {
     }
 
     #[test]
-    fn registry_target_without_callspace_candidate_is_not_constructible() {
+    fn complete_type_without_constructor_is_not_constructible() {
         let mut world = world();
-        let mut request = request(&mut world, "uint16", PolicyMode::Plain);
-        request
-            .target
-            .call_space
-            .remove(CONSTRUCT_OR_CONVERT_SELECTOR);
+        let request = request(&mut world, "type", PolicyMode::Plain);
         let before = constructed_count(&world);
         let error = world
             .invoke_literal_construction_request(

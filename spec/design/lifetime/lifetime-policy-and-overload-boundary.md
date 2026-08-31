@@ -815,22 +815,10 @@ uncheckable representation side channel. Every capture presents a checkable form
 whose `origin_or_region_relation` is exactly the input the §3 escape check
 consumes.
 
-## 6. Registered implementation debt
+## 6. Open representation questions
 
-Semantics closed here, not yet built:
-
-```text
-SemanticContinuation / LifeName / LifetimeValue / NameView carriers
-`@` name/continuation reification
-region event indexing and move-generation tracking
-cleanup-before-observation scheduling evidence
-Pre/Post lifecycle action checking
-call-boundary lifetime summary instantiation
-the escape check of §3 at all four destination classes
-CheckableCaptureForm construction at closure materialization
-```
-
-Still genuinely open engineering questions, not closed by this document:
+The following representation and integration questions remain open without
+changing the relations defined above:
 
 - concrete Rust/IR identity for `LifeName`, event positions, generation ids,
   Region slices, lazy origin links, and summary compression;
@@ -841,8 +829,7 @@ Still genuinely open engineering questions, not closed by this document:
   representation, closure ABI, and environment layout, which remain the
   mechanical-lowering design's territory. The entry origin defaults, exact
   move-origin/Region boundary, and selected share/rebind-plus-clone realization
-  lifecycle-post boundary above are closed lifetime semantics, not items in that
-  implementation debt.
+  lifecycle-post boundary above are fixed lifetime semantics.
 
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff

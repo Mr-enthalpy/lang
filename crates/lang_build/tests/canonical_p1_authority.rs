@@ -23,7 +23,7 @@ use lang_build::{
     PatternComponentPolicy, PatternValueId, PolicyMigrationRequest, PolicyMode, PolicyPair,
     PolicyResultEntry, PolicyStage, PolicyView, Provenance, ResolveExpectation, ResultPolicyDemand,
     SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet, SymbolPayload,
-    ToolchainGlobalSourceRoot, TypeValueId, ValueComponentPolicy, ValuePresence,
+    ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
 };
 use support::{
     build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
@@ -314,7 +314,7 @@ fn value_entry(
     PolicyResultEntry {
         value: Some(SemanticValueRef {
             id: SemanticValueId(7),
-            type_value: TypeValueId(3),
+            type_value: support::type_lookup_fixture("canonical-p1/value-entry"),
         }),
         pattern: PatternValueId(1),
         view: PolicyView {

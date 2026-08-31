@@ -77,7 +77,9 @@ pub use discovery::{
     SourceRootRequest,
 };
 pub use fingerprint::{fnv1a64_hex, Fnv1a64};
-pub use identity::{MetaCallableIdentity, PlaceId, SemanticValueId, TypeValueId};
+pub use identity::{
+    MetaCallableIdentity, PlaceId, SemanticValueId, TypeLookupIndexAllocator, TypeValueId,
+};
 pub use initializer_eval::{
     binding_assertion_annotation_context, residual_diagnostic, AnnotationContext, EvalMode,
     ResidualReason,
@@ -228,9 +230,9 @@ pub use semantic_world::{
     PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector, ProjectionSlot,
     ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
     ResidentGeneration, ResidentIdentity, ResidualRuntimeEpoch, ResolvedExtractionTarget,
-    ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticPatternValue,
-    SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot, SemanticValueObject,
-    SemanticValuePayload, SemanticWorld, StableBorrowTarget, TypeMemberFacet,
+    ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId,
+    SemanticPatternValue, SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot,
+    SemanticValueObject, SemanticValuePayload, SemanticWorld, StableBorrowTarget, TypeMemberFacet,
     TypeMemberSnapshotEntry, WritableContext,
 };
 pub use source::SourceFragment;

@@ -58,6 +58,7 @@ pub(crate) fn install_core_bootstrap(
     let mut delta = snapshot.empty_delta();
     let mut core_callables = Vec::new();
     let mut core_types = Vec::new();
+    let mut type_lookup_indices = crate::TypeLookupIndexAllocator::new();
     let core_provenance = Provenance::new("compiler-seeded core package");
     let core_node = namespace_symbol(
         &mut delta,
@@ -124,6 +125,7 @@ pub(crate) fn install_core_bootstrap(
         insert_core_type(
             &mut delta,
             &mut core_types,
+            &mut type_lookup_indices,
             core_node,
             name,
             Provenance::new(format!("core type symbol `{name}`")),
@@ -340,6 +342,7 @@ fn insert_verification_namespace(
 pub(crate) fn insert_core_type(
     delta: &mut SemanticNameDelta,
     core_types: &mut Vec<CoreTypeRegistration>,
+    type_lookup_indices: &mut crate::TypeLookupIndexAllocator,
     parent: NamespaceNodeId,
     name: &str,
     provenance: Provenance,
@@ -370,10 +373,7 @@ pub(crate) fn insert_core_type(
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
-    // Core lookup indices come from a type registry namespace disjoint from
-    // graph Symbol allocation. Their encoding is opaque; no SymbolId
-    // conversion defines type identity.
-    let represented_type = crate::TypeValueId((1u64 << 62) | core_types.len() as u64);
+    let represented_type = type_lookup_indices.allocate();
     // Declared semantic registration fact: core type carriers are declared
     // `export meta runtime`, spelled as the canonical pair directly.
     core_types.push(CoreTypeRegistration {

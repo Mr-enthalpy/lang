@@ -67,13 +67,13 @@ candidate preparation, not runtime overload resolution.
 ## Documents
 
 - `pattern-values-relational-semantics-and-extraction.md` — the canonical
-  target-semantic authority for Pattern relation, observation, extraction,
+  authority for Pattern relation, observation, extraction,
   structural incidence, binderless Patterns, annotations, and the Pattern/type
   boundary.
-- `pattern-normalization-and-first-order-overload.md` — the earlier
-  candidate-preparation subset; it does not define the base Pattern relation.
-- `overload-resolution-design.md` — the broader, later full overload-resolution
-  vision, including fully admissible set `A`, ordered preference filters
+- `pattern-normalization-and-first-order-overload.md` — candidate-preparation
+  relations; it does not define the base Pattern relation.
+- `overload-resolution-design.md` — the complete overload-resolution model,
+  including fully admissible set `A`, ordered preference filters
   (including in-place over non-in-place), and must-select consistency.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   residual, `Done`, and extraction-chain consumer semantics.

@@ -89,21 +89,7 @@ Call results use the shared `InvocationResult` boundary. Pattern extraction may
 project a successful semantic result, but it does not define a private result
 class, residual universe, or diagnostic channel.
 
-## 6. Current implementation boundary
-
-The current implementation provides the relational parameter solver, stable
-Pattern-root/Hole identities, proof-relevant valuations, and explicit
-structural-incidence carriers. Source-level structural extractor dispatch is a
-consumer-wiring task: it must connect the existing `DirectPatternChild` and
-`StructuralDefault` relations to the ordinary invocation pipeline without
-introducing a shape-matching fallback.
-
-Control-flow consumption, `Done`, exhaustive sum analysis, and the final full
-Pattern-space carrier remain separate future work. Unsupported forms produce a
-typed residual or diagnostic; they do not fall back to an alternative Pattern
-semantics.
-
-## 7. Invariants
+## 6. Invariants
 
 ```text
 Pattern != schema AST

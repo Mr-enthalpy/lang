@@ -3,7 +3,7 @@ use lang_build::{
     ArgProductShape, CallableFrameShape, ExecutionEnv, FlattenedProductInvariant,
     FlattenedProductObject, InvocationCallableRef, InvocationExecutionEnv, InvocationFrame,
     InvocationLookupEnv, PolicyEnv, ProductAtom, Provenance, ReceiverTypeRef, ReturnTargetShape,
-    SelfPosition, SelfPositionSource, SelfSlotKind, TypeValueId,
+    SelfPosition, SelfPositionSource, SelfSlotKind,
 };
 
 fn empty_arg_product_shape() -> ArgProductShape {
@@ -72,7 +72,7 @@ fn self_is_not_counted_in_explicit_argument_product() {
         InvocationCallableRef::SemanticValue(SemanticValueId(7)),
         SelfPosition::from_semantic_associated_call_entry(
             SemanticValueId(70),
-            TypeValueId(71),
+            support::type_lookup_fixture("invocation-frame/associated-self"),
             Provenance::new("resolved callable self"),
         ),
         explicit_user_product,
@@ -94,7 +94,9 @@ fn invocation_frame_rejects_nonzero_self_position() {
         SelfPosition {
             slot_index: 1,
             source: SelfPositionSource::SemanticAssociatedValue(SemanticValueId(90)),
-            receiver_type: ReceiverTypeRef::TypeValue(TypeValueId(91)),
+            receiver_type: ReceiverTypeRef::TypeValue(support::type_lookup_fixture(
+                "invocation-frame/nonzero-self",
+            )),
             provenance: Provenance::new("invalid self position"),
         },
         empty_arg_product_shape(),
@@ -116,7 +118,7 @@ fn invocation_frame_rejects_arg_shape_arity_atom_mismatch() {
         InvocationCallableRef::SemanticValue(SemanticValueId(10)),
         SelfPosition::from_semantic_associated_call_entry(
             SemanticValueId(100),
-            TypeValueId(101),
+            support::type_lookup_fixture("invocation-frame/arity-mismatch"),
             Provenance::new("resolved callable self"),
         ),
         mismatched_product,
@@ -128,3 +130,4 @@ fn invocation_frame_rejects_arg_shape_arity_atom_mismatch() {
     let diagnostic = result.expect_err("arity/atom mismatch must be rejected");
     assert!(diagnostic.message.contains("arity"));
 }
+mod support;

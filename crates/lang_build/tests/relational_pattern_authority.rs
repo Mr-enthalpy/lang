@@ -66,8 +66,16 @@ fn shared_deduce_hole_requires_one_relational_valuation() {
     let same = solve_parameter_product_relation(
         params,
         &[
-            typed_value(TypeValueId(1), PatternValueId(10), CanonicalValueAddr(100)),
-            typed_value(TypeValueId(2), PatternValueId(11), CanonicalValueAddr(100)),
+            typed_value(
+                support::type_lookup_fixture("relational-pattern/type-a"),
+                PatternValueId(10),
+                CanonicalValueAddr(100),
+            ),
+            typed_value(
+                support::type_lookup_fixture("relational-pattern/type-b"),
+                PatternValueId(11),
+                CanonicalValueAddr(100),
+            ),
         ],
         &context,
     )
@@ -79,8 +87,16 @@ fn shared_deduce_hole_requires_one_relational_valuation() {
     let different = solve_parameter_product_relation(
         params,
         &[
-            typed_value(TypeValueId(1), PatternValueId(10), CanonicalValueAddr(100)),
-            typed_value(TypeValueId(1), PatternValueId(10), CanonicalValueAddr(101)),
+            typed_value(
+                support::type_lookup_fixture("relational-pattern/type-a"),
+                PatternValueId(10),
+                CanonicalValueAddr(100),
+            ),
+            typed_value(
+                support::type_lookup_fixture("relational-pattern/type-a"),
+                PatternValueId(10),
+                CanonicalValueAddr(101),
+            ),
         ],
         &context,
     );
@@ -105,8 +121,16 @@ fn bare_type_lookup_and_display_name_cannot_decide_pattern_applicability() {
     let result = solve_parameter_product_relation(
         params,
         &[
-            typed_value(TypeValueId(5), PatternValueId(20), CanonicalValueAddr(200)),
-            typed_value(TypeValueId(5), PatternValueId(20), CanonicalValueAddr(201)),
+            typed_value(
+                support::type_lookup_fixture("relational-pattern/shared-lookup"),
+                PatternValueId(20),
+                CanonicalValueAddr(200),
+            ),
+            typed_value(
+                support::type_lookup_fixture("relational-pattern/shared-lookup"),
+                PatternValueId(20),
+                CanonicalValueAddr(201),
+            ),
         ],
         &context,
     );
@@ -115,3 +139,4 @@ fn bare_type_lookup_and_display_name_cannot_decide_pattern_applicability() {
         "equal TypeValueId and equal spelling cannot override unequal Core observations"
     );
 }
+mod support;

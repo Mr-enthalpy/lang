@@ -118,7 +118,8 @@ not permission to substitute another semantic implementation.
 ## Tests
 
 Every syntax rule needs golden coverage. Semantic changes need positive,
-negative, identity/equality, no-reopen, and authority-death tests as relevant.
+negative, identity/equality, no-reopen, non-derivability, and
+authority-uniqueness tests as relevant.
 
 After changes run:
 

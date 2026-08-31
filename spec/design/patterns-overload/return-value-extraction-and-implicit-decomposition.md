@@ -1,6 +1,6 @@
 # Return Value, Extraction View, and Pattern-Directed Decomposition
 
-**Status: Future design boundary. Not current implementation behavior.**
+**Status: canonical result-extraction design.**
 
 The relational meaning of Pattern observation/extraction and the fact that
 constructor/extractor inverses are family-specific theorems are canonical in

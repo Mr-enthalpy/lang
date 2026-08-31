@@ -196,10 +196,9 @@ pub enum OrdinaryCandidateOrigin {
 pub struct PreparedCallCandidate {
     pub origin: OrdinaryCandidateOrigin,
     pub target_value: SemanticValueId,
-    /// Horizontal residency of the selected target in this invocation
-    /// context. It may differ from the semantic value's formation Place when
-    /// an ordinary binding carries that same value in a fresh destination.
-    pub target_place: ObjectPlaceId,
+    /// Horizontal residency supplied by this invocation context. Pure value
+    /// projection does not require one; Place-sensitive legality does.
+    pub target_place: Option<ObjectPlaceId>,
     pub call_entry_value: SemanticValueId,
     pub backing_declaration: SymbolId,
     pub frame: InvocationFrame,
@@ -317,7 +316,12 @@ fn validate_dynamic_legality(
     }
 
     let writable_place = if context.dynamic_legality.require_target_writable {
-        let place = selected.target_place;
+        let place = selected.target_place.ok_or_else(|| {
+            Diagnostic::hard_error(
+                "selected invocation requires an actual target Place",
+                Some(provenance.clone()),
+            )
+        })?;
         let writable = context.dynamic_legality.writable.ok_or_else(|| {
             Diagnostic::hard_error(
                 "selected invocation requires Writable but the evaluation context supplies no write authority",
@@ -1273,10 +1277,7 @@ pub(crate) fn invoke_target_values(
             .value(target_value)
             .cloned()
             .expect("C1 retained existing target values");
-        let target_place = target_places
-            .get(&target_value)
-            .copied()
-            .unwrap_or(target.place);
+        let target_place = target_places.get(&target_value).copied();
         if entry.receiver_type != target.type_value {
             continue;
         }
@@ -1340,7 +1341,7 @@ pub(crate) fn invoke_target_values(
                         let core = resolution.complete_type_observation.and_then(|whole| {
                             world_view
                                 .complete_type_by_whole_observation(whole)
-                                .map(|complete| complete.core)
+                                .map(|complete| complete.core())
                         });
                         Some(crate::NamedPatternObservation { pattern, core })
                     })
@@ -1494,11 +1495,11 @@ pub(crate) fn invoke_target_values(
                 crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(spec) => {
                     spec.source_family == *family
                         && spec.target_type == *receiver_target
-                        && target_snapshot.lookup_key == *receiver_target
+                        && target_snapshot.lookup_key() == *receiver_target
                 }
                 crate::semantic_world::OrdinaryIntrinsicBody::Delete
                 | crate::semantic_world::OrdinaryIntrinsicBody::FailSelected => {
-                    target_snapshot.lookup_key == *receiver_target
+                    target_snapshot.lookup_key() == *receiver_target
                 }
             };
             if !applicable {
@@ -1939,11 +1940,11 @@ pub(crate) fn invoke_target_values(
                             }
                         },
                     };
-                    if let Some((_value_id, pattern, canonical_type)) = installed {
+                    if let Some((_value_id, pattern, complete_type)) = installed {
                         semantic_world
                             .contribute_cluster_member_view(cid, pure_p_member_view(pattern));
                         let mut value = value.clone();
-                        value.canonical_type = Some(canonical_type);
+                        value.canonical_type = Some(complete_type.lookup_key());
                         generated_types.push(value);
                     }
                 }
@@ -2882,26 +2883,15 @@ fn ordinary_result_identity(
                     value.provenance.clone(),
                 )?
             };
-            let Some((carrier_value, pattern, canonical_type)) = installed else {
+            let Some((carrier_value, pattern, complete_type)) = installed else {
                 return Err(Diagnostic::hard_error(
                     "generated type installation could not form its semantic carrier",
                     Some(value.provenance.clone()),
                 ));
             };
-            value.canonical_type = Some(canonical_type);
-            let carrier_place = semantic_world
-                .value(carrier_value)
-                .map(|carrier| carrier.place)
-                .ok_or_else(|| {
-                    Diagnostic::hard_error(
-                        "generated type installation lost its semantic carrier place",
-                        Some(value.provenance.clone()),
-                    )
-                })?;
-            let complete_type =
-                semantic_world.observe_complete_type(canonical_type, Some(carrier_place))?;
+            value.canonical_type = Some(complete_type.lookup_key());
             Ok(Some((
-                complete_type.lookup_key,
+                complete_type.lookup_key(),
                 pattern,
                 Some(carrier_value),
                 ReturnedSemanticEntity::CompleteType(ReturnedCompleteType {

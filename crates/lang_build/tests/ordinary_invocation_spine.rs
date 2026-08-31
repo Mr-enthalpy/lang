@@ -230,10 +230,10 @@ fn struct_binding_carries_exact_tau_independently_of_core_projection() {
         .semantic_world()
         .complete_type_by_whole_observation(whole)
         .expect("the exact complete tau remains interned");
-    assert_eq!(complete.whole, whole);
+    assert_eq!(complete.whole(), whole);
     assert_eq!(
         world.semantic_world().type_for_pattern(member.pattern),
-        Some(complete.lookup_key),
+        Some(complete.lookup_key()),
         "the Core lookup projection agrees with tau without defining its whole identity"
     );
 }
@@ -446,7 +446,7 @@ fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
             &call_site,
             OrdinaryInvocationContext::open_static(&actual)
                 .with_capability_demand(PolicyMode::Const, PolicyMode::Mut),
-            Provenance::new("post-selection capability death test"),
+            Provenance::new("selected candidate capability proof failure is terminal"),
         )
         .expect_err("the selected entry has an absent capability cell");
     let lang_build::OrdinaryInvocationFailure::DynamicLegality {
@@ -483,7 +483,7 @@ fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
             &call_site,
             OrdinaryInvocationContext::open_static(&actual)
                 .with_lifecycle_preconditions(&lifecycle),
-            Provenance::new("post-selection lifecycle death test"),
+            Provenance::new("selected invocation lifecycle precondition failure is terminal"),
         )
         .expect_err("the selected entry must fail lifecycle Pre validation");
     let lang_build::OrdinaryInvocationFailure::DynamicLegality {
@@ -574,13 +574,14 @@ fn mut_policy_mode_does_not_grant_writable() {
             world.package_root_node(),
             &call_site,
             context,
-            Provenance::new("mut is not Writable death test"),
+            Provenance::new("PolicyMode::Mut does not imply Writable authority"),
         )
         .expect_err("mut Policy alone cannot authorize a Place write");
     assert!(matches!(
         failure,
         lang_build::OrdinaryInvocationFailure::DynamicLegality { ref diagnostic, .. }
-            if diagnostic.message.contains("not Writable")
+            if diagnostic.message.contains("actual target Place")
+                || diagnostic.message.contains("not Writable")
     ));
 }
 
@@ -1218,7 +1219,7 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         .semantic_world()
         .core_type_projection_value_for_symbol(uint8.identity)
         .expect("uint8 pure type Object value");
-    let represented = value.complete_type.lookup_key;
+    let represented = value.complete_type.lookup_key();
     let SemanticValuePayload::CoreTypeProjection {
         represented_type, ..
     } = world
@@ -1461,7 +1462,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
         "direct `struct` attaches its generated type to the ambient declaration environment"
     );
     assert_eq!(
-        returned.complete_type.lookup_key,
+        returned.complete_type.lookup_key(),
         world
             .semantic_world()
             .type_for_pattern(returned.pattern)
@@ -1470,7 +1471,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
     assert_eq!(
         world
             .semantic_world()
-            .complete_type_by_whole_observation(returned.complete_type.whole),
+            .complete_type_by_whole_observation(returned.complete_type.whole()),
         Some(&returned.complete_type),
         "the ordinary result carries the interned whole-snapshot observation"
     );

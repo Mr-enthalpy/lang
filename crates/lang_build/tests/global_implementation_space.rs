@@ -890,7 +890,7 @@ fn literals_form_abstract_values_before_construction_and_same_type_migration() {
             .semantic_world()
             .complete_type_by_whole_observation(target_complete_type)
             .expect("the concrete result carries a registered complete Type")
-            .lookup_key,
+            .lookup_key(),
         uint16_type
     );
 

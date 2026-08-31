@@ -124,12 +124,11 @@ pub struct PatternValueId(pub u64);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResolvedPatternScopeId(pub u64);
 
-/// Snapshot-local handle of one per-object Val2 place.
-///
-/// Each semantic object (including `null × P × Val2` pure type Objects) owns
-/// exactly one `ObjectPlace`.  The place holds the object's recursive
-/// associated Val2 members — the values navigable from that specific object,
-/// independent of other objects sharing the same Pattern.
+/// Snapshot-local identity of one semantic Object.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SemanticObjectId(u64);
+
+/// Snapshot-local identity of one residency Place.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectPlaceId(pub u64);
 
@@ -249,40 +248,32 @@ fn projection_storage_key(selector: &ProjectionSelector) -> String {
     }
 }
 
-/// Per-object Val2 container.
+/// Residency-local navigation storage for one Place.
 ///
-/// Each semantic object (including `null × P × Val2` pure type Objects) owns
-/// exactly one `ObjectPlace`.  The place holds the object's recursive
-/// associated Val2 members — the values navigable from that specific object,
-/// independent of other objects sharing the same Pattern.
+/// These maps expose the names and values reachable through this residency:
 ///
-/// Val2 has exactly one authority per channel and both channels live here,
-/// on the object:
-///
-/// * `associated_symbols` is the authority for every **source-visible**
-///   Val2 name: `Val2(T_t)[f] = C_f` names one recursive ClusterSymbol, and
-///   that Symbol's own member ledger carries the binding Policy.
-/// * `associated_val2` is transport material: the value ids reachable from
-///   this object, including compiler-installed anonymous entries such as
-///   `()` call entries that never allocate a scope-local Symbol.
+/// * `associated_symbols` maps source-visible selectors to recursive
+///   ClusterSymbols whose member ledgers carry binding Policy.
+/// * `associated_val2` stores the corresponding navigable value ids,
+///   including anonymous implementation entries such as `()` call entries.
 ///
 /// A source-visible name is recorded in both indexes: the Symbol owns the
 /// language member and the value vector supplies its navigable transport
-/// reference. The value vector never owns independent Policy facts.
+/// reference. The value vector never owns independent Policy facts. Object
+/// content is held by [`SemanticVal2Snapshot`]; navigation storage cannot
+/// define or reconstruct that content.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ObjectPlace {
     pub id: ObjectPlaceId,
+    /// Object currently resident in this Place.
+    pub object: SemanticObjectId,
     /// Current resident generation.  This coordinate is horizontal residency
     /// state and never enters ordinary Object normalization.
     pub resident: ResidentGeneration,
-    /// Source-navigable Val2 names of this specific object.  Two carriers of
-    /// one Pattern (`let T: type = uint8; let U: type = T;`) own separate
-    /// places, so `let f::T` adds `f` to `T`'s object only.
+    /// Source-navigable selectors visible through this residency.
     pub associated_symbols: BTreeMap<String, SemanticSymbolIdentity>,
     /// Heterogeneous associated values indexed by ordinary member spelling.
-    /// This is the per-object Val2 transport: `()` entries make the object
-    /// callable, named entries are the navigable references of this
-    /// object's members.
+    /// Named and anonymous values visible through this residency.
     pub associated_val2: BTreeMap<String, Vec<SemanticValueId>>,
 }
 
@@ -318,8 +309,8 @@ struct SemanticVal2ClusterSnapshot {
 /// the frame keys nor the memo keys reach any produced normal form.
 #[derive(Clone, Debug, Default)]
 struct Val2NormState {
-    frames: Vec<(Option<ObjectPlaceId>, PatternValueId)>,
-    memo: BTreeMap<(Option<ObjectPlaceId>, PatternValueId), CanonicalValueAddr>,
+    frames: Vec<(Option<SemanticObjectId>, PatternValueId)>,
+    memo: BTreeMap<(Option<SemanticObjectId>, PatternValueId), CanonicalValueAddr>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -376,10 +367,28 @@ pub type ImmutableTypeCallSpace = BTreeMap<String, Vec<TypeMemberSnapshotEntry>>
 /// third observes the immutable callspace snapshot as well.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompleteTypeValue {
-    pub lookup_key: TypeValueId,
-    pub core: CanonicalValueAddr,
-    pub call_space: ImmutableTypeCallSpace,
-    pub whole: CanonicalValueAddr,
+    lookup_key: TypeValueId,
+    core: CanonicalValueAddr,
+    call_space: ImmutableTypeCallSpace,
+    whole: CanonicalValueAddr,
+}
+
+impl CompleteTypeValue {
+    pub const fn lookup_key(&self) -> TypeValueId {
+        self.lookup_key
+    }
+
+    pub const fn core(&self) -> CanonicalValueAddr {
+        self.core
+    }
+
+    pub fn call_space(&self) -> &ImmutableTypeCallSpace {
+        &self.call_space
+    }
+
+    pub const fn whole(&self) -> CanonicalValueAddr {
+        self.whole
+    }
 }
 
 /// Scope material selected by the outer components of one explicit
@@ -581,6 +590,7 @@ pub enum SemanticDeclarationEntry {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PurePMember {
     pub pattern: PatternValueId,
+    pub object: SemanticObjectId,
     pub place: ObjectPlaceId,
     /// The complete immutable type value read into this binding.  Two
     /// carriers can share `pattern`/Core while preserving different V_tau
@@ -598,7 +608,8 @@ pub struct SemanticSymbolCell {
     /// Pattern-scope-local cluster symbols (meta-injected members), which
     /// have no graph namespace at all.
     pub namespace_node: Option<NamespaceNodeId>,
-    /// The pure-P / type member of this cluster symbol, with its own place.
+    /// The pure-P / type member of this cluster symbol, with its Object and
+    /// binding residency recorded independently.
     ///
     /// A cluster symbol carries at most one pure P (Val1 = ∅).
     /// This must never store a `SemanticValueId`: pure P has no Val1.
@@ -614,9 +625,8 @@ pub struct SemanticSymbolCell {
     /// Symbol.  The semantic value may be shared with another binding, but
     /// `let` always establishes a fresh horizontal Place coordinate.
     ///
-    /// This map is deliberately separate from `SemanticValueObject::place`:
-    /// that field is the formation/storage place of the value object, while
-    /// this field records where this binding currently carries the value.
+    /// This map records where this binding currently carries the value. The
+    /// semantic value itself has no distinguished Place.
     pub sibling_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
     /// Per-binding Policy views over the cluster members.
     ///
@@ -628,14 +638,13 @@ pub struct SemanticSymbolCell {
 }
 
 impl SemanticSymbolCell {
-    /// The PatternValue of this cluster symbol's pure-P member, without its
-    /// place.  Type identity questions use this; anything that writes or
-    /// reads this object's own Val2 must use the member's `place`.
+    /// The PatternValue of this cluster symbol's pure-P member. Type identity
+    /// questions use the Pattern/Core observation rather than its residency.
     pub fn pure_p_pattern(&self) -> Option<PatternValueId> {
         self.pure_p.map(|member| member.pattern)
     }
 
-    /// The own Val2 place of this cluster symbol's pure-P member.
+    /// The binding residency of this cluster symbol's pure-P member.
     pub fn pure_p_place(&self) -> Option<ObjectPlaceId> {
         self.pure_p.map(|member| member.place)
     }
@@ -672,13 +681,10 @@ impl SemanticSymbolCell {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SemanticValueObject {
     pub id: SemanticValueId,
+    /// The Object carrying this value's Val1/Pattern/owned-Val2 coordinates.
+    pub object: SemanticObjectId,
     pub type_value: TypeValueId,
     pub pattern: PatternValueId,
-    /// Formation/storage Place of this value object. Ordinary bindings may
-    /// carry this same semantic value in distinct destination Places; those
-    /// horizontal residencies live on the binding Symbol and are never
-    /// recovered from this field.
-    pub place: ObjectPlaceId,
     pub policy: PolicyPair,
     pub mode: PolicyMode,
     pub namespace_visibility: Option<NamespaceVisibility>,
@@ -850,8 +856,7 @@ pub struct OrdinaryCallEntry {
 #[allow(dead_code)]
 pub(crate) enum OrdinaryIntrinsicBody {
     AbstractLiteralConstruct(crate::BuiltinNumericConstructorSpec),
-    /// Explicit deleted realization used by builtin declarations and
-    /// authority-death tests. Selection of this candidate is terminal.
+    /// Explicit deleted realization. Selection of this candidate is terminal.
     Delete,
     /// Testable selected-body failure. It exists to prove that a runnable
     /// lower-ranked intrinsic is never retried after selection is sealed.
@@ -1439,14 +1444,14 @@ pub struct SemanticWorld {
     ambient_type_binders: BTreeMap<TypeValueId, AmbientTypeBinder>,
     patterns: BTreeMap<PatternValueId, SemanticPatternValue>,
     scopes: BTreeMap<ResolvedPatternScopeId, ResolvedPatternScope>,
-    /// Object/residency Places. Semantic values have a formation Place;
-    /// ordinary bindings may additionally carry the same value in fresh
-    /// destination Places. Pattern-level lookups use `pattern_places` to find
-    /// the canonical pure type Object's place.
+    /// Object/residency Places. A Place points to its current resident Object;
+    /// no Object has an intrinsic distinguished Place.
     places: BTreeMap<ObjectPlaceId, ObjectPlace>,
-    /// Owned Val2 semantic snapshots. Navigation and lookup may expose more
-    /// material through `places`; ordinary Object normalization may not.
-    semantic_val2_snapshots: BTreeMap<ObjectPlaceId, SemanticVal2Snapshot>,
+    /// Owned Val2 semantic snapshots keyed by Object identity. Navigation and
+    /// lookup storage lives in `places`; ordinary Object normalization reads
+    /// only this map.
+    semantic_val2_snapshots: BTreeMap<SemanticObjectId, SemanticVal2Snapshot>,
+    value_residencies: BTreeMap<SemanticValueId, BTreeSet<ObjectPlaceId>>,
     borrows: BTreeMap<BorrowViewId, BorrowView>,
     /// Forward map: PatternValue (as pure-P type) -> its pure type Object's place.
     /// This is the canonical type-level Val2 for this pattern.  Every
@@ -1494,7 +1499,8 @@ pub struct SemanticWorld {
     next_cluster: u64,
     next_callable: u64,
     next_value: u64,
-    next_anonymous_type: u64,
+    next_object: u64,
+    type_lookup_indices: crate::TypeLookupIndexAllocator,
     next_pattern: u64,
     next_scope: u64,
     next_place: u64,
@@ -1548,6 +1554,7 @@ impl SemanticWorld {
             scopes: BTreeMap::new(),
             places: BTreeMap::new(),
             semantic_val2_snapshots: BTreeMap::new(),
+            value_residencies: BTreeMap::new(),
             borrows: BTreeMap::new(),
             pattern_places: BTreeMap::new(),
             pattern_clusters: BTreeMap::new(),
@@ -1566,10 +1573,8 @@ impl SemanticWorld {
             next_cluster: 0,
             next_callable: 0,
             next_value: 0,
-            // Core lookup keys live in a range disjoint from graph Symbol
-            // allocation. Type equality observes `Core(tau)`; this counter is
-            // only an opaque lookup index.
-            next_anonymous_type: 1u64 << 63,
+            next_object: 0,
+            type_lookup_indices: crate::TypeLookupIndexAllocator::new(),
             next_pattern: 0,
             next_scope: 0,
             next_place: 0,
@@ -1918,9 +1923,11 @@ impl SemanticWorld {
         state: &mut Val2NormState,
     ) -> Result<crate::canonical_value::CanonicalClusterNorm, crate::Diagnostic> {
         let pure_p = match cluster.pure_p {
-            Some(member) => {
-                Some(self.canonical_pure_type_address(Some(member.place), member.pattern, state)?)
-            }
+            Some(member) => Some(self.canonical_pure_type_address(
+                Some(member.object),
+                member.pattern,
+                state,
+            )?),
             None => None,
         };
         let vals = cluster
@@ -1935,7 +1942,7 @@ impl SemanticWorld {
     }
 
     /// `Norm_pureP(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩` — the recursive
-    /// normal form of one pure type Object, observed through `place`.
+    /// normal form of one pure type Object.
     ///
     /// Val2 normalization is well-founded finite recursion: every traversed
     /// object edge must descend toward a leaf (`Children_V(x) = ∅`).
@@ -1947,23 +1954,23 @@ impl SemanticWorld {
     /// observed by the next canonicalization.
     fn canonical_pure_type_address(
         &mut self,
-        place: Option<ObjectPlaceId>,
+        object: Option<SemanticObjectId>,
         pattern: PatternValueId,
         state: &mut Val2NormState,
     ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
-        self.canonical_object_address(place, pattern, None, state)
+        self.canonical_object_address(object, pattern, None, state)
     }
 
     /// Apply the one ordinary Object rule:
     /// `Norm(x)=<Norm_Val1?,Norm_P,Norm_Val2>`.
     fn canonical_object_address(
         &mut self,
-        place: Option<ObjectPlaceId>,
+        object: Option<SemanticObjectId>,
         pattern: PatternValueId,
         val1: Option<CanonicalVal1Norm>,
         state: &mut Val2NormState,
     ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
-        let key = (place, pattern);
+        let key = (object, pattern);
         if state.frames.contains(&key) {
             return Err(crate::Diagnostic::hard_error(
                 "cyclic Val2: this object is reached again while its own Val2 is still \
@@ -1981,8 +1988,8 @@ impl SemanticWorld {
                 None,
             )
         })?;
-        let snapshot = place
-            .and_then(|place| self.semantic_val2_snapshots.get(&place).cloned())
+        let snapshot = object
+            .and_then(|object| self.semantic_val2_snapshots.get(&object).cloned())
             .unwrap_or_default();
         state.frames.push(key);
         let val2 = self.canonical_val2_norm(&snapshot, state);
@@ -2014,16 +2021,18 @@ impl SemanticWorld {
                 None,
             )
         })?;
-        let place = object.place;
+        let semantic_object = object.object;
         let pattern = object.pattern;
         match object.payload {
             SemanticValuePayload::CoreTypeProjection {
                 represented_pattern,
                 ..
-            } => self.canonical_pure_type_address(Some(place), represented_pattern, state),
+            } => {
+                self.canonical_pure_type_address(Some(semantic_object), represented_pattern, state)
+            }
             SemanticValuePayload::SimpleLiteral { family, normalized } => self
                 .canonical_object_address(
-                    Some(place),
+                    Some(semantic_object),
                     pattern,
                     Some(CanonicalVal1Norm::Literal { family, normalized }),
                     state,
@@ -2038,26 +2047,26 @@ impl SemanticWorld {
                 normalized,
                 ..
             } => self.canonical_object_address(
-                Some(place),
+                Some(semantic_object),
                 pattern,
                 Some(CanonicalVal1Norm::Literal { family, normalized }),
                 state,
             ),
             SemanticValuePayload::LifetimeValue(lifetime) => self.canonical_object_address(
-                Some(place),
+                Some(semantic_object),
                 pattern,
                 Some(CanonicalVal1Norm::Lifetime(lifetime)),
                 state,
             ),
             SemanticValuePayload::FunctionObject { .. }
             | SemanticValuePayload::InjectedFunctionObject { .. } => self.canonical_object_address(
-                Some(place),
+                Some(semantic_object),
                 pattern,
                 Some(CanonicalVal1Norm::FunctionObject),
                 state,
             ),
             SemanticValuePayload::CallEntry(_) => self.canonical_object_address(
-                Some(place),
+                Some(semantic_object),
                 pattern,
                 Some(CanonicalVal1Norm::CallEntry),
                 state,
@@ -2065,7 +2074,7 @@ impl SemanticWorld {
             SemanticValuePayload::PlainValue => {
                 let opaque = self.opaque_val1_id(value);
                 self.canonical_object_address(
-                    Some(place),
+                    Some(semantic_object),
                     pattern,
                     Some(CanonicalVal1Norm::Opaque(opaque)),
                     state,
@@ -2105,7 +2114,7 @@ impl SemanticWorld {
                         return Ok(whole);
                     }
                     let place = raw.known_type_carrier_place;
-                    return Ok(self.observe_complete_type(type_value, place)?.whole);
+                    return Ok(self.observe_complete_type(type_value, place)?.whole());
                 }
             }
             RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => {
@@ -2143,7 +2152,7 @@ impl SemanticWorld {
         type_value: TypeValueId,
         place: Option<ObjectPlaceId>,
     ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
-        Ok(self.observe_complete_type(type_value, place)?.whole)
+        Ok(self.observe_complete_type(type_value, place)?.whole())
     }
 
     /// Default semantic equality observation of a type: `Core(tau) = Q`.
@@ -2166,7 +2175,8 @@ impl SemanticWorld {
                 None,
             )
             })?;
-        self.canonical_pure_type_address(place, pattern, &mut state)
+        let object = place.and_then(|place| self.places.get(&place).map(|place| place.object));
+        self.canonical_pure_type_address(object, pattern, &mut state)
     }
 
     /// Observe the registered Core of a type lookup key for ordinary Type
@@ -2989,7 +2999,7 @@ impl SemanticWorld {
     ///
     /// A value can be resident in multiple bindings.  Consequently this
     /// relation is keyed by Symbol and value; it is not recoverable from the
-    /// value's formation place.
+    /// semantic value alone.
     pub fn binding_place(
         &self,
         symbol: SemanticSymbolIdentity,
@@ -3072,6 +3082,20 @@ impl SemanticWorld {
         self.values.values()
     }
 
+    pub fn value_residencies(&self, value: SemanticValueId) -> Vec<ObjectPlaceId> {
+        self.value_residencies
+            .get(&value)
+            .map(|places| places.iter().copied().collect())
+            .unwrap_or_default()
+    }
+
+    fn sole_value_residency(&self, value: SemanticValueId) -> Option<ObjectPlaceId> {
+        let places = self.value_residencies.get(&value)?;
+        let mut places = places.iter().copied();
+        let only = places.next()?;
+        places.next().is_none().then_some(only)
+    }
+
     /// Install one real `Val1 × P × Val2` object.
     ///
     /// This is the single write boundary for semantic values whose Val1 is
@@ -3080,8 +3104,8 @@ impl SemanticWorld {
     /// value becomes observable. Core projections represent pure
     /// `null × P × Val2` graph material and are not Val1 residents.
     fn materialize_val1_object(&mut self, mut object: SemanticValueObject) -> SemanticValueId {
-        // Each materialized value gets its own per-object Val2 place.
-        object.place = self.allocate_object_place();
+        object.object = self.allocate_semantic_object(SemanticVal2Snapshot::default());
+        let residency = self.allocate_residency_for_object(object.object);
         let id = object.id;
         if let Some(type_pattern) = self.types.get(&object.type_value).map(|ty| ty.pattern) {
             debug_assert_eq!(
@@ -3098,14 +3122,18 @@ impl SemanticWorld {
                 construction.use_observation.has_been_used_for_val1 = true;
             }
         }
-        if let Ok(complete) = self.observe_complete_type(object.type_value, Some(object.place)) {
-            self.value_complete_types.insert(id, complete.whole);
+        if let Ok(complete) = self.observe_complete_type(object.type_value, Some(residency)) {
+            self.value_complete_types.insert(id, complete.whole());
         }
         let replaced = self.values.insert(id, object);
         debug_assert!(
             replaced.is_none(),
             "semantic value ids are single-assignment"
         );
+        self.value_residencies
+            .entry(id)
+            .or_default()
+            .insert(residency);
         id
     }
 
@@ -3116,9 +3144,14 @@ impl SemanticWorld {
         self.value_complete_types
             .get(&value)
             .and_then(|whole| self.complete_types.get(whole))
-            .and_then(|complete| complete.call_space.get("()"))
+            .and_then(|complete| complete.call_space().get("()"))
             .map(|entries| entries.iter().map(|entry| entry.value).collect())
             .unwrap_or_default()
+    }
+
+    pub fn complete_type_for_value(&self, value: SemanticValueId) -> Option<&CompleteTypeValue> {
+        let whole = self.value_complete_types.get(&value)?;
+        self.complete_types.get(whole)
     }
 
     /// Complete formation of a value whose Type callspace was assembled after
@@ -3130,9 +3163,13 @@ impl SemanticWorld {
             return;
         };
         let type_value = object.type_value;
-        let place = object.place;
-        if let Ok(complete) = self.observe_complete_type(type_value, Some(place)) {
-            self.value_complete_types.insert(value, complete.whole);
+        let place = self
+            .value_residencies
+            .get(&value)
+            .and_then(|places| places.iter().next())
+            .copied();
+        if let Ok(complete) = self.observe_complete_type(type_value, place) {
+            self.value_complete_types.insert(value, complete.whole());
         }
     }
 
@@ -3260,7 +3297,7 @@ impl SemanticWorld {
         })?;
         let whole = self
             .observe_complete_type(type_value, Some(member.place))?
-            .whole;
+            .whole();
         self.symbols
             .get_mut(&owner)
             .expect("declaring carrier still exists")
@@ -3305,57 +3342,33 @@ impl SemanticWorld {
         self.pattern_scope(scope)
     }
 
-    /// Access the per-object Val2 place by its handle.
+    /// Access residency-local navigation storage by its Place handle.
     pub fn object_place(&self, id: ObjectPlaceId) -> Option<&ObjectPlace> {
         self.places.get(&id)
     }
 
-    /// Mutable access to the per-object Val2 place by its handle.
+    /// Mutable access to residency-local navigation storage.
     pub fn object_place_mut(&mut self, id: ObjectPlaceId) -> Option<&mut ObjectPlace> {
         self.places.get_mut(&id)
     }
 
-    /// Read the frozen owned Val2 snapshot used by ordinary Object Norm.
-    /// This is deliberately separate from `object_place`, whose maps are
-    /// navigation/storage substrate and may participate in inherited lookup.
-    pub fn semantic_val2_snapshot(&self, id: ObjectPlaceId) -> Option<&SemanticVal2Snapshot> {
+    /// Read the owned Val2 snapshot used by ordinary Object Norm.
+    pub fn semantic_val2_snapshot(&self, id: SemanticObjectId) -> Option<&SemanticVal2Snapshot> {
         self.semantic_val2_snapshots.get(&id)
     }
 
-    /// Commit the current *owned* place material as one semantic Val2
-    /// snapshot. No Pattern navigation place is consulted here.
-    fn refresh_semantic_val2_snapshot(&mut self, id: ObjectPlaceId) -> Option<()> {
-        let place = self.places.get(&id)?.clone();
-        let mut names = BTreeSet::new();
-        names.extend(place.associated_symbols.keys().cloned());
-        names.extend(place.associated_val2.keys().cloned());
-        let mut snapshot = self
-            .semantic_val2_snapshots
-            .get(&id)
-            .cloned()
-            .unwrap_or_default();
-        for name in names {
-            let cluster = place
-                .associated_symbols
-                .get(&name)
-                .and_then(|symbol| self.symbols.get(symbol))
-                .map(|cell| SemanticVal2ClusterSnapshot {
-                    pure_p: cell.pure_p,
-                    values: cell.sibling_vals.clone(),
-                })
-                .unwrap_or_else(|| SemanticVal2ClusterSnapshot {
-                    pure_p: None,
-                    values: place
-                        .associated_val2
-                        .get(&name)
-                        .cloned()
-                        .unwrap_or_default(),
-                });
-            if cluster.pure_p.is_some() || !cluster.values.is_empty() {
-                snapshot.clusters.insert(name, cluster);
-            }
+    fn set_owned_val2_cluster(
+        &mut self,
+        object: SemanticObjectId,
+        name: &str,
+        cluster: SemanticVal2ClusterSnapshot,
+    ) -> Option<()> {
+        let snapshot = self.semantic_val2_snapshots.get_mut(&object)?;
+        if cluster.pure_p.is_none() && cluster.values.is_empty() {
+            snapshot.clusters.remove(name);
+        } else {
+            snapshot.clusters.insert(name.to_string(), cluster);
         }
-        self.semantic_val2_snapshots.insert(id, snapshot);
         Some(())
     }
 
@@ -3373,19 +3386,19 @@ impl SemanticWorld {
 
     /// Read one semantic value's owned Val2 snapshot.
     ///
-    /// Each value has an independent place even if it shares a Pattern with
-    /// other values. Type-level navigation is a separate query.
+    /// The Object coordinate is independent of every Place in which the
+    /// value resides. Type-level navigation is a separate query.
     pub fn associated_values_for_value(
         &self,
         value: SemanticValueId,
         name: &str,
     ) -> Option<&[SemanticValueId]> {
-        let value = self.value(value)?;
-        self.places
-            .get(&value.place)?
-            .associated_val2
+        let object = self.value(value)?.object;
+        self.semantic_val2_snapshots
+            .get(&object)?
+            .clusters
             .get(name)
-            .map(Vec::as_slice)
+            .map(|cluster| cluster.values.as_slice())
     }
 
     /// Look up Val2 for the canonical pure type Object of a Pattern.
@@ -3439,7 +3452,7 @@ impl SemanticWorld {
             || resident.associated_val2.contains_key(&key)
             || self
                 .semantic_val2_snapshots
-                .get(&place)
+                .get(&resident.object)
                 .is_some_and(|snapshot| snapshot.clusters.contains_key(&key));
         Some(ProjectionSlot {
             identity: ProjectionSlotIdentity {
@@ -3576,11 +3589,17 @@ impl SemanticWorld {
             resident,
             generation: current.resident.generation.saturating_add(1),
         };
+        let next_object = SemanticObjectId(self.next_object);
+        self.next_object = self
+            .next_object
+            .checked_add(1)
+            .expect("semantic Object identity exhausted");
+        current.object = next_object;
         current.associated_symbols.clear();
         current.associated_val2.clear();
         let resident = current.resident;
         self.semantic_val2_snapshots
-            .insert(place, SemanticVal2Snapshot::default());
+            .insert(next_object, SemanticVal2Snapshot::default());
         Ok(resident)
     }
 
@@ -3602,13 +3621,20 @@ impl SemanticWorld {
         if slot.contents == ProjectionSlotContents::Occupied {
             return Err(PlaceMutationFailure::SlotAlreadyOccupied(slot.identity));
         }
-        self.places
-            .get_mut(&place)
-            .expect("place was checked")
+        let object = self.places.get_mut(&place).expect("place was checked");
+        let object_id = object.object;
+        object
             .associated_val2
             .insert(projection_storage_key(&selector), vec![value]);
-        self.refresh_semantic_val2_snapshot(place)
-            .expect("checked place has a semantic Val2 snapshot");
+        self.set_owned_val2_cluster(
+            object_id,
+            &projection_storage_key(&selector),
+            SemanticVal2ClusterSnapshot {
+                pure_p: None,
+                values: vec![value],
+            },
+        )
+        .expect("resident Object has owned Val2");
         Ok(slot.identity)
     }
 
@@ -3629,13 +3655,20 @@ impl SemanticWorld {
         if slot.contents == ProjectionSlotContents::Missing {
             return Err(PlaceMutationFailure::SlotMissing(slot.identity));
         }
-        self.places
-            .get_mut(&place)
-            .expect("place was checked")
+        let object = self.places.get_mut(&place).expect("place was checked");
+        let object_id = object.object;
+        object
             .associated_val2
             .insert(projection_storage_key(&selector), vec![value]);
-        self.refresh_semantic_val2_snapshot(place)
-            .expect("checked place has a semantic Val2 snapshot");
+        self.set_owned_val2_cluster(
+            object_id,
+            &projection_storage_key(&selector),
+            SemanticVal2ClusterSnapshot {
+                pure_p: None,
+                values: vec![value],
+            },
+        )
+        .expect("resident Object has owned Val2");
         Ok(slot.identity)
     }
 
@@ -3706,7 +3739,16 @@ impl SemanticWorld {
             .associated_symbols
             .insert(name.to_string(), symbol);
         debug_assert!(previous.is_none() || previous == Some(symbol));
-        self.refresh_semantic_val2_snapshot(place)?;
+        let object = self.places.get(&place)?.object;
+        let cell = self.symbols.get(&symbol)?;
+        self.set_owned_val2_cluster(
+            object,
+            name,
+            SemanticVal2ClusterSnapshot {
+                pure_p: cell.pure_p,
+                values: cell.sibling_vals.clone(),
+            },
+        )?;
         Some(())
     }
 
@@ -3737,7 +3779,16 @@ impl SemanticWorld {
         if !values.contains(&value) {
             values.push(value);
         }
-        self.refresh_semantic_val2_snapshot(place)?;
+        let values = values.clone();
+        let object = self.places.get(&place)?.object;
+        self.set_owned_val2_cluster(
+            object,
+            name,
+            SemanticVal2ClusterSnapshot {
+                pure_p: None,
+                values,
+            },
+        )?;
         Some(())
     }
 
@@ -3832,7 +3883,7 @@ impl SemanticWorld {
         let type_members = host
             .complete_type
             .and_then(|whole| self.complete_types.get(&whole))
-            .map(|complete| &complete.call_space)
+            .map(CompleteTypeValue::call_space)
             .and_then(|call_space| call_space.get(name))
             .map(|entries| entries.iter().map(|entry| entry.value).collect::<Vec<_>>())
             .unwrap_or_default();
@@ -3900,7 +3951,7 @@ impl SemanticWorld {
                 existing.complete_type = self.type_for_pattern(pattern).and_then(|type_value| {
                     self.observe_complete_type(type_value, Some(existing.place))
                         .ok()
-                        .map(|complete| complete.whole)
+                        .map(|complete| complete.whole())
                 });
             }
             return existing;
@@ -3909,26 +3960,43 @@ impl SemanticWorld {
             Some(PatternClusterOwner::Installed(owner)) => owner == symbol,
             _ => true,
         };
-        let place = match self.pattern_place(pattern) {
-            Some(canonical) if declares_pattern => canonical,
+        let (object, place) = match self.pattern_place(pattern) {
+            Some(canonical) if declares_pattern => {
+                let object = self
+                    .places
+                    .get(&canonical)
+                    .expect("Pattern place has a resident Object")
+                    .object;
+                (object, canonical)
+            }
             canonical => {
-                let place = self.allocate_object_place();
                 if let Some(inherited) = canonical
-                    .and_then(|canonical| self.semantic_val2_snapshots.get(&canonical))
+                    .and_then(|canonical| self.places.get(&canonical))
+                    .and_then(|place| self.semantic_val2_snapshots.get(&place.object))
                     .cloned()
                 {
-                    self.semantic_val2_snapshots.insert(place, inherited);
+                    let object = self.allocate_semantic_object(inherited);
+                    let place = self.allocate_residency_for_object(object);
+                    (object, place)
+                } else {
+                    let place = self.allocate_object_place();
+                    let object = self
+                        .places
+                        .get(&place)
+                        .expect("fresh Place has a resident Object")
+                        .object;
+                    (object, place)
                 }
-                place
             }
         };
         let complete_type = self.type_for_pattern(pattern).and_then(|type_value| {
             self.observe_complete_type(type_value, Some(place))
                 .ok()
-                .map(|complete| complete.whole)
+                .map(|complete| complete.whole())
         });
         PurePMember {
             pattern,
+            object,
             place,
             complete_type,
         }
@@ -4020,13 +4088,18 @@ impl SemanticWorld {
         } else {
             let value = self.allocate_value_id();
             let place = self.allocate_object_place();
+            let object = self
+                .places
+                .get(&place)
+                .expect("fresh Place has a resident Object")
+                .object;
             self.values.insert(
                 value,
                 SemanticValueObject {
                     id: value,
+                    object,
                     type_value: type_rank,
                     pattern: represented_pattern,
-                    place,
                     policy: policy.clone(),
                     mode: PolicyMode::Plain,
                     namespace_visibility: None,
@@ -4039,6 +4112,10 @@ impl SemanticWorld {
             );
             self.core_type_projection_values
                 .insert(represented_type, value);
+            self.value_residencies
+                .entry(value)
+                .or_default()
+                .insert(place);
             value
         };
         debug_assert!(matches!(
@@ -4118,7 +4195,8 @@ impl SemanticWorld {
         canonical_pattern: CanonicalPatternValue,
         policy: PolicyPair,
         provenance: Provenance,
-    ) -> Result<Option<(SemanticValueId, PatternValueId, TypeValueId)>, crate::Diagnostic> {
+    ) -> Result<Option<(SemanticValueId, PatternValueId, CompleteTypeValue)>, crate::Diagnostic>
+    {
         if canonical_key.callable != root.meta_callable {
             return Err(crate::Diagnostic::hard_error(
                 "meta root callable disagrees with the invocation material key",
@@ -4171,20 +4249,29 @@ impl SemanticWorld {
             .get(&canonical_type)
             .copied()
         {
-            return Ok(Some((value, pattern, canonical_type)));
+            let complete = self.observe_complete_type(
+                canonical_type,
+                self.pattern_places.get(&pattern).copied(),
+            )?;
+            return Ok(Some((value, pattern, complete)));
         }
         let Some(type_rank) = self.type_rank else {
             return Ok(None);
         };
         let value = self.allocate_value_id();
         let place = self.allocate_object_place();
+        let object = self
+            .places
+            .get(&place)
+            .expect("fresh Place has a resident Object")
+            .object;
         self.values.insert(
             value,
             SemanticValueObject {
                 id: value,
+                object,
                 type_value: type_rank,
                 pattern,
-                place,
                 policy: policy.clone(),
                 mode: root.policy_mode(),
                 namespace_visibility: None,
@@ -4197,7 +4284,13 @@ impl SemanticWorld {
         );
         self.core_type_projection_values
             .insert(canonical_type, value);
-        Ok(Some((value, pattern, canonical_type)))
+        self.value_residencies
+            .entry(value)
+            .or_default()
+            .insert(place);
+        let complete =
+            self.observe_complete_type(canonical_type, self.pattern_places.get(&pattern).copied())?;
+        Ok(Some((value, pattern, complete)))
     }
 
     /// An earlier ambient struct generation with the same normalized
@@ -4239,7 +4332,7 @@ impl SemanticWorld {
         canonical_pattern: CanonicalPatternValue,
         policy: PolicyPair,
         provenance: Provenance,
-    ) -> Option<(SemanticValueId, PatternValueId, TypeValueId)> {
+    ) -> Option<(SemanticValueId, PatternValueId, CompleteTypeValue)> {
         debug_assert!(
             !self
                 .ambient_struct_types
@@ -4264,13 +4357,18 @@ impl SemanticWorld {
         let type_rank = self.type_rank?;
         let value = self.allocate_value_id();
         let place = self.allocate_object_place();
+        let object = self
+            .places
+            .get(&place)
+            .expect("fresh Place has a resident Object")
+            .object;
         self.values.insert(
             value,
             SemanticValueObject {
                 id: value,
+                object,
                 type_value: type_rank,
                 pattern,
-                place,
                 policy,
                 mode: PolicyMode::Plain,
                 namespace_visibility: None,
@@ -4283,7 +4381,14 @@ impl SemanticWorld {
         );
         self.core_type_projection_values
             .insert(canonical_type, value);
-        Some((value, pattern, canonical_type))
+        self.value_residencies
+            .entry(value)
+            .or_default()
+            .insert(place);
+        let complete = self
+            .observe_complete_type(canonical_type, self.pattern_places.get(&pattern).copied())
+            .ok()?;
+        Some((value, pattern, complete))
     }
 
     /// Record how an ambient struct generation was bound at its declaration
@@ -4427,7 +4532,7 @@ impl SemanticWorld {
             id: call_entry,
             type_value: function_item_type,
             pattern: function_item_pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
+            object: SemanticObjectId(0), // assigned by materialize_val1_object
             policy: canonical_view.pair.clone(),
             mode: canonical_view.mode,
             namespace_visibility,
@@ -4894,7 +4999,7 @@ impl SemanticWorld {
             id: function_value,
             type_value: function_type,
             pattern: function_pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
+            object: SemanticObjectId(0), // assigned by materialize_val1_object
             policy: canonical_view.pair.clone(),
             mode: canonical_view.mode,
             namespace_visibility,
@@ -4931,10 +5036,8 @@ impl SemanticWorld {
             provenance.clone(),
         )?;
         let function_place = self
-            .values
-            .get(&function_value)
-            .expect("materialized function object exists")
-            .place;
+            .sole_value_residency(function_value)
+            .expect("a newly materialized function object has one residency");
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("function object explicitly owns its terminal call entry");
         self.freeze_value_complete_type(function_value);
@@ -5037,7 +5140,7 @@ impl SemanticWorld {
             id: function_value,
             type_value: function_type,
             pattern: function_pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
+            object: SemanticObjectId(0), // assigned by materialize_val1_object
             policy: canonical_view.pair.clone(),
             mode: canonical_view.mode,
             namespace_visibility,
@@ -5074,10 +5177,8 @@ impl SemanticWorld {
             provenance.clone(),
         )?;
         let function_place = self
-            .values
-            .get(&function_value)
-            .expect("materialized function object exists")
-            .place;
+            .sole_value_residency(function_value)
+            .expect("a newly materialized function object has one residency");
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("function object explicitly owns its terminal call entry");
         self.freeze_value_complete_type(function_value);
@@ -5190,7 +5291,7 @@ impl SemanticWorld {
             id: function_value,
             type_value: function_type,
             pattern: function_pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
+            object: SemanticObjectId(0), // assigned by materialize_val1_object
             policy: canonical_view.pair.clone(),
             mode: canonical_view.mode,
             namespace_visibility,
@@ -5227,10 +5328,8 @@ impl SemanticWorld {
             provenance.clone(),
         )?;
         let function_place = self
-            .values
-            .get(&function_value)
-            .expect("materialized function object exists")
-            .place;
+            .sole_value_residency(function_value)
+            .expect("a newly materialized function object has one residency");
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("function object explicitly owns its terminal call entry");
         self.freeze_value_complete_type(function_value);
@@ -5265,7 +5364,7 @@ impl SemanticWorld {
             id,
             type_value,
             pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
+            object: SemanticObjectId(0), // assigned by materialize_val1_object
             policy,
             mode: PolicyMode::Plain,
             namespace_visibility: None,
@@ -5306,7 +5405,7 @@ impl SemanticWorld {
             id,
             type_value,
             pattern,
-            place: ObjectPlaceId(0),
+            object: SemanticObjectId(0),
             policy,
             mode: PolicyMode::Plain,
             namespace_visibility: None,
@@ -5337,7 +5436,7 @@ impl SemanticWorld {
             id,
             type_value,
             pattern,
-            place: ObjectPlaceId(0),
+            object: SemanticObjectId(0),
             policy,
             mode: PolicyMode::Plain,
             namespace_visibility: None,
@@ -5367,19 +5466,19 @@ impl SemanticWorld {
         else {
             return None;
         };
-        let pattern = self.type_value(target.lookup_key)?.pattern;
+        let pattern = self.type_value(target.lookup_key())?.pattern;
         let id = self.allocate_value_id();
         self.materialize_val1_object(SemanticValueObject {
             id,
-            type_value: target.lookup_key,
+            type_value: target.lookup_key(),
             pattern,
-            place: ObjectPlaceId(0),
+            object: SemanticObjectId(0),
             policy: view.pair,
             mode: view.mode,
             namespace_visibility: None,
             payload: SemanticValuePayload::ConstructedLiteral {
                 source_abstract,
-                target_complete_type: target.whole,
+                target_complete_type: target.whole(),
                 canonical_family,
                 normalized,
             },
@@ -6560,7 +6659,7 @@ impl SemanticWorld {
             id: function_value,
             type_value: function_type,
             pattern: function_pattern,
-            place: ObjectPlaceId(0), // overwritten by materialize_val1_object
+            object: SemanticObjectId(0), // assigned by materialize_val1_object
             policy: canonical_view.pair.clone(),
             mode: canonical_view.mode,
             namespace_visibility: None,
@@ -6600,10 +6699,8 @@ impl SemanticWorld {
                 })
             })?;
         let function_place = self
-            .values
-            .get(&function_value)
-            .expect("materialized injected function object exists")
-            .place;
+            .sole_value_residency(function_value)
+            .expect("a newly materialized injected function object has one residency");
         self.associate_existing_value_in_place(function_place, "()", call_entry_value)
             .expect("injected function object explicitly owns its terminal call entry");
         self.freeze_value_complete_type(function_value);
@@ -6813,7 +6910,17 @@ impl SemanticWorld {
         id
     }
 
-    fn allocate_object_place(&mut self) -> ObjectPlaceId {
+    fn allocate_semantic_object(&mut self, snapshot: SemanticVal2Snapshot) -> SemanticObjectId {
+        let id = SemanticObjectId(self.next_object);
+        self.next_object = self
+            .next_object
+            .checked_add(1)
+            .expect("semantic Object identity exhausted");
+        self.semantic_val2_snapshots.insert(id, snapshot);
+        id
+    }
+
+    fn allocate_residency_for_object(&mut self, object: SemanticObjectId) -> ObjectPlaceId {
         let id = ObjectPlaceId(self.next_place);
         self.next_place = self
             .next_place
@@ -6828,6 +6935,7 @@ impl SemanticWorld {
             id,
             ObjectPlace {
                 id,
+                object,
                 resident: ResidentGeneration {
                     resident,
                     generation: 0,
@@ -6836,9 +6944,12 @@ impl SemanticWorld {
                 associated_val2: BTreeMap::new(),
             },
         );
-        self.semantic_val2_snapshots
-            .insert(id, SemanticVal2Snapshot::default());
         id
+    }
+
+    fn allocate_object_place(&mut self) -> ObjectPlaceId {
+        let object = self.allocate_semantic_object(SemanticVal2Snapshot::default());
+        self.allocate_residency_for_object(object)
     }
 
     /// Establish a fresh binding destination carrying an equal resident
@@ -6846,18 +6957,22 @@ impl SemanticWorld {
     /// that resident; the new resident identity prevents writes, borrows and
     /// projection generations from aliasing the source binding.
     fn allocate_binding_destination(&mut self, value: SemanticValueId) -> Option<ObjectPlaceId> {
-        let source_place = self.values.get(&value)?.place;
+        let source_object = self.values.get(&value)?.object;
+        let source_place = self.value_residencies.get(&value)?.iter().next().copied()?;
         let source_storage = self.places.get(&source_place)?.clone();
-        let source_snapshot = self.semantic_val2_snapshots.get(&source_place)?.clone();
-        let destination = self.allocate_object_place();
+        let source_snapshot = self.semantic_val2_snapshots.get(&source_object)?.clone();
+        let destination_object = self.allocate_semantic_object(source_snapshot);
+        let destination = self.allocate_residency_for_object(destination_object);
         let destination_storage = self
             .places
             .get_mut(&destination)
             .expect("fresh binding destination exists");
         destination_storage.associated_symbols = source_storage.associated_symbols;
         destination_storage.associated_val2 = source_storage.associated_val2;
-        self.semantic_val2_snapshots
-            .insert(destination, source_snapshot);
+        self.value_residencies
+            .entry(value)
+            .or_default()
+            .insert(destination);
         Some(destination)
     }
 
@@ -6872,12 +6987,7 @@ impl SemanticWorld {
     }
 
     pub(crate) fn allocate_type_lookup_index(&mut self) -> TypeValueId {
-        let id = TypeValueId(self.next_anonymous_type);
-        self.next_anonymous_type = self
-            .next_anonymous_type
-            .checked_add(1)
-            .expect("anonymous TypeValue identity exhausted");
-        id
+        self.type_lookup_indices.allocate()
     }
 
     fn allocate_anonymous_type(&mut self) -> TypeValueId {
@@ -6912,13 +7022,18 @@ impl SemanticWorld {
         let type_rank = self.type_rank.unwrap_or(represented_type);
         let value = self.allocate_value_id();
         let place = self.allocate_object_place();
+        let object = self
+            .places
+            .get(&place)
+            .expect("fresh Place has a resident Object")
+            .object;
         self.values.insert(
             value,
             SemanticValueObject {
                 id: value,
+                object,
                 type_value: type_rank,
                 pattern: represented_pattern,
-                place,
                 policy: transport_policy,
                 mode: PolicyMode::Plain,
                 namespace_visibility: None,
@@ -6931,6 +7046,10 @@ impl SemanticWorld {
         );
         self.core_type_projection_values
             .insert(represented_type, value);
+        self.value_residencies
+            .entry(value)
+            .or_default()
+            .insert(place);
         value
     }
 }
@@ -6943,6 +7062,23 @@ mod tests {
         CanonicalLiteralFamily, CanonicalPatternAtom, CanonicalPatternValue,
     };
     use lang_syntax::{NormDecl, NormForm, NormLiteralKind};
+    use std::sync::{Mutex, OnceLock};
+
+    fn test_type_lookup(label: u64) -> TypeValueId {
+        static REGISTRY: OnceLock<
+            Mutex<(crate::TypeLookupIndexAllocator, BTreeMap<u64, TypeValueId>)>,
+        > = OnceLock::new();
+        let mut registry = REGISTRY
+            .get_or_init(|| Mutex::new((crate::TypeLookupIndexAllocator::new(), BTreeMap::new())))
+            .lock()
+            .expect("type lookup test registry poisoned");
+        if let Some(id) = registry.1.get(&label) {
+            return *id;
+        }
+        let id = registry.0.allocate();
+        registry.1.insert(label, id);
+        id
+    }
 
     fn test_source_closure() -> NormClosure {
         let parsed =
@@ -7435,10 +7571,15 @@ mod tests {
         world.pattern_places.insert(pattern, place_id);
 
         // Register a CoreTypeProjection value pointing to this pattern.
-        let represented_type = TypeValueId(200);
+        let represented_type = test_type_lookup(200);
         let type_rank = world.type_rank.unwrap_or(represented_type);
         let value_id = world.allocate_value_id();
         let value_place = world.allocate_object_place();
+        let value_object = world
+            .places
+            .get(&value_place)
+            .expect("fresh Place has a resident Object")
+            .object;
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy {
                 stages: crate::StageSet::new(),
@@ -7452,9 +7593,9 @@ mod tests {
             value_id,
             SemanticValueObject {
                 id: value_id,
+                object: value_object,
                 type_value: type_rank,
                 pattern,
-                place: value_place,
                 policy: policy.clone(),
                 mode: PolicyMode::Plain,
                 namespace_visibility: None,
@@ -7468,6 +7609,11 @@ mod tests {
         world
             .core_type_projection_values
             .insert(represented_type, value_id);
+        world
+            .value_residencies
+            .entry(value_id)
+            .or_default()
+            .insert(value_place);
 
         // Build the RawArgShape that identifies this value.
         let raw = crate::product_shape::RawArgShape {
@@ -7507,9 +7653,9 @@ mod tests {
         let injected_value = world.allocate_value_id();
         world.materialize_val1_object(SemanticValueObject {
             id: injected_value,
-            type_value: TypeValueId(9999),
+            type_value: test_type_lookup(9999),
             pattern: leaf_pattern,
-            place: ObjectPlaceId(0),
+            object: SemanticObjectId(0),
             policy: policy.clone(),
             mode: PolicyMode::Plain,
             namespace_visibility: None,
@@ -7558,7 +7704,7 @@ mod tests {
         let mut world = SemanticWorld::new("app");
         let owner = world.package_owner();
         let (pattern, _) = world.allocate_pattern(owner, Provenance::new("ordinary value Pattern"));
-        let type_value = TypeValueId(500);
+        let type_value = test_type_lookup(500);
         world.types.insert(
             type_value,
             SemanticTypeValue {
@@ -7583,7 +7729,7 @@ mod tests {
                 id,
                 type_value,
                 pattern,
-                place: ObjectPlaceId(0),
+                object: SemanticObjectId(0),
                 policy: policy.clone(),
                 mode: PolicyMode::Plain,
                 namespace_visibility: None,
@@ -7609,9 +7755,9 @@ mod tests {
         let leaf = world.allocate_value_id();
         world.materialize_val1_object(SemanticValueObject {
             id: leaf,
-            type_value: TypeValueId(501),
+            type_value: test_type_lookup(501),
             pattern: leaf_pattern,
-            place: ObjectPlaceId(0),
+            object: SemanticObjectId(0),
             policy,
             mode: PolicyMode::Plain,
             namespace_visibility: None,
@@ -7621,7 +7767,9 @@ mod tests {
             },
             provenance: Provenance::new("Val2 leaf"),
         });
-        let b_place = world.value(b).expect("b exists").place;
+        let b_place = world
+            .sole_value_residency(b)
+            .expect("new value has one residency");
         world
             .associate_existing_value_in_place(b_place, "only_b", leaf)
             .expect("semantic owned Val2 contribution succeeds");
@@ -7644,7 +7792,7 @@ mod tests {
         let mut world = SemanticWorld::new("app");
         let owner = world.package_owner();
         let (pattern, _) = world.allocate_pattern(owner, Provenance::new("lifetime value Pattern"));
-        let type_value = TypeValueId(502);
+        let type_value = test_type_lookup(502);
         world.types.insert(
             type_value,
             SemanticTypeValue {
@@ -7682,8 +7830,8 @@ mod tests {
             )
             .expect("lifetime value installs again");
         assert_ne!(
-            world.value(a).expect("a").place,
-            world.value(b).expect("b").place,
+            world.sole_value_residency(a).expect("a residency"),
+            world.sole_value_residency(b).expect("b residency"),
             "the ordinary values occupy independent carrier Places"
         );
         let a_norm = world
@@ -7819,8 +7967,8 @@ mod tests {
                     ns,
                     name,
                     SymbolId(binding),
-                    TypeValueId(represented),
-                    TypeValueId(0),
+                    test_type_lookup(represented),
+                    test_type_lookup(0),
                     None,
                     any_stage_policy(),
                     provenance.clone(),
@@ -7881,7 +8029,7 @@ mod tests {
         let owner = world.package_owner();
         let (core_pattern, _) =
             world.allocate_pattern(owner, Provenance::new("complete type core"));
-        let core_lookup = TypeValueId(700);
+        let core_lookup = test_type_lookup(700);
         world.types.insert(
             core_lookup,
             SemanticTypeValue {
@@ -7896,11 +8044,11 @@ mod tests {
         let before = world
             .observe_complete_type(core_lookup, core_place)
             .expect("empty complete type snapshot is well formed");
-        assert!(before.call_space.is_empty());
+        assert!(before.call_space().is_empty());
 
         let (member_pattern, _) =
             world.allocate_pattern(owner, Provenance::new("direct member value pattern"));
-        let member_type = TypeValueId(701);
+        let member_type = test_type_lookup(701);
         world.types.insert(
             member_type,
             SemanticTypeValue {
@@ -7940,20 +8088,25 @@ mod tests {
             .observe_complete_type(core_lookup, core_place)
             .expect("extended complete type snapshot is well formed");
         assert_eq!(
-            before.core, after.core,
+            before.core(),
+            after.core(),
             "ordinary type equality observes Core(tau), not V_tau"
         );
         assert_ne!(
-            before.whole, after.whole,
+            before.whole(),
+            after.whole(),
             "whole snapshot identity observes immutable V_tau"
         );
-        assert!(before.call_space.is_empty(), "old V_tau stays immutable");
+        assert!(
+            before.call_space().is_empty(),
+            "a formed V_tau snapshot stays immutable"
+        );
         assert_eq!(
             world
-                .complete_type_by_whole_observation(before.whole)
+                .complete_type_by_whole_observation(before.whole())
                 .expect("old snapshot remains interned")
-                .call_space,
-            before.call_space
+                .call_space(),
+            before.call_space()
         );
     }
 
@@ -7964,7 +8117,7 @@ mod tests {
         world.bind_package_namespace(namespace);
         let owner = world.package_owner();
         let (pattern, _) = world.allocate_pattern(owner, Provenance::new("callable core"));
-        let lookup = TypeValueId(705);
+        let lookup = test_type_lookup(705);
         world.types.insert(
             lookup,
             SemanticTypeValue {
@@ -8031,7 +8184,7 @@ mod tests {
             world
                 .observe_complete_type(lookup, Some(host.place))
                 .expect("call projection consumes an exact complete type")
-                .whole,
+                .whole(),
         );
         let projected =
             world.associated_member_views_for_host(&host, "()", crate::Phase::OpenStatic);
@@ -8050,7 +8203,7 @@ mod tests {
         let mut world = SemanticWorld::new("unit");
         let owner = world.package_owner();
         let (pattern, _) = world.allocate_pattern(owner, Provenance::new("callable snapshot"));
-        let lookup = TypeValueId(706);
+        let lookup = test_type_lookup(706);
         world.types.insert(
             lookup,
             SemanticTypeValue {
@@ -8087,7 +8240,9 @@ mod tests {
             world.callable_entries_for_value(old_value).is_empty(),
             "a later successor tau must not retarget a value formed with tau_old"
         );
-        let old_place = world.value(old_value).expect("old value").place;
+        let old_place = world
+            .sole_value_residency(old_value)
+            .expect("old value residency");
         world
             .associate_existing_value_in_place(old_place, "()", call_member)
             .expect("lookup Object.Val2 can contain the same spelling");
@@ -8112,15 +8267,15 @@ mod tests {
         let owner = world.package_owner();
         let (target, _) = world.allocate_pattern(owner, Provenance::new("target core"));
         let (foreign, _) = world.allocate_pattern(owner, Provenance::new("foreign core"));
-        let target_type = TypeValueId(710);
-        let foreign_type = TypeValueId(711);
+        let target_type = test_type_lookup(710);
+        let foreign_type = test_type_lookup(711);
         for (id, pattern) in [(target_type, target), (foreign_type, foreign)] {
             world.types.insert(
                 id,
                 SemanticTypeValue {
                     id,
                     pattern,
-                    provenance: Provenance::new("foreign-home death test"),
+                    provenance: Provenance::new("foreign direct-home rejection"),
                 },
             );
             world.pattern_types.insert(pattern, id);

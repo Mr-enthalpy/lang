@@ -1,14 +1,7 @@
 # Type Values, Places, and Borrow Views
 
-**Status: canonical target semantics for Object identity, complete type-closure
-identity, place identity, and borrow views. Current `lang_build` implements only
-the first-order identity core: recursive normalization over the present
-type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
-per-carrier places. The complete `tau=<Q,V_τ>` snapshot and
-`Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
-`share`, `rebind`), continuation-relative lifetime name reification (`@`),
-construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgment, and type checker
-remain unimplemented target semantics. §10 registers the implementation debt.**
+**Status: canonical semantic authority for Object identity, complete
+type-closure identity, Place identity, and borrow views.**
 
 This document specifies the semantic boundary between *object values*, *symbol
 identity*, *places*, *borrow views*, and *namespace extension targets*. It
@@ -2582,8 +2575,8 @@ replacement ends the old parent resident, produces a distinct family of
 projection slots, and invalidates borrows of the old slots under ordinary
 lifetime rules. It never redirects them to the replacement parent's same-named
 or same-positioned slot; only `rebind` acquires that new target (§5.4). The
-concrete generation/version encoding remains implementation debt, but this
-resident-slot distinction is target semantics.
+concrete generation/version encoding is an Open representation boundary; the
+resident-slot distinction is canonical semantics.
 
 Navigation preserves the observation kind:
 
@@ -2776,20 +2769,7 @@ If the observed object is not visible or not usable under the current
 Re-export or wrapper semantics that intentionally re-expose a target under a
 different policy is a separate, later design and is **not** defined here.
 
-## 10. Implementation boundary
-
-`lang_build` represents complete Object normalization, Core/whole complete-type
-observations, immutable callspaces, separate Place/resident generations,
-ProjectionSlot identity, Writable, and borrow/lifecycle substrate. Unknown
-Val1 content uses an identity-stable opaque leaf and therefore only
-under-merges.
-
-Source-operation wiring for ref/share/rebind/`@` and full access validation is
-tracked in `spec/planning/roadmap.md`. Representation questions are tracked in
-`spec/planning/open-questions.md`; they do not alter the equations in this
-document.
-
-## 11. Non-goals
+## 10. Non-goals
 
 ```text
 No parser syntax change.
@@ -2800,7 +2780,7 @@ No package re-export semantics.
 No permission escalation through borrow views.
 ```
 
-## 12. Relationship to other documents
+## 11. Relationship to other documents
 
 The documents below are adjacent or background design. They do not define the
 distinctions specified here, and this document does not depend on them for its

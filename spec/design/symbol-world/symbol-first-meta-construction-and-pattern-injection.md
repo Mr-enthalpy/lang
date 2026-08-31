@@ -1,14 +1,13 @@
 # Symbol-First Meta Construction and Pattern Injection
 
-**Status: Canonical future-design direction. Not current public language
-behavior and not fully implemented.** This document is the canonical design
-note for symbol-first resolution, Symbol role/member projections, `compile` / `meta` result
+**Status: canonical semantic authority.** This document owns symbol-first
+resolution, Symbol role/member projections, `compile` / `meta` result
 boundaries, meta return self-root identity (§4.4), resolved pattern scopes,
 `struct`, pure `extend`, place-level `inject`, and the binding/install boundary.
 
-The implementation status is summarized in §13. Owner resolution is expressed
-through resolved Pattern scopes and stable semantic owners; registry allocation
-details do not participate in semantic identity.
+Owner resolution is expressed through resolved Pattern scopes and stable
+semantic owners; registry allocation details do not participate in semantic
+identity. Implementation coverage is recorded in `spec/planning/roadmap.md`.
 
 This document builds on, without replacing:
 
@@ -100,7 +99,7 @@ Consequences:
    owned callspace closure `OwnedCallSpaceClosure(CallSpace(τ_M))` — and
    seals the instance
    (§4.1, §4.3). Privileged built-ins retain member-specific owner rules (§4.8).
-5. In target semantics, `struct` forms a complete type value `tau` directly and
+5. `struct` forms a complete type value `tau` directly and
    `extend` is the primitive referentially pure value transformation. `inject`
    is the explicit read--extend--write wrapper over an existing `type ref`.
    None installs a new global root; only `inject` mutates an existing slot. A
@@ -603,8 +602,8 @@ ambient meta environment before any return-local construction handle is
 consulted. A source spelling or implementation shortcut may sequence closure
 construction immediately before injection, but it must not use `r:type` as the
 owner anchor, add `HomeSymbol(τ)`, or merge the two semantic operations. Nested
-in-place closure anchoring that is not yet wired is implementation debt, not a
-license to recover the eventual result binding.
+an unavailable in-place closure-anchoring consumer cannot recover the eventual
+result binding as a substitute owner anchor.
 
 ### 2.2 Role and value projections coexist
 
@@ -2647,7 +2646,7 @@ The two identities may differ.
 
 ### 7.3 Formal invocation boundary
 
-Formal `struct` invocation is, in target semantics:
+Formal `struct` invocation is:
 
 ```text
 graph-installation-free
@@ -2660,12 +2659,11 @@ input place. It may establish the result type's declared `StructLexicalRoot`
 under its privileged owner rule, but outer `let` remains the only operation that
 creates the destination Symbol/member in the surrounding graph.
 
-It does not install a `NamespaceDelta`. The current implementation may allocate
-or attach registry-backed pattern material while forming the invocation value.
-That is a non-semantic implementation record: it may affect cache/storage
-mechanics but is not observable in `Norm`, does not mutate language-visible
-input, and does not weaken the target claim of referential purity. Graph
-installation remains outside formal invocation.
+It does not install a `NamespaceDelta`. Registry-backed pattern material is an
+implementation record: it may affect cache/storage mechanics but is not
+observable in `Norm`, does not mutate language-visible input, and does not
+weaken referential purity. Graph installation remains outside formal
+invocation.
 
 ### 7.4 Structural leaves and pure Pattern nodes
 
@@ -4628,24 +4626,7 @@ that place. Pattern owner/root/scope continue to come from ordinary result
 construction semantics. Likewise, generated storage placement is not
 source-visible `NamespaceGraph` symbol installation.
 
-## 13. Implementation Status
-
-The current semantic core provides:
-
-- stable `SemanticOwner` and resolved Pattern-root identities;
-- complete type values with separate Core and whole-snapshot observations;
-- unified `InvocationResult` with `struct` producing a complete type value;
-- contextual `OpenHere_Σ`, independent `Writable`, pure `extend`, and
-  read--extend--write `inject` boundaries;
-- distinct ordinary member, TypeMember, and structural-incidence relations;
-- atomic namespace installation and canonical meta-instance root identity.
-
-Source-level structural extraction, automatic operation-to-legality premise
-formation, and full lifecycle/control-flow consumers are wiring work. They must
-consume the relations above directly and may not introduce fallback owner,
-construction, or result ontologies.
-
-## 14. Non-Goals and Open Representation Boundaries
+## 13. Non-Goals and Open Representation Boundaries
 
 This document does not change Raw or Normalized AST syntax, introduce a general
 macro system, expose unrestricted AST rewriting, or choose the final storage

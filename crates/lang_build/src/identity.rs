@@ -4,12 +4,34 @@
 //! semantic model. No identity in this module can be reconstructed from
 //! another coordinate.
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TypeValueId(pub u64);
+use std::sync::atomic::{AtomicU64, Ordering};
 
-impl TypeValueId {
-    pub const fn as_u64(self) -> u64 {
-        self.0
+static NEXT_TYPE_LOOKUP_INDEX: AtomicU64 = AtomicU64::new(1);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TypeValueId(u64);
+
+/// Allocates opaque Core lookup indices.
+///
+/// The allocator exposes no numeric representation and accepts no identity
+/// coordinate as input. A returned index acquires semantic meaning only when
+/// its owning type registry installs the corresponding Core observation.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TypeLookupIndexAllocator;
+
+impl TypeLookupIndexAllocator {
+    pub const fn new() -> Self {
+        Self
+    }
+
+    pub fn allocate(&mut self) -> TypeValueId {
+        let index = NEXT_TYPE_LOOKUP_INDEX
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+                value.checked_add(1)
+            })
+            .expect("type lookup index space exhausted");
+        assert_ne!(index, 0, "type lookup index zero is reserved");
+        TypeValueId(index)
     }
 }
 

@@ -1,7 +1,6 @@
 # Pattern Values, Relational Semantics, and Extraction
 
-**Status: Canonical target-semantic authority. Not current implemented
-behavior.**
+**Status: canonical semantic authority.**
 
 This document is the canonical owner of the language-level Pattern relation,
 Pattern observation and extraction, structural Pattern incidence, binderless

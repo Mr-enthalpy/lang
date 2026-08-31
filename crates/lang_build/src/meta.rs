@@ -420,14 +420,14 @@ pub(crate) fn expand_struct_construction_material(
     let type_symbol_id = delta.allocate_symbol_id();
     if value
         .canonical_type
-        .is_some_and(|lookup| lookup != complete_type.lookup_key)
+        .is_some_and(|lookup| lookup != complete_type.lookup_key())
     {
         return Err(BuildError::single(Diagnostic::hard_error(
             "struct construction material does not belong to the supplied complete type",
             Some(value.provenance.clone()),
         )));
     }
-    let represented_type = complete_type.lookup_key;
+    let represented_type = complete_type.lookup_key();
     let type_namespace_id = delta.allocate_node_id();
     let value = if value.pattern_materials.is_some() {
         value

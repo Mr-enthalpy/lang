@@ -96,8 +96,8 @@ fn carriers() -> Carriers {
                 NamespaceNodeId(0),
                 name,
                 SymbolId(binding),
-                TypeValueId(represented),
-                TypeValueId(0),
+                support::numbered_type_lookup_fixture("recursive-object", represented),
+                support::numbered_type_lookup_fixture("recursive-object", 0),
                 None,
                 stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
                 provenance.clone(),
@@ -133,7 +133,7 @@ fn carriers() -> Carriers {
         member,
         other,
         pattern,
-        type_value: TypeValueId(0),
+        type_value: support::numbered_type_lookup_fixture("recursive-object", 0),
     }
 }
 
@@ -318,9 +318,9 @@ fn successor_vtau_does_not_redefine_object_val2() {
     let tau_before = world
         .observe_complete_type(type_value, Some(t_place))
         .expect("initial complete tau observes")
-        .whole;
+        .whole();
     let builtin_member = world
-        .core_type_projection_value(TypeValueId(1))
+        .core_type_projection_value(support::numbered_type_lookup_fixture("recursive-object", 1))
         .expect("member type has a transport value");
 
     world
@@ -335,7 +335,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
     let tau_after = world
         .observe_complete_type(type_value, Some(t_place))
         .expect("successor complete tau observes")
-        .whole;
+        .whole();
 
     assert_ne!(
         tau_before, tau_after,
@@ -587,7 +587,11 @@ fn shared_acyclic_subtree_is_allowed() {
     );
 
     // The leaf D itself terminates with `Val2 = ∅` and is not the diamond.
-    let leaf = type_addr(&mut world, TypeValueId(1), Some(member_place));
+    let leaf = type_addr(
+        &mut world,
+        support::numbered_type_lookup_fixture("recursive-object", 1),
+        Some(member_place),
+    );
     assert_ne!(diamond, leaf, "the diamond is not collapsed onto its leaf");
 }
 
@@ -767,8 +771,8 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
                 NamespaceNodeId(0),
                 name,
                 SymbolId(binding),
-                TypeValueId(represented),
-                TypeValueId(0),
+                support::numbered_type_lookup_fixture("recursive-object", represented),
+                support::numbered_type_lookup_fixture("recursive-object", 0),
                 None,
                 policy,
                 provenance.clone(),
@@ -776,7 +780,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
             .expect("type-rank symbol registers in the unit world")
     };
     let visible = stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]);
-    // Seed the `type` rank (TypeValueId(0)) before any carrier of it.
+    // Seed the `type` rank before any carrier of it.
     let _ = register(&mut world, "type_root", 0, 0, visible.clone());
     // T is the outer host and is meta-only, so it is hidden at SealStatic.
     // f is the middle host and g the terminal, both compile-visible there.
@@ -914,8 +918,8 @@ fn distinct_associated_symbols_with_equal_content_share_one_type_normal_form() {
                 NamespaceNodeId(0),
                 name,
                 SymbolId(binding),
-                TypeValueId(represented),
-                TypeValueId(0),
+                support::numbered_type_lookup_fixture("recursive-object", represented),
+                support::numbered_type_lookup_fixture("recursive-object", 0),
                 None,
                 policy,
                 provenance.clone(),
@@ -948,7 +952,7 @@ fn distinct_associated_symbols_with_equal_content_share_one_type_normal_form() {
         .associate_existing_symbol_in_place(u_place, "f", c_u)
         .expect("`let f::U = c_u`");
 
-    let carrier_type = TypeValueId(1);
+    let carrier_type = support::numbered_type_lookup_fixture("recursive-object", 1);
     let t_addr = type_addr(&mut world, carrier_type, Some(t_place));
     let u_addr = type_addr(&mut world, carrier_type, Some(u_place));
     assert_eq!(

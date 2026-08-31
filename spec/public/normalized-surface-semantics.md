@@ -438,11 +438,9 @@ under the inherited DeduceList hole environment; the operand uses the same
 environment, and the node declares nothing. In Pattern/annotation material it
 surfaces as `PatternUnsupported "policy-let expression in pattern context"`.
 
-The normalized node records the future semantic ordering—form the operand's
-result-Policy demand before selecting its root call, then expose the completed
-Policy view—but does not execute overload resolution or Policy satisfaction.
-Current build prototypes treat the wrapper as an opaque unsupported semantic
-boundary rather than transparently selecting the inner call.
+The normalized node preserves an explicit semantic boundary. Normalization
+itself performs neither result-demand formation, overload resolution, nor
+Policy migration; those operations belong to semantic evaluation.
 
 ## 8. Value-Side vs Pattern-Side Material
 

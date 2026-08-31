@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     process,
+    sync::{Mutex, OnceLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -16,6 +18,45 @@ use lang_build::{
     ToolchainGlobalSourceRoot,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
+
+pub fn type_lookup_fixture(label: &'static str) -> lang_build::TypeValueId {
+    static REGISTRY: OnceLock<
+        Mutex<(
+            lang_build::TypeLookupIndexAllocator,
+            BTreeMap<String, lang_build::TypeValueId>,
+        )>,
+    > = OnceLock::new();
+    let mut registry = REGISTRY
+        .get_or_init(|| Mutex::new((lang_build::TypeLookupIndexAllocator::new(), BTreeMap::new())))
+        .lock()
+        .expect("type lookup fixture registry poisoned");
+    if let Some(id) = registry.1.get(label) {
+        return *id;
+    }
+    let id = registry.0.allocate();
+    registry.1.insert(label.to_string(), id);
+    id
+}
+
+pub fn numbered_type_lookup_fixture(scope: &'static str, label: u64) -> lang_build::TypeValueId {
+    let key = format!("{scope}/{label}");
+    static REGISTRY: OnceLock<
+        Mutex<(
+            lang_build::TypeLookupIndexAllocator,
+            BTreeMap<String, lang_build::TypeValueId>,
+        )>,
+    > = OnceLock::new();
+    let mut registry = REGISTRY
+        .get_or_init(|| Mutex::new((lang_build::TypeLookupIndexAllocator::new(), BTreeMap::new())))
+        .lock()
+        .expect("numbered type lookup fixture registry poisoned");
+    if let Some(id) = registry.1.get(&key) {
+        return *id;
+    }
+    let id = registry.0.allocate();
+    registry.1.insert(key, id);
+    id
+}
 
 /// Test-side candidate preparation from a fixture-declared symbol payload.
 ///
@@ -332,6 +373,7 @@ pub fn namespace_symbol(
 
 pub fn type_with_namespace(
     type_id: lang_build::SymbolId,
+    represented_type: lang_build::TypeValueId,
     name: &str,
     parent: NamespaceNodeId,
     type_namespace_id: NamespaceNodeId,
@@ -342,9 +384,7 @@ pub fn type_with_namespace(
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_id,
-        // Synthetic identity fixture: Symbol and type lookup identities
-        // are intentionally independent.
-        represented_type: lang_build::TypeValueId(type_id.0 ^ 0x4000_0000_0000_0000),
+        represented_type,
         owner_struct_pattern_registry: None,
         fields: Vec::new(),
         field_names: Vec::new(),

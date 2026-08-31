@@ -260,7 +260,7 @@ mod tests {
         assert_eq!(
             form_abstract_literal_value(
                 &expr,
-                |_| Some(TypeValueId(1)),
+                |_| unreachable!("character spelling is rejected before type lookup"),
                 SemanticValueId(1),
                 Provenance::new("open character spelling"),
             ),
