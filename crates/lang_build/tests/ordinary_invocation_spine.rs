@@ -506,7 +506,7 @@ fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
 
 #[test]
 fn configured_capability_cell_is_proof_material_not_policy_preference() {
-    let mut world = build_single_fixture_world("return_ontology", "app");
+    let mut world = build_single_fixture_world("declared_result", "app");
     let keep = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "keep")
@@ -820,7 +820,7 @@ fn rebound_type_value_is_canonical_struct_field_material() {
 
     assert_eq!(
         direct.pure_p_pattern(), rebound.pure_p_pattern(),
-        "a carrier rebinding refers to the same generated TypeValue, so the rebound carrier name cannot change type identity"
+        "a carrier rebinding refers to the same complete type, so the rebound carrier name cannot change type identity"
     );
 
     let direct_graph = world
@@ -844,7 +844,7 @@ fn rebound_type_value_is_canonical_struct_field_material() {
         rebound_type.carrier_symbol_id
     );
     assert_eq!(direct_type.represented_type, rebound_type.represented_type);
-    // Field material lives on the generated type value's own carrier; a
+    // Field material lives on the complete type result's own projection; a
     // carrier rebinding is a bare reference and carries no field material
     // of its own.
     assert!(!direct_type.field_type_values.is_empty());
@@ -1451,7 +1451,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
     let owner = world
         .semantic_world()
         .pattern_owner(returned.pattern)
-        .expect("generated type Pattern has a resolved owner")
+        .expect("complete type Pattern has a resolved owner")
         .owner;
     let ambient_owner = world
         .semantic_world()
@@ -1459,7 +1459,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
         .expect("package root has a semantic owner");
     assert_eq!(
         owner, ambient_owner,
-        "direct `struct` attaches its generated type to the ambient declaration environment"
+        "direct `struct` attaches its complete type to the ambient declaration environment"
     );
     assert_eq!(
         returned.complete_type.lookup_key(),
@@ -1487,36 +1487,24 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
 }
 
 #[test]
-fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
-    // `CallableSemantics = P1 × P2 × ReturnShape × Privilege`. The return
-    // shape and the privilege are two independent
-    // declared coordinates: source callables spell the shape on the
-    // return-slot annotation (`-> r: symbol` declares a ClusterSymbol
-    // return), built-ins state both per primitive declaration.  Each is
-    // elaborated once at the declaration boundary
-    // (`declared_return_shape_from_closure`) and stored in the
-    // MetaFunctionObject payload; no coordinate is projected from another.
-    // The `return_ontology` fixture declares `-> r: symbol` and ordinary-slot
-    // source callables without performing a build-time struct invocation.
-    let world = build_single_fixture_world("return_ontology", "app");
+fn declared_result_class_is_a_declaration_boundary_fact_shared_by_core_and_source() {
+    // Result class, return Pattern, and privilege are independent declared
+    // coordinates. No coordinate is projected from another.
+    let world = build_single_fixture_world("declared_result", "app");
 
     let coordinates_of = |name: &str| {
         let symbol = world.resolve(name).expect("declared callable resolves");
         let SymbolPayload::MetaFunction(function) = symbol.payload else {
             panic!("`{name}` is a callable declaration");
         };
-        (function.return_shape, function.privilege)
+        (function.declared_result_class, function.privilege)
     };
 
-    // Source-declared `-> r: symbol` return slot => ClusterSymbol shape;
-    // a constrained ordinary return slot (`-> let result: uint8`) =>
-    // SingleVal(Constrained).  Neither the body form family nor the
-    // Policy stage is consulted, and the source surface can never spell
-    // the privileged coordinate.
+    // Neither body form nor Policy stage determines the result class.
     assert_eq!(
         coordinates_of("make_type"),
         (
-            lang_build::ReturnShape::ClusterSymbol,
+            lang_build::DeclaredResultClass::ClusterSymbol,
             lang_build::CallablePrivilege::OrdinarySource,
         ),
         "source-defined `-> r: symbol` callable declares a ClusterSymbol return"
@@ -1524,21 +1512,17 @@ fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
     assert_eq!(
         coordinates_of("keep"),
         (
-            lang_build::ReturnShape::SingleVal(lang_build::PatternConstraint::Constrained),
+            lang_build::DeclaredResultClass::OrdinaryValue,
             lang_build::CallablePrivilege::OrdinarySource,
         ),
         "constrained-slot source callable declares a single-value return"
     );
 
-    // Built-ins use the same ontology, declared per primitive at the core
-    // declaration boundary: `struct` returns one complete type; `assert`
-    // returns a single ordinary value even though it executes at meta
-    // stage — privilege and shape are independent coordinates, so a
-    // privileged built-in is NOT forced into any particular shape.
+    // Built-ins use the same declared result-class coordinate.
     assert_eq!(
         coordinates_of("struct"),
         (
-            lang_build::ReturnShape::SingleType,
+            lang_build::DeclaredResultClass::CompleteType,
             lang_build::CallablePrivilege::BuiltinPrivileged,
         ),
         "core struct declares a privileged complete-type return"
@@ -1546,7 +1530,7 @@ fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
     assert_eq!(
         coordinates_of("assert"),
         (
-            lang_build::ReturnShape::SingleVal(lang_build::PatternConstraint::Unconstrained),
+            lang_build::DeclaredResultClass::OrdinaryValue,
             lang_build::CallablePrivilege::BuiltinPrivileged,
         ),
         "core assert declares a privileged single-value return"
@@ -1554,34 +1538,28 @@ fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
 }
 
 #[test]
-fn return_slot_annotation_declares_shape_independent_of_body_form() {
-    // The return shape is a declared fact, never an inference from the
-    // body: a `-> r: symbol` callable with zero member events is still a
-    // cluster construction, and a body full of member-event-shaped forms
-    // cannot flip a `-> let r: type` slot away from SingleType.
-    let world = build_single_fixture_world("return_ontology", "app");
+fn return_slot_declares_result_class_independent_of_body_form() {
+    let world = build_single_fixture_world("declared_result", "app");
 
-    let shape_of = |name: &str| {
+    let declared_result_class_of = |name: &str| {
         let symbol = world.resolve(name).expect("declared callable resolves");
         let SymbolPayload::MetaFunction(function) = symbol.payload else {
             panic!("`{name}` is a callable declaration");
         };
-        function.return_shape
+        function.declared_result_class
     };
 
     // Zero member events, `-> r: symbol`: still a cluster construction.
     assert_eq!(
-        shape_of("empty_cluster"),
-        lang_build::ReturnShape::ClusterSymbol,
+        declared_result_class_of("empty_cluster"),
+        lang_build::DeclaredResultClass::ClusterSymbol,
         "a `-> r: symbol` callable with an effect-free body is still a cluster construction"
     );
-    // This body shape (`let r = t; r;`) has a
-    // `-> let r: type` slot: body refactoring never changes the shape,
-    // and a meta P2 with a SingleType shape is a legal declaration
-    // (`Validate(P2, Shape)` accepts it — one position, pure-P type).
+    // This body (`let r = t; r;`) has a `-> let r: type` slot: body
+    // refactoring never changes its declared complete-type result class.
     assert_eq!(
-        shape_of("refactor_kept"),
-        lang_build::ReturnShape::SingleType,
-        "member-event-shaped body forms cannot flip a `-> let r: type` slot away from SingleType"
+        declared_result_class_of("refactor_kept"),
+        lang_build::DeclaredResultClass::CompleteType,
+        "member-event body forms cannot change a `-> let r: type` declaration"
     );
 }

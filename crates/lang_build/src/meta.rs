@@ -490,7 +490,7 @@ pub(crate) fn expand_struct_construction_material(
             .map(|field| field.type_carrier_symbol)
             .collect(),
         type_associated_namespace: Some(type_namespace_id),
-        extraction_interface: Some(generated_type_extraction_interface(
+        extraction_interface: Some(struct_type_extraction_interface(
             type_symbol_id,
             represented_type,
             value
@@ -556,7 +556,7 @@ pub(crate) fn expand_struct_construction_material(
     })
 }
 
-fn generated_type_extraction_interface(
+fn struct_type_extraction_interface(
     owner_type_symbol_id: SymbolId,
     owner_type_value: crate::TypeValueId,
     owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,

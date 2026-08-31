@@ -316,7 +316,7 @@ fn member_view_policies_do_not_union_across_members() {
 
 #[test]
 fn callable_member_owns_function_object_and_terminal_call_entry() {
-    let world = build_single_fixture_world("return_ontology", "app");
+    let world = build_single_fixture_world("declared_result", "app");
     let make_type = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "make_type")
@@ -400,10 +400,10 @@ fn privileged_struct_uses_the_normal_overload_path() {
     let owner = world
         .semantic_world()
         .pattern_owner(returned.pattern)
-        .expect("generated pattern owner")
+        .expect("struct result Pattern owner")
         .owner;
     // Direct `struct` never creates a `MetaInstance(struct, arguments)`
-    // scope of its own: the generated type attaches to the ambient
+    // scope of its own: the complete type attaches to the ambient
     // declaration environment.
     let ambient_owner = world
         .semantic_world()

@@ -72,12 +72,12 @@ use crate::{
     semantic_name_index::ResolverContext,
     semantic_owner::{SemanticOwnerId, SemanticSymbolIdentity},
     semantic_world::{
-        ObjectPlaceId, OrdinaryCallEntry, OrdinaryCandidateRole, PatternValueId, ReturnShape,
+        ObjectPlaceId, OrdinaryCallEntry, OrdinaryCandidateRole, PatternValueId,
         SemanticValuePayload, SemanticWorld, WritableContext,
     },
     struct_pattern_registry::StructMaterializationState,
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
-    InvocationResidual, NormalizedCallSite,
+    DeclaredResultClass, InvocationResidual, NormalizedCallSite,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -218,7 +218,7 @@ pub struct PreparedCallCandidate {
     pub(crate) source_shape: Option<ApplicableCandidate>,
     pub(crate) core_invocation: Option<MetaInvocationInput>,
     pub(crate) intrinsic_body: Option<crate::semantic_world::OrdinaryIntrinsicBody>,
-    pub return_shape: ReturnShape,
+    pub declared_result_class: DeclaredResultClass,
     pub candidate_role: OrdinaryCandidateRole,
     pub overload_strategy: NormOverloadStrategy,
     /// Migration input endpoint projected from the first explicit Product
@@ -523,7 +523,7 @@ fn expose_result_entry(
     })
 }
 
-/// Result of a `ClusterSymbol`-shaped invocation: a completed Symbol
+/// Result of an invocation declaring `ClusterSymbol`: a completed Symbol
 /// cluster construction (plural values under one name at one position).
 #[derive(Clone, Debug)]
 pub struct ClusterSymbolResult {
@@ -534,17 +534,17 @@ pub struct ClusterSymbolResult {
     /// ref/share projection namespaces, extraction interface) instead of a
     /// bare bound-type-value carrier.  Forwarded members contribute no
     /// entry here.
-    pub generated_types: Vec<crate::StructConstructionMaterial>,
+    pub struct_materials: Vec<crate::StructConstructionMaterial>,
     /// The complete result P2 of the selected callable.  Carried per
-    /// result shape: the shape variant states the aggregation form, this
-    /// field keeps the independent Policy coordinate alongside it.
+    /// result class. This field keeps the independent Policy coordinate
+    /// alongside it.
     pub result_p2: PolicyPair,
     pub trace: OrdinaryPipelineTrace,
 }
 
-/// Result of a `Unit`-shaped invocation (`_: unit`): a value-less pure
-/// shape.  Reserved carrier — no executable producer exists yet; the
-/// declaration level validates the shape and invocation reports the
+/// Result of an invocation declaring `Unit` (`_: unit`). This is a value-less
+/// result. Reserved carrier — no executable producer exists yet; the
+/// declaration level validates the class and invocation reports the
 /// execution gap explicitly.
 #[derive(Clone, Debug)]
 pub struct UnitInvocationResult {
@@ -555,7 +555,7 @@ pub struct UnitInvocationResult {
 /// Projection transport carried inside the unified [`InvocationResult`]
 /// success branch.
 ///
-/// These variants preserve shape-specific installation data; they do not
+/// These variants preserve class-specific installation data; they do not
 /// decide the semantic result class. That authority belongs exclusively to
 /// `InvocationResult::SemanticResult.declared_result_class`, derived once
 /// from the selected callable's declaration.
@@ -571,20 +571,11 @@ pub enum ProjectedInvocationOutcome {
 /// `F` exists yet; once `F` is selected, its result crosses this envelope.
 pub type InvocationOutcome = crate::InvocationResult<ProjectedInvocationOutcome>;
 
-fn declared_result_class(shape: ReturnShape) -> crate::DeclaredResultClass {
-    match shape {
-        ReturnShape::Unit => crate::DeclaredResultClass::Unit,
-        ReturnShape::SingleType => crate::DeclaredResultClass::CompleteType,
-        ReturnShape::SingleVal(_) => crate::DeclaredResultClass::OrdinaryValue,
-        ReturnShape::ClusterSymbol => crate::DeclaredResultClass::ClusterSymbol,
-    }
-}
-
 fn semantic_invocation_outcome(
-    shape: ReturnShape,
+    declared_result_class: DeclaredResultClass,
     projection: ProjectedInvocationOutcome,
 ) -> InvocationOutcome {
-    crate::InvocationResult::semantic(declared_result_class(shape), projection)
+    crate::InvocationResult::semantic(declared_result_class, projection)
 }
 
 /// Complete type value returned by a world-connected invocation.
@@ -865,7 +856,7 @@ pub fn invoke_policy_migration(
     else {
         return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
             first_diagnostic: Some(Diagnostic::hard_error(
-                "migration selected a non-single-member return shape, expected ordinary transport",
+                "migration selected a non-ordinary result class",
                 Some(request.provenance().clone()),
             )),
             trace: OrdinaryPipelineTrace::default(),
@@ -1601,7 +1592,7 @@ pub(crate) fn invoke_target_values(
             capability_realization: entry.capability_realization.clone(),
             formal_policy_frame,
             candidate_role: entry.candidate_role,
-            return_shape: entry.return_shape,
+            declared_result_class: entry.declared_result_class.clone(),
             overload_strategy,
             source_shape,
             core_invocation,
@@ -1735,27 +1726,29 @@ pub(crate) fn invoke_target_values(
     // owner rule establishes no MetaInstance root, so forcing its private AST
     // carrier through an ordinary meta material key would invent semantic
     // identity that the language does not have.
-    let mut canonical_instance_key =
-        if selected.return_shape != ReturnShape::ClusterSymbol || is_ambient_struct {
-            None
-        } else {
-            Some(canonical_meta_instance_key_for_selected(
-                semantic_world,
-                &classified.classified_shape,
-                canonical_callable_identity,
-                &provenance,
-                &trace,
-            )?)
-        };
+    let mut canonical_instance_key = if selected.declared_result_class
+        != DeclaredResultClass::ClusterSymbol
+        || is_ambient_struct
+    {
+        None
+    } else {
+        Some(canonical_meta_instance_key_for_selected(
+            semantic_world,
+            &classified.classified_shape,
+            canonical_callable_identity,
+            &provenance,
+            &trace,
+        )?)
+    };
 
-    // A declared `Unit` shape is validated at the declaration boundary but
+    // A declared `Unit` result is validated at the declaration boundary but
     // has no executable producer yet: report the execution gap explicitly
     // instead of silently misrouting the result into a single-member or
     // cluster carrier.
-    if matches!(selected.return_shape, ReturnShape::Unit) {
+    if selected.declared_result_class == DeclaredResultClass::Unit {
         return Err(OrdinaryInvocationFailure::SelectedCoreBody {
             diagnostic: Diagnostic::hard_error(
-                "invocation of a Unit return shape is future work: \
+                "invocation of a Unit result is future work: \
                  the declaration is validated, but no executable producer exists yet",
                 Some(provenance.clone()),
             ),
@@ -1763,7 +1756,9 @@ pub(crate) fn invoke_target_values(
         });
     }
 
-    let meta_construction_result = if selected.return_shape == ReturnShape::ClusterSymbol {
+    let meta_construction_result = if selected.declared_result_class
+        == DeclaredResultClass::ClusterSymbol
+    {
         // The meta instance root binds the selected function object VALUE
         // identity (never the carrier Symbol hosting the overload cluster);
         // owner-forest placement comes from the selected call entry's
@@ -1790,7 +1785,7 @@ pub(crate) fn invoke_target_values(
         // call context, never of the return category: a source meta
         // function roots its contributions at `MetaInstance(meta callable,
         // normalized arguments)`, while the builtin privileged `struct`
-        // called directly attaches its generated type to the ambient
+        // called directly attaches its complete type result to the ambient
         // declaration environment and never creates a
         // `MetaInstance(struct, arguments)` scope of its own.
         let owner_strategy = if is_ambient_struct {
@@ -1841,7 +1836,7 @@ pub(crate) fn invoke_target_values(
 
         // Struct construction materials harvested for the binding side's
         // namespace projection expansion (field layer, ref/share views).
-        let mut generated_types: Vec<crate::StructConstructionMaterial> = Vec::new();
+        let mut struct_materials: Vec<crate::StructConstructionMaterial> = Vec::new();
 
         // Each member contribution carries the member's own value Policy and
         // Pattern Policy together with its Pattern identity.
@@ -1920,11 +1915,11 @@ pub(crate) fn invoke_target_values(
                                 value.provenance.clone(),
                             )
                         }
-                        _ => match semantic_world.install_generated_type_value(
+                        _ => match semantic_world.install_meta_struct_complete_type(
                             &meta_root,
                             canonical_instance_key
                                 .as_ref()
-                                .expect("ordinary generated meta type has an instance key")
+                                .expect("ordinary meta struct result has an instance key")
                                 .clone(),
                             value.material_id,
                             value.canonical_pattern_value(),
@@ -1945,7 +1940,7 @@ pub(crate) fn invoke_target_values(
                             .contribute_cluster_member_view(cid, pure_p_member_view(pattern));
                         let mut value = value.clone();
                         value.canonical_type = Some(complete_type.lookup_key());
-                        generated_types.push(value);
+                        struct_materials.push(value);
                     }
                 }
             }
@@ -1974,7 +1969,7 @@ pub(crate) fn invoke_target_values(
 
         Some(ClusterSymbolResult {
             construction,
-            generated_types,
+            struct_materials,
             result_p2: selected.body_entry_view.pair.clone(),
             trace: trace.clone(),
         })
@@ -1984,7 +1979,7 @@ pub(crate) fn invoke_target_values(
 
     if let Some(meta_result) = meta_construction_result {
         return Ok(semantic_invocation_outcome(
-            selected.return_shape,
+            selected.declared_result_class.clone(),
             ProjectedInvocationOutcome::ClusterSymbol(meta_result),
         ));
     }
@@ -2183,7 +2178,8 @@ pub(crate) fn invoke_target_values(
         ReturnedSemanticEntity::CompleteType(value) => Some(value.complete_type.clone()),
         _ => None,
     };
-    if matches!(selected.return_shape, ReturnShape::SingleType) != semantic_complete_type.is_some()
+    if (selected.declared_result_class == DeclaredResultClass::CompleteType)
+        != semantic_complete_type.is_some()
     {
         return Err(OrdinaryInvocationFailure::SelectedCoreBody {
             diagnostic: Diagnostic::hard_error(
@@ -2203,9 +2199,9 @@ pub(crate) fn invoke_target_values(
         view: selected.complete_result_view.clone(),
     }];
 
-    let return_shape = selected.return_shape;
+    let declared_result_class = selected.declared_result_class.clone();
     Ok(semantic_invocation_outcome(
-        return_shape,
+        declared_result_class,
         ProjectedInvocationOutcome::SingleMember(SingleMemberResult {
             selected,
             returned,
@@ -2864,7 +2860,7 @@ fn ordinary_result_identity(
                 )
             } else {
                 let canonical_key = canonical_key
-                    .expect("generated meta type identity requires a canonical MetaInstance key");
+                    .expect("meta struct result requires a canonical MetaInstance key");
                 let Some(placement_parent) =
                     semantic_world.callable_declaration_environment(selected.call_entry_value)
                 else {
@@ -2874,7 +2870,7 @@ fn ordinary_result_identity(
                     meta_callable: canonical_key.callable,
                     placement_parent,
                 };
-                semantic_world.install_generated_type_value(
+                semantic_world.install_meta_struct_complete_type(
                     &meta_root,
                     canonical_key.clone(),
                     value.material_id,
@@ -2885,7 +2881,7 @@ fn ordinary_result_identity(
             };
             let Some((carrier_value, pattern, complete_type)) = installed else {
                 return Err(Diagnostic::hard_error(
-                    "generated type installation could not form its semantic carrier",
+                    "struct result installation could not form its complete type",
                     Some(value.provenance.clone()),
                 ));
             };

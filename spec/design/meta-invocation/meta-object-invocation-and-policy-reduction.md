@@ -17,6 +17,18 @@ InvocationResult(F)
   | Diagnostic
 ```
 
+One callable declaration carries independent result coordinates:
+
+```text
+ReturnDeclaration(F)
+  = DeclaredResultClass(F)
+    × ReturnPattern(F)
+    × ResultPolicy(F)
+```
+
+The return Pattern is interpreted by the Pattern relation. It does not define
+or refine `DeclaredResultClass(F)`.
+
 Primitive and source bodies may use private execution material. Execution
 material is installed or interpreted before `SemanticResult` is constructed;
 it is never itself reported as a complete type, Symbol, or ordinary value.

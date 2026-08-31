@@ -15,7 +15,7 @@ wiring that applies a closed law is tracked in `roadmap.md`, not here.
   ProjectionSlot identity?
 - Which value payload families should gain content normalization after the
   safe identity-stable opaque Val1 boundary?
-- How should generic/meta-generated type expressions such as `(int Vec::std)`
+- How should generic complete-type expressions such as `(int Vec::std)`
   lower into complete type values?
 
 The following facts are not open: ordinary Object normalization observes

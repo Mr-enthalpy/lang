@@ -1248,7 +1248,7 @@ field source path
 
 An implementation may temporarily retain the carrier Symbol for graph
 navigation or provenance, but it is not part of field-type equality,
-Pattern-head identity, or generated type-definition identity. Consequently
+Pattern-head identity, or struct construction-material identity. Consequently
 `(uint8 field) struct` and `(T field) struct` have the same field-type material
 after `let T: type = uint8`; a reverse `TypeValueId -> original Symbol` lookup
 would incorrectly make ordinary binding observable.
@@ -1453,7 +1453,7 @@ Symbol or place.
 
 This ordinary declaration rule does not license a meta returned result to use an
 external pure Object as its installed type core. A canonical meta
-instance has an additional self-root invariant, stated per result shape:
+instance has an additional self-root invariant, stated per result class:
 for the default result `τ_M`, `Root(Core(τ_M)) = MetaInstanceScope` holds
 unconditionally (`Core(τ_M)` is the first projection of `τ_M`); an explicitly
 declared result that carries an installed type core `Q` requires `Q`'s outer

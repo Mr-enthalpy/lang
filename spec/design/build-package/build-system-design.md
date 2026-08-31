@@ -393,10 +393,10 @@ A **type-associated namespace** is the namespace space associated with a type
 object: generated field functions, layout metadata, pattern interfaces, and
 related companion symbols. Borrow `ref` / `share` are candidate observation
 kinds rather than projection subspaces. This is a category by **role**,
-not by origin: its members may be declared, generated, or virtual. For a
-`struct`-generated type, it is a virtual / generated child namespace attached to
-the type node. It is therefore not equivalent to the "declared namespace
-objects" node kind alone.
+not by origin: its members may be declared, synthesized, or virtual. A
+complete type produced by `struct` carries a virtual child namespace attached
+to its type projection. It is therefore not equivalent to the "declared
+namespace objects" node kind alone.
 
 The final Object-role relationship is:
 

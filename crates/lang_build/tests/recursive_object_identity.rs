@@ -44,12 +44,12 @@ mod support;
 use lang_build::{
     classify_type_arguments_env_with_report, compute_meta_invocation_material_key,
     extract_single_call_site, invoke_host_member_symbol_ordinary, CanonicalValueAddr,
-    MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
+    DeclaredResultClass, MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
     Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
-    RawArgShape, RawArgValueClass, ResolverContext, ReturnShape, SemanticSymbolIdentity,
-    SemanticTypeEnv, SemanticValueId, SemanticWorld, StageSet, StructMaterializationState,
-    SymbolId, TypeMemberFacet, TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
+    RawArgShape, RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv,
+    SemanticValueId, SemanticWorld, StageSet, StructMaterializationState, SymbolId,
+    TypeMemberFacet, TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
 
@@ -445,7 +445,7 @@ fn unit_is_terminal_leaf() {
                 mode: PolicyMode::Plain,
             },
             None,
-            ReturnShape::SingleVal(lang_build::PatternConstraint::Constrained),
+            DeclaredResultClass::OrdinaryValue,
             provenance.clone(),
         )
         .expect("source callable registers in the unit world");

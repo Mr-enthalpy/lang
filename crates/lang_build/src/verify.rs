@@ -1159,7 +1159,7 @@ mod tests {
             function_policy: runtime_view.clone(),
             body_entry_policy: runtime_view.clone(),
             return_object_policy: runtime_view,
-            return_shape: crate::ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained),
+            declared_result_class: crate::DeclaredResultClass::OrdinaryValue,
             privilege: crate::CallablePrivilege::BuiltinPrivileged,
         });
         delta.insert_symbol(verify_node, operation);

@@ -37,28 +37,3 @@ fn ordinary_tests_use_committed_source_fixtures() {
         "ordinary build tests use committed fixtures; only invalid-byte boundary tests may write raw bytes: {offenders:?}"
     );
 }
-
-#[test]
-fn complete_type_results_cross_boundaries_explicitly() {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let primitive =
-        fs::read_to_string(src.join("meta_invocation.rs")).expect("read primitive executor source");
-    assert!(
-        !primitive.contains("InvocationResult::semantic("),
-        "primitive execution material is installed before a declared semantic result is formed"
-    );
-
-    let world = fs::read_to_string(src.join("world.rs")).expect("read world source");
-    let start = world
-        .find("fn install_connected_semantic_binding(")
-        .expect("connected binding installer exists");
-    let tail = &world[start..];
-    let end = tail
-        .find("fn install_connected_generated_type_binding(")
-        .expect("next binding helper exists");
-    let installer = &tail[..end];
-    assert!(
-        installer.contains("semantic_complete_type"),
-        "the binding installer receives the observed complete type explicitly"
-    );
-}

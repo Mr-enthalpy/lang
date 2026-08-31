@@ -442,7 +442,7 @@ impl ResolverContext {
     }
 }
 
-/// Expected result shape for resolver lookup.
+/// Expected semantic role for resolver lookup.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResolveExpectation {
     AnyUnique,

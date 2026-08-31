@@ -313,49 +313,43 @@ fn return_slot_name(closure: &NormClosure) -> Result<String, Diagnostic> {
     }
 }
 
-/// Declaration-boundary return-shape elaboration from the return-slot
-/// annotation.
+/// Declaration-boundary result-class elaboration.
 ///
-/// The return shape is an independent declared fact spelled on the return
-/// slot; it is one coordinate of
-/// `CallableSemantics = P1 × P2 × ReturnShape × Privilege` and implies
-/// nothing about the Policy stage or the privilege (the legality relation
-/// is `validate_return_shape`, applied separately).  The body form family
-/// is never scanned — the ontology is not an inference from implementation
-/// detail; the body evaluators only check that the body is compatible with
-/// the declared shape.
+/// The result class is spelled on the return slot and implies nothing about
+/// Policy or privilege. The body is not inspected. The complete return
+/// Pattern remains on the closure return slot and never determines the class.
 ///
 /// Mapping:
 ///
 /// * `-> r: symbol` → `ClusterSymbol` (one position, plural values under
 ///   one name);
-/// * `-> r: type`   → `SingleType`;
-/// * `-> _: unit`   → `Unit` — the value-less pure shape REQUIRES the `_`
+/// * `-> r: type`   → `CompleteType`;
+/// * `-> _: unit`   → `Unit` — the value-less result REQUIRES the `_`
 ///   binder (`_: unit` matches and discards the value, exactly as `_ unit`
 ///   in extraction matches and discards the leaf; a named binder for a
-///   value-less shape is a spelling error);
-/// * any other annotation → `SingleVal(Constrained)`;
-/// * no annotation → `SingleVal(Unconstrained)`.
+///   value-less result is a spelling error);
+/// * any other annotation or no annotation → `OrdinaryValue`.
+///
+/// The complete return Pattern remains on the closure return slot and is
+/// interpreted independently by the Pattern relation.
 ///
 /// A future product-shaped result is one ordinary value whose Val1 is a
-/// Product — still `SingleVal`, never a parallel return shape: the return
-/// slot is restricted to a single binder.
-pub fn declared_return_shape_from_closure(
+/// Product — still one `OrdinaryValue`: the return slot is restricted to a
+/// single binder.
+pub fn declared_result_class_from_closure(
     closure: &NormClosure,
-) -> Result<crate::ReturnShape, Diagnostic> {
-    use crate::{PatternConstraint, ReturnShape};
+) -> Result<crate::DeclaredResultClass, Diagnostic> {
+    use crate::DeclaredResultClass;
     let returns = closure.head.as_ref().and_then(|head| head.returns.as_ref());
     let annotation = returns.and_then(|returns| returns.annotation.as_ref());
     let annotation_name = match annotation.map(|annotation| &annotation.pattern) {
         Some(NormPattern::Name { name, .. }) => Some(name.as_str()),
-        Some(_) => {
-            return Ok(ReturnShape::SingleVal(PatternConstraint::Constrained));
-        }
+        Some(_) => return Ok(DeclaredResultClass::OrdinaryValue),
         None => None,
     };
     match annotation_name {
-        Some("symbol") => Ok(ReturnShape::ClusterSymbol),
-        Some("type") => Ok(ReturnShape::SingleType),
+        Some("symbol") => Ok(DeclaredResultClass::ClusterSymbol),
+        Some("type") => Ok(DeclaredResultClass::CompleteType),
         Some("unit") => {
             // `_` in binder position normalizes to a wildcard skeleton
             // pattern (not a `Binder` named `_`).
@@ -369,10 +363,10 @@ pub fn declared_return_shape_from_closure(
                 )
             });
             if is_wildcard_binder {
-                Ok(ReturnShape::Unit)
+                Ok(DeclaredResultClass::Unit)
             } else {
                 Err(Diagnostic::hard_error(
-                    "a unit return is a value-less pure shape and must be spelled `_: unit` \
+                    "a unit return is value-less and must be spelled `_: unit` \
                      (`_` occupies the leftmost slot so `unit` cannot be misread as the \
                      leftmost to-be-extracted name of an extraction shorthand)",
                     Some(Provenance::from_norm_origin(
@@ -384,8 +378,7 @@ pub fn declared_return_shape_from_closure(
                 ))
             }
         }
-        Some(_) => Ok(ReturnShape::SingleVal(PatternConstraint::Constrained)),
-        None => Ok(ReturnShape::SingleVal(PatternConstraint::Unconstrained)),
+        Some(_) | None => Ok(DeclaredResultClass::OrdinaryValue),
     }
 }
 

@@ -150,7 +150,7 @@ pub use semantic_name_index::{
 // The connected ordinary pipeline owns candidate selection. This surface
 // exposes only its shared failure taxonomy and sealed-candidate material.
 pub use overload_set::{
-    declared_return_shape_from_closure, LookupPhase, RestrictedOverloadFailure,
+    declared_result_class_from_closure, LookupPhase, RestrictedOverloadFailure,
     RestrictedOverloadFailureKind, SelectedOverloadCandidate, VisibilityView,
 };
 pub use owner_namespace::{
@@ -185,17 +185,17 @@ pub use policy_pair::{
     elaborate_explicit_p1, elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
     elaborate_return_policy_pattern, externally_visible, function_object_declaration_policy,
     normalize_p2_policy, policy_or, project_export_overload_sets, project_export_root_preview,
-    project_p1, project_resolved_export_view, publicly_reachable, validate_return_shape,
+    project_p1, project_resolved_export_view, publicly_reachable, validate_declared_result_class,
     BuiltinPrivilegedSealFunction, CallablePrivilege, CapabilityRealization,
     CapabilityRealizationCell, DeclarationVisibility, ExplicitP1Position, ExplicitP1Selection,
     ExportAdmission, ExportCandidateView, FormalPolicyPattern, FunctionMember, FunctionMemberKind,
     FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView, FunctionSliceStage,
     NamespaceCandidateSetRef, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
     NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
-    OutputModeDemand, P1Projection, PatternComponentPolicy, PatternConstraint, Phase, PolicyMode,
-    PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, ResolvedCandidatePolicy,
-    ResultPolicyDemand, ReturnPolicyPattern, ReturnShape, SealWorldSnapshot, StageSet,
-    ValueComponentPolicy, ValuePresence, WpreRoots,
+    OutputModeDemand, P1Projection, PatternComponentPolicy, Phase, PolicyMode, PolicyPair,
+    PolicyResultEntry, PolicyStage, PolicyView, ResolvedCandidatePolicy, ResultPolicyDemand,
+    ReturnPolicyPattern, SealWorldSnapshot, StageSet, ValueComponentPolicy, ValuePresence,
+    WpreRoots,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

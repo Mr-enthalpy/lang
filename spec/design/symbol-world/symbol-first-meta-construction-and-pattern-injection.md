@@ -1063,7 +1063,7 @@ contextual default. Parameter/return position overlays and caller demands may
 refine views produced under the root; they cannot change the root itself to
 `const` or `mut`.
 
-Equivalently, and without overloading “return shape”:
+Equivalently:
 
 ```text
 DefaultMetaResult(F) = τ
@@ -1439,8 +1439,8 @@ The only construction-ending disposition of a meta invocation is its final
 return stage, and it runs in a fixed order. The returned result is either the
 default complete type value `τ_M = ⟨ Q, V_τ ⟩`, or the value of an explicitly
 declared result type such as `Σ = ⟨ τ?, V_S ⟩` when that type is `symbol`.
-These shapes have different seal obligations, so the seal judgment branches on
-the result shape instead of sharing one optional-core criterion:
+These result classes have different seal obligations, so the seal judgment
+branches on the declared class instead of sharing one optional-core criterion:
 
 ```text
 Seal(DefaultTau(τ_M)):

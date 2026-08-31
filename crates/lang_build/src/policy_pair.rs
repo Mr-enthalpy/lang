@@ -206,59 +206,13 @@ pub enum NamespaceVisibility {
     Private,
 }
 
-/// The aggregate shape of a callable's invocation result.
-///
-/// `CallableSemantics = P1 × P2 × ReturnShape × Privilege`.
-/// The return shape is elaborated once from the return-slot annotation
-/// (`declared_return_shape_from_closure`); it is never derived from the
-/// Policy stage, and no stage is ever derived from it.  The only relation
-/// between P2 and the shape is the legality check
-/// [`validate_return_shape`], which is a validation, not a derivation in
-/// either direction.
-///
-/// `ClusterSymbol` — plural values under ONE name at ONE position (a
-/// Symbol cluster: at most one pure-P member plus arbitrary val
-/// members).  Spelled `-> r: symbol` (a single binder carries the
-/// cluster).
-///
-/// There is deliberately NO parallel "multiple bare positions" return
-/// ontology: a future product-shaped result is one ordinary value whose
-/// Val1 is a Product (`⟨Val1_Product, P_Product, Val2⟩`) — still a single
-/// `SingleVal` result, never a fifth return shape.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ReturnShape {
-    /// Value-less pure shape.  Required spelling: `_: unit` — the `_`
-    /// occupies the leftmost slot so `unit` cannot be misread as the
-    /// leftmost to-be-extracted name of an extraction shorthand
-    /// (compare `_ unit`, which matches and discards the leaf node).
-    Unit,
-    /// A single pure-P type result (`-> r: type`).
-    SingleType,
-    /// A single ordinary value result.  Carries the presence fact of the
-    /// return-slot value-pattern constraint; the full annotation pattern
-    /// stays on the closure head return slot.
-    SingleVal(PatternConstraint),
-    /// Plural values under one name at one position — a Symbol cluster
-    /// construction (`-> r: symbol`).
-    ClusterSymbol,
-}
-
-/// Presence fact of the return-slot value-pattern constraint carried by
-/// [`ReturnShape::SingleVal`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PatternConstraint {
-    Unconstrained,
-    Constrained,
-}
-
 /// Independent capability axis of `CallableSemantics`.
 ///
 /// Privilege states what special operations a callable may perform (for
 /// example consuming raw/meta AST material).  It implies nothing about
-/// the return shape and nothing about the Policy stage: `struct` is a
-/// privileged built-in whose shape is `SingleType`, while `assert` /
-/// `verify` / `identity_type` are privileged built-ins with ordinary
-/// single-position shapes.
+/// the declared result class and nothing about the Policy stage: `struct` is
+/// a privileged built-in whose result class is `CompleteType`, while `assert`
+/// and `verify` declare ordinary-value results.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CallablePrivilege {
     /// Ordinary source-declared callable; the source surface can never
@@ -268,26 +222,24 @@ pub enum CallablePrivilege {
     BuiltinPrivileged,
 }
 
-/// `Validate(P2, ReturnShape)` — the legality relation between the result
-/// Policy coordinate and the declared return shape.  A validation, never
-/// a derivation: neither coordinate is ever computed from the other.
+/// Legality relation between result Policy and the declared result class.
 ///
 /// The core criterion for meta-legal returns is a SINGLE position:
 ///
 /// * `ClusterSymbol` (one position, plural values) requires `P2 = meta`.
-/// * `SingleType` / `SingleVal` / `Unit` are legal under both; root
+/// * `CompleteType` / `OrdinaryValue` / `Unit` are legal under both; root
 ///   constraints (self-rooting of meta type results) are enforced by the
 ///   invocation/installation layer, not here.
-pub fn validate_return_shape(
-    shape: ReturnShape,
+pub fn validate_declared_result_class(
+    result_class: crate::DeclaredResultClass,
     p2: &PolicyPair,
     provenance: &crate::Provenance,
 ) -> Result<(), crate::Diagnostic> {
     let stages = p2.value.stages.union(&p2.pattern.stages);
     let includes_meta = stages.contains(PolicyStage::Meta);
     let cluster_construction_authorized = stages.len() == 1 && includes_meta;
-    match shape {
-        ReturnShape::ClusterSymbol if !cluster_construction_authorized => {
+    match result_class {
+        crate::DeclaredResultClass::ClusterSymbol if !cluster_construction_authorized => {
             Err(crate::Diagnostic::hard_error(
                 "a ClusterSymbol return (`-> r: symbol`) requires a pure meta result P2: \
                  a Symbol cluster cannot be constructed by a mixed meta/compile or \

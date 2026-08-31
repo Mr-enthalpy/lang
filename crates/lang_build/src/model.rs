@@ -565,13 +565,10 @@ pub struct MetaFunctionObject {
     pub function_policy: crate::policy_pair::PolicyView,
     pub body_entry_policy: crate::policy_pair::PolicyView,
     pub return_object_policy: crate::policy_pair::PolicyView,
-    /// Independent declared return-shape coordinate of
-    /// `CallableSemantics = P1 × P2 × ReturnShape × Privilege`: built-ins
-    /// state it per declaration; source declarations elaborate it once from
-    /// the return-slot annotation via `declared_return_shape_from_closure`.
-    /// It is never derived from a Policy stage and no stage is derived from
-    /// it; the only P2 relation is `validate_return_shape`.
-    pub return_shape: crate::policy_pair::ReturnShape,
+    /// Declared result class. Built-ins state it per declaration; source
+    /// declarations elaborate it once from the return slot. The complete
+    /// return Pattern remains on the callable syntax carrier.
+    pub declared_result_class: crate::DeclaredResultClass,
     /// Independent declared privilege coordinate: only compiler built-ins
     /// carry `BuiltinPrivileged`; the source surface can never spell it.
     pub privilege: crate::policy_pair::CallablePrivilege,

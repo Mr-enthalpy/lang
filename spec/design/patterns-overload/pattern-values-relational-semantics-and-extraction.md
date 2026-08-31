@@ -1082,7 +1082,7 @@ extend : <Q, V_τ> x Delta -> <Q', V_τ'>
 ```
 
 It is the privileged operation that may add direct structural children and
-their generated TypeMember classifiers. It is pure: the old snapshot is not
+their direct-home TypeMember classifiers. It is pure: the old snapshot is not
 modified.
 
 `inject` is:

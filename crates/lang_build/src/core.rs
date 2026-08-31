@@ -25,7 +25,7 @@ pub(crate) struct CoreCallableRegistration {
     pub(crate) function_view: PolicyView,
     pub(crate) body_entry_view: PolicyView,
     pub(crate) result_view: PolicyView,
-    pub(crate) return_shape: crate::ReturnShape,
+    pub(crate) declared_result_class: crate::DeclaredResultClass,
     pub(crate) visibility: Option<crate::NamespaceVisibility>,
     pub(crate) provenance: Provenance,
 }
@@ -197,16 +197,18 @@ fn insert_meta_function(
 ) {
     let symbol_id = delta.allocate_symbol_id();
     let (body_entry_policy, return_object_policy) = core_primitive_callable_planes(primitive);
-    // Independent declared shape/privilege coordinates for each built-in:
+    // Independent result-class/privilege coordinates for each built-in:
     // `struct` and `identity_type` return complete type values;
     // `assert` / `verify` return a single
     // ordinary value.  All core primitives are privileged built-ins (they
     // may consume raw/meta material); privilege implies nothing about the
-    // shape and neither coordinate is re-derived at call time.
-    let return_shape = match primitive {
-        CoreMetaFunction::Struct | CoreMetaFunction::IdentityType => crate::ReturnShape::SingleType,
+    // result class and neither coordinate is re-derived at call time.
+    let declared_result_class = match primitive {
+        CoreMetaFunction::Struct | CoreMetaFunction::IdentityType => {
+            crate::DeclaredResultClass::CompleteType
+        }
         CoreMetaFunction::Assert | CoreMetaFunction::Verify(_) => {
-            crate::ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained)
+            crate::DeclaredResultClass::OrdinaryValue
         }
     };
     let mut symbol = SymbolObject::new(
@@ -230,7 +232,7 @@ fn insert_meta_function(
         function_policy: function_view,
         body_entry_policy,
         return_object_policy,
-        return_shape,
+        declared_result_class: declared_result_class.clone(),
         privilege: crate::CallablePrivilege::BuiltinPrivileged,
     });
     // Declared semantic registration fact, spelled once next to the graph
@@ -266,7 +268,7 @@ fn insert_meta_function(
             },
             mode: PolicyMode::Plain,
         },
-        return_shape,
+        declared_result_class,
         visibility: Some(crate::NamespaceVisibility::Public),
         provenance: symbol.provenance.clone(),
     });

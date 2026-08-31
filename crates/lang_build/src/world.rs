@@ -235,7 +235,7 @@ impl CompilationWorld {
                 Some(ExplicitP1Selection::from_complete_view(
                     &registration.function_view,
                 )),
-                registration.return_shape,
+                registration.declared_result_class,
                 registration.function_view,
                 registration.body_entry_view,
                 registration.result_view,
@@ -1096,7 +1096,7 @@ impl CompilationWorld {
                         body_entry_view: callable.body_entry_view,
                         namespace_visibility: callable.namespace_visibility,
                         candidate_role: crate::OrdinaryCandidateRole::Ordinary,
-                        return_shape: callable.return_shape,
+                        declared_result_class: callable.declared_result_class,
                         provenance: declaration_provenance,
                     }],
                 })?;
@@ -1183,7 +1183,7 @@ impl CompilationWorld {
                         function_view: callable.function_view,
                         body_entry_view: callable.body_entry_view,
                         namespace_visibility: callable.namespace_visibility,
-                        return_shape: callable.return_shape,
+                        declared_result_class: callable.declared_result_class,
                         provenance: declaration_provenance,
                     }
                 } else {
@@ -1195,7 +1195,7 @@ impl CompilationWorld {
                         function_view: callable.function_view,
                         body_entry_view: callable.body_entry_view,
                         namespace_visibility: callable.namespace_visibility,
-                        return_shape: callable.return_shape,
+                        declared_result_class: callable.declared_result_class,
                         provenance: declaration_provenance,
                     }
                 };
@@ -1571,7 +1571,7 @@ impl CompilationWorld {
                 )));
             }
         };
-        let generated_type = material.canonical_type;
+        let canonical_type = material.canonical_type;
         let result_view = uniform_result_policy_view(selected);
         let mut expansion = expand_struct_construction_material(
             material,
@@ -1628,9 +1628,9 @@ impl CompilationWorld {
         self.semantic_world
             .install_namespace_name_delta(expansion.namespace_delta)?;
         self.diagnostics.extend(expansion.diagnostics);
-        if let Some(generated_type) = generated_type {
+        if let Some(canonical_type) = canonical_type {
             self.semantic_world.record_ambient_type_binder(
-                generated_type,
+                canonical_type,
                 crate::AmbientTypeBinder::WholeSymbol(binder_name.to_string()),
             );
         }
@@ -1656,7 +1656,7 @@ impl CompilationWorld {
         provenance: Provenance,
     ) -> Result<(), BuildError> {
         let construction = meta.construction;
-        let generated_types = meta.generated_types;
+        let struct_materials = meta.struct_materials;
         let result = construction
             .member_views
             .iter()
@@ -1675,10 +1675,10 @@ impl CompilationWorld {
                 view: entry.view.clone(),
             })
             .collect::<Vec<_>>();
-        let semantic_complete_type = if generated_types.len() == 1 {
-            generated_types
+        let semantic_complete_type = if struct_materials.len() == 1 {
+            struct_materials
                 .first()
-                .and_then(|generated| generated.canonical_type)
+                .and_then(|material| material.canonical_type)
                 .and_then(|lookup| {
                     let pattern = self.semantic_world.type_value(lookup)?.pattern;
                     let place = self.semantic_world.pattern_place(pattern);
@@ -1709,29 +1709,29 @@ impl CompilationWorld {
                     .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
                 )
             })?;
-        // A construction whose sole member is backed by a generated type
-        // definition expands the full namespace projection (field-function
+        // A construction whose sole member is backed by struct material
+        // expands the full namespace projection (field-function
         // layer, ref/share projection namespaces, extraction interface).
         // Everything else installs the plain semantic binding carrier.
         let destination =
-            if generated_types.len() == 1 && selected.iter().all(|entry| entry.value.is_none()) {
-                let generated = generated_types
+            if struct_materials.len() == 1 && selected.iter().all(|entry| entry.value.is_none()) {
+                let struct_material = struct_materials
                     .into_iter()
                     .next()
-                    .expect("generated_types holds exactly one entry");
+                    .expect("struct_materials holds exactly one entry");
                 // Diagnostic-only binder record: an ambient struct collision
                 // at this level later points at this source-visible binding.
                 // The binder never feeds type identity.
-                let canonical_type = generated.canonical_type;
-                let destination = self.install_connected_generated_type_binding(
+                let canonical_type = struct_material.canonical_type;
+                let destination = self.install_connected_struct_result_binding(
                     namespace,
                     binder_name,
                     namespace_declaration,
                     &selected,
-                    generated,
+                    struct_material,
                     semantic_complete_type.as_ref().ok_or_else(|| {
                         BuildError::single(Diagnostic::hard_error(
-                            "generated type member lost its exact complete tau",
+                            "struct result material lost its exact complete tau",
                             Some(provenance.clone()),
                         ))
                     })?,
@@ -1923,7 +1923,7 @@ impl CompilationWorld {
         } = outcome
         else {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "literal construction selected a non-value result shape",
+                "literal construction selected a non-OrdinaryValue result class",
                 Some(provenance.clone()),
             )));
         };
@@ -2229,26 +2229,26 @@ impl CompilationWorld {
         Ok(destination)
     }
 
-    /// Installs a connected meta construction result whose unique type
-    /// member is backed by struct construction material. The namespace side
-    /// reuses the full generated-type expansion (CoreTypeProjection with fields,
+    /// Installs a connected meta construction result whose unique complete
+    /// type member is backed by struct construction material. The namespace
+    /// side forms the full projection (CoreTypeProjection with fields,
     /// field-function projection layer, ref/share projection namespaces),
     /// while the semantic side binds the construction's member views under
     /// a fresh destination Symbol — the same canonical facts as the plain
     /// carrier path, plus the namespace projection the plain carrier lacks.
-    fn install_connected_generated_type_binding(
+    fn install_connected_struct_result_binding(
         &mut self,
         namespace: NamespaceNodeId,
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        generated: crate::StructConstructionMaterial,
+        struct_material: crate::StructConstructionMaterial,
         semantic_complete_type: &crate::CompleteTypeValue,
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
         let result_view = uniform_result_policy_view(selected);
         let mut expansion = expand_struct_construction_material(
-            generated,
+            struct_material,
             semantic_complete_type,
             self.semantic_world.namespace_index(),
             namespace,
@@ -3008,11 +3008,10 @@ struct SourceCallableDelta {
     function_view: PolicyView,
     body_entry_view: PolicyView,
     namespace_visibility: Option<crate::NamespaceVisibility>,
-    /// Independent declared return-shape coordinate, elaborated once from
-    /// the return-slot annotation (`declared_return_shape_from_closure`)
-    /// and validated against the result P2 (`validate_return_shape`).
+    /// Declared result class, elaborated once from the return slot and
+    /// validated against result P2. The full Pattern remains in the closure.
     /// Registration sites mirror it onto the call entry verbatim.
-    return_shape: crate::ReturnShape,
+    declared_result_class: crate::DeclaredResultClass,
 }
 
 fn source_callable_delta(
@@ -3033,21 +3032,17 @@ fn source_callable_delta(
     // itself is a hard error at this elaboration boundary.
     ensure_runtime_result_slice_has_value_dimension(closure, &result_p2.pair, provenance.clone())
         .map_err(BuildError::single)?;
-    // Elaborate the declared return shape once at this boundary from the
-    // return-slot annotation: `-> r: symbol` declares a ClusterSymbol
-    // return, `-> r: type` a single pure-P type, `_: unit` the value-less
-    // pure shape; any other slot declares a single value.  The body form
-    // family is never scanned (the shape is a declared fact, not an
-    // inference from the implementation), and the Policy stage is never
-    // consulted — `: meta ->` governs visibility and execution timing
-    // only.  `Validate(P2, ReturnShape)` is then the legality relation
-    // between the two independent coordinates, not a derivation in either
-    // direction: the core criterion is that meta-legal returns occupy
-    // exactly one position.
-    let return_shape = crate::overload_set::declared_return_shape_from_closure(closure)
+    // Elaborate the declared result class once from the return slot. The body
+    // is never inspected, Policy does not determine the class, and the full
+    // return Pattern remains in the closure.
+    let declared_result_class = crate::overload_set::declared_result_class_from_closure(closure)
         .map_err(BuildError::single)?;
-    crate::policy_pair::validate_return_shape(return_shape, &result_p2.pair, &provenance)
-        .map_err(BuildError::single)?;
+    crate::policy_pair::validate_declared_result_class(
+        declared_result_class.clone(),
+        &result_p2.pair,
+        &provenance,
+    )
+    .map_err(BuildError::single)?;
     let namespace_declaration = elaborate_namespace_declaration_policy(
         policy_expr,
         NamespaceDeclarationPosition::DirectTopLevel,
@@ -3129,7 +3124,7 @@ fn source_callable_delta(
         function_policy: derived_function_view.clone(),
         body_entry_policy: result_p2.clone(),
         return_object_policy: preliminary_return_view,
-        return_shape,
+        declared_result_class: declared_result_class.clone(),
         privilege: crate::CallablePrivilege::OrdinarySource,
     });
     delta.insert_symbol(parent, symbol);
@@ -3140,7 +3135,7 @@ fn source_callable_delta(
         function_view: derived_function_view,
         body_entry_view: result_p2,
         namespace_visibility: namespace_declaration.visibility,
-        return_shape,
+        declared_result_class,
     })
 }
 
