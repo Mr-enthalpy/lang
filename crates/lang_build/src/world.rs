@@ -33,7 +33,6 @@ use crate::{
     },
     semantic_world::{SemanticDeclarationEntry, SemanticNamespaceDelta, SemanticWorld},
     source::SourceFragment,
-    struct_pattern_registry::StructMaterializationState,
     verify::evaluate_source_verifications as evaluate_verify_forms,
 };
 
@@ -112,7 +111,6 @@ pub struct CompilationWorld {
     package_root_node: NamespaceNodeId,
     core_node: NamespaceNodeId,
     semantic_world: SemanticWorld,
-    type_materialization_state: StructMaterializationState,
     /// One shared continuation/lifecycle state owned by the real evaluator.
     /// SemanticWorld stores object ontology; lifecycle remains an orthogonal
     /// evaluation-state judgment.
@@ -193,7 +191,6 @@ impl CompilationWorld {
             package_root_node,
             core_node,
             semantic_world,
-            type_materialization_state: StructMaterializationState::default(),
             lifecycle: crate::LifecycleMachine::default(),
             source_fragments: Vec::new(),
             diagnostics: Vec::new(),
@@ -383,12 +380,7 @@ impl CompilationWorld {
         request: &crate::PolicyMigrationRequest,
     ) -> Result<crate::PolicyMigrationResult, crate::OrdinaryInvocationFailure> {
         let resolver_context = self.root_context();
-        crate::invoke_policy_migration(
-            &mut self.semantic_world,
-            &mut self.type_materialization_state,
-            request,
-            &resolver_context,
-        )
+        crate::invoke_policy_migration(&mut self.semantic_world, request, &resolver_context)
     }
 
     /// Invoke one already-authorized Pattern-associated operation without
@@ -406,7 +398,6 @@ impl CompilationWorld {
         if operation_name == "()" {
             crate::invoke_pattern_associated_ordinary(
                 &mut self.semantic_world,
-                &mut self.type_materialization_state,
                 pattern,
                 operation_name,
                 receiver,
@@ -425,7 +416,6 @@ impl CompilationWorld {
             };
             crate::invoke_pattern_associated_value_ordinary(
                 &mut self.semantic_world,
-                &mut self.type_materialization_state,
                 pattern,
                 operation_name,
                 receiver,
@@ -443,10 +433,6 @@ impl CompilationWorld {
 
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
-    }
-
-    pub fn type_materialization_state(&self) -> &StructMaterializationState {
-        &self.type_materialization_state
     }
 
     /// Every installation point that
@@ -693,7 +679,6 @@ impl CompilationWorld {
         }
         crate::invoke_host_member_symbol_ordinary(
             &mut self.semantic_world,
-            &mut self.type_materialization_state,
             &candidate.host_chain,
             symbol,
             call_site,
@@ -1580,7 +1565,6 @@ impl CompilationWorld {
             namespace,
             binder_name,
             provenance.clone(),
-            &mut self.type_materialization_state,
         )?;
         override_delta_binding_policy_view(
             &mut expansion.namespace_delta,
@@ -1710,8 +1694,7 @@ impl CompilationWorld {
                 )
             })?;
         // A construction whose sole member is backed by struct material
-        // expands the full namespace projection (field-function
-        // layer, ref/share projection namespaces, extraction interface).
+        // expands the field-function and ref/share projection namespaces.
         // Everything else installs the plain semantic binding carrier.
         let destination =
             if struct_materials.len() == 1 && selected.iter().all(|entry| entry.value.is_none()) {
@@ -1900,7 +1883,6 @@ impl CompilationWorld {
         let resolver_context = self.root_context();
         let outcome = crate::ordinary_invocation::invoke_target_values(
             &mut self.semantic_world,
-            &mut self.type_materialization_state,
             crate::OrdinaryCandidateOrigin::PatternAssociatedCallEntry(target_pattern),
             target_members,
             std::collections::BTreeMap::new(),
@@ -2254,7 +2236,6 @@ impl CompilationWorld {
             namespace,
             binder_name,
             provenance.clone(),
-            &mut self.type_materialization_state,
         )?;
         override_delta_binding_policy_view(
             &mut expansion.namespace_delta,
@@ -2873,13 +2854,11 @@ fn declared_type_projection_delta(
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_symbol_id,
         represented_type,
-        owner_struct_pattern_registry: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_values: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(type_namespace_id),
-        extraction_interface: None,
         provenance,
         generation_origin: None,
         layout_slot: None,

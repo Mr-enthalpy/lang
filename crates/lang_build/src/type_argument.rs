@@ -200,8 +200,8 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
                 Some(provenance.clone()),
             )
         })?;
-        // Field-type graph projection for current StructPatternMaterial/field
-        // installation only; it is non-identity material (see
+        // Field-type graph projection used for namespace installation only;
+        // it is non-identity material (see
         // `FieldSignatureMaterial::field_type_carrier_symbol`).
         Ok((
             resolution.carrier_symbol.ok_or_else(|| {

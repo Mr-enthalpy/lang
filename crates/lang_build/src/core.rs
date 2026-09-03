@@ -390,13 +390,11 @@ pub(crate) fn insert_core_type(
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: symbol_id,
         represented_type,
-        owner_struct_pattern_registry: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_values: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(associated_node),
-        extraction_interface: None,
         provenance,
         generation_origin: Some("core bootstrap".to_string()),
         layout_slot: None,

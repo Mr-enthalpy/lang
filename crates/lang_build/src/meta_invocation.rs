@@ -4,7 +4,7 @@
 //! primitive invocation. This step is graph-installation-free and binding-free:
 //! it produces a `MetaExecutionMaterial` but does **not** install
 //! `NamespaceDelta`, bind declared symbols, or mutate the namespace graph. It
-//! may allocate or attach registry-backed materialization state.
+//! does not allocate graph or Pattern-relation state.
 //!
 //! ## Separation of concerns
 //!
@@ -20,14 +20,6 @@
 //!   → namespace installation material
 //! ```
 //!
-//! `invoke_meta_callable_with_materialization_state` may populate
-//! `StructMaterializationState` for values whose semantic identity is
-//! registry-backed, such as `StructConstructionMaterial`. This is still
-//! graph-installation-free with respect to the namespace graph. The cache stores
-//! only replayable value material and strips concrete registry-backed
-//! `StructPatternMaterialId`s before insertion; cache hits rematerialize heads in the
-//! caller's current state.
-//!
 //! Production invocation reaches this primitive executor only after ordinary
 //! value → complete type → associated `()` resolution has selected a call-entry
 //! semantic value. The implicit `self` belongs to that invocation frame, never
@@ -42,14 +34,7 @@ use crate::{
     model::{Diagnostic, Provenance, SymbolId},
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
     struct_decoder::DecodedStructPattern,
-    struct_pattern_material::{
-        derive_struct_sum_material, StructPatternSyntaxMaterial, StructSumSyntaxMaterial,
-        StructuralMemberVisibility,
-    },
-    struct_pattern_registry::{
-        StructFieldPatternMaterial, StructMaterializationState, StructPatternMaterialContext,
-        StructPatternMaterialId,
-    },
+    struct_pattern_material::{StructPatternSyntaxMaterial, StructuralMemberVisibility},
 };
 
 /// Input for formal meta invocation.
@@ -295,7 +280,6 @@ pub struct IdentityTypeMaterial {
     /// The type observation carried by this result. Semantic equality
     /// consumes this, never the bare `type_value` projection.
     pub type_observation: crate::CanonicalTypeObservation,
-    pub return_view: ReturnViewShape,
     pub provenance: Provenance,
 }
 
@@ -313,14 +297,9 @@ pub struct StructConstructionMaterial {
     pub material_id: StructConstructionMaterialId,
     pub identity_material: StructConstructionIdentityMaterial,
     pub fields: Vec<StructFieldConstructionMaterial>,
-    pub pattern_materials: Option<StructConstructionPatternMaterials>,
-    pub return_view: ReturnViewShape,
     /// The decoded type-pattern expression shape, if the struct argument
     /// was successfully decoded by the struct-local decoder.
     pub type_pattern_expr: Option<StructPatternSyntaxMaterial>,
-    /// The sum pattern space derived from the type-pattern expression,
-    /// if the expression contains a sum.
-    pub sum_struct_pattern_material: Option<StructSumSyntaxMaterial>,
     /// Canonical semantic TypeValue root assigned at meta-instance
     /// registration: `TypeValue = (OuterMetaInstanceRoot,
     /// NormalizedStructBody)`.  `None` until the invocation owner
@@ -333,18 +312,6 @@ pub struct StructConstructionMaterial {
     /// the decoded `struct` body.
     pub canonical_pattern_override: Option<crate::CanonicalPatternValue>,
     pub provenance: Provenance,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StructConstructionPatternMaterials {
-    pub owner_head: StructPatternMaterialId,
-    pub field_heads: Vec<StructConstructionFieldPatternMaterial>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StructConstructionFieldPatternMaterial {
-    pub field_name: String,
-    pub field_head: StructPatternMaterialId,
 }
 
 /// Build-local identifier for replayable struct construction material.
@@ -390,8 +357,7 @@ pub struct FieldSignatureMaterial {
     /// The field type's observation identity — `Addr(Norm_type)` including
     /// the recursive Val2 read at the argument's carrier place.
     pub field_type_observation: crate::CanonicalTypeObservation,
-    /// Graph projection carrier retained for current StructPatternMaterial/field
-    /// installation only. It is non-identity material.
+    /// Graph projection carrier used when installing the field namespace.
     pub field_type_carrier_symbol: SymbolId,
     pub field_index: usize,
     pub visibility: StructuralMemberVisibility,
@@ -419,19 +385,7 @@ pub struct StructFieldConstructionMaterial {
     pub type_carrier_symbol: SymbolId,
     pub index: usize,
     pub visibility: StructuralMemberVisibility,
-    pub struct_pattern_registry: Option<StructPatternMaterialId>,
     pub provenance: Provenance,
-}
-
-impl StructFieldConstructionMaterial {
-    /// Semantic equality: compares field identity material without provenance.
-    pub fn semantic_eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.type_observation == other.type_observation
-            && self.visibility == other.visibility
-            && self.index == other.index
-            && self.struct_pattern_registry == other.struct_pattern_registry
-    }
 }
 
 pub fn compute_struct_construction_material_id(
@@ -522,22 +476,7 @@ fn hash_canonical_pattern(
     }
 }
 
-/// Return value shape marker.
-///
-/// `Leaf` marks a returned normal form that is a non-product value point. If
-/// the value point has no exposed extraction interface, `?` is idempotent.
-/// `Product` marks product normal form `P`: `P? = P`, and product pattern
-/// matching consumes `P` directly.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ReturnViewShape {
-    Leaf,
-    Product { arity: usize },
-}
-
-pub(crate) fn invoke_meta_callable_with_materialization_state(
-    input: MetaInvocationInput,
-    materialization_state: &mut StructMaterializationState,
-) -> MetaPrimitiveExecution {
+pub(crate) fn invoke_meta_callable(input: MetaInvocationInput) -> MetaPrimitiveExecution {
     let Some(primitive) = input.candidate.callee_primitive else {
         return MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
@@ -553,9 +492,7 @@ pub(crate) fn invoke_meta_callable_with_materialization_state(
 
     match primitive {
         crate::model::CoreMetaFunction::IdentityType => invoke_identity_type(&input),
-        crate::model::CoreMetaFunction::Struct => {
-            invoke_struct_construction(&input, materialization_state)
-        }
+        crate::model::CoreMetaFunction::Struct => invoke_struct_construction(&input),
         _ => MetaPrimitiveExecution::Diagnostic(
             Diagnostic::hard_error(
                 format!(
@@ -621,15 +558,11 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     MetaPrimitiveExecution::Material(MetaExecutionMaterial::IdentityType(IdentityTypeMaterial {
         type_value,
         type_observation,
-        return_view: ReturnViewShape::Leaf,
         provenance: input.provenance.clone(),
     }))
 }
 
-fn invoke_struct_construction(
-    input: &MetaInvocationInput,
-    materialization_state: &mut StructMaterializationState,
-) -> MetaPrimitiveExecution {
+fn invoke_struct_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     let candidate = &input.candidate;
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
@@ -666,7 +599,6 @@ fn invoke_struct_construction(
             type_carrier_symbol: field.field_type_carrier_symbol,
             index: field.field_index,
             visibility: field.visibility,
-            struct_pattern_registry: None,
             provenance: field.provenance.clone(),
         })
         .collect::<Vec<_>>();
@@ -684,118 +616,12 @@ fn invoke_struct_construction(
         material_id,
         identity_material,
         fields,
-        pattern_materials: None,
-        return_view: ReturnViewShape::Leaf,
         type_pattern_expr,
-        sum_struct_pattern_material: input
-            .struct_decoded_pattern
-            .as_ref()
-            .and_then(|p| derive_struct_sum_material(&p.type_pattern_expr)),
         canonical_type: None,
         canonical_pattern_override: None,
         provenance: input.provenance.clone(),
     };
-    match attach_struct_pattern_materials(value, materialization_state, input.provenance.clone()) {
-        Ok(value) => MetaPrimitiveExecution::Material(
-            MetaExecutionMaterial::StructConstructionMaterial(value),
-        ),
-        Err(diagnostic) => MetaPrimitiveExecution::Diagnostic(diagnostic),
-    }
-}
-
-/// Attach struct Pattern material under the construction's material scope.
-///
-/// Formal `struct` invocation is graph-installation-free and binding-free. It
-/// may allocate registry-backed material before a source-visible Pattern
-/// scope is installed.
-pub(crate) fn attach_struct_pattern_materials(
-    value: StructConstructionMaterial,
-    materialization_state: &mut StructMaterializationState,
-    provenance: Provenance,
-) -> Result<StructConstructionMaterial, Diagnostic> {
-    let material_id = value.material_id;
-    let owner_display_name = value
-        .type_pattern_expr
-        .as_ref()
-        .and_then(owner_display_name_from_type_pattern_expr)
-        .unwrap_or_else(|| {
-            format!(
-                "struct-construction-material-{}",
-                value.material_id.as_u64()
-            )
-        });
-    attach_struct_pattern_materials_with_context(
-        value,
-        materialization_state,
-        StructPatternMaterialContext::StructConstruction { material_id },
-        owner_display_name,
-        provenance,
-    )
-}
-
-/// Attach Pattern material for a struct construction under an explicit
-/// materialization context.
-///
-/// The materialization context is an implementation input; callers must not
-/// treat its storage categories as `ResolvedPatternScope` identities.
-///
-/// The display name is diagnostic material only. The owner `StructPatternMaterialId`
-/// identity comes from `context`; callers must not derive identity from the
-/// bare source spelling.
-fn attach_struct_pattern_materials_with_context(
-    mut value: StructConstructionMaterial,
-    materialization_state: &mut StructMaterializationState,
-    context: StructPatternMaterialContext,
-    owner_display_name: impl Into<String>,
-    provenance: Provenance,
-) -> Result<StructConstructionMaterial, Diagnostic> {
-    let pattern_fields = value
-        .identity_material
-        .field_signature_material
-        .iter()
-        .map(|field| StructFieldPatternMaterial {
-            field_name: field.field_name.clone(),
-            field_type_value: field.field_type_value,
-            projection: crate::model::FieldProjection::Value,
-            provenance: field.provenance.clone(),
-        });
-    let pattern_materialization = materialization_state
-        .pattern_materials
-        .materialize_struct_pattern(
-            context,
-            owner_display_name.into(),
-            pattern_fields,
-            provenance,
-        )?;
-    let struct_pattern_registry_by_name = pattern_materialization
-        .field_heads
-        .iter()
-        .cloned()
-        .collect::<std::collections::BTreeMap<_, _>>();
-    for field in &mut value.fields {
-        field.struct_pattern_registry = struct_pattern_registry_by_name.get(&field.name).copied();
-    }
-    value.pattern_materials = Some(StructConstructionPatternMaterials {
-        owner_head: pattern_materialization.owner_head,
-        field_heads: pattern_materialization
-            .field_heads
-            .into_iter()
-            .map(
-                |(field_name, field_head)| StructConstructionFieldPatternMaterial {
-                    field_name,
-                    field_head,
-                },
-            )
-            .collect(),
-    });
-    Ok(value)
-}
-
-fn owner_display_name_from_type_pattern_expr(expr: &StructPatternSyntaxMaterial) -> Option<String> {
-    match expr {
-        StructPatternSyntaxMaterial::Named { pattern_name, .. } => Some(pattern_name.clone()),
-        _ => None,
-    }
+    MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(value))
 }
 
 fn field_signature_material_from_candidate(

@@ -2,10 +2,7 @@ use std::{collections::BTreeMap, fmt, path::PathBuf};
 
 use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
 
-use crate::{
-    content_observation::TypeContentObservation, identity::TypeValueId,
-    struct_pattern_registry::StructPatternMaterialId,
-};
+use crate::identity::TypeValueId;
 
 /// Stable identity for a namespace node inside one graph snapshot.
 ///
@@ -245,7 +242,6 @@ pub enum ResolverCode {
     UnsupportedCanonicalSumPatternValue,
     UnsupportedSelectedMetaBody,
     UnsupportedSelectedMetaBodyLocalBinding,
-    StructPatternMaterialConflict,
     /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)
     /// declares a value slice whose stage is disjoint from its Pattern stage,
     /// but the pure-P return slot (`let r: type`) carries no value dimension.
@@ -254,7 +250,6 @@ pub enum ResolverCode {
     /// `compile:compile`, `seal:seal`) keep Pv == Pp and remain legal for
     /// pure-P return slots.
     RuntimeSliceWithoutValueDimension,
-    UnsupportedStructPatternLookupExpectation,
     UnsupportedExternalVisibility,
     UnsupportedOverloadTarget,
     UnsupportedCandidateShape,
@@ -494,7 +489,6 @@ pub struct CoreTypeProjection {
     /// `let T: type = uint8`, `T` is a fresh carrier while this projection is
     /// exactly the value read from `uint8`.
     pub represented_type: TypeValueId,
-    pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub fields: Vec<TypeField>,
     pub field_names: Vec<String>,
     pub field_type_values: Vec<TypeValueId>,
@@ -502,7 +496,6 @@ pub struct CoreTypeProjection {
     /// Semantic field-type equality consumes `field_type_values`.
     pub field_type_symbol_ids: Vec<SymbolId>,
     pub type_associated_namespace: Option<NamespaceNodeId>,
-    pub extraction_interface: Option<TypeContentObservation>,
     pub provenance: Provenance,
     pub generation_origin: Option<String>,
     pub layout_slot: Option<String>,
@@ -517,7 +510,6 @@ pub struct TypeField {
     /// Current graph carrier used to reach field-type namespace material.
     /// This is not field-type identity.
     pub type_symbol_id: SymbolId,
-    pub struct_pattern_registry: Option<StructPatternMaterialId>,
     pub visibility: crate::struct_pattern_material::StructuralMemberVisibility,
     pub provenance: Provenance,
 }
@@ -538,11 +530,9 @@ pub struct CallablePolicyViews {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldObject {
     pub owner_type_symbol_id: SymbolId,
-    pub owner_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub field_name: String,
     pub field_type_value: TypeValueId,
     pub field_type_symbol_id: SymbolId,
-    pub field_struct_pattern_registry: Option<StructPatternMaterialId>,
     pub projection: FieldProjection,
     pub callable_policy: CallablePolicyViews,
     pub provenance: Provenance,

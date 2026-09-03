@@ -1,15 +1,14 @@
 use lang_syntax::{NormExpr, NormProduct, NormProductElem};
 
 use crate::{
-    content_observation::{NamedObservedField, NamedObservedProduct, TypeContentObservation},
     meta_candidate::{
         prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
         CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
         ParameterShape,
     },
     meta_invocation::{
-        attach_struct_pattern_materials, compute_struct_construction_material_id,
-        MetaInvocationInput, StructConstructionMaterial, StructFieldConstructionMaterial,
+        compute_struct_construction_material_id, MetaInvocationInput, StructConstructionMaterial,
+        StructFieldConstructionMaterial,
     },
     model::{
         CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, ExecutionEnv,
@@ -27,7 +26,6 @@ use crate::{
     struct_pattern_material::{
         StructLeafSyntaxMaterial, StructPatternSyntaxMaterial, StructuralMemberVisibility,
     },
-    struct_pattern_registry::StructMaterializationState,
     type_argument::{classify_type_arguments_env_with_report, TypeResolutionEnv},
 };
 
@@ -292,7 +290,6 @@ fn insert_projection_namespace(
     parent: NamespaceNodeId,
     name: &str,
     owner_type_symbol_id: SymbolId,
-    owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
     fields: &[StructFieldConstructionMaterial],
     projection: FieldProjection,
     provenance: Provenance,
@@ -325,7 +322,6 @@ fn insert_projection_namespace(
         delta,
         node_id,
         owner_type_symbol_id,
-        owner_struct_pattern_registry,
         fields,
         projection,
         None,
@@ -336,7 +332,6 @@ fn insert_field_projection_layer(
     delta: &mut SemanticNameDelta,
     parent: NamespaceNodeId,
     owner_type_symbol_id: SymbolId,
-    owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
     fields: &[StructFieldConstructionMaterial],
     projection: FieldProjection,
     forced_provenance: Option<Provenance>,
@@ -372,11 +367,9 @@ fn insert_field_projection_layer(
         ));
         symbol.payload = SymbolPayload::FieldFunction(FieldObject {
             owner_type_symbol_id,
-            owner_struct_pattern_registry,
             field_name: field.name.clone(),
             field_type_value: field.type_value,
             field_type_symbol_id: field.type_carrier_symbol,
-            field_struct_pattern_registry: field.struct_pattern_registry,
             projection,
             callable_policy: CallablePolicyViews {
                 body_entry_policy: declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain),
@@ -403,7 +396,6 @@ pub(crate) fn expand_struct_construction_material(
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
     provenance: Provenance,
-    materialization_state: &mut StructMaterializationState,
 ) -> Result<StructProjectionInstall, BuildError> {
     let expected = compute_struct_construction_material_id(&value.identity_material);
     if expected != value.material_id {
@@ -429,12 +421,6 @@ pub(crate) fn expand_struct_construction_material(
     }
     let represented_type = complete_type.lookup_key();
     let type_namespace_id = delta.allocate_node_id();
-    let value = if value.pattern_materials.is_some() {
-        value
-    } else {
-        attach_struct_pattern_materials(value, materialization_state, provenance.clone())
-            .map_err(BuildError::single)?
-    };
     delta.insert_node(NamespaceNode::new(
         type_namespace_id,
         format!("{binding_name}<type-associated>"),
@@ -462,10 +448,6 @@ pub(crate) fn expand_struct_construction_material(
     type_projection.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_symbol_id,
         represented_type,
-        owner_struct_pattern_registry: value
-            .pattern_materials
-            .as_ref()
-            .map(|heads| heads.owner_head),
         fields: value
             .fields
             .iter()
@@ -473,7 +455,6 @@ pub(crate) fn expand_struct_construction_material(
                 name: field.name.clone(),
                 type_value: field.type_value,
                 type_symbol_id: field.type_carrier_symbol,
-                struct_pattern_registry: field.struct_pattern_registry,
                 visibility: field.visibility,
                 provenance: field.provenance.clone(),
             })
@@ -490,16 +471,6 @@ pub(crate) fn expand_struct_construction_material(
             .map(|field| field.type_carrier_symbol)
             .collect(),
         type_associated_namespace: Some(type_namespace_id),
-        extraction_interface: Some(struct_type_extraction_interface(
-            type_symbol_id,
-            represented_type,
-            value
-                .pattern_materials
-                .as_ref()
-                .map(|heads| heads.owner_head),
-            &value.fields,
-            provenance.clone(),
-        )),
         provenance: provenance.clone(),
         generation_origin: Some(format!(
             "core::struct construction material {}",
@@ -514,10 +485,6 @@ pub(crate) fn expand_struct_construction_material(
         &mut delta,
         type_namespace_id,
         type_symbol_id,
-        value
-            .pattern_materials
-            .as_ref()
-            .map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Value,
         None,
@@ -527,10 +494,6 @@ pub(crate) fn expand_struct_construction_material(
         type_namespace_id,
         "ref",
         type_symbol_id,
-        value
-            .pattern_materials
-            .as_ref()
-            .map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Ref,
         provenance.clone(),
@@ -540,10 +503,6 @@ pub(crate) fn expand_struct_construction_material(
         type_namespace_id,
         "share",
         type_symbol_id,
-        value
-            .pattern_materials
-            .as_ref()
-            .map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Share,
         provenance.clone(),
@@ -554,40 +513,4 @@ pub(crate) fn expand_struct_construction_material(
         namespace_delta: delta,
         diagnostics: Vec::new(),
     })
-}
-
-fn struct_type_extraction_interface(
-    owner_type_symbol_id: SymbolId,
-    owner_type_value: crate::TypeValueId,
-    owner_struct_pattern_registry: Option<crate::struct_pattern_registry::StructPatternMaterialId>,
-    fields: &[StructFieldConstructionMaterial],
-    provenance: Provenance,
-) -> TypeContentObservation {
-    TypeContentObservation {
-        owner_type_value,
-        owner_type_symbol_id,
-        owner_struct_pattern_registry,
-        exposed_view: NamedObservedProduct {
-            owner_type_value,
-            owner_type_symbol_id,
-            owner_struct_pattern_registry,
-            fields: fields
-                .iter()
-                .filter(|field| field.visibility != StructuralMemberVisibility::Private)
-                .map(|field| NamedObservedField {
-                    label: field.name.clone(),
-                    field_type_value: field.type_value,
-                    field_type_observation: field.type_observation,
-                    field_type_symbol_id: field.type_carrier_symbol,
-                    field_struct_pattern_registry: field.struct_pattern_registry,
-                    field_index: field.index,
-                    projection: FieldProjection::Value,
-                    visibility: field.visibility,
-                    provenance: field.provenance.clone(),
-                })
-                .collect(),
-            provenance: provenance.clone(),
-        },
-        provenance,
-    }
 }

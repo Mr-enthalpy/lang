@@ -75,7 +75,6 @@ use crate::{
         ObjectPlaceId, OrdinaryCallEntry, OrdinaryCandidateRole, PatternValueId,
         SemanticValuePayload, SemanticWorld, WritableContext,
     },
-    struct_pattern_registry::StructMaterializationState,
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
     DeclaredResultClass, InvocationResidual, NormalizedCallSite,
 };
@@ -530,9 +529,8 @@ pub struct ClusterSymbolResult {
     pub construction: crate::ClusterConstructionMaterial,
     /// Struct construction materials backing the construction's self-rooted
     /// type members, in member order. The binding side uses these to
-    /// expand the full namespace projection (field-function layer,
-    /// ref/share projection namespaces, extraction interface) instead of a
-    /// bare bound-type-value carrier.  Forwarded members contribute no
+    /// expand the field-function and ref/share projection namespaces instead
+    /// of a bare bound-type-value carrier. Forwarded members contribute no
     /// entry here.
     pub struct_materials: Vec<crate::StructConstructionMaterial>,
     /// The complete result P2 of the selected callable.  Carried per
@@ -758,7 +756,6 @@ fn canonical_meta_instance_key_for_selected(
 
 pub fn invoke_policy_migration(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut StructMaterializationState,
     request: &PolicyMigrationRequest,
     resolver_context: &ResolverContext,
 ) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
@@ -821,7 +818,6 @@ pub fn invoke_policy_migration(
 
     let invocation = invoke_target_values(
         semantic_world,
-        materialization_state,
         OrdinaryCandidateOrigin::SourceSymbol(cluster),
         target_members,
         target_places,
@@ -889,7 +885,6 @@ pub fn invoke_policy_migration(
 /// per member view downstream.
 pub fn invoke_symbol_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut StructMaterializationState,
     symbol: SemanticSymbolIdentity,
     call_site: &NormalizedCallSite,
     resolver_context: &ResolverContext,
@@ -898,7 +893,6 @@ pub fn invoke_symbol_ordinary(
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
     invoke_host_member_symbol_ordinary(
         semantic_world,
-        materialization_state,
         &[],
         symbol,
         call_site,
@@ -929,7 +923,6 @@ pub fn invoke_symbol_ordinary(
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_host_member_symbol_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut StructMaterializationState,
     hosts: &[crate::PatternHostMember],
     symbol: SemanticSymbolIdentity,
     call_site: &NormalizedCallSite,
@@ -949,7 +942,6 @@ pub fn invoke_host_member_symbol_ordinary(
     let target_places = semantic_world.binding_places(symbol);
     invoke_target_values(
         semantic_world,
-        materialization_state,
         OrdinaryCandidateOrigin::SourceSymbol(symbol),
         target_members,
         target_places,
@@ -967,7 +959,6 @@ pub fn invoke_host_member_symbol_ordinary(
 /// fabricated.
 pub fn invoke_pattern_associated_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut StructMaterializationState,
     pattern: PatternValueId,
     operation_name: &str,
     receiver_value: SemanticValueId,
@@ -980,7 +971,6 @@ pub fn invoke_pattern_associated_ordinary(
         semantic_world.associated_member_views_for_pattern(pattern, operation_name, context.phase);
     invoke_target_values(
         semantic_world,
-        materialization_state,
         OrdinaryCandidateOrigin::PatternAssociatedCallEntry(pattern),
         target_members,
         BTreeMap::new(),
@@ -1000,7 +990,6 @@ pub fn invoke_pattern_associated_ordinary(
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_pattern_associated_value_ordinary(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut StructMaterializationState,
     pattern: PatternValueId,
     operation_name: &str,
     receiver_value: SemanticValueId,
@@ -1034,7 +1023,6 @@ pub fn invoke_pattern_associated_value_ordinary(
         semantic_world.associated_member_views_for_pattern(pattern, operation_name, context.phase);
     invoke_target_values(
         semantic_world,
-        materialization_state,
         OrdinaryCandidateOrigin::PatternAssociatedValue(pattern),
         target_members,
         BTreeMap::new(),
@@ -1084,7 +1072,6 @@ fn filter_callable(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn invoke_target_values(
     semantic_world: &mut SemanticWorld,
-    materialization_state: &mut StructMaterializationState,
     origin: OrdinaryCandidateOrigin,
     target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
     target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
@@ -1851,19 +1838,12 @@ pub(crate) fn invoke_target_values(
             // carrier; the carrier drives one member contribution.
             let mut core_input = core.clone();
             attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
-            let value =
-                match crate::meta_invocation::invoke_meta_callable_with_materialization_state(
-                    core_input,
-                    materialization_state,
-                ) {
-                    crate::MetaPrimitiveExecution::Material(value) => value,
-                    crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
-                        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
-                            diagnostic,
-                            trace,
-                        });
-                    }
-                };
+            let value = match crate::meta_invocation::invoke_meta_callable(core_input) {
+                crate::MetaPrimitiveExecution::Material(value) => value,
+                crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
+                    return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
+                }
+            };
             match &value {
                 MetaExecutionMaterial::IdentityType(value) => {
                     // Core identity-forwarding primitives (builtin
@@ -2029,10 +2009,7 @@ pub(crate) fn invoke_target_values(
     } else if let Some(core) = &selected.core_invocation {
         let mut core_input = core.clone();
         attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
-        match crate::meta_invocation::invoke_meta_callable_with_materialization_state(
-            core_input,
-            materialization_state,
-        ) {
+        match crate::meta_invocation::invoke_meta_callable(core_input) {
             crate::MetaPrimitiveExecution::Material(value) => SelectedBodyOutput::Material(value),
             crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
                 return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });

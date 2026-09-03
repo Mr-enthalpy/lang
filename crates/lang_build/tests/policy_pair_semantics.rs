@@ -1,8 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use lang_build::{
-    bool_struct_aliases_for_tests, bool_struct_sum_material_for_tests, classify_static_task,
-    compute_export_retention_closure, compute_wpre,
+    classify_static_task, compute_export_retention_closure, compute_wpre,
     derive_function_object_view as derive_function_object_p1, elaborate_binding_result_demand,
     elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
     elaborate_return_policy_pattern, expose_policy_slice, externally_visible,
@@ -1458,29 +1457,4 @@ fn phase_stage_preference_is_part_of_the_partial_order() {
         ),
         PolicyOverloadSelection::Ambiguous(_)
     ));
-}
-
-#[test]
-fn bool_has_one_pattern_alternative_space_and_true_false_are_aliases() {
-    let space = bool_struct_sum_material_for_tests(Provenance::new("bool"));
-    assert_eq!(
-        space
-            .alternatives
-            .iter()
-            .map(|alternative| alternative.label.as_str())
-            .collect::<Vec<_>>(),
-        vec!["if", "else"]
-    );
-    let aliases = bool_struct_aliases_for_tests();
-    assert_eq!(aliases.len(), 2);
-    assert_eq!(aliases[0].alias, "true");
-    assert_eq!(
-        aliases[0].target.segments,
-        vec!["if".to_string(), "bool".to_string()]
-    );
-    assert_eq!(aliases[1].alias, "false");
-    assert_eq!(
-        aliases[1].target.segments,
-        vec!["else".to_string(), "bool".to_string()]
-    );
 }

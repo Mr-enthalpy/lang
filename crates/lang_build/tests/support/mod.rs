@@ -385,13 +385,11 @@ pub fn type_with_namespace(
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_id,
         represented_type,
-        owner_struct_pattern_registry: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_values: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(type_namespace_id),
-        extraction_interface: None,
         provenance: Provenance::new(provenance),
         generation_origin: None,
         layout_slot: None,

@@ -19,8 +19,8 @@ This document builds on, without replacing:
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
   positive overloads of `@`, escape checking, and the lifetime-rule boundary;
 - `spec/contracts/pattern-root-identity-and-explicit-navigation.md` for
-  the preserved bare-name versus explicit-`::` distinction and the current
-  registry-backed substrate;
+  the preserved bare-name versus explicit-`::` distinction and resolved
+  Pattern-root identities;
 - `spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
   for the canonical Pattern relation, direct structural incidence,
   binderless Patterns, observation/extraction, and Pattern normalization;
@@ -2659,11 +2659,10 @@ input place. It may establish the result type's declared `StructLexicalRoot`
 under its privileged owner rule, but outer `let` remains the only operation that
 creates the destination Symbol/member in the surrounding graph.
 
-It does not install a `NamespaceDelta`. Registry-backed pattern material is an
-implementation record: it may affect cache/storage mechanics but is not
-observable in `Norm`, does not mutate language-visible input, and does not
-weaken referential purity. Graph installation remains outside formal
-invocation.
+It does not install a `NamespaceDelta`. Private construction material records
+the decoded body needed to form the canonical Pattern and complete type; it is
+not observable in `Norm` and does not mutate language-visible input. Graph
+installation remains outside formal invocation.
 
 ### 7.4 Structural leaves and pure Pattern nodes
 

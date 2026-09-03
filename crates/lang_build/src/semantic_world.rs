@@ -459,8 +459,8 @@ pub struct PatternHostMember {
     pub pattern: PatternValueId,
     pub place: ObjectPlaceId,
     /// Whole-snapshot observation of the complete type carried by this host.
-    /// `None` is reserved for compiler-internal Pattern hosts whose current
-    /// direct TypeMember callspace is observed through the Pattern registry.
+    /// `None` is reserved for compiler-internal Pattern hosts that do not
+    /// carry an exact complete-type snapshot.
     pub complete_type: Option<CanonicalValueAddr>,
     pub view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
 }

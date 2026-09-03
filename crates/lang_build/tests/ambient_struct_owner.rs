@@ -226,15 +226,6 @@ fn struct_treats_bare_sum_names_as_pure_patterns_not_fields() {
         generated.fields.is_empty(),
         "pure Pattern names do not become value-bearing fields"
     );
-    let labels = generated
-        .sum_struct_pattern_material
-        .as_ref()
-        .expect("the decoded pure sum remains an exposed sum Pattern")
-        .alternatives
-        .iter()
-        .map(|alternative| alternative.label.as_str())
-        .collect::<Vec<_>>();
-    assert_eq!(labels, ["if", "else"]);
     assert_eq!(
         generated.canonical_pattern_value(),
         CanonicalPatternValue::NamedPattern {

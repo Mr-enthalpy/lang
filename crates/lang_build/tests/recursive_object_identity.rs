@@ -48,8 +48,8 @@ use lang_build::{
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
     Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
     RawArgShape, RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv,
-    SemanticValueId, SemanticWorld, StageSet, StructMaterializationState, SymbolId,
-    TypeMemberFacet, TypeResolutionEnv, TypeValueId, ValueComponentPolicy, ValuePresence,
+    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeMemberFacet, TypeResolutionEnv,
+    TypeValueId, ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
 
@@ -828,7 +828,6 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     let initializer = initializer_from_source("let probe = (0) g;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call site");
     let resolver = ResolverContext::new(NamespaceNodeId(0));
-    let mut materialization = StructMaterializationState::default();
 
     let mut sealed = OrdinaryInvocationContext::open_static(&[]);
     sealed.phase = Phase::SealStatic;
@@ -838,7 +837,6 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     // projection reports `NoTargetValues` without any outward fallback.
     let blocked = invoke_host_member_symbol_ordinary(
         &mut world,
-        &mut materialization,
         &navigation.host_chain,
         g,
         &call_site,
@@ -858,7 +856,6 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     // different failure. This isolates `T` as the host that gates the call.
     let leaked = invoke_host_member_symbol_ordinary(
         &mut world,
-        &mut materialization,
         &navigation.host_chain[1..],
         g,
         &call_site,
@@ -879,7 +876,6 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     let open = OrdinaryInvocationContext::open_static(&[]);
     let passed = invoke_host_member_symbol_ordinary(
         &mut world,
-        &mut materialization,
         &navigation.host_chain,
         g,
         &call_site,

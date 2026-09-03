@@ -5,7 +5,6 @@
 
 pub mod build;
 pub mod canonical_value;
-mod content_observation;
 pub mod control_flow_end;
 pub mod core;
 pub mod discovery;
@@ -41,7 +40,6 @@ pub mod semantic_world;
 pub mod source;
 mod struct_decoder;
 mod struct_pattern_material;
-mod struct_pattern_registry;
 pub mod type_argument;
 pub mod verify;
 pub mod world;
@@ -61,12 +59,6 @@ pub use canonical_value::{
     CanonicalVal1Norm, CanonicalVal2Norm, CanonicalValueAddr, DuplicatePatternNavigation,
     ExtractionPatternParent, MissingExtractionNavigationAnchor, OpaqueVal1Id, PatternChildInput,
     PatternLayerContext, PatternNavigationInput, PatternOwnNavigation,
-};
-pub use content_observation::{
-    observe_content_projection, ContentObservationInterface, NamedObservedField,
-    NamedObservedProduct, ObservedArgumentContent, ObservedAtomContent, ObservedAtomKind,
-    ObservedContentProjection, ObservedProductContent, ObservedProductElement, ObservedProductKind,
-    TypeContentObservation,
 };
 pub use control_flow_end::{
     compute_control_flow_end_report, ControlFlowEndDiagnostic, ControlFlowEndReport,
@@ -116,7 +108,6 @@ pub use meta_candidate::{
 };
 pub(crate) use meta_invocation::{
     IdentityTypeMaterial, MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution,
-    ReturnViewShape,
 };
 pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterialId};
 pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};
@@ -241,17 +232,8 @@ pub use struct_decoder::{
     StructAssociatedVal2Contribution,
 };
 pub use struct_pattern_material::{
-    bool_struct_aliases_for_tests, bool_struct_sum_material_for_tests, derive_struct_sum_material,
-    SelectedStructAlternative, StructLeafSyntaxMaterial, StructPatternAlias,
-    StructPatternSyntaxMaterial, StructSumAlternative, StructSumPayloadMaterial,
-    StructSumSyntaxMaterial, StructSymbolPathMaterial, StructuralMemberVisibility,
-};
-pub use struct_pattern_registry::{
-    nav_component_name, LocalPatternPlaceId, StructFieldPatternMaterial,
-    StructMaterializationState, StructPatternLookupExpectation, StructPatternLookupInput,
-    StructPatternMaterial, StructPatternMaterialContext, StructPatternMaterialId,
-    StructPatternMaterialKind, StructPatternMaterialOrigin, StructPatternMaterialRegistry,
-    StructPatternMaterialization,
+    StructLeafSyntaxMaterial, StructPatternSyntaxMaterial, StructSymbolPathMaterial,
+    StructuralMemberVisibility,
 };
 pub use type_argument::{
     classify_type_arguments_env_with_report, BodyLocalInitializerCheck, NamedTypeResolution,

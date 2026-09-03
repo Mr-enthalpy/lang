@@ -680,7 +680,6 @@ fn identity_type_material(
         crate::IdentityTypeMaterial {
             type_value: represented_type,
             type_observation: crate::CanonicalTypeObservation::Observed(complete_type_observation),
-            return_view: crate::ReturnViewShape::Leaf,
             provenance: selected.source_callable.provenance.clone(),
         },
     ))
