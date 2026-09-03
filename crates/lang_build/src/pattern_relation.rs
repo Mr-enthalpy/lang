@@ -174,9 +174,8 @@ pub struct PatternApplicabilityProof {
 }
 
 impl PatternApplicabilityProof {
-    /// Body-evaluator transport for the currently restricted source-body
-    /// evaluator.  It is derived from exact binder identities after the
-    /// relation succeeds; spelling never participates in matching.
+    /// Selected source-body transport derived from exact binder identities
+    /// after the relation succeeds; spelling never participates in matching.
     pub fn named_bindings(&self) -> BTreeMap<String, OverloadArgShape> {
         self.solutions
             .first()

@@ -1,0 +1,13 @@
+let choose =
+  (self, if | else: type): compile
+    -> let result: uint8 =>
+{
+  result;
+};
+
+let choose =
+  (self, t: type): compile
+    -> let result: uint8 =>
+{
+  result;
+};

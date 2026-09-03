@@ -15,7 +15,7 @@ the semantics:
 
 This document defines the design boundary for `self`, the built-in return
 capability, and the lifetime contract associated with early function return.
-The normalized formal-frame projection, generated-helper shape, restricted
+The normalized formal-frame projection, generated-helper shape, declared
 callable arity, return-target substrate, and whole-slot PolicyMode product-order carrier
 implement this positional boundary. Full name resolution, callable-object
 materialization, return-capability execution, and lifetime checking remain

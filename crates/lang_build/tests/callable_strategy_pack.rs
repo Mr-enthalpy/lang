@@ -148,7 +148,7 @@ fn pack_binding_captures_the_remainder_without_counting_its_length() {
 }
 
 #[test]
-fn bare_product_pack_is_not_a_restricted_structured_match() {
+fn bare_product_pack_is_not_a_structured_match() {
     let source = source_parameter("let f = (self, ...(a, b)) -> r => { r };");
     let _ = source;
 

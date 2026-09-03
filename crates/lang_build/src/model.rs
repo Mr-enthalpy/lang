@@ -239,9 +239,8 @@ pub enum ResolverCode {
     AnnotationAssertionFailed,
     ExplicitPolicyVerificationFailed,
     ResidualNotAllowedInMetaStrict,
-    UnsupportedCanonicalSumPatternValue,
-    UnsupportedSelectedMetaBody,
-    UnsupportedSelectedMetaBodyLocalBinding,
+    UnsupportedSelectedSourceBody,
+    UnsupportedSelectedSourceBodyLocalBinding,
     /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)
     /// declares a value slice whose stage is disjoint from its Pattern stage,
     /// but the pure-P return slot (`let r: type`) carries no value dimension.
@@ -250,10 +249,6 @@ pub enum ResolverCode {
     /// `compile:compile`, `seal:seal`) keep Pv == Pp and remain legal for
     /// pure-P return slots.
     RuntimeSliceWithoutValueDimension,
-    UnsupportedExternalVisibility,
-    UnsupportedOverloadTarget,
-    UnsupportedCandidateShape,
-    UnsupportedParameterPattern,
     /// Alias syntax is preserved by the frontend. Its canonical target is a
     /// block-local lexical resolver mapping, but that scoped environment is
     /// not implemented. Reject rather than installing a forwarding entity.
@@ -566,7 +561,7 @@ pub struct MetaFunctionObject {
 
 /// Source-declared callable/meta-function payload harvested from normalized
 /// source. The closure remains structural Normalized AST; overload selection
-/// and restricted body evaluation consume it later without graph mutation.
+/// and selected source-body execution consume it later without graph mutation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceCallableObject {
     pub closure: NormClosure,

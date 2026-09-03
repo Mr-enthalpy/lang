@@ -3,7 +3,7 @@
 Contract for the syntax and normalized structure of control-flow end events
 (return terminal forms and tail values).
 
-**Status:** Implemented syntax/normalized structure plus restricted build-layer
+**Status:** Implemented syntax/normalized structure plus build-layer
 return-target binding. Full self-capability resolution, result Pattern
 delivery, D-reduction, Done_Return, and return execution are not implemented.
 
@@ -13,7 +13,7 @@ This contract covers:
 
 - Source / Raw AST / Norm AST reporting of control-flow end events.
 - Parser and normalizer contracts for terminal block forms.
-- The restricted `ReturnTargetStack` / active-frame binding substrate.
+- The `ReturnTargetStack` / active-frame binding substrate.
 - Handoff expectations for future semantic consumers.
 
 It does **not** implement or specify:
@@ -303,7 +303,7 @@ Normalizer:
   preserves ReturnEvent as NormForm::ReturnEvent and normalizes
   the value / explicit target syntax.
 
-Restricted build elaboration:
+Build elaboration:
   resolves ImplicitNearest or a supported Explicit target against the active
   ReturnTargetStack and retains the target frame's complete return binding
   slot/Pattern.
@@ -331,7 +331,7 @@ this contract:
 - Result-slot injection
 ```
 
-The current restricted binder does implement active-frame resolution for
+The return-target binder implements active-frame resolution for
 implicit returns and supported explicit-name targets, reports returns outside
 a returnable frame, preserves nested unmaterialized closure returns for later
 elaboration, and stores the complete `NormBindingSlot` in `ReturnSlotRef`.

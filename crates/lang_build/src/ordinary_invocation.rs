@@ -9,8 +9,8 @@
 //!   -> sibling vals of the owning cluster                  (C0)
 //!   -> target value visibility                             (C1)
 //!   -> target value phase view                             (C2)
-//!   -> Callable filtering: (v |> type).Val2 contains ()    (Cc)
-//!   -> resolve associated call entries from each val's Val2(C3)
+//!   -> Callable filtering: CallSpace(Type(v)) contains ()  (Cc)
+//!   -> resolve associated call entries from the exact tau  (C3)
 //!   -> hard applicability                                  (A)
 //!   -> optional fallback suppression                       (Af)
 //!   -> one Bp' product comparison
@@ -47,8 +47,8 @@ use crate::{
     },
     overload_pattern::{overload_args_from_classified_shape, SpecificityTuple},
     overload_set::{
-        applicable_candidate_from_closure, evaluate_selected_source_meta_body, ApplicableCandidate,
-        CandidateApplicabilityFailure, RestrictedOverloadFailure, SelectedOverloadCandidate,
+        applicable_candidate_from_closure, evaluate_selected_source_body, ApplicableCandidate,
+        CandidateApplicabilityFailure, SelectedSourceBody, SourceBodyEvaluationFailure,
         VisibilityView,
     },
     policy_migration::{
@@ -616,6 +616,12 @@ pub enum OrdinaryInvocationFailure {
         first_diagnostic: Option<Diagnostic>,
         trace: OrdinaryPipelineTrace,
     },
+    /// The canonical A-stage relation could not answer a query. Candidate
+    /// enumeration is incomplete, so selection terminates before maxima.
+    ApplicabilityUnsupported {
+        diagnostic: Diagnostic,
+        trace: OrdinaryPipelineTrace,
+    },
     Ambiguous {
         candidates: Vec<SemanticValueId>,
         trace: OrdinaryPipelineTrace,
@@ -643,7 +649,7 @@ pub enum OrdinaryInvocationFailure {
         trace: OrdinaryPipelineTrace,
     },
     SelectedBody {
-        failure: RestrictedOverloadFailure,
+        failure: SourceBodyEvaluationFailure,
         trace: OrdinaryPipelineTrace,
     },
     SelectedCoreBody {
@@ -1293,8 +1299,10 @@ pub(crate) fn invoke_target_values(
                     Ok(Some(result_type)) => result_type,
                     Ok(None) => continue,
                     Err(diagnostic) => {
-                        first_diagnostic.get_or_insert(diagnostic);
-                        continue;
+                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                            diagnostic,
+                            trace,
+                        });
                     }
                 };
                 match same_type_core(
@@ -1305,8 +1313,10 @@ pub(crate) fn invoke_target_values(
                     Ok(true) => {}
                     Ok(false) => continue,
                     Err(diagnostic) => {
-                        first_diagnostic.get_or_insert(diagnostic);
-                        continue;
+                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                            diagnostic,
+                            trace,
+                        });
                     }
                 }
             }
@@ -1334,14 +1344,18 @@ pub(crate) fn invoke_target_values(
                 Some(&resolve_named_pattern),
             ) {
                 Ok(candidate) => candidate,
-                Err(CandidateApplicabilityFailure::Inapplicable(diagnostic))
-                | Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(diagnostic))
-                | Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(diagnostic)) => {
+                Err(CandidateApplicabilityFailure::Inapplicable(diagnostic)) => {
                     first_diagnostic.get_or_insert(diagnostic);
                     continue;
                 }
+                Err(CandidateApplicabilityFailure::Unsupported(diagnostic)) => {
+                    return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                        diagnostic,
+                        trace,
+                    });
+                }
             };
-            if let Err(diagnostic) = apply_written_self_structure(
+            if let Err(failure) = apply_written_self_structure(
                 &mut source_shape,
                 &entry,
                 &target,
@@ -1349,24 +1363,50 @@ pub(crate) fn invoke_target_values(
                 resolver_context,
                 provenance.clone(),
             ) {
-                first_diagnostic.get_or_insert(diagnostic);
-                continue;
+                match failure {
+                    CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
+                        first_diagnostic.get_or_insert(diagnostic);
+                        continue;
+                    }
+                    CandidateApplicabilityFailure::Unsupported(diagnostic) => {
+                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                            diagnostic,
+                            trace,
+                        });
+                    }
+                }
             }
-            if let Err(diagnostic) = validate_explicit_value_type_annotations(
+            if let Err(failure) = validate_explicit_value_type_annotations(
                 &entry,
                 &classified.classified_shape,
                 semantic_world,
                 resolver_context,
                 provenance.clone(),
             ) {
-                first_diagnostic.get_or_insert(diagnostic);
-                continue;
+                match failure {
+                    CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
+                        first_diagnostic.get_or_insert(diagnostic);
+                        continue;
+                    }
+                    CandidateApplicabilityFailure::Unsupported(diagnostic) => {
+                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                            diagnostic,
+                            trace,
+                        });
+                    }
+                }
             }
             let formal_policy_frame = match formal_policy_frame(&entry, provenance.clone()) {
                 Ok(frame) => frame,
-                Err(diagnostic) => {
+                Err(CandidateApplicabilityFailure::Inapplicable(diagnostic)) => {
                     first_diagnostic.get_or_insert(diagnostic);
                     continue;
+                }
+                Err(CandidateApplicabilityFailure::Unsupported(diagnostic)) => {
+                    return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                        diagnostic,
+                        trace,
+                    });
                 }
             };
             // The canonical P1 was already normalized at the declaration
@@ -1930,7 +1970,7 @@ pub(crate) fn invoke_target_values(
                     "source meta construction is not connected to the canonical member-creation operations",
                     Some(provenance.clone()),
                 )
-                .with_code(ResolverCode::UnsupportedSelectedMetaBody),
+                .with_code(ResolverCode::UnsupportedSelectedSourceBody),
                 trace,
             });
         } else {
@@ -1966,20 +2006,17 @@ pub(crate) fn invoke_target_values(
 
     let returned = if let Some(source_shape) = &selected.source_shape {
         // This arm constructs the selected source body's execution carrier.
-        let selected_body_input = SelectedOverloadCandidate {
+        let selected_body_input = SelectedSourceBody {
             symbol: source_shape.symbol.clone(),
             source_callable: source_shape.source_callable.clone(),
             bindings: source_shape.bindings.clone(),
             pack_bindings: source_shape.pack_bindings.clone(),
-            specificity: source_shape.specificity,
-            overload_strategy: source_shape.overload_strategy.clone(),
-            return_slot_name: source_shape.return_slot_name.clone(),
         };
         if !selected.is_delete() {
             if let Some(value) = forwarded_semantic_body_value(&selected) {
                 SelectedBodyOutput::OrdinaryValue(value)
             } else {
-                match evaluate_selected_source_meta_body(
+                match evaluate_selected_source_body(
                     &SemanticTypeEnv::new(&*semantic_world),
                     resolver_context,
                     &selected_body_input,
@@ -1991,7 +2028,7 @@ pub(crate) fn invoke_target_values(
                 }
             }
         } else {
-            match evaluate_selected_source_meta_body(
+            match evaluate_selected_source_body(
                 &SemanticTypeEnv::new(&*semantic_world),
                 resolver_context,
                 &selected_body_input,
@@ -2304,16 +2341,16 @@ fn classify_semantic_value_arguments(
 fn formal_policy_frame(
     entry: &OrdinaryCallEntry,
     provenance: Provenance,
-) -> Result<PolicyFormalFrame, Diagnostic> {
+) -> Result<PolicyFormalFrame, CandidateApplicabilityFailure> {
     let head = entry
         .closure
         .as_ref()
         .and_then(|closure| closure.head.as_ref())
         .ok_or_else(|| {
-            Diagnostic::hard_error(
+            CandidateApplicabilityFailure::Unsupported(Diagnostic::hard_error(
                 "ordinary call entry has no explicit closure head",
                 Some(provenance.clone()),
-            )
+            ))
         })?;
     let frame = head.formal_frame();
     let self_mode = match frame.written_self {
@@ -2326,7 +2363,8 @@ fn formal_policy_frame(
             &entry.callable_view.pair,
             ExplicitP1Position::WrittenSelf,
             provenance.clone(),
-        )?
+        )
+        .map_err(CandidateApplicabilityFailure::Unsupported)?
         .and_then(|selection| selection.mode)
         {
             Some(PolicyMode::Const) => PolicyMode::Const,
@@ -2345,7 +2383,8 @@ fn formal_policy_frame(
                 provenance.clone(),
             )
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(CandidateApplicabilityFailure::Unsupported)?;
     Ok(PolicyFormalFrame {
         self_mode,
         explicit_parameter_modes,
@@ -2359,24 +2398,28 @@ fn apply_written_self_structure(
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     provenance: Provenance,
-) -> Result<(), Diagnostic> {
+) -> Result<(), CandidateApplicabilityFailure> {
     let Some(head) = entry
         .closure
         .as_ref()
         .and_then(|closure| closure.head.as_ref())
     else {
-        return Err(Diagnostic::hard_error(
-            "ordinary call entry has no explicit closure head",
-            Some(provenance),
+        return Err(CandidateApplicabilityFailure::Unsupported(
+            Diagnostic::hard_error(
+                "ordinary call entry has no explicit closure head",
+                Some(provenance),
+            ),
         ));
     };
     let Some(written_self) = head.formal_frame().written_self else {
         return Ok(());
     };
     let NormPatternElem::BindingSlot(slot) = written_self else {
-        return Err(Diagnostic::hard_error(
-            "ordinary written self Pattern is not a binding slot",
-            Some(provenance),
+        return Err(CandidateApplicabilityFailure::Unsupported(
+            Diagnostic::hard_error(
+                "ordinary written self Pattern is not a binding slot",
+                Some(provenance),
+            ),
         ));
     };
 
@@ -2397,12 +2440,14 @@ fn apply_written_self_structure(
             ..SpecificityTuple::default()
         },
         _ => {
-            return Err(Diagnostic::hard_error(
-                "ordinary written self structural Pattern is outside the currently connected Pattern matcher",
-                Some(Provenance::from_norm_origin(
-                    "ordinary written self Pattern",
-                    &slot.origin,
-                )),
+            return Err(CandidateApplicabilityFailure::Unsupported(
+                Diagnostic::hard_error(
+                    "ordinary written self structural Pattern is not yet supported by the Pattern relation consumer",
+                    Some(Provenance::from_norm_origin(
+                        "ordinary written self Pattern",
+                        &slot.origin,
+                    )),
+                ),
             ));
         }
     };
@@ -2413,14 +2458,17 @@ fn apply_written_self_structure(
             semantic_world,
             resolver_context,
             provenance.clone(),
-        )?;
+        )
+        .map_err(CandidateApplicabilityFailure::Unsupported)?;
         if expected != actual.type_value {
-            return Err(Diagnostic::hard_error(
-                format!(
-                    "ordinary written self type applicability failed: expected {:?}, got {:?}",
-                    expected, actual.type_value
+            return Err(CandidateApplicabilityFailure::Inapplicable(
+                Diagnostic::hard_error(
+                    format!(
+                        "ordinary written self type applicability failed: expected {:?}, got {:?}",
+                        expected, actual.type_value
+                    ),
+                    Some(provenance),
                 ),
-                Some(provenance),
             ));
         }
         self_specificity = self_specificity.add(SpecificityTuple {
@@ -2511,7 +2559,7 @@ fn validate_explicit_value_type_annotations(
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     provenance: Provenance,
-) -> Result<(), Diagnostic> {
+) -> Result<(), CandidateApplicabilityFailure> {
     let Some(head) = entry
         .closure
         .as_ref()
@@ -2548,20 +2596,25 @@ fn validate_explicit_value_type_annotations(
             semantic_world,
             resolver_context,
             provenance.clone(),
-        )?;
+        )
+        .map_err(CandidateApplicabilityFailure::Unsupported)?;
         let Some(actual) = actual.known_first_order_type_value else {
-            return Err(Diagnostic::hard_error(
-                "ordinary value parameter requires an evaluated argument TypeValue",
-                Some(provenance),
+            return Err(CandidateApplicabilityFailure::Unsupported(
+                Diagnostic::hard_error(
+                    "ordinary value parameter requires an evaluated argument TypeValue",
+                    Some(provenance),
+                ),
             ));
         };
         if expected != actual {
-            return Err(Diagnostic::hard_error(
-                format!(
+            return Err(CandidateApplicabilityFailure::Inapplicable(
+                Diagnostic::hard_error(
+                    format!(
                     "ordinary value parameter type applicability failed: expected {:?}, got {:?}",
                     expected, actual
                 ),
-                Some(provenance),
+                    Some(provenance),
+                ),
             ));
         }
     }

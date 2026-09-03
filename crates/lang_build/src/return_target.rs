@@ -29,7 +29,7 @@ pub struct ReturnSlotRef {
     /// its annotations/policy is required for later pattern-directed result
     /// delivery; this pass still performs target binding only.
     pub binding_slot: Option<NormBindingSlot>,
-    /// Convenience spelling for the restricted current self-target
+    /// Convenience spelling for the currently supported self-target
     /// diagnostics. Product/extraction returns intentionally have no single
     /// name while their full slot remains available above.
     pub name: Option<String>,
@@ -429,7 +429,7 @@ fn resolve_explicit_return_target(
         )),
         ExplicitReturnTargetResolution::Unsupported => Err(return_diagnostic(
             ResolverCode::UnsupportedReturnTargetForm,
-            "UnsupportedReturnTargetForm: explicit return target form is outside the restricted return-target binder",
+            "UnsupportedReturnTargetForm: explicit return target form is not supported by the return-target binder",
             expr_origin(target),
         )),
     }

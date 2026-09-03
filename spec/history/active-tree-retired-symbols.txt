@@ -22,3 +22,7 @@ constructionstate
 unspecifiedpolicy
 typevaluebindingplaceholder
 candidatebuildidentityplaceholder
+lookupphase
+restrictedoverloadfailure
+restrictedoverloadfailurekind
+selectedoverloadcandidate

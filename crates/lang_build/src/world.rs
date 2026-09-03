@@ -3138,8 +3138,9 @@ fn ordinary_invocation_failure_diagnostic(
         | crate::OrdinaryInvocationFailure::DynamicLegality { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::CyclicVal2 { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::MetaReturnTypeRootMismatch { diagnostic, .. }
+        | crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedBody {
-            failure: crate::RestrictedOverloadFailure { diagnostic, .. },
+            failure: crate::SourceBodyEvaluationFailure { diagnostic, .. },
             ..
         } => diagnostic,
         crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {

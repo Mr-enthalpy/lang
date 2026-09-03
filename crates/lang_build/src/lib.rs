@@ -134,15 +134,8 @@ pub use overload_pattern::{
     overload_args_from_classified_shape, pack_operand_is_admissible, OverloadArgShape,
     PackOperandClass, PatternLayerOrder, SpecificityTuple,
 };
-pub use semantic_name_index::{
-    BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex, SemanticNameInstallError,
-    SemanticNameResolver,
-};
-// The connected ordinary pipeline owns candidate selection. This surface
-// exposes only its shared failure taxonomy and sealed-candidate material.
 pub use overload_set::{
-    declared_result_class_from_closure, LookupPhase, RestrictedOverloadFailure,
-    RestrictedOverloadFailureKind, SelectedOverloadCandidate, VisibilityView,
+    declared_result_class_from_closure, SourceBodyEvaluationFailure, VisibilityView,
 };
 pub use owner_namespace::{
     ExtractionMemberVisibility, NamespaceLookupFailure, NamespaceLookupResult, NamespaceNameView,
@@ -201,6 +194,10 @@ pub use return_target::{
     ReturnSelfIdentity, ReturnSlotIdentity, ReturnSlotRef, ReturnTargetBinder,
     ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetStack, UnboundReturnEvent,
     UnresolvedReturnTargetForm,
+};
+pub use semantic_name_index::{
+    BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex, SemanticNameInstallError,
+    SemanticNameResolver,
 };
 pub use semantic_owner::{
     AnonymousCallableTypeId, CallableOwnerPlacement, CallableReceiverBinding,

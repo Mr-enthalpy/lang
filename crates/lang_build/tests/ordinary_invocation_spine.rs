@@ -1563,3 +1563,60 @@ fn return_slot_declares_result_class_independent_of_body_form() {
         "member-event body forms cannot change a `-> let r: type` declaration"
     );
 }
+
+#[test]
+fn unsupported_pattern_query_terminates_before_candidate_selection() {
+    let mut world = build_single_fixture_world("applicability_frontier", "app");
+    let initializer = initializer_from_source("let result = uint8 choose;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            Provenance::new("canonical Pattern query frontier"),
+        )
+        .expect_err("an unanswered Pattern query makes the candidate set incomplete");
+
+    let lang_build::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, trace } =
+        failure
+    else {
+        panic!("unsupported applicability must be terminal before maxima: {failure:?}");
+    };
+    assert!(
+        diagnostic.message.contains("relational alternative query"),
+        "the terminal diagnostic comes from the unanswered canonical relation: {diagnostic:?}"
+    );
+    assert_eq!(
+        trace.c3_call_entries.len(),
+        2,
+        "the callable projection contains both the unsupported query and an otherwise applicable candidate"
+    );
+    assert!(
+        trace.selected.is_none(),
+        "no candidate may be selected from an incomplete A-stage"
+    );
+}
+
+#[test]
+fn wildcard_unit_return_pattern_reaches_selection_before_execution_frontier() {
+    let mut world = build_single_fixture_world("unit_result_selection", "app");
+    let initializer = initializer_from_source("let result = uint8 unit_pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            Provenance::new("unit result selection"),
+        )
+        .expect_err("Unit execution is an explicit implementation frontier");
+
+    let lang_build::OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace } = failure
+    else {
+        panic!("return Pattern shape must not remove the candidate during A: {failure:?}");
+    };
+    assert!(diagnostic.message.contains("Unit result"));
+    assert_eq!(trace.a_fully_admissible.len(), 1);
+    assert_eq!(trace.selected, trace.a_fully_admissible.first().copied());
+}

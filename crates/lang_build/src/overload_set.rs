@@ -29,89 +29,18 @@ pub enum VisibilityView {
     External,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LookupPhase {
-    MetaAction,
-    RuntimeBinding,
-}
-
-/// Selected-candidate carrier for the shared body evaluators.
-///
-/// The connected ordinary pipeline is the only producer. It builds this
-/// struct directly
-/// from its own prepared candidate to reuse the body evaluators, so this is
-/// a plain data carrier, not selector output.
+/// Source-body input formed after unique selection and DynamicLegality.
 #[derive(Clone, Debug)]
-pub struct SelectedOverloadCandidate {
-    pub symbol: SymbolObject,
-    pub source_callable: SourceCallableObject,
-    pub bindings: BTreeMap<String, OverloadArgShape>,
-    pub pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
-    pub specificity: SpecificityTuple,
-    /// Static metadata carried into the fully-admissible candidate set. The
-    /// pipeline does not invent semantics for arbitrary names.
-    pub overload_strategy: NormOverloadStrategy,
-    pub return_slot_name: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum RestrictedOverloadFailureKind {
-    InvalidTarget,
-    NoSourceDeclaredCallable {
-        callable_name: String,
-    },
-    NotVisibleToLookupPhase {
-        callable_name: String,
-        lookup_phase: LookupPhase,
-    },
-    NoApplicableCandidate {
-        callable_name: String,
-    },
-    BodyEntryPolicyMismatch {
-        demanded_execution: ExecutionEnv,
-    },
-    AmbiguousCandidate {
-        specificity: SpecificityTuple,
-    },
-    UnsupportedExternalVisibility,
-    UnsupportedCandidateShape,
-    UnsupportedParameterPattern,
-    UnsupportedCanonicalSumPatternValue,
-    UnsupportedSelectedMetaBody,
-    UnsupportedSelectedMetaBodyLocalBinding,
-    UnsupportedLexicalAlias,
-    SelectedDeleteBodyDiagnostic,
-}
-
-impl RestrictedOverloadFailureKind {
-    pub fn diagnostic_code(&self) -> ResolverCode {
-        match self {
-            Self::InvalidTarget => ResolverCode::UnsupportedOverloadTarget,
-            Self::NoSourceDeclaredCallable { .. }
-            | Self::NotVisibleToLookupPhase { .. }
-            | Self::NoApplicableCandidate { .. } => ResolverCode::NoMetaVisibleCandidate,
-            Self::BodyEntryPolicyMismatch { .. } => ResolverCode::BodyEntryPolicyMismatch,
-            Self::AmbiguousCandidate { .. } => ResolverCode::AmbiguousMetaCandidate,
-            Self::UnsupportedExternalVisibility => ResolverCode::UnsupportedExternalVisibility,
-            Self::UnsupportedCandidateShape => ResolverCode::UnsupportedCandidateShape,
-            Self::UnsupportedParameterPattern => ResolverCode::UnsupportedParameterPattern,
-            Self::UnsupportedCanonicalSumPatternValue => {
-                ResolverCode::UnsupportedCanonicalSumPatternValue
-            }
-            Self::UnsupportedSelectedMetaBody => ResolverCode::UnsupportedSelectedMetaBody,
-            Self::UnsupportedSelectedMetaBodyLocalBinding => {
-                ResolverCode::UnsupportedSelectedMetaBodyLocalBinding
-            }
-            Self::UnsupportedLexicalAlias => ResolverCode::UnsupportedLexicalAlias,
-            Self::SelectedDeleteBodyDiagnostic => ResolverCode::UnsupportedSelectedMetaBody,
-        }
-    }
+pub(crate) struct SelectedSourceBody {
+    pub(crate) symbol: SymbolObject,
+    pub(crate) source_callable: SourceCallableObject,
+    pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
+    pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
 }
 
 #[derive(Clone, Debug)]
-pub struct RestrictedOverloadFailure {
+pub struct SourceBodyEvaluationFailure {
     pub diagnostic: Diagnostic,
-    pub kind: RestrictedOverloadFailureKind,
 }
 
 #[derive(Clone, Debug)]
@@ -126,13 +55,11 @@ pub(crate) struct ApplicableCandidate {
     /// this proof and never participate in applicability.
     pub(crate) pattern_proof: PatternApplicabilityProof,
     pub(crate) overload_strategy: NormOverloadStrategy,
-    pub(crate) return_slot_name: String,
 }
 
 pub(crate) enum CandidateApplicabilityFailure {
     Inapplicable(Diagnostic),
-    UnsupportedParameterPattern(Diagnostic),
-    UnsupportedCandidateShape(Diagnostic),
+    Unsupported(Diagnostic),
 }
 
 /// Canonical A-stage entry point.
@@ -170,7 +97,7 @@ fn applicable_candidate_from_source_callable(
     resolve_named_pattern: Option<&dyn Fn(&str) -> Option<NamedPatternObservation>>,
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
     let head = source_callable.closure.head.as_ref().ok_or_else(|| {
-        CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
+        CandidateApplicabilityFailure::Unsupported(Diagnostic::hard_error(
             "overload candidate lacks explicit closure head",
             Some(source_callable.provenance.clone()),
         ))
@@ -178,9 +105,9 @@ fn applicable_candidate_from_source_callable(
     let formal_frame = head.formal_frame();
     let explicit_params = formal_frame.explicit_parameters;
     validate_parameter_pack_levels(explicit_params)
-        .map_err(CandidateApplicabilityFailure::UnsupportedParameterPattern)?;
+        .map_err(CandidateApplicabilityFailure::Unsupported)?;
     if !parameter_arity_matches(explicit_params, args.len()) {
-        return Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(
+        return Err(CandidateApplicabilityFailure::Inapplicable(
             Diagnostic::hard_error(
                 format!(
                     "overload candidate arity mismatch: parameter pattern cannot consume {} explicit args",
@@ -191,8 +118,6 @@ fn applicable_candidate_from_source_callable(
         ));
     }
 
-    let return_slot_name = return_slot_name(&source_callable.closure)
-        .map_err(CandidateApplicabilityFailure::UnsupportedCandidateShape)?;
     let relation_context = PatternRelationContext::for_source_callable(
         &source_callable.closure,
         callable_owner,
@@ -203,7 +128,7 @@ fn applicable_candidate_from_source_callable(
             CandidateApplicabilityFailure::Inapplicable(diagnostic)
         }
         PatternRelationFailure::Unsupported(diagnostic) => {
-            CandidateApplicabilityFailure::UnsupportedParameterPattern(diagnostic)
+            CandidateApplicabilityFailure::Unsupported(diagnostic)
         }
     })?;
     let pattern_proof = solve_parameter_product_relation(explicit_params, args, &relation_context)
@@ -212,7 +137,7 @@ fn applicable_candidate_from_source_callable(
                 CandidateApplicabilityFailure::Inapplicable(diagnostic)
             }
             PatternRelationFailure::Unsupported(diagnostic) => {
-                CandidateApplicabilityFailure::UnsupportedParameterPattern(diagnostic)
+                CandidateApplicabilityFailure::Unsupported(diagnostic)
             }
         })?;
     let specificity = pattern_proof.specificity;
@@ -228,7 +153,6 @@ fn applicable_candidate_from_source_callable(
         specificity,
         pattern_proof,
         overload_strategy,
-        return_slot_name,
     })
 }
 
@@ -282,34 +206,6 @@ fn parameter_arity_matches(params: &[NormPatternElem], explicit_arity: usize) ->
         0 => params.len() == explicit_arity,
         1 => explicit_arity >= params.len().saturating_sub(1),
         _ => false,
-    }
-}
-
-fn return_slot_name(closure: &NormClosure) -> Result<String, Diagnostic> {
-    let Some(head) = &closure.head else {
-        return Err(Diagnostic::hard_error(
-            "source callable has no explicit closure head",
-            Some(Provenance::from_norm_origin(
-                "source callable",
-                &closure.origin,
-            )),
-        ));
-    };
-    let Some(returns) = &head.returns else {
-        return Err(Diagnostic::hard_error(
-            "source callable has no return slot",
-            Some(Provenance::from_norm_origin(
-                "source callable",
-                &head.origin,
-            )),
-        ));
-    };
-    match &returns.value_pattern {
-        NormPattern::Binder { name, .. } => Ok(name.clone()),
-        _ => Err(Diagnostic::hard_error(
-            "restricted source callable return slot must be a binder",
-            Some(Provenance::from_norm_origin("return slot", &returns.origin)),
-        )),
     }
 }
 
@@ -382,29 +278,26 @@ pub fn declared_result_class_from_closure(
     }
 }
 
-pub(crate) fn evaluate_selected_source_meta_body(
+pub(crate) fn evaluate_selected_source_body(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
-    selected: &SelectedOverloadCandidate,
-) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
+    selected: &SelectedSourceBody,
+) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
     match &selected.source_callable.closure.body {
         NormClosureBody::Delete(delete) => {
             let diagnostic = selected_meta_delete_diagnostic(
                 delete,
                 selected.source_callable.provenance.clone(),
             )
-            .with_code(ResolverCode::UnsupportedSelectedMetaBody);
-            Err(RestrictedOverloadFailure {
-                diagnostic,
-                kind: RestrictedOverloadFailureKind::SelectedDeleteBodyDiagnostic,
-            })
+            .with_code(ResolverCode::UnsupportedSelectedSourceBody);
+            Err(SourceBodyEvaluationFailure { diagnostic })
         }
         NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
             evaluate_block_body(type_env, resolver_context, selected, program)
         }
         NormClosureBody::Defaulted { .. } => Err(selected_body_failure(
             selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            ResolverCode::UnsupportedSelectedSourceBody,
             "selected defaulted callable requires compiler default-implementation materialization",
         )),
     }
@@ -413,10 +306,10 @@ pub(crate) fn evaluate_selected_source_meta_body(
 fn evaluate_body_local_let(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
-    selected: &SelectedOverloadCandidate,
+    selected: &SelectedSourceBody,
     local_names: &BTreeSet<String>,
     slot: &lang_syntax::NormBindingSlot,
-) -> Result<(), RestrictedOverloadFailure> {
+) -> Result<(), SourceBodyEvaluationFailure> {
     // Execution gap — a body-local `let x:symbol = ...` outside the
     // return-slot position has no defined meaning yet: symbol-rank
     // local construction is an undefined future construct, so it is
@@ -430,8 +323,8 @@ fn evaluate_body_local_let(
         ) {
             return Err(selected_body_failure(
                 selected,
-                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                "UnsupportedSelectedMetaBody: symbol-rank local binding (`let ...:symbol = ...`) outside the return slot has no defined meaning at this stage and is rejected explicitly rather than silently accepted",
+                ResolverCode::UnsupportedSelectedSourceBody,
+                "symbol-rank local binding (`let ...:symbol = ...`) outside the return slot has no defined source-body execution",
             ));
         }
     }
@@ -439,19 +332,19 @@ fn evaluate_body_local_let(
         if expr_refs_selected_or_local_binding(initializer, selected, local_names) {
             return Err(selected_body_failure(
                 selected,
-                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not connected to the source meta evaluator",
+                ResolverCode::UnsupportedSelectedSourceBodyLocalBinding,
+                "selected source-body local bindings are not connected to execution",
             ));
         }
         match type_env.check_body_local_initializer(
             selected.symbol.parent,
             initializer,
             resolver_context,
-            Provenance::from_norm_origin("selected meta body local let", &slot.origin),
+            Provenance::from_norm_origin("selected source-body local let", &slot.origin),
         ) {
             BodyLocalInitializerCheck::Accepted => {}
             BodyLocalInitializerCheck::Residual { reason, provenance } => {
-                return Err(RestrictedOverloadFailure {
+                return Err(SourceBodyEvaluationFailure {
                     diagnostic: Diagnostic::hard_error(
                         format!(
                             "ResidualNotAllowedInMetaStrict: runtime-only dependency in MetaStrict context ({reason})"
@@ -459,14 +352,10 @@ fn evaluate_body_local_let(
                         Some(provenance),
                     )
                     .with_code(ResolverCode::ResidualNotAllowedInMetaStrict),
-                    kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
                 });
             }
             BodyLocalInitializerCheck::Rejected(diagnostic) => {
-                return Err(RestrictedOverloadFailure {
-                    diagnostic,
-                    kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                });
+                return Err(SourceBodyEvaluationFailure { diagnostic });
             }
         }
     }
@@ -477,16 +366,16 @@ fn evaluate_body_local_let(
 /// specific diagnostic. `===` is legal only in the lexical-alias declaration
 /// form and never as an expression operator.
 fn evaluate_contribution_expr(
-    selected: &SelectedOverloadCandidate,
+    selected: &SelectedSourceBody,
     expr: &NormExpr,
-) -> RestrictedOverloadFailure {
-    if lexical_alias_operator_shape(expr, &selected.return_slot_name) {
+) -> SourceBodyEvaluationFailure {
+    if lexical_alias_operator_shape(expr) {
         return bare_alias_spelling_failure(selected);
     }
     unsupported_body(
         selected,
-        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-        "selected meta body form is not supported by the source meta evaluator",
+        ResolverCode::UnsupportedSelectedSourceBody,
+        "selected source-body form is not supported by execution",
     )
 }
 
@@ -494,15 +383,15 @@ fn evaluate_contribution_expr(
 fn evaluate_contribution_rhs_name(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
-    selected: &SelectedOverloadCandidate,
+    selected: &SelectedSourceBody,
     local_names: &BTreeSet<String>,
     rhs_name: &str,
-) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
+) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
     if local_names.contains(rhs_name) {
         return Err(selected_body_failure(
             selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not connected to the source meta evaluator",
+            ResolverCode::UnsupportedSelectedSourceBodyLocalBinding,
+            "selected source-body local bindings are not connected to execution",
         ));
     }
     if let Some(bound) = selected.bindings.get(rhs_name) {
@@ -511,8 +400,8 @@ fn evaluate_contribution_rhs_name(
     if selected.pack_bindings.contains_key(rhs_name) {
         return Err(unsupported_body(
             selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body pack delivery relies on ordinary product normalization and is outside the restricted type-only evaluator",
+            ResolverCode::UnsupportedSelectedSourceBody,
+            "selected source body pack delivery requires product-result execution support",
         ));
     }
     match type_env.resolve_type_name(rhs_name, resolver_context) {
@@ -523,8 +412,8 @@ fn evaluate_contribution_rhs_name(
         ),
         None => Err(unsupported_body(
             selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body form is not supported by the source meta evaluator",
+            ResolverCode::UnsupportedSelectedSourceBody,
+            "selected source-body form is not supported by execution",
         )),
     }
 }
@@ -532,9 +421,9 @@ fn evaluate_contribution_rhs_name(
 fn evaluate_block_body(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
-    selected: &SelectedOverloadCandidate,
+    selected: &SelectedSourceBody,
     program: &lang_syntax::NormProgram,
-) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
+) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
     // Single-value body evaluation for ordinary (non-meta-construction)
     // callables: exactly one terminal contribution.  Shares the per-form
     // helpers with the clustered contributions evaluator so both read the
@@ -551,13 +440,13 @@ fn evaluate_block_body(
             }
             NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
-                if lexical_alias_operator_shape(expr, &selected.return_slot_name) {
+                if lexical_alias_operator_shape(expr) {
                     return Err(bare_alias_spelling_failure(selected));
                 }
                 return Err(unsupported_body(
                     selected,
-                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                    "selected meta body contains ordinary expression form; expected explicit TailValue terminal",
+                    ResolverCode::UnsupportedSelectedSourceBody,
+                    "selected source body contains an ordinary expression form; expected an explicit TailValue terminal",
                 ));
             }
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
@@ -570,8 +459,8 @@ fn evaluate_block_body(
             | NormForm::Error(_) => {
                 return Err(unsupported_body(
                     selected,
-                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                    "selected meta body contains unsupported non-terminal form before terminal",
+                    ResolverCode::UnsupportedSelectedSourceBody,
+                    "selected source body contains an unsupported non-terminal form before its terminal",
                 ));
             }
         }
@@ -582,8 +471,8 @@ fn evaluate_block_body(
     if !report.diagnostics.is_empty() {
         return Err(unsupported_body(
             selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "statement after terminal block form in selected meta body",
+            ResolverCode::UnsupportedSelectedSourceBody,
+            "statement after terminal block form in selected source body",
         ));
     }
 
@@ -592,15 +481,15 @@ fn evaluate_block_body(
         Some(crate::control_flow_end::ControlFlowTerminal::ReturnEvent(event)) => {
             return Err(unsupported_body(
                 selected,
-                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                ResolverCode::UnsupportedSelectedSourceBody,
                 return_event_execution_gap_message(&event),
             ));
         }
         None => {
             return Err(unsupported_body(
                 selected,
-                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                "selected meta body has no terminal form",
+                ResolverCode::UnsupportedSelectedSourceBody,
+                "selected source body has no terminal form",
             ));
         }
     };
@@ -613,8 +502,8 @@ fn evaluate_block_body(
         if local_names.contains(&terminal_name) {
             return Err(selected_body_failure(
                 selected,
-                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not connected to the source meta evaluator",
+                ResolverCode::UnsupportedSelectedSourceBodyLocalBinding,
+                "selected source-body local bindings are not connected to execution",
             ));
         }
         return evaluate_contribution_rhs_name(
@@ -630,7 +519,7 @@ fn evaluate_block_body(
 }
 
 /// Shape test for an illegal expression use of the lexical-alias delimiter.
-fn lexical_alias_operator_shape(expr: &NormExpr, return_slot_name: &str) -> bool {
+fn lexical_alias_operator_shape(expr: &NormExpr) -> bool {
     let NormExpr::Call { source, target, .. } = expr else {
         return false;
     };
@@ -640,39 +529,34 @@ fn lexical_alias_operator_shape(expr: &NormExpr, return_slot_name: &str) -> bool
     if spelling != "===" || source.elements.len() != 2 {
         return false;
     }
-    matches!(
-        &source.elements[0],
-        NormProductElem::Expr(NormExpr::Name { text, .. }) if text == return_slot_name
-    )
+    matches!(&source.elements[0], NormProductElem::Expr(_))
 }
 
 /// Expression spellings cannot become a back door to the lexical-alias
 /// declaration mechanism.
-fn bare_alias_spelling_failure(selected: &SelectedOverloadCandidate) -> RestrictedOverloadFailure {
+fn bare_alias_spelling_failure(selected: &SelectedSourceBody) -> SourceBodyEvaluationFailure {
     unsupported_lexical_alias_failure(selected)
 }
 
-fn unsupported_lexical_alias_failure(
-    selected: &SelectedOverloadCandidate,
-) -> RestrictedOverloadFailure {
+fn unsupported_lexical_alias_failure(selected: &SelectedSourceBody) -> SourceBodyEvaluationFailure {
     selected_body_failure(
         selected,
-        RestrictedOverloadFailureKind::UnsupportedLexicalAlias,
+        ResolverCode::UnsupportedLexicalAlias,
         "block-local lexical alias resolution is not implemented; `===` must not create or forward a semantic entity",
     )
 }
 
 fn identity_type_material(
-    selected: &SelectedOverloadCandidate,
+    selected: &SelectedSourceBody,
     represented_type: Option<crate::TypeValueId>,
     complete_type_observation: Option<crate::CanonicalValueAddr>,
-) -> Result<MetaExecutionMaterial, RestrictedOverloadFailure> {
+) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
     let (Some(represented_type), Some(complete_type_observation)) =
         (represented_type, complete_type_observation)
     else {
         return Err(unsupported_body(
             selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            ResolverCode::UnsupportedSelectedSourceBody,
             "selected identity-type body requires a world-connected canonical type observation",
         ));
     };
@@ -686,15 +570,15 @@ fn identity_type_material(
 }
 
 fn unsupported_body(
-    selected: &SelectedOverloadCandidate,
-    kind: RestrictedOverloadFailureKind,
+    selected: &SelectedSourceBody,
+    code: ResolverCode,
     message: impl Into<String>,
-) -> RestrictedOverloadFailure {
-    selected_body_failure(selected, kind, message)
+) -> SourceBodyEvaluationFailure {
+    selected_body_failure(selected, code, message)
 }
 
-/// B9 — explicit execution-gap record for the three control-flow
-/// end events.  The syntax/normalizer contract distinguishes them
+/// Execution-gap record for the three control-flow end events. The
+/// syntax/normalizer contract distinguishes them
 /// (`spec/contracts/control-flow-end-events.md`):
 ///
 /// ```text
@@ -703,7 +587,7 @@ fn unsupported_body(
 /// expr (T return);   return to the layer selected by function-object type T
 /// ```
 ///
-/// The restricted meta body evaluator executes only the first form (the
+/// Source-body execution currently supports only the first form (the
 /// `expr;` tail delivery).  Both return-event forms are contract-complete
 /// but not yet executable; each is reported under its own documented
 /// semantics rather than one blanket message, so the gap is an explicit
@@ -711,27 +595,27 @@ fn unsupported_body(
 fn return_event_execution_gap_message(event: &lang_syntax::NormReturnEvent) -> &'static str {
     match event.target {
         lang_syntax::NormReturnTargetSyntax::ImplicitNearest => {
-            "control-flow end `expr return;` (return to the outermost function layer) is not yet executable in the restricted meta body evaluator; only the `expr;` delivery to the directly enclosing layer executes"
+            "control-flow end `expr return;` (return to the outermost function layer) is not yet executable; only the `expr;` delivery to the directly enclosing layer executes"
         }
         lang_syntax::NormReturnTargetSyntax::Explicit(_) => {
-            "control-flow end `expr (T return);` (return to the layer selected by the function-object type) is not yet executable in the restricted meta body evaluator; only the `expr;` delivery to the directly enclosing layer executes"
+            "control-flow end `expr (T return);` (return to the layer selected by the function-object type) is not yet executable; only the `expr;` delivery to the directly enclosing layer executes"
         }
     }
 }
 
 fn selected_body_failure(
-    selected: &SelectedOverloadCandidate,
-    kind: RestrictedOverloadFailureKind,
+    selected: &SelectedSourceBody,
+    code: ResolverCode,
     message: impl Into<String>,
-) -> RestrictedOverloadFailure {
+) -> SourceBodyEvaluationFailure {
     let diagnostic = Diagnostic::new(
         DiagnosticSeverity::Error,
         message,
         Some(selected.source_callable.provenance.clone()),
     )
     .with_symbol_context(selected.symbol.id)
-    .with_code(kind.diagnostic_code());
-    RestrictedOverloadFailure { diagnostic, kind }
+    .with_code(code);
+    SourceBodyEvaluationFailure { diagnostic }
 }
 
 fn binding_slot_name(slot: &lang_syntax::NormBindingSlot) -> Option<String> {
@@ -743,7 +627,7 @@ fn binding_slot_name(slot: &lang_syntax::NormBindingSlot) -> Option<String> {
 
 fn expr_refs_selected_or_local_binding(
     expr: &NormExpr,
-    selected: &SelectedOverloadCandidate,
+    selected: &SelectedSourceBody,
     local_names: &BTreeSet<String>,
 ) -> bool {
     match expr {

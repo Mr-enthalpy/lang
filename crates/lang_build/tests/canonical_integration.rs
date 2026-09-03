@@ -47,6 +47,7 @@ fn trace_of<'a>(
         }
         Err(OrdinaryInvocationFailure::NoTargetValues { trace })
         | Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { trace, .. })
+        | Err(OrdinaryInvocationFailure::ApplicabilityUnsupported { trace, .. })
         | Err(OrdinaryInvocationFailure::Ambiguous { trace, .. })
         | Err(OrdinaryInvocationFailure::DynamicLegality { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedDelete { trace, .. })

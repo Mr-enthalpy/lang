@@ -303,9 +303,8 @@ pub struct StructConstructionMaterial {
     /// Canonical semantic TypeValue root assigned at meta-instance
     /// registration: `TypeValue = (OuterMetaInstanceRoot,
     /// NormalizedStructBody)`.  `None` until the invocation owner
-    /// registers the member; stripped by the invocation cache like
-    /// pattern heads (a cached body must never leak another instance's
-    /// root).
+    /// registers the member. Parent-neutral cached body material never
+    /// retains another meta-instance root.
     pub canonical_type: Option<crate::TypeValueId>,
     /// Updated canonical Pattern material after incremental pure-P
     /// contributions. `None` means the normal form is derived directly from

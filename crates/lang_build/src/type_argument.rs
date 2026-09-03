@@ -62,7 +62,7 @@ pub struct NamedTypeResolution {
     pub complete_type_observation: Option<crate::CanonicalValueAddr>,
 }
 
-/// Outcome of checking a restricted-body local `let` initializer against
+/// Outcome of checking a selected source-body local `let` initializer against
 /// the environment's evaluation discipline.
 #[derive(Clone, Debug)]
 pub enum BodyLocalInitializerCheck {
@@ -114,7 +114,7 @@ pub trait TypeResolutionEnv {
         provenance: &Provenance,
     ) -> Result<(SymbolId, TypeValueId), Diagnostic>;
 
-    /// Check a restricted selected-body local `let` initializer.
+    /// Check a selected source-body local `let` initializer.
     fn check_body_local_initializer(
         &self,
         declaration_namespace: Option<NamespaceNodeId>,
@@ -222,7 +222,7 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
         _provenance: Provenance,
     ) -> BodyLocalInitializerCheck {
         // The semantic world has no best-effort graph evaluator. Local
-        // bindings that the restricted body later references are rejected at
+        // bindings that selected source-body execution later references are rejected at
         // the reference site; unreferenced locals impose no residual check.
         BodyLocalInitializerCheck::Accepted
     }

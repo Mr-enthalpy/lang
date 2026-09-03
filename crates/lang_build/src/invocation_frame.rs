@@ -21,8 +21,8 @@
 //! formal slot 0 is self-position and the explicit user product remains
 //! separate.
 //!
-//! `ordinary_invocation` now consumes this carrier for the connected restricted
-//! source/associated-call slice. This module itself still does not define
+//! `ordinary_invocation` consumes this carrier for the connected
+//! source/associated-call path. This module itself does not define
 //! callable target resolution, overload rules, declaration-context injection,
 //! return execution, D/Done, lifetime checking, or implicit `?`.
 
