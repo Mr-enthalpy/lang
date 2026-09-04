@@ -1,796 +1,137 @@
-# Agent Instructions for `lang`
+# Agent instructions for `lang`
 
-## Read these files first
+## Read first
 
-For current normalized surface / documentation work, read:
+For every task, read:
 
 ```text
 README.md
 spec/README.md
-spec/public/v0.5/README.md
-spec/public/v0.5/normalized-surface-semantics-v0.5.md
-spec/public/v0.5/agent-interpretation-guide-v0.5.md
-spec/contracts/v0.4-normalization-prototype-notes.md
+spec/public/normalized-surface-semantics.md
+spec/public/agent-interpretation-guide.md
+spec/contracts/raw-ast-contract.md
 spec/planning/open-questions.md
 ```
 
-For the v0.3 Normalized AST design baseline (historical), read:
+For semantic work, also read `spec/design/README.md` and every canonical topic
+owner named there for the concepts being changed. For implementation
+sequencing, read `spec/planning/roadmap.md`.
+
+Documents under `spec/history/**` are non-authoritative and are read only when
+the user explicitly asks for historical analysis.
+
+## Subagents
+
+Use subagents as read-only scouts for broad cross-file searches, independent
+verification, and large peripheral modules. Read foundational documents and
+the exact code you will modify yourself.
+
+- Give each scout a self-contained scope and request `file:line` evidence.
+- Spawn with `fork_turns = "none"`; do not reuse or retask a scout.
+- After spawning, wait until every relevant scout reaches a terminal state.
+- Treat results as compressed leads; verify decisive locations directly.
+- The primary agent owns edits, design choices, and final verification.
+
+## Architecture
 
 ```text
-spec/history/v0.3/README.md
-spec/history/v0.3/normalized-ast-specification-v0.3.md
-spec/history/v0.3/normalized-ast-design-history-v0.3.md
+source text
+  -> weak tokens
+  -> Raw AST
+  -> Normalized AST
+  -> typed owner / namespace resolution
+  -> canonical semantic evaluation
+  -> InvocationResult
 ```
 
-For frontend-syntax / Raw AST input questions, read the frozen v0.2 specs:
+Raw AST preserves source and recovery. Normalized AST is syntax-directed and
+non-semantic; it is not HIR. Semantic meaning never feeds back into lexing,
+parsing, or normalization.
+
+The current semantic universe is defined only by the canonical topic owners.
+If a closed relation has no connected consumer, leave that operation
+unsupported or return the appropriate Diagnostic/Residual. Do not invent an
+alternate relation or identity.
+
+## Frontend invariants
+
+- The lexer is weak. Contextual words are `Name` tokens.
+- The parser owns syntax shape, not semantic meaning.
+- Parse left to right without semantic backtracking.
+- Traditional `f(args)` call syntax does not exist.
+- Products participate in the documented expression/call-binding skeleton.
+- `{ ... }` in atom position is an in-place closure with no head.
+- A headed closure without `=>` is in-place; `=>` forms an ordinary closure.
+- `<...>` is a DeduceList only in documented strong binding contexts.
+- `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
+- `|> P { ... }` uses the binderless headed in-place closure shape.
+- Value-side expressions and Pattern-side material remain distinct.
+- `let binder === EntityRef` is syntax preservation only until its local
+  lexical resolver consumer is connected; it creates no semantic entity.
+- `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
+  `type`, `meta`, `runtime`, `compile`, `namespace`, and `struct` are not lexer
+  keywords.
+- The parser must not create semantic declarations such as `FnDecl`,
+  `StructDecl`, `ImportDecl`, HIR, MIR, or codegen nodes.
+- Invalid input should produce AST recovery nodes plus spanned diagnostics.
+
+## Canonical semantic invariants
+
+- `Object = <Val1?, Pattern, Val2>`; ordinary normalization observes all three.
+- Pattern applicability and extraction come from `R_Gamma(P,c,rho)`.
+- `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
+- NameBinding, Symbol, tau, Place, and TypeValueId are distinct.
+- Name resolution happens once before context projection.
+- Calls use value -> exact tau -> associated `()` and one candidate space.
+- `PolicyMode = {const, plain, mut}`; plain is a primitive point.
+- Policy preference, CapabilityRealization, Writable, and DynamicLegality are
+  independent judgments.
+- Output demand is total before maxima; selected failure never reopens.
+- Policy migration is direct, same-Type, candidate-driven, and existing-first.
+- Abstract literals form before concrete construction.
+- `OpenHere`, Writable, PolicyMode, and construction authority do not imply one
+  another. `extend` is pure; `inject` is read + extend + write.
+- `InvocationResult` is the single semantic result envelope; `struct` returns
+  complete tau.
+- Lifecycle facts are relative to one SemanticContinuation. Cleanup is fixed
+  before observation; Pre precedes mutation; Post describes committed success.
+- Color vocabulary is extensible and relation rows are explicit and directed.
+
+## Scope and Open questions
+
+Do not close a question listed in `spec/planning/open-questions.md` for
+implementation convenience. Use opaque carriers and extension interfaces.
+
+Source wiring may be incomplete. Missing wiring means unavailable behavior,
+not permission to substitute another semantic implementation.
+
+## Editing
+
+- Preserve unrelated user changes in a dirty worktree.
+- Use `rg` / `rg --files` for searches.
+- Use `apply_patch` for edits; bulk mechanical renames may use repository-safe
+  file operations.
+- Update current contracts and tests with parser or diagnostic behavior.
+- Do not rewrite files under `spec/history/**` to describe current behavior.
+- Current source, tests, and docs use only positive current terminology.
+
+## Tests
+
+Every syntax rule needs golden coverage. Semantic changes need positive,
+negative, identity/equality, no-reopen, non-derivability, and
+authority-uniqueness tests as relevant.
+
+After changes run:
 
 ```text
-spec/public/v0.2/lexical-syntax-v0.2.md
-spec/public/v0.2/concrete-syntax-v0.2.md
-spec/public/v0.2/diagnostics-recovery-v0.2.md
-spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
-```
-
-Then read the versioned current delta and contract:
-
-```text
-spec/contracts/frontend-semantic-amendment-v0.5-a.md
-spec/contracts/raw-ast-contract-v0.5.md
-```
-
-The v0.1/v0.2/v0.3 files are historical snapshots. Do not rewrite them to make
-later parser changes appear part of the original freeze.
-
-Read older implementation/design documents only when the task specifically
-requires parser implementation detail, diagnostic implementation detail,
-historical decision repair, or future design work.
-
-Before parser implementation changes:
-```text
-spec/implementation/v0.1/ast-construction-v0.1.md
-spec/implementation/v0.1/implementation-status-v0.1.md
-```
-
-Before diagnostic implementation changes:
-```text
-spec/implementation/v0.1/diagnostics-v0.1.md
-spec/public/v0.2/diagnostics-recovery-v0.2.md
-```
-
-Before operator syntax or operator-name repair:
-```text
-spec/history/v0.1/operator-design.md
-spec/public/v0.2/concrete-syntax-v0.2.md
-```
-
-Before alias / EntityRef repair:
-```text
-spec/design/symbol-world/entity-alias-design.md
-spec/design/symbol-world/entity-ref-design.md
-spec/public/v0.2/concrete-syntax-v0.2.md
-```
-
-Before normalization-boundary work:
-```text
-spec/contracts/raw-ast-contract-v0.1.md
-spec/contracts/raw-ast-contract-freeze-v0.2.md
-spec/contracts/v0.3-normalization-handoff-checklist.md
-spec/contracts/v0.4-normalization-prototype-notes.md
-spec/contracts/v0.9-control-flow-end-events.md
-spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
-spec/contracts/frontend-semantic-amendment-v0.5-a.md
-spec/contracts/raw-ast-contract-v0.5.md
-```
-
-Before build/package/namespace design:
-```text
-spec/design/build-package/build-system-design.md
-spec/design/build-package/package-manifest-v0.md
-spec/design/build-package/namespace-assembly-v0.md
-```
-
-Before resolving old open questions or understanding design history:
-```text
-spec/history/v0.1/resolved-questions.md
-spec/history/v0.3/normalized-ast-design-history-v0.3.md
-spec/planning/open-questions.md
-spec/history/v0.1/frontend-v0.1.md
-```
-
-Before making forward-looking scope changes:
-```text
-spec/planning/roadmap.md
-```
-
-## Scope
-
-The v0.1 Raw AST Frontend, v0.1.w, and v0.2 are completed/closed. v0.3
-(Normalized AST Specification) and v0.4 (Raw AST → Normalized AST
-prototype/hardening) are completed. v0.5 (Normalized Surface Semantics
-Stabilization and Public Documentation Reset) is completed. The current active
-stage is `v0.6` — Build / Namespace Graph Bootstrap, started as a partial
-vertical slice in `crates/lang_build`.
-
-The current public surface is the v0.5 normalized surface
-(`spec/public/v0.5/normalized-surface-semantics-v0.5.md`). The pipeline is:
-
-```text
-source text -> tokens -> Raw AST -> Normalized AST   (+ diagnostics)
-```
-
-Raw AST is surface-preserving and non-desugared. Normalized AST is a desugared,
-non-semantic AST that unifies calls, extraction, and declarations into simple
-pattern/call/declaration structures. It is not HIR, not type-checked, and not
-name-resolved.
-
-v0.5 is documentation and stabilization. Do not implement semantic passes (name
-resolution, type/kind checking, operator lookup, alias target resolution,
-pattern-head resolution, closure materialization, runtime evaluation, or code
-generation); those remain v0.6+ future work.
-
-## v0.2 contract freeze policy
-
-v0.2 is closed. The following remain frozen contract material from the
-completed v0.2 Raw AST Contract Freeze stage:
-
-* lexer/parser skeleton
-* Raw AST categories
-* `lex` / `parse`
-* token dump, AST dump, and diagnostic dump
-* diagnostics infrastructure
-* hard form boundaries
-* weak lexer
-* product/product-extract architecture
-* pipe/segment/operator-expression architecture
-* closure AST preservation
-* inner-to-outer navigation
-* alias-let parser preservation
-* `with { ... }` narrow payload grammar
-
-Completed v0.1.w additions (preserved in the frozen historical surface):
-
-* richer literal spellings: radix integers, scientific notation,
-  digit separators, hexadecimal floats, ranked quote-boundary strings;
-  literal-name adjacency as ordinary call/composition material
-* historical pipe branch-name shorthand
-  `|> name { ... } ⇝ |> (_ name) { ... }`
-
-That last expansion records the frozen v0.1.w/v0.2 snapshot only. The current
-frontend amendment after PR100 replaces it with:
-
-```text
-|> P { ... }  ⇝  |> (<> P) { ... }
-```
-
-for the currently covered single atomic bare Pattern `P`. The result is a
-headed `InPlace` closure. `<>` means an empty DeduceList and absent binder;
-`_` remains a real wildcard Pattern position, so explicit `(_ P)` is a
-different form. Do not rewrite the frozen historical snapshots.
-
-Allowed work in the current documentation / stabilization stage:
-
-* documentation consistency repair
-* stale comment cleanup
-* version/stage metadata alignment
-* Raw AST contract freeze checklist
-* diagnostic / golden-test inventory synchronization
-* correction of spec/code mismatches where implementation is settled truth
-* narrowly scoped golden-test additions that document existing behavior without changing it
-* no parser behavior change unless a hard correctness error is identified
-
-Forbidden:
-
-* broad lexer/parser restructuring, new syntax families
-* traditional call syntax, import/package/module syntax
-* general macro system
-* semantic analysis, name resolution, type/kind checking, operator lookup,
-  alias target resolution, closure materialization, canonical matching,
-  ownership/NLL/drop, interpretation, code generation, HIR/MIR/codegen
-
-A hard correctness error is one of:
-
-* the current lexer/parser architecture cannot represent the intended
-  call-composition model at all
-* the current AST shape makes future normalization logically impossible, not
-  merely inconvenient
-* the current grammar forces heuristic parsing or semantic backtracking
-  contrary to the language design
-* the current accepted syntax contradicts the core pipe/product/operator/
-  call-binding architecture
-* a documented invariant is impossible to maintain without structural
-  correction
-
-Do not perform major restructuring for aesthetic cleanup, naming preference,
-local convenience, or speculative future semantic work.
-
-Do not implement:
-
-* operator lookup, ADL, type-directed lookup, mutation semantics, semantic operator validation, or semantic operator lowering (operator syntax is already implemented as raw AST sugar; operator sugar may be desugared into Normalized AST only in an explicit normalization-stage task — this is not operator lookup or semantic lowering)
-* alias semantics, target resolution, operator identity validation, or namespace resolution (alias binding parser preservation is already implemented)
-* type checking
-* kind checking
-* overload resolution
-* canonical-form evaluation
-* universal extraction matching
-* closure AST materialization into callable objects
-* match/effect/sync semantics
-* ownership, lifetime, NLL, drop insertion
-* interpretation
-* code generation
-* IR/HIR/MIR or semantic lowering
-
-Raw AST → Normalized AST lowering is implemented (v0.4). Do not extend it with
-semantic behavior; semantic lowering remains future work.
-
-If a change requires any of the above, stop at syntax/AST representation and
-leave the semantic behavior as a documented future pass.
-
-Do not call Normalized AST "HIR".
-Do not implement semantic lowering under the name normalization.
-Do not change parser behavior while only updating the Raw AST contract.
-
-## Required commands
-
-After code changes, run:
-
-```bash
 cargo fmt --all
 cargo test
 ```
 
-If the workspace is not initialized yet, create the minimal Rust workspace
-first, then make these commands valid.
+## PR hygiene
 
-## PR branch hygiene before new tasks
+For a new unrelated task, run `.git/local/pr-task-gate.ps1` when available. Do
+not run it for corrections to the current PR.
 
-When the user starts describing a new task and is not giving correction
-feedback for the current pull request, check the current branch before doing
-work.
-
-Use the local helper script when available:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .git/local/pr-task-gate.ps1
-```
-
-This helper is intentionally local and must not be committed or uploaded.
-
-Required behavior:
-
-1. If the current branch is the default branch, sync it with the remote default
-   branch before starting the new task.
-2. If the current branch has an associated remote PR and that PR is merged,
-   switch to the default branch, fast-forward it from origin, delete the local
-   PR branch, and delete the remote PR branch if it still exists.
-3. If the current branch has an associated remote PR and that PR is not merged,
-   refuse the new task. Ask the user to either continue with corrections for
-   that PR or merge/close it before starting unrelated work.
-4. If the branch/PR state cannot be determined, stop and ask for clarification
-   rather than starting the new task.
-
-Do not use this gate when the user is explicitly asking for corrections to the
-current PR.
-
-## Preferred technology
-
-Use Rust stable.
-
-Use:
-
-* a hand-written lexer
-* a hand-written parser
-* golden/snapshot tests for tokens, AST, normalized AST, and diagnostics
-
-Do not introduce parser generators.
-
-Do not introduce semantic crates such as:
-
-* `typeck`
-* `nll`
-* `borrowck`
-* `hir`
-* `mir`
-* `codegen`
-
-The first workspace should contain only syntax/frontend-related crates.
-
-Suggested workspace:
-
-```text
-crates/
-  lang_syntax/
-  lang_cli/
-spec/
-tests/
-```
-
-## Core design constraints
-
-### Lexer
-
-The lexer must remain semantically weak.
-
-It should output tokens such as:
-
-* `Name`
-* `Literal`
-* `Symbol`
-* `Trivia`
-* `Invalid`
-* `Eof`
-
-The lexer must not classify names such as `return`, `else`, `match`, `drop`,
-`move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, `compile`,
-or `namespace` as special keyword tokens.
-
-These are ordinary names at the lexical level.
-
-`namespace` is listed because it appears in declaration annotation examples.
-`struct` is mentioned only as a possible future built-in meta-function name,
-not as parser syntax, a lexical keyword, or a planned source-level declaration
-form.
-
-Any other unrecognized word is still lexed as `Name`. This does not make
-that word a language construct.
-
-Operator spellings are syntax-level operator names. They are not keywords and
-do not imply built-in arithmetic, comparison, mutation, assignment, lookup, or
-ADL. The parser preserves expression-level operator syntax as raw AST sugar
-and preserves operator names in binder and innermost navigation-component positions. Operator
-lookup, lowering, and semantic validation remain future work unless explicitly
-assigned.
-
-Alias binding (`let binder === EntityRef`) is implemented as raw AST
-preservation. The parser preserves `LetAliasAst` and `EntityRefAst` but does
-not resolve targets, validate operator identity, perform entity lookup, or
-execute alias semantics. Do not add alias semantic features unless explicitly
-assigned.
-
-### Contextual structure words
-
-Some names may be interpreted by the parser in strong contexts.
-
-Examples:
-
-* `let` at form start introduces a let binding.
-* `require`, `pre`, `post`, `lifetime pre`, and `lifetime post` are active
-  closure-head clause names, parsed as raw `HeadClauseAst` shape (one expression
-  slot each, no semantic validation). `acquire` is an ordinary name (the earlier
-  `acquire` direction is replaced by `pre`/`post`).
-* `with` may be interpreted inside a let-binding context only as `with { ... }`.
-* `guard` is an ordinary `Name` unless future syntax reintroduces it explicitly.
-
-Outside the relevant parser state, these names remain ordinary names.
-
-### `<>`
-
-`<...>` has exactly one special meaning:
-
-```text
-declare holes for following syntax in a strong binding context
-```
-
-It is recognized only in specific binding contexts, such as:
-
-* extract-let binder
-* closure head
-* parameter binder
-* return binder
-
-Outside these contexts, `<` and `>` are ordinary tokens.
-
-In the current amended frontend, an empty DeduceList is meaningful:
-
-```text
-let <> P
-```
-
-parses `P` as a binderless Pattern. It is distinct from `let _ P`, which has a
-real wildcard position, and from the ordinary binder form `let P`.
-
-### Calls
-
-Traditional call syntax does not exist in `v0.1`.
-
-Do not parse:
-
-```text
-f(args)
-```
-
-as a normal function call.
-
-Parenthesized top-level-comma product forms participate in the expression
-skeleton rules described in `spec/implementation/v0.1/ast-construction-v0.1.md`.
-
-### Blocks and closures
-
-`{ ... }` is not a normal block expression.
-
-In expression/atom position, bare `{ ... }` produces a `ClosureAst` whose
-`placement` is `ClosurePlacementAst::InPlace` and whose `head` is absent.
-It has no closure head. A headed closure without `=>`, `FnHead { ... }`, is
-also `ClosurePlacementAst::InPlace`; `FnHead => { ... }` is the ordinary
-headed closure form.
-
-Closure literals initially produce AST, not callable objects. Object
-materialization is a future semantic pass.
-
-### Control-flow names
-
-Do not add syntax nodes such as:
-
-* `ReturnStmt`
-* `ElseExpr`
-* `MatchExpr`
-* `IfExpr`
-* `IfStmt`
-* `ElseClause`
-* `ElseIf`
-* `MatchStmt`
-* `CallExpr`
-* `ArgPack`
-
-At `v0.1`, `return`, `else`, `match`, and `if` remain ordinary names and ordinary
-expression atoms unless some later semantic pass interprets them.
-
-### Match
-
-`match` is not syntax in `v0.1`.
-
-A future compiler-provided meta-function named `match` may consume closure AST
-arms, but parser code must not special-case the name `match`.
-
-### Declaration model
-
-All user-visible declarations in v0.1 enter through `let`.
-
-There is no dedicated parser syntax for:
-
-```text
-fn f(...) { ... }
-type T = ...
-namespace ns = ...
-```
-
-Do not invent semantic AST nodes such as `FnDecl`, `TypeDecl`, or
-`NamespaceDecl`.
-
-At parser level, `fn`, `type`, `namespace` remain ordinary `Name` tokens except
-in documented strong annotation contexts within `let` binders.
-
-Declaration annotations (`: type`, `: _ : fn`, `: fn`) are parsed and
-preserved but not semantically checked.
-
-### `struct` and field declarations
-
-`struct` is not parser syntax. A future built-in meta-function named `struct`
-may consume raw AST and return a type-object. This is a semantic/meta-function
-behavior, not a parser rule.
-
-The parser must not introduce `StructDecl`, `FieldDecl`, `MemberDecl`,
-`BitfieldDecl`, `LayoutDecl`, or similar semantic AST nodes in v0.1.
-
-### Parser owns shape, semantics owns meaning
-
-The parser constructs and preserves raw AST shape. It does not decide whether
-an AST fragment is a field, a struct member, a namespace object, a function
-declaration, a return statement, a match arm, or an import. Semantic or
-meta-function passes may later interpret preserved shapes.
-
-v0.1 must not add special AST nodes just because a future built-in
-meta-function may understand a shape.
-
-Do not reintroduce let guard.
-Do not parse guard as a let attribute.
-Do not keep LetAttrAst or LetAst.attrs.
-Do not parse with NameList.
-Do not represent with {} as an empty dependency list.
-Preserve bare `{ ... }` in atom position as a `ClosureAst` with
-`placement = InPlace` and no closure head; it is not a normal block
-expression.
-
-Parse left to right. Do not go back to reinterpret meaning. The parser should
-be streaming-friendly. Contextual parsing is allowed only for explicitly
-specified strong syntax contexts. Semantic meaning must not feed back into
-v0.1 parsing.
-
-### Privileged AST-consuming meta-functions
-
-Some future built-in meta-functions may consume raw AST directly. Examples may
-include future built-ins such as `match`, `struct`, `effect`, and `sync`.
-
-Accepting raw AST as input is a privileged capability of built-in
-meta-functions. User-defined functions must not be assumed to have unrestricted
-AST-consuming power in v0.1.
-
-AST-consuming meta-functions are built-in privileges until the language is
-stable enough to define a controlled user-facing macro/metaprogramming system.
-v0.1 only preserves AST shape; it does not decide which functions may consume
-AST.
-
-### No library/import/export/package syntax
-
-v0.1 has no library, import, export, module, or package syntax. The parser
-only preserves raw inner-to-outer navigation syntax such as `Vec::std`,
-`Vec3::vector::math::mylib`, and `ns1::(int Vec::std)` where expressible by
-raw AST rules. Navigation order is inner-to-outer: the leftmost component is
-the innermost selected symbol, and the rightmost component is the outermost
-scope component. Raw AST preserves source-order navigation components and
-performs no lookup.
-
-Do not create AST nodes such as `ImportDecl`, `UseDecl`, `IncludeDecl`,
-`ModuleDecl`, `LibraryDecl`, `PackageDecl`, or `ExportDecl`.
-
-### Build-system track
-
-The repository contains a parallel build-system documentation and architecture
-track. This track is **not implemented** in v0.1.
-
-Do not:
-
-* add source-level import/use/include/mod/package/export syntax
-* implement package resolution in the parser
-* implement namespace resolution in v0.1 parser work
-* treat directory names as equivalent to the full namespace graph
-* treat implementation filenames as namespace segments
-* create a separate build-system repository from inside this repo
-* implement build resolver, dependency solver, linker, or cache validator
-  unless explicitly assigned
-
-Do:
-
-* keep build-system work in the build/package documentation track
-* keep parser work in the frontend syntax track
-* preserve the separation between package/build layer and language namespace
-  layer in all documentation
-
-## Repository layout
-
-```text
-.
-├── AGENTS.md
-├── README.md
-├── SKILL.md
-├── Cargo.toml
-├── spec/
-│   ├── README.md
-│   ├── public/
-│   │   ├── v0.2/
-│   │   │   ├── lexical-syntax-v0.2.md
-│   │   │   ├── concrete-syntax-v0.2.md
-│   │   │   ├── diagnostics-recovery-v0.2.md
-│   │   │   └── raw-ast-frozen-surface-v0.2.md
-│   │   └── v0.5/
-│   │       ├── README.md
-│   │       ├── normalized-surface-semantics-v0.5.md
-│   │       └── agent-interpretation-guide-v0.5.md
-│   ├── reference/
-│   │   └── glossary.md
-│   ├── implementation/
-│   │   └── v0.1/
-│   │       ├── ast-construction-v0.1.md
-│   │       ├── diagnostics-v0.1.md
-│   │       └── implementation-status-v0.1.md
-│   ├── contracts/
-│   │   ├── raw-ast-contract-v0.1.md
-│   │   ├── raw-ast-contract-freeze-v0.2.md
-│   │   ├── v0.3-normalization-handoff-checklist.md
-│   │   └── v0.4-normalization-prototype-notes.md
-│   ├── history/
-│   │   ├── v0.1/
-│   │   │   ├── frontend-v0.1.md
-│   │   │   ├── frontend-design-summary.md
-│   │   │   ├── operator-design.md
-│   │   │   └── resolved-questions.md
-│   │   ├── v0.3/
-│   │   │   ├── README.md
-│   │   │   ├── normalized-ast-specification-v0.3.md
-│   │   │   └── normalized-ast-design-history-v0.3.md
-│   │   └── v0.4/
-│   │       └── README.md
-│   ├── design/
-│   │   ├── README.md
-│   │   ├── build-package/
-│   │   ├── symbol-world/
-│   │   ├── patterns-overload/
-│   │   ├── meta-invocation/
-│   │   ├── policy-capability/
-│   │   └── mechanical-lowering/
-│   └── planning/
-│       ├── roadmap.md
-│       └── open-questions.md
-├── crates/
-│   ├── lang_syntax/
-│   │   ├── Cargo.toml
-│   │   └── src/
-│   │       ├── lib.rs
-│   │       ├── source.rs
-│   │       ├── span.rs
-│   │       ├── token.rs
-│   │       ├── lexer.rs
-│   │       ├── ast.rs
-│   │       ├── dump.rs
-│   │       ├── diagnostic.rs
-│   │       ├── norm.rs
-│   │       └── parser/
-│   │           ├── mod.rs
-│   │           ├── cursor.rs
-│   │           ├── form.rs
-│   │           ├── let_stmt.rs
-│   │           ├── expr.rs
-│   │           ├── atom.rs
-│   │           ├── pipe.rs
-│   │           ├── product.rs
-│   │           ├── closure.rs
-│   │           ├── canonical.rs
-│   │           ├── deduce.rs
-│   │           ├── operator.rs
-│   │           └── recovery.rs
-│   └── lang_cli/
-│       ├── Cargo.toml
-│       └── src/main.rs
-└── tests/
-    ├── lexer_golden.rs
-    ├── parser_golden.rs
-    ├── diagnostics_golden.rs
-    ├── normalized_golden.rs
-    └── cases/
-        ├── lexer/
-        ├── parser/
-        ├── diagnostics/
-        └── norm/
-```
-
-## AST policy
-
-AST must preserve syntax rather than interpret semantics.
-
-Do not reintroduce old outer-to-inner path terminology or AST shape:
-
-* Do not reintroduce the removed base-plus-name-list navigation AST shape.
-* Do not reintroduce the removed entity path segment/leaf AST types.
-* Do not reintroduce the removed diagnostic for non-innermost operator navigation.
-* Do not describe operators as outer or terminal path components.
-* Do not parse operator names as outer navigation components unless a future
-  explicit design allows operator-named scopes.
-
-For example:
-
-```text
-obj (
-    <val: _>(val option::Sum) { ... },
-    (_ option::None) { ... }
-) match
-```
-
-The parser should produce ordinary expression structure containing:
-
-* `Name("obj")`
-* a `Product`
-* closure AST arms
-* `Name("match")`
-
-It should not produce a special `MatchExpr`.
-
-## Diagnostics policy
-
-The parser should be error-tolerant.
-
-Prefer:
-
-```text
-AST with ErrorNode + Diagnostic
-```
-
-over aborting the parse.
-
-Every diagnostic must carry a span.
-
-Refer to `spec/implementation/v0.1/diagnostics-v0.1.md` for the full diagnostic catalog.
-
-## Tests
-
-Every syntax rule must have golden tests.
-
-Minimum case groups:
-
-```text
-lexer/
-  names
-  symbols
-  comments
-  invalid
-  operators
-
-parser/
-  let_simple
-  let_extract
-  pipe_basic
-  product_forms
-  dot_sugar
-  doubledot_sugar
-  closure_head_inline
-  closure_explicit
-  closure_head
-  match_style_expression
-  operator_expr
-  operator_binder
-  alias_let
-  alias_let_invalid
-
-diagnostics/
-  invalid_dot
-  invalid_doubledot
-  unclosed_group
-  unclosed_closure
-  invalid_product
-  invalid_operator
-  invalid_alias
-```
-
-## Commit discipline
-
-When changing parser behavior:
-
-1. Update `spec/contracts/frontend-semantic-amendment-v0.5-a.md` and
-   `spec/contracts/raw-ast-contract-v0.5.md`; do not rewrite the closed
-   v0.1/v0.2/v0.3 snapshots.
-2. Update or add golden tests.
-3. Run `cargo fmt --all`.
-4. Run `cargo test`.
-
-When changing diagnostic behavior:
-
-1. Update the versioned amendment/current contract; preserve the historical
-   v0.1 diagnostic inventory.
-2. Update or add golden tests.
-3. Run `cargo fmt --all`.
-4. Run `cargo test`.
-
-Do not change parser or diagnostic behavior without updating the corresponding
-spec or tests.
-
-Documentation-only status realignment may update docs without source changes.
-
-## PR creation
-
-When asked to create a PR from local changes, prefer GitHub CLI (`gh`) as the
-default mechanism for PR creation. Use connector-based PR creation only if the
-user explicitly asks for it or `gh` is unavailable/insufficient for the repo.
-
-Default PR behavior:
-
-1. Verify `gh --version` and `gh auth status`.
-2. Inspect `git status -sb` and the diff before staging.
-3. Create a branch when starting from the default branch.
-4. Commit intentionally and push with upstream tracking.
-5. Create a draft PR with `gh pr create --draft`, using an explicit title and
-   body.
-
-## Spec awareness
-
-* `spec/public/v0.5/normalized-surface-semantics-v0.5.md` is the current public
-  normalized surface authority. Consult it before understanding or documenting
-  current language behavior.
-* `spec/public/v0.2/lexical-syntax-v0.2.md` and `spec/public/v0.2/concrete-syntax-v0.2.md` are the
-  primary public syntax references for the frozen Raw AST input. Consult them
-  before understanding or documenting current lexical or parser behavior.
-* `spec/public/v0.2/diagnostics-recovery-v0.2.md` is the primary public diagnostics and
-  recovery reference for current behavior.
-* `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` enumerates frozen constructs and their
-  v0.3 obligations.
-* `spec/implementation/v0.1/ast-construction-v0.1.md` remains the detailed parser-construction
-  spec. Consult it before making parser implementation changes.
-* `spec/implementation/v0.1/implementation-status-v0.1.md` records the closed
-  v0.1 implementation snapshot. Consult it for the historical baseline, then
-  apply v0.5-A and `raw-ast-contract-v0.5.md` for current behavior.
-* `spec/implementation/v0.1/diagnostics-v0.1.md` is the implementation-level diagnostic catalog
-  for current behavior.
-* `spec/planning/roadmap.md` defines scope boundaries. If a change would cross a stage
-  boundary (e.g., implementing semantic analysis), stop and document the
-  limitation instead.
-* `spec/planning/open-questions.md` records unresolved design issues. Before implementing
-  behavior that touches an open question, check the file and update its status
-  if a decision is reached. Resolved items move to `spec/history/v0.1/resolved-questions.md`.
-* `spec/reference/glossary.md` enforces terminology. Use terms consistently.
+When asked to publish changes, inspect status/diff, commit intentionally, push
+with upstream tracking, and use `gh` for draft PR creation or updates.

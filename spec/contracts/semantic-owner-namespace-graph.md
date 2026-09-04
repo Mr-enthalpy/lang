@@ -1,0 +1,399 @@
+# Semantic owner and namespace graph contract
+
+**Status: current semantic/build contract.**
+
+The language-level Pattern relation, binderless Pattern semantics, and the
+distinction between ordinary `Val2` presence and direct structural incidence
+are canonical in
+`../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`.
+This contract owns only the persistent owner/root/binder identities and the
+build handoff consumed by that relation.
+
+## Identity
+
+Long-lived semantic identity is owner-based:
+
+```text
+SymbolIdentity = (DeclOwner, LocalSymbolIdentity)
+GeneratedIdentity = (GeneratingOwner, LocalGenerationIdentity)
+SemanticOwnerId = (SemanticOwnerGraphId, graph-local owner)
+```
+
+Source files, paths, spans, display names, and printable navigation strings are
+provenance only.
+
+The semantic owner forest contains package/namespace owners, callable owners,
+canonical meta-instance owners, and generated owners. Every callable,
+including an in-place closure, has a lexical/code owner. A standalone closure
+materialization also has an owner-derived anonymous function-object type:
+
+```text
+DefaultStandaloneReceiverType(C)
+  = AnonymousType(CallableOwner(C))
+```
+
+This is a default construction rule, not a universal identity equation.
+`CallableOwner(C)` and `ReceiverType(C)` are independent. An implementation
+installed as a borrowed-receiver candidate in `T`'s associated `()` Symbol, for
+example, has its own callable owner while its invocation receiver type is
+`T ref`.
+
+Nested callable-local `Self` owner paths follow the language's source-order
+navigation: innermost/current `Self` first and outermost `Self` last. The
+printable string is not identity and does not determine any receiver type.
+`__inner_namespace` and related synthetic path components have no canonical
+role.
+
+Allocating this owner is not closure-value materialization. A closure remains
+syntax/normalized callable material until an explicit binding or call context
+requires a value; the owner exists earlier only so `Self`, return targets,
+Pattern roots, and nested declarations have stable semantic containment.
+
+Every invocation has frame slot 0 for its caller object. This is independent of
+ordinary/in-place placement. When a closure writes any formal position, its
+first written formal is the explicit Pattern for that slot under any legal
+spelling; the caller object is passed implicitly. Only later written formals
+consume explicit call-site Product positions. A headless or empty-parameter
+closure still has the semantic slot but no written binder for it.
+Compiler-generated receiver helpers write a generated self formal before their
+explicit `val` receiver.
+
+For a standalone function object the caller is that function object. For an
+associated `()` entry the caller is the value whose type supplied the selected
+entry. Thus:
+
+```lang
+let ()::(T |> (type ref)) = (object: T ref) => { ... };
+```
+
+binds `object` to invocation slot 0. The closure implementation's lexical
+owner remains distinct from receiver type `T ref`. If the installed call-entry owner and the
+first written formal's expected type disagree, ordinary invocation type
+checking rejects the slot-0 match. There is no separate pre-type-check
+call-entry consistency rule; a later diagnostic may specialize that ordinary
+type mismatch.
+
+A meta instance is interned by:
+
+```text
+(parent owner, resolved meta-function identity, canonical argument key)
+```
+
+Repeated canonical invocation reuses its owner. A different canonical key
+creates a different child owner.
+
+Source navigation remains inner-to-outer. A generated meta-call scope used as
+one outer component must group the complete call expression:
+
+```lang
+child::(int Vec::std)
+```
+
+It is not `child::int Vec::std` and not `child::(int Vec)::std`. Namespace
+graph traversal may internally reverse source components to walk containment
+outer-to-inner; that implementation order is not source syntax.
+
+## Pattern roots and alpha identity
+
+Each independent extraction establishes:
+
+```text
+PatternRootId = (SemanticOwnerId, local root)
+HoleBinderId  = (PatternRootId, local binder)
+```
+
+Independent top/local let patterns and callable heads create new roots.
+Nested BindingSlots, Products, Sequences, annotations, DeduceLists, and Packs
+inside one extraction remain in that root.
+
+DeduceLists remain left-to-right telescopes. Duplicate source hole names are
+rejected only within the current PatternRoot. A new root may shadow an
+inherited spelling:
+
+```lang
+let f = <A>() => {
+    let g = <A>(self, x: A) => { x }; // valid: new callable owner/root
+};
+```
+
+The following remains invalid:
+
+```lang
+let <A> (let <A> x) = value; // same extraction root
+```
+
+The alpha environment therefore carries two facts:
+
+```text
+visible inherited/local holes
+same-root declaration table
+```
+
+Lookup searches the visible lexical environment. Duplicate checking consults
+only the same-root table. Generated hole keys remain hygienic and are
+root-qualified during alpha conversion.
+
+The frontend allocates collision-safe `AlphaOwnerId × NormOwner × PatternRoot`
+identities. When normalized material enters the build graph, the Norm owner is
+mapped to a persistent `SemanticOwnerId`, producing a resolved
+`SemanticOwnerId × local root × local binder` identity before multi-root
+semantic comparison.
+
+## Namespace views
+
+Namespace membership has three distinct projections:
+
+```text
+FullNameView
+ExternalNameView
+DefaultExtractionView
+```
+
+They remain orthogonal to:
+
+```text
+Σ_full
+Σ_export
+Wfinal = Wpre ∪ Wseal
+```
+
+Non-export does not mean same-level-only and does not mean private. A
+non-export symbol is lexically visible to descendant owners in the same
+package/ownership domain:
+
+```text
+CanLexicallySee(q, s)
+  = Package(q) = Package(DeclOwner(s))
+    && DeclOwner(s) is ancestor-or-self of q
+```
+
+Same-package siblings do not gain *unqualified lexical* visibility merely by
+sharing a package. Explicit same-package navigation is a separate operation:
+it consumes FullNameView and follows the ordinary internal path rules rather
+than pretending the target was lexically inherited. Cross-package navigation
+consumes ExternalNameView. Every external path component must pass
+public/private reachability.
+
+Path/name resolution returns the complete exposed candidate identity set. It
+does not choose the first entry and does not perform overload selection;
+fully-admissible filtering and the existing partial-order/unique-maximum rule
+remain later consumers.
+
+`ExportRetentionClosure` is a retention/materialization closure. Membership
+does not itself mean external visibility. External candidate projection keeps
+the internal candidate identity, resolved `PolicyPair`, and whole-slot
+`PolicyMode`. Stable external admission requires public path reachability and
+never consumes a future caller's Policy or capability demand. Ordinary
+capability-family applicability and Policy selection occur only after external
+lookup.
+
+External resolution retains typed failure reasons:
+
+```text
+Unresolved
+NotInExportRetentionDomain
+PrivatePath
+NoExternallyEligibleCandidate
+MountTargetMissing
+PackageBoundaryViolation
+```
+
+Stable namespace projection separates namespace admission failures from later
+consumer Policy-selection and dynamic-legality failures.
+
+## Structural members and associated Val2 contributions
+
+`struct` forms a complete type value `tau` whose core `Q_struct = Core(tau)`
+satisfies `Pure(Q_struct)` and `TypeRole(Q_struct)`; structural leaves and
+associated lets contribute to that construction. Generated field/access/
+assignment/borrow partners are ordinary members entering `V_τ` at the formation
+event; a Symbol appears only at a subsequent binding/install of the formed
+value. Same-name associated `Val2` Symbols expose those same members and own
+no second copy. Members satisfying direct-home `TypeMember_Q_struct` are part
+of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
+type-as-callee uses `CallSpace(tau)=V_τ`; there is no defining-Symbol or
+recent-carrier recovery route.
+
+The generic parser preserves the narrow postfix shape:
+
+```lang
+E name [[public]]
+E name [[private]]
+```
+
+Only the struct decoder interprets it as:
+
+```text
+StructuralMember {
+  evaluator = E,
+  name,
+  visibility = Default | Public | Private
+}
+```
+
+The annotation slot accepts only `public` or `private`; it is not a general
+PolicySpec.
+
+Struct/type construction may also consume an ordinary let-shaped declaration:
+
+```lang
+let name = expr
+public let name = expr
+private let name = expr
+let () = callable_expr
+```
+
+This is an associated Val2 contribution to the current Pattern owner. It is not
+a structural field and not sugar for the postfix form:
+
+```text
+Val1 contribution    = none
+Pattern contribution = none
+Val2 contribution    = initializer value entry
+```
+
+The initializer may be an ordinary value, including a callable value; it is
+not restricted to `Pv = absent`. A named target requires one plain binder.
+Extraction/Product/Sequence/Pack LHS forms are rejected. The one empty Product
+target `()` is reserved as the current owner's call-entry installation rather
+than an ordinary value named `()`. A closure carrier in this initializer-shaped
+position is consumed as call-entry implementation material; it is not first
+materialized as a standalone anonymous function object.
+
+An inner associated let adds a pending contribution to the uninstalled pattern
+value under construction; `struct` does not mutate the installed namespace
+graph during evaluation. Under the same injection authority:
+
+```lang
+((let name = expr) name1) |> struct
+```
+
+and installing `let name::name1::(T |> (type ref)) = expr` after `T` construction
+produce the same final namespace delta and candidate identity. Bare
+`=` never instantiates such a missing child. The source navigation is
+inner-to-outer.
+
+Named callable contributions remain ordinary function objects. Their first
+written formal is their own caller/self; an object accepted by a member-like
+function is therefore the second written formal. The `()` target is different:
+it installs an implementation for invocation of the current owner itself, so
+its first written formal receives that invoked object.
+
+Writing local `let ()` while constructing `T` contributes one candidate to the
+same associated `()` Symbol. It does not also synthesize receiver candidates for
+`T ref` or `T share`; those require their own contribution or future annotation
+rule, but not distinct child-owner namespaces.
+
+Accessor stage follows one structural rule:
+
+```text
+RuntimeField(f)
+  iff Val1_f != absent
+  and Materializable_0(Val1_f)
+  and not RequiresStaticPattern(f)
+```
+
+`RuntimeField` generates runtime-or-compile accessors; every other field is
+compile-only. Type is not a special field category. Generated Sequence `[]`
+uses `RuntimeField` only for its selected observation; its complete stage is the
+ordinary dependency meet over container, index, and selection. Its ordinal
+slot is under the resident bare Product in `Val1(sequence)`, not under the
+outer Sequence Object's generated `Val2`.
+`OpenHere_Σ(v)` is per-value and per-window: it depends only on
+`WindowLive_Σ(v)`, `AuthorityMatches(v, Σ)`, and the current evaluation
+coordinate. No parent-to-child or child-to-parent implication holds; a terminal
+event that closes multiple windows in one structural region does so because
+each value independently fails `WindowLive_Σ` or `AuthorityMatches`, not
+because a neighboring value closed. Borrow edges are horizontal and do not
+participate. Mutability remains independent and does not propagate.
+
+Default and Public structural members enter the current default extraction
+view. Private structural members remain present in the complete structural
+model and FullNameView, but are absent from DefaultExtractionView. A future custom `?`
+may construct a richer extraction interface, but may not directly expose a
+private member without a future explicit capability rule.
+
+## Package boundaries and mounts
+
+The namespace linker is:
+
+```text
+ownership/containment forest + mount redirect edges
+```
+
+The nearest explicit PackageBoundary determines a node's package. Physical
+directories are inputs and composition paths, never semantic identity.
+
+A mount points to an existing namespace owner:
+
+```text
+MountNode ─────► TargetNode
+```
+
+Mount changes access path, not target identity. Crossing a mount into another
+package switches subsequent resolution from FullNameView to ExternalNameView.
+Mounting conflicting packages under different local paths keeps their names
+separate without copying either package.
+
+For example, if the graph-level path is `vendor -> A -> foo`, the source
+navigation is `foo::A::vendor`, because source order is inner-to-outer.
+
+`SemanticOwnerId` and navigable namespace nodes need not be one-to-one:
+in-place callable owners, generated owners, and Pattern roots may be semantic
+owners without ordinary user navigation entries.
+
+## Current implementation boundary
+
+Implemented substrate:
+
+- parent-linked `SemanticOwnerGraph`, namespace/callable/meta/generated owner
+  interning, owner-derived standalone anonymous callable types, an explicit
+  callable-owner/receiver-type binding carrier, hygienic meta-instance
+  interning, and owner-derived symbol identity;
+- frontend callable owners, PatternRoot alpha boundaries, same-root duplicate
+  validation, cross-root shadowing, and an explicit
+  `SemanticOwnerQualification` handoff that rejects an unmapped or
+  inconsistently remapped frontend owner before a hole identity enters the
+  build world;
+- owner-aware namespace views, package boundaries, mount redirect identity,
+  external-view switching, public/private path checks, and typed failures;
+- narrow member-view Raw/Norm shape, struct structural visibility, private
+  extraction filtering, and a typed associated-Val2/call-entry contribution
+  decoder that preserves value-bearing initializer policy.
+
+Deferred:
+
+- stable serialized owner fingerprints and incremental graph persistence;
+- a parent-homomorphism proof for the frontend-to-persistent owner
+  qualification:
+
+  ```text
+  Map(Parent_frontend(x)) = Parent_persistent(Map(x))
+  ```
+
+  `SemanticOwnerQualification` currently proves only that an exact frontend
+  owner has a mapping and that a repeated mapping does not conflict. It must
+  not be described as validating the complete owner-tree embedding;
+- end-to-end connection of every namespace snapshot consumer;
+- wiring owner-namespace admission to the canonical
+  `ResolvedCandidateSnapshot` / `ExportCandidateView` payload and complete
+  external overload routing. That payload retains identity, pair, mode,
+  declaration/intrinsic realization facts, and provenance but no
+  context-indexed `DynamicLegality_Γ`; the current entry records eligibility
+  and preserves symbol identity but does not duplicate the candidate projector
+  or form consumer legality;
+- recursive materialization of visibility-bearing structured fields beyond
+  the current simple-field struct slice (the decoded Pattern retains the
+  visibility metadata);
+- full custom `?`, general Pattern execution, capture discovery, closure
+  materialization, lifetime checking, ABI/layout, package solver, and binary
+  linker;
+- end-to-end installation of associated Val2 contributions, external navigated
+  call-entry declarations, and ordinary type checking of the slot-0 receiver
+  against the first written formal;
+- source-level import/use/module/package syntax.
+
+The owner-tree homomorphism proof and the persistent namespace consumer/routing
+migration are **P1 integration gates**. They do not reopen the semantic
+definitions of `SemanticOwner`, `PatternRoot`, namespace views, or overload
+uniqueness established by this contract.

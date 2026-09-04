@@ -18,9 +18,9 @@ pub enum ResidualReason {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnnotationContext {
     Assertion,
-    /// Reserved for future rank-pattern declaration grammar. The v0.8
-    /// initializer evaluator does not classify any current binding annotation
-    /// as rank-pattern material.
+    /// Reserved for rank-pattern declaration grammar. Initializer evaluation
+    /// does not classify any current binding annotation as rank-pattern
+    /// material.
     RankPattern,
 }
 

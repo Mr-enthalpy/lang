@@ -70,97 +70,6 @@ fn assert_parser_cases_different_ast(left: &str, right: &str) {
     );
 }
 
-fn project_current_closures_to_v02(dump: &str) -> Result<Vec<&'static str>, String> {
-    let lines = dump.lines().collect::<Vec<_>>();
-    let mut projected = Vec::new();
-
-    for (index, line) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        let placement = match trimmed {
-            "Closure InPlace" => "InPlace",
-            "Closure Ordinary" => "Ordinary",
-            _ => continue,
-        };
-        let indent = line.len() - trimmed.len();
-        let mut has_head = false;
-        let mut body = None;
-
-        for child in &lines[index + 1..] {
-            let child_trimmed = child.trim_start();
-            if child_trimmed.is_empty() {
-                continue;
-            }
-            let child_indent = child.len() - child_trimmed.len();
-            if child_indent <= indent {
-                break;
-            }
-            if child_indent != indent + 2 {
-                continue;
-            }
-            match child_trimmed {
-                "FnHeadPrefix" => has_head = true,
-                "BodyBlock" => body = Some("Block"),
-                "Delete" => body = Some("Delete"),
-                other if other.starts_with("OverloadStrategy ") => body = Some("NamedBlock"),
-                "Defaulted" => body = Some("Defaulted"),
-                _ => {}
-            }
-        }
-
-        match (placement, has_head, body) {
-            ("InPlace", _, Some("Block")) => projected.push("I"),
-            ("Ordinary", true, Some("Block" | "Delete")) => projected.push("E"),
-            other => {
-                return Err(format!(
-                    "closure at dump line {} has no v0.2 projection: {other:?}",
-                    index + 1
-                ));
-            }
-        }
-    }
-
-    Ok(projected)
-}
-
-#[test]
-fn every_legacy_v02_valid_fixture_preserves_closure_projection() {
-    let baseline = include_str!("cases/parser/legacy_v02_closure_projection.txt");
-    let cases = baseline
-        .lines()
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .collect::<Vec<_>>();
-    assert_eq!(
-        cases.len(),
-        216,
-        "the baseline must enumerate every v0.2 parser fixture that was valid at the amendment boundary"
-    );
-
-    for entry in cases {
-        let (name, expected) = entry
-            .split_once('|')
-            .expect("legacy projection entry uses `case|projection`");
-        let source = fs::read_to_string(case_path(name, "lang")).expect("read legacy source");
-        let output = lang_syntax::parse(&source);
-        assert!(
-            output.diagnostics.is_empty(),
-            "legacy-valid fixture `{name}` gained diagnostics:\n{}",
-            lang_syntax::dump_diagnostics(&output.diagnostics)
-        );
-
-        let projected = project_current_closures_to_v02(&lang_syntax::dump_ast(&output.program))
-            .unwrap_or_else(|error| panic!("legacy fixture `{name}`: {error}"));
-        let actual = if projected.is_empty() {
-            "-".to_string()
-        } else {
-            projected.join(",")
-        };
-        assert_eq!(
-            actual, expected,
-            "legacy closure projection changed for `{name}`"
-        );
-    }
-}
-
 #[test]
 fn expr_name() {
     assert_parser_case("expr_name", false);
@@ -1136,8 +1045,8 @@ fn closure_capture_multiple() {
 }
 
 #[test]
-fn closure_capture_bindings_v05() {
-    assert_parser_case("closure_capture_bindings_v05", false);
+fn closure_capture_bindings() {
+    assert_parser_case("closure_capture_bindings", false);
 }
 
 #[test]

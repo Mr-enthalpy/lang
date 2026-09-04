@@ -1,14 +1,7 @@
 # Type Values, Places, and Borrow Views
 
-**Status: canonical target semantics for Object identity, complete type-closure
-identity, place identity, and borrow views. Current `lang_build` implements only
-the first-order identity core: recursive normalization over the present
-type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
-per-carrier places. The complete `tau=<Q,V_τ>` snapshot and
-`Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
-`share`, `rebind`), continuation-relative lifetime name reification (`@`),
-construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgment, and type checker
-remain unimplemented target semantics. §10 registers the implementation debt.**
+**Status: canonical semantic authority for Object identity, complete
+type-closure identity, Place identity, and borrow views.**
 
 This document specifies the semantic boundary between *object values*, *symbol
 identity*, *places*, *borrow views*, and *namespace extension targets*. It
@@ -94,8 +87,7 @@ PatternValue identity
                 -- implementation/index key, not semantic equality
 
   Core(tau) = Q -- default observation for ordinary type-rank equality,
-                    keying, and type-argument identity, exactly as under the
-                    former `type = Q` rules (minimal-change rule, §2.2)
+                    keying, and type-argument identity
 
   Addr(Norm_type(tau)) = bind alpha.<Norm(Q), Norm_V^alpha(V_τ)>
                 -- whole-snapshot identity; used to tell shared-root snapshots
@@ -311,10 +303,8 @@ inserting `a` then `b` and inserting `b` then `a` produce the same Symbol normal
 form exactly when the stored `tau` (if any) and every normalized `V_S[T_c]` set are
 equal.
 
-There is no case split in which one Object component is ignored. Earlier revisions
-normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` objects as
-`⟨Val1, P⟩` with `Val2` discarded; that bifurcation is retired. A value-bearing
-Object whose `Val2` differs is a different Object, and a pure core `Q` whose
+There is no case split in which one Object component is ignored. A value-bearing
+Object whose `Val2` differs is a different Object, and a pure Core `Q` whose
 `Val1?` is `null` still normalizes its `P` and `Val2` fully. `Norm(Q)` is the
 ordinary three-component Object normal form. `Norm_type(tau)`, defined in §2.2,
 is instead the normal form of the complete `<Q,V_τ>` closure and must not be
@@ -504,8 +494,8 @@ references to one value share an address while two content-equal but distinct
 values stay distinct. This is a safe under-merge, never a claim of a stronger
 equivalence than the implementation actually decides, and never a licence to
 treat `Val1` as excluded from the normal form: the target rule is that `Val1?`
-normalizes recursively like every other component, and the opaque leaf is a
-placeholder for content normalization that is not yet implemented. It does not
+normalizes recursively like every other component. The opaque leaf preserves
+safe under-merge until a content normalizer is available. It does not
 override a defined Pattern-specific quotient such as `P_symbol` above.
 
 Complete type values contain one tightly scoped normal-form binder
@@ -598,7 +588,7 @@ applies.
 
 ### 2.2 Complete type values are closed snapshots over Object cores
 
-The ordinary pure Object `Q` keeps the old type behavior:
+The ordinary pure Object `Q` supplies the Core of a complete type value:
 
 ```text
 Q in Object
@@ -824,7 +814,7 @@ needs, and no rule silently re-reads `tau` as `Q`:
 ```text
 Read(type-valued place) = tau
 
-old Q-consuming rule observed type = Q
+Core-consuming operation
   -> consume Core(tau) = Q        (equality, keying, type-argument identity,
                                    ordinary compatibility, ordinary Pattern
                                    and namespace observation)
@@ -1059,8 +1049,7 @@ P/Val2 formation and transformation
   do not apply UniverseSuccessor
 ```
 
-This replaces the retired “everything is an Object” formulation as the
-long-term structural invariant. It does not introduce a fourth Object
+This is the structural invariant. It does not introduce a fourth Object
 coordinate; `P` and `Val2` are structural material within
 `Object = <Val1?, P, Val2>`, and their description activity stays at rank 0.
 
@@ -1246,9 +1235,8 @@ ordinary binding path may recover associated operations by mapping
 
 The same separation applies inside derived semantic material. A struct field,
 callable signature, canonical argument key, or extraction view that denotes a
-type observes the default `Core(tau)=Q`, exactly as the old `type = Q` rules
-did; `Addr(Norm_type(tau))` remains available where the language has
-independently frozen whole-snapshot identity (transport, distinguishing
+type observes `Core(tau)=Q`; `Addr(Norm_type(tau))` remains available where the
+language requires whole-snapshot identity (transport and distinguishing
 shared-root snapshots):
 
 ```text
@@ -1260,7 +1248,7 @@ field source path
 
 An implementation may temporarily retain the carrier Symbol for graph
 navigation or provenance, but it is not part of field-type equality,
-Pattern-head identity, or generated type-definition identity. Consequently
+Pattern-head identity, or struct construction-material identity. Consequently
 `(uint8 field) struct` and `(T field) struct` have the same field-type material
 after `let T: type = uint8`; a reverse `TypeValueId -> original Symbol` lookup
 would incorrectly make ordinary binding observable.
@@ -1305,11 +1293,10 @@ Symbol-first resolution is a single ordered pipeline:
 Path -> SelectedHead -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection
 ```
 
-The stability claim applies to the **tail**, not to the head. Once the head
-symbol is selected, the remaining navigation is decided by the path alone: it is
-**not** decided by whether the result is subsequently used as a call target, a
-type, a value, an injection target, or an extraction subject. Head selection is a
-separate, earlier step with its own rule.
+The stability claim applies to the complete resolution, including the head.
+The path is resolved before the consumer asks for a call, type, value,
+injection, or extraction projection. One spelling in one lexical environment
+therefore denotes one terminal Symbol in every use context.
 
 #### 3.2.1 Head selection: bare versus explicitly anchored
 
@@ -1317,24 +1304,23 @@ The two forms do not use the same rule, and the difference is confined to this
 step:
 
 ```text
-ResolveBare_q(name)
-  = the nearest enclosing Symbol spelled `name` that carries the required
-    coarse facet q
+ResolveBare(name)
+  = the nearest enclosing Symbol spelled `name`
 
 ResolveExplicit(path)
   = the uniquely designated anchor, taken as written
 ```
 
-A bare head may look outward, and the coarse facet `q` demanded by the use site
-participates in that search. An explicitly anchored path may not look outward at
-all. The search discipline is:
+A bare head may look outward only until it finds the nearest same-spelled
+Symbol. No facet demanded by the use site participates in that search. An
+explicitly anchored path may not look outward at all. The search discipline is:
 
 ```text
-bare head    : walk outward; stop at the first same-spelled Symbol carrying q
+bare head    : walk outward; stop at the first same-spelled Symbol
 explicit head: no outward walk; the written anchor is the head or resolution fails
 ```
 
-The outward walk is bounded to exactly one decision. Once a Symbol carrying `q`
+The outward walk is bounded to exactly one decision. Once a same-spelled Symbol
 is found, that Symbol is the head, permanently:
 
 ```text
@@ -1343,9 +1329,8 @@ overload resolution failing inside the selected head
   -> NOT a reason to resume the outward walk
 ```
 
-Callability is not determined by the presence of a value-facet member. The
-coarse demand `q` at a call site is callability, defined by the full
-callable projection:
+Callability is not a name-resolution predicate. It is a projection of the
+already resolved Symbol:
 
 ```text
 CallablyPresent(S)
@@ -1354,25 +1339,28 @@ CallablyPresent(S)
 CallableProjection(S)
   = DedupCandidateIdentity(V_S ⊎ V_τ)
 
-ResolveBare_call(name)
-  = nearest same-spelled Symbol S with CallablyPresent(S)
-
 final call projection
-  = CallableProjection(S)
+  = CallableProjection(ResolveBare(name))
 ```
 
-A Symbol `S = <τ, None>` with a non-empty `V_τ` is therefore
-`CallablyPresent` even though it carries no value-facet members; the `V_τ`
-candidates are not lost by a value-facet-only head selection. This is what
-keeps a local Symbol with a type-capable `Q` but no callable projection from
-silently shadowing an outer callable Symbol of the same spelling, and it is
-equally what stops the search from degenerating into
-"retry outward until something type-checks" — the demand is coarse, and it is
-consulted once.
+A Symbol `S = <τ, None>` with a non-empty `V_τ` may therefore be callable even
+though it carries no value-facet members: `CallableProjection(S)` observes both
+`V_S` and `V_τ`. Conversely, a nearer non-callable Symbol still shadows an
+outer callable Symbol of the same spelling. A failed call projection and an
+empty hard-admissibility set are final failures of that resolved Symbol; they
+never mean "retry outward until something type-checks".
 
-`q` is coarse in the strict sense: it distinguishes facet presence, never
-signatures, argument types, arity, or specificity. Head selection therefore never
-becomes overload resolution in disguise.
+Formally, for every use context `q`:
+
+```text
+Resolve_value(path)
+  = Resolve_type(path)
+  = Resolve_call(path)
+  = Resolve(path)
+```
+
+The equalities identify the same terminal Symbol. Context enters only in the
+subsequent projection.
 
 #### 3.2.2 Tail navigation is context-independent
 
@@ -1416,9 +1404,8 @@ resolution in disguise. Namespace children remain reachable: a step consults
 the current symbol's object facet and its associated namespace, so ordinary
 namespace paths keep resolving unchanged.
 
-The coarse facet of §3.2.1 is not an exception to this. It participates only in
-selecting the head, once, and it distinguishes facet presence rather than
-meaning; the tail steps and the final projection remain as above.
+There is no coarse-facet exception at the head. Shadowing precedes projection,
+applicability, Policy preference, and DynamicLegality.
 
 The host layers traversed on the way are retained as an ordered `HostChain`,
 because per-layer exposure is a conjunction over every layer
@@ -1466,7 +1453,7 @@ Symbol or place.
 
 This ordinary declaration rule does not license a meta returned result to use an
 external pure Object as its installed type core. A canonical meta
-instance has an additional self-root invariant, stated per result shape:
+instance has an additional self-root invariant, stated per result class:
 for the default result `τ_M`, `Root(Core(τ_M)) = MetaInstanceScope` holds
 unconditionally (`Core(τ_M)` is the first projection of `τ_M`); an explicitly
 declared result that carries an installed type core `Q` requires `Q`'s outer
@@ -1579,8 +1566,7 @@ Thus a ranked string denotes `str@compile`; it does not first denote
 does not imply `str ref`, hidden storage, or a lifetime extension. The current
 `LiteralFamily::String` carrier preserves that source family. Whether the core
 bootstrap has installed a concrete `str` Type symbol is an implementation
-availability question recorded by the v0.6 transition contract, not the owner
-of this semantic path.
+availability question, not the owner of this semantic path.
 
 The frozen lexer continues to preserve spelling only. It does not choose
 width, signedness, precision, encoding, overflow behavior, or a machine type.
@@ -1634,9 +1620,8 @@ character != char16
 character != char32
 ```
 
-This section does not add a character token to the frozen v0.2 lexer. The final
-source spelling, escape rules, and whether the carrier is exactly the Unicode
-scalar-value set require a current/future surface amendment. Ranked strings
+The final character source spelling, escape rules, and whether the carrier is
+exactly the Unicode scalar-value set remain Open. Ranked strings
 remain the independent `str@compile` path above and are not reinterpreted as
 character tokens.
 
@@ -1840,10 +1825,7 @@ obtains the actual's place via its privilege (§5.1.0).
 #### 5.1.0 The selected borrow-forming default obtains a privileged actual place
 
 The selected borrow-forming default of `ref` (or `share`) obtains the place of
-the actual — not a second place source derived from `Read(E)`. The old
-`ObjectPlace(value) ≠ CarrierPlace(E)` binary is retired: it existed only
-because `ref` was assumed unable to observe the actual place while the retired
-model assigned that privilege to `@`. The replacement gives `ref` and `share`
+the actual — not a second place source derived from `Read(E)`. `ref` and `share`
 `PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`;
 continuation-relative `@` does not acquire a place.
 
@@ -2111,8 +2093,7 @@ E |> (type ref) is undefined when E has no carrier place (a freshly computed tem
 t |> (type ref) is not a general PlaceOf(E) available on every expression
 ```
 
-The former carrier-borrow `@` group that yielded `type ref` is retired: `@` is
-a continuation-relative name-reification operation that yields a lifetime value, never a
+`@` is a continuation-relative name-reification operation that yields a lifetime value, never a
 borrow view and never a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2.1). Reaching the
 carrier slot explicitly uses `t |> (type ref)` or `(S ref).type`.
@@ -2158,9 +2139,9 @@ that yield a borrow instance, the view's referent is the complete object that
 `Read` produced (§5.1); the pure `type` row yields a TypeValue, not a view.
 
 Consequently the compile stage offers no implicit borrow formation for an
-operand that has a `Val1` payload — `s ref` already does that job. The retired
-`@` carrier-borrow group is not a fallback for `ref`, and `@` is not a borrow
-constructor at all (`NoImplicitBorrowFormation`).
+operand that has a `Val1` payload — `s ref` already does that job. `@` is not a
+fallback for `ref` and is not a borrow constructor
+(`NoImplicitBorrowFormation`).
 
 ### 5.3 Borrow constructors have fixed points
 
@@ -2197,12 +2178,9 @@ rank(t share)                  = rank(t)
 rank(t ref/share rebind)       = rank(t)
 ```
 
-The former `@` fixed points (`type ref@ = type ref`, `type share@ = type share`)
-and the former value-instance rule `t@ = lifetime(t)` are retired: `@` is
-`ReifyLife(NameOf(actual), Pos(SemanticContinuation))`, yields a lifetime value
-uniformly, and is never a borrow constructor
-(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1). The old blanket
-equation “`@@` is identity on every borrow view” does not return.
+`@` is `ReifyLife(NameOf(actual), Pos(SemanticContinuation))`, yields a lifetime
+value uniformly, and is never a borrow constructor
+(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1).
 
 Idempotence is the consequence of providing the equal-capability overload, not a
 rule that contradicts it:
@@ -2413,10 +2391,8 @@ TypeOf(type)   = type_1
 TypeOf(symbol) = type
 ```
 
-The old `typeof(type) = symbol` / `typeof(type |> type) = type_1` path is
-retired: `type` is no longer a `symbol` whose callable members must be reached
-through the Symbol's shared `V`. With `tau = <Q, V_τ>`, `type` carries its own
-callspace, so `TypeOf(type) = type_1` directly.
+With `tau = <Q, V_τ>`, `type` carries its own callspace, so
+`TypeOf(type) = type_1` directly; no Symbol recovery participates.
 
 The designated positions are:
 
@@ -2599,8 +2575,8 @@ replacement ends the old parent resident, produces a distinct family of
 projection slots, and invalidates borrows of the old slots under ordinary
 lifetime rules. It never redirects them to the replacement parent's same-named
 or same-positioned slot; only `rebind` acquires that new target (§5.4). The
-concrete generation/version encoding remains implementation debt, but this
-resident-slot distinction is target semantics.
+concrete generation/version encoding is an Open representation boundary; the
+resident-slot distinction is canonical semantics.
 
 Navigation preserves the observation kind:
 
@@ -2729,7 +2705,7 @@ pattern compatibility. (The candidate-preparation layer that consumes type
 values is specified in `pattern-normalization-and-first-order-overload.md`;
 this document defines what a type-value identity is.) Under the minimal-change
 rule (§2.2), `Core(τ) = Q` observation is the default for ordinary type
-matching, not a provisional stand-in; whole-snapshot identity
+matching. Whole-snapshot identity
 `Addr(Norm_type(tau))` is used only where the language has independently frozen
 whole-snapshot semantics.
 
@@ -2793,40 +2769,7 @@ If the observed object is not visible or not usable under the current
 Re-export or wrapper semantics that intentionally re-expose a target under a
 different policy is a separate, later design and is **not** defined here.
 
-## 10. Relation to current implementation
-
-The `lang_build` semantic spine implements the identity core of this document
-only through its existing type-core/`Val2` substrate: opaque-`Val1` Object
-normalization, first-order `TypeValueId`, per-carrier places, and meta return
-self-root validation. It does not yet represent the complete immutable
-`tau=<Q,V_τ>` closure or use `Norm_type(tau)` for equality/keying/copying. The
-current `TypeObject` adapter is implementation transport, never the canonical
-complete type model or a binding-level policy authority.
-
-Registered implementation debt — semantics closed here, not yet built:
-
-```text
-full three-component Norm(x) including recursive Norm_Val1?
-  (current normalizer keeps an opaque Val1 leaf)
-ref / share / @ / rebind operations and their overloads
-type ref and type share values, and ValidContext for them
-the independent writability and construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgments of §6
-the = assignment operator and its four-layer check (§4.5.1 there)
-construction-unit ownership enforcement
-```
-
-Whole-snapshot comparison is required only at independently specified
-snapshot-sensitive positions; ordinary type equality/keying keeps observing
-`Core(tau) = Q` by default (minimal-change rule, §2.2). Migrating the remaining
-first-order comparison consumers is therefore not outstanding implementation
-debt.
-
-The retired alias-forwarding model (`AliasChain`, symbol/place forwarding, and
-alias-forwarded extension places) is not
-implementation debt. It is removed from the target semantics and must not be
-revived as future work.
-
-## 11. Non-goals
+## 10. Non-goals
 
 ```text
 No parser syntax change.
@@ -2835,10 +2778,9 @@ No full lifetime/access-tree checker.
 No runtime lookup implementation.
 No package re-export semantics.
 No permission escalation through borrow views.
-No revival of symbol-alias or place-forwarding declaration forms.
 ```
 
-## 12. Relationship to other documents
+## 11. Relationship to other documents
 
 The documents below are adjacent or background design. They do not define the
 distinctions specified here, and this document does not depend on them for its
@@ -2858,9 +2800,8 @@ meaning.
   same-name receiver overloads and access-tree work. It references
   this document for the canonical value / place / borrow-view distinction rather
   than restating it.
-- `early-meta-functions-and-namespace-graph.md` — the build / namespace graph and
-  early-meta slice, including the v0.6 placeholder `TypeObject` representation
-  this document supersedes as the long-term semantics.
+- `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
+  and bootstrap consumers of complete type and Place observations.
 - `symbol-construction-units-and-namespace-origin.md` — canonical
   `NamespaceOrigin`, construction-unit ownership, physical contribution
   authority, pure/type role refinement, and cross-file closure rules.

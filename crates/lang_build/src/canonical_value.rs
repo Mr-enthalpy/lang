@@ -1,16 +1,15 @@
-//! Norm(v) / Addr(v) — canonical static-value normalization and semantic
-//! interning addresses.
+//! Canonical Object and complete-type normalization / semantic interning
+//! addresses.
 //!
 //! ```text
-//! Norm(v):  Val1 = ∅  =>  Norm_type(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩
-//!           Val1 ≠ ∅  =>  Norm_VP(Val1, P)   (value material)
-//! Val2 participates in Norm(v) for type arguments to meta invocations
-//! (where Val2 represents the current injection state of the type).
-//! For ordinary values, Val2 is not part of identity.
-//! Closure values in Val2 are implicitly always-distinct (unique
-//! SemanticValueId per allocation).
-//! Addr(v) = Intern(Norm(v))                  (semantic interning address)
+//! Object(v) = <Val1?(v), P(v), Val2(v)>
+//! Norm(v)   = <Norm_Val1?, Norm_P, Norm_Val2>
+//! Addr(v)   = Intern(Norm(v))
 //! ```
+//!
+//! Every ordinary Object follows that one rule.  A value payload is never
+//! permitted to discard Val2, and an implementation allocation id is never a
+//! substitute for unobserved Val1 content.
 //!
 //! A pure P is a real object (`null × P × Val2`), and two carriers of one
 //! Pattern can hold different Val2, so the Pattern alone cannot be the type
@@ -35,25 +34,30 @@
 //! pure-P types, structured PatternValues, and static Products are
 //! canonicalized here.  Every value normal form carries its Pattern
 //! coordinate explicitly: `Norm_VP(Val1, P)` is a PAIR — equal Val1 content
-//! under different Ps never shares one address.  Complex compile-time
-//! memory values (heap material,
-//! mutable buffers, pointer provenance, cycles, allocator state) are
-//! registered future work: they receive an identity-stable opaque form (or a
-//! fresh, never-merged address for material without any stable identity), so
-//! deferral can only under-merge — it never collides two distinct values
-//! into one address.
+//! under different Ps never shares one address.  Values whose Val1 content
+//! observation is not implemented use an identity-stable opaque semantic
+//! leaf.  This safely under-merges instead of either inventing content
+//! equality or denying that the ordinary Object has a normal form.
 //!
 //! Formal binder names, source paths, body material, provenance, and carrier
 //! Symbols never appear in any normal form.
+//!
+//! A complete type value is not another Object.  Its specialized whole-value
+//! observation is interned in the same address space under a disjoint normal
+//! form:
+//!
+//! ```text
+//! Norm_type(tau) = bind alpha.<Norm(Core(tau)), Norm_V^alpha(CallSpace(tau))>
+//! ```
+//!
+//! `TypeValueId` remains only the lookup index of the core.  It is absent from
+//! the whole normal form and cannot stand in for `tau`.
 
 use lang_syntax::NormLiteralKind;
 
 use std::collections::BTreeMap;
 
-use crate::{
-    identity::{SemanticValueId, TypeValueId},
-    semantic_owner::ResolvedPatternRootId,
-};
+use crate::semantic_owner::ResolvedPatternRootId;
 
 /// `Norm_Val2(V) = Map_name(Norm_Cluster(V[name]))` — the recursive normal
 /// form of one object's Val2 at canonicalization time.
@@ -62,6 +66,22 @@ use crate::{
 /// order is not identity material).  Each entry is the recursive normal form
 /// of that name's ClusterSymbol, never a raw allocation id list.
 pub type CanonicalVal2Norm = BTreeMap<String, CanonicalClusterNorm>;
+
+/// Immutable normalized `V_tau` snapshot.  The selector map is separate from
+/// the core Object's owned Val2 even when current construction substrate
+/// projects the same direct TypeMembers into both views.
+pub type CanonicalTypeCallSpaceNorm = BTreeMap<String, CanonicalClusterNorm>;
+
+/// `bind alpha.<Norm(Q), Norm_V^alpha(V_tau)>`.
+///
+/// The current connected slice has no stored `Self_tau` edge yet; when that
+/// edge is introduced its bound-reference form extends the member normalizer,
+/// not this identity boundary.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CanonicalCompleteTypeNorm {
+    pub core: CanonicalValueAddr,
+    pub call_space: CanonicalTypeCallSpaceNorm,
+}
 
 /// `Norm_Cluster(C) = ⟨Norm_pureP(C.pureP)?, Multiset{Norm_val(v)}⟩` — the
 /// normal form of one Val2 name.
@@ -150,6 +170,12 @@ pub enum CanonicalPatternNorm {
     /// type carries that type's Pattern instead — the two coordinates never
     /// merge (`same Val1 + different P → different address`).
     LiteralIntrinsic { family: CanonicalLiteralFamily },
+    /// The fixed Pattern of an invocation-parentheses Product.
+    Product {
+        constructor: CanonicalProductConstructor,
+    },
+    /// The Pattern of the Product Unit value.
+    ProductUnit,
 }
 
 /// One complete, inner-to-outer navigation name in a normalized Pattern.
@@ -247,7 +273,7 @@ pub struct CanonicalOrderedPatternEntry {
 /// erased; only the completed navigation map survives in the PatternValue.
 ///
 /// Ordinary navigated `let f::t = expr` never calls this builder — whether
-/// the RHS is `Val1 × P × Val2` or a pure `null × P × Val2` type object, it
+/// the RHS is `Val1 × P × Val2` or a pure `null × P × Val2` pure type Object, it
 /// installs an associated Val2 member and cannot change the Pattern normal
 /// form. Only `struct` and `inject` hold Pattern-injection privilege.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -461,29 +487,23 @@ pub fn expand_extraction_navigation(
     Err(MissingExtractionNavigationAnchor)
 }
 
-/// One type observation consumed by a structural identity position (struct
-/// Pattern leaves, field signatures, extraction views).
+/// One `Core(tau)` observation consumed by a structural identity position
+/// (struct Pattern leaves, field signatures, extraction views).
 ///
-/// A bare `TypeValueId` is only the first-order projection: the same open
-/// type observed before and after a Val2 injection keeps one `TypeValueId`
-/// while its `Norm_type = ⟨Norm_P, Norm_Val2⟩` changes.  Identity positions
-/// therefore consume the observation, never the bare projection.
+/// A bare `TypeValueId` is only the first-order lookup projection. Structural
+/// Pattern identity consumes the ordinary Object observation of the core,
+/// never that lookup index and never the complete `V_tau` snapshot.
 ///
-/// - [`Self::Observed`] carries the interned `Addr(Norm_type(type_value,
-///   place))` computed against the live [`SemanticWorld`] snapshot at the
-///   invocation boundary — the authoritative observation identity.
-/// - [`Self::Detached`] carries only the first-order projection, for
-///   world-free standalone formal invocation where no observation channel
-///   exists (and therefore no Val2 can be observed at all).
-///
-/// The two variants never compare equal, so a missing observation can only
-/// under-merge — it never collapses two different Val2 observations.
+/// The observation carries the interned `Addr(Norm(Core(tau)))` computed
+/// against the semantic world at the invocation boundary.  A first-order
+/// [`TypeValueId`] is only a lookup key and cannot stand in for this
+/// observation.
 ///
 /// [`SemanticWorld`]: crate::SemanticWorld
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CanonicalTypeObservation {
+    /// Canonical Object address of `Core(tau)`.
     Observed(CanonicalValueAddr),
-    Detached(TypeValueId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -508,71 +528,53 @@ pub enum CanonicalProductConstructor {
     CallParentheses,
 }
 
-/// Canonical normal form `Norm(v)` of one static argument value.
+/// Identity-stable leaf used when an ordinary Val1 has no implemented
+/// content normalizer yet.
+///
+/// This identity is deliberately its own semantic coordinate: it is not a
+/// Place, Symbol, Type lookup key, or exposed `SemanticValueId`.  Opaque
+/// leaves only under-merge (the same value reuses one leaf; distinct values
+/// never collapse) until a content normalizer replaces them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OpaqueVal1Id(pub(crate) u64);
+
+/// Canonical normal form of the owned Val1 component.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum CanonicalNormForm {
-    /// `Norm_type(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩` — pure-P material
-    /// (Val1 = ∅) normalized by the PAIR of its Pattern's own canonical normal
-    /// form and its own recursive Val2, never by a raw snapshot allocation
-    /// index and never by the Pattern alone.  `val2` is the Val2 observed
-    /// through this object's carrier place (with per-name fallback to the
-    /// Pattern's canonical type object); the place itself never enters the
-    /// form, so `Place(T) ≠ Place(U)` with equal recursive Val2 still shares
-    /// one address.
-    PureP {
-        pattern: CanonicalPatternNorm,
-        val2: CanonicalVal2Norm,
-    },
-    /// `Norm_val(v) = ⟨Norm_P(P_v), Norm_Val2(Val2_v)⟩` for a value object
-    /// whose Val1 carries no further normalizable content of its own — a
-    /// materialized call entry is the canonical case, and it is also the leaf
-    /// where the Val2 recursion stops: `Val2(()) = ∅`, so
-    /// `Norm(()) = ⟨Norm_P(P_FunctionItem), ∅⟩`.
-    ///
-    /// Kept apart from [`Self::PureP`] because a type object (`Val1 = ∅`) and
-    /// a value object are different objects even under one Pattern normal
-    /// form.
-    ValueObject {
-        pattern: CanonicalPatternNorm,
-        val2: CanonicalVal2Norm,
-    },
-    /// Pure-P type material whose PatternValue is not resolved in this
-    /// snapshot: normalized by the canonical TypeValue root itself.
-    PurePType { type_value: TypeValueId },
-    /// `Norm_VP(Val1, P)` of a simple literal: the canonicalized content
-    /// (digit separators removed; integer radix spellings decoded to one
-    /// canonical decimal form; float spellings normalized as exact decimal
-    /// rationals; string spellings decoded from their ranked quote
-    /// boundaries to content) PAIRED with the value's Pattern normal form.
-    /// Equal content under different Ps keeps different addresses.
+pub enum CanonicalVal1Norm {
     Literal {
         family: CanonicalLiteralFamily,
         normalized: String,
-        pattern: CanonicalPatternNorm,
     },
-    /// `Norm_VP(Val1, P)` of a static Product: the ordered member addresses
-    /// plus the Product's own constructor P.  Product structure participates
-    /// positionally; member content participates only through each member's
-    /// own interned address.
-    ///
-    /// The invocation argument parentheses are themselves a Product value,
-    /// so a call's whole argument tuple normalizes through this form:
-    /// `Norm(args) = Product⟨Addr(a1)..Addr(an)⟩` under the fixed
-    /// call-parentheses constructor.  Top-level argument equivalence for
-    /// meta instance keys is therefore order-sensitive by construction — it
-    /// inherits the Product's positional identity rather than relying on an
-    /// ad-hoc sequence encoding.
     Product {
-        constructor: CanonicalProductConstructor,
         members: Vec<CanonicalValueAddr>,
     },
-    /// A product Unit position.
-    Unit,
-    /// Deferred complex-value normalization: identity-stable but not
-    /// content-normalized.  Two references to one semantic value share one
-    /// address; two content-equal but distinct values keep distinct
-    /// addresses (safe under-merge, registered future work).
-    OpaqueValue { value: SemanticValueId },
+    ProductUnit,
+    /// Safe under-merge for ordinary Val1 payloads whose content
+    /// normalization is not implemented yet.
+    Opaque(OpaqueVal1Id),
+    /// Callable content is identified through its canonical Pattern/root and
+    /// Val2 callspace; declaration spellings and carrier Symbols are absent.
+    FunctionObject,
+    /// Terminal FunctionItem content.  Its canonical Pattern distinguishes
+    /// independently declared entries; its Val2 is empty.
+    CallEntry,
+    /// A continuation-relative lifetime observation is ordinary Val1
+    /// content. It is not a fourth Object axis and carries no Place.
+    Lifetime(crate::LifetimeValue),
+}
+
+/// The one ordinary Object normal form.  No fourth axis exists.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CanonicalObjectNorm {
+    pub val1: Option<CanonicalVal1Norm>,
+    pub pattern: CanonicalPatternNorm,
+    pub val2: CanonicalVal2Norm,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CanonicalNormForm {
+    Object(CanonicalObjectNorm),
+    CompleteType(CanonicalCompleteTypeNorm),
 }
 
 /// Canonicalize an un-materialized literal spelling into its
@@ -589,7 +591,7 @@ pub enum CanonicalNormForm {
 ///   deterministic separator-stripped lowercase fallback: safe under-merge,
 ///   exact decoding for those forms is registered future work);
 /// - string spellings are decoded from their ranked quote boundaries
-///   (`\\`^k `"` … `\\`^k `"`) to the raw content bytes — the v0.2 string
+///   (`\\`^k `"` … `\\`^k `"`) to the raw content bytes — the ranked string
 ///   form has no escape decoding, so equal content across boundary ranks
 ///   shares one normal form.
 ///
@@ -600,11 +602,11 @@ pub enum CanonicalNormForm {
 pub fn canonical_literal_norm(kind: NormLiteralKind, text: &str) -> CanonicalNormForm {
     let family = CanonicalLiteralFamily::from_norm_literal_kind(kind);
     let normalized = canonical_literal_content(kind, text);
-    CanonicalNormForm::Literal {
-        family,
-        normalized,
+    CanonicalNormForm::Object(CanonicalObjectNorm {
+        val1: Some(CanonicalVal1Norm::Literal { family, normalized }),
         pattern: CanonicalPatternNorm::LiteralIntrinsic { family },
-    }
+        val2: CanonicalVal2Norm::new(),
+    })
 }
 
 /// Canonicalized content half of a literal `Norm_VP(Val1, P)` — the Val1
@@ -738,7 +740,7 @@ fn exact_decimal_float_norm(lower: &str) -> Option<String> {
 
 /// Decode a ranked quote-boundary string spelling to its content bytes.
 ///
-/// The v0.2 string form is `\\`^k `"` content `\\`^k `"` with NO escape
+/// The ranked string form is `\\`^k `"` content `\\`^k `"` with NO escape
 /// decoding inside content (backslashes participate only in the boundary),
 /// so the content slice `text[k+1 .. len-1-k]` IS the string value.  A
 /// malformed spelling (unclosed string recovered by the lexer) keeps the
@@ -843,16 +845,16 @@ mod tests {
         // equivalence is positional, never bag/set equivalence.
         let a = CanonicalValueAddr(1);
         let b = CanonicalValueAddr(2);
-        assert_ne!(
-            CanonicalNormForm::Product {
-                constructor: CanonicalProductConstructor::CallParentheses,
-                members: vec![a, b]
-            },
-            CanonicalNormForm::Product {
-                constructor: CanonicalProductConstructor::CallParentheses,
-                members: vec![b, a]
-            },
-        );
+        let product = |members| {
+            CanonicalNormForm::Object(CanonicalObjectNorm {
+                val1: Some(CanonicalVal1Norm::Product { members }),
+                pattern: CanonicalPatternNorm::Product {
+                    constructor: CanonicalProductConstructor::CallParentheses,
+                },
+                val2: Default::default(),
+            })
+        };
+        assert_ne!(product(vec![a, b]), product(vec![b, a]),);
     }
 
     #[test]
@@ -860,20 +862,23 @@ mod tests {
         // Norm_VP(Val1, P) is a PAIR: the intrinsic-spelling P and a
         // structural P keep equal content at distinct normal forms.
         let intrinsic = canonical_literal_norm(NormLiteralKind::Int, "1");
-        let structural = CanonicalNormForm::Literal {
-            family: CanonicalLiteralFamily::Int,
-            normalized: canonical_literal_content(NormLiteralKind::Int, "1"),
+        let structural = CanonicalNormForm::Object(CanonicalObjectNorm {
+            val1: Some(CanonicalVal1Norm::Literal {
+                family: CanonicalLiteralFamily::Int,
+                normalized: canonical_literal_content(NormLiteralKind::Int, "1"),
+            }),
             pattern: CanonicalPatternNorm::Structural {
                 value: CanonicalPatternValue::Atom(CanonicalPatternAtom::Unit),
             },
-        };
+            val2: Default::default(),
+        });
         assert_ne!(intrinsic, structural);
     }
 
     #[test]
     fn inherited_and_explicit_navigation_normalize_to_the_same_pattern_value() {
         let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let enclosing = CanonicalFullNavigation::from_component("bool");
         let inherited = CanonicalPatternValue::direct_child_layer(
@@ -907,7 +912,7 @@ mod tests {
     #[test]
     fn unordered_pattern_identity_includes_the_complete_navigation_name() {
         let value = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let left = CanonicalPatternValue::unordered([(
             CanonicalFullNavigation::new(["t", "bool"]),
@@ -928,10 +933,10 @@ mod tests {
     #[test]
     fn named_pattern_body_is_unordered_only_when_every_child_is_named() {
         let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let b = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(2)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(2)),
         ));
         let no_enclosing = CanonicalFullNavigation::new(Vec::<String>::new());
         assert_eq!(
@@ -1014,10 +1019,10 @@ mod tests {
     #[test]
     fn naked_product_remains_ordered_even_when_every_child_is_named() {
         let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(1)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let b = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(2)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(2)),
         ));
         let no_enclosing = CanonicalFullNavigation::new(Vec::<String>::new());
         assert_ne!(
@@ -1203,7 +1208,7 @@ mod tests {
     #[test]
     fn one_shot_struct_and_privileged_incremental_contribution_normalize_equally() {
         let bool_pattern = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
-            CanonicalTypeObservation::Detached(TypeValueId(7)),
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(7)),
         ));
 
         // `let t = ((bool inner)t) |> struct;`

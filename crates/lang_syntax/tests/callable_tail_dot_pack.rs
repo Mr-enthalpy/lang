@@ -107,7 +107,7 @@ fn callable_tail_normalizes_delete_default_and_named_strategy() {
 }
 
 #[test]
-fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
+fn double_bracket_strategy_preserves_the_return_extraction_pattern() {
     let escaped = normalized_closure("let f = () -> r [[prefer_named]] { r };");
     assert_eq!(escaped.placement, NormClosurePlacement::InPlace);
     assert!(matches!(
@@ -119,11 +119,11 @@ fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
         NormPattern::Binder { ref name, .. } if name == "r"
     ));
 
-    let legacy = normalized_closure("let f = () -> r name { r };");
-    assert_eq!(legacy.placement, NormClosurePlacement::InPlace);
-    assert!(matches!(legacy.body, NormClosureBody::Block(_)));
+    let in_place = normalized_closure("let f = () -> r name { r };");
+    assert_eq!(in_place.placement, NormClosurePlacement::InPlace);
+    assert!(matches!(in_place.body, NormClosureBody::Block(_)));
     assert!(matches!(
-        legacy
+        in_place
             .head
             .as_ref()
             .unwrap()

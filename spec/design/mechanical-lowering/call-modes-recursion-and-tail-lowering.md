@@ -274,7 +274,8 @@ eligible for tail-call optimization.
 ```text
 No current parser syntax change.
 No current normalizer behavior change.
-No Rust implementation change in this PR.
+Implementation scope: this document defines lowering obligations and does not
+change the Rust implementation.
 No backend or LLVM ABI design.
 No machine stack layout design.
 No full borrow/lifetime legality checker.

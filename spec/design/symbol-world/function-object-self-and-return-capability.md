@@ -15,7 +15,7 @@ the semantics:
 
 This document defines the design boundary for `self`, the built-in return
 capability, and the lifetime contract associated with early function return.
-The normalized formal-frame projection, generated-helper shape, restricted
+The normalized formal-frame projection, generated-helper shape, declared
 callable arity, return-target substrate, and whole-slot PolicyMode product-order carrier
 implement this positional boundary. Full name resolution, callable-object
 materialization, return-capability execution, and lifetime checking remain
@@ -204,10 +204,9 @@ postcondition: after the error handler invokes `self..return(error)`, the
 current branch is complete, `Done(unit)` is contributed to the local pattern
 space, and `Done(error)` is contributed to the final return accumulator.
 
-## 8. Not implemented
+## 8. Consumer frontier
 
-The following are future work and must not be implemented in the current
-construction phase:
+The following consumers remain pending:
 
 - `self..return(d)` as a runtime capability object;
 - the anonymous function-object type that carries `return`;

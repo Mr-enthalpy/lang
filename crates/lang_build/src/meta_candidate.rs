@@ -11,20 +11,16 @@
 //! - The resolver does **not** flatten products.
 //!
 //! `CanonicalArgProductShapeMaterial` records structural input material
-//! derived from the argument product shape. It is not final hash.
-//!
-//! The current implementation boundary lives in `lang_build::product_shape`,
-//! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
-//! boundaries, not full implementations of the future systems.
+//! derived from the argument product shape.
 
 use crate::{
-    callable_body_allows_execution,
     identity::TypeValueId,
+    model::policy_view_allows_execution,
     model::{
-        CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, PolicyMetadata, Provenance,
-        SymbolId, SymbolObject,
+        CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SymbolId, SymbolObject,
     },
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
+    PolicyView,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,11 +47,11 @@ impl ParameterShape {
         }
     }
 
-    /// Single-parameter signature requiring a type object argument.
+    /// Single-parameter signature requiring a complete type value argument.
     pub fn type_parameter_signature(provenance: Provenance) -> Self {
         Self {
             expected_arity: Some(1),
-            expected_arg_kinds: vec![ParameterArgRequirement::TypeObject],
+            expected_arg_kinds: vec![ParameterArgRequirement::CoreTypeProjection],
             provenance,
         }
     }
@@ -63,7 +59,7 @@ impl ParameterShape {
     pub fn type_parameter_sequence(expected_arity: usize, provenance: Provenance) -> Self {
         Self {
             expected_arity: Some(expected_arity),
-            expected_arg_kinds: vec![ParameterArgRequirement::TypeObject; expected_arity],
+            expected_arg_kinds: vec![ParameterArgRequirement::CoreTypeProjection; expected_arity],
             provenance,
         }
     }
@@ -72,7 +68,7 @@ impl ParameterShape {
 /// Per-argument kind requirement for parameter shape validation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParameterArgRequirement {
-    TypeObject,
+    CoreTypeProjection,
     Deferred,
 }
 
@@ -80,30 +76,21 @@ pub enum ParameterArgRequirement {
 pub struct CandidatePreparationContext {
     pub lookup_env: PolicyEnv,
     pub demanded_execution: ExecutionEnv,
-    pub build_identity: CandidateBuildIdentityPlaceholder,
     pub provenance: Provenance,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct CandidateBuildIdentityPlaceholder {
-    pub package_identity_fragment: Option<String>,
-    pub mount_identity_fragment: Option<String>,
-    pub build_config_fingerprint_fragment: Option<String>,
-    pub policy_export_fingerprint_fragment: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePolicyPlanes {
     pub lookup_env: PolicyEnv,
-    pub symbol_visibility_policy: PolicyMetadata,
+    pub symbol_policy_view: Option<PolicyView>,
     pub demanded_execution: ExecutionEnv,
-    pub body_entry_policy: PolicyMetadata,
-    pub return_object_policy: PolicyMetadata,
+    pub body_entry_policy: PolicyView,
+    pub return_object_policy: PolicyView,
 }
 
 impl CandidatePolicyPlanes {
     pub fn body_entry_allows_demanded_execution(&self) -> bool {
-        callable_body_allows_execution(&self.body_entry_policy, self.demanded_execution)
+        policy_view_allows_execution(&self.body_entry_policy, self.demanded_execution)
     }
 }
 
@@ -116,7 +103,6 @@ pub struct PreparedCallableCandidate {
     pub arg_product_shape: ArgProductShape,
     pub parameter_shape: ParameterShape,
     pub policy_planes: CandidatePolicyPlanes,
-    pub build_identity: CandidateBuildIdentityPlaceholder,
     pub provenance: Provenance,
 }
 
@@ -126,11 +112,11 @@ pub enum CallableCandidateKind {
     FieldFunction,
 }
 
-/// Fingerprint input material for the canonical meta instance key.
+/// Prepared argument-shape material consumed by primitive execution.
 ///
 /// Captures the structural argument product shape at candidate-preparation
 /// time. Contains **no** source text, **no** normalized dump, and **no**
-/// hash. This is input material only — the final key derivation is future work.
+/// hash. It is structural execution input, not semantic invocation identity.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CanonicalArgProductShapeMaterial {
     pub arity: usize,
@@ -157,8 +143,8 @@ impl CanonicalArgProductShapeMaterial {
                 .map(|raw_arg| match &raw_arg.value_class {
                     RawArgValueClass::UnknownExpression => CanonicalArgAtomKind::ExpressionBarrier,
                     RawArgValueClass::Value => CanonicalArgAtomKind::ResolvedValue,
-                    RawArgValueClass::NonValue(NonValueArgKind::TypeObject) => {
-                        CanonicalArgAtomKind::TypeObject
+                    RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection) => {
+                        CanonicalArgAtomKind::CoreTypeProjection
                     }
                     RawArgValueClass::NonValue(NonValueArgKind::RankObject) => {
                         CanonicalArgAtomKind::RankObject
@@ -199,8 +185,8 @@ pub enum CanonicalArgAtomKind {
     ExpressionBarrier,
     /// Positively classified as a value argument.
     ResolvedValue,
-    /// Classified as a type object argument.
-    TypeObject,
+    /// Classified as a complete type projection argument.
+    CoreTypeProjection,
     /// Classified as a rank object argument.
     RankObject,
     /// Classified as a namespace object argument.
@@ -217,9 +203,9 @@ pub enum CanonicalArgAtomKind {
 
 /// Candidate preparation result before formal meta invocation.
 ///
-/// `ApplicablePlaceholder` means the candidate passed the current placeholder
-/// arity and body-entry checks. It is not a completed invocation result and it
-/// does not produce a `MetaInvocationResult`, `MetaExpansionResult`, or
+/// `Applicable` means the candidate passed arity and body-entry checks. It is
+/// not a completed invocation result and it
+/// does not produce an `InvocationResult` or namespace installation material,
 /// `NamespaceDelta`.
 ///
 /// `Deferred` means later pattern/type/policy/meta-invocation machinery must
@@ -231,7 +217,7 @@ pub enum CandidatePrepResult {
         candidate: Box<PreparedCallableCandidate>,
         reason: CandidatePrepDeferredReason,
     },
-    ApplicablePlaceholder(Box<PreparedCallableCandidate>),
+    Applicable(Box<PreparedCallableCandidate>),
     Diagnostic(Diagnostic),
 }
 
@@ -253,15 +239,15 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     callee: &SymbolObject,
     callable_kind: CallableCandidateKind,
     callee_primitive: Option<CoreMetaFunction>,
-    body_entry_policy: PolicyMetadata,
-    return_object_policy: PolicyMetadata,
+    body_entry_policy: PolicyView,
+    return_object_policy: PolicyView,
     arg_product_shape: ArgProductShape,
     parameter_shape: ParameterShape,
     context: CandidatePreparationContext,
 ) -> CandidatePrepResult {
     let policy_planes = CandidatePolicyPlanes {
         lookup_env: context.lookup_env,
-        symbol_visibility_policy: callee.policy_metadata.clone(),
+        symbol_policy_view: callee.policy_view.clone(),
         demanded_execution: context.demanded_execution,
         body_entry_policy,
         return_object_policy,
@@ -274,7 +260,6 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
         arg_product_shape,
         parameter_shape,
         policy_planes,
-        build_identity: context.build_identity,
         provenance: context.provenance,
     };
 
@@ -307,16 +292,16 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
             None => break,
         };
         match requirement {
-            ParameterArgRequirement::TypeObject => {
+            ParameterArgRequirement::CoreTypeProjection => {
                 if !matches!(
                     raw_arg.value_class,
-                    RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+                    RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
                 ) {
                     let got = format!("{:?}", raw_arg.value_class);
                     return CandidatePrepResult::Diagnostic(
                         Diagnostic::hard_error(
                             format!(
-                                "candidate preparation argument kind mismatch at position {index}: expected TypeObject argument, got {got}"
+                                "candidate preparation argument kind mismatch at position {index}: expected CoreTypeProjection argument, got {got}"
                             ),
                             Some(raw_arg.provenance.clone()),
                         )
@@ -337,5 +322,5 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
         };
     }
 
-    CandidatePrepResult::ApplicablePlaceholder(Box::new(candidate))
+    CandidatePrepResult::Applicable(Box::new(candidate))
 }

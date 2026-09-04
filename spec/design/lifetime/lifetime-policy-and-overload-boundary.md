@@ -1,9 +1,9 @@
 # Lifetime Policy, `@`, and the Overload Boundary
 
-Status: canonical target semantics for the `@` operation, the core lifetime
-value algebra, and the lifetime/ordinary-overload boundary. These semantics are
-not implemented; §6 registers the representation and checker debt. The semantic
-relations are closed here even though their Rust/IR encoding remains deferred.
+Status: canonical semantics for `@`, the lifetime value algebra, and the
+lifetime/ordinary-overload boundary. `LifecycleMachine` implements the shared
+continuation, LifeName, Region, Pre/Post, and Color substrate. Source operation,
+cleanup scheduling, and access-tree consumers remain pending.
 
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by
@@ -293,16 +293,6 @@ fails.
 ```text
 E@ : LifetimeValue
 E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
-```
-
-The retired forms do not return:
-
-```text
-Val1?(x) ≠ null  ->  LifetimeFact        (retired as a separate @ group)
-Val1?(x) = null  ->  P ref               (retired: @ is not a borrow constructor)
-t@ : type ref                            (retired)
-type ref@ = type ref                     (retired)
-type share@ = type share                 (retired)
 ```
 
 `@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
@@ -825,22 +815,10 @@ uncheckable representation side channel. Every capture presents a checkable form
 whose `origin_or_region_relation` is exactly the input the §3 escape check
 consumes.
 
-## 6. Registered implementation debt
+## 6. Open representation questions
 
-Semantics closed here, not yet built:
-
-```text
-SemanticContinuation / LifeName / LifetimeValue / NameView carriers
-`@` name/continuation reification
-region event indexing and move-generation tracking
-cleanup-before-observation scheduling evidence
-Pre/Post lifecycle action checking
-call-boundary lifetime summary instantiation
-the escape check of §3 at all four destination classes
-CheckableCaptureForm construction at closure materialization
-```
-
-Still genuinely open engineering questions, not closed by this document:
+The following representation and integration questions remain open without
+changing the relations defined above:
 
 - concrete Rust/IR identity for `LifeName`, event positions, generation ids,
   Region slices, lazy origin links, and summary compression;
@@ -851,16 +829,12 @@ Still genuinely open engineering questions, not closed by this document:
   representation, closure ABI, and environment layout, which remain the
   mechanical-lowering design's territory. The entry origin defaults, exact
   move-origin/Region boundary, and selected share/rebind-plus-clone realization
-  lifecycle-post boundary above are closed lifetime semantics, not items in that
-  implementation debt.
+  lifecycle-post boundary above are fixed lifetime semantics.
 
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff
 objects, ABI equivalence classes used for selection, or a lifetime-driven
-ordinary resolver. The retired `@` forms — the two instance
-groups (`Val1?(x) ≠ null -> LifetimeFact`, `Val1?(x) = null -> P ref`),
-`t@ : type ref`, and the borrow-type fixed points `type ref@ = type ref` /
-`type share@ = type share` — do not return.
+ordinary resolver.
 
 Related canonical contracts:
 

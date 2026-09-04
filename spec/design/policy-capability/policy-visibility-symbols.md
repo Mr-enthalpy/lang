@@ -21,11 +21,11 @@ the complete surface policy and only then elaborates the residual `PairSpec` as
 `Pv:Pp`. At most one connected mode Pattern is allowed; neither colon side may
 contain its own semantic mode coordinate. Its typed grammar is the singleton
 `ModeAtom ::= const | plain | mut`. A surface `PolicyChoice` containing more
-than one ModeAtom, including legacy-neutral `const || mut`, is preserved by
+than one ModeAtom, including `const || mut`, is preserved by
 Raw/Normalized syntax but rejected by typed Policy elaboration. This does not
 restrict same-coordinate pair/view choices such as `compile || runtime`. The
-current rejection of `const:compile`, `runtime:const`, and `const:mut` is a
-provisional empty-residual-side surface rule, not a consequence of
+current rejection of `const:compile`, `runtime:const`, and `const:mut` is an
+empty-residual-side surface rule, not a consequence of
 orthogonality; a future contextual shorthand must still factor mode exactly
 once and leave no mode coordinate in `Pv` or `Pp`. This is not a new
 Raw/Normalized AST node. In a result-demand context, no written ModeAtom means
@@ -247,22 +247,17 @@ The typed substrate currently provides:
 - a helper that first projects the complete binding query and, only when that
   is empty, extracts an accepted runtime branch for atomic migration, with a
   projection-only pure-type branch;
-- a transitional migration candidate adapter whose endpoint preference is
-  `input x output`, uses the shared maximal-element rule, preserves delete
-  rejection, permits callable-declared endpoint `PolicyMode`, cannot change
-  Type, and performs no transitive search. Its endpoint-only maxima helper is
-  private and is not a sequentially composable implementation of full Bp';
+- candidate-driven same-Type migration whose endpoint preference is
+  `input x output`, uses the ordinary maximal-element rule, preserves delete
+  rejection, permits callable-declared endpoint `PolicyMode`, and performs no
+  transitive search;
 - a parent-linked semantic-owner graph plus an owner-aware namespace forest
   substrate with explicit package boundaries, identity-preserving mount
   redirects, Full/External view routing, and typed lookup failures.
 
-The older `PolicyFlag`/`PolicySet` path and const-projected export adapter remain
-compatibility transport. They are lossy: they cannot represent the three real
-`PolicyMode` points, the 3×3 capability-realization space, choice syntax,
-Pattern association after cropping, or independent public/private and
-export-root state. The resolver now uses the three canonical phase names, but
-not every namespace graph operation stores a full `PolicyPair` plus
-`PolicyMode` yet. Compatibility behavior must not redefine the typed contract.
+Namespace entries and call candidates retain typed `PolicyPair`, concrete
+`PolicyMode`, visibility/export facts, and capability realization without a
+scalar policy projection.
 
 ## 6. Guardrails
 

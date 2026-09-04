@@ -255,7 +255,7 @@ fn explicit_mount_change_invalidates_cache_and_rebuilds_world() {
         let mut app = fixture_package_spec("single_package_type_binding", "app");
         app.dependency_mounts.push(
             NamespaceMount::synthetic_root("dep", vec!["dep".to_string()])
-                .with_symbol(symbol_name, SymbolKind::Placeholder),
+                .with_symbol(symbol_name, SymbolKind::Object),
         );
         BuildWorkspace {
             packages: vec![app],

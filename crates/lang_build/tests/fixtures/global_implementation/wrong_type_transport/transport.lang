@@ -1,0 +1,13 @@
+mut let uint8 =
+  (self, const let object: uint8): mut + (compile || runtime):compile
+    -> let result: uint16 =>
+{
+  object;
+};
+
+mut let uint8 =
+  (self, plain let object: uint8): mut + (compile || runtime):compile
+    -> let result: uint8 =>
+{
+  object;
+};

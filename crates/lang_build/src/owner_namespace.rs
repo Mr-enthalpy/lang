@@ -1,8 +1,8 @@
 //! Owner-aware namespace views, package boundaries, and mount redirects.
 //!
-//! This is the canonical typed substrate for the persistent namespace forest.
-//! The temporary `SemanticNameIndex` remains a projection adapter while
-//! v0.6 consumers migrate to this model.
+//! This typed graph carries persistent namespace ownership and name views.
+//! `SemanticNameIndex` stores the namespace topology and declaration records
+//! installed atomically with the semantic world.
 
 use std::collections::BTreeMap;
 
@@ -157,17 +157,39 @@ impl OwnerNamespaceGraph {
         name: impl Into<String>,
         entry: NamespaceSymbolEntry,
     ) {
-        self.nodes
+        let entries = self
+            .nodes
             .get_mut(&node)
             .unwrap_or_else(|| panic!("unknown namespace node {node:?}"))
             .symbols
             .entry(name.into())
-            .or_default()
-            .push(entry);
+            .or_default();
+        if !entries
+            .iter()
+            .any(|existing| existing.identity == entry.identity)
+        {
+            entries.push(entry);
+        }
     }
 
     pub fn node(&self, node: OwnerNamespaceNodeId) -> Option<&OwnerNamespaceNode> {
         self.nodes.get(&node)
+    }
+
+    pub fn child(
+        &self,
+        parent: OwnerNamespaceNodeId,
+        local_name: &str,
+    ) -> Option<OwnerNamespaceNodeId> {
+        self.node(parent)?.children.get(local_name).copied()
+    }
+
+    pub fn symbol_entries(
+        &self,
+        node: OwnerNamespaceNodeId,
+        name: &str,
+    ) -> Option<&[NamespaceSymbolEntry]> {
+        self.node(node)?.symbols.get(name).map(Vec::as_slice)
     }
 
     pub fn package_of(&self, node: OwnerNamespaceNodeId) -> Option<PackageId> {

@@ -2,7 +2,7 @@
 //!
 //! This module interprets generic normalized AST expressions in the context
 //! of `core::struct` type-pattern expressions. It produces
-//! `TypePatternExprShape` from `NormExpr` without depending on
+//! `StructPatternSyntaxMaterial` from `NormExpr` without depending on
 //! struct-specific parser or normalizer nodes.
 //!
 //! The parser and normalizer remain generic. All struct-specific
@@ -30,7 +30,7 @@
 //! leaf whose pattern name happens to be `_`.
 //!
 //! Current status:
-//! - `TypePatternExprShape` has no `BareValue` variant.
+//! - `StructPatternSyntaxMaterial` has no `BareValue` variant.
 //! - Current `Leaf("_")` MUST NOT be treated as BareValue.
 //! - Current Sum duplicate-label error does not apply to future bare value
 //!   branches (bare values merge by canonical value equality, not by label).
@@ -54,7 +54,7 @@
 //! ## Type-expression metadata boundary
 //!
 //! This decoder preserves non-path type expressions (e.g. `int Vec` in
-//! `int Vec a`) on the leaf type side via `StructLeafTypeExprShape::NormalizedAst`.
+//! `int Vec a`) on the leaf type side via `StructLeafSyntaxMaterial::NormalizedAst`.
 //! It does **not** yet make arbitrary type expressions resolvable as field
 //! type `SymbolId` through the existing field classification path. That
 //! classification still only handles simple `Name` and `Nav` type paths.
@@ -66,18 +66,19 @@ use lang_syntax::{
 
 use crate::{
     model::{Diagnostic, DiagnosticSeverity, Provenance},
-    pattern_space::{
-        StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape,
-    },
     policy_pair::{NamespaceVisibility, PolicyPair},
+    struct_pattern_material::{
+        StructLeafSyntaxMaterial, StructPatternSyntaxMaterial, StructSymbolPathMaterial,
+        StructuralMemberVisibility,
+    },
 };
 
-pub type StructDecodeResult = Result<TypePatternExprShape, Diagnostic>;
+pub type StructDecodeResult = Result<StructPatternSyntaxMaterial, Diagnostic>;
 
 /// Wrapper for a successfully decoded struct type-pattern expression.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DecodedStructPattern {
-    pub type_pattern_expr: TypePatternExprShape,
+    pub type_pattern_expr: StructPatternSyntaxMaterial,
     pub provenance: Provenance,
 }
 
@@ -206,7 +207,7 @@ fn struct_namespace_let_visibility(
 }
 
 impl DecodedStructPattern {
-    pub fn new(type_pattern_expr: TypePatternExprShape, provenance: Provenance) -> Self {
+    pub fn new(type_pattern_expr: StructPatternSyntaxMaterial, provenance: Provenance) -> Self {
         Self {
             type_pattern_expr,
             provenance,
@@ -232,8 +233,8 @@ pub fn decode_struct_type_pattern_expr(
         // A name with no left-side Expr is a pure Pattern node with no value
         // payload.  This is the same nullary shape used by alternatives such
         // as `if | else`; it is not a field.
-        NormExpr::Name { text, .. } => Ok(TypePatternExprShape::named(
-            TypePatternExprShape::product(vec![], provenance.clone()),
+        NormExpr::Name { text, .. } => Ok(StructPatternSyntaxMaterial::named(
+            StructPatternSyntaxMaterial::product(vec![], provenance.clone()),
             text,
             provenance,
         )),
@@ -250,14 +251,14 @@ pub fn decode_struct_type_pattern_expr(
 
 /// Decode a product as a bare product type-pattern expression.
 fn decode_product(product: &NormProduct, provenance: Provenance) -> StructDecodeResult {
-    let mut elements: Vec<TypePatternExprShape> = Vec::new();
+    let mut elements: Vec<StructPatternSyntaxMaterial> = Vec::new();
     let mut field_names: BTreeMap<String, usize> = BTreeMap::new();
     for elem in &product.elements {
         match elem {
             NormProductElem::Expr(inner) => {
                 let decoded = decode_struct_type_pattern_expr(inner, provenance.clone())?;
                 // Check for duplicate field names inside product
-                if let TypePatternExprShape::Leaf {
+                if let StructPatternSyntaxMaterial::Leaf {
                     local_pattern_name, ..
                 } = &decoded
                 {
@@ -280,7 +281,7 @@ fn decode_product(product: &NormProduct, provenance: Provenance) -> StructDecode
             }
         }
     }
-    Ok(TypePatternExprShape::product(elements, provenance))
+    Ok(StructPatternSyntaxMaterial::product(elements, provenance))
 }
 
 /// Decode a call expression `(source_elements target_expr)`.
@@ -483,8 +484,8 @@ fn decode_call_with_name_target(
     match elems.len() {
         0 => {
             // Nullary: Named(Product[], name) — e.g. bare `None` or `if`
-            Ok(TypePatternExprShape::named(
-                TypePatternExprShape::product(vec![], provenance.clone()),
+            Ok(StructPatternSyntaxMaterial::named(
+                StructPatternSyntaxMaterial::product(vec![], provenance.clone()),
                 name,
                 provenance,
             ))
@@ -496,8 +497,10 @@ fn decode_call_with_name_target(
                 // Simple type name → Leaf
                 NormExpr::Name {
                     text: type_name, ..
-                } => Ok(TypePatternExprShape::leaf(
-                    StructLeafTypeExprShape::Path(SymbolPathShape::single(type_name.clone())),
+                } => Ok(StructPatternSyntaxMaterial::leaf(
+                    StructLeafSyntaxMaterial::Path(StructSymbolPathMaterial::single(
+                        type_name.clone(),
+                    )),
                     name,
                     provenance,
                 )),
@@ -520,8 +523,8 @@ fn decode_call_with_name_target(
                             Some(provenance),
                         ));
                     }
-                    Ok(TypePatternExprShape::leaf(
-                        StructLeafTypeExprShape::Path(SymbolPathShape::new(segments)),
+                    Ok(StructPatternSyntaxMaterial::leaf(
+                        StructLeafSyntaxMaterial::Path(StructSymbolPathMaterial::new(segments)),
                         name,
                         provenance,
                     ))
@@ -533,7 +536,7 @@ fn decode_call_with_name_target(
                 // child structure of the Named.
                 NormExpr::Product(group_product) => {
                     let child = decode_product(group_product, provenance.clone())?;
-                    Ok(TypePatternExprShape::named(child, name, provenance))
+                    Ok(StructPatternSyntaxMaterial::named(child, name, provenance))
                 }
                 // A singleton source that came from an explicit Group is a
                 // named child construction even when normalization erased the
@@ -546,7 +549,7 @@ fn decode_call_with_name_target(
                     }) =>
                 {
                     let child = decode_struct_type_pattern_expr(other, provenance.clone())?;
-                    Ok(TypePatternExprShape::named(child, name, provenance))
+                    Ok(StructPatternSyntaxMaterial::named(child, name, provenance))
                 }
                 // Any other expression (including an ungrouped inner Call) →
                 // Leaf with the expression as type_expr, and `name` as the
@@ -561,8 +564,8 @@ fn decode_call_with_name_target(
                 // This rule is struct-decoding-local only.
                 other => {
                     let type_desc = format!("{:?}", other);
-                    Ok(TypePatternExprShape::leaf(
-                        StructLeafTypeExprShape::NormalizedAst {
+                    Ok(StructPatternSyntaxMaterial::leaf(
+                        StructLeafSyntaxMaterial::NormalizedAst {
                             description: type_desc,
                             provenance: provenance.clone(),
                         },
@@ -574,16 +577,16 @@ fn decode_call_with_name_target(
         }
         _ => {
             // Multiple source elements: decode each and wrap as Named
-            let mut children: Vec<TypePatternExprShape> = Vec::new();
+            let mut children: Vec<StructPatternSyntaxMaterial> = Vec::new();
             for expr in elems {
                 children.push(decode_struct_type_pattern_expr(expr, provenance.clone())?);
             }
             let child = if children.len() == 1 {
                 children.into_iter().next().unwrap()
             } else {
-                TypePatternExprShape::product(children, provenance.clone())
+                StructPatternSyntaxMaterial::product(children, provenance.clone())
             };
-            Ok(TypePatternExprShape::named(child, name, provenance))
+            Ok(StructPatternSyntaxMaterial::named(child, name, provenance))
         }
     }
 }
@@ -600,7 +603,7 @@ fn norm_origin_span(origin: &lang_syntax::NormOrigin) -> lang_syntax::Span {
 ///
 /// Each element in the source product is decoded as a sum alternative.
 fn decode_sum_from_source(source: &NormProduct, provenance: Provenance) -> StructDecodeResult {
-    let mut alternatives: Vec<TypePatternExprShape> = Vec::new();
+    let mut alternatives: Vec<StructPatternSyntaxMaterial> = Vec::new();
     let mut alt_names: BTreeMap<String, usize> = BTreeMap::new();
 
     for elem in &source.elements {
@@ -609,11 +612,11 @@ fn decode_sum_from_source(source: &NormProduct, provenance: Provenance) -> Struc
                 let decoded = decode_struct_type_pattern_expr(inner, provenance.clone())?;
                 // Extract the alternative label for duplicate checking
                 let label = match &decoded {
-                    TypePatternExprShape::Named { pattern_name, .. } => pattern_name.clone(),
-                    TypePatternExprShape::Leaf {
+                    StructPatternSyntaxMaterial::Named { pattern_name, .. } => pattern_name.clone(),
+                    StructPatternSyntaxMaterial::Leaf {
                         local_pattern_name, ..
                     } => local_pattern_name.clone(),
-                    TypePatternExprShape::Product { .. } => {
+                    StructPatternSyntaxMaterial::Product { .. } => {
                         return Err(Diagnostic::new(
                             DiagnosticSeverity::Error,
                             "bare Product is not a valid sum alternative — wrap it in a Named constructor"
@@ -621,7 +624,7 @@ fn decode_sum_from_source(source: &NormProduct, provenance: Provenance) -> Struc
                             Some(provenance),
                         ));
                     }
-                    TypePatternExprShape::Sum { .. } => {
+                    StructPatternSyntaxMaterial::Sum { .. } => {
                         return Err(Diagnostic::new(
                             DiagnosticSeverity::Error,
                             "bare Sum is not a valid sum alternative — wrap it in a Named constructor"
@@ -655,7 +658,7 @@ fn decode_sum_from_source(source: &NormProduct, provenance: Provenance) -> Struc
         ));
     }
 
-    Ok(TypePatternExprShape::sum(alternatives, provenance))
+    Ok(StructPatternSyntaxMaterial::sum(alternatives, provenance))
 }
 
 // ---------------------------------------------------------------------------

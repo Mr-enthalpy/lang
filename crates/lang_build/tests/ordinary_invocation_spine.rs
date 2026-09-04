@@ -1,14 +1,16 @@
 mod support;
 
 use lang_build::{
-    extract_single_call_site, BuildManifest, CompilationWorld, InvocationOutcome,
-    MetaInvocationValue, OrdinaryInvocationContext, PatternComponentPolicy, PolicyPair,
-    PolicyStage, PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticOwnerKind,
-    SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy,
-    ValueMutability, ValuePresence,
+    extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
+    CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
+    PatternComponentPolicy, PolicyMigrationRequest, PolicyMode, PolicyPair, PolicyStage,
+    Provenance, ResolveExpectation, SemanticOwnerKind, SemanticValuePayload, StageSet,
+    SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence, WritableContext,
 };
 
-use support::{build_single_fixture_world, fixture_root, initializer_from_source};
+use support::{
+    build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
+};
 
 fn transport_bundle() -> ToolchainGlobalSourceRoot {
     ToolchainGlobalSourceRoot::under(
@@ -38,12 +40,11 @@ fn stages(items: &[PolicyStage]) -> StageSet {
 fn pair(
     value_stages: &[PolicyStage],
     pattern_stages: &[PolicyStage],
-    mutability: &[ValueMutability],
+    _mode: &[PolicyMode],
 ) -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: stages(value_stages),
-            mutability: mutability.iter().copied().collect(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
@@ -61,7 +62,8 @@ fn i1_let_parens_never_changes_sibling_vals() {
     // I1 — sibling_vals only changes when a declaration's binder name matches
     // an existing cluster Symbol.  Before any transport fixture is loaded,
     // sibling_vals is empty.  After loading the transport fixture (4
-    // declarations named `uint8`), sibling_vals has exactly 4 entries.
+    // declarations named `uint8`), sibling_vals has exactly 5 entries,
+    // including the canonical plain-input transport.
     // Named methods like `identity` and `type_identity` do NOT match the
     // `uint8` cluster Symbol and must appear in Val2[name], not sibling_vals.
 
@@ -77,7 +79,7 @@ fn i1_let_parens_never_changes_sibling_vals() {
         "I1 before: no transports, sibling_vals is empty"
     );
 
-    // After: transport fixture loaded, sibling_vals has exactly 4.
+    // After: transport fixture loaded, sibling_vals has exactly 5.
     let after_world = build_transport_world();
     let after_uint8 = after_world
         .semantic_world()
@@ -85,8 +87,8 @@ fn i1_let_parens_never_changes_sibling_vals() {
         .expect("core uint8 with transports");
     assert_eq!(
         after_uint8.sibling_vals.len(),
-        4,
-        "I1 after: exactly 4 transports named `uint8` are cluster sibling vals"
+        5,
+        "I1 after: exactly 5 transports named `uint8` are cluster sibling vals"
     );
 
     // `identity` and `type_identity` must NOT be cluster siblings — they are
@@ -118,7 +120,7 @@ fn i1_let_parens_never_changes_sibling_vals() {
 
 #[test]
 fn i2_every_callable_sibling_is_function_object() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -134,7 +136,7 @@ fn i2_every_callable_sibling_is_function_object() {
 
 #[test]
 fn i8_call_entry_is_terminal_function_item() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -183,14 +185,14 @@ fn i11_sibling_vals_different_from_pure_p_val2() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
     assert!(uint8.pure_p_pattern().is_some());
-    // sibling_vals contains no TypeObject adapter
+    // sibling_vals contains no CoreTypeProjection graph value
     assert!(uint8.sibling_vals.is_empty());
     // pure-P.Val2["()"] may contain call entries from let () declarations,
     // which are NOT sibling vals. This structural separation is invariant I11.
 }
 
 #[test]
-fn i12_type_object_not_in_sibling_vals() {
+fn i12_type_projection_not_in_sibling_vals() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let uint8 = world
         .semantic_world()
@@ -198,16 +200,41 @@ fn i12_type_object_not_in_sibling_vals() {
         .expect("core uint8");
     assert!(uint8.sibling_vals.is_empty());
     assert!(uint8.pure_p_pattern().is_some());
-    // TypeObject adapter is accessible through type_object_value_for_symbol,
+    // CoreTypeProjection graph value is accessible through core_type_projection_value_for_symbol,
     // never through sibling_vals.
     let type_obj = world
         .semantic_world()
-        .type_object_value_for_symbol(uint8.identity)
-        .expect("type object adapter exists");
+        .core_type_projection_value_for_symbol(uint8.identity)
+        .expect("pure type Object projection exists");
     let val = world.semantic_world().value(type_obj).unwrap();
     assert!(
-        matches!(val.payload, SemanticValuePayload::TypeObject { .. }),
-        "I12: TypeObject is compatibility adapter, not semantic Val1"
+        matches!(val.payload, SemanticValuePayload::CoreTypeProjection { .. }),
+        "I12: CoreTypeProjection is graph projection, not semantic Val1"
+    );
+}
+
+#[test]
+fn struct_binding_carries_exact_tau_independently_of_core_projection() {
+    let world = build_single_fixture_world("struct_single_field", "app");
+    let binding = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "T")
+        .expect("struct result is bound as T");
+    let member = binding
+        .pure_p
+        .expect("T carries the returned pure type Object");
+    let whole = member
+        .complete_type
+        .expect("the binding stores the returned exact complete tau snapshot");
+    let complete = world
+        .semantic_world()
+        .complete_type_by_whole_observation(whole)
+        .expect("the exact complete tau remains interned");
+    assert_eq!(complete.whole(), whole);
+    assert_eq!(
+        world.semantic_world().type_for_pattern(member.pattern),
+        Some(complete.lookup_key()),
+        "the Core lookup projection agrees with tau without defining its whole identity"
     );
 }
 
@@ -227,8 +254,8 @@ fn i9_slot0_is_selected_callable_function_object() {
     let siblings = uint8.sibling_vals.clone();
     assert_eq!(
         siblings.len(),
-        4,
-        "I9: transport cluster has 4 sibling candidates for c0 enumeration"
+        5,
+        "I9: transport cluster has 5 sibling candidates for c0 enumeration"
     );
 
     // Verify that every sibling is a FunctionObject — these are the c0
@@ -244,20 +271,20 @@ fn i9_slot0_is_selected_callable_function_object() {
     let source_policy = pair(
         &[PolicyStage::Compile],
         &[PolicyStage::Compile],
-        &[ValueMutability::Const],
+        &[PolicyMode::Const],
     );
     let target_policy = pair(
         &[PolicyStage::Runtime],
         &[PolicyStage::Compile],
-        &[ValueMutability::Mut],
+        &[PolicyMode::Mut],
     );
     let uint8_type = match &world
-        .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type")
         .payload
     {
-        SymbolPayload::Type(t) => t.represented_type,
-        _ => panic!("uint8 resolves as a Type object"),
+        SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
+        _ => panic!("uint8 resolves as a CompleteType projection"),
     };
     let source = world
         .install_semantic_value(
@@ -266,17 +293,23 @@ fn i9_slot0_is_selected_callable_function_object() {
             Provenance::new("I9 compile uint8 fixture value"),
         )
         .expect("installed source value");
-    let request = PolicyTransitionRequest::new(
-        source_policy,
-        target_policy,
+    let request = PolicyMigrationRequest::new(
+        lang_build::PolicyView {
+            pair: source_policy,
+            mode: PolicyMode::Const,
+        },
+        lang_build::ResultPolicyDemand {
+            pair_query: lang_build::P1Projection::Pair(target_policy),
+            mode: PolicyMode::Mut,
+        },
         uint8_type,
         source,
         Provenance::new("I9 const compile -> mut runtime demand"),
     )
-    .expect("legal atomic migration request");
+    .expect("legal migration request");
 
     let migration = world
-        .invoke_atomic_runtime_migration(&request)
+        .invoke_policy_migration(&request)
         .expect("I9: migration invocation succeeds");
 
     // c0_target_values must be the cluster sibling vals (slot-0 candidates),
@@ -314,13 +347,13 @@ fn i14_finalize_construction_separate_from_install() {
     //   begin:    begin_cluster_construction creates an Open cluster
     //   contribute: contribute_cluster_pure_p sets pure_p on the open cluster
     //   finalize: finalize_type_cluster produces a
-    //             SymbolConstructionValue (removes from open_clusters)
-    //   install:  the construction value is installed as a cluster Symbol
+    //             ClusterConstructionMaterial (removes from open_clusters)
+    //   install:  the material is installed as a cluster Symbol
     //             (upgrade_cluster_owner sets PatternClusterOwner::Installed)
     //
     // A cluster Symbol comes from a construction-family meta invocation
     // (`(uint8 field) struct`).  Ordinary callable declarations (e.g. the
-    // s10 `pick` overloads) contribute sibling vals to their name Symbol
+    // `pick` overloads) contribute sibling vals to their name Symbol
     // and never open a cluster themselves.
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let direct = world
@@ -370,7 +403,7 @@ fn i14_finalize_construction_separate_from_install() {
     );
     assert_eq!(
         uint8.sibling_vals.len(),
-        4,
+        5,
         "I14 contribute-after-install: cluster gains sibling_vals from transports"
     );
 }
@@ -379,9 +412,9 @@ fn i14_finalize_construction_separate_from_install() {
 fn i15_source_ordinary_call_begins_from_cluster_sibling_enumeration() {
     // Source ordinary call begins from ClusterSymbol sibling enumeration,
     // not from Pattern.Val2["()"].  This is structurally enforced by
-    // invoke_atomic_runtime_migration which reads target_values from
+    // the ordinary invocation trunk, which reads target_values from
     // the cluster's sibling_vals, not from associated_val2.
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -401,11 +434,214 @@ fn i15_source_ordinary_call_begins_from_cluster_sibling_enumeration() {
     }
 }
 
+#[test]
+fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
+    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
+    let actual = [PolicyMode::Const];
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&actual)
+                .with_capability_demand(PolicyMode::Const, PolicyMode::Mut),
+            Provenance::new("selected candidate capability proof failure is terminal"),
+        )
+        .expect_err("the selected entry has an absent capability cell");
+    let lang_build::OrdinaryInvocationFailure::DynamicLegality {
+        selected,
+        diagnostic,
+        trace,
+    } = failure
+    else {
+        panic!("capability failure must occur at DynamicLegality: {failure:?}");
+    };
+    assert_eq!(trace.selected, Some(selected));
+    assert!(
+        trace.c3_call_entries.len() > 1,
+        "fixture supplies a runner-up"
+    );
+    assert!(diagnostic.message.contains("no capability realization"));
+}
+
+#[test]
+fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
+    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
+    let actual = [PolicyMode::Const];
+    let lifecycle = LifecycleValidationContext {
+        preconditions: vec![LifecyclePrecondition::Reject(
+            "selected invocation cannot outlive this continuation".into(),
+        )],
+        ..LifecycleValidationContext::default()
+    };
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&actual)
+                .with_lifecycle_preconditions(&lifecycle),
+            Provenance::new("selected invocation lifecycle precondition failure is terminal"),
+        )
+        .expect_err("the selected entry must fail lifecycle Pre validation");
+    let lang_build::OrdinaryInvocationFailure::DynamicLegality {
+        selected,
+        diagnostic,
+        trace,
+    } = failure
+    else {
+        panic!("lifecycle failure must occur at DynamicLegality: {failure:?}");
+    };
+    assert_eq!(trace.selected, Some(selected));
+    assert!(
+        trace.c3_call_entries.len() > 1,
+        "fixture supplies a runner-up"
+    );
+    assert!(diagnostic
+        .message
+        .contains("lifecycle Pre validation failed"));
+}
+
+#[test]
+fn configured_capability_cell_is_proof_material_not_policy_preference() {
+    let mut world = build_single_fixture_world("declared_result", "app");
+    let keep = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "keep")
+        .expect("single compile callable Symbol");
+    let entries = keep
+        .sibling_vals
+        .iter()
+        .flat_map(|value| {
+            world
+                .semantic_world()
+                .associated_values_for_value(*value, "()")
+                .unwrap_or(&[])
+                .iter()
+                .copied()
+        })
+        .collect::<Vec<_>>();
+    let mut realization = CapabilityRealization::default();
+    realization.set(
+        PolicyMode::Const,
+        PolicyMode::Mut,
+        CapabilityRealizationCell::Default,
+    );
+    for entry in entries {
+        world
+            .configure_call_entry_capability_realization(entry, realization.clone())
+            .expect("terminal call entry accepts candidate-local realization");
+    }
+
+    let initializer = initializer_from_source("let R: type = uint8 keep;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let actual = [PolicyMode::Const];
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&actual)
+                .with_capability_demand(PolicyMode::Const, PolicyMode::Mut),
+            Provenance::new("positive DynamicLegality capability proof"),
+        )
+        .expect_err("fixture body is unsupported after DynamicLegality succeeds");
+    let lang_build::OrdinaryInvocationFailure::SelectedBody { trace, .. } = failure else {
+        panic!("configured capability must pass legality before the body failure: {failure:?}");
+    };
+    assert_eq!(
+        trace
+            .dynamic_legality
+            .expect("successful post-selection validation leaves proof material")
+            .capability_cell,
+        Some(CapabilityRealizationCell::Default)
+    );
+}
+
+#[test]
+fn mut_policy_mode_does_not_grant_writable() {
+    let mut world = build_single_fixture_world("cluster_exposure", "app");
+    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
+    let actual = [PolicyMode::Const];
+    let writable = WritableContext::default();
+    let mut context =
+        OrdinaryInvocationContext::open_static(&actual).requiring_target_writable(&writable);
+    context.caller_mode = PolicyMode::Mut;
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            context,
+            Provenance::new("PolicyMode::Mut does not imply Writable authority"),
+        )
+        .expect_err("mut Policy alone cannot authorize a Place write");
+    assert!(matches!(
+        failure,
+        lang_build::OrdinaryInvocationFailure::DynamicLegality { ref diagnostic, .. }
+            if diagnostic.message.contains("actual target Place")
+                || diagnostic.message.contains("not Writable")
+    ));
+}
+
+#[test]
+fn source_position_policy_inherits_stage_and_overlays_result_mode() {
+    let world = build_single_fixture_world("position_policy", "app");
+    let function = world
+        .semantic_world()
+        .symbol_in_namespace(world.package_root_node(), "f")
+        .expect("source callable f");
+    let function_value = *function
+        .sibling_vals
+        .first()
+        .expect("f has one function object");
+    let call_entry = *world
+        .semantic_world()
+        .associated_values_for_value(function_value, "()")
+        .and_then(|entries| entries.first())
+        .expect("f owns a terminal call entry");
+    let SemanticValuePayload::CallEntry(entry) = &world
+        .semantic_world()
+        .value(call_entry)
+        .expect("call entry value")
+        .payload
+    else {
+        panic!("associated () value is a call entry");
+    };
+
+    assert_eq!(entry.body_entry_view.mode, PolicyMode::Mut);
+    assert_eq!(entry.callable_view.mode, PolicyMode::Const);
+    assert_eq!(entry.complete_result_view, entry.body_entry_view);
+    assert_eq!(entry.return_position_view.mode, PolicyMode::Mut);
+    assert_eq!(
+        entry.return_position_view.pair, entry.callable_view.pair,
+        "P_out inherits the canonical P1 pair/stage byte-for-byte"
+    );
+    assert_ne!(
+        entry.body_entry_view.pair, entry.return_position_view.pair,
+        "declaration-local P2 remains distinct from callable-internal P_out"
+    );
+}
+
+#[test]
+fn return_position_cannot_override_inherited_stage() {
+    let error = build_fixture_error("position_policy_invalid_stage", "app");
+    assert!(
+        error
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("inherits evaluation stages")),
+        "return-stage rewrite is rejected during declaration Policy formation: {:?}",
+        error.diagnostics
+    );
+}
+
 // ---------------------------------------------------------------------------
 
 #[test]
 fn one_semantic_symbol_preserves_distinct_function_object_identities() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -455,16 +691,16 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
 
     let bound_type = world
         .semantic_world()
-        .type_object_value_for_symbol(bound.identity)
-        .expect("T type object value");
+        .core_type_projection_value_for_symbol(bound.identity)
+        .expect("T pure type Object value");
     let bound_value = world
         .semantic_world()
         .value(bound_type)
         .expect("T value facet");
     let core_type = world
         .semantic_world()
-        .type_object_value_for_symbol(core.identity)
-        .expect("uint8 type object value");
+        .core_type_projection_value_for_symbol(core.identity)
+        .expect("uint8 pure type Object value");
     let core_value = world
         .semantic_world()
         .value(core_type)
@@ -475,25 +711,25 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
     );
     let rebound_type = world
         .semantic_world()
-        .type_object_value_for_symbol(rebound.identity)
-        .expect("U type object value");
+        .core_type_projection_value_for_symbol(rebound.identity)
+        .expect("U pure type Object value");
     assert_eq!(
         rebound_type, bound_type,
         "`let U: type = T` reads the value carried by T and binds that same value; the RHS carrier is not identity"
     );
-    let SemanticValuePayload::TypeObject {
+    let SemanticValuePayload::CoreTypeProjection {
         represented_type,
         represented_pattern,
         ..
     } = core_value.payload
     else {
-        panic!("core uint8 carries a TypeObject adapter");
+        panic!("core uint8 carries a CoreTypeProjection graph value");
     };
     assert_eq!(bound_value.type_value, core_value.type_value);
     assert_eq!(bound_value.pattern, core_value.pattern);
     assert_ne!(
         core_value.type_value, represented_type,
-        "the TypeObject adapter has rank `type`; it is not an instance of represented uint8"
+        "the CoreTypeProjection graph value has rank `type`; it is not an instance of represented uint8"
     );
     assert_eq!(represented_pattern, core_value.pattern);
     assert_eq!(
@@ -511,16 +747,18 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
     );
 
     let bound_graph_symbol = world
-        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("T", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("graph-level forwarding type binding");
-    let lang_build::SymbolPayload::Type(bound_type) = bound_graph_symbol.payload else {
+    let lang_build::SymbolPayload::CompleteTypeProjection(bound_type) = bound_graph_symbol.payload
+    else {
         panic!("T has the graph carrier required for source navigation/place semantics");
     };
     let core_graph_symbol = world
-        .resolve_with_expectation("uint8", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 graph carrier");
-    let lang_build::SymbolPayload::Type(core_type) = core_graph_symbol.payload else {
-        panic!("uint8 is a graph Type object");
+    let lang_build::SymbolPayload::CompleteTypeProjection(core_type) = core_graph_symbol.payload
+    else {
+        panic!("uint8 is a graph CompleteType projection");
     };
     assert_ne!(
         bound_type.carrier_symbol_id, core_type.carrier_symbol_id,
@@ -535,16 +773,18 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         "both carrier Symbols expose the same evaluated TypeValue"
     );
     let rebound_graph_symbol = world
-        .resolve_with_expectation("U", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("U", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("U graph carrier");
-    let lang_build::SymbolPayload::Type(rebound_type) = rebound_graph_symbol.payload else {
-        panic!("U is a graph Type object");
+    let lang_build::SymbolPayload::CompleteTypeProjection(rebound_type) =
+        rebound_graph_symbol.payload
+    else {
+        panic!("U is a graph CompleteType projection");
     };
     assert_ne!(rebound_type.carrier_symbol_id, bound_type.carrier_symbol_id);
     assert_eq!(rebound_type.represented_type, bound_type.represented_type);
     let companion = bound_type
         .type_associated_namespace
-        .expect("legacy graph transport installs a companion place for T");
+        .expect("graph projection installs a companion place for T");
     assert_eq!(
         world
             .semantic_world()
@@ -580,18 +820,21 @@ fn rebound_type_value_is_canonical_struct_field_material() {
 
     assert_eq!(
         direct.pure_p_pattern(), rebound.pure_p_pattern(),
-        "a carrier rebinding refers to the same generated TypeValue, so the rebound carrier name cannot change type identity"
+        "a carrier rebinding refers to the same complete type, so the rebound carrier name cannot change type identity"
     );
 
     let direct_graph = world
-        .resolve_with_expectation("Direct", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation("Direct", lang_build::ResolveExpectation::CoreTypeProjection)
         .expect("Direct graph carrier");
     let rebound_graph = world
-        .resolve_with_expectation("Rebound", lang_build::ResolveExpectation::TypeObject)
+        .resolve_with_expectation(
+            "Rebound",
+            lang_build::ResolveExpectation::CoreTypeProjection,
+        )
         .expect("Rebound graph carrier");
     let (
-        lang_build::SymbolPayload::Type(direct_type),
-        lang_build::SymbolPayload::Type(rebound_type),
+        lang_build::SymbolPayload::CompleteTypeProjection(direct_type),
+        lang_build::SymbolPayload::CompleteTypeProjection(rebound_type),
     ) = (&direct_graph.payload, &rebound_graph.payload)
     else {
         panic!("both source declarations bind type values");
@@ -601,7 +844,7 @@ fn rebound_type_value_is_canonical_struct_field_material() {
         rebound_type.carrier_symbol_id
     );
     assert_eq!(direct_type.represented_type, rebound_type.represented_type);
-    // Field material lives on the generated type value's own carrier; a
+    // Field material lives on the complete type result's own projection; a
     // carrier rebinding is a bare reference and carries no field material
     // of its own.
     assert!(!direct_type.field_type_values.is_empty());
@@ -672,7 +915,7 @@ fn owner_cluster_preserved_across_carrier_rebinding() {
 /// ```
 ///
 /// The place inequality is what makes `let f::T = ...` a write to `T`'s own
-/// pure-type object instead of to the PatternValue that `U` and `uint8`
+/// pure-pure type Object instead of to the PatternValue that `U` and `uint8`
 /// share, so it is the structural difference between `let =` and `let ===`.
 #[test]
 fn ordinary_type_bindings_own_distinct_val2_places() {
@@ -722,11 +965,11 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
         "two ordinary bindings of one Pattern never share one Val2 place"
     );
 
-    // The Pattern's canonical type object belongs to the cluster that
+    // The Pattern's canonical pure type Object belongs to the cluster that
     // declared the Pattern; neither rebinding writes there.
     let canonical = semantic
         .pattern_place(pattern)
-        .expect("the Pattern has a canonical type object");
+        .expect("the Pattern has a canonical pure type Object");
     assert_ne!(bound_place, canonical);
     assert_ne!(rebound_place, canonical);
 }
@@ -744,7 +987,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
     );
     assert!(
         bound.sibling_vals.is_empty(),
-        "TypeObject adapter value does not appear in sibling_vals"
+        "CoreTypeProjection graph value value does not appear in sibling_vals"
     );
     let core = world
         .semantic_world()
@@ -753,12 +996,12 @@ fn cluster_pure_p_not_in_sibling_vals() {
     assert!(core.pure_p_pattern().is_some());
     assert!(
         core.sibling_vals.is_empty(),
-        "core type without transport fixture has no sibling vals (TypeObject is not a sibling val)"
+        "core type without transport fixture has no sibling vals (CoreTypeProjection is not a sibling val)"
     );
 
     // Ordinary callable declarations cluster by name into a Symbol whose
-    // pure_p is absent — the `pick` overloads live in the s10 fixture.
-    let pick_world = build_single_fixture_world("s10_cluster_exposure", "app");
+    // pure_p is absent; the `pick` overloads live in the candidate fixture.
+    let pick_world = build_single_fixture_world("cluster_exposure", "app");
     let pick = pick_world
         .semantic_world()
         .symbol_in_namespace(pick_world.package_root_node(), "pick")
@@ -775,7 +1018,7 @@ fn cluster_pure_p_not_in_sibling_vals() {
 
 #[test]
 fn callable_sibling_has_own_type_and_terminal_call_entry() {
-    let world = build_single_fixture_world("s10_cluster_exposure", "app");
+    let world = build_single_fixture_world("cluster_exposure", "app");
     let pick = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "pick")
@@ -846,17 +1089,21 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
             .expect("core semantic world builds");
     let initializer = initializer_from_source("let result = uint8 IdentityType;");
     let call_site = extract_single_call_site(&initializer).expect("normalized core call");
-    let actual_mutability = [ValueMutability::Const];
+    let actual_mutability = [PolicyMode::Const];
     let result = world
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
             OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("core IdentityType ordinary-spine regression"),
+            Provenance::new("core IdentityType ordinary invocation"),
         )
         .expect("core primitive uses the ordinary function-object trunk");
-    let InvocationOutcome::SingleMember(result) = result else {
-        panic!("expected ordinary outcome");
+    let lang_build::InvocationResult::SemanticResult {
+        declared_result_class: lang_build::DeclaredResultClass::CompleteType,
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+    } = result
+    else {
+        panic!("declared CompleteType is the sole result-class authority");
     };
 
     let identity = world
@@ -872,8 +1119,8 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
         .expect("core uint8 TypeValue");
     let uint8_type = world
         .semantic_world()
-        .type_object_value_for_symbol(uint8.identity)
-        .expect("uint8 type object value");
+        .core_type_projection_value_for_symbol(uint8.identity)
+        .expect("uint8 pure type Object value");
     assert!(
         result.complete_result[0].value.is_none(),
         "IdentityType returns a type result (value=None)"
@@ -883,9 +1130,51 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
         world
             .semantic_world()
             .value(uint8_type)
-            .expect("uint8 type object")
+            .expect("uint8 pure type Object")
             .pattern,
         "the core identity implementation returns the uint8 PatternValue"
+    );
+}
+
+#[test]
+fn production_world_owns_one_lifecycle_name_map_across_invocations() {
+    let mut world =
+        CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
+            .expect("core semantic world builds");
+    let initializer = initializer_from_source("let result = uint8 IdentityType;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized core call");
+    let first = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("first lifecycle-owned call"),
+        )
+        .expect("first call");
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(first),
+        ..
+    } = first
+    else {
+        panic!("identity returns one member");
+    };
+    let target = first.selected.target_value;
+    let first_name = world
+        .lifecycle()
+        .name_of(target)
+        .expect("production invocation registers the callable value");
+    let _ = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("second lifecycle-owned call"),
+        )
+        .expect("second call");
+    assert_eq!(
+        world.lifecycle().name_of(target),
+        Some(first_name),
+        "one CompilationWorld keeps one stable LifeName map"
     );
 }
 
@@ -898,13 +1187,21 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
-            Provenance::new("type-value-not-carrier regression"),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("complete-type value authority"),
         )
         .expect("IdentityType accepts the value read through U");
-    let InvocationOutcome::SingleMember(result) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        declared_result_class,
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+    } = result
+    else {
         panic!("expected ordinary outcome");
     };
+    assert_eq!(
+        declared_result_class,
+        lang_build::DeclaredResultClass::CompleteType
+    );
 
     let uint8 = world
         .semantic_world()
@@ -915,31 +1212,29 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
         result.complete_result[0].pattern,
         uint8.pure_p_pattern().unwrap()
     );
-    let lang_build::OrdinaryReturnedValue::Meta(MetaInvocationValue::ForwardedValue(value)) =
-        result.returned
-    else {
-        panic!("IdentityType returns the evaluated type value");
+    let lang_build::ReturnedSemanticEntity::CompleteType(value) = result.returned else {
+        panic!("IdentityType returns the evaluated complete type value");
     };
     let uint8_type = world
         .semantic_world()
-        .type_object_value_for_symbol(uint8.identity)
-        .expect("uint8 type object value");
-    let represented = value.type_value;
-    let SemanticValuePayload::TypeObject {
+        .core_type_projection_value_for_symbol(uint8.identity)
+        .expect("uint8 pure type Object value");
+    let represented = value.complete_type.lookup_key();
+    let SemanticValuePayload::CoreTypeProjection {
         represented_type, ..
     } = world
         .semantic_world()
         .value(uint8_type)
-        .expect("uint8 TypeObject value")
+        .expect("uint8 CoreTypeProjection value")
         .payload
     else {
-        panic!("uint8 carries a TypeObject");
+        panic!("uint8 carries a CoreTypeProjection");
     };
     assert_eq!(represented, represented_type);
 }
 
 #[test]
-fn bare_call_target_searches_near_then_outer_then_core_without_shadowing() {
+fn bare_call_target_resolves_nearest_symbol_once_even_if_non_callable() {
     let mut world = build_single_fixture_world("bare_scope_chain", "app");
     let package = world.package_root_node();
     let outer_namespace = world
@@ -950,11 +1245,6 @@ fn bare_call_target_searches_near_then_outer_then_core_without_shadowing() {
         .semantic_world()
         .child_namespace(outer_namespace, "inner")
         .expect("inner physical namespace");
-    let outer = world
-        .semantic_world()
-        .symbol_in_namespace(outer_namespace, "f")
-        .expect("outer callable f")
-        .clone();
     let inner = world
         .semantic_world()
         .symbol_in_namespace(inner_namespace, "f")
@@ -967,20 +1257,107 @@ fn bare_call_target_searches_near_then_outer_then_core_without_shadowing() {
 
     let initializer = initializer_from_source("let result = uint8 f;");
     let call_site = extract_single_call_site(&initializer).expect("bare f call");
-    let result = world
+    let failure = world
         .invoke_ordinary_call(
             inner_namespace,
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("near outer core bare-name chain"),
         )
-        .expect("near non-callable falls through to outer callable");
-    let InvocationOutcome::ClusterSymbol(result) = result else {
-        panic!("outer meta f returns one cluster construction");
-    };
+        .expect_err("the nearest non-callable Symbol shadows outer callable Symbols");
+    assert!(
+        matches!(
+            failure,
+            lang_build::OrdinaryInvocationFailure::NoTargetValues { .. }
+                | lang_build::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+        ),
+        "call projection fails on inner.f and never re-resolves the name: {failure:?}"
+    );
+}
+
+#[test]
+fn bare_call_target_does_not_fall_through_after_a_rejects_nearest_symbol() {
+    let mut world = build_single_fixture_world("bare_scope_chain", "app");
+    let package = world.package_root_node();
+    let outer_namespace = world
+        .semantic_world()
+        .child_namespace(package, "outer")
+        .expect("outer physical namespace");
+    let inner_namespace = world
+        .semantic_world()
+        .child_namespace(outer_namespace, "inner")
+        .expect("inner physical namespace");
+    let inner = world
+        .semantic_world()
+        .symbol_in_namespace(inner_namespace, "g")
+        .expect("inner runtime-only callable g")
+        .identity;
+
+    let initializer = initializer_from_source("let result = uint8 g;");
+    let call_site = extract_single_call_site(&initializer).expect("bare g call");
     assert_eq!(
-        result.trace.c0_target_values, outer.sibling_vals,
-        "the selected C0 target comes from outer.f, before any core fallback"
+        world.resolve_source_terminal_symbol(inner_namespace, &call_site.target),
+        Some(inner),
+        "lexical resolution seals inner.g before call projection"
+    );
+    let failure = world
+        .invoke_ordinary_call(
+            inner_namespace,
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            Provenance::new("nearest callable fails A without outward retry"),
+        )
+        .expect_err("runtime-only inner.g is inadmissible at OpenStatic");
+    assert!(
+        matches!(
+            failure,
+            lang_build::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+        ),
+        "A-stage failure belongs to inner.g and never retries outer.g: {failure:?}"
+    );
+}
+
+#[test]
+fn same_bare_path_has_one_terminal_symbol_before_value_type_and_call_projection() {
+    let world = build_single_fixture_world("bare_scope_chain", "app");
+    let package = world.package_root_node();
+    let outer_namespace = world
+        .semantic_world()
+        .child_namespace(package, "outer")
+        .expect("outer physical namespace");
+    let inner_namespace = world
+        .semantic_world()
+        .child_namespace(outer_namespace, "inner")
+        .expect("inner physical namespace");
+    let inner = world
+        .semantic_world()
+        .symbol_in_namespace(inner_namespace, "f")
+        .expect("inner type-valued f")
+        .identity;
+    let initializer = initializer_from_source("let result = uint8 f;");
+    let call_site = extract_single_call_site(&initializer).expect("bare f call");
+
+    let neutral = world
+        .resolve_source_terminal_symbol(inner_namespace, &call_site.target)
+        .expect("neutral source resolution");
+    let by_symbol_path = world
+        .semantic_world()
+        .resolve_symbol_path(
+            &["f".to_string()],
+            inner_namespace,
+            &[world.semantic_world().namespace_index().root_node()],
+            &[world.core_node()],
+        )
+        .expect("context-independent Symbol resolution");
+    assert_eq!(neutral, inner);
+    assert_eq!(by_symbol_path, inner);
+    assert!(
+        world
+            .semantic_world()
+            .symbol(inner)
+            .and_then(|symbol| symbol.pure_p_pattern())
+            .is_some(),
+        "type projection observes the already resolved inner Symbol"
     );
 }
 
@@ -998,7 +1375,7 @@ fn explicit_call_target_is_one_symbol_and_never_falls_back() {
         .invoke_ordinary_call(
             outer_namespace,
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("explicit target no-fallback"),
         )
         .expect_err("explicit inner f is non-callable and must fail");
@@ -1013,55 +1390,68 @@ fn explicit_call_target_is_one_symbol_and_never_falls_back() {
 }
 
 #[test]
-fn privileged_struct_enters_ordinary_overload_and_returns_meta_construction() {
+fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
             .expect("core semantic world builds");
     let initializer = initializer_from_source("let T: type = (uint8 a) struct;");
     let call_site = extract_single_call_site(&initializer).expect("normalized struct call");
-    let actual_mutability = [ValueMutability::Const];
+    let actual_mutability = [PolicyMode::Const];
     let result = world
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
             OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("core struct ordinary-spine regression"),
+            Provenance::new("core struct ordinary invocation"),
         )
         .expect("privileged AST decoding is an ordinary call-entry body capability");
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
-        panic!("struct is a meta callable: its return unit is a cluster construction");
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = result
+    else {
+        panic!("struct has the unified CompleteType result class");
     };
 
     // No overload bypass: the caller package differs from the toolchain
     // package, so this call goes through the external member view, and
     // `struct` is still selected through the normal
     // C0 -> C1 -> C2 -> Cc -> C3 -> A -> Bp' -> B3 spine.
-    assert_eq!(meta.trace.c0_target_values.len(), 1);
+    assert_eq!(result.trace.c0_target_values.len(), 1);
     assert_eq!(
-        meta.trace.c1_visible_values, meta.trace.c0_target_values,
+        result.trace.c1_visible_values, result.trace.c0_target_values,
         "core struct is a declaration-boundary public export; External C1 keeps it"
     );
-    assert_eq!(meta.trace.c3_call_entries.len(), 1);
+    assert_eq!(result.trace.c3_call_entries.len(), 1);
     assert!(
-        meta.trace.selected.is_some(),
+        result.trace.selected.is_some(),
         "privilege applies only to the selected body, after ordinary selection"
     );
 
-    // The construction carries one pure-P member view.  `struct` is a
+    // The selected result is a complete tau value.  Replayable construction
+    // material may remain attached for namespace projection, but it is not
+    // the semantic result authority.  `struct` is a
     // builtin privileged meta function: it never creates a
     // `MetaInstance(struct, arguments)` scope of its own, so the generated
     // Pattern owner is the ambient declaration environment (the caller's
     // package root), not a MetaInstance.
-    assert_eq!(meta.construction.member_views.len(), 1);
-    let view = &meta.construction.member_views[0];
+    let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
+        panic!("world-connected struct must return complete tau, not private meta material");
+    };
+    assert_eq!(
+        result.complete_type.as_ref(),
+        Some(&returned.complete_type),
+        "every CompleteType semantic success carries its exact whole tau explicitly"
+    );
+    let view = &result.complete_result[0];
     assert!(
-        view.value.is_none(),
-        "struct returns a type result (value=None)"
+        view.value.is_some(),
+        "complete tau is an ordinary first-class semantic value"
     );
     let owner = world
         .semantic_world()
-        .pattern_owner(view.pattern)
-        .expect("generated type Pattern has a resolved owner")
+        .pattern_owner(returned.pattern)
+        .expect("complete type Pattern has a resolved owner")
         .owner;
     let ambient_owner = world
         .semantic_world()
@@ -1069,7 +1459,21 @@ fn privileged_struct_enters_ordinary_overload_and_returns_meta_construction() {
         .expect("package root has a semantic owner");
     assert_eq!(
         owner, ambient_owner,
-        "direct `struct` attaches its generated type to the ambient declaration environment"
+        "direct `struct` attaches its complete type to the ambient declaration environment"
+    );
+    assert_eq!(
+        returned.complete_type.lookup_key(),
+        world
+            .semantic_world()
+            .type_for_pattern(returned.pattern)
+            .expect("returned tau core has a registered Pattern"),
+    );
+    assert_eq!(
+        world
+            .semantic_world()
+            .complete_type_by_whole_observation(returned.complete_type.whole()),
+        Some(&returned.complete_type),
+        "the ordinary result carries the interned whole-snapshot observation"
     );
     assert!(matches!(
         world
@@ -1083,37 +1487,24 @@ fn privileged_struct_enters_ordinary_overload_and_returns_meta_construction() {
 }
 
 #[test]
-fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
-    // S4 — `CallableSemantics = P1 × P2 × ReturnShape ×
-    // Privilege`.  The return shape and the privilege are two independent
-    // declared coordinates: source callables spell the shape on the
-    // return-slot annotation (`-> r: symbol` declares a ClusterSymbol
-    // return), built-ins state both per primitive declaration.  Each is
-    // elaborated once at the declaration boundary
-    // (`declared_return_shape_from_closure`) and stored in the
-    // MetaFunctionObject payload; no coordinate is projected from another.
-    // The `s4_return_ontology` fixture declares `-> r: symbol` and
-    // ordinary-slot source callables and performs no build-time struct
-    // invocation, so it builds before the S6 meta-binding hookup lands.
-    let world = build_single_fixture_world("s4_return_ontology", "app");
+fn declared_result_class_is_a_declaration_boundary_fact_shared_by_core_and_source() {
+    // Result class, return Pattern, and privilege are independent declared
+    // coordinates. No coordinate is projected from another.
+    let world = build_single_fixture_world("declared_result", "app");
 
     let coordinates_of = |name: &str| {
         let symbol = world.resolve(name).expect("declared callable resolves");
         let SymbolPayload::MetaFunction(function) = symbol.payload else {
             panic!("`{name}` is a callable declaration");
         };
-        (function.return_shape, function.privilege)
+        (function.declared_result_class, function.privilege)
     };
 
-    // Source-declared `-> r: symbol` return slot => ClusterSymbol shape;
-    // a constrained ordinary return slot (`-> let result: uint8`) =>
-    // SingleVal(Constrained).  Neither the body form family nor the
-    // Policy stage is consulted, and the source surface can never spell
-    // the privileged coordinate.
+    // Neither body form nor Policy stage determines the result class.
     assert_eq!(
         coordinates_of("make_type"),
         (
-            lang_build::ReturnShape::ClusterSymbol,
+            lang_build::DeclaredResultClass::ClusterSymbol,
             lang_build::CallablePrivilege::OrdinarySource,
         ),
         "source-defined `-> r: symbol` callable declares a ClusterSymbol return"
@@ -1121,29 +1512,25 @@ fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
     assert_eq!(
         coordinates_of("keep"),
         (
-            lang_build::ReturnShape::SingleVal(lang_build::PatternConstraint::Constrained),
+            lang_build::DeclaredResultClass::OrdinaryValue,
             lang_build::CallablePrivilege::OrdinarySource,
         ),
         "constrained-slot source callable declares a single-value return"
     );
 
-    // Built-ins use the same ontology, declared per primitive at the core
-    // declaration boundary: `struct` returns a Symbol cluster; `assert`
-    // returns a single ordinary value even though it executes at meta
-    // stage — privilege and shape are independent coordinates, so a
-    // privileged built-in is NOT forced into any particular shape.
+    // Built-ins use the same declared result-class coordinate.
     assert_eq!(
         coordinates_of("struct"),
         (
-            lang_build::ReturnShape::ClusterSymbol,
+            lang_build::DeclaredResultClass::CompleteType,
             lang_build::CallablePrivilege::BuiltinPrivileged,
         ),
-        "core struct declares a privileged ClusterSymbol return"
+        "core struct declares a privileged complete-type return"
     );
     assert_eq!(
         coordinates_of("assert"),
         (
-            lang_build::ReturnShape::SingleVal(lang_build::PatternConstraint::Unconstrained),
+            lang_build::DeclaredResultClass::OrdinaryValue,
             lang_build::CallablePrivilege::BuiltinPrivileged,
         ),
         "core assert declares a privileged single-value return"
@@ -1151,165 +1538,85 @@ fn return_shape_is_a_declaration_boundary_fact_shared_by_core_and_source() {
 }
 
 #[test]
-fn return_slot_annotation_declares_shape_independent_of_body_form() {
-    // The return shape is a declared fact, never an inference from the
-    // body: a `-> r: symbol` callable with zero member events is still a
-    // cluster construction, and a body full of member-event-shaped forms
-    // cannot flip a `-> let r: type` slot away from SingleType.
-    let world = build_single_fixture_world("s4_return_ontology", "app");
+fn return_slot_declares_result_class_independent_of_body_form() {
+    let world = build_single_fixture_world("declared_result", "app");
 
-    let shape_of = |name: &str| {
+    let declared_result_class_of = |name: &str| {
         let symbol = world.resolve(name).expect("declared callable resolves");
         let SymbolPayload::MetaFunction(function) = symbol.payload else {
             panic!("`{name}` is a callable declaration");
         };
-        function.return_shape
+        function.declared_result_class
     };
 
     // Zero member events, `-> r: symbol`: still a cluster construction.
     assert_eq!(
-        shape_of("empty_cluster"),
-        lang_build::ReturnShape::ClusterSymbol,
+        declared_result_class_of("empty_cluster"),
+        lang_build::DeclaredResultClass::ClusterSymbol,
         "a `-> r: symbol` callable with an effect-free body is still a cluster construction"
     );
-    // Same body shape as the old `forward_type` (`let r = t; r;`) but a
-    // `-> let r: type` slot: body refactoring never changes the shape,
-    // and a meta P2 with a SingleType shape is a legal declaration
-    // (`Validate(P2, Shape)` accepts it — one position, pure-P type).
+    // This body (`let r = t; r;`) has a `-> let r: type` slot: body
+    // refactoring never changes its declared complete-type result class.
     assert_eq!(
-        shape_of("refactor_kept"),
-        lang_build::ReturnShape::SingleType,
-        "member-event-shaped body forms cannot flip a `-> let r: type` slot away from SingleType"
+        declared_result_class_of("refactor_kept"),
+        lang_build::DeclaredResultClass::CompleteType,
+        "member-event body forms cannot change a `-> let r: type` declaration"
     );
 }
 
 #[test]
-fn bare_alias_expression_spelling_is_rejected_toward_let_declaration() {
-    // Ruling — the bare `r === t;` expression spelling is illegal in every
-    // body path; alias forwarding must converge to the declaration
-    // spelling `let r === t;`.  Both the ordinary single-value evaluator
-    // and the clustered construction evaluator reject it with the
-    // convergence guidance, never accept it as a forwarding form.
-    let mut world = build_single_fixture_world("s4_return_ontology", "app");
-    for (spelling, body_path) in [
-        ("let R: type = uint8 bare_alias;", "ordinary body"),
-        (
-            "let R2: type = uint8 bare_alias_meta;",
-            "meta construction body",
-        ),
-    ] {
-        let initializer = initializer_from_source(spelling);
-        let call_site = extract_single_call_site(&initializer).expect("normalized call");
-        let result = world.invoke_ordinary_call(
-            world.package_root_node(),
-            &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
-            Provenance::new("bare alias convergence regression"),
-        );
-        let Err(lang_build::OrdinaryInvocationFailure::SelectedBody { failure, .. }) = result
-        else {
-            panic!("{body_path}: bare `r === X;` must be a hard body error, got: {result:?}");
-        };
-        assert!(
-            failure.diagnostic.message.contains("let r === X;"),
-            "{body_path}: the diagnostic must converge to the declaration spelling, got: {}",
-            failure.diagnostic.message
-        );
-    }
-}
-
-#[test]
-fn source_meta_body_contribution_stream_returns_cluster_construction() {
-    // S5 — clustered return construction.  A source-defined meta body is
-    // not a "single value wrapper": the body evaluator yields a stream of
-    // construction effects and the invocation pipeline contributes each
-    // one to an open cluster, then finalizes one SymbolConstructionValue.
-    // The construction-effect family is distinct: `let r = expr;` adds a
-    // fresh member, `let r === path;` adds an alias member, `r = expr;`
-    // writes to an existing target (currently a placeholder overwrite
-    // scaffold), and the bare `r;` terminal delivers the cluster — it is
-    // not a member event.
-    //
-    // v0.9 pattern head identity: the cluster's unique type member is
-    // navigated as the meta function itself plus its input arguments, so
-    // the member carries a fresh MetaInstance-owned PatternValue built by
-    // the body's own self-rooted `struct` construction; the argument
-    // uint8 keeps its own PatternValue and owner (no reroot).
-    let callable = "make_type";
-    let mut world = build_single_fixture_world("s4_return_ontology", "app");
-    let initializer = initializer_from_source("let R: type = uint8 make_type;");
-    let call_site = extract_single_call_site(&initializer).expect("normalized meta call");
-    let actual_mutability = [ValueMutability::Const];
-    let result = world
+fn unsupported_pattern_query_terminates_before_candidate_selection() {
+    let mut world = build_single_fixture_world("applicability_frontier", "app");
+    let initializer = initializer_from_source("let result = uint8 choose;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let failure = world
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("S5 contribution stream regression"),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            Provenance::new("canonical Pattern query frontier"),
         )
-        .unwrap_or_else(|failure| {
-            panic!("{callable}: source meta callable is selected through the ordinary spine: {failure:?}")
-        });
-    let InvocationOutcome::ClusterSymbol(meta) = result else {
-        panic!("{callable}: meta-declared source callable returns a cluster construction");
+        .expect_err("an unanswered Pattern query makes the candidate set incomplete");
+
+    let lang_build::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, trace } =
+        failure
+    else {
+        panic!("unsupported applicability must be terminal before maxima: {failure:?}");
     };
-
+    assert!(
+        diagnostic.message.contains("relational alternative query"),
+        "the terminal diagnostic comes from the unanswered canonical relation: {diagnostic:?}"
+    );
     assert_eq!(
-        meta.construction.member_views.len(),
-        1,
-        "{callable}: one construction effect produces one member view"
+        trace.c3_call_entries.len(),
+        2,
+        "the callable projection contains both the unsupported query and an otherwise applicable candidate"
     );
-    let view = &meta.construction.member_views[0];
     assert!(
-        view.value.is_none(),
-        "{callable}: the constructed type contribution is a pure-P member (value=None)"
+        trace.selected.is_none(),
+        "no candidate may be selected from an incomplete A-stage"
     );
-    let uint8 = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8");
-    let uint8_pattern = uint8.pure_p_pattern().expect("uint8 pure-P");
-    assert_ne!(
-        view.pattern, uint8_pattern,
-        "{callable}: the cluster's type member is a fresh meta-instance PatternValue, not the argument's uint8 pattern"
-    );
+}
 
-    // The type member's top pattern is navigated as the meta function
-    // itself plus its input arguments: its owner is a MetaInstance.
-    let owner = world
-        .semantic_world()
-        .pattern_owner(view.pattern)
-        .expect("member pattern has a resolved owner")
-        .owner;
-    assert!(
-        matches!(
-            world
-                .semantic_world()
-                .owners()
-                .node(owner)
-                .expect("member pattern owner exists")
-                .kind,
-            SemanticOwnerKind::MetaInstance { .. }
-        ),
-        "{callable}: the type member's top pattern is owned by the meta instance (meta function + input arguments)"
-    );
+#[test]
+fn wildcard_unit_return_pattern_reaches_selection_before_execution_frontier() {
+    let mut world = build_single_fixture_world("unit_result_selection", "app");
+    let initializer = initializer_from_source("let result = uint8 unit_pick;");
+    let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call_site,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            Provenance::new("unit result selection"),
+        )
+        .expect_err("Unit execution is an explicit implementation frontier");
 
-    // No Pattern reroot: the argument uint8 keeps its original owner.
-    let uint8_owner = world
-        .semantic_world()
-        .pattern_owner(uint8_pattern)
-        .expect("uint8 Pattern keeps a resolved owner")
-        .owner;
-    assert!(
-        !matches!(
-            world
-                .semantic_world()
-                .owners()
-                .node(uint8_owner)
-                .expect("uint8 Pattern owner exists")
-                .kind,
-            SemanticOwnerKind::MetaInstance { .. }
-        ),
-        "{callable}: construction must not reroot uint8's PatternValue under a MetaInstance"
-    );
+    let lang_build::OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace } = failure
+    else {
+        panic!("return Pattern shape must not remove the candidate during A: {failure:?}");
+    };
+    assert!(diagnostic.message.contains("Unit result"));
+    assert_eq!(trace.a_fully_admissible.len(), 1);
+    assert_eq!(trace.selected, trace.a_fully_admissible.first().copied());
 }

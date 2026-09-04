@@ -135,8 +135,8 @@ selected static source
   -> Project_out(runtime demand)
 ```
 
-The migration adapter selects views around an ordinary call; it does not
-rewrite the callable's complete P2 into a migration edge.
+Policy migration selects views around an ordinary call; it does not rewrite
+the callable's complete P2 into a migration edge.
 
 Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
 match, or search an arbitrary operation graph. `ref` and `share` remain
@@ -192,9 +192,8 @@ Candidates(args |> t) = CallSpace(TypeValue(t)) = V_τ
 ```
 
 Copied/extracted type-as-callee lookup selects candidates from that immutable
-`V_τ` snapshot. `HomeSymbol(TypeValue)`, defining-Symbol recovery, most-recent
-carrier provenance, and reverse `AsType` provenance are retired designs, not
-deferred candidate entrances.
+`V_τ` snapshot. Complete type values have no HomeSymbol, defining-Symbol
+recovery, most-recent carrier, or reverse `AsType` candidate entrance.
 
 Associated source navigation obeys the same forward-only rule. If:
 
@@ -208,13 +207,9 @@ navigated member may additionally be selected through `Q`/`Val2` under the
 normal navigation rules. Neither path inspects provenance or searches for
 `Symbol(uint8)`.
 
-The older `PolicyTransitionCallable` Rust carrier remains bounded algebra/test
-fixture material. Its caller-supplied result Pattern proves only fixture
-transport and does not establish canonical TypeValue/PatternValue/owner/
-constructor coherence. The connected path instead obtains the result
-PatternValue from the already registered result TypeValue; full
-constructor/extractor result construction and materialization-place lowering
-remain incomplete.
+Migration callables obtain their result Pattern and complete type observations
+from registered semantic entities. Constructor/extractor materialization and
+place lowering consume those observations through the ordinary call boundary.
 
 For source-backed transport members, the callable/member value Policy,
 first-formal Policy Pattern, and complete result P2 remain distinct. The member
@@ -459,9 +454,9 @@ target Object ontology.
 This does not inject callable-local declarations into the named receiver
 type's namespace. Nested owner paths use source navigation order:
 current/innermost `Self` first and outermost `Self` last. This spelling is not
-identity and does not assert that each receiver type is anonymous. The former
-synthetic `__inner_space` / `__inner_namespace` component is removed from
-canonical ownership.
+identity and does not assert that each receiver type is anonymous. Canonical
+ownership contains no synthetic `__inner_space` or `__inner_namespace`
+component.
 
 A local `struct` evaluated by an ordinary or `compile` callable uses the
 current callable owner as its ambient Pattern owner. A `compile` invocation
@@ -630,7 +625,7 @@ capabilities. The prohibition is specifically direct outer-place mutation.
 Because an in-place closure has neither a capture list nor an automatic capture
 set, there is no syntax or materialization step that can grant an exception.
 The resolved embedding check owns this rule. The Normalized AST only preserves
-`InPlace` and, for ordinary closures, elaborates the v0.5-A let-shaped capture
+`InPlace` and, for ordinary closures, elaborates the let-shaped capture
 syntax. Its free non-call-name inference is shape-directed; it performs no
 lookup, capture-environment layout, or capture admissibility analysis.
 
@@ -743,9 +738,10 @@ cache, not the semantic cause: removing the cache entry does not remove
 `CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that
 entry alone.
 
-## 9. Relation to v0.8 substrate
+## 9. Normalized call-site handoff
 
-For v0.8 construction substrate, `NormalizedCallSite.target` is not itself the `()` method — it is the callable object expression. The full pipeline is:
+`NormalizedCallSite.target` is the callable object expression, not the `()`
+member. The full pipeline is:
 
 ```text
 target expression → target value → target type →
@@ -757,8 +753,6 @@ explicit materialization consumer. Likewise, a declaration initializer is a
 materialization consumer when it binds that carrier. Normalization itself
 creates only a closure carrier; an arbitrary surrounding expression does not
 eagerly turn the carrier into a value or allocate its environment.
-
-The current implementation uses a documented shortcut (v0.8): the resolved target `SymbolObject` is treated as the callable entry directly, via `ResolvedCallTarget { temporary_direct_callable_shortcut: true }`. This shortcut will be replaced when function-object types and associated call-entry insertion are implemented.
 
 ## 10. Invariants
 

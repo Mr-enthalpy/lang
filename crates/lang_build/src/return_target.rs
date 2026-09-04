@@ -14,13 +14,22 @@ use crate::model::{Diagnostic, Provenance, ResolverCode, SymbolId};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ReturnFrameId(pub usize);
 
+/// Alpha-stable identity of one callable's return slot.  The written return
+/// binder spelling is diagnostic material only and never participates in
+/// equality.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ReturnSlotIdentity {
+    pub callable_owner: lang_syntax::NormSemanticOwnerId,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReturnSlotRef {
+    pub identity: Option<ReturnSlotIdentity>,
     /// The complete normalized return binding slot. Keeping the Pattern and
     /// its annotations/policy is required for later pattern-directed result
     /// delivery; this pass still performs target binding only.
     pub binding_slot: Option<NormBindingSlot>,
-    /// Convenience spelling for the restricted current self-target
+    /// Convenience spelling for the currently supported self-target
     /// diagnostics. Product/extraction returns intentionally have no single
     /// name while their full slot remains available above.
     pub name: Option<String>,
@@ -41,19 +50,11 @@ pub enum ReturnFrameOwner {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReturnSelfIdentity {
-    /// Temporary v0.9 identity placeholder.
-    ///
-    /// This is the normalized spelling bound by the first written formal
-    /// position, whatever that spelling is. That position denotes callable
-    /// self; the word `self` is conventional, not semantic.
-    ///
-    /// Future explicit-target resolution must use the lexical self slot /
-    /// callable-frame self identity, not text equality.
-    ///
-    /// TODO(return-capability): do not reuse this field as the semantic self
-    /// identity for return completion. It is only a diagnostic/validation
-    /// placeholder until lexical self-slot identity is available.
-    pub name: String,
+    /// Identity of the callable-local self position.  This exists even when
+    /// the source writes no formal self binder.
+    pub callable_owner: lang_syntax::NormSemanticOwnerId,
+    /// Optional written spelling retained for diagnostics only.
+    pub display_name: Option<String>,
     pub origin: NormOrigin,
 }
 
@@ -66,7 +67,7 @@ pub struct ReturnTargetFrame {
     /// Lexical owner of the callable-local `Self` space and return frame.
     ///
     /// This is present for every alpha-normalized callable, including in-place
-    /// closures, independently of the temporary written-self binder path. It
+    /// closures, independently of any written self binder. It
     /// does not encode the callable's invocation receiver type.
     pub callable_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
     pub origin: NormOrigin,
@@ -112,7 +113,10 @@ impl ReturnTargetStack {
         self.frames.last()
     }
 
-    pub fn find_self_identity(&self, name: &str) -> Vec<&ReturnTargetFrame> {
+    pub fn find_self_identity(
+        &self,
+        callable_owner: lang_syntax::NormSemanticOwnerId,
+    ) -> Vec<&ReturnTargetFrame> {
         self.frames
             .iter()
             .rev()
@@ -120,9 +124,32 @@ impl ReturnTargetStack {
                 frame
                     .self_identity
                     .as_ref()
-                    .is_some_and(|identity| identity.name == name)
+                    .is_some_and(|identity| identity.callable_owner == callable_owner)
             })
             .collect()
+    }
+}
+
+/// Result supplied by the semantic expression/type resolver for an explicit
+/// return target.  The return-target binder never reconstructs this identity
+/// from a source spelling.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExplicitReturnTargetResolution {
+    CallableSelf(lang_syntax::NormSemanticOwnerId),
+    NotActive,
+    Unsupported,
+}
+
+pub trait ExplicitReturnTargetResolver {
+    fn resolve_explicit_return_target(&self, target: &NormExpr) -> ExplicitReturnTargetResolution;
+}
+
+impl<F> ExplicitReturnTargetResolver for F
+where
+    F: Fn(&NormExpr) -> ExplicitReturnTargetResolution,
+{
+    fn resolve_explicit_return_target(&self, target: &NormExpr) -> ExplicitReturnTargetResolution {
+        self(target)
     }
 }
 
@@ -156,6 +183,10 @@ pub struct BoundReturnEvent {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PreservedReturnReason {
     UnmaterializedClosureLiteral,
+    /// The normalized expression has not yet been resolved to a callable
+    /// self identity.  Preserving it is required; spelling equality is not a
+    /// legal fallback.
+    SemanticTargetResolutionRequired,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -187,16 +218,38 @@ pub fn elaborate_return_targets_in_returnable_closure(
     binder.finish()
 }
 
-pub struct ReturnTargetBinder {
-    stack: ReturnTargetStack,
-    report: ReturnTargetBindingReport,
+pub fn elaborate_return_targets_in_returnable_closure_with_resolver(
+    closure: &NormClosure,
+    owner: ReturnFrameOwner,
+    resolver: &dyn ExplicitReturnTargetResolver,
+) -> ReturnTargetBindingReport {
+    let mut binder = ReturnTargetBinder::with_explicit_resolver(resolver);
+    binder.enter_returnable_closure(closure, owner);
+    binder.finish()
 }
 
-impl ReturnTargetBinder {
+pub struct ReturnTargetBinder<'resolver> {
+    stack: ReturnTargetStack,
+    report: ReturnTargetBindingReport,
+    explicit_resolver: Option<&'resolver dyn ExplicitReturnTargetResolver>,
+}
+
+impl ReturnTargetBinder<'static> {
     pub fn new() -> Self {
         Self {
             stack: ReturnTargetStack::new(),
             report: ReturnTargetBindingReport::default(),
+            explicit_resolver: None,
+        }
+    }
+}
+
+impl<'resolver> ReturnTargetBinder<'resolver> {
+    pub fn with_explicit_resolver(resolver: &'resolver dyn ExplicitReturnTargetResolver) -> Self {
+        Self {
+            stack: ReturnTargetStack::new(),
+            report: ReturnTargetBindingReport::default(),
+            explicit_resolver: Some(resolver),
         }
     }
 
@@ -284,13 +337,20 @@ impl ReturnTargetBinder {
         self.visit_expr(&return_event.value);
 
         let unbound = unbound_event(return_event);
-        match resolve_return_target(&self.stack, return_event) {
-            Ok(resolved_target) => self.report.bound_events.push(BoundReturnEvent {
+        match resolve_return_target(&self.stack, return_event, self.explicit_resolver) {
+            Ok(Some(resolved_target)) => self.report.bound_events.push(BoundReturnEvent {
                 value: return_event.value.clone(),
                 unresolved_target: unbound.target,
                 resolved_target,
                 origin: return_event.origin.clone(),
             }),
+            Ok(None) => self
+                .report
+                .preserved_unbound_events
+                .push(PreservedUnboundReturnEvent {
+                    event: unbound,
+                    reason: PreservedReturnReason::SemanticTargetResolutionRequired,
+                }),
             Err(diagnostic) => {
                 self.report.diagnostics.push(diagnostic);
             }
@@ -309,7 +369,7 @@ impl ReturnTargetBinder {
     }
 }
 
-impl Default for ReturnTargetBinder {
+impl Default for ReturnTargetBinder<'static> {
     fn default() -> Self {
         Self::new()
     }
@@ -318,11 +378,12 @@ impl Default for ReturnTargetBinder {
 fn resolve_return_target(
     stack: &ReturnTargetStack,
     return_event: &NormReturnEvent,
-) -> Result<ResolvedReturnTarget, Diagnostic> {
+    explicit_resolver: Option<&dyn ExplicitReturnTargetResolver>,
+) -> Result<Option<ResolvedReturnTarget>, Diagnostic> {
     match &return_event.target {
         NormReturnTargetSyntax::ImplicitNearest => stack
             .nearest()
-            .map(|frame| ResolvedReturnTarget::ActiveFrame(frame.frame_id))
+            .map(|frame| Some(ResolvedReturnTarget::ActiveFrame(frame.frame_id)))
             .ok_or_else(|| {
                 return_diagnostic(
                     ResolverCode::ReturnOutsideReturnableContext,
@@ -330,44 +391,62 @@ fn resolve_return_target(
                     &return_event.origin,
                 )
             }),
-        NormReturnTargetSyntax::Explicit(target) => resolve_explicit_return_target(stack, target),
+        NormReturnTargetSyntax::Explicit(target) => {
+            resolve_explicit_return_target(stack, target, explicit_resolver)
+        }
     }
 }
 
 fn resolve_explicit_return_target(
     stack: &ReturnTargetStack,
     target: &NormExpr,
-) -> Result<ResolvedReturnTarget, Diagnostic> {
-    match target {
-        NormExpr::Name { text, origin } => {
-            let matches = stack.find_self_identity(text);
+    resolver: Option<&dyn ExplicitReturnTargetResolver>,
+) -> Result<Option<ResolvedReturnTarget>, Diagnostic> {
+    let Some(resolver) = resolver else {
+        return Ok(None);
+    };
+    match resolver.resolve_explicit_return_target(target) {
+        ExplicitReturnTargetResolution::CallableSelf(callable_owner) => {
+            let matches = stack.find_self_identity(callable_owner);
             match matches.as_slice() {
-                [frame] => Ok(ResolvedReturnTarget::ActiveFrame(frame.frame_id)),
+                [frame] => Ok(Some(ResolvedReturnTarget::ActiveFrame(frame.frame_id))),
                 [] => Err(return_diagnostic(
                     ResolverCode::ReturnTargetNotActive,
                     "ReturnTargetNotActive: explicit return target is not active",
-                    origin,
+                    expr_origin(target),
                 )),
                 _ => Err(return_diagnostic(
                     ResolverCode::AmbiguousReturnTarget,
                     "AmbiguousReturnTarget: explicit return target matched multiple active frames",
-                    origin,
+                    expr_origin(target),
                 )),
             }
         }
+        ExplicitReturnTargetResolution::NotActive => Err(return_diagnostic(
+            ResolverCode::ReturnTargetNotActive,
+            "ReturnTargetNotActive: explicit return target is not active",
+            expr_origin(target),
+        )),
+        ExplicitReturnTargetResolution::Unsupported => Err(return_diagnostic(
+            ResolverCode::UnsupportedReturnTargetForm,
+            "UnsupportedReturnTargetForm: explicit return target form is not supported by the return-target binder",
+            expr_origin(target),
+        )),
+    }
+}
+
+fn expr_origin(expr: &NormExpr) -> &NormOrigin {
+    match expr {
         NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
-        | NormExpr::Product(lang_syntax::NormProduct { origin, .. })
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
-        | NormExpr::Closure(NormClosure { origin, .. })
         | NormExpr::OperatorTarget { origin, .. }
-        | NormExpr::Error(lang_syntax::NormError { origin, .. })
-        | NormExpr::Unsupported { origin, .. } => Err(return_diagnostic(
-            ResolverCode::UnsupportedReturnTargetForm,
-            "UnsupportedReturnTargetForm: explicit return target form is outside the restricted v0.9 return target binder",
-            origin,
-        )),
+        | NormExpr::Unsupported { origin, .. } => origin,
+        NormExpr::Product(lang_syntax::NormProduct { origin, .. })
+        | NormExpr::Closure(NormClosure { origin, .. }) => origin,
+        NormExpr::Name { origin, .. } => origin,
+        NormExpr::Error(lang_syntax::NormError { origin, .. }) => origin,
     }
 }
 
@@ -387,8 +466,12 @@ fn return_diagnostic(
 }
 
 fn return_slot_ref(closure: &NormClosure) -> ReturnSlotRef {
+    let identity = closure.semantic_owner.map(|owner| ReturnSlotIdentity {
+        callable_owner: owner.id,
+    });
     let Some(head) = &closure.head else {
         return ReturnSlotRef {
+            identity,
             binding_slot: None,
             name: None,
             origin: closure.origin.clone(),
@@ -396,12 +479,14 @@ fn return_slot_ref(closure: &NormClosure) -> ReturnSlotRef {
     };
     let Some(returns) = &head.returns else {
         return ReturnSlotRef {
+            identity,
             binding_slot: None,
             name: None,
             origin: head.origin.clone(),
         };
     };
     ReturnSlotRef {
+        identity,
         binding_slot: Some(returns.clone()),
         name: binding_slot_name(returns),
         origin: returns.origin.clone(),
@@ -409,30 +494,27 @@ fn return_slot_ref(closure: &NormClosure) -> ReturnSlotRef {
 }
 
 fn self_identity_from_closure(closure: &NormClosure) -> Option<ReturnSelfIdentity> {
-    let head = closure.head.as_ref()?;
-    match head.formal_frame().written_self? {
-        NormPatternElem::BindingSlot(slot) => match &slot.value_pattern {
-            NormPattern::Binder { name, origin } => Some(ReturnSelfIdentity {
-                name: name.clone(),
-                origin: origin.clone(),
-            }),
-            NormPattern::OperatorBinder { spelling, origin } => Some(ReturnSelfIdentity {
-                name: spelling.clone(),
-                origin: origin.clone(),
-            }),
-            _ => None,
-        },
-        NormPatternElem::Pattern(pattern) => match pattern {
-            NormPattern::Binder { name, origin } => Some(ReturnSelfIdentity {
-                name: name.clone(),
-                origin: origin.clone(),
-            }),
-            NormPattern::OperatorBinder { spelling, origin } => Some(ReturnSelfIdentity {
-                name: spelling.clone(),
-                origin: origin.clone(),
-            }),
-            _ => None,
-        },
+    let callable_owner = closure.semantic_owner?.id;
+    let written = closure
+        .head
+        .as_ref()
+        .and_then(|head| head.formal_frame().written_self);
+    let display_name = written.and_then(|written| match written {
+        NormPatternElem::BindingSlot(slot) => binding_slot_name(slot),
+        NormPatternElem::Pattern(pattern) => pattern_display_name(pattern),
+        _ => None,
+    });
+    Some(ReturnSelfIdentity {
+        callable_owner,
+        display_name,
+        origin: closure.origin.clone(),
+    })
+}
+
+fn pattern_display_name(pattern: &NormPattern) -> Option<String> {
+    match pattern {
+        NormPattern::Binder { name, .. } => Some(name.clone()),
+        NormPattern::OperatorBinder { spelling, .. } => Some(spelling.clone()),
         _ => None,
     }
 }

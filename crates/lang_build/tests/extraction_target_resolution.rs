@@ -43,7 +43,7 @@ fn nav(components: &[&str]) -> CanonicalFullNavigation {
 
 #[test]
 fn top_omitted_navigation_is_exact_global_never_bare_name() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
 
     // Control fact: `uint8` IS visible from the package root through the
@@ -96,7 +96,7 @@ fn top_omitted_navigation_is_exact_global_never_bare_name() {
 
 #[test]
 fn nearest_explicit_anchor_wins_in_real_resolution() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
     let uint8 = semantic
         .symbol_in_namespace(world.core_node(), "uint8")
@@ -151,7 +151,7 @@ fn nearest_explicit_anchor_wins_in_real_resolution() {
 
 #[test]
 fn intermediate_absent_layer_extends_the_completed_path() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
 
     // subject `exists`, an Absent layer named `verify`, then an explicit
@@ -182,7 +182,7 @@ fn intermediate_absent_layer_extends_the_completed_path() {
 
 #[test]
 fn anchorless_parent_chain_is_a_hard_diagnostic() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
+    let world = build_single_fixture_world("type_binding", "app");
     let semantic = world.semantic_world();
 
     let parents = [
@@ -196,50 +196,5 @@ fn anchorless_parent_chain_is_a_hard_diagnostic() {
         error.message.contains("no anchor"),
         "diagnostic names the missing anchor: {}",
         error.message
-    );
-}
-
-// ---------------------------------------------------------------------------
-// The extraction matcher compares canonical pattern norms.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn extraction_pattern_matches_compares_canonical_norms() {
-    let world = build_single_fixture_world("s10_type_binding", "app");
-    let semantic = world.semantic_world();
-    let uint8 = semantic
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8")
-        .pure_p_pattern()
-        .expect("uint8 pure P");
-    let uint16 = semantic
-        .symbol_in_namespace(world.core_node(), "uint16")
-        .expect("core uint16")
-        .pure_p_pattern()
-        .expect("uint16 pure P");
-
-    assert_eq!(
-        semantic.extraction_pattern_matches(uint8, uint8),
-        Some(true),
-        "a Pattern matches itself"
-    );
-    assert_eq!(
-        semantic.extraction_pattern_matches(uint8, uint16),
-        Some(false),
-        "distinct nominal roots never match"
-    );
-
-    // `let T: type = uint8;` binds the RHS type value: T reads the SAME
-    // PatternValue, so extraction matching against T's pattern succeeds —
-    // the matcher compares PatternValues, never Symbol identities.
-    let t = semantic
-        .symbol_in_namespace(world.package_root_node(), "T")
-        .expect("bound symbol T")
-        .pure_p_pattern()
-        .expect("T pure P");
-    assert_eq!(
-        semantic.extraction_pattern_matches(t, uint8),
-        Some(true),
-        "binding preserves the PatternValue, so the patterns match"
     );
 }

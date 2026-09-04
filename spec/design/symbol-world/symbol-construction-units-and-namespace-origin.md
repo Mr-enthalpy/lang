@@ -1,9 +1,8 @@
 # Symbol Construction Units and Namespace Origin
 
-**Status: Canonical future-design note for type-core namespace origin,
-construction-unit ownership, physical contribution authority, and cross-file
-reopening. These rules are not implemented by the current v0.6–v0.9
-substrate.**
+**Status: Canonical design for type-core namespace origin, construction-unit
+ownership, physical contribution authority, and cross-file reopening.
+Consumer coverage is recorded in `spec/planning/roadmap.md`.**
 
 This document owns the future rules that answer:
 
@@ -19,7 +18,7 @@ The Symbol role/member, `compile` / `meta`, meta return self-root, `struct`, pur
 `symbol-first-meta-construction-and-pattern-injection.md`. The build projection
 and assembly phases are described in
 `../build-package/build-system-design.md` and
-`../build-package/namespace-assembly-v0.md`. This note supplies the shared
+`../build-package/namespace-assembly.md`. This note supplies the shared
 construction-origin contract used by both tracks.
 
 Policy pairs, binding `P1`, result `P2`, seal visibility, compile-flow projection, derived
@@ -499,10 +498,7 @@ For each admitted symbol, canonical semantics preserve candidate identity,
 resolved `PolicyPair`, whole-slot `PolicyMode`, declaration/intrinsic
 `CapabilityRealization` facts, and provenance. Consumer Policy demand and
 `DynamicLegality_Γ_consumer` are formed after lookup and ordinary invocation
-selection and do not universally project mode to const. The
-currently connected helper still admits candidates
-through a const-projected 2×2 compatibility carrier. That is an implementation
-subset only, not export semantics.
+selection and do not universally project mode to const.
 
 An absent value component is structurally empty:
 
@@ -514,58 +510,24 @@ Pv = absent
 PolicyMode remains independently const | plain | mut
 ```
 
-The projection helper reports an error when a flat compatibility carrier
-violates its narrower prototype invariants; those errors do not redefine the
-canonical absent-slot × PolicyMode matrix.
+Projection errors do not redefine the canonical absent-slot × PolicyMode
+matrix.
 
-The helper no longer returns cloned internal policies as external views.
-Full namespace-graph installation and external resolver routing remain later
-integration work.
+The helper returns external views derived from public path reachability and
+retention.
 
-## 12. Current Implementation Substrate
-
-The existing build slice already has physical directory skeleton collection,
-`SymbolObject`, role-aware namespace nodes, transactional `NamespaceDelta`
-installation, provenance slots, and a conservative direct-child harvesting
-restriction. Those are useful prerequisites, not an implementation of this
-document.
-
-PR #94 remains a neutral `PatternHeadId` registry/materialization substrate.
-Its generated/global/namespace/local contexts are transitional categorical
-registry inputs for explicit low-level attachment and tests. Ordinary binding
-preserves attached provisional material or restores stripped material through
-the `GeneratedTypeDefinition` fallback; it does not derive a context from the
-destination path. None of this establishes final namespace origin,
-construction ownership, or meta return root identity.
-
-Not implemented:
-
-```text
-meta return self-root checking
-complete compile/meta language-level separation
-MetaInstanceScopeId
-ordinary canonical meta invocation navigation atom
-NamespaceOrigin uniqueness checking
-SourceConstructionUnit / MetaConstructionUnit ownership
-physical directory contribution authority checking
-cross-file reopening diagnostics
-ordinary namespace value vs pattern-material role/cache implementation
-Pure(x) => NamespaceRole(x) and TypeRole refinement enforcement
-explicit sum construction/extension API
-```
-
-In particular, the current binding/materialization destination must not be
+In particular, a binding/materialization destination must not be
 described as determining or rerooting a meta result role member's pattern
 identity. Final meta role-root identity is anchored by the meta instance's own
 symbol scope.
 
-## 13. Non-Goals
+## 12. Non-Goals
 
 This document does not:
 
 - modify the lexer, parser, Raw AST, or Normalized AST;
 - define source syntax for partial declarations or reopening;
-- implement `compile`, `extend`, `inject`, or a sum API;
+- define `compile`, `extend`, `inject`, or a sum API;
 - define final overload-entry identity or future mergeable-value syntax;
-- implement namespace-origin or construction-unit enforcement in Rust;
+- define a concrete namespace-origin or construction-unit carrier;
 - turn physical files or internal AST carriers into a macro system.

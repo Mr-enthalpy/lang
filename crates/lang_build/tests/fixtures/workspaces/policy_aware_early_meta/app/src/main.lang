@@ -1,7 +1,7 @@
-let not_meta = 1;
+mut + runtime let not_meta: uint8 = 1;
 let T: type = (uint8 a) |> struct;
 
-verify kind not_meta placeholder;
+verify kind not_meta object;
 verify policy not_meta runtime;
 verify not_policy not_meta meta;
 verify not_policy not_meta export;

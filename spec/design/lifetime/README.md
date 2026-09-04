@@ -1,33 +1,21 @@
-# Lifetime Design
+# Lifetime design
 
-This directory is the design boundary for lifetime-policy work.
+The canonical owner is
+[`lifetime-policy-and-overload-boundary.md`](lifetime-policy-and-overload-boundary.md).
 
-Start with:
+Its core relation is:
 
-- [`lifetime-policy-and-overload-boundary.md`](lifetime-policy-and-overload-boundary.md)
+```text
+@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
+```
 
-That note is the canonical owner of the `@` operation: `@` reifies
-`ReifyLife(NameOf(actual), Pos(SemanticContinuation))` as a `LifetimeValue`,
-never a borrow view and never a `type ref`. The former two instance groups
-(`Val1?(x) ≠ null -> LifetimeFact`, `Val1?(x) = null -> P ref`), the
-carrier-slot form `t@ : type ref`, and the borrow-type fixed points
-(`type ref@ = type ref`, `type share@ = type share`) are retired. `ref` and
-`share` are the borrow constructors; each is a privileged actual-place builtin
-(`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`)
-that may obtain the actual's place, while `@` and ordinary user functions do
-not. Explicit higher-level selection uses `t |> (type ref)` /
-`t |> (type share)`. The note also keeps target-preserving `ref`/`share`
-constructor composition, the escape check on borrow views, the
-`NoImplicitBorrowFormation` overload boundary, and the separation between
-lifetime rules and the type/compile overload pipeline. Borrow formation does
-not require or manufacture construction Open. The semantic core now closes
-LifeName/LifetimeValue/NameView, `LifetimeValue` as an ordinary first-class
-semantic value (without implying runtime materializability), pairwise-distinct
-exclusive-write and same-root shared-read defaults plus finite Pre patch,
-gapless half-open Region generations, move-origin preservation, selected
-share/rebind-plus-clone realization lifecycle posts with no extra default copy
-origin equation, cleanup, Pre/Post summaries, and
-an extensible global Color vocabulary with finite/monotone mechanically
-decidable relations in each committed compilation semantic universe.
-Concrete IR, checker implementation, summary compression, access-tree
-integration, diagnostics, and any extended Horae logic remain future work.
+`@` returns an ordinary first-class `LifetimeValue`; it is not a borrow or
+place-acquisition operation and does not require the operand to have a Place.
+`ref` and `share` are explicit borrow constructors with privileged access to
+the actual Place.
+
+The owner also defines LifeName/NameView, cleanup-before-observation, gapless
+half-open Region generations, exact move cuts, Pre/commit/Post, monotone Color
+inheritance, extensible directed Color relations, and the post-selection
+lifetime boundary. Concrete IR, source action wiring, access-tree construction,
+summary compression, and diagnostics remain implementation frontiers.

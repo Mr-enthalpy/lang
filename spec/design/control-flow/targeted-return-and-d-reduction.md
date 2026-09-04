@@ -65,11 +65,9 @@ capability. That capability is exposed through the callable-local `Self` space
 as an ordinary callable capability value, as described in
 `spec/design/symbol-world/function-object-self-and-return-capability.md`.
 
-Return is therefore not a parser keyword escape hatch, not an operator, and
-not a compiler-intrinsic control action. The target-binding pass in this PR
-does not execute or invoke that return capability. It only identifies the
-active frame that future completion semantics will use to reach the
-appropriate callable-frame return capability.
+Return is not a parser keyword escape hatch, an operator, or a
+compiler-intrinsic control action. The target-binding pass identifies the
+active frame; return-capability execution belongs to the completion consumer.
 
 The current target-binding pass records a `BoundReturnEvent` containing the
 return value expression, the unresolved target form, the resolved frame id,
@@ -189,9 +187,9 @@ The current implementation checks only whether the requested target is
 active in the current `ReturnTargetStack`. It does not propagate
 completions or perform D-reduction.
 
-## 7. Relationship to Current Implementation
+## 7. Consumer coverage
 
-| Concept | Current (v0.9) | Future (design) |
+| Concept | Connected consumer | Canonical relation |
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
 | Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full callable-frame self capability |
@@ -224,10 +222,10 @@ preserved as value material unless that closure is explicitly elaborated as
 its own returnable body. Therefore a return inside an unmaterialized nested
 closure is not bound to the outer frame.
 
-The current `ReturnSelfIdentity` is a placeholder derived from normalized
-binder spelling because full lexical self-slot / function-object identity is
-not wired into this substrate yet. Future explicit self-target resolution
-must use lexical slot identity, not text equality on the spelling `self`.
+`ReturnSelfIdentity` uses the callable's normalized semantic owner. Written
+binder spelling is diagnostic material only and never participates in target
+identity. Explicit self-target resolution must supply that stable owner
+identity; without it the event remains unbound.
 
 `ReturnSlotRef.binding_slot` deliberately retains the complete
 `NormBindingSlot`. `ReturnSlotRef.name` is only a convenience for the current

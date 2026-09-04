@@ -1,6 +1,6 @@
 # Return Value, Extraction View, and Pattern-Directed Decomposition
 
-**Status: Future design boundary. Not current implementation behavior.**
+**Status: canonical result-extraction design.**
 
 The relational meaning of Pattern observation/extraction and the fact that
 constructor/extractor inverses are family-specific theorems are canonical in
@@ -390,7 +390,7 @@ P == e              // false
 P A== e             // true under named constructor / pattern A, if A reconstructs e
 ```
 
-`A==` is provisional notation for constructor/pattern mediated equality. It is
+`A==` is schematic notation for constructor/pattern mediated equality. It is
 not ordinary value equality and does not imply that equality inserts `?`.
 
 ## 5. Named Pattern View Is Not Bare Product Extraction
@@ -495,39 +495,12 @@ field-labeled product != val
 field-labeled product |> constructor == val
 ```
 
-## Implementation Substrate Note
+## Observation boundary
 
-The build implementation records this model as a static shape substrate:
-
-```text
-EvalResultNormalForm = ValuePoint(e) | Product(P)
-```
-
-The current `question_view` helper is transitional shape substrate for a pure
-one-step view transition:
-
-```text
-Product(P) -> Product(P)
-leaf e     -> e
-non-leaf e -> exposed view
-```
-
-Binding and pattern matching consume product normal form directly:
-
-```text
-ProductPattern + P -> Direct
-ProductPattern + non-leaf e exposing P -> AfterExtraction (current substrate name)
-ProductPattern + leaf e -> Mismatch
-```
-
-`AfterExtraction` is a transitional implementation category. It must not be
-read as a final rule that inserts postfix `?` after a failed binding. The final
-matcher reads the symbol's Pattern layer directly; an explicit `?` remains a
-separate one-layer view operation.
-
-"Split" is a pattern-matcher consumption operation over product normal form. It
-is not the value-level result of `?`. Equality does not call `question_view`.
-Final pattern matching does not require this helper as an enabling bridge.
+Binding and Pattern interpretation consume proof-relevant content observations
+through `R_Gamma`. Direct Product observation and explicit one-layer `?` view
+formation are distinct operations. A failed direct observation never inserts
+an implicit `?`, and ordinary equality never calls an extraction helper.
 
 ## 7. Relationship to Control-Flow-Local Meta Evaluation
 

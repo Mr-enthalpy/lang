@@ -1,116 +1,125 @@
-//! Atomic builtin-type and concrete literal-type substrate.
+//! Abstract literal formation and later concrete construction substrate.
 //!
-//! `AtomicBuiltinType` is a key for an actual builtin type identity (`T`), not
-//! merely a literal classifier. `AtomicBuiltinTypeRegistry` resolves that key
-//! to the current first-order `TypeValueId` projection of an installed Type
-//! symbol. Numeric literals instead receive a concrete `Tnum` selected by
-//! context.
-//!
-//! This helper is not wired into `evaluate_initializer_best_effort`; it does
-//! not define an unsuffixed numeric default or claim initializer integration.
-//! The current core bootstrap has no installed `str` Type symbol, so its
-//! registry entry and literal materialization are not yet core-backed facts.
+//! Literal evaluation first creates an exact value of `integer`, `real`, or
+//! `character` at compile Policy.  Concrete target Types are consulted only
+//! by the later construction boundary, and same-Type Policy materialization
+//! is a separate migration. Concrete type lookup is only a catalog for that
+//! construction boundary; it never chooses the literal's initial semantic
+//! Type.
 
 use std::collections::BTreeMap;
 
 use lang_syntax::{NormExpr, NormLiteralKind};
 
 use crate::{
-    identity::{type_value_projection_from_type_symbol, SemanticValueId, TypeValueId},
+    canonical_value::canonical_literal_content,
+    identity::{SemanticValueId, TypeValueId},
     policy_pair::{
         PatternComponentPolicy, PolicyPair, PolicyStage, StageSet, ValueComponentPolicy,
         ValuePresence,
     },
-    CompilationWorld, Diagnostic, Provenance, SymbolKind, SymbolObject,
+    CompilationWorld, Diagnostic, Provenance,
 };
 
+/// Canonical compile-time literal families.  These are ordinary semantic
+/// Types (`integer`, `real`, `character`), not a parser-directed concrete
+/// machine-type universe.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum AtomicBuiltinType {
-    Uint,
-    Int,
-    Float,
-    Buffer,
-    Str,
+pub enum AbstractLiteralFamily {
+    Integer,
+    Real,
+    Character,
 }
 
-impl AtomicBuiltinType {
-    pub const fn symbol_name(self) -> &'static str {
+impl AbstractLiteralFamily {
+    pub const fn type_name(self) -> &'static str {
         match self {
-            Self::Uint => "uint",
-            Self::Int => "int",
-            Self::Float => "float",
-            Self::Buffer => "buffer",
-            Self::Str => "str",
+            Self::Integer => "integer",
+            Self::Real => "real",
+            Self::Character => "character",
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AtomicBuiltinTypeRegistryFailure {
-    NotTypeSymbol {
-        key: AtomicBuiltinType,
-        actual_kind: SymbolKind,
-    },
-    SymbolNameMismatch {
-        key: AtomicBuiltinType,
-        actual_name: String,
-    },
+pub enum AbstractLiteralExactValue {
+    Integer(String),
+    Real(String),
+    Character(char),
 }
 
-/// Current first-order projections for installed atomic builtin Type symbols.
-///
-/// The key denotes the intended type identity. The stored `TypeValueId` is
-/// transitional projection material, not final canonical type-value tracking.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct AtomicBuiltinTypeRegistry {
-    types: BTreeMap<AtomicBuiltinType, TypeValueId>,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AbstractLiteralValue {
+    pub id: SemanticValueId,
+    pub family: AbstractLiteralFamily,
+    pub exact: AbstractLiteralExactValue,
+    pub type_value: TypeValueId,
+    pub policy: PolicyPair,
+    pub provenance: Provenance,
 }
 
-impl AtomicBuiltinTypeRegistry {
-    pub fn new() -> Self {
-        Self::default()
-    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AbstractLiteralFormationFailure {
+    NotLiteral,
+    AbstractTypeUnavailable(AbstractLiteralFamily),
+    /// The frozen frontend exposes a string family but the canonical
+    /// character spelling/storage representation remains Open.  Do not
+    /// silently reinterpret arbitrary strings as characters.
+    CharacterSpellingOpen,
+}
 
-    pub fn insert_resolved_type_symbol(
-        &mut self,
-        key: AtomicBuiltinType,
-        symbol: &SymbolObject,
-    ) -> Result<(), AtomicBuiltinTypeRegistryFailure> {
-        if symbol.kind != SymbolKind::Type {
-            return Err(AtomicBuiltinTypeRegistryFailure::NotTypeSymbol {
-                key,
-                actual_kind: symbol.kind,
-            });
+/// Form the exact abstract semantic literal before any concrete target is
+/// consulted.  The caller supplies only the canonical abstract Type lookup;
+/// no expected machine Type enters this boundary.
+pub fn form_abstract_literal_value(
+    expr: &NormExpr,
+    mut resolve_abstract_type: impl FnMut(AbstractLiteralFamily) -> Option<TypeValueId>,
+    id: SemanticValueId,
+    provenance: Provenance,
+) -> Result<AbstractLiteralValue, AbstractLiteralFormationFailure> {
+    let NormExpr::Literal { kind, text, .. } = expr else {
+        return Err(AbstractLiteralFormationFailure::NotLiteral);
+    };
+    let (family, exact) = match kind {
+        NormLiteralKind::Int => (
+            AbstractLiteralFamily::Integer,
+            AbstractLiteralExactValue::Integer(canonical_literal_content(*kind, text)),
+        ),
+        NormLiteralKind::Float => (
+            AbstractLiteralFamily::Real,
+            AbstractLiteralExactValue::Real(canonical_literal_content(*kind, text)),
+        ),
+        NormLiteralKind::String => {
+            return Err(AbstractLiteralFormationFailure::CharacterSpellingOpen);
         }
-        if symbol.name != key.symbol_name() {
-            return Err(AtomicBuiltinTypeRegistryFailure::SymbolNameMismatch {
-                key,
-                actual_name: symbol.name.clone(),
-            });
-        }
-        self.types
-            .insert(key, type_value_projection_from_type_symbol(symbol.id));
-        Ok(())
-    }
-
-    pub fn get(&self, key: AtomicBuiltinType) -> Option<TypeValueId> {
-        self.types.get(&key).copied()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (AtomicBuiltinType, TypeValueId)> + '_ {
-        self.types.iter().map(|(key, value)| (*key, *value))
-    }
+    };
+    let type_value = resolve_abstract_type(family).ok_or(
+        AbstractLiteralFormationFailure::AbstractTypeUnavailable(family),
+    )?;
+    Ok(AbstractLiteralValue {
+        id,
+        family,
+        exact,
+        type_value,
+        policy: compile_literal_policy(),
+        provenance,
+    })
 }
 
-/// Syntactic literal family retained from normalized input.
-///
-/// This is not an atomic builtin type `T`: an integer spelling may later
-/// select either a signed or unsigned concrete numeric type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LiteralFamily {
-    Integer,
-    Float,
-    String,
+pub fn abstract_character_value(
+    value: char,
+    type_value: TypeValueId,
+    id: SemanticValueId,
+    provenance: Provenance,
+) -> AbstractLiteralValue {
+    AbstractLiteralValue {
+        id,
+        family: AbstractLiteralFamily::Character,
+        exact: AbstractLiteralExactValue::Character(value),
+        type_value,
+        policy: compile_literal_policy(),
+        provenance,
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -141,6 +150,33 @@ pub struct NumericTypeRegistry {
     types: BTreeMap<NumericTypeKey, TypeValueId>,
 }
 
+/// Authorized abstract-to-concrete construction family.  Type-changing
+/// literal construction is distinct from same-Type Policy migration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConstructionFamily {
+    ConstructOrConvert,
+}
+
+/// Internal ordinary construction request.  The exact target is a complete
+/// immutable tau snapshot; its callspace supplies the candidate family.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConstructionRequest {
+    pub source: crate::SemanticValueRef,
+    pub target: crate::CompleteTypeValue,
+    pub result_demand: crate::ResultPolicyDemand,
+    pub family: ConstructionFamily,
+}
+
+/// Core bootstrap implementation data for one builtin constructor.  This is
+/// not a legality table used by call sites: bootstrap registers each row as
+/// an ordinary candidate in the target tau callspace.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BuiltinNumericConstructorSpec {
+    pub source_family: AbstractLiteralFamily,
+    pub target_key: NumericTypeKey,
+    pub target_type: TypeValueId,
+}
+
 impl NumericTypeRegistry {
     pub fn new() -> Self {
         Self::default()
@@ -152,10 +188,6 @@ impl NumericTypeRegistry {
 
     pub fn get(&self, key: NumericTypeKey) -> Option<TypeValueId> {
         self.types.get(&key).copied()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (NumericTypeKey, TypeValueId)> + '_ {
-        self.types.iter().map(|(key, value)| (*key, *value))
     }
 
     /// Resolve the concrete numeric types already installed by core bootstrap.
@@ -171,141 +203,69 @@ impl NumericTypeRegistry {
         }
         Ok(registry)
     }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LiteralTypeSelection {
-    Numeric(NumericTypeKey),
-    Atomic(AtomicBuiltinType),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LiteralValue {
-    pub id: SemanticValueId,
-    pub kind: NormLiteralKind,
-    pub text: String,
-    pub literal_family: LiteralFamily,
-    pub numeric_type: Option<NumericTypeKey>,
-    pub type_value: TypeValueId,
-    pub policy: PolicyPair,
-    pub provenance: Provenance,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum LiteralMaterializationFailure {
-    NotLiteral,
-    NumericLiteralRequiresConcreteNumericType {
-        selected: AtomicBuiltinType,
-    },
-    NumericFamilySelectionMismatch {
-        literal: LiteralFamily,
-        selected: NumericFamily,
-    },
-    AtomicTypeSelectionMismatch {
-        literal: LiteralFamily,
-        selected: AtomicBuiltinType,
-    },
-    AtomicBuiltinTypeUnavailable {
-        key: AtomicBuiltinType,
-    },
-    ConcreteNumericTypeUnavailable {
-        key: NumericTypeKey,
-    },
-}
-
-/// Materialize one normalized literal after context has selected its concrete
-/// type.
-///
-/// This API intentionally has no implicit numeric default. Unsuffixed literal
-/// defaulting/range selection remains a separate language decision.
-pub fn materialize_literal_value(
-    expr: &NormExpr,
-    atomic_types: &AtomicBuiltinTypeRegistry,
-    numeric_types: &NumericTypeRegistry,
-    selection: LiteralTypeSelection,
-    id: SemanticValueId,
-    provenance: Provenance,
-) -> Result<LiteralValue, LiteralMaterializationFailure> {
-    let NormExpr::Literal { kind, text, .. } = expr else {
-        return Err(LiteralMaterializationFailure::NotLiteral);
-    };
-    let literal_family = match kind {
-        NormLiteralKind::Int => LiteralFamily::Integer,
-        NormLiteralKind::Float => LiteralFamily::Float,
-        NormLiteralKind::String => LiteralFamily::String,
-    };
-
-    let (numeric_type, type_value) = match selection {
-        LiteralTypeSelection::Numeric(key) => {
-            let compatible = match literal_family {
-                LiteralFamily::Integer => {
-                    matches!(key.family, NumericFamily::Uint | NumericFamily::Int)
-                }
-                LiteralFamily::Float => key.family == NumericFamily::Float,
-                LiteralFamily::String => false,
-            };
-            if !compatible {
-                return Err(
-                    LiteralMaterializationFailure::NumericFamilySelectionMismatch {
-                        literal: literal_family,
-                        selected: key.family,
-                    },
-                );
-            }
-            let type_value = numeric_types
-                .get(key)
-                .ok_or(LiteralMaterializationFailure::ConcreteNumericTypeUnavailable { key })?;
-            (Some(key), type_value)
-        }
-        LiteralTypeSelection::Atomic(selected) => {
-            if matches!(
-                selected,
-                AtomicBuiltinType::Uint | AtomicBuiltinType::Int | AtomicBuiltinType::Float
-            ) {
-                return Err(
-                    LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericType {
-                        selected,
-                    },
-                );
-            }
-            let compatible = matches!(
-                (literal_family, selected),
-                (LiteralFamily::String, AtomicBuiltinType::Str)
-            );
-            if !compatible {
-                return Err(LiteralMaterializationFailure::AtomicTypeSelectionMismatch {
-                    literal: literal_family,
-                    selected,
+    /// Builtin implementation roster installed into target callspaces during
+    /// core bootstrap.  Consumers enumerate the resulting callspace entries;
+    /// they never query this registry to decide construction legality.
+    pub fn builtin_constructor_specs(&self) -> Vec<BuiltinNumericConstructorSpec> {
+        let mut specs = Vec::new();
+        for target_key in [
+            NumericTypeKey::new(NumericFamily::Uint, 8),
+            NumericTypeKey::new(NumericFamily::Uint, 16),
+            NumericTypeKey::new(NumericFamily::Uint, 32),
+        ] {
+            if let Some(target_type) = self.get(target_key) {
+                specs.push(BuiltinNumericConstructorSpec {
+                    source_family: AbstractLiteralFamily::Integer,
+                    target_key,
+                    target_type,
                 });
             }
-            let type_value = atomic_types.get(selected).ok_or(
-                LiteralMaterializationFailure::AtomicBuiltinTypeUnavailable { key: selected },
-            )?;
-            (None, type_value)
         }
-    };
-
-    Ok(LiteralValue {
-        id,
-        kind: *kind,
-        text: text.clone(),
-        literal_family,
-        numeric_type,
-        type_value,
-        policy: compile_literal_policy(),
-        provenance,
-    })
+        let target_key = NumericTypeKey::new(NumericFamily::Float, 32);
+        if let Some(target_type) = self.get(target_key) {
+            specs.push(BuiltinNumericConstructorSpec {
+                source_family: AbstractLiteralFamily::Real,
+                target_key,
+                target_type,
+            });
+        }
+        specs
+    }
 }
 
-fn compile_literal_policy() -> PolicyPair {
+pub fn compile_literal_policy() -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy {
             stages: StageSet::from([PolicyStage::Compile]),
-            mutability: Default::default(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
             stages: StageSet::from([PolicyStage::Compile]),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn frozen_string_spelling_does_not_close_character_semantics() {
+        let expr = NormExpr::Literal {
+            kind: NormLiteralKind::String,
+            text: "\"x\"".into(),
+            origin: lang_syntax::NormOrigin::Source(lang_syntax::Span::new(0, 0, 0, 3)),
+        };
+        assert_eq!(
+            form_abstract_literal_value(
+                &expr,
+                |_| unreachable!("character spelling is rejected before type lookup"),
+                SemanticValueId(1),
+                Provenance::new("open character spelling"),
+            ),
+            Err(AbstractLiteralFormationFailure::CharacterSpellingOpen),
+            "implementation convenience must not close the canonical Open character spelling"
+        );
     }
 }

@@ -1,7 +1,7 @@
 use lang_build::{
     CallableOwnerPlacement, CallableReceiverBindingSource, CallableReceiverTypeId,
     CanonicalValueAddr, ExtractionMemberVisibility, LocalCallableIdentity, LocalGenerationIdentity,
-    LocalSymbolIdentity, MetaCallableIdentity, MetaInstanceKey, NamespaceLookupFailure,
+    LocalSymbolIdentity, MetaCallableIdentity, MetaInvocationMaterialKey, NamespaceLookupFailure,
     NamespaceNameView, NamespaceSymbolEntry, NamespaceVisibility, OwnerNamespaceGraph,
     OwnerNamespaceNodeId, OwnerQualificationError, PackageId, Provenance, SemanticOwnerGraph,
     SemanticOwnerQualification, SemanticSymbolIdentity, SemanticValueId,
@@ -29,8 +29,11 @@ fn entry(
     }
 }
 
-fn canonical_meta_key(callable: MetaCallableIdentity, argument_addr: u64) -> MetaInstanceKey {
-    MetaInstanceKey {
+fn canonical_meta_key(
+    callable: MetaCallableIdentity,
+    argument_addr: u64,
+) -> MetaInvocationMaterialKey {
+    MetaInvocationMaterialKey {
         callable,
         arguments: CanonicalValueAddr(argument_addr),
         provenance: Provenance::new(format!("canonical args@{argument_addr}")),
@@ -219,15 +222,15 @@ fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() 
     let uint8 = canonical_meta_key(f, 8);
     let uint16 = canonical_meta_key(f, 16);
 
-    let f_uint8 = owners.meta_instance(namespace, f, uint8.clone());
+    let f_uint8 = owners.meta_instance(namespace, uint8.clone());
     assert_eq!(
         f_uint8,
-        owners.meta_instance(namespace, f, uint8),
+        owners.meta_instance(namespace, uint8),
         "the same canonical invocation reuses one semantic owner"
     );
     assert_ne!(
         f_uint8,
-        owners.meta_instance(namespace, f, uint16),
+        owners.meta_instance(namespace, uint16),
         "different canonical arguments create distinct owners"
     );
 
@@ -235,7 +238,7 @@ fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() 
         selected_function_value: SemanticValueId(100),
         selected_call_entry: SemanticValueId(101),
     };
-    let nested = owners.meta_instance(f_uint8, returned_meta, canonical_meta_key(returned_meta, 8));
+    let nested = owners.meta_instance(f_uint8, canonical_meta_key(returned_meta, 8));
     assert_eq!(owners.parent(nested), Some(f_uint8));
 }
 

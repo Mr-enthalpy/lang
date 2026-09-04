@@ -2,16 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
     ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceNode,
-    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, Provenance,
-    ResolverCode, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
-    SymbolPayload,
+    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance, ResolverCode, SemanticNameDelta,
+    SourceCategory, SymbolId, SymbolKind, SymbolObject,
 };
 
 /// Immutable revision of the SemanticWorld-owned namespace-name index.
 ///
-/// This index stores namespace topology and declaration records used by
-/// projection adapters.  It is not a second world and is never committed
-/// independently of its owning SemanticWorld.
+/// This index stores namespace topology and declaration records. It is never
+/// committed independently of its owning SemanticWorld.
 #[derive(Clone, Debug)]
 pub struct SemanticNameIndex {
     snapshot_id: u64,
@@ -409,7 +407,6 @@ pub struct ResolverContext {
     pub current_namespace: NamespaceNodeId,
     pub explicit_mount_roots: Vec<NamespaceNodeId>,
     pub default_mounts: Vec<NamespaceNodeId>,
-    pub current_policy: PolicyMetadata,
 }
 
 impl ResolverContext {
@@ -418,7 +415,6 @@ impl ResolverContext {
             current_namespace,
             explicit_mount_roots: Vec::new(),
             default_mounts: Vec::new(),
-            current_policy: PolicyMetadata::default(),
         }
     }
 
@@ -430,7 +426,6 @@ impl ResolverContext {
             current_namespace,
             explicit_mount_roots: Vec::new(),
             default_mounts,
-            current_policy: PolicyMetadata::default(),
         }
     }
 
@@ -443,19 +438,18 @@ impl ResolverContext {
             current_namespace,
             explicit_mount_roots,
             default_mounts,
-            current_policy: PolicyMetadata::default(),
         }
     }
 }
 
-/// Expected result shape for resolver lookup.
+/// Expected semantic role for resolver lookup.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResolveExpectation {
     AnyUnique,
     Object,
     NamespaceSubspace,
     NamespaceCapableParent,
-    TypeObject,
+    CoreTypeProjection,
     MetaFunction,
     FieldFunction,
 }
@@ -474,7 +468,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// exist for the same name the lookup fails with an ambiguity diagnostic.
     ///
     /// Most semantic passes should use [`resolve_with_expectation`] or one of
-    /// the typed helpers (`resolve_type_object`, `resolve_meta_function`, …)
+    /// the typed helpers (`resolve_complete_type_projection`, `resolve_meta_function`, …)
     /// instead of plain `resolve`, because plain `resolve` rejects role
     /// coexistence that may be semantically valid.
     pub fn resolve(
@@ -496,7 +490,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// | `Object` | Terminal in the object/function role |
     /// | `NamespaceSubspace` | Terminal in the namespace-subspace role |
     /// | `NamespaceCapableParent` | Terminal must be a namespace-capable symbol (object with `namespace_node` or namespace-subspace) |
-    /// | `TypeObject` | Terminal with kind `Type` |
+    /// | `CoreTypeProjection` | Terminal with kind `Type` |
     /// | `MetaFunction` | Terminal with kind `MetaFunction` |
     /// | `FieldFunction` | Terminal with kind `FieldFunction` |
     ///
@@ -667,8 +661,8 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
 
     /// Resolve a terminal symbol whose kind is `Type`.
     ///
-    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::TypeObject)`.
-    pub fn resolve_type_object(
+    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::CoreTypeProjection)`.
+    pub fn resolve_complete_type_projection(
         &self,
         source_order_path: &str,
         context: &ResolverContext,
@@ -676,12 +670,12 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         self.resolve_str_with_expectation(
             source_order_path,
             context,
-            ResolveExpectation::TypeObject,
+            ResolveExpectation::CoreTypeProjection,
         )
     }
 
-    /// Policy-aware variant of [`resolve_type_object`](Self::resolve_type_object).
-    pub fn resolve_type_object_with_policy(
+    /// Policy-aware variant of [`resolve_complete_type_projection`](Self::resolve_complete_type_projection).
+    pub fn resolve_complete_type_projection_with_policy(
         &self,
         source_order_path: &str,
         context: &ResolverContext,
@@ -690,7 +684,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         self.resolve_str_with_policy(
             source_order_path,
             context,
-            ResolveExpectation::TypeObject,
+            ResolveExpectation::CoreTypeProjection,
             policy_env,
         )
     }
@@ -816,43 +810,29 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         })
     }
 
-    /// LEGACY (demoted) — flat `SymbolObject.policy_metadata.policy_set`
-    /// gate used only by not-yet-migrated legacy resolution paths
-    /// (`resolve_with_policy` callers: early-meta expansion, verify entry,
-    /// call_target shortcut).  The flat PolicySet is transport/mirror
-    /// metadata; it is NOT the canonical cluster/member visibility
-    /// authority.  Canonical exposure is decided per member view by the
-    /// connected ordinary pipeline (`invoke_target_values` C1/C2 over
-    /// `SemanticSymbolCell.member_views`).  A negative here may hide a
-    /// legacy path result, but it must never be used to re-derive or
-    /// overwrite member-level Policy.
+    /// Resolve-time exposure reads the same concrete declaration view stored
+    /// on the Symbol. It never constructs another Policy representation and
+    /// never participates in overload preference or execution legality.
     fn symbol_satisfies_policy(
         &self,
         symbol: &SymbolObject,
         policy_env: Option<PolicyEnv>,
     ) -> bool {
-        match policy_env {
-            None => true,
-            Some(env) => match env {
-                PolicyEnv::OpenStatic => {
-                    symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta)
-                        || symbol
-                            .policy_metadata
-                            .policy_set
-                            .contains(PolicyFlag::Compile)
-                }
-                PolicyEnv::SealStatic => {
-                    symbol
-                        .policy_metadata
-                        .policy_set
-                        .contains(PolicyFlag::Compile)
-                        || symbol.policy_metadata.policy_set.contains(PolicyFlag::Seal)
-                }
-                PolicyEnv::Runtime => symbol
-                    .policy_metadata
-                    .policy_set
-                    .contains(PolicyFlag::Runtime),
-            },
+        let Some(env) = policy_env else { return true };
+        let Some(view) = &symbol.policy_view else {
+            return false;
+        };
+        let stages = &view.pair.value.stages;
+        match env {
+            PolicyEnv::OpenStatic => {
+                stages.contains(crate::PolicyStage::Meta)
+                    || stages.contains(crate::PolicyStage::Compile)
+            }
+            PolicyEnv::SealStatic => {
+                stages.contains(crate::PolicyStage::Compile)
+                    || stages.contains(crate::PolicyStage::Seal)
+            }
+            PolicyEnv::Runtime => stages.contains(crate::PolicyStage::Runtime),
         }
     }
 
@@ -866,8 +846,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     ) -> SemanticNameDelta {
         let mut delta = self.snapshot.empty_delta();
         let id = delta.allocate_symbol_id();
-        let symbol =
-            SymbolObject::placeholder(id, name, kind, source_category, Some(parent), provenance);
+        let symbol = SymbolObject::new(id, name, kind, source_category, Some(parent), provenance);
         delta.insert_symbol(parent, symbol);
         delta
     }
@@ -880,28 +859,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     ) -> SemanticNameDelta {
         let mut delta = self.snapshot.empty_delta();
         delta.insert_symbol(parent, object);
-        delta
-    }
-
-    pub fn alias(
-        &self,
-        parent: NamespaceNodeId,
-        name: impl Into<String>,
-        target: SymbolId,
-        provenance: Provenance,
-    ) -> SemanticNameDelta {
-        let mut delta = self.snapshot.empty_delta();
-        let id = delta.allocate_symbol_id();
-        let mut symbol = SymbolObject::placeholder(
-            id,
-            name,
-            SymbolKind::Alias,
-            SourceCategory::Alias,
-            Some(parent),
-            provenance,
-        );
-        symbol.payload = SymbolPayload::Alias { target };
-        delta.insert_symbol(parent, symbol);
         delta
     }
 
@@ -933,7 +890,10 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             Some(parent),
             provenance,
         );
-        symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
+        symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
+            &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+            crate::PolicyMode::Plain,
+        ));
         delta.insert_node(node);
         delta.insert_symbol(parent, symbol);
         (node_id, delta)
@@ -1033,7 +993,10 @@ pub(crate) fn namespace_symbol(
         Some(parent),
         provenance,
     );
-    symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
+    symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
+        &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+        crate::PolicyMode::Plain,
+    ));
     delta.insert_node(node);
     delta.insert_symbol(parent, symbol);
     node_id
@@ -1086,9 +1049,9 @@ fn select_symbol_from_bucket<'symbols>(
                 .with_code(ResolverCode::Ambiguous))),
             }
         }
-        ResolveExpectation::TypeObject => {
+        ResolveExpectation::CoreTypeProjection => {
             select_unique_object_symbol(symbols, bucket, name, |symbol| {
-                symbol.kind == SymbolKind::Type
+                symbol.kind == SymbolKind::CompleteTypeProjection
             })
         }
         ResolveExpectation::MetaFunction => {

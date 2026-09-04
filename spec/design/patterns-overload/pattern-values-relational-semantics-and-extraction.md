@@ -1,7 +1,6 @@
 # Pattern Values, Relational Semantics, and Extraction
 
-**Status: Canonical target-semantic authority. Not current implemented
-behavior.**
+**Status: canonical semantic authority.**
 
 This document is the canonical owner of the language-level Pattern relation,
 Pattern observation and extraction, structural Pattern incidence, binderless
@@ -23,13 +22,12 @@ Other documents may define consumers of this relation. In particular:
   values, places, `ProjectionSlot`, and borrow observations;
 - `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
   owns Symbol construction, `struct`, `extend`, `inject`, and installation;
-- `../../contracts/v0.6-semantic-owner-namespace-graph.md` owns
+- `../../contracts/semantic-owner-namespace-graph.md` owns
   `SemanticOwnerId`, `PatternRoot`, and `HoleBinderId` identity.
 
-The v0.1--v0.5 public, history, and frozen contract documents remain records of
-their frontend and normalization stages. Their statements that matching or
-Pattern-head resolution was not performed remain true for those stages; they
-do not define the later target semantics in this document.
+The frontend and normalization stages preserve Pattern material without
+performing matching or Pattern-head resolution. This document owns the later
+semantic relation.
 
 ## 1. Scope and authority
 
@@ -391,10 +389,9 @@ different Pattern child identity
 -> equal after deleting the child or its name
 ```
 
-For a child `inner`, an explicit/external route used to compare with inherited
-formation must still complete to the same canonical entry `inner::bool` and
-the same child identity. Exact source spelling follows the current grammar; no
-example may delete `inner` merely to make two normal forms appear equal.
+For a child `inner`, explicit/external and inherited formation routes complete
+to the same canonical entry `inner::bool` and the same child identity. Exact
+source spelling follows the current grammar; normalization preserves `inner`.
 
 ## 7. Ordered bare Product is the unnamed-value calculus
 
@@ -410,15 +407,8 @@ Matching is positional and order-sensitive. Naked Product material, unnamed
 positional values, and a Pattern body containing a bare direct child all use
 this Product calculus.
 
-The following ontologies are retired and must not be introduced:
-
-```text
-BareValuePattern
-NakedValuePattern
-UnnamedFieldPattern
-```
-
-Named Pattern structure may normalize by canonical navigation. Bare Product
+No separate Pattern kind is introduced for bare, naked, or unnamed positional
+material. Named Pattern structure may normalize by canonical navigation. Bare Product
 structure remains positional; the two rules do not create parallel Object
 domains.
 
@@ -614,8 +604,8 @@ This is not Hindley-Milner-style global unification, not concept/trait-solver
 bidirectional constraint propagation, and not "the compiler supports only
 fixed-N-depth pattern matching". Note that mathematical `∀` in meta-level
 statements (for example `RankTransparent(F) iff ∀n. F : U_n -> U_n`) is
-ordinary mathematical quantification and remains valid; only forall-as-a
-language model of generic binding is retired.
+ordinary mathematical quantification and remains valid. Language genericity is
+Hole extraction and valuation, not a language-level `forall` ontology.
 
 ## 9. Pure Pattern nodes and pipe branch shorthand
 
@@ -1092,7 +1082,7 @@ extend : <Q, V_τ> x Delta -> <Q', V_τ'>
 ```
 
 It is the privileged operation that may add direct structural children and
-their generated TypeMember classifiers. It is pure: the old snapshot is not
+their direct-home TypeMember classifiers. It is pure: the old snapshot is not
 modified.
 
 `inject` is:
@@ -1113,31 +1103,24 @@ Root(T_old) = Root(T_new)
 Ordinary navigated `let` remains Val2-only and cannot approximate either
 operation.
 
-## 17. Superseded designs
+## 17. Current semantic boundaries
 
-The following directions are retired in current target semantics:
-
-- Pattern as a one-way schema pointer for `Val1`;
-- Pattern as only a type tag or a copy of structural `Val2` metadata;
-- matching as a universally unique environment;
-- universal Pattern invertibility;
-- every `Val2` member being a structural child;
-- callable availability proving structural role;
-- internal/external formation provenance entering Pattern identity;
-- deleting a real child to demonstrate navigation equivalence;
-- a separate bare-value Pattern ontology;
-- `_` meaning no binder, empty value, or padding;
-- pipe branch expansion through `(_ P)`;
-- a complete type value being bare `Q`;
-- `HomeSymbol(TypeValue)` or carrier/provenance recovery of a defining Symbol;
-- descendant classifier ownership implying TypeMember membership;
-- shared root identity implying one mutable current type/callspace;
-- general recursive Object graphs justified by `Self_τ` (replaced by
-  stage-sensitive `WellFounded_kappa`: finite static generation, acyclic
-  runtime materialization; `Self_τ` is one restricted static back-reference
-  instance — a `SymbolicReferenceEdge`, not an evaluation reentry,
-  not an exceptional cycle;
-  `../symbol-world/type-values-places-and-borrow-views.md` §2.1.1).
+- Pattern is a relational semantic value, not a schema pointer, type tag, or
+  copy of Val2 metadata.
+- Matching may yield multiple valuations; invertibility is not universal.
+- Structural incidence requires explicit evidence; Val2 or callable presence is
+  insufficient.
+- Formation provenance does not enter Pattern identity.
+- Bare positional material uses the ordinary Product calculus.
+- `_` is a real wildcard position; binder absence is represented explicitly.
+- Pipe branch expansion uses binderless `<>`, not wildcard padding.
+- A complete type value contains Core and immutable callspace observations.
+- Complete types have no defining HomeSymbol or carrier-recovery route.
+- TypeMember home is explicit and is not implied by descendant classification.
+- Immutable snapshots do not share one mutable current callspace.
+- Recursive references obey stage-sensitive `WellFounded_kappa`: finite static
+  generation and acyclic runtime materialization. `Self_τ` is a restricted
+  static `SymbolicReferenceEdge`, not evaluation reentry.
 
 ## 18. Remaining deferred work
 

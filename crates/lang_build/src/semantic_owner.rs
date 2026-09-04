@@ -10,7 +10,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::{identity::MetaCallableIdentity, meta_key::MetaInstanceKey};
+use crate::meta_key::MetaInvocationMaterialKey;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PackageId(pub u64);
@@ -175,8 +175,7 @@ pub enum SemanticOwnerKind {
         placement: CallableOwnerPlacement,
     },
     MetaInstance {
-        meta_callable: MetaCallableIdentity,
-        canonical_key: MetaInstanceKey,
+        material_key: MetaInvocationMaterialKey,
     },
     Generated {
         local_generation: LocalGenerationIdentity,
@@ -194,8 +193,7 @@ pub struct SemanticOwnerNode {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct MetaInstanceInternKey {
     parent: SemanticOwnerId,
-    meta_callable: MetaCallableIdentity,
-    canonical_key: MetaInstanceKey,
+    material_key: MetaInvocationMaterialKey,
 }
 
 /// One build-snapshot-local semantic owner forest.
@@ -321,13 +319,11 @@ impl SemanticOwnerGraph {
     pub fn meta_instance(
         &mut self,
         parent: SemanticOwnerId,
-        meta_callable: MetaCallableIdentity,
-        canonical_key: MetaInstanceKey,
+        material_key: MetaInvocationMaterialKey,
     ) -> SemanticOwnerId {
         let key = MetaInstanceInternKey {
             parent,
-            meta_callable,
-            canonical_key,
+            material_key,
         };
         if let Some(existing) = self.meta_instances.get(&key) {
             return *existing;
@@ -337,8 +333,7 @@ impl SemanticOwnerGraph {
             Some(parent),
             package,
             SemanticOwnerKind::MetaInstance {
-                meta_callable,
-                canonical_key: key.canonical_key.clone(),
+                material_key: key.material_key.clone(),
             },
         );
         self.meta_instances.insert(key, owner);

@@ -1,8 +1,7 @@
 # Symbol Policy and Compile-Flow Projection
 
 Status: canonical design contract. The typed model in this document is the
-normative policy algebra. Flat `PolicySet`/`PolicyFlag` values are transitional
-transport only and must not define source semantics.
+normative policy algebra.
 
 This document owns the complete chain:
 
@@ -89,9 +88,11 @@ Pp  policy of the Pattern/anonymous-type component observed at this edge
 ```
 
 There is no scalar replacement for this pair, no third `Pv`/`Pp` component, and
-no independent P3. A result slot nevertheless carries its orthogonal scalar
-`PolicyMode`; a result object carries its own `PolicyPair` when it re-enters the
-flow.
+no independent complete P3 Policy product. Parameter and return positions do
+nevertheless have position Policies: `P_in` overlays P2 and `P_out` overlays
+P1. Their inherited pair/stage coordinates remain fixed while their orthogonal
+whole-slot `PolicyMode` may be explicitly refined. A result object carries its
+own `PolicyPair` when it re-enters the flow.
 
 The pair is an observation edge, but its two axes are constrained by whether the
 object actually has an independent value projection. This constraint does not
@@ -226,8 +227,8 @@ For example `val const` logically:
 ```
 
 and `val mut` likewise produces a fresh `T` result carried by a result slot/view
-whose `PolicyMode` is `mut`. This does not assert `Writable(result)`. The old
-source-like schema remains usable as an explanatory realization:
+whose `PolicyMode` is `mut`. This does not assert `Writable(result)`. A
+source-like realization is:
 
 ```text
 const let const(self, object:T) -> T
@@ -304,8 +305,8 @@ going back out of `τ`:
 -> inspect its V_S
 ```
 
-That carrier-provenance route is retired. The global `const` / `mut`
-dispatcher itself does not guarantee conversion success. The correct order is:
+The global `const` / `mut` dispatcher itself does not guarantee conversion
+success. The required order is:
 
 ```text
 select global const/mut dispatcher
@@ -436,8 +437,8 @@ PolicyAtom
 
 The parser is a strong-context parser. `meta`, `compile`, `seal`, `runtime`,
 `public`, `private`, and `export` remain ordinary names to the lexer. The token
-spelling for `AbsentValuePattern` is provisional; implementation fixtures may
-use `S`, but source spelling is not frozen.
+spelling for `AbsentValuePattern` remains Open. Implementation fixtures use
+`S`; that fixture spelling does not freeze the public surface.
 
 Elaboration assigns atoms to typed coordinates. `const`, `plain`, and `mut`
 are the three atoms of the whole-slot PolicyMode pattern; none is stored inside
@@ -445,8 +446,8 @@ are the three atoms of the whole-slot PolicyMode pattern; none is stored inside
 therefore needs no additional source atom, while a written `plain` is an
 explicit spelling of that same point. A written choice such as
 `const || plain`, `plain || mut`, or `const || mut` is not a legal whole-slot
-mode demand. In particular, the legacy `const || mut` neutrality spelling does
-not return through the general PolicyChoice syntax.
+mode demand. In particular, `const || mut` is not a neutral whole-slot mode and
+does not elaborate through the general PolicyChoice syntax.
 
 Surface elaboration must factor that whole-slot coordinate before building the
 pair:
@@ -501,13 +502,13 @@ preserved by Raw/Normalized syntax but rejected by typed Policy elaboration.
 
 How a written colon whose factorization leaves an empty residual side is handled
 is a separate surface decision, not a theorem of PolicyMode orthogonality. The
-current provisional surface rule rejects `const:compile`, `runtime:const`,
-and `const:mut`; a later surface amendment may instead
+current parser rule rejects `const:compile`, `runtime:const`, and `const:mut`;
+the Open surface question may instead
 define an unambiguous contextual shorthand while still satisfying the closed
 coordinate rules above. No semantic elaborator may place a mode atom in `Pv` or
 `Pp`, regardless of which surface completion is selected. Independently,
 `const || mut:compile` is invalid because its mode choice violates
-`NoMultiPointPolicyModeChoice`, not because of the provisional empty-side rule. This
+`NoMultiPointPolicyModeChoice`, not because of the current empty-side rule. This
 factorization does not require the frozen Raw/Normalized Policy AST carrier to
 change.
 
@@ -1078,62 +1079,43 @@ Pp = compile
 It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
 
-Atomic runtime Policy migration is a conservative extension of this query
-rule. For the old pair-view projection judgment `ProjectP1` and the extended
-pair-view binding elaborator `ElabP1`:
+Result-view satisfaction is existing-view-first:
 
 ```text
-ElabP1(None, R) = R
-
-ElabP1(Some Q, R):
-  S = ProjectP1(Q, R)
+SatisfyResultView(source, demand):
+  S = ProjectResultPolicyDemand(demand, source)
   if S != empty:
-    return S
-  otherwise, only if Q accepts a runtime value branch:
-    Qr = RuntimeBranch(Q)
-    prepare one direct atomic runtime migration toward Qr
+    return ExistingView(S)
+  otherwise:
+    enumerate one authorized same-Type migration family
+    perform ordinary candidate selection exactly once
+    return SelectedMigration
 ```
 
-Therefore:
+An existing projection preserves the source semantic identity and does not
+enumerate migration candidates. Migration is considered only after the exact
+projection fails. A selected migration is sealed; projection, realization, or
+DynamicLegality failure never reopens selection. These rules apply to the
+complete `PolicyResultEntry[]`, including collections that mix value-bearing
+and absent-Val1 entries.
 
-```text
-Dom_old = {
-  (Q, R)
-  |
-  ProjectP1(Q, R) != empty
-}
-
-ProjectP1(Q, R) succeeds
-  => ElabP1(Some Q, R) = ProjectP1(Q, R)
-
-Dom_old is a subset of Dom(ElabP1)
-```
-
-The extension may add results only where the old projection was empty; it
-cannot change an old successful result or selected identity. In the old
-successful domain, migration candidate enumeration and invocation are
-semantically unreachable. This applies to the complete
-`PolicyResultEntry[]`, including collections that mix value-bearing and
-absent-Val1 entries.
-
-For pair query `Qv:Qp`, atomic migration preparation first slices only the
-Pattern-policy stage capability:
+For pair query `Qv:Qp`, result-view satisfaction slices the Pattern-policy stage
+capability before migration candidate enumeration:
 
 ```text
 Pp_selected = SlicePatternPolicyStages(Qp, source.Pp)
 ```
 
 This is Policy slicing over `Pp`; it is not Pattern extraction, PatternValue
-projection, postfix `?`, extractor lookup, PatternHead navigation, or a change
+projection, postfix `?`, extractor lookup, Pattern-root navigation, or a change
 of PatternRoot/PatternScope. It preserves PatternValue identity and structural
 Pattern shape.
 
 Unselected alternatives in a written query are never obligations to
-manufacture every branch. However, after the complete query projects nothing,
-an accepted branch that the language explicitly defines as constructible may
-satisfy the choice. Runtime is currently the only such stage branch. The
-bounded implementation subset is recorded in
-`../../contracts/v0.6-cross-policy-value-transition.md`.
+manufacture every branch. When the complete query projects nothing, only an
+authorized direct same-Type migration may satisfy the demand. There is no
+transitive search or compiler-owned conversion table; the implementation
+contract is `../../contracts/policy-migration.md`.
 
 ### 3.2 Formal parameter policy pattern
 
@@ -1149,19 +1131,22 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
-Every written formal parameter first inherits the callable result pair `P2`
-without reinterpretation. Its whole-slot PolicyMode is then fixed by the
-binding spelling:
+Every formal parameter first inherits the callable result view `P2` without
+reinterpretation. Its whole-slot PolicyMode is inherited unless the binding
+spelling explicitly overrides that coordinate:
 
 ```text
-FormalBase(parameter) = P2(callable)
+P_in = Overlay(P2(callable), Delta_in)
+
+stage(P_in) = stage(P2(callable))
 ```
 
-The three spellings select three actual PolicyMode points; plain is not an
-unspecified variable or an instruction to infer one of the other two:
+An omitted mode preserves the inherited P2 mode. The three explicit spellings
+select three actual PolicyMode points; plain is not an unspecified variable or
+an instruction to infer one of the other two:
 
 ```text
-let x        -> FormalPolicyView(P2, PolicyMode = plain)
+let x        -> P2 unchanged
 plain let x  -> FormalPolicyView(P2, PolicyMode = plain)
 const let x  -> FormalPolicyView(P2, PolicyMode = const)
 mut let x    -> FormalPolicyView(P2, PolicyMode = mut)
@@ -1204,28 +1189,39 @@ Implementations must not collapse `plain` back into an unspecified carrier.
 
 #### 3.2.1 Return policy refinement inherits P1
 
-There is no independent `P3`. A return position has the result slot's own
-PolicyMode alongside the pair projected by the callable's declaration P1:
+There is no independent complete `P3` Policy product. A return position has a
+position Policy `P_out` formed from the callable declaration P1 plus an
+optional mode-only overlay:
 
 ```text
-ReturnBase(callable) = P1(callable)
-ReturnMode           = PolicyMode(return_slot)
+P_out = Overlay(P1(callable), Delta_out)
+
+stage(P_out) = stage(P1(callable))
 ```
 
-The written spelling selects the mode symmetrically with the formal-parameter
-rule while leaving P1's stage/exposure pair unchanged:
+An omitted mode preserves P1's mode. An explicit spelling selects the mode
+symmetrically with the formal-parameter rule while leaving P1's stage/exposure
+pair unchanged:
 
 ```text
-return let x        -> inherited P1, PolicyMode = plain
+return let x        -> P1 unchanged
 return plain let x  -> inherited P1, PolicyMode = plain
 return const let x  -> inherited P1, PolicyMode = const
 return mut let x    -> inherited P1, PolicyMode = mut
 ```
 
 The mode may not alter stage, value presence, Pattern policy, ordinary
-visibility, or export-root status. “No P3” therefore means that the return site
-has no third complete Policy vector; the independent result-slot mode does not
-create one.
+visibility, or export-root status. Policy dimensions are not replace-all: each
+dimension must be classified as `InheritedOnly` or `Overridable`; evaluation
+stage is `InheritedOnly` here and whole-slot mode is `Overridable`. “No P3”
+therefore means that the return site has no third arbitrary complete Policy
+vector; it does not mean that the return position has no Policy.
+
+`P_in` and `P_out` are declaration/evaluation-boundary facts. A caller's
+`ResultPolicyDemand` is a distinct call-site judgment and never rewrites either
+position Policy. It can affect candidate admissibility, preference, and
+outward view satisfaction only through the ordinary sealed invocation
+pipeline (`NoCrossCallPolicyPropagation`).
 
 ### 3.3 Namespace declaration attributes
 
@@ -1264,10 +1260,9 @@ This is a statement about the edge, not about the object behind it. Per §1,
 `Pv = absent` does not assert `Val1?(x) = null`; when `Val1?(x) = null`, the
 canonical unhidden observation instead has `Pv = Pp`.
 
-The current flat `ValueComponentPolicy` Rust carrier is compatibility substrate
-rather than the final semantic shape. It may continue to reject legacy
-value-side combinations with an absent value component, but that restriction
-does not erase the whole-slot PolicyMode.
+Value-side well-formedness may reject combinations with an absent value
+component, but that restriction does not erase or change the independent
+whole-slot PolicyMode.
 
 ### 3.4 Policy migration satisfaction: existing first, unique migration second
 
@@ -1624,8 +1619,7 @@ static evaluation frontier
   = first dependency/effect boundary not admissible in the current phase
 ```
 
-The following positive invariants constrain future integration even though
-their storage/lowering algorithms are not implemented:
+The following invariants hold independently of storage and lowering:
 
 - Crossing a compile value to runtime constructs a new runtime object. It does
   not extend the lifetime of a compile temporary.
@@ -1958,9 +1952,8 @@ candidate identity, `Pv:Pp`, and `PolicyMode` without selecting an overload.
 No PolicyMode is universally safe for a later operation. Stable
 default/delete/custom `CapabilityRealization` facts may accompany a candidate,
 but a concrete consumer forms `DynamicLegality_Γ_consumer` only after lookup
-from `Σ_export` and ordinary selection. Neither
-`const <= mut` nor the retired universal form
-`ExternalView = Project_const(InternalView)` is a foundation theorem.
+from `Σ_export` and ordinary selection. There is no `const <= mut` ordering and
+external views do not perform a universal const projection.
 
 If a future language design introduces publication itself as a capability, it
 must be an explicit, demand-independent family:
@@ -2074,11 +2067,7 @@ candidate pairs are projected in exactly the same way.
 direct-root validation/preview; `None` on a non-root declaration does not mean
 that the eventual namespace export view lacks that declaration.
 
-The current typed set carrier still implements a const-projected compatibility
-subset. It is implementation transport, not this source-semantic rule. Its
-legacy `NoExternallyEligibleCandidate` failure name describes that narrower
-adapter only. Before end-to-end external resolver integration, a symbol-level
-diagnostic carrier must preserve admission facts and distinguish an unresolved
+The symbol-level diagnostic carrier preserves admission facts and distinguishes an unresolved
 name, a name outside the export-retention closure, and a private path; ordinary
 consumer Policy-selection or dynamic-legality failure occurs only after stable
 external lookup.
@@ -2167,9 +2156,8 @@ privileged builtin
         -> follows its member-declared result and owner rules
 ```
 
-An ordinary meta callable's default result is `τ` (`DefaultMetaResult = τ`);
-the old `ResultPattern = symbol` rule is retired. An explicit `f : … -> symbol`
-remains legal. `compile` may return a complete type
+An ordinary meta callable's default result is `τ` (`DefaultMetaResult = τ`). An
+explicit `f : … -> symbol` remains legal. `compile` may return a complete type
 value `tau` (participating in Pattern observation through `Core(tau)`, not
 itself an ordinary PatternValue/Object), a Symbol
 value, `type ref`, or any other declared ordinary PatternValue. Privileged
@@ -2332,53 +2320,30 @@ introduce a competing specificity order.
 This is a restriction on lifetime *rules*, not a denial that `@` has overloads.
 `@` is resolved by the ordinary selection trunk of §12 like any other operation.
 
-## 14. Transitional implementation boundary
+## 14. Migration comparator boundary
 
-The typed implementation model contains dedicated policy AST nodes,
-`PolicyPair`, typed dimensions, three distinct P1 elaborators, true slice
-restriction, three `Phase` values, phase exposure, mechanical flow projection,
-Wpre closure, export-retention closure, and phase-aware partial-order
-selection.
-
-The atomic-migration prototype compares input and output endpoint Policy
-through one product/Pareto order. These are only the endpoint coordinates of
-the future Bp' product. The private endpoint-only maxima helper is not a
-sequentially composable Bp filter:
+Policy migration compares ordinary Bp coordinates and input/output endpoint
+Policy through one product/Pareto order. Endpoint maxima are not a sequentially
+composable Bp filter:
 
 ```text
-Max(Product(old Bp, input endpoint, output endpoint))
-  != MaxEndpoint(MaxOldBp(...))
-  != MaxOldBp(MaxEndpoint(...))
+Max(Product(Bp, input endpoint, output endpoint))
+  != MaxEndpoint(MaxBp(...))
+  != MaxBp(MaxEndpoint(...))
 ```
 
-Final integration must compose ordinary Bp coordinates and both migration
-endpoint coordinates in one comparator before taking maxima. The prototype
-does not add output-type preference to ordinary type overload selection or
-define a B6 strategy.
+Ordinary Bp coordinates and both migration endpoint coordinates are composed
+in one comparator before taking maxima. Migration does not add output-type
+preference to ordinary type overload selection or define a B6 strategy.
 Candidate Policy adaptation intersects typed Policy domains directly,
 including stage, Pp, and present/optional/absent alternatives; it does not
 fabricate a concrete `Some(value)` to reuse result-entry projection.
 Migration-candidate PolicyMode is deliberately excluded from that hard
-intersection and instead reuses ordinary actual-relative Bp preference. The
-bounded prototype still carries only singleton const/mut endpoints; that 2×2
-subset is transport evidence for the future 3×3 domain, not the source-semantic
-definition of PolicyMode.
-The current binding adapter is reached only after the complete ordinary
-projection is empty and the original query accepts runtime. It extracts a
-runtime-only target branch, skips absent entries, selects a pure-static source
-and Pattern-policy stage capability, and carries fixture result Pattern data.
-That fixture carrier does not establish final ordinary-result Type/Pattern/
-owner coherence. It shares the maximal-element helper but does not yet perform
-initializer integration, Symbol/Val2/associated-`()` lookup, `InvocationFrame`
-construction, or ordinary function-object invocation.
-
-`PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy
-transport. They cannot represent `||` structure, Pattern association of a
-cropped slice, or independent export-root and public/private dimensions. New
-semantics must be implemented in the typed model first; compatibility flags may
-only receive a projection from it. Full namespace-graph storage and end-to-end
-evaluator integration remain implementation work and must not be inferred from
-flat flags.
+intersection and instead reuses ordinary actual-relative Bp preference.
+Migration is reached only after the complete ordinary projection is empty and
+the original demand admits a constructible target. Candidate enumeration,
+hard applicability, Policy preference, unique selection, DynamicLegality, and
+execution use the same ordinary invocation boundary as source calls.
 
 ## 15. Deliberately unfrozen
 

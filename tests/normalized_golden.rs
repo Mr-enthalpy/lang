@@ -335,58 +335,58 @@ fn error_recovery_min() {
 }
 
 #[test]
-fn call_skeleton_hardening() {
-    assert_norm_case("16_call_skeleton_hardening", false);
+fn call_skeleton_binding_rules() {
+    assert_norm_case("16_call_skeleton_binding_rules", false);
 }
 
 #[test]
-fn second_repair_hardening() {
-    assert_norm_case("17_second_repair_hardening", false);
+fn second_legality_rules() {
+    assert_norm_case("17_second_legality_rules", false);
 }
 
 #[test]
-fn group_product_lift_hardening() {
-    assert_norm_case("18_group_product_lift_hardening", false);
+fn group_product_lift_rules() {
+    assert_norm_case("18_group_product_lift_rules", false);
 }
 
 #[test]
-fn suffix_lowering_hardening() {
-    assert_norm_case("19_suffix_lowering_hardening", false);
+fn suffix_lowering_rules() {
+    assert_norm_case("19_suffix_lowering_rules", false);
 }
 
 #[test]
-fn operator_hardening() {
-    assert_norm_case("20_operator_hardening", true);
+fn operator_lowering_diagnostics() {
+    assert_norm_case("20_operator_lowering_diagnostics", true);
 }
 
 #[test]
-fn alias_hardening() {
-    assert_norm_case("21_alias_hardening", false);
+fn alias_preservation_rules() {
+    assert_norm_case("21_alias_preservation_rules", false);
 }
 
 #[test]
-fn pattern_annotation_hardening() {
-    assert_norm_case("22_pattern_annotation_hardening", false);
+fn pattern_annotation_material_rules() {
+    assert_norm_case("22_pattern_annotation_material_rules", false);
 }
 
 #[test]
-fn closure_hardening() {
-    assert_norm_case("23_closure_hardening", false);
+fn closure_normalization_rules() {
+    assert_norm_case("23_closure_normalization_rules", false);
 }
 
 #[test]
-fn extraction_skeleton_with_hardening() {
-    assert_norm_case("24_extraction_skeleton_with_hardening", false);
+fn extraction_skeleton_rules() {
+    assert_norm_case("24_extraction_skeleton_rules", false);
 }
 
 #[test]
-fn error_recovery_hardening() {
-    assert_norm_case("25_error_recovery_hardening", true);
+fn error_recovery_contract() {
+    assert_norm_case("25_error_recovery_contract", true);
 }
 
 #[test]
-fn unsupported_audit() {
-    assert_norm_case("26_unsupported_audit", false);
+fn unsupported_normalization_cases() {
+    assert_norm_case("26_unsupported_normalization_cases", false);
 }
 
 #[test]
@@ -400,8 +400,8 @@ fn callable_tail_outer_composition() {
 }
 
 #[test]
-fn capture_binding_and_sequence_pack_v05() {
-    assert_norm_case("capture_binding_and_sequence_pack_v05", false);
+fn capture_binding_and_sequence_pack() {
+    assert_norm_case("capture_binding_and_sequence_pack", false);
 }
 
 #[test]

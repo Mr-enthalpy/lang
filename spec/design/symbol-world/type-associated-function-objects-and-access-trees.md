@@ -1,10 +1,11 @@
 # Type-Associated Function Objects and Access Trees
 
-**Status: Future design note. No access-tree construction, field access
-evaluation, borrow checking, lifetime checking, full meta execution, or
-whole-snapshot type-value identity is implemented.**
+**Status: Canonical access-tree design with consumer wiring pending. Complete
+type snapshots, Places, resident generations, and lifecycle relations are
+available; source field access, access-tree construction, and full lifecycle
+operation wiring remain outside this document's connected consumer set.**
 
-This note records the v0.6 namespace-graph implications for field-access and
+This note records namespace-graph implications for field-access and
 access-tree work. The canonical type-value / place / borrow-view /
 writable-place semantics are specified in
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`; this note only keeps a
@@ -546,7 +547,7 @@ the borrow views, writability, construction-authority (`OpenHere_Σ` / `WindowLi
 member-creation/write pipeline — see
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
-## v0.6 Implementation Note
+## Implementation coverage
 
 The `lang_build` semantic spine currently implements only the first-order
 substrate: `TypeValueId` exists as the stable core root and current observations
@@ -557,8 +558,8 @@ keeps observing `Core(tau)=Q` by default, while `Addr(Norm_type(tau))` is used
 to tell shared-root snapshots apart in transport and in positions the language
 has independently frozen to whole-snapshot semantics. Preserving `V_τ` in
 copied/extended
-snapshots remains implementation migration. Writability checking and borrow-view
-evaluation remain future work; the field-function / access-tree semantics are
+snapshots is required at every consumer. Source writability and borrow-view
+operation wiring remains pending; the field-function / access-tree semantics are
 borrowed from `spec/design/symbol-world/type-values-places-and-borrow-views.md` §2.3
 and §5, and the access-tree machinery of this note remains future work.
 

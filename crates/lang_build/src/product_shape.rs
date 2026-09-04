@@ -1,4 +1,4 @@
-//! Product / argument-shape boundary from the v0.8 construction contract.
+//! Product and argument-content observation boundary.
 //!
 //! This module is the product/argument-shape boundary between normalized surface
 //! syntax and later candidate preparation.
@@ -12,12 +12,8 @@
 //! - Unit is preserved;
 //! - provenance is preserved.
 //!
-//! `RawArgShape` refinement API is placeholder classification support. It is
-//! **not** type checking.
-//!
-//! The current implementation boundary lives in `lang_build::product_shape`,
-//! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
-//! boundaries, not full implementations of the future systems.
+//! `RawArgShape` refinement records observed argument content. It is **not**
+//! type checking.
 
 use lang_syntax::{NormError, NormExpr, NormOrigin, NormProduct, NormProductElem};
 
@@ -26,7 +22,7 @@ use crate::{
     identity::{SemanticValueId, TypeValueId},
     model::Provenance,
     model::SymbolId,
-    policy_pair::{PolicyResultEntry, ValueMutability},
+    policy_pair::{PolicyMode, PolicyResultEntry},
     semantic_world::{ObjectPlaceId, PatternValueId},
 };
 
@@ -76,8 +72,6 @@ pub enum ProductMaterialRole {
     CallableArgumentProduct,
     /// Meta-construction argument product.
     MetaConstructionArgumentProduct,
-    /// Temporary boundary only.
-    Placeholder,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -111,7 +105,7 @@ pub enum ProductAtom {
     SemanticValue {
         value: SemanticValueId,
         type_value: TypeValueId,
-        mutability: ValueMutability,
+        mode: PolicyMode,
         provenance: Provenance,
     },
     Unsupported {
@@ -190,9 +184,8 @@ pub struct RawArgShape {
     /// The resolved carrier's own binding-level pure-P member view, when this
     /// argument was classified from a named type carrier.
     ///
-    /// A represented TypeValue is shared by every carrier binding it, and the
-    /// world-level TypeObject adapter for that TypeValue is created once and
-    /// reused, so neither can answer "what Policy did *this* binding expose?".
+    /// A represented TypeValue is shared by every carrier binding it, so it
+    /// cannot answer "what Policy did *this* binding expose?".
     /// The binding view therefore rides along with the argument instead of
     /// being reconstructed downstream.
     pub known_type_member_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
@@ -209,6 +202,10 @@ pub struct RawArgShape {
     /// place(x)     ↦ Val2_x                (observation only)
     /// ```
     pub known_type_carrier_place: Option<ObjectPlaceId>,
+    /// Complete immutable `tau` snapshot carried by the resolved binding.
+    /// This is distinct from `known_type_observation`, which is the core-only
+    /// coordinate used by Pattern structural identity.
+    pub known_complete_type_observation: Option<CanonicalValueAddr>,
     /// The interned `Addr(Norm_type)` of this type argument's observation —
     /// the recursive P + Val2 normal form read at the carrier place — attached
     /// at a world-connected invocation boundary.
@@ -216,16 +213,14 @@ pub struct RawArgShape {
     /// When present, structural type-identity positions (struct pattern
     /// leaves, field signatures, extraction fields) consume this address
     /// instead of the bare `TypeValueId` projection, so two observations of
-    /// one TypeValue with different Val2 never over-merge.  When absent (no
-    /// `&mut SemanticWorld` channel), `type_observation()` degrades to the
-    /// `Detached` projection, which never equals any `Observed` address —
-    /// missing observation can only under-merge.
+    /// one TypeValue with different Val2 never over-merge.  When absent, no
+    /// canonical type observation is available to the consumer.
     pub known_type_observation: Option<CanonicalValueAddr>,
     /// Resolved Val1 identity when this source atom names an already-evaluated
     /// semantic value.  Policy slicing remains on the Symbol/value-view edge;
     /// this field never becomes a substitute for Symbol or Pattern identity.
     pub known_semantic_value: Option<SemanticValueId>,
-    pub known_value_mutability: Option<ValueMutability>,
+    pub known_value_mode: Option<PolicyMode>,
     pub provenance: Provenance,
 }
 
@@ -239,16 +234,15 @@ impl RawArgShape {
                 summary: summary.clone(),
             },
         };
-        let (known_first_order_type_value, known_semantic_value, known_value_mutability) =
-            match atom {
-                ProductAtom::SemanticValue {
-                    value,
-                    type_value,
-                    mutability,
-                    ..
-                } => (Some(*type_value), Some(*value), Some(*mutability)),
-                _ => (None, None, None),
-            };
+        let (known_first_order_type_value, known_semantic_value, known_value_mode) = match atom {
+            ProductAtom::SemanticValue {
+                value,
+                type_value,
+                mode,
+                ..
+            } => (Some(*type_value), Some(*value), Some(*mode)),
+            _ => (None, None, None),
+        };
         Self {
             index,
             value_class,
@@ -258,9 +252,10 @@ impl RawArgShape {
             known_first_order_type_value,
             known_type_member_view: None,
             known_type_carrier_place: None,
+            known_complete_type_observation: None,
             known_type_observation: None,
             known_semantic_value,
-            known_value_mutability,
+            known_value_mode,
             provenance: atom.provenance().clone(),
         }
     }
@@ -276,25 +271,18 @@ impl RawArgShape {
     /// The type observation carried by this argument for structural
     /// type-identity positions.
     ///
-    /// `Observed(addr)` is authoritative `Addr(Norm_type)` material; the
-    /// `Detached(type_value)` fallback is a bare projection that never equals
-    /// an interned address, so it can only make equality stricter.
+    /// `Observed(addr)` is authoritative `Addr(Norm_type)` material. A bare
+    /// `TypeValueId` never produces an observation.
     pub fn type_observation(&self) -> Option<CanonicalTypeObservation> {
-        match (
-            self.known_type_observation,
-            self.known_first_order_type_value,
-        ) {
-            (Some(addr), _) => Some(CanonicalTypeObservation::Observed(addr)),
-            (None, Some(type_value)) => Some(CanonicalTypeObservation::Detached(type_value)),
-            (None, None) => None,
-        }
+        self.known_type_observation
+            .map(CanonicalTypeObservation::Observed)
     }
 
     /// Returns true only after this argument has been positively classified as
     /// a value argument.
     ///
-    /// `UnknownExpression` returns false at the candidate-prep placeholder
-    /// boundary because mechanical pass insertion is not allowed before
+    /// `UnknownExpression` returns false because mechanical pass insertion is
+    /// not allowed before
     /// value/type/rank/meta/pattern classification. This is not a final
     /// semantic claim that ordinary expressions never receive automatic pass
     /// actions after later classification.
@@ -305,7 +293,7 @@ impl RawArgShape {
     /// Controlled refinement: replace the value class while preserving index,
     /// provenance, and existing type-value / pass-mode fields.
     ///
-    /// This is placeholder classification support, **not** type checking.
+    /// This records a completed classification step; it is **not** type checking.
     pub fn with_value_class(self, value_class: RawArgValueClass) -> Self {
         Self {
             value_class,
@@ -324,7 +312,7 @@ impl RawArgShape {
     /// Refine an `UnknownExpression` into a positively classified value.
     ///
     /// After this call, `receives_automatic_pass_action()` returns `true`.
-    /// This is an object-boundary placeholder operation — it does **not**
+    /// This is an object-boundary classification operation — it does **not**
     /// represent completed semantic value typing.
     pub fn as_resolved_value(self) -> Self {
         self.with_value_class(RawArgValueClass::Value)
@@ -334,34 +322,29 @@ impl RawArgShape {
     ///
     /// After this call, `is_value()` returns `Some(false)` and
     /// `receives_automatic_pass_action()` remains `false`.
-    /// This is an object-boundary placeholder operation — it does **not**
+    /// This is an object-boundary classification operation — it does **not**
     /// represent completed semantic non-value classification.
     pub fn as_non_value(self, kind: NonValueArgKind) -> Self {
         self.with_value_class(RawArgValueClass::NonValue(kind))
     }
 
-    /// Compatibility constructor for a defining Type Symbol whose current
-    /// first-order value projection is derived directly from that Symbol.
-    pub fn as_type_object_with_type_symbol(self, symbol_id: SymbolId) -> Self {
-        let type_value = crate::identity::type_value_projection_from_type_symbol(symbol_id);
-        self.as_type_object_with_identity(symbol_id, type_value)
-    }
-
-    /// Refine into `NonValue(TypeObject)` while keeping carrier Symbol and
+    /// Refine into `NonValue(CoreTypeProjection)` while keeping carrier Symbol and
     /// represented type value independent.
     ///
     /// Ordinary `let T: type = uint8` passes the fresh carrier `T` together
     /// with the already-existing `uint8` TypeValue.  Candidate identity and
-    /// type equality consume the latter; the former remains graph/place
+    /// type equality consume the TypeValue; the carrier remains graph/place
     /// material only.
-    pub fn as_type_object_with_identity(
+    pub fn as_complete_type_projection_with_identity(
         self,
         carrier_symbol: SymbolId,
         represented_type: TypeValueId,
     ) -> Self {
-        self.with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
-            .with_known_type_symbol_id(carrier_symbol)
-            .with_known_first_order_type_value(represented_type)
+        self.with_value_class(RawArgValueClass::NonValue(
+            NonValueArgKind::CoreTypeProjection,
+        ))
+        .with_known_type_symbol_id(carrier_symbol)
+        .with_known_first_order_type_value(represented_type)
     }
 
     fn with_known_type_symbol_id(self, symbol_id: SymbolId) -> Self {
@@ -371,28 +354,34 @@ impl RawArgShape {
         }
     }
 
-    /// Refine into `NonValue(TypeObject)` from a semantic-world resolution
+    /// Refine into `NonValue(CoreTypeProjection)` from a semantic-world resolution
     /// that carries a pattern name and represented type value, with an
-    /// optional compatibility carrier Symbol.
+    /// optional graph projection Symbol.
     ///
-    /// The pattern name is substitution/navigation material; the represented
-    /// type value remains the only identity-bearing component.
-    pub fn as_type_object_named(
+    /// The pattern name and represented `TypeValueId` are
+    /// substitution/navigation and Core-lookup material. Canonical identity
+    /// is carried separately by the Core and whole-type observation addresses;
+    /// the lookup projection is never the complete type identity.
+    pub fn as_complete_type_projection_named(
         self,
         top_pattern_name: String,
         represented_type: TypeValueId,
         carrier_symbol: Option<SymbolId>,
         member_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
         carrier_place: Option<ObjectPlaceId>,
+        complete_type_observation: Option<CanonicalValueAddr>,
     ) -> Self {
         let refined = self
-            .with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
+            .with_value_class(RawArgValueClass::NonValue(
+                NonValueArgKind::CoreTypeProjection,
+            ))
             .with_known_first_order_type_value(represented_type);
         Self {
             known_type_pattern_name: Some(top_pattern_name),
             known_type_symbol_id: carrier_symbol,
             known_type_member_view: member_view,
             known_type_carrier_place: carrier_place,
+            known_complete_type_observation: complete_type_observation,
             ..refined
         }
     }
@@ -401,7 +390,7 @@ impl RawArgShape {
     /// projection. The argument material is a value; the type-value
     /// projection identifies the value's type.
     ///
-    /// This is an object-boundary placeholder operation. It does **not**
+    /// This is an object-boundary classification operation. It does **not**
     /// perform type checking.
     pub fn as_resolved_value_with_value_type(self, type_value: TypeValueId) -> Self {
         self.with_value_class(RawArgValueClass::Value)
@@ -412,11 +401,11 @@ impl RawArgShape {
         self,
         value: SemanticValueId,
         type_value: TypeValueId,
-        mutability: ValueMutability,
+        mode: PolicyMode,
     ) -> Self {
         Self {
             known_semantic_value: Some(value),
-            known_value_mutability: Some(mutability),
+            known_value_mode: Some(mode),
             ..self.as_resolved_value_with_value_type(type_value)
         }
     }
@@ -432,7 +421,7 @@ pub enum RawArgValueClass {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NonValueArgKind {
-    TypeObject,
+    CoreTypeProjection,
     RankObject,
     NamespaceObject,
     MetaObject,

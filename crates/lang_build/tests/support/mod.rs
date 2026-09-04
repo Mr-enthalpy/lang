@@ -1,20 +1,62 @@
 #![allow(dead_code)]
 
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     process,
+    sync::{Mutex, OnceLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use lang_build::{
     prepare_meta_callable_candidate_with_declared_planes, ArgProductShape, BuildError,
     BuildManifest, BuildSession, BuildWorkspace, CallableCandidateKind, CandidatePrepResult,
-    CandidatePreparationContext, CompilationWorld, NamespaceNodeId, NormalizedCallSite,
-    PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance, SourceCategory, SourceRoot,
-    StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
+    CandidatePreparationContext, CompilationWorld, CoreTypeProjection, NamespaceNodeId,
+    NormalizedCallSite, PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance,
+    SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload,
+    ToolchainGlobalSourceRoot,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
+
+pub fn type_lookup_fixture(label: &'static str) -> lang_build::TypeValueId {
+    static REGISTRY: OnceLock<
+        Mutex<(
+            lang_build::TypeLookupIndexAllocator,
+            BTreeMap<String, lang_build::TypeValueId>,
+        )>,
+    > = OnceLock::new();
+    let mut registry = REGISTRY
+        .get_or_init(|| Mutex::new((lang_build::TypeLookupIndexAllocator::new(), BTreeMap::new())))
+        .lock()
+        .expect("type lookup fixture registry poisoned");
+    if let Some(id) = registry.1.get(label) {
+        return *id;
+    }
+    let id = registry.0.allocate();
+    registry.1.insert(label.to_string(), id);
+    id
+}
+
+pub fn numbered_type_lookup_fixture(scope: &'static str, label: u64) -> lang_build::TypeValueId {
+    let key = format!("{scope}/{label}");
+    static REGISTRY: OnceLock<
+        Mutex<(
+            lang_build::TypeLookupIndexAllocator,
+            BTreeMap<String, lang_build::TypeValueId>,
+        )>,
+    > = OnceLock::new();
+    let mut registry = REGISTRY
+        .get_or_init(|| Mutex::new((lang_build::TypeLookupIndexAllocator::new(), BTreeMap::new())))
+        .lock()
+        .expect("numbered type lookup fixture registry poisoned");
+    if let Some(id) = registry.1.get(&key) {
+        return *id;
+    }
+    let id = registry.0.allocate();
+    registry.1.insert(key, id);
+    id
+}
 
 /// Test-side candidate preparation from a fixture-declared symbol payload.
 ///
@@ -218,6 +260,35 @@ pub fn build_single_fixture_world(workspace: &str, package: &str) -> Compilation
         .world
 }
 
+/// Build a committed single-package fixture with the canonical uint8
+/// same-Type migration family mounted.  Tests that demand runtime
+/// materialization from an abstract compile-time literal must opt in; the
+/// compiler never invents this capability from the target Policy.
+pub fn build_single_fixture_world_with_uint8_transport(
+    workspace: &str,
+    package: &str,
+) -> CompilationWorld {
+    let mut spec = fixture_package_spec(workspace, package);
+    spec.global_implementation_roots
+        .push(ToolchainGlobalSourceRoot::under(
+            fixture_root()
+                .join("global_implementation")
+                .join("uint8_transport"),
+            vec!["core".to_string(), "uint8".to_string()],
+        ));
+    let mut session = BuildSession::new();
+    session
+        .build_workspace(&BuildWorkspace {
+            packages: vec![spec],
+        })
+        .expect("build fixture workspace with uint8 migration")
+        .artifacts
+        .into_iter()
+        .next()
+        .expect("one fixture artifact")
+        .world
+}
+
 /// Build a single-package committed fixture workspace that is expected to FAIL,
 /// returning the resulting `BuildError`. Used by malformed-source /
 /// diagnostic-boundary fixture tests whose source trees intentionally do not
@@ -266,16 +337,16 @@ fn copy_dir_recursive(src: &Path, dst: &Path) {
     }
 }
 
-pub fn placeholder_symbol(
+pub fn object_symbol(
     id: lang_build::SymbolId,
     parent: NamespaceNodeId,
     name: &str,
     provenance: &str,
 ) -> SymbolObject {
-    SymbolObject::placeholder(
+    SymbolObject::new(
         id,
         name,
-        SymbolKind::Placeholder,
+        SymbolKind::Object,
         SourceCategory::DeclaredSymbol,
         Some(parent),
         Provenance::new(provenance),
@@ -302,24 +373,23 @@ pub fn namespace_symbol(
 
 pub fn type_with_namespace(
     type_id: lang_build::SymbolId,
+    represented_type: lang_build::TypeValueId,
     name: &str,
     parent: NamespaceNodeId,
     type_namespace_id: NamespaceNodeId,
     provenance: &str,
 ) -> SymbolObject {
-    let mut symbol = placeholder_symbol(type_id, parent, name, provenance);
-    symbol.kind = SymbolKind::Type;
+    let mut symbol = object_symbol(type_id, parent, name, provenance);
+    symbol.kind = SymbolKind::CompleteTypeProjection;
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
-    symbol.payload = SymbolPayload::Type(TypeObject {
+    symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {
         carrier_symbol_id: type_id,
-        represented_type: lang_build::type_value_projection_from_type_symbol(type_id),
-        owner_pattern_head: None,
+        represented_type,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_values: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(type_namespace_id),
-        extraction_interface: None,
         provenance: Provenance::new(provenance),
         generation_origin: None,
         layout_slot: None,
@@ -405,21 +475,21 @@ pub fn parse_and_normalize_fixture_let_initializer(path: PathBuf) -> NormExpr {
     }
 }
 
-/// Convenience path to the v0.8 product fixture directory.
-pub fn v08_fixture_path(name: &str) -> PathBuf {
-    fixture_root().join("v08").join(name)
+/// Convenience path to the product-shape fixture directory.
+pub fn product_fixture_path(name: &str) -> PathBuf {
+    fixture_root().join("product_shape").join(name)
 }
 
-/// Extract a `NormalizedCallSite` from a committed v0.8 product fixture.
+/// Extract a `NormalizedCallSite` from a committed product-shape fixture.
 ///
 /// The fixture is expected to normalize to a single call expression.
 pub fn fixture_call_site(name: &str) -> NormalizedCallSite {
-    let expr = parse_and_normalize_fixture_expr(v08_fixture_path(name));
+    let expr = parse_and_normalize_fixture_expr(product_fixture_path(name));
     lang_build::extract_single_call_site(&expr)
         .unwrap_or_else(|diagnostic| panic!("fixture `{name}` is not a call: {diagnostic:?}"))
 }
 
-/// Produce an `ArgProductShape` from a committed v0.8 product fixture.
+/// Produce an `ArgProductShape` from a committed product-shape fixture.
 ///
 /// The fixture is expected to normalize to a single call expression.
 /// The call site source product is wrapped in a `ProductObject` with the
@@ -432,23 +502,23 @@ pub fn fixture_arg_product_shape(
     site.to_arg_product_shape(role)
 }
 
-/// Build the v0.8 candidate fixture world (`v08_candidate` / `app`).
-pub fn v08_candidate_world() -> CompilationWorld {
-    build_single_fixture_world("v08_candidate", "app")
+/// Build the candidate fixture world (`candidate_world` / `app`).
+pub fn candidate_fixture_world() -> CompilationWorld {
+    build_single_fixture_world("candidate_world", "app")
 }
 
-/// Extract the single `NormalizedCallSite` from the v0.8 candidate fixture's
+/// Extract the single `NormalizedCallSite` from the candidate fixture's
 /// let initializer (`let T: type = (<product>) |> struct`).
-pub fn v08_candidate_call_site() -> NormalizedCallSite {
+pub fn candidate_fixture_call_site() -> NormalizedCallSite {
     let expr = parse_and_normalize_fixture_let_initializer(
-        fixture_source_root("v08_candidate", "app").join("main.lang"),
+        fixture_source_root("candidate_world", "app").join("main.lang"),
     );
     lang_build::extract_single_call_site(&expr).unwrap_or_else(|diagnostic| {
-        panic!("v08 candidate initializer is not a call: {diagnostic:?}")
+        panic!("candidate fixture initializer is not a call: {diagnostic:?}")
     })
 }
 
-/// Build the v0.8 identity type fixture world (`v08_identity_type` / `app`).
-pub fn v08_identity_type_world() -> CompilationWorld {
-    build_single_fixture_world("v08_identity_type", "app")
+/// Build the identity-type fixture world (`identity_type` / `app`).
+pub fn identity_type_fixture_world() -> CompilationWorld {
+    build_single_fixture_world("identity_type", "app")
 }

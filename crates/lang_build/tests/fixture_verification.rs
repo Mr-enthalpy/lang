@@ -1,25 +1,22 @@
 mod support;
 use support::*;
 
-use lang_build::{BuildSession, BuildWorkspace};
+use lang_build::{BuildSession, BuildWorkspace, ToolchainGlobalSourceRoot};
 
 const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("vertical_slice", "app"),
     ("core_verify_namespace", "app"),
     ("resolver_core_paths", "app"),
-    ("verify_runtime_shadow", "app"),
+    ("verify_meta_conflict", "app"),
     ("early_struct_meta", "app"),
     ("struct_single_field", "app"),
     ("struct_invalid_field_syntax", "app"),
     ("field_named_ref", "app"),
     ("field_named_share", "app"),
-    ("policy_aware_early_meta", "app"),
-    ("user_runtime_values", "app"),
     ("physical_subns", "app"),
     ("type_named_struct", "app"),
-    ("v08_unary_construction", "app"),
-    ("v08_struct_uint8", "app"),
-    ("v08_struct_uint16", "app"),
+    ("struct_uint8", "app"),
+    ("struct_uint16", "app"),
     ("same_name_distinct_namespaces", "app"),
     ("resolver_core_conflict", "app"),
     ("single_package_type_binding", "app"),
@@ -31,6 +28,18 @@ const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
 
 const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
     (
+        "verify_runtime_shadow",
+        verify_runtime_shadow_with_migration_fixture,
+    ),
+    (
+        "policy_aware_early_meta",
+        policy_aware_early_meta_with_migration_fixture,
+    ),
+    (
+        "user_runtime_values",
+        user_runtime_values_with_migration_fixture,
+    ),
+    (
         "dependency_mount_no_import",
         dependency_mount_no_import_fixture,
     ),
@@ -39,6 +48,32 @@ const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
         dependency_mount_no_import_dep_changed_fixture,
     ),
 ];
+
+fn runtime_literal_verification_fixture(workspace: &str) -> BuildWorkspace {
+    let mut app = fixture_package_spec(workspace, "app");
+    app.global_implementation_roots
+        .push(ToolchainGlobalSourceRoot::under(
+            fixture_root()
+                .join("global_implementation")
+                .join("uint8_transport"),
+            vec!["core".to_string(), "uint8".to_string()],
+        ));
+    BuildWorkspace {
+        packages: vec![app],
+    }
+}
+
+fn verify_runtime_shadow_with_migration_fixture() -> BuildWorkspace {
+    runtime_literal_verification_fixture("verify_runtime_shadow")
+}
+
+fn policy_aware_early_meta_with_migration_fixture() -> BuildWorkspace {
+    runtime_literal_verification_fixture("policy_aware_early_meta")
+}
+
+fn user_runtime_values_with_migration_fixture() -> BuildWorkspace {
+    runtime_literal_verification_fixture("user_runtime_values")
+}
 
 // Temporary runner metadata, not semantic verification: these fixtures fail
 // before source verification can run, so the runner checks only the expected
@@ -49,7 +84,6 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "app",
         "source verification error:",
     ),
-    ("verify_meta_conflict", "app", "source verification error:"),
     (
         "verify_unknown_operation",
         "app",
@@ -104,7 +138,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
         "alias_external_injection_future",
         "app",
-        "ordinary parent-to-descendant injection",
+        "block-local lexical alias resolution is not implemented",
     ),
     (
         "diagnostic_source_contribution_prefix",
@@ -121,9 +155,9 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "ambient struct collision",
     ),
     (
-        "v08_identity_type_notype",
+        "identity_type_missing_rank",
         "app",
-        "could not be resolved as a type object",
+        "could not be resolved as a pure type Object",
     ),
 ];
 

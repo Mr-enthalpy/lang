@@ -34,15 +34,18 @@ fn duplicate_dependency_mount_root_is_hard_error() {
 }
 
 #[test]
-fn policy_metadata_slots_are_preserved_without_policy_checking() {
-    use lang_build::{Provenance, ResolverContext, SemanticNameIndex, SourceCategory, SymbolKind};
+fn declared_policy_view_is_preserved_by_namespace_installation() {
+    use lang_build::{
+        declared_policy_view, PolicyMode, PolicyStage, Provenance, ResolverContext,
+        SemanticNameIndex, SourceCategory, SymbolKind,
+    };
 
     let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
     let mut delta = snapshot.capability().declare(
         root,
         "policy_symbol",
-        SymbolKind::Placeholder,
+        SymbolKind::Object,
         SourceCategory::DeclaredSymbol,
         Provenance::new("policy test"),
     );
@@ -51,10 +54,10 @@ fn policy_metadata_slots_are_preserved_without_policy_checking() {
         .values_mut()
         .next()
         .expect("declared symbol in delta");
-    symbol
-        .policy_metadata
-        .slots
-        .insert("entry".to_string(), "compile".to_string());
+    symbol.policy_view = Some(declared_policy_view(
+        &[PolicyStage::Compile],
+        PolicyMode::Plain,
+    ));
 
     let snapshot = snapshot
         .install_delta(delta)
@@ -63,14 +66,9 @@ fn policy_metadata_slots_are_preserved_without_policy_checking() {
         .capability()
         .resolve_str("policy_symbol", &ResolverContext::new(root))
         .expect("resolve policy symbol");
-    assert_eq!(
-        symbol
-            .policy_metadata
-            .slots
-            .get("entry")
-            .map(String::as_str),
-        Some("compile")
-    );
+    let view = symbol.policy_view.as_ref().expect("policy view");
+    assert!(view.pair.value.stages.contains(PolicyStage::Compile));
+    assert_eq!(view.mode, PolicyMode::Plain);
     assert!(symbol.visibility_metadata.slots.is_empty());
 }
 

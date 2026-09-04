@@ -1,3 +1,3 @@
 fn main() {
-    // Placeholder: xtask is optional tooling, not part of v0.1 semantics.
+    // xtask is optional repository tooling and has no language semantics.
 }

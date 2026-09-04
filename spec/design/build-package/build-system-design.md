@@ -1,12 +1,7 @@
 # Build System Design
 
-**Status: Non-normative future design. Not a v0.1 parser rule.**
-
-> This design is now the active v0.6 track: Build / Namespace Graph Bootstrap.
-> The first vertical slice is implemented in `crates/lang_build`. The broader
-> v0.6–v0.8 direction (NamespaceGraph Capability Layer, early meta-functions,
-> compile/meta symbol construction) is detailed in
-> `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`.
+**Status: Canonical build/package design with implementation frontiers recorded
+in `spec/planning/roadmap.md`. This is not parser syntax.**
 
 The build system produces a **namespace graph world model** — a persistent,
 diagnosable, eventually transactional object shared by all future phases
@@ -17,19 +12,19 @@ no-bypass, phase vocabulary, test philosophy), see
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`
 §"Namespace Graph World Model Invariants".
 
-## Implementation note (v0.6 partial)
+## Implementation coverage
 
-`crates/lang_build` now contains the first implementation slice of this design.
-The public Rust API names currently match the design vocabulary:
+`crates/lang_build` implements the connected build and namespace substrate.
+Its public Rust API includes:
 `BuildManifest`, `CompilationWorld`, `NamespaceGraphSnapshot`,
 `NamespaceDelta`, `NamespaceNode`, `SymbolObject`, `SourceCategory`,
 `PolicyMetadata`, `VisibilityMetadata`, `Provenance`, `Diagnostic`,
-`SyntaxObject`, and `MetaExpansionResult`.
+`SyntaxObject`, and `InvocationResult`.
 
 The implemented manifest surface is API-level only: tests construct
 `BuildManifest` values directly. The source collector mounts a package source
 root under a namespace root, installs the compiler-seeded core package as a
-default mount, supports synthetic dependency mount placeholders for explicit
+default mount, supports synthetic dependency mount roots for explicit
 mounted-path resolver tests, scans directories as physical namespace skeleton,
 treats `.lang` files as source fragments under their directory namespace,
 parses and normalizes those fragments with `lang_syntax`, and harvests only
@@ -59,9 +54,9 @@ those rules is
 This document records the intended future direction for libraries, imports,
 exports, filesystem layout, and namespaces.
 
-It is not a v0.1 parser rule.
+It is not a parser rule.
 
-In v0.1, the parser only preserves syntax such as `ns1::ns2::symbol`. It does
+The parser only preserves syntax such as `ns1::ns2::symbol`. It does
 not resolve namespaces, load libraries, process imports, check visibility,
 assemble packages, or evaluate metaprogramming-generated namespace nodes.
 
@@ -281,12 +276,12 @@ The package/build layer injects namespace roots into the graph in several forms:
 ```text
 core/default mount        -> the compiler-seeded core package root
 explicit dependency mount -> a declared dependency's namespace root
-synthetic mount marker    -> an API/test placeholder root
+synthetic mount marker    -> an API/test-only root
 future real package mount -> a manifest-provided dependency root
 ```
 
 These are all ways the package/build layer contributes a root to the namespace
-graph. The current implementation uses API-level / placeholder mounts; a future
+graph. The current implementation uses API-level mounts; a future
 manifest provides a formal mount table. The source language sees the resulting
 roots, not the mount mechanism.
 
@@ -367,7 +362,7 @@ MetaConstruction(meta_construction_unit, construction_id)
 
 ### 7.1 Role-aware child names
 
-The current v0.6 `SymbolObject` substrate stores role-aware child buckets:
+`SymbolObject` stores role-aware child buckets:
 
 ```text
 textual child name -> object/function role + namespace-subspace role
@@ -375,22 +370,22 @@ textual child name -> object/function role + namespace-subspace role
 
 Same parent + same textual child name + same role is a hard conflict. An
 object/function symbol without a namespace node may coexist with a pure
-namespace-subspace symbol of the same textual name. This is generic transitional
-graph capability; it is not required for borrow observations. Target `struct`
+namespace-subspace symbol of the same textual name. This graph capability is
+not required for borrow observations. Target `struct`
 fields named `ref` or `share` are ordinary associated Symbols, while receiver
 observation kind is represented in their overload candidates.
 
-The conservative v0.6 restriction is that an object with a namespace node
+The current restriction is that an object with a namespace node
 (notably a type object with a type-associated namespace) may not coexist with a
 namespace subspace of the same textual name in the same parent. That case would
 make intermediate path traversal ambiguous before the resolver expectation API
 is fully designed.
 
-This bucket representation is transitional. In the final symbol-first model a
-name first resolves to one Symbol; its optional `Q` supplies namespace and,
+In the symbol-first model a name first resolves to one Symbol; its optional `Q`
+supplies namespace and,
 when `TypeRole(Q)`, type projection, while heterogeneous value members occupy
-typed buckets. Role-aware current lookup must not be
-generalized into final mutually exclusive `SymbolKind`s.
+typed buckets. Role-aware lookup must not be generalized into mutually
+exclusive `SymbolKind`s.
 
 ### 7.2 Type-associated namespace
 
@@ -398,10 +393,10 @@ A **type-associated namespace** is the namespace space associated with a type
 object: generated field functions, layout metadata, pattern interfaces, and
 related companion symbols. Borrow `ref` / `share` are candidate observation
 kinds rather than projection subspaces. This is a category by **role**,
-not by origin: its members may be declared, generated, or virtual. For a
-`struct`-generated type, it is a virtual / generated child namespace attached to
-the type node. It is therefore not equivalent to the "declared namespace
-objects" node kind alone.
+not by origin: its members may be declared, synthesized, or virtual. A
+complete type produced by `struct` carries a virtual child namespace attached
+to its type projection. It is therefore not equivalent to the "declared
+namespace objects" node kind alone.
 
 The final Object-role relationship is:
 
@@ -564,16 +559,16 @@ The reason to preserve `namespace` as a language-level kind/rank name is that
 not all namespace nodes are filesystem-backed. Some may be declared,
 instantiated, or generated by metaprogramming.
 
-## 15. Relationship to v0.1
+## 15. Frontend boundary
 
-v0.1 must not implement package resolution, namespace resolution, import,
+The frontend does not implement package resolution, namespace resolution, import,
 export, visibility, versioning, caching, or metaprogramming injection.
 
-v0.1 should only preserve raw syntax such as `Vec::std`,
+It preserves raw syntax such as `Vec::std`,
 `Vec3::vector::math::mylib`, `ns1::(int Vec::std)` to the extent such syntax
 is expressible by the raw AST rules.
 
-The v0.1 parser must not introduce: `ImportDecl`, `UseDecl`, `IncludeDecl`,
+The parser must not introduce: `ImportDecl`, `UseDecl`, `IncludeDecl`,
 `ModDecl`, `LibraryDecl`, `PackageDecl`, `ExportDecl`. No source-level
 import/module syntax is specified.
 
@@ -605,4 +600,4 @@ skeleton is a proper subset of the full namespace graph. The full graph may
 contain declared and virtual namespace nodes. Source code has no
 import/use/include/module syntax. Source code refers directly to mounted
 namespace paths. Export and visibility are namespace assembly / resolver
-concerns. v0.1 only preserves raw `::` path syntax.
+concerns. The frontend only preserves raw `::` path syntax.

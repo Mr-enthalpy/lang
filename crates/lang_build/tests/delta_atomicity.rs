@@ -15,10 +15,10 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     let b = delta.allocate_symbol_id();
     delta.insert_symbol(
         root,
-        SymbolObject::placeholder(
+        SymbolObject::new(
             a,
             "A",
-            SymbolKind::Placeholder,
+            SymbolKind::Object,
             SourceCategory::DeclaredSymbol,
             Some(root),
             Provenance::new("test A"),
@@ -26,10 +26,10 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     );
     delta.insert_symbol(
         root,
-        SymbolObject::placeholder(
+        SymbolObject::new(
             b,
             "B",
-            SymbolKind::Placeholder,
+            SymbolKind::Object,
             SourceCategory::DeclaredSymbol,
             Some(root),
             Provenance::new("test B"),
@@ -45,10 +45,10 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     let x2 = conflict.allocate_symbol_id();
     conflict.insert_symbol(
         root,
-        SymbolObject::placeholder(
+        SymbolObject::new(
             x1,
             "X",
-            SymbolKind::Placeholder,
+            SymbolKind::Object,
             SourceCategory::DeclaredSymbol,
             Some(root),
             Provenance::new("test X1"),
@@ -56,10 +56,10 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     );
     conflict.insert_symbol(
         root,
-        SymbolObject::placeholder(
+        SymbolObject::new(
             x2,
             "X",
-            SymbolKind::Placeholder,
+            SymbolKind::Object,
             SourceCategory::DeclaredSymbol,
             Some(root),
             Provenance::new("test X2"),
@@ -81,19 +81,16 @@ fn conflicting_delta_with_valid_symbol_installs_nothing() {
     let root = snapshot.root_node();
     let mut initial = snapshot.empty_delta();
     let existing_b = initial.allocate_symbol_id();
-    initial.insert_symbol(
-        root,
-        placeholder_symbol(existing_b, root, "B", "existing B"),
-    );
+    initial.insert_symbol(root, object_symbol(existing_b, root, "B", "existing B"));
     let snapshot = snapshot.install_delta(initial).expect("install existing B");
 
     let mut delta = snapshot.empty_delta();
     let a = delta.allocate_symbol_id();
     let conflicting_b = delta.allocate_symbol_id();
-    delta.insert_symbol(root, placeholder_symbol(a, root, "A", "valid A"));
+    delta.insert_symbol(root, object_symbol(a, root, "A", "valid A"));
     delta.insert_symbol(
         root,
-        placeholder_symbol(conflicting_b, root, "B", "conflicting B"),
+        object_symbol(conflicting_b, root, "B", "conflicting B"),
     );
 
     let error = snapshot
@@ -123,7 +120,7 @@ fn delta_with_missing_parent_or_duplicate_link_installs_nothing() {
     let orphan = missing_parent.allocate_symbol_id();
     missing_parent.insert_symbol(
         NamespaceNodeId(99_999),
-        placeholder_symbol(orphan, NamespaceNodeId(99_999), "orphan", "missing parent"),
+        object_symbol(orphan, NamespaceNodeId(99_999), "orphan", "missing parent"),
     );
     let error = snapshot
         .install_delta(missing_parent)
@@ -139,7 +136,7 @@ fn delta_with_missing_parent_or_duplicate_link_installs_nothing() {
 
     let mut duplicate_link = snapshot.empty_delta();
     let symbol_id = duplicate_link.allocate_symbol_id();
-    let symbol = placeholder_symbol(symbol_id, root, "dup", "duplicate link");
+    let symbol = object_symbol(symbol_id, root, "dup", "duplicate link");
     duplicate_link.symbols.insert(symbol_id, symbol);
     duplicate_link.child_links.push(ChildLink {
         parent: root,
@@ -188,35 +185,34 @@ fn diagnostic_delta_duplicate_child_prefix() {
     );
 
     let sym = delta.allocate_symbol_id();
-    delta.symbols.insert(
-        sym,
-        placeholder_symbol(sym, root, "existing", "existing symbol"),
-    );
+    delta
+        .symbols
+        .insert(sym, object_symbol(sym, root, "existing", "existing symbol"));
 
     let snapshot = snapshot.install_delta(delta).expect("base");
 
     let mut conflict = snapshot.empty_delta();
-    let s1 = conflict.allocate_symbol_id();
-    let s2 = conflict.allocate_symbol_id();
+    let first_symbol = conflict.allocate_symbol_id();
+    let second_symbol = conflict.allocate_symbol_id();
     conflict.symbols.insert(
-        s1,
-        placeholder_symbol(s1, root, "existing", "first conflict"),
+        first_symbol,
+        object_symbol(first_symbol, root, "existing", "first conflict"),
     );
     conflict.symbols.insert(
-        s2,
-        placeholder_symbol(s2, root, "existing", "second conflict"),
+        second_symbol,
+        object_symbol(second_symbol, root, "existing", "second conflict"),
     );
     conflict.child_links.push(ChildLink {
         parent: root,
         name: "existing".into(),
-        symbol: s1,
+        symbol: first_symbol,
         role: ChildNameRole::Object,
         provenance: Provenance::new("first link"),
     });
     conflict.child_links.push(ChildLink {
         parent: root,
         name: "existing".into(),
-        symbol: s2,
+        symbol: second_symbol,
         role: ChildNameRole::Object,
         provenance: Provenance::new("second link"),
     });

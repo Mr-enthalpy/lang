@@ -1,4 +1,4 @@
-//! Physical source discovery layer for the v0.6 build slice.
+//! Physical source discovery layer.
 //!
 //! This module is the lowest physical input layer below SemanticWorld
 //! namespace assembly. It finds `.lang` source files on the filesystem and records their
@@ -34,9 +34,8 @@ const DISCOVERY_ERROR_PREFIX: &str = "source discovery error:";
 
 /// Configuration for the physical source discovery layer.
 ///
-/// Source roots remain API-level for v0.6: there is intentionally no manifest
-/// file parser. Discovery consumes already-structured source-root requests and
-/// reads the filesystem.
+/// There is no manifest file parser. Discovery consumes already-structured
+/// source-root requests and reads the filesystem.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SourceDiscoveryConfig {
     pub roots: Vec<SourceRootRequest>,
@@ -216,7 +215,7 @@ fn discover_root(
 
 /// Recursively walk a physical directory, collecting `.lang` source units.
 ///
-/// Symlink policy (conservative v0.6 rule):
+/// Symlink policy:
 ///
 /// ```text
 /// directory symlinks: not followed
@@ -427,14 +426,13 @@ fn detect_duplicate_identity(units: &[DiscoveredSourceUnit], diagnostics: &mut V
     }
 }
 
-/// Provisional v0.6 namespace component validation.
+/// Namespace component validation for filesystem discovery.
 ///
 /// Directory names that contribute namespace path components must be valid
-/// ordinary name components. Full lexical reuse from the parser is not wired in
-/// yet, so this uses a narrow, provisional ASCII rule: the first character must
-/// be an ASCII letter or `_`, and the rest ASCII alphanumeric or `_`. This is
-/// deliberately conservative and is not the final name rule. It must not invent
-/// escaping syntax and must not change parser/lexer behavior.
+/// ordinary name components. Filesystem discovery accepts a narrow ASCII
+/// subset: the first character must be an ASCII letter or `_`, and the rest
+/// ASCII alphanumeric or `_`. This boundary does not define language-level
+/// identifier syntax and does not change parser/lexer behavior.
 fn namespace_component_from_dir_name(name: &str, file: &Path) -> Result<String, Diagnostic> {
     let valid = !name.is_empty()
         && name.chars().enumerate().all(|(index, character)| {

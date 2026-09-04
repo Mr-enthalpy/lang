@@ -1,5 +1,6 @@
 compile let existing = uint8 compile_identity::;
 compile let forwarded: type = existing forward_type_value::;
 compile let via_associated: type = existing type_identity::existing;
-mut + runtime let materialized = uint8 compile_identity::;
+compile let migration_source: uint8 = 42;
+mut + runtime let materialized = migration_source;
 mut + runtime let rebound = materialized;

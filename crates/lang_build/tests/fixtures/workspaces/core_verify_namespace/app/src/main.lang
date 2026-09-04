@@ -2,7 +2,7 @@ verify kind uint8 type;
 verify kind struct meta_function;
 verify policy struct export;
 verify policy struct meta;
-verify not_policy struct runtime;
+verify policy struct runtime;
 verify body_entry_policy struct meta;
 verify not_body_entry_policy struct runtime;
 verify return_policy struct meta;

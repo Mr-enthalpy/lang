@@ -17,15 +17,13 @@
 
 mod support;
 
-use std::collections::BTreeSet;
-
 use lang_build::{
-    canonical_function_object_p1, extract_single_call_site, BuildManifest, CompilationWorld,
-    ExplicitP1Selection, ExposedInvocationResult, InvocationOutcome, OrdinaryInvocationContext,
-    PatternComponentPolicy, PatternValueId, PolicyPair, PolicyResultEntry, PolicyStage,
-    PolicyTransitionRequest, Provenance, ResolveExpectation, SemanticValueId, SemanticValuePayload,
-    SemanticValueRef, StageSet, SymbolPayload, ToolchainGlobalSourceRoot, TypeValueId,
-    ValueComponentPolicy, ValueMutability, ValuePresence,
+    canonical_function_object_view, extract_single_call_site, BuildManifest, CompilationWorld,
+    ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext, P1Projection,
+    PatternComponentPolicy, PatternValueId, PolicyMigrationRequest, PolicyMode, PolicyPair,
+    PolicyResultEntry, PolicyStage, PolicyView, Provenance, ResolveExpectation, ResultPolicyDemand,
+    SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet, SymbolPayload,
+    ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
 };
 use support::{
     build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
@@ -113,14 +111,12 @@ fn canonical_p1_neither_unifies_all_authorities() {
     assert_canonical_p1_unified(&world, "bad");
 }
 
-/// S7 — no P3: the invocation-time candidate carries exactly the canonical
-/// P1 as its `function_object_p1`.  For a core candidate the declared
-/// function policy (canonical P1) and the result P2 genuinely differ
-/// (`IdentityType` is exported at P1 but its result P2 is not), so this
-/// test proves the candidate does not smuggle the result P2 — or any fresh
-/// third policy — into the function-object P1 authority.
+/// An invocation candidate carries the declared canonical P1 as its
+/// `function_object_p1`. For a core candidate the declared function policy and
+/// result P2 differ (`IdentityType` is exported at P1 but its result P2 is not),
+/// so the test distinguishes the two coordinates.
 #[test]
-fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
+fn invocation_candidate_function_object_p1_matches_declared_p1() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
             .expect("core semantic world builds");
@@ -130,11 +126,15 @@ fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[ValueMutability::Const]),
-            Provenance::new("S7 no-P3 regression"),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("canonical function-object P1"),
         )
         .expect("core primitive is selected through the ordinary spine");
-    let InvocationOutcome::SingleMember(result) = result else {
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
+        ..
+    } = result
+    else {
         panic!("expected ordinary outcome");
     };
     let selected = &result.selected;
@@ -152,11 +152,11 @@ fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
     // authority as the call entry's callable_value_policy and the call
     // entry object's own policy.  No re-derivation, no fresh policy.
     assert_eq!(
-        selected.function_object_p1, entry.callable_value_policy,
+        selected.function_object_view.pair, entry.callable_view.pair,
         "candidate function_object_p1 must read the canonical P1"
     );
     assert_eq!(
-        selected.function_object_p1, call_entry_obj.policy,
+        selected.function_object_view.pair, call_entry_obj.policy,
         "call entry object policy and candidate function_object_p1 are the same canonical P1"
     );
 
@@ -165,24 +165,30 @@ fn invocation_candidate_function_object_p1_is_canonical_p1_no_p3() {
     // declaration visibility/export were removed from PolicyPair; equality of
     // the values does not create a third policy coordinate.
     assert_eq!(
-        selected.complete_result_policy, entry.complete_result_policy,
+        selected.complete_result_view.pair, entry.complete_result_view.pair,
         "candidate result P2 must read the declared complete result policy"
     );
 
     // Layered result exposure.  The complete result
-    // member view is the P2 compatibility domain (CompleteResultDomain):
-    // it carries the result P2 type/pattern compatibility information,
+    // member view is the complete P2 result view: it carries the result
+    // type/Pattern observations,
     // NOT the outward visibility of the invocation result.
     let view = &result.complete_result[0];
-    assert_eq!(view.value_policy, selected.complete_result_policy.value);
-    assert_eq!(view.pattern_policy, selected.complete_result_policy.pattern);
+    assert_eq!(
+        view.view.pair.value,
+        selected.complete_result_view.pair.value
+    );
+    assert_eq!(
+        view.view.pair.pattern,
+        selected.complete_result_view.pair.pattern
+    );
 
     // The outward exposure layer (ExposedInvocationResult) reads the
     // canonical P1 — the same single output authority as the migration
     // output endpoint — independently of the complete-result P2 field.
     let exposed = result.exposed();
     assert_eq!(
-        exposed.outward_policy, selected.function_object_p1,
+        exposed.outward_policy, selected.function_object_view.pair,
         "invocation result outward visibility is the canonical P1"
     );
     assert_eq!(
@@ -236,7 +242,7 @@ fn assert_canonical_p1_unified(world: &lang_build::CompilationWorld, name: &str)
         .value(call_entry_id)
         .expect("call entry exists");
     let call_entry_policy = match &call_entry_obj.payload {
-        SemanticValuePayload::CallEntry(entry) => entry.callable_value_policy.clone(),
+        SemanticValuePayload::CallEntry(entry) => entry.callable_view.pair.clone(),
         other => panic!("expected CallEntry payload, got {other:?}"),
     };
 
@@ -248,8 +254,8 @@ fn assert_canonical_p1_unified(world: &lang_build::CompilationWorld, name: &str)
         "expected exactly one member view for `{name}`"
     );
     let member_view = &symbol.member_views[0];
-    let member_value_policy = member_view.value_policy.clone();
-    let member_pattern_policy = member_view.pattern_policy.clone();
+    let member_value_policy = member_view.view.pair.value.clone();
+    let member_pattern_policy = member_view.view.pair.pattern.clone();
 
     // All three authorities must read the same canonical P1.
     assert_eq!(
@@ -270,7 +276,7 @@ fn assert_canonical_p1_unified(world: &lang_build::CompilationWorld, name: &str)
 // The exposure window is a real slice restriction and
 // the ordinary binding path must pass through it:
 //
-//   CompleteResultDomain(P2) -> expose under callable P1 -> outer binding P1
+//   CompleteResultView(P2) -> expose under callable P1 -> outer binding P1
 // ---------------------------------------------------------------------------
 
 fn stage_set(stages: &[PolicyStage]) -> StageSet {
@@ -283,39 +289,45 @@ fn stage_set(stages: &[PolicyStage]) -> StageSet {
 
 fn exposure_window(
     value_stages: &[PolicyStage],
-    mutability: &[ValueMutability],
+    mode: PolicyMode,
     pattern_stages: &[PolicyStage],
-) -> PolicyPair {
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: stage_set(value_stages),
-            mutability: mutability.iter().copied().collect::<BTreeSet<_>>(),
-            presence: ValuePresence::Present,
+) -> PolicyView {
+    PolicyView {
+        pair: PolicyPair {
+            value: ValueComponentPolicy {
+                stages: stage_set(value_stages),
+                presence: ValuePresence::Present,
+            },
+            pattern: PatternComponentPolicy {
+                stages: stage_set(pattern_stages),
+            },
         },
-        pattern: PatternComponentPolicy {
-            stages: stage_set(pattern_stages),
-        },
+        mode,
     }
 }
 
 fn value_entry(
     value_stages: &[PolicyStage],
-    mutability: &[ValueMutability],
+    mode: PolicyMode,
     pattern_stages: &[PolicyStage],
 ) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
     PolicyResultEntry {
         value: Some(SemanticValueRef {
             id: SemanticValueId(7),
-            type_value: TypeValueId(3),
+            type_value: support::type_lookup_fixture("canonical-p1/value-entry"),
         }),
-        value_policy: ValueComponentPolicy {
-            stages: stage_set(value_stages),
-            mutability: mutability.iter().copied().collect::<BTreeSet<_>>(),
-            presence: ValuePresence::Present,
-        },
         pattern: PatternValueId(1),
-        pattern_policy: PatternComponentPolicy {
-            stages: stage_set(pattern_stages),
+        view: PolicyView {
+            pair: PolicyPair {
+                value: ValueComponentPolicy {
+                    stages: stage_set(value_stages),
+                    presence: ValuePresence::Present,
+                },
+                pattern: PatternComponentPolicy {
+                    stages: stage_set(pattern_stages),
+                },
+            },
+            mode,
         },
     }
 }
@@ -326,74 +338,79 @@ fn pure_p_entry(
 ) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
     PolicyResultEntry {
         value: None,
-        value_policy: ValueComponentPolicy {
-            stages: stage_set(value_stages),
-            mutability: BTreeSet::new(),
-            presence: ValuePresence::Absent,
-        },
         pattern: PatternValueId(1),
-        pattern_policy: PatternComponentPolicy {
-            stages: stage_set(pattern_stages),
+        view: PolicyView {
+            pair: PolicyPair {
+                value: ValueComponentPolicy {
+                    stages: stage_set(value_stages),
+                    presence: ValuePresence::Absent,
+                },
+                pattern: PatternComponentPolicy {
+                    stages: stage_set(pattern_stages),
+                },
+            },
+            mode: PolicyMode::Plain,
         },
     }
 }
 
-/// B3 — a constrained canonical P1 crops both the stage window and the
-/// unconstrained (`const || mut`) mutability domain of the material.
+/// B3 — a constrained canonical P1 crops the pair's stage window while the
+/// material's primitive whole-slot mode remains independent.
 #[test]
 fn expose_crops_stage_window_and_unconstrained_mutability() {
     let outward = exposure_window(
         &[PolicyStage::Compile],
-        &[ValueMutability::Const],
+        PolicyMode::Const,
         &[PolicyStage::Compile],
     );
     let complete = vec![value_entry(
         &[PolicyStage::Meta, PolicyStage::Compile],
-        &[],
+        PolicyMode::Plain,
         &[PolicyStage::Meta, PolicyStage::Compile],
     )];
-    let exposed = ExposedInvocationResult::expose(outward, &complete);
+    let exposed = ExposedInvocationResult::expose(outward.pair, &complete);
     assert_eq!(exposed.material.len(), 1);
     let entry = &exposed.material[0];
     assert_eq!(
-        entry.value_policy.stages,
+        entry.view.pair.value.stages,
         stage_set(&[PolicyStage::Compile])
     );
+    assert_eq!(entry.view.mode, PolicyMode::Plain);
     assert_eq!(
-        entry.value_policy.mutability,
-        [ValueMutability::Const]
-            .into_iter()
-            .collect::<BTreeSet<_>>()
-    );
-    assert_eq!(
-        entry.pattern_policy.stages,
+        entry.view.pair.pattern.stages,
         stage_set(&[PolicyStage::Compile])
     );
 }
 
 /// B3 — an entry whose exposed window vanishes is not part of the outward
-/// result at all, for both the stage facet and the mutability facet.
+/// result at all; whole-slot mode is not another exposure-window facet.
 #[test]
 fn expose_hides_entries_whose_window_vanishes() {
     let stage_disjoint = ExposedInvocationResult::expose(
-        exposure_window(&[PolicyStage::Meta], &[], &[PolicyStage::Meta]),
+        exposure_window(
+            &[PolicyStage::Meta],
+            PolicyMode::Plain,
+            &[PolicyStage::Meta],
+        )
+        .pair,
         &[value_entry(
             &[PolicyStage::Compile],
-            &[],
+            PolicyMode::Plain,
             &[PolicyStage::Compile],
         )],
     );
     assert!(stage_disjoint.material.is_empty());
 
-    let mutability_disjoint = ExposedInvocationResult::expose(
-        exposure_window(&[PolicyStage::Compile], &[ValueMutability::Const], &[]),
+    let mode_orthogonal = ExposedInvocationResult::expose(
+        exposure_window(&[PolicyStage::Compile], PolicyMode::Const, &[]).pair,
         &[value_entry(
             &[PolicyStage::Compile],
-            &[ValueMutability::Mut],
+            PolicyMode::Mut,
             &[PolicyStage::Compile],
         )],
     );
-    assert!(mutability_disjoint.material.is_empty());
+    assert_eq!(mode_orthogonal.material.len(), 1);
+    assert_eq!(mode_orthogonal.material[0].view.mode, PolicyMode::Mut);
 }
 
 /// B3 — when the canonical P1 is the P2 derivation (no explicit P1 written),
@@ -402,15 +419,16 @@ fn expose_hides_entries_whose_window_vanishes() {
 fn expose_is_identity_under_the_derived_superset_window() {
     let complete = vec![value_entry(
         &[PolicyStage::Compile],
-        &[],
+        PolicyMode::Plain,
         &[PolicyStage::Compile],
     )];
     let exposed = ExposedInvocationResult::expose(
         exposure_window(
             &[PolicyStage::Meta, PolicyStage::Compile],
-            &[],
+            PolicyMode::Plain,
             &[PolicyStage::Meta, PolicyStage::Compile],
-        ),
+        )
+        .pair,
         &complete,
     );
     assert_eq!(exposed.material, complete);
@@ -422,7 +440,12 @@ fn expose_is_identity_under_the_derived_superset_window() {
 #[test]
 fn expose_keeps_pure_p_entries_with_clipped_value_stages() {
     let exposed = ExposedInvocationResult::expose(
-        exposure_window(&[PolicyStage::Runtime], &[], &[PolicyStage::Compile]),
+        exposure_window(
+            &[PolicyStage::Runtime],
+            PolicyMode::Plain,
+            &[PolicyStage::Compile],
+        )
+        .pair,
         &[pure_p_entry(
             &[PolicyStage::Compile],
             &[PolicyStage::Compile],
@@ -431,19 +454,19 @@ fn expose_keeps_pure_p_entries_with_clipped_value_stages() {
     assert_eq!(exposed.material.len(), 1);
     let entry = &exposed.material[0];
     assert!(entry.value.is_none());
-    assert!(entry.value_policy.stages.is_empty());
+    assert!(entry.view.pair.value.stages.is_empty());
     assert_eq!(
-        entry.pattern_policy.stages,
+        entry.view.pair.pattern.stages,
         stage_set(&[PolicyStage::Compile])
     );
 }
 
 /// B3 — the exposure window is computed on a REAL invocation result that
 /// travelled the full ordinary spine, not only on hand-built entries: the
-/// transport callables declare an explicit outer mutability (`const let
-/// uint8` / `mut let uint8`), the complete result's mutability domain is
-/// the unconstrained `const || mut` domain, and the exposed material is
-/// cropped to the selected callable's canonical P1.
+/// transport callables declare an explicit outer mode (`const let uint8` /
+/// `mut let uint8`) while the complete result carries its own concrete mode;
+/// the pair exposure is cropped to the selected callable's canonical P1
+/// without deriving either mode from the other.
 #[test]
 fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
     let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
@@ -458,83 +481,81 @@ fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
     let mut world = CompilationWorld::from_manifest(&manifest).expect("transport bundle builds");
 
     let uint8_type = match &world
-        .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
+        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
         .expect("core uint8 type")
         .payload
     {
-        SymbolPayload::Type(t) => t.represented_type,
-        _ => panic!("uint8 resolves as a Type object"),
+        SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
+        _ => panic!("uint8 resolves as a CompleteType projection"),
     };
     let source_policy = exposure_window(
         &[PolicyStage::Compile],
-        &[ValueMutability::Const],
+        PolicyMode::Const,
         &[PolicyStage::Compile],
     );
     let target_policy = exposure_window(
         &[PolicyStage::Runtime],
-        &[ValueMutability::Mut],
+        PolicyMode::Mut,
         &[PolicyStage::Compile],
     );
     let source = world
         .install_semantic_value(
             uint8_type,
-            source_policy.clone(),
+            source_policy.pair.clone(),
             Provenance::new("B3 compile uint8 source value"),
         )
         .expect("installed source value");
-    let request = PolicyTransitionRequest::new(
+    let request = PolicyMigrationRequest::new(
         source_policy,
-        target_policy,
+        ResultPolicyDemand {
+            pair_query: P1Projection::Pair(target_policy.pair),
+            mode: target_policy.mode,
+        },
         uint8_type,
         source,
         Provenance::new("B3 const compile -> mut runtime demand"),
     )
-    .expect("legal atomic migration request");
+    .expect("legal migration request");
     let migration = world
-        .invoke_atomic_runtime_migration(&request)
+        .invoke_policy_migration(&request)
         .expect("migration invocation succeeds");
     let invocation = &migration.invocation;
 
     let raw = &invocation.complete_result[0];
-    assert!(
-        raw.value_policy.mutability.is_empty(),
-        "discriminating power: the complete result's mutability domain is \
-         the unconstrained `const || mut` domain"
-    );
-    let canonical_mutability = &invocation.selected.function_object_p1.value.mutability;
-    assert!(
-        !canonical_mutability.is_empty(),
-        "discriminating power: the selected transport declares an explicit \
-         outer mutability, so its canonical P1 is constrained"
-    );
+    assert_eq!(raw.view.mode, invocation.selected.complete_result_view.mode);
+    let canonical_mode = invocation.selected.function_object_view.mode;
 
     let exposed = invocation.exposed();
     assert_eq!(exposed.material.len(), 1);
     assert_eq!(
-        &exposed.material[0].value_policy.mutability, canonical_mutability,
-        "the exposed material's mutability domain is cropped to the \
-         callable's canonical P1, not passed through unconstrained"
+        exposed.material[0].view.mode, raw.view.mode,
+        "stage exposure preserves the complete result's orthogonal mode"
     );
+    assert_eq!(canonical_mode, PolicyMode::Mut);
 }
 
 /// Boundary fact — a stage-only outer declaration prefix
 /// (`compile let narrow = ...`) IS an explicit canonical P1 value-stage
-/// selection: the complete `Pv:Pp` elaboration no longer degrades a
-/// stage-only policy to "no explicit P1".  The canonical P1 value window is
-/// cropped to `compile`, so the downstream `meta let X` binding of the
-/// invocation result falls outside the exposure window and the build fails.
+/// selection: complete `Pv:Pp` elaboration keeps a stage-only policy as an
+/// explicit P1. The canonical P1 value window is
+/// cropped to `compile`, so the downstream `meta let X` result demand rejects
+/// the producer before maxima (or, equivalently for a non-call result, cannot
+/// satisfy the completed view). The build must fail either way; it may not
+/// widen the declared P1.
 #[test]
 fn stage_only_outer_prefix_is_an_explicit_canonical_p1() {
-    let error = build_fixture_error("s4_stage_prefix_is_p1", "app");
-    let found = error
-        .diagnostics
-        .iter()
-        .any(|d| d.message.contains("cannot satisfy binding P1"));
+    let error = build_fixture_error("stage_prefix_is_p1", "app");
+    let found = error.diagnostics.iter().any(|d| {
+        d.message.contains("cannot satisfy binding P1")
+            || d.message
+                .contains("requested binding policy selects no runtime value slice")
+            || d.message.contains("no fully admissible candidate")
+    });
     assert!(
         found,
         "the stage-only `compile` prefix on `narrow` is an explicit P1, so \
-         the `meta let X` binding must fall outside the cropped exposure \
-         window, got: {:?}",
+         the `meta let X` demand must remain outside the cropped result \
+         position view, got: {:?}",
         error
             .diagnostics
             .iter()
@@ -547,7 +568,7 @@ fn stage_only_outer_prefix_is_an_explicit_canonical_p1() {
 /// succeeds through the same gated path.
 #[test]
 fn binding_inside_the_exposure_window_succeeds() {
-    let world = build_single_fixture_world("s4_exposure_window_pass", "app");
+    let world = build_single_fixture_world("exposure_window_pass", "app");
     assert!(
         world
             .semantic_world()
@@ -617,13 +638,17 @@ fn presence_dimension_absent_recombination_is_hard_error() {
     };
     let derived = exposure_window(
         &[PolicyStage::Compile],
-        &[ValueMutability::Const],
+        PolicyMode::Const,
         &[PolicyStage::Compile],
     );
-    let p2 = exposure_window(&[PolicyStage::Compile], &[], &[PolicyStage::Compile]);
+    let p2 = exposure_window(
+        &[PolicyStage::Compile],
+        PolicyMode::Plain,
+        &[PolicyStage::Compile],
+    );
     let provenance = Provenance::new("presence-dimension acceptance");
     let error =
-        canonical_function_object_p1(Some(&outer_explicit), &derived, &p2, None, &provenance)
+        canonical_function_object_view(Some(&outer_explicit), &derived, &p2, None, &provenance)
             .expect_err(
                 "an absent explicit presence over a present derived value component must fail",
             );
@@ -640,16 +665,16 @@ fn presence_dimension_absent_recombination_is_hard_error() {
 fn full_omission_derives_every_dimension_from_p2() {
     let derived = exposure_window(
         &[PolicyStage::Meta, PolicyStage::Compile],
-        &[ValueMutability::Const],
+        PolicyMode::Const,
         &[PolicyStage::Compile],
     );
     let p2 = exposure_window(
         &[PolicyStage::Meta, PolicyStage::Compile],
-        &[],
+        PolicyMode::Plain,
         &[PolicyStage::Compile],
     );
     let provenance = Provenance::new("full-omission acceptance");
-    let canonical = canonical_function_object_p1(None, &derived, &p2, None, &provenance)
+    let canonical = canonical_function_object_view(None, &derived, &p2, None, &provenance)
         .expect("full omission elaborates without error");
     assert_eq!(
         canonical, derived,

@@ -1,4 +1,4 @@
-//! v0.2 frontend library.
+//! Syntax-preserving frontend library.
 //!
 //! The completed Raw AST frontend: source text -> tokens -> AST + diagnostics.
 

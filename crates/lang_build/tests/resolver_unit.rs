@@ -30,11 +30,11 @@ fn short_and_explicit_core_paths_share_symbol_identity() {
 }
 
 #[test]
-fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
+fn explicit_dependency_mounts_are_visible_as_paths() {
     let mut manifest = empty_app_manifest();
     manifest.dependency_mounts.push(
         NamespaceMount::synthetic_root("std", vec!["std".to_string()])
-            .with_symbol("Vec", SymbolKind::Placeholder),
+            .with_symbol("Vec", SymbolKind::Object),
     );
 
     let world = CompilationWorld::from_manifest(&manifest).expect("build world with mount");
@@ -92,9 +92,9 @@ fn typed_resolver_helpers_select_expected_kind() {
     let context = world.package_context();
 
     let type_symbol = capability
-        .resolve_type_object("uint8", &context)
-        .expect("uint8 is a type object");
-    assert_eq!(type_symbol.kind, SymbolKind::Type);
+        .resolve_complete_type_projection("uint8", &context)
+        .expect("uint8 is a pure type Object");
+    assert_eq!(type_symbol.kind, SymbolKind::CompleteTypeProjection);
 
     let meta_symbol = capability
         .resolve_meta_function("struct", &context)
@@ -102,7 +102,7 @@ fn typed_resolver_helpers_select_expected_kind() {
     assert_eq!(meta_symbol.kind, SymbolKind::MetaFunction);
 
     let error = capability
-        .resolve_type_object("struct", &context)
+        .resolve_complete_type_projection("struct", &context)
         .expect_err("struct is a MetaFunction, not a Type");
     assert!(error.message.contains("resolver error"));
 }
@@ -130,7 +130,7 @@ fn diagnostic_resolver_ambiguity_prefix() {
     let namespace_id = delta.allocate_symbol_id();
     delta.symbols.insert(
         object_id,
-        placeholder_symbol(object_id, root, "ambig", "object-role ambig"),
+        object_symbol(object_id, root, "ambig", "object-role ambig"),
     );
     delta.symbols.insert(
         namespace_id,

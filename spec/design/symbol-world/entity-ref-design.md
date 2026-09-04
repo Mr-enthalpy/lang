@@ -1,255 +1,68 @@
-# EntityRef Design
+# Entity Reference
 
-**Status:**
-- **AliasRhsEntityRef**: implemented in Phase 4.4 as raw AST preservation
-  inside `let binder === EntityRef`. The parser produces `EntityRefAst`
-  with source-order inner-to-outer navigation components. EntityRef parsing is
-  available only in alias-let RHS position; it is not a general expression
-  parser mode.
-- **GeneralEntityRef**: future design. Standalone `EntityRef` parsing in
-  arbitrary strong contexts is not yet implemented.
+**Status:** alias-RHS Raw AST is implemented; general strong-context use is
+Open.
 
-`v0.2` status: the alias-RHS subset is frozen Raw AST preservation. General
-EntityRef remains later-stage work and must not become a name-resolution,
-namespace-resolution, or semantic lookup feature in this window.
-
-> **Semantic direction notice.** Every mention of "alias" below names the frozen
-> *parser* position `let binder === EntityRef` (`Symbol::TripleEqual` +
-> `LetAliasAst`), which stays in the v0.2 frozen surface. The *semantic* alias
-> model — lexical alias binding, symbol/place forwarding, `AliasChain`, and
-> alias-inherited writability — is retired; see the retirement notice in
-> [`entity-alias-design.md`](entity-alias-design.md). Shared observation of
-> another object is expressed by a borrow view (`ref` / `share`);
-> continuation-relative `@` yields a `LifetimeValue` and is not a
-> borrow view. The canonical owner is
-> [`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md).
-> Operator-name binding is not a surviving semantic exception. Operator values
-> use ordinary copy/shadow/Symbol algebra; the frozen operator-binder branch is
-> parser-preserved history only.
-
-This document records the future compile-time entity reference syntax used by
-later parser/design phases (Phase 4.2 design). Phase 4.4 implements a raw
-EntityRef parser inside alias-let RHS only; EntityRef is not a general
-expression parser mode.
-
-## Purpose
-
-`EntityRef` names a compile-time entity in a strong syntax context. It is not a
-runtime expression and is not evaluated by the parser.
-
-Alias binding (Phase 4.3 design; Phase 4.4 alias-RHS EntityRef implemented,
-`spec/design/symbol-world/entity-alias-design.md`) uses it on the
-right-hand side:
-
-```text
-let binder === EntityRef
-```
-
-Phase 4.2 defines only the surface syntax and raw AST preservation boundary for
-that future context. It does not add parser behavior. Phase 4.3 completes the
-alias binding design documentation that uses `EntityRef` on the RHS.
-
-## Provisional Grammar
+`EntityRef` is a source-preserved reference used where syntax requires a
+compile-time entity name. It is not a runtime expression and the parser does
+not resolve it.
 
 ```text
 EntityRef ::= EntityNavigation
 
 EntityNavigation ::= EntityComponent ("::" EntityOuterComponent)*
 
-EntityComponent ::= Name | OperatorName
-
+EntityComponent      ::= Name | OperatorName
 EntityOuterComponent ::= Name | Group
 ```
 
-Navigation order is inner-to-outer. The leftmost component is the innermost
-selected symbol, and the rightmost component is the outermost scope component.
-Raw AST preserves source-order navigation components and performs no lookup.
-Operator names may only be innermost entity-reference components unless a
-future design explicitly allows operator-named scopes.
+Navigation order is inner-to-outer. The leftmost component is the selected
+symbol and the rightmost component is the outermost scope component. An
+operator name may occur only in the innermost position unless a future
+canonical rule permits operator-named scopes.
 
-The innermost navigation component must be a syntactic symbol component:
-`Name` or `OperatorName`. A grouped expression is valid only as
-an outer navigation component after `::`; it represents a scope-producing
-expression, not a selected symbol. This matches ordinary Raw AST navigation.
-`xxx::(int Vec::std)` is valid (grouped outer component); `(int Vec::std)::ns`
-is invalid as an innermost component and emits `InvalidEntityRef`.
-
-Valid future design examples:
+Examples:
 
 ```text
 +::int::std
-+::checked_int
-<<::xxx_bit
 some_entity::some_library
 some_entity
+xxx::(int Vec::std)
 ```
 
-Invalid future design examples:
+The innermost component cannot be a group, and an operator cannot be an outer
+scope component.
+
+## Alias-RHS boundary
+
+The implemented strong context is:
 
 ```text
-x::+
-x::int::+
-+::x::+
-impl::<<
+OptionalPolicySpec "let" AliasBinder "===" EntityRef
 ```
 
-Operator names may be innermost referred entities. They are not outer scope
-components.
-
-## Relationship To Expression Navigation
-
-`EntityRef` is related to ordinary expression navigation syntax, but it is a distinct
-future syntax form.
-
-Expression navigation appears inside normal expression parsing and produces
-ordinary expression AST. It remains subject to the current `PipeExpr`, segment,
-operator-expression, atom, and suffix rules.
-
-`EntityRef` appears only inside future strong contexts that explicitly require a
-compile-time entity reference. The known intended context (Phase 4.3 design
-complete) is:
-
-```text
-let binder === EntityRef
-```
-
-The parser must not globally reinterpret ordinary navigation as entity references.
-Outside a future `EntityRef` context, existing expression parsing remains
-unchanged.
-
-## Relationship To Operator Names
-
-Parser phase 4.1 introduced operator names in binder positions and innermost
-navigation-component positions. `EntityRef` reuses only that innermost
-component capability:
-
-```text
-EntityComponent ::= Name | OperatorName
-```
-
-This does not implement operator lookup. It does not check that the operator
-exists and receives no future operator-alias identity validation: the semantic
-alias family is retired. Any future operator environment is an ordinary value
-environment, not an `EntityRef` alias pass.
-
-The current `<` operator-binder ambiguity documented in
-`spec/history/v0.1/operator-design.md` concerns `let` binder syntax. It does not by itself
-add an `EntityRef` escape form.
-
-## Raw AST shape
-
-### Current alias-RHS EntityRef AST (Phase 4.4 implemented)
-
-The alias-let RHS parser produces the following raw AST (implemented in
-`crates/lang_syntax/src/ast.rs`):
+The RHS accepts only an `EntityRef`; it does not accept a `PipeExpr`, product,
+closure, operator expression, runtime expression, or block. Its boundary is
+`;`, `}`, or EOF. The parser produces:
 
 ```text
 EntityRefAst {
     components: Vec<NavComponentAst>,
-    span: Span
+    span: Span,
 }
 ```
 
-### Future general EntityRef contexts
+Outside this strong context, ordinary navigation remains expression syntax and
+is not reclassified as an `EntityRef`.
 
-For future strong contexts outside alias-let RHS, the same `EntityRefAst` shape
-is expected. The parser does not yet accept `EntityRef` as a standalone
-expression mode.
+## Semantic boundary
 
-## Parser Boundary
+The parser preserves components and spans only. It does not perform name,
+operator, namespace, dependency, package, type, kind, or overload resolution.
+The lexical-alias consumer resolves the complete RHS once and stores the
+terminal `SemanticSymbolIdentity` in the block-local lexical environment, as
+specified by [`entity-alias-design.md`](entity-alias-design.md).
 
-Future parser preservation may parse `EntityRef` only inside explicit strong
-contexts.
-
-Known intended future context (Phase 4.3 design complete):
-
-```text
-let binder === EntityRef
-```
-
-Possible later contexts may exist, but this document does not define them.
-
-Even when `EntityRef` parsing is eventually implemented, the parser must not:
-
-- resolve the entity;
-- check whether the entity exists;
-- perform name lookup;
-- perform operator lookup;
-- perform namespace resolution;
-- perform dependency resolution;
-- interpret package/import/build-system semantics;
-- perform type checking;
-- perform kind checking;
-- perform overload resolution;
-- lower `EntityRef` into a call or runtime value.
-
-The parser boundary is syntax preservation only.
-
-## Alias-Binding RHS Restriction
-
-For future alias binding (Phase 4.3 design complete, see
-`spec/design/symbol-world/entity-alias-design.md`):
-
-```text
-let binder === EntityRef
-```
-
-The right-hand side accepts only `EntityRef`.
-
-It must not accept:
-
-```text
-PipeExpr
-Product
-ClosureAst
-operator expression
-runtime expression
-ordinary call-like syntax
-block/body form
-```
-
-This restriction is stronger than ordinary `let name: annotation = expr`.
-Alias binding does not bind a runtime value.
-
-The alias RHS ends only at `;`, `}`, or EOF. Newlines are trivia inside alias
-RHS parsing. If a token remains after the parsed EntityRef before a hard
-boundary, it is an alias-RHS residual expression error, not the start of a new
-form.
-
-## Lexer Note For `===`
-
-Phase 4.2 does not implement lexer changes.
-
-If alias parsing is implemented later, `===` must become a structural delimiter
-for alias binding. The lexer must longest-match it before:
-
-```text
-==
-=
-```
-
-`===` is not an equality operator and is not a general expression operator.
-Phase 4.2 does not add `===` to accepted parser syntax.
-
-## Non-Goals
-
-Do not implement in Phase 4.2:
-
-```text
-lexer token for ===
-EntityRef parser
-LetAliasAst
-AliasBinderAst
-EntityRefAst in Rust code
-operator alias validation
-operator identity checking
-name lookup
-operator lookup
-namespace resolver
-dependency resolver
-build manifest parser
-package/import/use/include/module syntax
-runtime value binding semantics
-```
-
-Do not reinterpret existing expression paths as `EntityRef`.
+General `EntityRef` use in other strong contexts remains Open. Such contexts
+may reuse `EntityRefAst`; they must not change ordinary expression parsing or
+give `EntityRef` runtime-value semantics.

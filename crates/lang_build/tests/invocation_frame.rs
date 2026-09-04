@@ -1,0 +1,133 @@
+use lang_build::SemanticValueId;
+use lang_build::{
+    ArgProductShape, CallableFrameShape, ExecutionEnv, FlattenedProductInvariant,
+    FlattenedProductObject, InvocationCallableRef, InvocationExecutionEnv, InvocationFrame,
+    InvocationLookupEnv, PolicyEnv, ProductAtom, Provenance, ReceiverTypeRef, ReturnTargetShape,
+    SelfPosition, SelfPositionSource, SelfSlotKind,
+};
+
+fn empty_arg_product_shape() -> ArgProductShape {
+    ArgProductShape::from_flattened(FlattenedProductObject {
+        atoms: Vec::new(),
+        provenance: Provenance::new("empty explicit user product"),
+        invariant: FlattenedProductInvariant {
+            no_direct_product_atom_remains: true,
+        },
+    })
+}
+
+fn unit_arg_product_shape() -> ArgProductShape {
+    ArgProductShape::from_flattened(FlattenedProductObject {
+        atoms: vec![ProductAtom::Unit {
+            provenance: Provenance::new("explicit unit user argument"),
+        }],
+        provenance: Provenance::new("single explicit user product"),
+        invariant: FlattenedProductInvariant {
+            no_direct_product_atom_remains: true,
+        },
+    })
+}
+
+#[test]
+fn self_slot_exists_for_zero_user_argument_callable() {
+    let frame_shape = CallableFrameShape::from_written_formals(
+        0,
+        ReturnTargetShape::ImplicitNearest,
+        Provenance::new("head with no written formal"),
+    );
+
+    assert_eq!(frame_shape.self_slot.slot_index, 0);
+    assert_eq!(
+        frame_shape.self_slot.kind,
+        SelfSlotKind::StandaloneFunctionObject
+    );
+    assert!(!frame_shape.self_slot.has_written_pattern);
+    assert_eq!(frame_shape.explicit_parameter_shape.user_parameter_count, 0);
+}
+
+#[test]
+fn first_written_formal_is_self_and_only_later_formals_are_explicit_arguments() {
+    let frame_shape = CallableFrameShape::from_written_formals_with_self_kind(
+        3,
+        SelfSlotKind::AssociatedCallReceiver,
+        ReturnTargetShape::ImplicitNearest,
+        Provenance::new("self plus two explicit parameters"),
+    );
+
+    assert_eq!(frame_shape.self_slot.slot_index, 0);
+    assert_eq!(
+        frame_shape.self_slot.kind,
+        SelfSlotKind::AssociatedCallReceiver
+    );
+    assert!(frame_shape.self_slot.has_written_pattern);
+    assert_eq!(frame_shape.explicit_parameter_shape.user_parameter_count, 2);
+}
+
+#[test]
+fn self_is_not_counted_in_explicit_argument_product() {
+    let explicit_user_product = unit_arg_product_shape();
+    let original_user_arity = explicit_user_product.arity;
+
+    let frame = InvocationFrame::new(
+        InvocationCallableRef::SemanticValue(SemanticValueId(7)),
+        SelfPosition::from_semantic_associated_call_entry(
+            SemanticValueId(70),
+            support::type_lookup_fixture("invocation-frame/associated-self"),
+            Provenance::new("resolved callable self"),
+        ),
+        explicit_user_product,
+        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
+        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
+        Provenance::new("invocation frame"),
+    )
+    .expect("valid invocation frame");
+
+    assert_eq!(frame.explicit_arg_product.arity, original_user_arity);
+    assert_eq!(frame.explicit_arg_product.arity, 1);
+    assert_eq!(frame.self_position.slot_index, 0);
+}
+
+#[test]
+fn invocation_frame_rejects_nonzero_self_position() {
+    let result = InvocationFrame::new(
+        InvocationCallableRef::SemanticValue(SemanticValueId(9)),
+        SelfPosition {
+            slot_index: 1,
+            source: SelfPositionSource::SemanticAssociatedValue(SemanticValueId(90)),
+            receiver_type: ReceiverTypeRef::TypeValue(support::type_lookup_fixture(
+                "invocation-frame/nonzero-self",
+            )),
+            provenance: Provenance::new("invalid self position"),
+        },
+        empty_arg_product_shape(),
+        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
+        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
+        Provenance::new("invalid invocation frame"),
+    );
+
+    let diagnostic = result.expect_err("nonzero self slot must be rejected");
+    assert!(diagnostic.message.contains("slot 0"));
+}
+
+#[test]
+fn invocation_frame_rejects_arg_shape_arity_atom_mismatch() {
+    let mut mismatched_product = empty_arg_product_shape();
+    mismatched_product.arity = 1;
+
+    let result = InvocationFrame::new(
+        InvocationCallableRef::SemanticValue(SemanticValueId(10)),
+        SelfPosition::from_semantic_associated_call_entry(
+            SemanticValueId(100),
+            support::type_lookup_fixture("invocation-frame/arity-mismatch"),
+            Provenance::new("resolved callable self"),
+        ),
+        mismatched_product,
+        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
+        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
+        Provenance::new("mismatched invocation frame"),
+    );
+
+    let diagnostic = result.expect_err("arity/atom mismatch must be rejected");
+    assert!(diagnostic.message.contains("arity"));
+}
+mod support;

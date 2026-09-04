@@ -1,6 +1,6 @@
 let uint8 = uint8;
 
-verify not_resolves uint8;
+verify kind uint8 type;
 verify kind uint8::app type;
 verify policy uint8::app runtime;
 verify policy uint8::app meta;
