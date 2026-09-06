@@ -2203,6 +2203,65 @@ register `inner` in `t`'s Pattern structure. Pattern-member registration is a
 privilege of `struct` inline construction and the `extend` primitive (directly
 or through `inject`). See §12.1 for the full privilege boundary.
 
+### 7.6.1 Value-supplied members use the same formation relation
+
+The equivalence also applies to ordinary member construction material whose
+RHS has already evaluated to v. It is not limited to the field spelling in the
+example above. The construction position determines the member role (named
+contribution, structural field, or exact () entry); value shape does not choose
+a different role.
+
+Use the following mathematical notation for the existing formation relation:
+
+    Delta_v = that ordinary member material, with evaluated RHS v
+    S_a(B ; Delta_v) = one-shot struct formation with base material B
+                      and that member present from the start at anchor a
+
+Delta_v is the same semantic input accepted at the corresponding struct
+position. It is not an inferred arbitrary Pattern admitting TypeOf(v), a new
+language value class, or a user-exposed AST. B describes the existing base
+construction; it does not authorize rerunning its effects or original source.
+
+For the same base, member role, declared policy, resolved dependencies,
+captures and target anchor:
+
+    T_B = formed base snapshot
+    T_1 = Extend_Gamma(T_B, Delta_v)
+    T_1 equivalent_to S_a(B ; Delta_v)
+
+The equality observes the complete result, including Core, captured V_tau,
+ordinary generated partners, and internal identities under consistent bound
+alpha-renaming. It is not merely satisfaction equivalence or equality of Core
+lookup indices. No unrelated helper, field or larger admissible Core can be
+added by the incremental path: its result must be the one-shot formation
+result for that exact material.
+
+If v already has the required membership, member formation retains it.
+Otherwise, an eligible ReinstantiationWitness supplies the same anchored
+instance that the corresponding one-shot member construction forms. The
+resolved capture values and the anonymous identity graph are preserved under
+the existing replication rules. The target anchor is already fixed independently
+of the Core contents; it is not recovered from the LHS by RHS evaluation.
+
+This determines Core preparation by projection of the existing formation:
+
+    Q_1 = Core(S_a(B ; Delta_v))
+    v_a = the member instance formed in that result
+    TypeOf(v_a) in Q_1
+
+The local contribution step is TypeAdd after that Core preparation, together
+with the ordinary generated-member closure. Extend returns the whole completed
+snapshot; inject commits it through the ordinary reference. Thus an externally
+performed inject of Delta_v already includes v_a exactly once. Appending another
+TypeAdd afterward would be a second contribution, not this derivation.
+
+The comparison is a formation law, not replay of source code or equality of
+execution traces. Incremental formation retains its actual FreshNamedType,
+OpenHere, Writable, lifetime and Pre/commit/Post events. A hypothetical
+one-shot expression grants no missing incremental authority. If the ordinary
+one-shot member formation is undefined (including missing witness or illegal
+captures), this equivalence supplies no alternate successful construction.
+
 ## 8. `extend` and `inject`
 
 ### 8.1 Privileged built-in

@@ -87,12 +87,6 @@ function layer; consumer alignment is roadmap work.
 
 ## Place, construction, and write algebra
 
-- Which precise existing Pattern/type construction derivation maps a first named
-  closure contribution v (or its ReinstantiationWitness) to the required
-  StructLikeMaterial Delta? Extend(T, Delta) determines the result given Delta;
-  membership and replication do not uniquely infer Delta from v. The required
-  FreshNamedType -> inject(Delta) -> TypeAdd trace is fixed, but automatic Core
-  material synthesis remains a local semantic premise, not just IR encoding.
 - Which ordinary assignment candidates, if any, realize closure-to-type-ref
   assignment using existing construction/replication operations? Structural let
   supplies only the ordinary assignment problem, neither hidden sugar nor a

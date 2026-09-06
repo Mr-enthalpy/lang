@@ -197,10 +197,11 @@ engineering facilities after their inputs and effects obey the source model.
   alpha-renaming and the original closure identity. Do not feed the destination
   anchor backward into parsing or RHS evaluation. Structural let = closure
   does not itself imply TypeAdd. Any ordinary assignment realization using it
-  requires a legal selected candidate defined by the assignment owner. Automatic
-  first named contribution still needs the explicit v/witness-to-Core-material
-  derivation tracked in open questions; do not mistake its conditional trace
-  for completed source elaboration.
+  requires a legal selected candidate defined by the assignment owner. First named
+  contribution uses the one-shot struct/extend equivalence in construction
+  section 7.6.1: form the same member material at the target anchor and commit
+  Extend's complete result through inject. Do not add a second post-inject
+  TypeAdd or infer an arbitrary larger Core from membership alone.
 - Implement builtin A's guarded indexed Places using stable construction-subject
   identity, not ordinary Core equality. Equal keys must denote the same OpenHere
   subject; saved references retain that subject across carrier replacement.

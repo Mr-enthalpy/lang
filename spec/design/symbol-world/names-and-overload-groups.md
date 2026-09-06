@@ -188,40 +188,59 @@ contribution derivation is in [closure replication](closure-anchored-replication
 Anchored replication is a closure capability usable
 by type contribution and inject, not a special RHS rule for let.
 
-### 6.1 First contribution: required trace and remaining premise
+### 6.1 First contribution from one-shot formation equivalence
 
-For the already evaluated v in a named-contribution construction position:
+The member role is fixed by the named-contribution position. Once e evaluates
+to v, its construction material is that same ordinary member material with
+the RHS value v supplied; there is no search for an arbitrary larger Pattern
+that merely happens to admit TypeOf(v).
+
+Let a be the target's already determined anchor, B_0 its empty initial
+construction, and Delta_v that member material. The
+[construction owner, section 7.6.1](symbol-first-meta-construction-and-pattern-injection.md)
+fixes the complete result by equivalence to struct with the member present
+from the beginning:
 
     v = Eval(e)
-    t_f = FreshNamedType(r, f, P)         -- commits Some(T_0)
-    Delta = Core material derived for (v, target anchor)
-    t_f |> inject(Delta)                 -- schematic ordinary read/extend/write
-    T_1 = Read(Target(t_f))
-    v' = AnchorFor(v, Core(T_1))
-    require TypeOf(v') in Core(T_1)
-    TypeAdd(t_f, v')                     -- changes V_tau only
+    t_f = FreshNamedType(r, f, P)            -- commits Some(T_0)
+    (t_f, Delta_v) |> inject                 -- the sole actual Extend/write
 
-This is an operation trace, not new callable syntax or a new CorePreparation
-primitive. The concrete Core-changing step is the existing
-Extend_Gamma(T_0, Delta) relation, followed by inject's ordinary write; see the
-[construction owner](symbol-first-meta-construction-and-pattern-injection.md),
-sections 7.3 and 8.1–8.2.3. It can also generate the partners required by that
-material. Those generated members are not an implicit repeat contribution of v.
+    Postcondition on that successful operation:
+      T_1 = Read(Target(t_f))
+      T_1 equivalent_to S_a(B_0 ; Delta_v)
+      Q_1 = Core(T_1)
+      v_a = the anchored member formed inside that invocation
+      TypeOf(v_a) in Q_1
 
-Those sections determine the result once Delta is supplied. They do not yet
-derive a unique Delta from an arbitrary closure value v: TypeMember_Q is a
-membership obligation, and ReinstantiationWitness supplies a location-parametric
-instance, not a unique target-Core synthesis rule. Several larger Cores may
-admit the same resulting closure type. Normalization of a supplied Pattern
-does not select which Pattern to construct.
+T_1 denotes the result formed inside the single actual inject invocation.
+There is no earlier computation of T_1 to transfer or reuse, no second witness
+execution, and no additional formation token. S_a is a specification-side
+comparison, not an executed second construction. It denotes the existing
+one-shot formation relation with
+the same role, policy, dependencies, captures and anchor. It is not a new
+callable, a second semantic evaluator, or a replay of the source RHS.
 
-Consequently this trace is conditional on that missing material derivation; it
-is not a theorem that v alone already determines Core(T_f). The exact
-closure/witness-to-StructLikeMaterial derivation is recorded in
-[open questions](../../planning/open-questions.md). Explicit prepared-Core +=
-remains defined by the existing relations. A serial source consumer must not
-invent Delta, silently enlarge Core inside TypeAdd, or report automatic first
-named contribution as connected until the derivation is fixed.
+This yields the factorization:
+
+    FreshNamedType
+      -> Core preparation from the corresponding struct formation
+      -> TypeAdd of its anchored member plus ordinary generated-member closure
+      -> inject's ordinary completed-snapshot write
+
+The middle steps describe the formation of Extend's complete result. They do
+not add an extra post-inject +=. Core is changed by the existing extend
+relation; TypeAdd still changes only V_tau. The contribution appears exactly
+once, and later same-name contributions reuse the same law against the actual
+base snapshot. They do not re-evaluate earlier RHS expressions or reconstruct
+their captures.
+
+The result is determined up to the existing canonical normalization and bound
+identity-renaming laws whenever that ordinary member formation is defined.
+Missing witness, invalid captures, construction conflicts or failed write
+premises remain ordinary failures. Equivalence cannot supply authority or
+silently broaden the member's construction role. Thus the earlier gap was a
+missing reference/formation bridge, not a new v-to-arbitrary-Core inference
+mechanism.
 
 ## 7. Identity and closure
 

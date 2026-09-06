@@ -116,8 +116,10 @@ the addition fails; it never expands Core by itself.
 
 An unqualified `let f = c` in a declared named-contribution position uses that
 position's formation/Core-construction/contribution rules and reaches the same
-TypeAdd relation, conditional on the Core-material derivation described in the
-[name owner](names-and-overload-groups.md). An ordinary lexical let or structural
+TypeAdd relation as a formation step in Extend's complete result, by the
+[name owner's one-shot equivalence derivation](names-and-overload-groups.md).
+An inject of that full member material already installs the contribution once;
+it is not followed by an additional implicit +=. An ordinary lexical let or structural
 let's assignment suffix does not acquire named-contribution sugar. This does
 not preclude the separately selected ordinary assignment realization from using
 replication; candidate selection belongs to the assignment owner.
