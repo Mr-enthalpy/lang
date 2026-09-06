@@ -1,4 +1,4 @@
-# Symbol Policy and Compile-Flow Projection
+# name binding Policy and Compile-Flow Projection
 
 Status: canonical design contract. The typed model in this document is the
 normative policy algebra.
@@ -9,7 +9,7 @@ This document owns the complete chain:
 source policy syntax
   -> contextual elaboration
   -> PolicyPair
-  -> symbol resolution
+  -> binding resolution
   -> phase-slice exposure
   -> binding/overload selection
   -> OpenStatic evaluation
@@ -17,7 +17,7 @@ source policy syntax
   -> Runtime binding and evaluation
 ```
 
-## 1. Complete symbol flow and policy pair
+## 1. Complete binding flow and policy pair
 
 Language computation remains one object flow. Every object has the same three
 components:
@@ -36,8 +36,14 @@ edge between a context and an object:
 
 ```text
 PolicyView_Γ(slot, x)
-  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot) ⟩
+  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot), SafetyPolicy_Γ(slot) ⟩
 ```
+
+SafetyPolicy = safe | unsafe is independent of PolicyMode and the pair.
+Its semantic-admission boundary is defined in
+[unsafe admission](../lifetime/unsafe-semantic-admission.md); it grants neither
+write authority nor a substitute for action Pre. The mode comparisons below
+remain their existing three-point relations.
 
 Policy preference, capability realization, and dynamic legality must not be
 collapsed:
@@ -299,11 +305,8 @@ part of the complete `τ` snapshot, so `copy τ`, `return τ`, and `store τ` al
 keep the knowledge of how to attempt reconstruction. It is never recovered by
 going back out of `τ`:
 
-```text
-τ
--> recover defining Symbol(...)
--> inspect its V_S
-```
+The value directly supplies CallSpace(τ); no defining-binding recovery step
+participates.
 
 The global `const` / `mut` dispatcher itself does not guarantee conversion
 success. The required order is:
@@ -377,11 +380,11 @@ true  holds the value read through if::bool
 false holds the value read through else::bool
 ```
 
-`true` and `false` are ordinary bindings, not aliases. Each is a fresh symbol
+`true` and `false` are ordinary bindings, not aliases. Each is a fresh binding
 with a fresh place holding a copy of the value read through the source path:
 
 ```text
-SymbolId(true) ≠ SymbolId(if::bool)
+NameBindingId(true) ≠ NameBindingId(if::bool)
 PlaceId(true)  ≠ PlaceId(if::bool)
 Value(true)    =  Value(if::bool)
 ```
@@ -896,7 +899,7 @@ sigma = ExpressionResultSlot(PolicyLet(P, e))
 
 sigma is not:
   a NameBinding
-  a Symbol
+  a name binding
   a hidden declaration
   an independently acquired or source-addressable Place
 
@@ -1076,7 +1079,7 @@ Pv = runtime
 Pp = compile
 ```
 
-It must not return the original `compile || runtime` entry. Symbol identity and
+It must not return the original `compile || runtime` entry. name binding identity and
 Pattern identity do not change; only the visible slice is cropped.
 
 Result-view satisfaction is existing-view-first:
@@ -1131,26 +1134,20 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
-Every formal parameter first inherits the callable result view `P2` without
-reinterpretation. Its whole-slot PolicyMode is inherited unless the binding
-spelling explicitly overrides that coordinate:
+Each formal inherits the callable's P2 PolicyPair (Pv:Pp). The orthogonal
+whole-slot PolicyMode is elaborated separately; an omitted mode is plain.
 
-```text
-P_in = Overlay(P2(callable), Delta_in)
+    Pair(P_in) = Pair(P2(callable))
+    Mode(P_in) = ExplicitFormalMode or plain
+    stage(P_in) = stage(P2(callable))
 
-stage(P_in) = stage(P2(callable))
-```
+Inheritance and plain concern different coordinates. There is no choice
+between inheriting the pair and using plain mode.
 
-An omitted mode preserves the inherited P2 mode. The three explicit spellings
-select three actual PolicyMode points; plain is not an unspecified variable or
-an instruction to infer one of the other two:
-
-```text
-let x        -> P2 unchanged
-plain let x  -> FormalPolicyView(P2, PolicyMode = plain)
-const let x  -> FormalPolicyView(P2, PolicyMode = const)
-mut let x    -> FormalPolicyView(P2, PolicyMode = mut)
-```
+    let x        -> FormalPolicyView(Pair(P2), PolicyMode = plain)
+    plain let x  -> FormalPolicyView(Pair(P2), PolicyMode = plain)
+    const let x  -> FormalPolicyView(Pair(P2), PolicyMode = const)
+    mut let x    -> FormalPolicyView(Pair(P2), PolicyMode = mut)
 
 Stages, value presence, and the Pattern component remain byte-for-byte the
 inherited P2 dimensions; PolicyMode may neither shrink nor widen them.
@@ -1200,7 +1197,7 @@ stage(P_out) = stage(P1(callable))
 ```
 
 An omitted mode preserves P1's mode. An explicit spelling selects the mode
-symmetrically with the formal-parameter rule while leaving P1's stage/exposure
+under this return-specific rule while leaving P1's stage/exposure
 pair unchanged:
 
 ```text
@@ -1351,7 +1348,7 @@ ProjectExistingViewForDemand(demand, R) != empty
   => no value reconstruction
   => PolicyProjection(identity, R) preserves the accepted view
   => ValueRealization(identity, R) = R
-  => Symbol / TypeValue / PatternValue / Place identity is unchanged
+  => name binding / TypeValue / PatternValue / Place identity is unchanged
 ```
 
 This is the **Existing-First, Constructible-Second** principle:
@@ -1550,7 +1547,7 @@ Migration explains availability; slicing consumes availability. This preserves
 the phase-layer separation:
 
 ```text
-ResolveSymbol
+Resolve
 ExposePolicySlice
 ReadValue
 ReadPattern
@@ -1588,9 +1585,9 @@ Residualize unavailable runtime dependencies
 Continue the same already-resolved invocation at Runtime
 ```
 
-Symbol/path/callable identity and ordinary overload selection occur in the
+name binding/path/callable identity and ordinary overload selection occur in the
 static semantic world. A runtime continuation does not reopen namespace
-lookup, Symbol identity, callable identity, or the overload candidate set
+lookup, name binding identity, callable identity, or the overload candidate set
 merely because runtime values become readable. Explicit future dynamic
 dispatch, if introduced, must be a different named mechanism.
 
@@ -1800,15 +1797,15 @@ do not intersect atom spellings.
 Every phase distinguishes:
 
 ```text
-ResolveSymbol(path)
-ExposePolicySlice(symbol, phase)
+Resolve(path)
+ExposePolicySlice(binding, phase)
 ReadValue(slice)
 ReadPattern(slice)
 EnumerateValueFacet(slice)
 EnterCallableBody(candidate)
 ```
 
-Failure to expose a value slice is not an unresolved symbol. In particular:
+Failure to expose a value slice is not an unresolved binding. In particular:
 
 ```text
 Pv = runtime
@@ -1818,7 +1815,7 @@ Pp = compile
 has this OpenStatic behavior:
 
 ```text
-symbol/path resolves
+binding/path resolves
 runtime value is unreadable
 compile Pattern/type is readable
 derived compile companion (CompilePartner(F) = C(F)) may join static overload resolution
@@ -1837,59 +1834,44 @@ current Phase is OpenStatic or SealStatic
   => preserve already-resolved runtime computation/residual
 ```
 
-The runtime continuation consumes the preserved symbol/callable identities. It
+The runtime continuation consumes the preserved binding/callable identities. It
 does not repeat path resolution or overload choice merely because the value
 becomes readable later.
 
-Seal-only symbols follow the same ordinary-symbol rule. Their paths can be
+Seal-only bindings follow the same ordinary-binding rule. Their paths can be
 resolved independently of whether a facet is exposed in the current phase.
 
 ## 8. Mechanical compile-flow projection
 
-Before any of the three phases executes, structurally project:
+StaticFlow and RuntimeResidualFlow are observations of one semantic
+continuation, not independent semantic passes or separate IR worlds.
 
-```text
-CompleteSymbolFlow
-  -> StaticFlow
-  -> RuntimeResidualFlow
-```
+    complete continuation -> static observation
+                          -> runtime residual observation
 
-Projection does not execute calls or perform final overload selection.
+Pattern/type work, ready calls, derived companions and deferred seal work retain
+their ordinary stage rules. Runtime residue retains value computations, runtime
+bodies/effects and branch value selection. D/Done and other control structures
+are projections of the same actions and positions, not separately interpreted
+copies.
 
-`StaticFlow` preserves:
-
-```text
-Pattern/type flow
-meta/compile/seal static call nodes
-derived compile companions
-symbol relationships required by static bindings
-DeferredSealTask nodes
-D/Done and control-flow structure
-```
-
-`RuntimeResidualFlow` preserves:
-
-```text
-runtime value computations and bodies
-runtime branch value selection
-runtime effects
-runtime symbol binding
-required D/Done and control-flow structure
-```
-
-No phase is inferred ad hoc from the original AST after this projection.
+Projection alone executes no call and selects no overload. E exhausts ready
+work under the current continuation, stage, policy and facts; E E = E.
+It does not rewrite runtime bindings into compile bindings to obtain more work.
+[E and optimizer boundaries](../meta-invocation/evaluation-residual-and-optimization.md)
+govern transformations and revalidation by all affected projections.
 
 ## 9. Namespace visibility and export
 
-### 9.1 Three independent symbol views
+### 9.1 Three independent binding views
 
 Namespace resolution, external exposure, and compilation-world membership are
 different questions:
 
 ```text
-Σ_full(N)    complete namespace-internal symbol/overload set
+Σ_full(N)    complete namespace-internal binding/overload set
 Σ_export(N)  externally exposed projection of that set
-Wfinal       Wpre ∪ Wseal, the symbols materialized or retained this build
+Wfinal       Wpre ∪ Wseal, the bindings materialized or retained this build
 ```
 
 They are consumed by distinct operations:
@@ -1908,7 +1890,7 @@ ExportOverloadSet(name)
 ```
 
 This projection retains the original candidate identities; it does not create
-a second symbol universe. Consequently:
+a second binding universe. Consequently:
 
 ```text
 s in Wpre  does not imply s is exported
@@ -1934,12 +1916,12 @@ Let `InternalView(s) = ⟨Pv:Pp, μ⟩`, where `μ` is the resolved whole-slot
 PolicyMode. Export derives, rather than replaces, a second view:
 
 ```text
-ExportAdmission(symbol, path)
-  = InExportRetentionClosure(symbol)
+ExportAdmission(binding, path)
+  = InExportRetentionClosure(binding)
     && PubliclyReachable(path)
 
-ExportAdmission(symbol, path)
-  => for each candidate in FullOverloadSet(symbol):
+ExportAdmission(binding, path)
+  => for each candidate in FullOverloadSet(binding):
        ExternalView(candidate)
          = ExportSnapshotOf(ResolveCandidateSnapshot(candidate))
 ```
@@ -2018,7 +2000,7 @@ ExportAdmission {
 }
 
 if admission.in_export_retention_closure && admission.publicly_reachable:
-  for candidate in FullOverloadSet(symbol):
+  for candidate in FullOverloadSet(binding):
     internal_snapshot := ResolveCandidateSnapshot(candidate)
     external_snapshot := ExportSnapshotOf(internal_snapshot)
     insert identity-preserving external_snapshot into Σ_export
@@ -2031,18 +2013,18 @@ selected an invocation. Equality here is equality of stable candidate facts,
 not equality of internal and consumer-context observation edges.
 
 Export-retention-closure membership and public path reachability are separate
-symbol/name-level facts; both are required before a symbol contributes to
+binding/name-level facts; both are required before a binding contributes to
 `Σ_export`. In particular, a private child in an exported subtree and every
 descendant reached through that private path remain absent externally even
-when those symbols belong to `ExportRetentionClosure`.
+when those bindings belong to `ExportRetentionClosure`.
 
 The retention name is deliberate: membership means that an export root keeps
-the symbol in the graph considered for interface construction. It does not by
-itself mean that the symbol is externally exported. `Σ_export` is the external
+the binding in the graph considered for interface construction. It does not by
+itself mean that the binding is externally exported. `Σ_export` is the external
 candidate set.
 
 Admission does not select or filter individual overloads. Within an admitted
-symbol's complete overload set, every resolved candidate enters `Σ_export`
+binding's complete overload set, every resolved candidate enters `Σ_export`
 with the same identity, pair, and mode. A concrete consumer then performs the
 ordinary sequence:
 
@@ -2093,7 +2075,7 @@ Immediately before SealStatic, compute the least semantic materialization
 closure:
 
 ```text
-R0 = ExportedSymbols
+R0 = ExportedBindings
    ∪ MaterializedResultsOfExportedMetaFunctions
    ∪ ParameterDependenciesOfExportedMetaFunctions
 
@@ -2114,17 +2096,17 @@ SealStatic generates `Wseal` and finishes with:
 Wfinal = Wpre ∪ Wseal
 ```
 
-Only a compiler-known privileged seal function may enumerate the symbol world,
+Only a compiler-known privileged seal function may enumerate the binding world,
 and its fixed scan domain is `Wpre`. Adding `Wseal` never expands that domain.
 Ordinary seal policy grants no scanning capability.
 
 Explicit lookup is separate:
 
 ```text
-ResolveExplicitPath != EnumerateSymbolWorld
+ResolveExplicitPath != EnumerateBindingWorld
 ```
 
-A committed symbol in Wseal can be explicitly resolved by later seal/compile
+A committed binding in Wseal can be explicitly resolved by later seal/compile
 code under ordinary construction transaction, name-resolution, dependency,
 authority, and policy rules. Internal authority may resolve it through
 `Σ_full`; external authority still requires a corresponding `Σ_export` view.
@@ -2141,7 +2123,7 @@ arguments supply the required static views, and the associated `()` candidate
 is fully admissible.
 
 Static views include meta values, compile values, compile Pattern/type
-projections of runtime symbols, and derived compile companions. Meta and compile
+projections of runtime bindings, and derived compile companions. Meta and compile
 callables may invoke one another in one evaluator. Their return ontologies differ
 in authority, not in result class:
 
@@ -2157,9 +2139,9 @@ privileged builtin
 ```
 
 An ordinary meta callable's default result is `τ` (`DefaultMetaResult = τ`). An
-explicit `f : … -> symbol` remains legal. `compile` may return a complete type
+explicit ordinary result type, including OverloadGroup, remains legal. `compile` may return a complete type
 value `tau` (participating in Pattern observation through `Core(tau)`, not
-itself an ordinary PatternValue/Object), a Symbol
+itself an ordinary PatternValue/Object), an OverloadGroup
 value, `type ref`, or any other declared ordinary PatternValue. Privileged
 builtins are member-specific: in this closure `struct -> tau`,
 `extend -> type`, and `inject -> type ref`. The root conditions are owned by
@@ -2167,7 +2149,7 @@ builtins are member-specific: in this closure `struct -> tau`,
 
 No OpenStatic task may read a runtime value or depend on a runtime effect. If a
 task is blocked only by a seal-only view, preserve its call node, Pattern
-arguments, symbol dependencies, and overload inputs as a `DeferredSealTask`.
+arguments, binding dependencies, and overload inputs as a `DeferredSealTask`.
 
 When otherwise equal and fully admissible, phase specificity uses the narrower
 visible domain:
@@ -2184,7 +2166,7 @@ global priority.
 Exposed stages are `seal` and `compile`; meta and runtime value slices are not.
 The same static evaluator and symbol-construction machinery consumes deferred
 tasks, explicit seal/compile callables, privileged seal calls, fixed Wpre scan
-results, and ordinary explicitly resolved symbols.
+results, and ordinary explicitly resolved bindings.
 
 When otherwise equal and fully admissible:
 
@@ -2192,14 +2174,14 @@ When otherwise equal and fully admissible:
 Vis(seal) ⊂ Vis(compile), therefore seal > compile in SealStatic
 ```
 
-SealStatic is terminal for static work. Missing symbols/projections/companions,
+SealStatic is terminal for static work. Missing bindings/projections/companions,
 runtime value/effect dependencies, or non-unique overload maxima are errors;
 there is no later static deferral phase.
 
 ### 11.3 Runtime
 
-Runtime consumes `RuntimeResidualFlow`, exposes runtime value slices, completes
-runtime symbol binding and overload selection, executes runtime bodies/effects,
+Runtime consumes `RuntimeResidualFlow`, exposes runtime value slices, continues
+the already resolved and sealed runtime invocations, executes runtime bodies/effects,
 and performs runtime branch value selection. A derived compile companion never
 replaces the real runtime call.
 
@@ -2208,7 +2190,9 @@ replaces the real runtime call.
 All ordinary bindings and call targets use one selection trunk:
 
 ```text
-C0 = CallableProjection(ResolveSymbol(path))
+b = Resolve(path)
+T = ReadNamedType(b)
+C0 = CallCandidates(T)
 C1 = ExposePhaseViews(
        C0,
        EvaluationStageContext(call),
@@ -2221,6 +2205,13 @@ M  = MaxPolicyAndOverloadOrder(
        argument PolicyMode coordinates,
        OutputModeDemand(call))
 ```
+
+Resolve returns a structural NameBinding, not a callable carrier. ReadNamedType
+reads its resident complete named type before candidate projection. An explicitly
+held OverloadGroup G instead supplies CallCandidates(G) at C0; it does not change
+path resolution. Only repeated exposure of the same stable candidate-entry
+identity may collapse; distinct contribution entries never deduplicate merely
+because their values or types normalize equally.
 
 Success requires exactly one maximal candidate. Failure can mean no exposed
 slice, no fully admissible entry, multiple incomparable maxima, a unique delete

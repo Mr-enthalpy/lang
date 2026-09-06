@@ -61,7 +61,7 @@ Normalized control-flow end events. `TailValue` delivers the final block value;
 
 The owned semantic ontology `Object = <Val1?, Pattern, Val2>`. Ordinary
 normalization observes all three components. Place, Policy, lifetime,
-capability, and Symbol identity are not Object axes.
+capability, and name-binding identity are not Object axes.
 
 ### Val1
 
@@ -73,7 +73,7 @@ opaque leaf that under-merges without inventing equality.
 The Object's owned selector-to-Object snapshot. Navigation-visible or inherited
 members are separate observations.
 
-### Complete type value (`tau`)
+### Complete pattern/type value (`tau`)
 
 `tau = bind alpha.<Core(tau), V_tau[alpha]>`. `Core(tau)` supplies ordinary
 type equality; `V_tau` is an immutable TypeMember callspace snapshot; the whole
@@ -82,18 +82,27 @@ observation distinguishes snapshots.
 ### TypeValueId
 
 An opaque implementation lookup key for Core material. It is not whole `tau`,
-Symbol identity, Place identity, or a defining-Symbol reference.
+name-binding identity, Place identity, or a defining-binding reference.
 
-### Symbol
+### Name binding and named type
 
-A semantic name-bearing cluster with identity independent of every value or
-type it carries. NameBinding, Symbol, `tau`, and Place are distinct.
+Name existence is a structural fact independent of visibility or value content.
+Structural names denote complete named types; same-name construction contributes
+to their V_tau. Ordinary lexical binding is not implicit overload synthesis.
+Name binding identity, pattern-value equality and Place identity are distinct.
+
+### OverloadGroup
+
+An ordinary outer candidate aggregation algebra, with eta(T) = {T}. It can be
+empty. Group += aggregates type/group candidates by its bucket relation without
+mutating the types; type += instead changes V_tau under OpenHere and final
+TypeOf(v) membership in Core(T). The current coarse bucket key is Core(T).
 
 ### SemanticOwner
 
-A node in the typed parent-linked owner graph. Package/namespace, callable,
-MetaInstance, and generated identities qualify their local identities through
-an owner.
+A node in the typed parent-linked owner graph. Source-established namespace
+owners, callable owners, canonical meta-instance owners, and generated owners
+qualify their local identities. A package graph supplies no semantic owner.
 
 ### MetaInstance
 
@@ -148,8 +157,8 @@ nor a union of endpoints.
 
 ### PolicyView
 
-One complete observed view containing a `PolicyPair` and an independent
-`PolicyMode`.
+One observed view with independent PolicyPair, PolicyMode and SafetyPolicy
+coordinates. Formal pair inheritance does not change unwritten plain mode.
 
 ### ResultPolicyDemand
 
@@ -170,8 +179,8 @@ overload resolution.
 
 ### CallableProjection
 
-The single candidate space formed by identity-deduplicating Symbol-local and
-complete-type callspace candidates. Name resolution occurs before this
+The ordinary call candidates of a named type's V_tau or of an explicit
+OverloadGroup through singleton type embedding. Name resolution occurs before this
 projection and is never retried because callability or applicability fails.
 
 ### Sealed selected invocation
@@ -235,8 +244,8 @@ committed actions.
 ### LifeName / NameView / LifetimeValue
 
 `LifeName` identifies a lifecycle subject; `NameView` is its observation at a
-continuation position; `LifetimeValue` is the first-class result of `@`.
-Reification does not require a Place.
+continuation position; `LifetimeValue` is its ordinary value observation. N@ is a name iff N is a
+name. Value and borrowed lifecycle fields remain distinct.
 
 ### Region generation
 
@@ -266,3 +275,45 @@ answer.
 A representation or semantic choice explicitly listed in
 `spec/planning/open-questions.md`. Open questions use opaque carriers and
 extension interfaces until resolved.
+
+
+### Structural let expression
+
+P let name::path requires freshness, installs the complete empty named type
+T_0 as Some(T_0), then returns mut type ref. Empty resident and absent name are
+different states; anchor/window formation follows ordinary construction. Declared policy P is independent of construction-reference mut policy.
+A following = expression is ordinary assignment, with no private rollback rule.
+
+### Associated compile state A
+
+A builtin globally indexed family of OverloadGroup Places. Its designated key
+is the stable identity of the existing construction/window subject, not ordinary
+Core equality. Equal keys imply the same OpenHere subject. Its write Pre checks
+that captured subject and ordinary write authority, including through saved
+references and after replacement of the original argument's carrier. Generalizing this guarded place capability remains open.
+
+### Anchored replication
+
+A ReinstantiationWitness for an eligible closure permits a new instance under
+a target anchor. Captures keep their semantic values and ordinary borrow rules;
+internal identities are consistently renamed. The original owner is unchanged.
+
+### SafetyPolicy and unsafe admission
+
+safe/unsafe is orthogonal to const/plain/mut. Unsafe admits compatible external
+facts after successful commit; it cannot satisfy a missing Pre or revoke
+history. The admitted axioms form the program's trusted semantic base; UB is
+external reality failing to satisfy an explicit unsafe admission.
+
+### HostCapability
+
+An otherwise unavailable host capability returning ordinary Object. Its source
+meta use determines acquisition and target-machine facts; no build side input
+or private optimizer assumptions supply them.
+
+### E, O1, O2 and planner
+
+E saturates ready actions without opportunity-seeking rewrites, E E = E, as
+synchronous projections of one continuation. O1 exposes new legal E work; O2
+lowers accepted runtime residue costs. Both use E facts and revalidate affected
+projections. The planner controls search, never meaning.

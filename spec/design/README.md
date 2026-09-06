@@ -1,59 +1,57 @@
-# Canonical semantic design
+# Canonical Semantic Design
 
-`spec/design/` contains the normative topic owners for semantic relations that
-extend beyond the normalized surface. Current frontend behavior remains under
-`spec/public/`; implementation handoffs belong under `spec/contracts/`; open
-representation and sequencing questions belong under `spec/planning/`.
+The topic owners below define one semantic system. Surface preservation lives
+under public, implementation handoffs under contracts, and consumer gaps and
+local representation questions under planning. A Rust carrier is not evidence
+that the corresponding source semantics is implemented.
 
 ## Topic owners
 
-| Topic | Normative owner |
-|---|---|
-| Object, complete type values, Place, borrow views, abstract literals, `@` | `symbol-world/type-values-places-and-borrow-views.md` |
-| Symbol-first construction, `struct -> tau`, `extend`, `inject`, OpenHere | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` |
-| namespace origin and construction ownership | `symbol-world/symbol-construction-units-and-namespace-origin.md` |
-| PolicyPair, PolicyMode, demand, migration, capability and compile projection | `symbol-world/symbol-policy-and-compile-flow-projection.md` |
-| value/type/associated-call projection | `symbol-world/function-object-call-model.md` |
-| relational Pattern semantics and extraction | `patterns-overload/pattern-values-relational-semantics-and-extraction.md` |
-| overload pipeline and no reopen | `patterns-overload/overload-resolution-design.md` |
-| invocation frame, result classes and residual boundary | `meta-invocation/meta-object-invocation-and-policy-reduction.md` |
-| SemanticContinuation, lifetime, Region, Color and access boundary | `lifetime/lifetime-policy-and-overload-boundary.md` |
-| package/build projection into the namespace graph | `build-package/` |
+| Topic | Owner |
+| --- | --- |
+| Names, named-type synthesis, structural let, type/group algebra | [names and groups](symbol-world/names-and-overload-groups.md) |
+| Complete pattern values, Core/whole equality, Places, borrows, literals | [pattern values and Places](symbol-world/type-values-places-and-borrow-views.md) |
+| Meta identity, root/return seal, struct, extend/inject, OpenHere | [construction](symbol-world/symbol-first-meta-construction-and-pattern-injection.md) |
+| Source composition and construction closure | [composition](symbol-world/symbol-construction-units-and-namespace-origin.md) |
+| Associated guarded compile state A | [associated state](symbol-world/associated-compile-state.md) |
+| Closure anchored replication | [replication](symbol-world/closure-anchored-replication.md) |
+| PolicyPair, PolicyMode, demand, migration, capability and stages | [policy](symbol-world/symbol-policy-and-compile-flow-projection.md) |
+| Exact callee/self, ordinary function objects and forwarding | [calling](symbol-world/function-object-call-model.md) |
+| Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
+| Invocation/result and meta partner identity | [invocation](meta-invocation/meta-object-invocation-and-policy-reduction.md) |
+| E saturation, residual, synchronous projections, O1/O2/planner | [evaluation](meta-invocation/evaluation-residual-and-optimization.md) |
+| Host IO and target-machine Objects | [host capabilities](meta-invocation/host-capabilities-and-machine-objects.md) |
+| Continuation-relative lifecycle, Region, Color and access | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
+| SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
+| Outermost return, D reduction and completion handoff | [control flow](control-flow/targeted-return-and-d-reduction.md) |
+| Level/main.lang anchor and PhysicalTree normalization | [physical source](build-package/build-system-design.md) |
 
-Satellite documents may describe consumers and interfaces but do not redefine
-the owner’s relation. If two current owners conflict, record the conflict; do
-not infer a resolution from implementation carriers.
+Satellite documents consume these relations rather than redefine them. Existing
+Core equality, Pattern normalization, identity, capture, policy migration and
+lifecycle rules remain in force alongside the named-type and associated-state
+algebras. If an unresolved contradiction is found, identify its exact premises;
+do not create another ontology to reconcile it.
+
+## Path nomenclature debt
+
+The `symbol-world/` directory and existing `symbol-*` filenames are retained
+link locations, not semantic categories. Renaming them is nomenclature debt;
+they confer no authority on the retired Symbol model. Use the topic-owner index
+and current definitions to interpret these paths. In implementation descriptions,
+remaining Rust symbol carriers are explicitly marked legacy; lexer `Symbol`
+tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
 
 ## Reading order
 
-For semantic evaluator work:
+    Object / complete pattern value / Place
+      -> name existence and named-type / group algebra
+      -> construction / OpenHere / anchored replication / A
+      -> Pattern relation / policy / exact-self call / invocation result
+      -> lifecycle / safety admission / host Objects
+      -> physical normalization / shared E / residual and optimization
 
-```text
-Object / complete tau / Place
-  -> Symbol and owner graph
-  -> relational Pattern
-  -> Policy and overload
-  -> invocation/result
-  -> construction/migration
-  -> lifecycle
-```
-
-For current implementation sequencing, read `spec/planning/roadmap.md` after
-the relevant topic owners. Historical alternatives are stored only under
-`spec/history/` and are not prerequisites for the current model.
-
-## Blocks
-
-| Block | Responsibility |
-|---|---|
-| `build-package/` | package identity, roots, mounts, namespace contributions and cache provenance |
-| `symbol-world/` | Object/type/Symbol/Place/Policy/construction relations |
-| `patterns-overload/` | Pattern relation, structural extraction and candidate selection |
-| `meta-invocation/` | invocation frames, declared results and residualization |
-| `policy-capability/` | focused Policy and capability reference |
-| `lifetime/` | continuation-relative lifecycle and access validation |
-| `mechanical-lowering/` | source-expressible pass algebra and lowering obligations |
-
-Implementation status is recorded as `Implemented`, `Consumer pending`,
-`Open`, or `Future` in the roadmap. A Rust carrier alone is never evidence that
-its relation is implemented.
+[Semantic spine](semantic-spine.md) supplies the compact dependency map.
+[Roadmap](../planning/roadmap.md) describes actual consumer coverage;
+[open questions](../planning/open-questions.md) contains only remaining choices.
+Historical files are non-authoritative and are not rewritten for current rules.

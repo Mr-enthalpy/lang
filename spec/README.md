@@ -7,7 +7,7 @@ The active specification is organized by responsibility.
 | Area | Location | Responsibility |
 |---|---|---|
 | Public surface | [`public/`](public/) | source-to-Normalized-AST behavior |
-| Contracts | [`contracts/`](contracts/) | enforced implementation handoffs |
+| Contracts | [`contracts/`](contracts/) | implementation handoffs and explicit pending consumers |
 | Canonical design | [`design/`](design/) | semantic topic owners |
 | Reference | [`reference/`](reference/) | shared terminology |
 | Planning | [`planning/`](planning/) | consumer frontiers and open questions |
@@ -41,12 +41,14 @@ is:
 
 ```text
 Object / complete tau / Place
-  -> Symbol and owner graph
+  -> names / named type / OverloadGroup / owner graph
   -> relational Pattern
   -> Policy and overload
   -> invocation/result
   -> construction/migration
-  -> lifecycle
+  -> lifecycle / unsafe admissions
+  -> host Objects / physical normalization
+  -> evaluator projections / residual / optimizer boundary
 ```
 
 Current implementation coverage is recorded in

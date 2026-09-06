@@ -936,9 +936,9 @@ Nested Pattern structure remains in that root. Same-root hole duplicates fail;
 a different root may lexically shadow an inherited spelling.
 
 Namespace consumers keep `FullNameView`, `ExternalNameView`, and
-`DefaultExtractionView` separate. Package-boundary crossing selects the
-external view; mount metadata redirects to an existing namespace without
-copying symbol identity. Private structural members remain in the full
+`DefaultExtractionView` separate. Source-established namespace/access
+relations select the external view; physical package boundaries and configured
+mounts have no semantic authority. Private structural members remain in the full
 structural model but are omitted from default extraction.
 
 Resolved capture requirements are abstract dependencies, not a declaration of
@@ -1243,3 +1243,26 @@ surface and must not be assumed:
 - D-reduction / Done_Return
 - Control-flow propagation
 - Result-slot injection
+
+
+## Canonical construction and consumer alignment
+
+Structural P let name::path is an expression that requires a fresh name and
+returns mut type ref. Its declaration policy P differs from the mut policy of
+that construction reference. P let name::path = e means ordinary assignment
+to the reference produced by the left expression, with no separate initialization
+protocol. Unqualified same-name let has synthesis sugar only in a normalized
+named-contribution position: it constructs a named type and its V_tau, not an
+OverloadGroup. Ordinary lexical binding is unchanged.
+
+The current parser/Norm carrier has not yet connected this expression family;
+its ordinary let form still requires an initializer. This section specifies
+the canonical handoff, not implemented syntax coverage. The future carrier
+must keep syntax-directed positional distinctions without resolving targets.
+[Name/type algebra](../design/symbol-world/names-and-overload-groups.md) owns the
+semantics; [closure replication](../design/symbol-world/closure-anchored-replication.md)
+removes any need to pass the LHS anchor backward into RHS normalization.
+
+The current ImplicitNearest return tag is structural spelling only. Implicit
+E return selects the outermost enclosing function layer. The build binder is
+pending alignment; neither parser nor normalizer resolves that target.

@@ -19,5 +19,5 @@ Its content input is the Object's `Val1?` and owned `Val2`. Structural
 extraction additionally requires explicit `DirectPatternChild` evidence and
 the `StructuralDefault` family filter.
 
-Complete type, Symbol, Place, Pattern root, and semantic value identities remain
+Complete type, NameBinding, OverloadGroup, Place, Pattern root, and semantic value identities remain
 separate throughout construction and extraction.

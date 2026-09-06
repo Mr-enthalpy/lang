@@ -1,55 +1,42 @@
-# Canonical semantic spine
+# Canonical Semantic Spine
 
-**Status:** reading index. This file does not define a parallel value,
-construction, extraction, or invocation ontology.
+This reading index introduces no separate value or execution ontology.
 
-The semantic dependency spine is:
+    Object normalization and complete pattern-value observations
+      -> structural name existence and named type
+      -> type contribution / closure anchored replication
+      -> ordinary OverloadGroup candidate aggregation
 
-```text
-Object normalization
-  -> complete type Core and whole observations
-  -> immutable type callspace
-  -> Symbol/value/type/call projection
+    Core / anchor / WindowLive / authority frame
+      -> OpenHere
+    actual Place / borrow / policy
+      -> Writable
+    stable construction-subject key's OpenHere + associated-place write authority
+      -> Writable(A[t])
 
-PatternRoot and Hole identity
-  -> R_Gamma applicability/extraction
-  -> generic deduction
+    resolved name / explicit group
+      -> ordinary candidate projection
+      -> R_Gamma applicability and extracted Hole valuation
+      -> total demand and Policy preference
+      -> unique sealed invocation
+      -> DynamicLegality / Pre
+      -> commit / Post / InvocationResult
 
-PolicyView and ResultPolicyDemand
-  -> candidate admissibility/preference
+    PhysicalTree(Level)
+      -> child-directory ordinary fresh-name actions (complete empty T_0)
+      -> serial file blocks + unordered sibling overlays
+      -> one meta evaluation
+      -> synchronous projections of one continuation
+      -> residual closure
+      -> materialization
 
-Place + capability + lifecycle context
-  -> post-selection DynamicLegality
+E owns meaning and saturates ready work without opportunity-seeking rewrites.
+O1/O2 consume established facts and transform equivalent continuations;
+affected projections revalidate new positions. The planner controls search.
+Host results and post-directed unsafe admissions enter that same fact world.
 
-unique sealed invocation
-  -> execution
-  -> InvocationResult
-```
-
-## Normative owners
-
-- Object, complete type values, Place and borrow:
-  `symbol-world/type-values-places-and-borrow-views.md`.
-- Symbol-first construction and complete-type results:
-  `symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
-- Policy, capability, migration and compile flow:
-  `symbol-world/symbol-policy-and-compile-flow-projection.md`.
-- Relational Pattern semantics:
-  `patterns-overload/pattern-values-relational-semantics-and-extraction.md`.
-- Candidate selection and no reopen:
-  `patterns-overload/overload-resolution-design.md`.
-- Invocation and result boundary:
-  `meta-invocation/meta-object-invocation-and-policy-reduction.md`.
-- Lifecycle and access boundary:
-  `lifetime/lifetime-policy-and-overload-boundary.md`.
-
-## Carrier discipline
-
-Implementation material may encode syntax observations, primitive execution,
-graph rendering, caching, or provenance. Such material cannot define Object
-equality, Pattern applicability, type identity, candidate selection, result
-class, DynamicLegality, or lifecycle meaning.
-
-Implementation status is maintained in `spec/planning/roadmap.md`; unresolved
-representation questions are maintained in
-`spec/planning/open-questions.md`.
+[Topic owners](README.md) define every relation.
+[Implementation roadmap](../planning/roadmap.md) separates connected substrate
+from pending source consumers. Indices, templates, caches, source paths, graph
+rendering and allocation cannot define equality, authority, candidate identity,
+lifecycle or result meaning.

@@ -24,7 +24,8 @@ The semantic layer is organized around these independent coordinates:
 - `Object = <Val1?, Pattern, Val2>` and complete ordinary normalization;
 - relational Pattern interpretation `R_Gamma(P,c,rho)`;
 - complete type values `tau = bind alpha.<Core(tau), V_tau[alpha]>`;
-- distinct Symbol, semantic value, Place, resident generation, and lookup IDs;
+- distinct NameBinding, named type, OverloadGroup, Place, resident generation,
+  and lookup IDs;
 - `PolicyPair`, primitive `PolicyMode = {const, plain, mut}`, capability
   realization, and post-selection DynamicLegality;
 - one name-resolution result followed by value/type/call projection;
@@ -32,7 +33,15 @@ The semantic layer is organized around these independent coordinates:
 - candidate-driven same-Type Policy migration;
 - construction authority, `OpenHere`, Writable, `extend`, and `inject`;
 - continuation-relative lifecycle facts, Region generations, Pre/Post, and an
-  extensible directed Color algebra.
+  extensible directed Color algebra;
+- guarded associated compile state A and witnessed closure re-instantiation;
+- unsafe semantic axiom admission and ordinary host-capability Objects;
+- source-only namespace construction, unordered physical normalization, and
+  one evaluator E with synchronized projections and validated optimization.
+
+Same-name construction synthesizes a named type; OverloadGroup is the separate
+candidate aggregation algebra. Current Rust carriers do not yet implement every
+closed relation; the roadmap records those consumer gaps.
 
 ## Workspace
 

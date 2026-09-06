@@ -1,533 +1,92 @@
-# Symbol Construction Units and Namespace Origin
-
-**Status: Canonical design for type-core namespace origin, construction-unit
-ownership, physical contribution authority, and cross-file reopening.
-Consumer coverage is recorded in `spec/planning/roadmap.md`.**
-
-This document owns the future rules that answer:
-
-```text
-who created a namespace/type/value subtree?
-which construction transaction may continue building it?
-which physical files have authority to contribute at a directory namespace?
-when may independently produced deltas be combined?
-```
-
-The Symbol role/member, `compile` / `meta`, meta return self-root, `struct`, pure
-`extend`, and place-level `inject` semantics are canonical in
-`symbol-first-meta-construction-and-pattern-injection.md`. The build projection
-and assembly phases are described in
-`../build-package/build-system-design.md` and
-`../build-package/namespace-assembly.md`. This note supplies the shared
-construction-origin contract used by both tracks.
-
-Policy pairs, binding `P1`, result `P2`, seal visibility, compile-flow projection, derived
-compile companions, match staging, and automatic require are canonical in
-`symbol-policy-and-compile-flow-projection.md`. Those flows may reuse material
-owned by a construction unit, but they do not relax namespace-origin uniqueness
-or cross-unit reopening rules.
-
-## 1. One Construction Capability Substrate
-
-Physical source assembly and ordinary meta invocation use the same symbol-world
-construction capabilities:
-
-```text
-declare Symbol role/value material
-extend the navigable structure of the current `Core(τ)`
-construct a direct child
-construct descendants owned by that new child
-form a replayable contribution/delta
-validate conflicts and authority
-install a delta atomically at an outer binding/assembly boundary
-```
-
-They differ in the origin and owner of the construction, not in the identity
-system of the resulting symbol graph:
-
-```text
-physical directory
-  -> physical namespace construction scope
-
-ordinary canonical meta invocation
-  -> virtual symbol construction scope
-```
-
-An ordinary meta instance is therefore not merely “like a folder.” It is a real
-virtual symbolic-navigation and construction-authority layer: it participates
-in navigation, anchors the default complete type value `τ_M` (`Root(τ_M) = M`;
-`Core(τ_M)` anchors the returned role root), may carry typed value members in
-`V_τ` (or in `V_S` for an explicit `symbol` result), and is a candidate
-cache/incremental unit.
-
-Formal ordinary meta invocation produces uninstalled construction material.
-Compiler-defined privileged AST operations such as `struct` and `extend` remain
-graph-installation-free, but use their individually bounded ambient scope/owner
-and current-unit capability rather than creating an ordinary meta instance.
-`inject` may write one existing type slot but creates no graph member/root.
-Physical assembly or an outer `let` performs `NamespaceDelta` creation,
-validation, and installation.
-
-## 2. Namespace Origin Is Unique
-
-Every created type core `Core(τ)` / derived namespace projection records exactly
-one creation origin:
-
-```text
-NamespaceOrigin =
-    PhysicalDirectory(path)
-  | SourceConstruction(source_construction_unit, construction_id)
-  | MetaConstruction(meta_construction_unit, construction_id)
-```
-
-The hard invariant is:
-
-```text
-under one parent namespace/symbol scope,
-one child namespace path has exactly one NamespaceOrigin
-```
-
-For a physical directory `ns/`, the child namespace `ns1::ns` may be created
-by exactly one of:
-
-1. the physical directory `ns/ns1/`;
-2. one implementation file physically in `ns/`, as a source-owned direct-child
-   construction that may include its complete new subtree (for example, a
-   `struct` whose resolved top owner is `ns1::ns`);
-3. one ordinary canonical meta invocation in `ns`, as a meta-owned virtual
-   node.
-
-The three sources are mutually exclusive creators of that role member/path.
-This does **not** mean that a physical directory may contain only one
-implementation file. Multiple files in `ns/` may create different direct
-children of `ns`; they may not co-create or reopen the same child subtree.
-
-Origin/provenance may remain attached for caching and diagnostics. It does not
-become part of a resulting `PatternValue` identity.
-
-## 3. Pure Objects Carry Namespace Role; Type Role Refines It
-
-Type and namespace are judgments over the common Object domain, not facets or
-parallel nominal Object kinds. The canonical definitions are owned by
-`type-values-places-and-borrow-views.md`:
-
-```text
-Pure(x)          <=> Val1(x) = absent
-WellFormedObject(x) => Navigable(Val2(x))
-NamespaceRole(x) <=> Pure(x)
-TypeRole(x)      =>  NamespaceRole(x)
-
-TypeRole subset NamespaceRole
-NamespaceRole not-subset TypeRole
-```
-
-`TypeRole` is an imported judgment; see
-`type-values-places-and-borrow-views.md` §2.1. Its formal criterion is defined
-normatively in
-`../patterns-overload/pattern-values-relational-semantics-and-extraction.md`
-§13 (`HasRegisteredSelfConstruction(Q)`, witnessed by `Val2(Q)[s] = K`). This
-layer only consumes it as an opaque predicate.
-
-This is not type-system subtyping. It describes role implication:
-
-```text
-Pure(x)          => x is navigable and has NamespaceRole
-TypeRole(Q)      => Q is a type-capable pure Object core
-NamespaceRole(x) and not TypeRole(x)
-                 => x is navigable but unavailable to AsType
-
-TypeRole(Q) and V_τ = CallSpace(tau)   -- captured at formation
-  => tau = <Q, V_τ> is the complete type value,
-     where V_τ is the callspace captured at type-value formation:
-     the direct TypeMember members placed into tau at that event
-     (TypeMember_Q at formation), not a global function of bare Q
-```
-
-A type-role Object's Pattern may contain pattern-material leaves. A
-namespace-role-only Object may still contain ordinary navigable `Val2` members,
-but it cannot form a complete type closure because `TypeRole(x)` does not hold.
-`Q` is the Object core, while `AsType` returns the complete formation snapshot
-`tau = <Q, V_τ>` (where `V_τ = CallSpace(tau)` is fixed at formation); it does
-not return bare `Q` as complete type identity.
-
-When one construction establishes `TypeRole(x)`, the Object and its navigable
-`Val2` share one owned construction origin. An Object whose namespace role was
-created by another origin cannot later acquire a new type-role definition. In
-particular, if `ns1::ns` already comes from physical directory `ns/ns1/`, source
-in the parent directory may not install a new type-role definition at
-that Object: doing so would give one navigable construction two creation origins.
-
-## 4. Construction Units
-
-There are two closed semantic construction units:
-
-```text
-SourceConstructionUnit =
-    one physical implementation file's closed source contribution
-
-MetaConstructionUnit =
-    one ordinary canonical meta invocation transaction
-```
-
-Stable implementations will assign identities such as
-`SourceConstructionUnitId` and `MetaConstructionUnitId`; exact Rust storage is
-not fixed here. An implementation filename does not enter the external
-namespace path, but this does not yet imply that renaming a file preserves its
-construction-unit identity, cache identity, or provenance. Such preservation
-requires a future stable logical-file identity independent of the physical
-path. At this stage only the namespace API is guaranteed to remain unchanged
-by a filename-only rename.
-
-When a unit creates a namespace/type/pattern child subtree, structural
-construction ownership belongs to that unit:
-
-```text
-NamespaceConstructionOwner(N) = construction unit that created N
-TypeConstructionOwner(T)      = construction unit that created T
-PatternConstructionOwner(P)   = construction unit that created P's owner tree
-```
-
-One source file may create a new direct child and fully construct that child's
-descendants inside its own delta. This is one closed construction, not
-cross-file parent-to-descendant reopening. Once the delta is committed, a
-parallel source file may not reopen the created subtree, even when the desired
-new child name does not yet exist.
-
-For example:
-
-```text
-a.lang creates T and T's type/pattern subtree
-TypeConstructionOwner(T) = SourceConstructionUnit(a.lang)
-
-b.lang attempts to add new child x under T
-  -> conflict: b.lang does not own T's construction
-```
-
-This is stronger than duplicate-name detection. The absence of `x` does not
-grant `b.lang` authority over `T`.
-
-Same-origin cache replay may reuse identical material. A replay with different
-material remains a hard conflict.
-
-## 5. Physical Directory Contribution Authority
-
-A physical directory creates both a namespace identity and a contribution
-authority boundary:
-
-```text
-direct contents of a physical directory namespace
-  may be contributed only by implementation files in that directory
-```
-
-If the filesystem contains:
-
-```text
-ns/
-  ns1/
-```
-
-then an implementation file in `ns/` may navigate to and read `ns1::ns`, but it
-may not contribute:
-
-```text
-x::ns1::ns
-```
-
-to reopen that physical child. Source that creates direct contents of
-`ns1::ns` must be physically located in `ns/ns1/`.
-
-The parent directory also may not create a source type at `ns1::ns`, because the
-physical child already owns that namespace origin. The physical directory tree
-therefore determines both namespace identity and contribution authority; it is
-not merely a lookup hint.
-
-Implementation filenames still do not create namespace path components. Two
-files in one directory may create distinct direct children at that directory's
-namespace level, but neither file receives authority to reopen a child created
-by the other.
-
-## 6. Current Cross-File Closure Rule
-
-At the current specification stage, independently owned source constructions do
-not merge into an existing symbol subtree:
-
-```text
-cross-file type child injection:          forbidden
-cross-file namespace child injection:     forbidden
-cross-file ordinary value member injection: forbidden
-cross-file overload-entry merging:        forbidden
-```
-
-This preserves one construction owner and avoids introducing undefined partial
-declarations, reopening syntax, cross-file visibility, diagnostic ownership,
-or merge authority. The restriction is **not** a logical consequence of source
-file contributions being unordered. Unordered value-entry union could be
-well-defined later if stable candidate identity and conflict laws are supplied.
-
-Possible future relaxations include:
-
-- distinguishing declaration files from value/implementation contribution
-  files;
-- assigning special filenames explicit contribution roles;
-- declaring a value/overload symbol `open` or `mergeable`;
-- defining a commutative overload-entry union with stable entry identity.
-
-Until such a design is adopted, ordinary value members and overload entries are
-closed under the same cross-file ownership rule as namespace/type children.
-Distinct direct child symbols created by distinct files remain legal; reopening
-one symbol is not.
-
-## 7. Ordinary Meta Construction Is One Transaction
-
-An ordinary canonical meta invocation is exempt from the *cross-unit*
-restriction for a precise reason:
-
-```text
-all symbol construction performed by that invocation
-  belongs to one MetaConstructionUnit
-  and one transaction
-```
-
-Within that transaction, the meta body may:
-
-- chain pure `extend` operations for different children over PatternValues whose
-  construction authority is still open in this `MetaConstructionUnit`, and use
-  `inject` only when writing an existing local type slot is also required;
-- construct a complete type/pattern subtree;
-- establish multiple heterogeneous value entries;
-- call `compile` helpers to obtain `PatternValue`s;
-- combine other uninstalled construction material;
-- return one ordinary result value — by default the complete type value
-`τ` (`DefaultMetaResult = τ`) — for which the outer
-  binding/assembly layer may form one `NamespaceDelta` candidate.
-
-These operations are not cross-file or cross-construction-unit reopening.
-They do not make arbitrary installed `Symbol` constructor values structurally extendable. The
-canonical `extend`/`inject` input and ownership preconditions are defined in
-`symbol-first-meta-construction-and-pattern-injection.md`.
-
-A helper ordinary-meta invocation with its own canonical instance has a separate
-`MetaConstructionUnit`. The caller may compose the helper's returned,
-uninstalled construction value according to explicit composition rules. It may
-not directly mutate an already installed subtree owned by the helper instance.
-
-The ordinary-meta returned result's self-root invariant follows from
-this ownership. For the default result `τ_M`, `Root(Core(τ_M))` equals the
-invocation's `MetaInstanceScope` unconditionally, because `Core(τ_M)` is the
-first projection of `τ_M`. For an explicitly `symbol`-typed result that carries
-a type core `Q`, the same root identity holds conditionally on `Q`'s presence.
-The condition is the core's presence, independent of `TypeRole(Q)`. An external Object may be
-a member under that root but cannot replace it. Compiler-defined privileged
-AST operations `struct`, `extend`, and
-`inject` use their separately specified scope/owner rule and do not acquire an
-ordinary externally navigable instance root merely by being called.
-
-## 8. Pattern Material and Namespace Values Are Orthogonal
-
-A pattern-material leaf belongs to the installed type core's `PatternValue`. It
-participates in:
-
-```text
-PatternValue identity
-pattern normalization
-ordered Product/layer or fully named Pattern-body navigation-map formation
-pattern matching and extraction
-type semantics when the owner additionally satisfies `TypeRole`
-```
-
-An ordinary namespace value member is a normal value-bearing Symbol under the
-type core's namespace projection (`Core(τ)`), analogous to a static member in some
-languages. Adding one:
-
-```text
-changes namespace graph / value-member material
-does not change PatternValue
-does not change pattern normal form
-does not enter a pattern set or ordered sequence
-does not participate in pattern extraction
-```
-
-For example:
-
-```text
-val::ns1::ns2::ns3
-```
-
-navigates the type core's namespace projection (`Core(τ)`) to `val` and then reads
-`val`'s value member. “Value
-is a leaf” means only:
-
-```text
-value projection is terminal for the current value lookup
-```
-
-It does not mean that a Symbol with `V` members cannot also carry a complete
-type closure `tau`. Type projection returns the `tau` that was formed and
-stored at installation; it neither forms a fresh closure at projection time
-nor turns the closure into another Object.
-
-## 9. Ordinary Core Installation Is Not Sum Extension
-
-One Symbol place's type core `Core(τ)` may be installed once by ordinary
-definition:
-
-```lang
-let T = A;
-let T = B;
-```
-
-If both forms attempt core installation, the second conflicts. It does not
-form `A | B`.
-
-These remain separate operations:
-
-```text
-ordinary first core installation
-explicit child construction through extend (directly or through inject)
-explicit sum construction / sum extension
-```
-
-The sum API's final spelling is undecided. Neither duplicate declaration nor
-`extend`/`inject` implicitly turns an existing type/child into a sum. An explicit
-read-transform-bind operation may be considered by later place/update rules,
-but unrelated repeated definitions remain conflicts.
-
-## 10. Ordinary Meta Invocation Navigation Atom
-
-An ordinary canonical meta invocation is one navigation atom. If `Vec` is in
-`std` and the argument is `int`, the correct form is:
-
-```text
-(int Vec::std)
-```
-
-Its child is:
-
-```text
-child::(int Vec::std)
-```
-
-Resolution first resolves `Vec::std`, then `int`, forms the canonical
-invocation, and treats the whole parenthesized invocation as one navigable
-symbol atom. These forms are invalid or semantically wrong:
-
-```text
-(int Vec)::std
-int Vec::std
-```
-
-The future semantic grammar may record:
-
-```text
-MetaInstanceNavigationAtom :=
-    '(' ArgumentProduct MetaCalleePath ')'
-```
-
-This note does not request a lexer/parser change.
-
-## 11. Export Roots on Construction Levels
-
-Each namespace construction level accepts `export` only on its direct
-top-level declarations. The construction transaction records an export root;
-it does not stamp a freely mutable flag on every descendant.
-
-```text
-ExportRetentionClosure(root) = PathAncestors(root) ∪ Subtree(root)
-```
-
-A child transaction cannot turn export off inside that subtree, while sibling
-subtrees remain unaffected. `public`/`private` are independent ordinary
-visibility attributes and may vary at every parent/child boundary. The
-construction unit must preserve both facts so external traversal can require
-both export-retention-closure membership and public reachability. Retention
-closure membership is not itself external export status.
-
-Private semantic dependencies may enter Wpre to keep an exported interface
-interpretable without becoming externally name-visible. Construction therefore
-maintains three independent views:
-
-```text
-Σ_full(N)    complete internal symbols and overloads
-Σ_export(N)  identity-preserving external projection
-Wfinal       Wpre ∪ Wseal world membership
-```
-
-Internal explicit navigation searches `Σ_full`; external explicit navigation
-searches `Σ_export`. Wpre/Wseal membership neither grants nor denies export
-visibility. An export descendant or ancestor may be externally exposed without
-being the original export root, while a private dependency may belong to Wpre
-without entering `Σ_export`.
-
-The canonical typed handoff is:
-
-```text
-ResolvedCandidateSnapshot {
-  identity,
-  pair: PolicyPair,
-  mode: PolicyMode,
-  realization_facts: CapabilityRealization[],
-  provenance
-}
-
-ExportAdmission {
-  in_export_retention_closure,
-  publicly_reachable
-}
-
-ExportCandidateView {
-  identity,
-  internal_candidate,
-  external_snapshot: ResolvedCandidateSnapshot
-}
-```
-
-The snapshot contains declaration/intrinsic candidate-family realization facts,
-not a context-indexed `DynamicLegality_Γ`. Its `internal_candidate` link is
-identity/provenance, not an internal observation edge carried into the external
-consumer.
-
-Declaration-side `P1Projection` is first applied to actual RHS/result entries.
-Namespace external admission then requires both export-retention-closure
-membership and public reachability through every path component. The
-retention closure alone is not sufficient: a private child and public
-descendants behind it remain internal. This admission is symbol-level and does
-not act as an arbitrary per-candidate eligibility callback or consume a future
-call/read/capture demand.
-
-For each admitted symbol, canonical semantics preserve candidate identity,
-resolved `PolicyPair`, whole-slot `PolicyMode`, declaration/intrinsic
-`CapabilityRealization` facts, and provenance. Consumer Policy demand and
-`DynamicLegality_Γ_consumer` are formed after lookup and ordinary invocation
-selection and do not universally project mode to const.
-
-An absent value component is structurally empty:
-
-```text
-Pv = absent
-  => value stages = ∅
-  && SemanticValueId = none
-
-PolicyMode remains independently const | plain | mut
-```
-
-Projection errors do not redefine the canonical absent-slot × PolicyMode
-matrix.
-
-The helper returns external views derived from public path reachability and
-retention.
-
-In particular, a binding/materialization destination must not be
-described as determining or rerooting a meta result role member's pattern
-identity. Final meta role-root identity is anchored by the meta instance's own
-symbol scope.
-
-## 12. Non-Goals
-
-This document does not:
-
-- modify the lexer, parser, Raw AST, or Normalized AST;
-- define source syntax for partial declarations or reopening;
-- define `compile`, `extend`, `inject`, or a sum API;
-- define final overload-entry identity or future mergeable-value syntax;
-- define a concrete namespace-origin or construction-unit carrier;
-- turn physical files or internal AST carriers into a macro system.
+# Source Composition and Construction Closure
+
+Status: canonical semantics. Physical provenance and semantic construction
+authority are independent.
+
+## 1. Physical blocks and ordinary meta actions
+
+    PhysicalTree(Level) -> MetaProgram
+    directory -> Unordered{sibling file blocks, child-directory blocks}
+    file -> Seq(meta actions)
+
+Sibling blocks start from a common input snapshot, produce independent overlays
+and join under ordinary effect algebra. A sequential implementation must preserve
+that result and cannot make a sibling's new writes available by file ordering.
+main.lang anchors the explicitly selected root; it has no sibling priority.
+
+Child-directory basenames normalize to ordinary fresh named-type construction
+followed by evaluation of that directory under the returned mut type ref.
+The selected root and implementation filenames add no segment. This generated
+action obeys the same creation and authority rules as written source; block
+nesting does not install owners itself. [Physical normalization](../build-package/build-system-design.md)
+defines the exact serial wrapper and unordered body law.
+Physical provenance, cache/source mapping and scheduling grant no construction
+permission and impose no same-name contribution prohibition.
+
+## 2. Construction authority
+
+Semantic construction uses the existing pattern value, anchor, evaluation
+coordinate, WindowLive and authority-frame judgments. Copying a value preserves
+its anchor and does not create a new open window. Writable belongs to actual
+Places/references and remains independent of the value's OpenHere judgment.
+
+A source action can create or modify a name only through the ordinary structural
+target and capability rules. Physical parenthood does not imply semantic
+authority. A contribution from a different file is neither automatically
+authorized nor automatically prohibited by that fact.
+
+## 3. Names and group composition
+
+    P let name::path : mut type ref
+    P let name::path = e == (P let name::path) = e
+
+Structural let requires freshness, creates the fresh named type, records its
+declaration policy and returns its mutable construction reference. Following
+assignment is ordinary assignment. Declared const policy does not remove the
+mutable reference needed during construction.
+
+At a normalized named-contribution position, unqualified let name = e
+contributes to the same named type's V_tau. Different sibling files
+can contribute to that named type. Distinct entry identity survives equal values.
+Ordinary lexical let and Pattern structural-child registration remain separate.
+
+Pure extend produces a new complete pattern value. inject reads, extends and
+writes through an actual mutable type reference. No file-level delta, owner
+wrapper or cache replay grants the required premises.
+
+## 4. Associated construction logic
+
+The source pattern value t controls the write window of ordinary compile-global
+A[t]. A receiver supplies its own mutable construction reference r by invoking
+the selected ordinary compile callable in that group. Source-side A[t] mutation
+and target-side r mutation satisfy their separate existing OpenHere/Writable
+checks. The [associated-state owner](associated-compile-state.md) defines this
+composition; no implementation-contribution protocol is necessary.
+
+## 5. Closure and external observation
+
+    receiver construction
+      -> ordinary construction calls and writes
+      -> name-set closure
+      -> external resolution
+
+For foo::(t meta_call), the meta call completes before external foo resolution.
+The externally visible names cannot grow after closure. Anonymous implementation
+objects remain in their /tau layer without reopening the parent namespace.
+
+True Close is irreversible under the existing open-window rules. Losing
+visibility across a masking meta frame is not Close. The ordinary meta return
+seal promotes only the owned result closure and checks external/borrow
+dependencies; source composition does not replace those identity/lifetime laws.
+
+## 6. Transactions and implementation
+
+A semantic transaction may stage ordinary state effects and commit them
+atomically. File boundaries and structural let assignment do not invent a
+special rollback protocol. Indices and NamespaceDelta carriers realize the
+enclosing semantic actions and expose no independent authority.
+
+The current implementation uses sorted discovery and per-declaration commits.
+Common-snapshot overlays, unordered join and the new structural expression
+consumer remain pending. Source files never become semantic construction owners
+as an interim implementation shortcut.

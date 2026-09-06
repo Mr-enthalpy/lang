@@ -505,7 +505,7 @@ an implicit `?`, and ordinary equality never calls an extraction helper.
 ## 7. Relationship to Control-Flow-Local Meta Evaluation
 
 The one-layer extraction view is complemented by a branch-local evaluation
-substrate (see `static-pattern-spaces-and-extraction-chains.md`§17). That
+substrate (see [semantic evaluation](../meta-invocation/evaluation-residual-and-optimization.md)). That
 substrate uses sum-pattern spaces (e.g. `if | else`) as branch-selection material.
 It enforces that only the selected branch may perform lookup, policy check, meta
 invocation, or local symbol construction. Unselected branches have no lookup,
@@ -515,3 +515,10 @@ That invariant applies when a compile-policy scrutinee has been evaluated and a
 single branch is selected. For a runtime-policy scrutinee, compile-flow
 projection retains the Pattern and inferred require retains all
 runtime-reachable alternatives as pattern-guarded contracts.
+
+
+The term “non-value” in this lowering denotes material excluded from automatic
+runtime pass/return actions, not a separate language ontology. These remain
+ordinary Objects under their policy views. Mechanical elaboration supplies the
+continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
+optional optimizer search cannot change its rules.

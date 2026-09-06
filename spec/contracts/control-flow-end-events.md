@@ -4,7 +4,8 @@ Contract for the syntax and normalized structure of control-flow end events
 (return terminal forms and tail values).
 
 **Status:** Implemented syntax/normalized structure plus build-layer
-return-target binding. Full self-capability resolution, result Pattern
+return-target substrate. Outermost implicit-target selection is pending
+alignment; full self-capability resolution, result Pattern
 delivery, D-reduction, Done_Return, and return execution are not implemented.
 
 ## 1. Scope
@@ -304,8 +305,8 @@ Normalizer:
   the value / explicit target syntax.
 
 Build elaboration:
-  resolves ImplicitNearest or a supported Explicit target against the active
-  ReturnTargetStack and retains the target frame's complete return binding
+  must resolve the implicit target to the outermost enclosing function layer,
+  or a supported Explicit target by its identity, and retain the complete return binding
   slot/Pattern.
 
 Later result/completion semantics:
@@ -331,7 +332,13 @@ this contract:
 - Result-slot injection
 ```
 
-The return-target binder implements active-frame resolution for
-implicit returns and supported explicit-name targets, reports returns outside
+The existing binder selects its most recent active frame for implicit returns;
+this behavior must be aligned to outermost selection. It supports explicit-name
+targets and reports returns outside
 a returnable frame, preserves nested unmaterialized closure returns for later
 elaboration, and stores the complete `NormBindingSlot` in `ReturnSlotRef`.
+
+
+The Raw/Norm tag ImplicitNearest is a current carrier spelling. It does not
+authorize nearest-frame semantics. No syntax change or parser name resolution
+is implied by the outermost rule.
