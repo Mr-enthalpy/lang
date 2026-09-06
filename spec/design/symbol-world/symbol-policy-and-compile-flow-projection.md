@@ -9,7 +9,7 @@ This document owns the complete chain:
 source policy syntax
   -> contextual elaboration
   -> PolicyPair
-  -> symbol resolution
+  -> binding resolution
   -> phase-slice exposure
   -> binding/overload selection
   -> OpenStatic evaluation
@@ -17,7 +17,7 @@ source policy syntax
   -> Runtime binding and evaluation
 ```
 
-## 1. Complete symbol flow and policy pair
+## 1. Complete binding flow and policy pair
 
 Language computation remains one object flow. Every object has the same three
 components:
@@ -305,11 +305,8 @@ part of the complete `τ` snapshot, so `copy τ`, `return τ`, and `store τ` al
 keep the knowledge of how to attempt reconstruction. It is never recovered by
 going back out of `τ`:
 
-```text
-τ
--> recover defining name binding(...)
--> inspect the named type's callspace (or the explicit group's type candidates)
-```
+The value directly supplies CallSpace(τ); no defining-binding recovery step
+participates.
 
 The global `const` / `mut` dispatcher itself does not guarantee conversion
 success. The required order is:
@@ -383,11 +380,11 @@ true  holds the value read through if::bool
 false holds the value read through else::bool
 ```
 
-`true` and `false` are ordinary bindings, not aliases. Each is a fresh symbol
+`true` and `false` are ordinary bindings, not aliases. Each is a fresh binding
 with a fresh place holding a copy of the value read through the source path:
 
 ```text
-SymbolId(true) ≠ SymbolId(if::bool)
+NameBindingId(true) ≠ NameBindingId(if::bool)
 PlaceId(true)  ≠ PlaceId(if::bool)
 Value(true)    =  Value(if::bool)
 ```
@@ -1550,7 +1547,7 @@ Migration explains availability; slicing consumes availability. This preserves
 the phase-layer separation:
 
 ```text
-ResolveSymbol
+Resolve
 ExposePolicySlice
 ReadValue
 ReadPattern
@@ -1800,15 +1797,15 @@ do not intersect atom spellings.
 Every phase distinguishes:
 
 ```text
-ResolveSymbol(path)
-ExposePolicySlice(symbol, phase)
+Resolve(path)
+ExposePolicySlice(binding, phase)
 ReadValue(slice)
 ReadPattern(slice)
 EnumerateValueFacet(slice)
 EnterCallableBody(candidate)
 ```
 
-Failure to expose a value slice is not an unresolved symbol. In particular:
+Failure to expose a value slice is not an unresolved binding. In particular:
 
 ```text
 Pv = runtime
@@ -1818,7 +1815,7 @@ Pp = compile
 has this OpenStatic behavior:
 
 ```text
-symbol/path resolves
+binding/path resolves
 runtime value is unreadable
 compile Pattern/type is readable
 derived compile companion (CompilePartner(F) = C(F)) may join static overload resolution
@@ -1837,11 +1834,11 @@ current Phase is OpenStatic or SealStatic
   => preserve already-resolved runtime computation/residual
 ```
 
-The runtime continuation consumes the preserved symbol/callable identities. It
+The runtime continuation consumes the preserved binding/callable identities. It
 does not repeat path resolution or overload choice merely because the value
 becomes readable later.
 
-Seal-only symbols follow the same ordinary-symbol rule. Their paths can be
+Seal-only bindings follow the same ordinary-binding rule. Their paths can be
 resolved independently of whether a facet is exposed in the current phase.
 
 ## 8. Mechanical compile-flow projection
@@ -1866,15 +1863,15 @@ govern transformations and revalidation by all affected projections.
 
 ## 9. Namespace visibility and export
 
-### 9.1 Three independent symbol views
+### 9.1 Three independent binding views
 
 Namespace resolution, external exposure, and compilation-world membership are
 different questions:
 
 ```text
-Σ_full(N)    complete namespace-internal symbol/overload set
+Σ_full(N)    complete namespace-internal binding/overload set
 Σ_export(N)  externally exposed projection of that set
-Wfinal       Wpre ∪ Wseal, the symbols materialized or retained this build
+Wfinal       Wpre ∪ Wseal, the bindings materialized or retained this build
 ```
 
 They are consumed by distinct operations:
@@ -1893,7 +1890,7 @@ ExportOverloadSet(name)
 ```
 
 This projection retains the original candidate identities; it does not create
-a second symbol universe. Consequently:
+a second binding universe. Consequently:
 
 ```text
 s in Wpre  does not imply s is exported
@@ -1919,12 +1916,12 @@ Let `InternalView(s) = ⟨Pv:Pp, μ⟩`, where `μ` is the resolved whole-slot
 PolicyMode. Export derives, rather than replaces, a second view:
 
 ```text
-ExportAdmission(symbol, path)
-  = InExportRetentionClosure(symbol)
+ExportAdmission(binding, path)
+  = InExportRetentionClosure(binding)
     && PubliclyReachable(path)
 
-ExportAdmission(symbol, path)
-  => for each candidate in FullOverloadSet(symbol):
+ExportAdmission(binding, path)
+  => for each candidate in FullOverloadSet(binding):
        ExternalView(candidate)
          = ExportSnapshotOf(ResolveCandidateSnapshot(candidate))
 ```
@@ -2003,7 +2000,7 @@ ExportAdmission {
 }
 
 if admission.in_export_retention_closure && admission.publicly_reachable:
-  for candidate in FullOverloadSet(symbol):
+  for candidate in FullOverloadSet(binding):
     internal_snapshot := ResolveCandidateSnapshot(candidate)
     external_snapshot := ExportSnapshotOf(internal_snapshot)
     insert identity-preserving external_snapshot into Σ_export
@@ -2016,18 +2013,18 @@ selected an invocation. Equality here is equality of stable candidate facts,
 not equality of internal and consumer-context observation edges.
 
 Export-retention-closure membership and public path reachability are separate
-symbol/name-level facts; both are required before a symbol contributes to
+binding/name-level facts; both are required before a binding contributes to
 `Σ_export`. In particular, a private child in an exported subtree and every
 descendant reached through that private path remain absent externally even
-when those symbols belong to `ExportRetentionClosure`.
+when those bindings belong to `ExportRetentionClosure`.
 
 The retention name is deliberate: membership means that an export root keeps
-the symbol in the graph considered for interface construction. It does not by
-itself mean that the symbol is externally exported. `Σ_export` is the external
+the binding in the graph considered for interface construction. It does not by
+itself mean that the binding is externally exported. `Σ_export` is the external
 candidate set.
 
 Admission does not select or filter individual overloads. Within an admitted
-symbol's complete overload set, every resolved candidate enters `Σ_export`
+binding's complete overload set, every resolved candidate enters `Σ_export`
 with the same identity, pair, and mode. A concrete consumer then performs the
 ordinary sequence:
 
@@ -2078,7 +2075,7 @@ Immediately before SealStatic, compute the least semantic materialization
 closure:
 
 ```text
-R0 = ExportedSymbols
+R0 = ExportedBindings
    ∪ MaterializedResultsOfExportedMetaFunctions
    ∪ ParameterDependenciesOfExportedMetaFunctions
 
@@ -2099,17 +2096,17 @@ SealStatic generates `Wseal` and finishes with:
 Wfinal = Wpre ∪ Wseal
 ```
 
-Only a compiler-known privileged seal function may enumerate the symbol world,
+Only a compiler-known privileged seal function may enumerate the binding world,
 and its fixed scan domain is `Wpre`. Adding `Wseal` never expands that domain.
 Ordinary seal policy grants no scanning capability.
 
 Explicit lookup is separate:
 
 ```text
-ResolveExplicitPath != EnumerateSymbolWorld
+ResolveExplicitPath != EnumerateBindingWorld
 ```
 
-A committed symbol in Wseal can be explicitly resolved by later seal/compile
+A committed binding in Wseal can be explicitly resolved by later seal/compile
 code under ordinary construction transaction, name-resolution, dependency,
 authority, and policy rules. Internal authority may resolve it through
 `Σ_full`; external authority still requires a corresponding `Σ_export` view.
@@ -2126,7 +2123,7 @@ arguments supply the required static views, and the associated `()` candidate
 is fully admissible.
 
 Static views include meta values, compile values, compile Pattern/type
-projections of runtime symbols, and derived compile companions. Meta and compile
+projections of runtime bindings, and derived compile companions. Meta and compile
 callables may invoke one another in one evaluator. Their return ontologies differ
 in authority, not in result class:
 
@@ -2152,7 +2149,7 @@ builtins are member-specific: in this closure `struct -> tau`,
 
 No OpenStatic task may read a runtime value or depend on a runtime effect. If a
 task is blocked only by a seal-only view, preserve its call node, Pattern
-arguments, symbol dependencies, and overload inputs as a `DeferredSealTask`.
+arguments, binding dependencies, and overload inputs as a `DeferredSealTask`.
 
 When otherwise equal and fully admissible, phase specificity uses the narrower
 visible domain:
@@ -2169,7 +2166,7 @@ global priority.
 Exposed stages are `seal` and `compile`; meta and runtime value slices are not.
 The same static evaluator and symbol-construction machinery consumes deferred
 tasks, explicit seal/compile callables, privileged seal calls, fixed Wpre scan
-results, and ordinary explicitly resolved symbols.
+results, and ordinary explicitly resolved bindings.
 
 When otherwise equal and fully admissible:
 
@@ -2177,7 +2174,7 @@ When otherwise equal and fully admissible:
 Vis(seal) ⊂ Vis(compile), therefore seal > compile in SealStatic
 ```
 
-SealStatic is terminal for static work. Missing symbols/projections/companions,
+SealStatic is terminal for static work. Missing bindings/projections/companions,
 runtime value/effect dependencies, or non-unique overload maxima are errors;
 there is no later static deferral phase.
 
@@ -2193,7 +2190,7 @@ replaces the real runtime call.
 All ordinary bindings and call targets use one selection trunk:
 
 ```text
-C0 = CallableProjection(ResolveSymbol(path))
+C0 = CallableProjection(Resolve(path))
 C1 = ExposePhaseViews(
        C0,
        EvaluationStageContext(call),

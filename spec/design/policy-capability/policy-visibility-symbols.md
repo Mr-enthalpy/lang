@@ -117,7 +117,7 @@ For `(compile || runtime):compile`, selecting the runtime Policy slice is also
 distinct from reading it. The slice already exists extensionally, so demand
 satisfaction does not invoke migration. In OpenStatic/SealStatic its runtime
 value is still unreadable and remains residual. The later Runtime continuation
-uses the already resolved Symbol/callable identity rather than reopening
+uses the already resolved binding/callable identity rather than reopening
 ordinary namespace or overload selection.
 
 Explicit-path resolution is authority-sensitive:

@@ -9,9 +9,17 @@ resources, policies, and the target machine. Configuration cannot add semantic
 facts through dependency mounts, package roots, target options, feature flags,
 defines, include paths or library paths.
 
-Tools may configure diagnostics, cache storage, parallel scheduling and artifact
-locations where these choices preserve program meaning. Future planner options
-may alter equivalent-rewrite search budget and strategy without altering E.
+Distinguish CompilerSemanticInvocation from surrounding process/tool setup:
+
+    CompilerSemanticInvocation = selected Level + optional O1/O2 planner controls
+    ProcessConfiguration = engineering storage/scheduling/diagnostic facilities
+
+Extra parameters of the language compiler invocation control only planner search;
+they do not add cache, target, feature or namespace choices to that interface.
+A surrounding process may arrange cache storage, parallel workers, diagnostics
+and artifact locations where they preserve program meaning. That process setup
+is not another langc semantic argument channel. Planner controls may alter
+equivalent-rewrite search budget and strategy without altering E.
 A convenience tool that generates source still produces explicit source actions;
 its private configuration is not a second evaluator input.
 

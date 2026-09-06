@@ -13,7 +13,7 @@ propagation, and execution/lowering semantics remain deferred.
 
 This document owns targeted-return completion and its D-reduction boundary.
 Automatic require does not define a second return/control algebra. Match
-structure in `CompleteSymbolFlow` already contains D residual and Done
+structure in the common semantic continuation contains D residual and Done
 completion constructors defined here and in
 `../patterns-overload/static-pattern-spaces-and-extraction-chains.md`; compile
 projection preserves them homomorphically. Projection and require slicing are

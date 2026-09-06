@@ -161,10 +161,16 @@ unqualified lookup. External navigation consumes the source-established export
 view and public/private reachability. Build configuration defines no additional
 visibility domain.
 
-Path/name resolution returns the complete exposed candidate identity set. It
-does not choose the first entry and does not perform overload selection;
-fully-admissible filtering and the existing partial-order/unique-maximum rule
-remain later consumers.
+Path/name resolution returns one terminal NameBinding, preserving the resolved
+host chain and exposure context. It does not return a candidate set:
+
+    Resolve(path) -> terminal NameBinding
+      -> read resident complete named type
+      -> consumer projection (including exposed call candidates)
+      -> admissibility and unique overload selection
+
+An empty or inapplicable projection never restarts name resolution. Candidate
+identity sets belong to the projection consumer, not the resolver.
 
 `ExportRetentionClosure` is a retention/materialization closure. Membership
 does not itself mean external visibility. External candidate projection keeps
@@ -228,29 +234,32 @@ private let name = expr
 let () = callable_expr
 ```
 
-This is an associated Val2 contribution to the current Pattern owner. It is not
-a structural field and not sugar for the postfix form:
+A named declaration here is in an explicit named-contribution position:
+it first uses FreshNamedType if the name is fresh, otherwise the existing
+named type. Eligible closure contributions enter that named type's V_tau
+under Writable, OpenHere and final anchored membership checks. Required Core
+construction uses extend/inject, not an implicit side effect of type +=.
 
 ```text
-Val1 contribution    = none
-Pattern contribution = none
-Val2 contribution    = initializer value entry
+named selector -> structural binding / Place
+occupied resident -> complete named type T
+contribution -> T.V_tau through ordinary type contribution
 ```
 
-The initializer may be an ordinary value, including a callable value; it is
-not restricted to `Pv = absent`. A named target requires one plain binder.
-Extraction/Product/Sequence/Pack LHS forms are rejected. The one empty Product
-target `()` is reserved as the current owner's call-entry installation rather
-than an ordinary value named `()`. A closure carrier in this initializer-shaped
-position is consumed as call-entry implementation material; it is not first
-materialized as a standalone anonymous function object.
+The initializer is not inserted directly as Val2[name]. Neither the binding
+identity nor an independently collected initializer bag is a Val2 Object.
+This form does not register a structural field or replace the postfix field
+form. A named target requires one plain binder; extraction/Product/Sequence/Pack
+targets do not acquire named-contribution sugar. The empty Product target ()
+is separately the current exact callee type's call-entry construction position.
+Closure syntax there supplies complete entry implementation material under its
+own rules; it does not authorize general receiver adaptation.
 
-An inner associated let contributes to the named type under construction.
-Structural P let name::path first creates a fresh type place and returns mut
-type ref; a following = expression is ordinary assignment. Ordinary lexical
-let does not perform same-name synthesis. Final closure membership is checked
-at contribution, possibly through witnessed InstantiateUnder; no LHS anchor is
-fed backward into RHS parsing or normalization.
+Structural P let name::path instead commits Some(T_0), returns mut type ref,
+then performs ordinary assignment for its = suffix. Ordinary lexical let uses
+neither named-contribution sugar nor structural fresh-name formation. Final
+membership for a type contribution may use witnessed InstantiateUnder without
+feeding an LHS anchor backward into RHS parsing or normalization.
 
 Named callable contributions remain ordinary function objects. Their first
 written formal is their own caller/self; an object accepted by a member-like

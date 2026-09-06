@@ -37,7 +37,7 @@ ClosurePlacement
 
 CallableImplementation
   = UserBody {
-      strategy: Ordinary | Named(Symbol),
+      strategy: Ordinary | Named(UnresolvedName),
       body: Block
     }
   | Defaulted
@@ -189,7 +189,7 @@ Candidate
 It is applied only after the fully admissible set `A` exists:
 
 ```text
-ResolveSymbol
+ResolveNameBinding
   -> CallableProjection
   -> ExposePhaseViews
   -> ProjectExpectedPolicy

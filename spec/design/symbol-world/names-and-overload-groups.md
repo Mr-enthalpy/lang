@@ -101,6 +101,12 @@ key-derived requirement.
 
 ## 5. Fresh-name creation returns a construction reference
 
+Only the final selector may be fresh. Every intermediate parent in a multi-
+segment path must already exist and be navigable under its ordinary view and
+borrow permissions. Resolving a missing intermediate parent fails before
+FreshNamedType; structural let does not create directories of missing parents
+or infer their policy. Explicit successive formation can create such a chain.
+
 Given a structural target reached from mut type ref under the existing
 Writable, OpenHere, lifetime and construction authority premises:
 
@@ -173,7 +179,12 @@ Explicit structural P let name::path retains its fresh-name precondition.
 
 Assignment remains ordinary assignment even where a selected ordinary type
 construction operation consumes a closure. This does not define a universal
-equation between = and +=. Anchored replication is a closure capability usable
+equation between = and +=. In particular, structural `let f::path = closure`
+does not request TypeAdd or AnchorFor. It is valid only if ordinary assignment
+accepts that RHS for the type resident; a closure-expression-produced function
+value has no implicit closure-to-type contribution conversion here. The explicit
+contribution derivation is in [closure replication](closure-anchored-replication.md).
+Anchored replication is a closure capability usable
 by type contribution and inject, not a special RHS rule for let.
 
 ## 7. Identity and closure

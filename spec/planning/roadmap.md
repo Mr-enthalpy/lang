@@ -184,7 +184,9 @@ engineering facilities after their inputs and effects obey the source model.
 
 - Replace the optional pure-P/sibling cluster carrier semantics with named-type
   synthesis and explicit OverloadGroup aggregation. Existing Rust cluster/result
-  labels are implementation encodings, not the target ontology.
+  labels are implementation encodings, not the target ontology. In particular,
+  DeclaredResultClass::ClusterSymbol must be removed or re-encoded as private
+  implementation material; it is not an ordinary semantic result class.
 - Connect structural P let name::path as a fresh-name expression returning mut
   type ref after installing the complete empty T_0 with ordinary anchor/window
   facts. The current parser requires a let initializer. Following = must use
@@ -193,7 +195,9 @@ engineering facilities after their inputs and effects obey the source model.
   membership; connect ordinary group updates to their distinct bucket algebra.
 - Connect witnessed anchored replication, preserving captures, internal
   alpha-renaming and the original closure identity. Do not feed the destination
-  anchor backward into parsing or RHS evaluation.
+  anchor backward into parsing or RHS evaluation. Structural let = closure
+  does not itself invoke TypeAdd; explicit += or a named-contribution position
+  must select that operation after any required Core preparation.
 - Implement builtin A's guarded indexed Places using stable construction-subject
   identity, not ordinary Core equality. Equal keys must denote the same OpenHere
   subject; saved references retain that subject across carrier replacement.

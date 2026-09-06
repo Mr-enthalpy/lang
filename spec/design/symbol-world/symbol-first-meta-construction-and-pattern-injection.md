@@ -224,7 +224,7 @@ Their roles are:
 
 ```text
 NameBindingId:
-  identity of the resolved symbol cell
+  identity of the resolved binding cell
 
 PlaceId:
   identity of the bindable/openable installation location
@@ -266,7 +266,7 @@ This applies to ordinary values, type values, pattern values, callable values,
 and values later used as meta construction material.
 
 Pattern navigation follows the same rule. A normalized pattern navigation name
-may happen to render exactly like the source symbol path that carries it, but
+may happen to render exactly like the source binding path that carries it, but
 matching diagnostic text does not merge their identities:
 
 ```text
@@ -335,7 +335,7 @@ ordinary overload. Empty queries with no runtime alternative fail, and no
 Policy failure searches structure-changing operations. See
 `../../contracts/policy-migration.md`.
 
-The unannotated form:
+In an ordinary lexical position, the unannotated form:
 
 ```lang
 let r = expr;
@@ -349,7 +349,7 @@ fresh NameBindingId s
 fresh PlaceId p
 --------------------------------
 Gamma |- let r = expr
-          where value(s) := v
+          where BindingPlace(s) = p and Contents(p) = Some(v)
 ```
 
 If the right-hand expression is a source path, evaluation expands to:
@@ -367,7 +367,8 @@ For example:
 let a = b;
 ```
 
-reads the value carried by `symbol(b)` and binds that value to `symbol(a)`.
+resolves b to one NameBinding, reads its resident value and installs that value
+in a's fresh lexical Place.
 It does not rename `a` to `b`, make their `NameBindingId`s equal, or merge their
 `PlaceId`s.
 
@@ -386,23 +387,30 @@ never requires or creates a `value -> original carrier name binding` inverse map
 No declaration form forwards name binding/place lookup (§2.6); shared observation of
 another object is expressed only by a borrow view.
 
-The rule does not change merely because the value is a type value, structured
-pattern value, or symbol-construction result. In particular:
+The lexical rule applies to ordinary values, including complete type values.
+A nested-path let is instead the structural expression followed by assignment:
 
 ```lang
 let t1::t = bool;
 ```
 
-means:
+Here and in subsequent abbreviated examples, t denotes an already obtained
+authorized mut type ref; a type-valued binding must instead be written
+`t |> (type ref)`. Every intermediate parent already exists.
 
 ```text
-resolve symbol(bool)
-  -> read the PatternValue carried by symbol(bool)
-  -> bind that PatternValue to destination symbol/place t1::t
+r_t1 := FreshNamedType(t, t1, ordinary declared policy)
+  -> commit Contents(Target(r_t1)) = Some(T_0)
+  -> return r_t1 : mut type ref
+r_t1 = bool
+  -> ordinary assignment of the complete resident read through Resolve(bool)
+  -> validate the selected assignment's Pre and commit the replacement
 ```
 
-It does not reroot the `PatternValue`, rewrite its internal navigation, rename
-its top pattern to `t1`, or identify `symbol(t1::t)` with the pattern owner.
+There is no direct Absent-to-RHS binding transition. If formation fails, no
+destination is created; if assignment fails, the formed T_0 remains subject
+only to the existing enclosing transaction. Successful assignment does not
+reroot the RHS or equate the destination NameBindingId with its Pattern owner.
 
 Likewise:
 
@@ -414,8 +422,8 @@ let U: type = T;
 has:
 
 ```text
-name binding(T) != name binding(uint8)
-name binding(U) != name binding(T)
+NameBindingId(T) != NameBindingId(uint8)
+NameBindingId(U) != NameBindingId(T)
 Place(T)  != Place(uint8)
 Place(U)  != Place(T)
 
@@ -452,7 +460,7 @@ navigation/value entry in the normalized map.
 
 let destination = source
 uniformly reads source's value and binds it to destination. It does not reroot
-patterns, perform symbol aliasing, or merge place identity.
+patterns, perform binding aliasing, or merge place identity.
 ```
 
 Any separate rule that requires a compile-determined projection source to have
@@ -652,9 +660,8 @@ projection of the default result and hence always present. An
 implementation may retain a carrier to accumulate those members,
 but may not expose that carrier as a callable result ontology.
 
-A cluster-shaped invocation outcome transports multi-member construction
-material after semantic result-class formation. It is not an ontological result
-category. The following roles remain distinct:
+Private execution material may transport construction effects before the
+ordinary semantic result is formed; it is not an additional result category. The following roles remain distinct:
 
 ```text
 Explicit group value           — ordinary OverloadGroup (§4.7)
@@ -687,7 +694,7 @@ compile:
 - structured pattern values.
 
 All of these may be passed to and returned from a `compile` callable. A computed
-type value is still a value: it is not thereby an installed type symbol, a
+type value is still a value: it is not thereby an installed type binding, a
 namespace node, or an extendable place.
 
 #### 4.2.1 Root conservation
@@ -863,7 +870,7 @@ ownership. This owner is not a meta-instance owner such as
 
 ### 4.3 Ordinary `meta`
 
-`meta` is symbol-level staging. An ordinary meta invocation is the only
+`meta` is construction-stage evaluation. An ordinary meta invocation is the only
 construction that establishes a new navigable `MetaInstanceRoot`, and by §4.1
 every ordinary meta invocation does so:
 
@@ -1194,10 +1201,11 @@ return_slot(r) = NameBinding of τ_M / G (lexical name, not a result class)
 The slot name `r` does not add another component to the final navigation path.
 Material written through `r` contributes role/value members or children to
 `τ_M` rooted at `M`; it does not
-create `r::M` or place an extra symbol named `r` beneath `M`. For example, a
-pattern-child contribution written as `let t1::r = bool;` inside the invocation
-targets `t1`'s `M`-rooted `τ_M` under the applicable pattern-construction
-expectation, not `t1::r::M`.
+create `r::M` or place an extra binding named `r` beneath `M`. For example, a
+structural expression `let t1::(r |> (type ref)) = bool;`, given the already
+formed result resident r, first commits T_0 at the M-rooted child t1, then
+ordinarily assigns the complete bool type. It creates no extra r path segment
+and registers no Pattern-child edge; structural registration remains extend/inject.
 
 Canonical argument identity follows parameter rank:
 
@@ -1227,7 +1235,7 @@ ResultValue = τ
    and root_pattern_scope(Core(τ)) = M
 ```
 
-This is identity equality between a pattern root and the meta-instance symbol
+This is identity equality between a pattern root and the meta-instance binding
 scope. It is not equality of rendered strings. The root identity is:
 
 ```text
@@ -1236,7 +1244,7 @@ MetaRoleRoot = MetaFunctionIdentity
 ```
 
 Nodes beneath the root compare by normalized value: same root and same
-normalized value imply the same pattern node. Source spelling, source symbol
+normalized value imply the same pattern node. Source spelling, source binding
 names, and provenance do not participate in node equality.
 
 Consequently, both of these meta bodies are invalid:
@@ -1279,13 +1287,13 @@ External `PatternValue`s may be members of the self-rooted core; they may not
 replace the root. For example:
 
 ```lang
-let fn = (self, t: type): meta -> r: type => {
-    let t1::r = bool;
-    r;
-};
+// In a meta body with its self-rooted complete result already bound as r:
+let t1::(r |> (type ref)) = bool;
+r;
 ```
 
-keeps `(t fn)` as the returned result's root and includes the externally owned
+first forms the fresh child T_0 and then assigns the complete bool type. After
+success, it keeps the existing MetaInstance as the result's root and includes the externally owned
 `bool::` value as a member beneath that root. It must not be summarized as
 `NamespaceCoreProjection(r) = bool::`.
 
@@ -1341,7 +1349,7 @@ construction value; any resulting type core `Core(τ)` must pass the self-root i
 §4.4.
 
 There is no fourth "alias member" event. A member is created by `let`, written by
-`=`, and nothing forwards an external symbol's `Val2` material into a member.
+`=`, and nothing forwards an external binding's `Val2` material into a member.
 Where shared observation of an external object is wanted, the member holds a
 borrow view (`ref` / `share`), which is an ordinary value and is subject to the
 ordinary member rules — including the rule that a borrow edge is not owned
@@ -1538,9 +1546,9 @@ establishes its own destination identity and Place. Construction effects and rep
 execution material, not a second value ontology.
 
 Value equality remains independent of source name and navigation path and does
-not merge symbol or place identity. However, that general identity separation
+not merge binding or place identity. However, that general identity separation
 does not waive the meta return self-root invariant (§4.4): `r = uint8` as a direct meta
-return core installation is rejected after symbol resolution/value read, rather than
+return core installation is rejected after binding resolution/value read, rather than
 being reinterpreted as forwarding or accepted as an identity meta type.
 
 ### 4.7 OverloadGroups are ordinary algebraic values
@@ -1748,7 +1756,7 @@ structured owner/child relations.
 
 When an ordinary meta callee has an outer namespace path, the complete
 invocation remains
-one navigable symbol atom. If `Vec` is found under `std` and the argument is
+one navigable binding atom. If `Vec` is found under `std` and the argument is
 `int`, the canonical form is:
 
 ```text
@@ -1761,7 +1769,7 @@ Resolution proceeds as:
 resolve callee path Vec::std
   -> resolve argument int
   -> form canonical meta invocation
-  -> treat the complete invocation as one navigable symbol atom
+  -> treat the complete invocation as one navigable binding atom
 ```
 
 A child of the resulting instance is written:
@@ -1889,10 +1897,12 @@ does not reroot the right-hand pattern into the internal pattern scope of
 `t1::t`. Its effect is:
 
 ```text
-evaluate the right-hand struct invocation
-  -> obtain an uninstalled pattern value with an already resolved owner
-resolve the destination symbol/place t1::t
-  -> bind/install the construction result there without changing that owner
+FreshNamedType(t, t1, P)
+  -> commit Some(T_0) and return the destination mut type ref
+ordinary assignment through that reference
+  -> evaluate the struct RHS under its own ordinary owner rules
+  -> validate assignment and replace the resident with the complete result
+  -> preserve the result's resolved owner
 ```
 
 Every construction value must therefore distinguish:
@@ -2176,8 +2186,10 @@ normalized leaf value. It erases only how the child's navigation was obtained
 (inherited versus explicit) and how the child was formed (internal versus
 extended) — never the Pattern entity identity of `inner`.
 
-Ordinary navigated `let inner::(s |> (type ref)) = bool::;` installs `bool::`
-as an associated type (Val2 member) named `inner` under `t`'s scope. It does not
+Structural `let inner::(s |> (type ref)) = bool::;` first forms the fresh
+complete T_0 at inner, then ordinary assignment replaces it with the complete
+type read through bool::. The associated Val2 resident is that complete type,
+not a binding identity or a raw initializer entry. It does not
 register `inner` in `t`'s Pattern structure. Pattern-member registration is a
 privilege of `struct` inline construction and the `extend` primitive (directly
 or through `inject`). See §12.1 for the full privilege boundary.
@@ -2294,9 +2306,10 @@ bound elsewhere, while a closed-window value read through a writable
 `type ref` is rejected. There are deliberately no `type ref` or `type share`
 overloads for `extend`.
 
-A navigated `let child::target = result;` is **not** a structural installer:
-ordinary navigated `let` creates a Val2 associated member and never substitutes
-for `extend` or for the write-back performed by `inject`.
+A navigated `let child::target = result;` performs FreshNamedType through the
+existing authorized parent reference, then ordinary assignment. It creates an
+associated named-type resident, not a registered Pattern-child edge. It cannot
+substitute for extend's structural registration or inject's write-back.
 
 #### 8.2.3 `inject` is the read--extend--write wrapper
 
@@ -2412,7 +2425,7 @@ At that leaf:
 
 - `name` is the leaf's pattern name;
 - `E` is value-bearing material that must be resolved through its external
-  symbol binding and then evaluated;
+  binding binding and then evaluated;
 - different leaves do not require the same `E`.
 
 Consequently:
@@ -2425,8 +2438,8 @@ u second
 means:
 
 ```text
-first is the pattern name; the leaf value is read through symbol t
-second is the pattern name; the leaf value is read through symbol u
+first is the pattern name; the leaf value is read through binding t
+second is the pattern name; the leaf value is read through binding u
 ```
 
 Pattern-name identity and leaf-value origin are independent. Using `t` for both
@@ -2530,7 +2543,7 @@ For example:
 ```
 
 Every entry contains an already completed Pattern navigation and its normalized
-resident value. Neither coordinate is a source `name binding`, source path, or symbol
+resident value. Neither coordinate is a source `name binding`, source path, or binding
 reference. The complete navigation is the canonical map key; the resident is
 the canonical value at that navigation.
 
@@ -2563,18 +2576,18 @@ produce the same pattern value because both direct children have top-pattern
 names.
 
 Once normalized, the map does not classify elements as “internal patterns” or
-“external patterns.” Parent-scope inheritance, explicit `::`, ordinary symbol
+“external patterns.” Parent-scope inheritance, explicit `::`, ordinary binding
 binding, and `extend` explain how a `PatternValue` was resolved or produced
 before normalization. After its navigation name is fully qualified, source
 category and construction route do not participate in `PatternValue` identity,
 map equality, or extraction semantics.
 
-An implementation may retain source symbol, inherited/explicit navigation,
+An implementation may retain source binding, inherited/explicit navigation,
 binding origin, or injection origin as provenance for diagnostics and replay.
 That provenance must not affect `PatternValue` equality.
 
 Insertion of an equal `(complete navigation, normalized resident)` entry is
-idempotent. Distinct source symbols may remain distinct extraction entry paths
+idempotent. Distinct source bindings may remain distinct extraction entry paths
 while contributing only one canonical map entry:
 
 ```lang
@@ -2591,7 +2604,10 @@ Read(Place(resolve(b::t))) = bool::
 }
 ```
 
-Both `a::t` and `b::t` may be used as source navigation paths. After symbol
+Each statement above first commits its own T_0 and then assigns the read
+complete bool type through ordinary assignment. The following equalities and
+normalization describe the state after both assignments succeed, not an
+Absent-to-RHS transition. Both paths may then be used as source navigation paths. After binding
 resolution and value read, both look up the single `bool::` entry. The layer
 is neither a multiset nor a relation keyed by the carrier name binding's source name.
 It is keyed by canonical complete Pattern navigation.
@@ -2600,7 +2616,7 @@ name binding paths and `PatternValue` navigation names may coincide or differ. F
 example, the same spelling may describe:
 
 ```text
-symbol navigation path:                 t1::t
+binding navigation path:                 t1::t
 PatternValue navigation carried there:  t1::t
 ```
 
@@ -2611,15 +2627,15 @@ spelling does not turn it into a name binding reference. Conversely:
 let t3::t = bool;
 ```
 
-may establish:
+after fresh formation and successful ordinary assignment establishes:
 
 ```text
-symbol navigation path:                 t3::t
+binding navigation path:                 t3::t
 PatternValue navigation carried there:  bool::
 ```
 
-The symbol path and value path are then visibly different. Both cases use the
-same symbol-resolution/value-read semantics.
+The binding path and value path are then visibly different. Both cases use the
+same name-resolution/value-read semantics.
 
 ### 9.2 Naked Product or Pattern body containing a bare value
 
@@ -2751,7 +2767,7 @@ same owner + same child + different material
 Replay origin controls whether a construction action may be reused; it does not
 become part of the resulting `PatternValue` identity.
 
-An ordered layer still preserves positional identity; a symbol-keyed or
+An ordered layer still preserves positional identity; a binding-keyed or
 name-keyed map must not replace either the ordered layer or the normalized
 map keyed by canonical complete Pattern navigation.
 
@@ -2768,11 +2784,11 @@ does not define a competing Pattern normal form.
 Both inherited and explicit pattern navigation use the same final two steps:
 
 ```text
-symbol resolution
+binding resolution
   -> value read
 ```
 
-They differ only in how the symbol path is formed.
+They differ only in how the binding path is formed.
 
 Each Pattern layer has one own-navigation state:
 
@@ -2846,64 +2862,49 @@ frozen source navigation order.
 
 Default inheritance is therefore not “indirect value access” while explicit
 navigation is “direct value access.” Neither form directly touches a pattern
-value. Both first produce one exact symbol path, resolve it, and then read its
+value. Both first produce one exact binding path, resolve it, and then read its
 value.
 
 The pattern expectation permits only a `PatternValue`/pattern interface exposed
-by that symbol. It does not fall back to invoking arbitrary ordinary values or
+by that binding. It does not fall back to invoking arbitrary ordinary values or
 callables from the heterogeneous typed `V` members.
 
-### 11.2 Binding a fully qualified PatternValue through another symbol
+### 11.2 Assigning a fully qualified PatternValue to a fresh structural name
 
-Consider a globally defined symbol construction:
+Given a globally bound complete type:
 
 ```lang
 let bool = ((if | else) bool) |> struct;
 ```
 
-Two semantic objects may share the diagnostic spelling `bool`:
+The structural identity NameBindingId(bool) differs from the Pattern head of
+the complete type read through that binding. NameBinding is not another Object.
 
-```text
-symbol(bool)
-pattern head bool
-```
-
-They are not one identity. The first is the source-resolved symbol. The second
-is the owner/head projection inside the `PatternValue` carried by that symbol.
-
-Now:
+With t an existing authorized mut type ref:
 
 ```lang
 let t1::t = bool;
 ```
 
-uses the general value-binding rule:
+has exactly this structural trace:
 
 ```text
-resolve symbol(bool)
-  -> read its PatternValue, whose fully qualified navigation is bool::
-resolve destination symbol/place t1::t
-  -> bind that same PatternValue to t1::t
+FreshNamedType(t, t1, P)
+  -> NameBindingId(t1::t), resident Some(T_0), mut type ref r_t1
+ordinary assignment r_t1 = bool
+  -> Resolve(bool) = one terminal NameBinding b_bool
+  -> Read(BindingPlace(b_bool)) = complete type T_bool
+  -> selected assignment Pre, replacement commit, Post
 ```
 
-For normalized-pattern explanation, the relation may be written:
+Formation and replacement have their own resident-generation, window and
+failure events. They are not a direct general lexical binding operation.
+After successful assignment, the stored complete type has Core navigation
+bool::; its owner/navigation is not changed to t1::t. The empty T_0's creation
+anchor does not reparent T_bool or reopen its construction window.
 
-```text
-(bool::)t
-```
-
-This does not reroot the value, rewrite its navigation, change its top name to
-`t1`, identify `symbol(t1::t)` with the `bool` pattern head, or create an
-internal `bool` pattern under `t1::t`.
-
-The accurate normalized statement is:
-
-```text
-symbol t1::t is bound to a PatternValue whose fully qualified navigation is bool::
-```
-
-The source binding route may be retained as provenance, but “external” versus
-“internal” is not a category in normalized `PatternValue` identity.
+Subsequent normalization/extraction below observes this successfully committed
+state; it does not erase or redefine the preceding construction trace.
 
 ### 11.3 Inherited and explicit extraction are equivalent here
 
@@ -2922,24 +2923,24 @@ let <P> ((P)bool::)t = t;
 denote the same extraction.
 
 For the shorthand, resolving bare `t1` starts at its nearest Pattern parent
-`t`. Here `t` is also the nearest navigation anchor, producing the symbol
+`t`. Here `t` is also the nearest navigation anchor, producing the binding
 path:
 
 ```text
 t1::t
 ```
 
-The evaluator then resolves `symbol(t1::t)` and reads its bound
+The evaluator then resolves the terminal binding for `t1::t` and reads its bound
 `PatternValue`. That value reveals its fully qualified pattern navigation:
 
 ```text
 bool::
 ```
 
-For the explicit form, `bool::` explicitly terminates the external symbol path
+For the explicit form, `bool::` explicitly terminates the external binding path
 (the conceptual `::bool` choice) and blocks completion under the current parent
-`t`. The evaluator resolves `symbol(bool)` and then reads the `PatternValue`
-carried by that symbol.
+`t`. The evaluator resolves the terminal binding for `bool` and then reads the `PatternValue`
+carried by that binding.
 
 Both paths therefore reach:
 
@@ -2956,7 +2957,7 @@ inherited form:
   then resolve exact name binding path -> read PatternValue
 
 explicit form:
-  select an external symbol path, then resolve name binding -> read PatternValue
+  select an external binding path, then resolve name binding -> read PatternValue
 ```
 
 It is never a distinction between an indirect pattern value and a directly
@@ -2973,7 +2974,7 @@ produces:
 M: Map<CanonicalFullNavigation, CanonicalPatternValue>
 ```
 
-Extraction is therefore value lookup, not symbol lookup. The normative process
+Extraction is therefore value lookup, not binding lookup. The normative process
 is:
 
 ```text
@@ -2992,13 +2993,13 @@ Formally:
 
 ```text
 extract(path, M)
-  = lookup(canonical_entry(value(resolve_symbol(path))), M)
+  = lookup(canonical_entry(Read(BindingPlace(Resolve(path)))), M)
 ```
 
 not:
 
 ```text
-lookup(resolve_symbol(path), M)
+lookup(Resolve(path), M)
 ```
 
 because `M` contains evaluated canonical navigation/value entries, not
@@ -3027,7 +3028,7 @@ the extraction path:
 t3 t
 ```
 
-first inherits parent navigation and forms symbol path:
+first inherits parent navigation and forms binding path:
 
 ```text
 t3::t
@@ -3036,8 +3037,8 @@ t3::t
 Then:
 
 ```text
-resolve_symbol(t3::t) = symbol(t3::t)
-value(symbol(t3::t)) = bool::
+Resolve(t3::t) = b_t3
+Core(Read(BindingPlace(b_t3))) has canonical navigation bool::
 canonical_entry(bool::) ∈ M
 ```
 
@@ -3046,11 +3047,11 @@ Thus `t3 t` matches `bool::`, not `t3::t`.
 By contrast, if:
 
 ```text
-value(symbol(t1::t)) = t1::t
+Core(Read(BindingPlace(Resolve(t1::t)))) has canonical navigation t1::t
 ```
 
-then the source symbol path and resulting `PatternValue` navigation happen to
-share a spelling. The extraction still performs symbol resolution and value
+then the source binding path and resulting `PatternValue` navigation happen to
+share a spelling. The extraction still performs binding resolution and value
 read before set lookup; the shared spelling does not permit either step to be
 omitted.
 
@@ -3587,7 +3588,7 @@ Neither spelling forwards a place or reroots the initializer's Pattern.
 The language must select the expectation from semantic context or an explicit
 rank/facet annotation. It must not guess `PatternChild` merely because the
 right side happens to carry a type or `PatternValue`. Both paths still obey the
-general symbol-resolution-then-facet-projection rule.
+general name-resolution-then-facet-projection rule.
 
 ### 12.2 Same-name contribution
 
@@ -3645,7 +3646,7 @@ The first may be a newly allocated runtime owner/place or compiler-generated
 `[[global]]` storage. It does not imply that the result Pattern is rerooted to
 that place. Pattern owner/root/scope continue to come from ordinary result
 construction semantics. Likewise, generated storage placement is not
-source-visible `NamespaceGraph` symbol installation.
+source-visible `NamespaceGraph` binding installation.
 
 ## 13. Non-Goals and Open Representation Boundaries
 

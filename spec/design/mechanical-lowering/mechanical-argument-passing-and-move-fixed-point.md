@@ -288,8 +288,8 @@ Once an action lands on `move`, normalization terminates.
 The same fixed point applies to callable lookup. Moving a caller of type `T`
 does not create `move::T`; its call entry is still resolved under `T`.
 `ref(x)` and `share(x)` are different because they first construct borrow
-objects of types `T ref` and `T share`, whose candidates in the same associated `()` Symbol may be
-distinct.
+objects of exact types T ref and T share. Each uses the matching () entry of
+its own complete type/callspace, never a candidate adapted from T's entry.
 
 ## 7. All pass modes lead to move
 

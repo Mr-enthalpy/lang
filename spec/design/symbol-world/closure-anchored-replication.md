@@ -67,6 +67,54 @@ The same capability is usable by ordinary type contribution, inject, and the
 construction logic obtained through A[t]. Assignment retains its own ordinary
 semantics; this relation is not an initialization-only exception.
 
+### 4.1 Source forms and the operation that triggers replication
+
+The following structural form does not trigger this capability:
+
+```lang
+let f::path = (self) => {};
+```
+
+Its expansion is ordinary `(let f::path) = closure`: FreshNamedType commits
+T_0 and returns mut type ref, then ordinary assignment checks its RHS. There
+is no implicit TypeAdd/AnchorFor conversion. An ordinary function-object RHS
+does not satisfy the complete-type replacement merely by being a closure;
+without an applicable ordinary assignment operation, that assignment fails,
+leaving T_0 subject to the existing enclosing transaction.
+
+An explicit contribution has the following schematic source/semantic derivation:
+
+```lang
+let c = (self) => {};
+let t_f = let f::path;
+// Prepare the required target Core through ordinary extend/inject.
+t_f += c;
+```
+
+The creation line denotes binding the result of the structural expression;
+its parser consumer remains pending. The preparation line is an explicit
+premise, not work silently performed by +=. With T = Read(Target(t_f)):
+
+```text
+Writable(t_f) and OpenHere(T)
+Core(T) already admits the required target-anchored closure type
+c_f = AnchorFor(c, Core(T))
+TypeOf(c_f) in Core(T)
+-------------------------------------------------------------
+ordinary TypeAdd commit: <Core(T), V_tau> -> <Core(T), V_tau + c_f>
+```
+
+If the original type already belongs, c_f = c; otherwise the witness constructs
+a new anchored instance, then final membership and the ordinary write Pre are
+checked. With a fresh empty Core and no preparation satisfying membership,
+the addition fails; it never expands Core by itself.
+
+An unqualified `let f = c` in a declared named-contribution position uses that
+position's formation/Core-construction/contribution rules and reaches the same
+TypeAdd relation. An ordinary lexical let or structural let's assignment suffix
+does not acquire that sugar. This distinction determines the operation before
+replication, independently of where the RHS was first evaluated.
+
 ## 5. Meta and non-meta anchors
 
 Within a meta invocation, the MetaInstance root is the unique stable anchor;

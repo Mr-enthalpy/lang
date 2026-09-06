@@ -8,7 +8,7 @@ name occupancy and group algebra; they do not add an Object axis.
 **Status: canonical semantic authority for Object identity, complete
 type-closure identity, Place identity, and borrow views.**
 
-This document specifies the semantic boundary between *object values*, *symbol
+This document specifies the semantic boundary between *object values*, *binding
 identity*, *places*, *borrow views*, and *namespace extension targets*. It
 defines what an object is, what a place is, which borrow operators exist, which
 overloads they have, and when each overload is callable. It is a semantic
@@ -18,12 +18,12 @@ The document is self-contained. It does not require the reader to assemble its
 meaning from `type-associated-function-objects-and-access-trees.md` or
 `early-meta-functions-and-namespace-graph.md`. Those documents are background
 or adjacent design only; the model here stands on its own and is the canonical
-authority for the value / place / symbol / borrow-view distinction.
+authority for the value / place / binding / borrow-view distinction.
 
 There is no ordinary symbol-alias or place-forwarding declaration form in this
-language. `let a = b;` copies a value into a fresh symbol with a fresh place.
+language. `let a = b;` copies a value into a fresh binding with a fresh place.
 Sharing an observation of another object is expressed by the borrow operators
-defined in §5, never by a declaration that makes two symbols name one place.
+defined in §5, never by a declaration that makes two bindings name one place.
 
 The broader symbol-first facet, `PatternValue`, `compile` / `meta`, pattern
 scope, `struct`, pure `extend`, and place-level `inject` model is canonicalized in
@@ -36,12 +36,12 @@ The language must distinguish three things that look similar in source text but
 are semantically different: the identity of a name, the identity of a writable
 location, and the identity of a type value. Conflating them produces subtle
 errors — for example, injecting a declaration into a built-in type because its
-type value happens to equal a freshly bound symbol's type value.
+type value happens to equal the type value stored in a fresh binding.
 
 The invariants this document protects:
 
 ```text
-value equality must not collapse symbol-place identity
+value equality must not collapse binding/place identity
 a borrow view must not manufacture a place that its source does not own
 member creation must target a place or stable prospective ProjectionSlot
 structural extension must transform an Open value, not borrow authority
@@ -63,7 +63,7 @@ substitution and **not** a second name for a name binding. And value equality is
 
 ## 2. Semantic identities
 
-Three distinct symbol/type identities participate in this model, alongside
+Three distinct binding/type identities participate in this model, alongside
 canonical pattern-value identity:
 
 ```text
@@ -150,8 +150,21 @@ Val1?(x) ∈ 1 + Object
 ```
 
 `Val2` is a finite map from semantic selectors to ordinary Objects. Most
-selectors are names and their entries are same-name name bindings; the built-in bare
-Product Pattern additionally supplies intrinsic ordinal selectors `pos_i`.
+selectors are names whose value entries are complete named-type residents;
+the built-in bare Product Pattern additionally supplies intrinsic ordinal
+selectors `pos_i` with ordinary Object residents.
+
+The structural lookup and the value snapshot are distinct:
+
+```text
+named selector n -> ProjectionSlot(parent, n) / structural NameBinding
+occupied slot q  -> Contents(q) = Some(T)
+Val2(parent)[n]  = resident complete named type T, through its Object observation
+```
+
+NameBinding and ProjectionSlot are not Val2 value entries. Normalization consumes
+the resident T with the existing complete-type/Object observation; it never
+normalizes a binding wrapper or a cluster carrier.
 Those ordinal entries are not a compiler aggregate outside `Object`.
 
 The least Object domain is closed by the following constructors:
@@ -247,7 +260,7 @@ ordinary selectors; whether a tuple-like user-facing namespace API exposes
 that capability remains a narrow surface question.
 
 An Object carrying `Val1` may still be used where a type is expected when an
-ordinary projection such as name binding's `Q` projection under `TypeRole(Q)` applies
+ordinary value-side projection of the read resident under TypeRole(Q) applies
 (§5.6). Conversely, `Pure(x)` alone does not imply `TypeRole(x)`. Keeping these
 judgments separate prevents payload presence from becoming an implicit kind
 classifier.
@@ -439,29 +452,30 @@ state when two snapshots are the same snapshot; they do not by themselves decide
 which observation a particular old rule must use (see the classification in
 §2.2). A list of
 allocated value ids under each name is not a normal form:
-allocation order is not semantic content, so the walk must resolve each name to
-its cluster symbol and normalize that symbol's own members.
+allocation order is not semantic content. For a live place observation, first
+read each occupied named slot's complete resident T. For a captured Val2
+snapshot, those resident values are already present; recursively normalize
+them without consulting the live name graph. Neither path includes NameBindingId
+or PlaceId in an ordinary by-value normal form.
 
 This exclusion does not erase `StableTargetIdentity(place)` from a borrow-view
 normal form. In the ordinary object case a place is an observation source; in
 the borrow-view case the target is what the value denotes.
 
-This is what makes an open construction observable at all. Given
+This makes an open construction observable. Within one meta body, with ordinary
+Writable/OpenHere premises and type-valued X/Y:
 
 ```lang
-let fn = (...): meta -> _ :symbol = {
-    let t = (() t) |> struct;
-
-    let f::(t |> (type ref)) = X;
-    let A = t |> compile_fn;
-
-    let g::(t |> (type ref)) = Y;
-    let B = t |> compile_fn;
-    t;
-};
+let t = (() t) |> struct;
+let f::(t |> (type ref)) = X;
+let A = t |> compile_fn;
+let g::(t |> (type ref)) = Y;
+let B = t |> compile_fn;
 ```
 
-the two observations of `t` are different complete type snapshots:
+Each navigated let first installs its complete empty T_0 and then performs
+ordinary assignment of X or Y. Only successful commits produce the following
+two observations of t as different complete type snapshots:
 
 ```text
 tau_1 = <Q_1, V_τ>
@@ -521,8 +535,11 @@ NoNormalForm_kappa(x)
 ```
 
 Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cyclic
-`Val2` such as `let loop::t = t;` all have **no normal form** at the stage where
-they are materialized. A finished shared acyclic subtree remains valid DAG
+owned Val2 graph with an actual back-edge to its own ancestor all have **no
+normal form** at the stage where they are materialized. A source spelling such
+as `let loop::(t |> (type ref)) = t;` alone does not prove such a cycle: it
+performs fresh formation followed by ordinary snapshot assignment, whose actual
+owned edges must be checked. A finished shared acyclic subtree remains valid DAG
 reuse. `Self_τ` is one restricted static back-reference instance, not the one
 exceptional cycle, and not a general recursive-data constructor.
 
@@ -1244,12 +1261,17 @@ The same rule applies to an externally owned pattern value:
 let t1::(t |> (type ref)) = bool;
 ```
 
-resolves `symbol(bool)`, reads its `PatternValue`, and binds that value to the
-destination prospective ProjectionSlot under `(t |> (type ref))`. It does not reroot the pattern, rewrite its
-navigation, or make the destination symbol identical to the pattern owner.
+first resolves the existing parent t and forms its authorized type reference.
+FreshNamedType commits the destination's Some(T_0) and returns mut type ref;
+ordinary assignment then reads bool's complete type and, when its checks pass,
+replaces that resident. The assigned value retains its Pattern navigation and
+owner. Formation failure never performs the replacement; assignment failure
+leaves T_0 under the ordinary enclosing transaction rules. This is not the
+ordinary lexical let rule.
 
 Literal syntax is the explicit exception only to source-path resolution. It
-still evaluates to a value and uses the same binding rule. In the schematic
+still evaluates to a value; an ordinary lexical let then uses lexical binding,
+while a structural let's suffix uses ordinary assignment. In the schematic
 future spelling `let a = 'a';`, the left `a` is a binding name while the right
 `'a'` denotes a character literal; matching textual content does not make them
 the same object. The frozen lexer does not yet accept that character spelling
@@ -1297,7 +1319,7 @@ let T: type = uint8
 means:
 
 ```text
-symbol(T) = fresh symbol
+NameBindingId(T) = fresh structural binding identity
 place(T) = fresh writable place at current lexical level
 value(T) = value(uint8)
 type_value(T) = type_value(uint8)
@@ -1322,11 +1344,9 @@ This ordinary declaration rule does not license a meta returned result to use an
 external pure Object as its installed type core. A canonical meta
 instance has an additional self-root invariant, stated per result class:
 for the default result `τ_M`, `Root(Core(τ_M)) = MetaInstanceScope` holds
-unconditionally (`Core(τ_M)` is the first projection of `τ_M`); an explicitly
-declared result that carries an installed type core `Q` requires `Q`'s outer
-Pattern root to be the `MetaInstanceScope` when `Q` is present. The condition is
-`Q`'s presence, independent of
-`TypeRole(Q)`. Thus ordinary
+unconditionally (`Core(τ_M)` is the first projection of `τ_M`); an explicit group result instead obeys its member ownership/escape rules,
+not an optional-core type rule. For the default complete type, the self-root
+condition is independent of TypeRole(Q). Thus ordinary
 `let T: type = uint8` remains legal while direct `r = uint8` as a meta return
 type construction is rejected.
 
@@ -1336,17 +1356,10 @@ Consequently, associated-member creation through `T`:
 let f::(T |> (type ref)) = ...
 ```
 
-executes:
-
-```text
-place(T) += { f ↦ ... }
-```
-
-and not:
-
-```text
-place(uint8) += { f ↦ ... }
-```
+executes FreshNamedType under the authorized reference to place(T), commits
+Some(T_0) at f, and then performs the selected ordinary assignment of the RHS.
+It does not perform a parent +=, write to place(uint8), or bypass the copied
+value's existing OpenHere rules. Fresh carrier writability alone is insufficient.
 
 Member creation is a place operation. Structural extension is different: it is
 the pure value transformation `extend`, while `inject` is the explicit
@@ -1432,7 +1445,7 @@ Thus a ranked string denotes `str@compile`; it does not first denote
 `character`, does not belong to the three abstract scalar denotation Types, and
 does not imply `str ref`, hidden storage, or a lifetime extension. The current
 `LiteralFamily::String` carrier preserves that source family. Whether the core
-bootstrap has installed a concrete `str` Type symbol is an implementation
+bootstrap has installed a concrete `str` Type binding is an implementation
 availability question, not the owner of this semantic path.
 
 The frozen lexer continues to preserve spelling only. It does not choose
@@ -1731,7 +1744,7 @@ carrier slot; a temporary must first be bound to a named place before it can
 be borrowed.
 
 `ref` is an ordinary overloaded callable family member. It does not ask which
-symbol slot the value came out of, and does not consult, capture, or export
+binding slot the value came out of, and does not consult, capture, or export
 it. Therefore:
 
 ```lang
@@ -2397,7 +2410,7 @@ write Pre rechecks its OpenHere and authority, not a later carrier resident.
 ## 8. Type values in overload and pattern matching
 
 Ordinary type matching for overload and pattern compatibility compares
-canonical type values, not source symbol names:
+canonical type values, not source binding names:
 
 ```text
 OrdinaryTypeObservation(τ) = Core(τ) = Q
@@ -2436,7 +2449,7 @@ navigation name, it is
 positional regardless of whether its elements are named. `NameBindingId` and
 `PlaceId` identify carriers/locations; they are neither map keys nor resident
 values. Extraction resolves a source name binding, reads its `PatternValue`, and
-looks up that value by complete navigation and normalized resident. A symbol
+looks up that value by complete navigation and normalized resident. A binding
 path may share the value's navigation spelling or differ from it without
 changing this sequence. Source/provenance classification does not participate
 in `PatternValue` identity.

@@ -177,11 +177,11 @@ Associated source navigation obeys the same forward-only rule. If:
 let T: type = uint8;
 ```
 
-then a target selected through `T` resolves `name binding(T)` and reads the complete
+then a target selected through `T` resolves T to one terminal NameBinding and reads the complete
 type snapshot. Type-as-callee candidates come from its `V_τ`; an ordinary
 navigated member may additionally be selected through `Q`/`Val2` under the
 normal navigation rules. Neither path inspects provenance or searches for
-`name binding(uint8)`.
+uint8's defining binding.
 
 Migration callables obtain their result Pattern and complete type observations
 from registered semantic entities. Constructor/extractor materialization and
@@ -572,7 +572,7 @@ definition/materialization:
   unresolved read name -> DeferredEmbeddingLookup(name)
 
 candidate use at control-flow layer L:
-  DeferredEmbeddingLookup(name) -> ResolveSymbol(name, L)
+  DeferredEmbeddingLookup(name) -> Resolve(name, L)
   missing at L -> diagnostic at that use
 ```
 
@@ -587,7 +587,7 @@ An in-place closure may not write any symbol/place outside its closure-local
 scope:
 
 ```text
-WriteSet(C) intersect OuterSymbols(C) = empty
+WriteSet(C) intersect OuterBindings(C) = empty
 ```
 
 It may still mutate its own locals, call effectful functions, and use ordinary

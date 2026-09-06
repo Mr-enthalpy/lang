@@ -95,6 +95,6 @@ that pass is connected, `lang_build` reports `UnsupportedLexicalAlias` and
 installs nothing.
 
 The current implementation must not use this form to create a forwarding
-Symbol, value, Place, member, or writable relation. Shared place observation is
+NameBinding, value, Place, member, or writable relation. Shared place observation is
 expressed by the ordinary `ref`, `share`, and `@` relations defined in
 [`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md).
