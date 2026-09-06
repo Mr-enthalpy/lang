@@ -544,3 +544,17 @@ overload execution
 runtime evaluation
 code generation
 ```
+
+
+## Canonical expression handoff pending source support
+
+P let name::path creates a fresh named type and returns mut type ref. A following
+= expression is ordinary assignment, not a second declaration initializer.
+Unqualified let at named-contribution positions synthesizes V_tau; lexical let
+remains ordinary binding. Current Raw/Norm let carriers do not yet implement
+this expression family. Consumer work must preserve spans/recovery and add
+golden coverage, without semantic target lookup in parsing or normalization.
+
+Anonymous closure anchoring is resolved by ordinary formation or witnessed
+anchored replication at contribution, not by feeding the LHS destination back
+into the frontend. See [name/type semantics](../design/symbol-world/names-and-overload-groups.md).

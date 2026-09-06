@@ -20,7 +20,7 @@ projection preserves them homomorphically. Projection and require slicing are
 canonical in
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
-The current return-target binding substrate adds one semantic pass after
+The return-target binding substrate adds one consumer after
 normalization:
 
 ```text
@@ -54,9 +54,9 @@ where `Self₀` is the current enclosing callable-frame self,
 obtained from the active return-target context at the point
 where the return event is lowered.
 
-The implicit return spelling `E return;` binds to the nearest active
-return frame in the current substrate. Future completion semantics may
-then treat that frame as the enclosing self capability.
+The implicit return spelling `E return;` selects the outermost enclosing
+function layer. The current active-frame binder still selects its most recent
+frame; alignment to this rule is consumer work, not an alternate semantics.
 
 ## 2. Return Capability Completion
 
@@ -155,7 +155,7 @@ expr return
 expr (Self return)
 ```
 
-The first selects the nearest active frame; the second selects the explicitly
+The first selects the outermost enclosing function layer; the second selects the explicitly
 named active Self frame. Their result matching rule is identical. Only the
 return-target layer differs. A nested explicit target therefore does not
 introduce a second tuple-assignment, decomposition, or return-value algebra.
@@ -193,7 +193,7 @@ completions or perform D-reduction.
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
 | Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full callable-frame self capability |
-| Implicit return | Binds to nearest active `ReturnTargetFrame` | Lowered/completed through enclosing self capability |
+| Implicit return | Outermost enclosing function layer; binder alignment pending | Lowered/completed through enclosing self capability |
 | Explicit self target | Attempts active self-frame match; does not silently fall back to nearest | Full self capability object |
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |
 | Return binding slot | Complete normalized slot/Pattern retained on the target frame | Used as `let ResultPattern = expr` expectation |

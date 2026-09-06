@@ -468,8 +468,15 @@ model specified here, and this document does not depend on them for its meaning.
   extraction-view transition described there. Return normalization uses the
   explicit guarded branch form shown in this document.
 - `control-flow-local meta evaluation substrate` (see
-  `static-pattern-spaces-and-extraction-chains.md`§17) — the guarded
+  [semantic evaluation](../meta-invocation/evaluation-residual-and-optimization.md)) — the guarded
   `T |> has(Error)` branch relies on the control-flow-local meta evaluation
   substrate: the false branch has no Error lookup or return-capability
   obligation, and the true branch alone checks the Error carrier branch and
   `return_owner..return(e Error)` capability.
+
+
+The term “non-value” in this lowering denotes material excluded from automatic
+runtime pass/return actions, not a separate language ontology. These remain
+ordinary Objects under their policy views. Mechanical elaboration supplies the
+continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
+optional optimizer search cannot change its rules.

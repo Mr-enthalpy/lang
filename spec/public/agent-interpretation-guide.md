@@ -206,3 +206,24 @@ lookup but may not directly write an outer place.
 
 Current public docs and canonical topic owners define meaning. The roadmap
 states which consumers are connected.
+
+
+## 8. Semantic construction handoff
+
+[P let name::path](../design/symbol-world/names-and-overload-groups.md) is a
+structural expression returning a mut type ref; its assignment form uses
+ordinary assignment. This canonical expression consumer is pending, and
+existing BindingSlot syntax carriers must not redefine it. Ordinary lexical
+let stays ordinary. Named contribution positions synthesize a type's V_tau,
+whereas explicit OverloadGroup algebra aggregates type candidates.
+
+A type contribution requires Writable, OpenHere and final TypeOf(v) membership
+in its Core. [Witnessed anchored replication](../design/symbol-world/closure-anchored-replication.md)
+creates a new closure identity and preserves capture obligations; it never
+reparents the RHS. Formal pair inheritance and unwritten plain mode are
+different policy dimensions. Implicit return targets the outermost enclosing
+function layer; a current nearest-frame carrier is not semantic authority.
+
+Follow the [semantic spine](../design/semantic-spine.md) for A, lifecycle/unsafe,
+host capabilities, source normalization and E. Representation, cache, scheduler
+and optimizer structures cannot introduce program facts.

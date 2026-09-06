@@ -1,5 +1,10 @@
 # Roadmap
 
+This document separates implemented storage/consumer slices from canonical
+semantics. Existing tests of a carrier do not establish that the migrated
+source semantics is connected. The [topic index](../design/README.md) owns the
+semantic contracts.
+
 This document records current implementation frontiers. Canonical meaning is
 owned by the topic documents under `spec/design/`; unresolved decisions are
 owned by `spec/planning/open-questions.md`.
@@ -39,7 +44,7 @@ semantic vocabulary:
 - proof-relevant `R_Gamma(P,c,rho)` Pattern applicability and Hole valuation;
 - complete `tau = bind alpha.<Core(tau), V_tau[alpha]>` with immutable callspace
   snapshots;
-- separate Symbol, semantic value, Place, resident generation, and
+- separate name-binding, semantic value, Place, resident generation, and
   ProjectionSlot identities;
 - `PolicyPair`, primitive `PolicyMode = {const, plain, mut}`,
   `ResultPolicyDemand`, and independent 3×3 `CapabilityRealization`;
@@ -83,8 +88,8 @@ relation is used; it does not mean the language rule is undecided.
 
 ## Source and evaluator connection frontier
 
-The next implementation frontier connects source occurrences to the existing
-relations without changing their meaning:
+The next implementation frontier connects source occurrences to the canonical
+relations under the alignment gates below:
 
 1. protected structural extraction through `StructuralDefault` before C0;
 2. operation-driven capability, Writable, authority, and lifecycle premises;
@@ -93,7 +98,7 @@ relations without changing their meaning:
 5. cleanup placement before lifecycle observation;
 6. Residual and Diagnostic transport through the unified invocation boundary;
 7. derived associated forwarding that captures the base complete-type
-   snapshot and creates fresh direct-home members;
+   snapshot and creates anchored forwarding instances;
 8. block-local `let ===` lexical entries that create no semantic entity.
 
 Each wiring step must preserve unique selection and no reopen.
@@ -160,15 +165,52 @@ for:
 These questions remain in `spec/planning/open-questions.md`. Missing source
 wiring is not an open semantic question.
 
-## Build/package track
+## Physical input and infrastructure migration
 
-The build system assembles a namespace graph from package manifests, source
-roots, physical namespaces, explicit mounts, and source contributions. Source
-filenames are not namespace segments. The language has no source-level
-import/use/include/module/package syntax.
+The target is Compile(Level) through main.lang anchoring, neutral physical
+normalization and ordinary meta evaluation. Each file is serial; sibling
+blocks use common-snapshot overlays and unordered join. Actual effects produce
+the dependency projection. Host calls return ordinary Objects and target facts.
 
-The build layer provides package identity, transactional namespace
-deltas, provenance, typed owner qualification, role-aware name admission,
-default core mounting, and cache validation. Remote retrieval, full version
-solving, lockfiles, package distribution policy, and persistent root encoding
-remain future work.
+Current code still accepts configured source roots and a package/workspace graph,
+then consumes sorted files with per-declaration shared-world commits. These
+paths require migration; they cannot remain semantic input alternatives.
+Cache, discovery, decoding, diagnostics and artifact persistence remain useful
+engineering facilities after their inputs and effects obey the source model.
+
+## Canonical/source alignment gates
+
+- Replace the optional pure-P/sibling cluster carrier semantics with named-type
+  synthesis and explicit OverloadGroup aggregation. Existing Rust cluster/result
+  labels are implementation encodings, not the target ontology.
+- Connect structural P let name::path as a fresh-name expression returning mut
+  type ref. The current parser requires a let initializer. Following = must use
+  ordinary assignment, without an initialization-only transaction.
+- Connect type +=/-= to V_tau updates with Writable, OpenHere and final closure
+  membership; connect ordinary group updates to their distinct bucket algebra.
+- Connect witnessed anchored replication, preserving captures, internal
+  alpha-renaming and the original closure identity. Do not feed the destination
+  anchor backward into parsing or RHS evaluation.
+- Implement builtin A's guarded indexed Places. Recheck the key's OpenHere and
+  write authority in every write Pre, including saved references. Its general
+  user-facing abstraction is an open question, not an implementation shortcut.
+- Align formal elaboration: Pair inherits P2, omitted formal mode is plain.
+  The current policy_pair implementation and a position-policy test still inherit
+  mode from P2 and must be corrected when this consumer is changed. Return P_out
+  remains its separately defined overlay.
+- Align implicit return selection to the outermost enclosing function layer.
+  The current return_target binder selects its most recent frame; current
+  one-frame tests do not prove nested-frame correctness.
+- Connect name-preserving @ and ordinary value/borrowed lifecycle fields,
+  independent SafetyPolicy, and compatible post-commit external admissions.
+- Connect host/target-machine Objects and their ordinary policy/views; metadata
+  availability must not force compile-time payload realization.
+- Implement E saturation and synchronized continuation projections, residual
+  transport, and revalidation after equivalent O1/O2 rewrites. Planner search
+  never changes E or supplies private facts.
+
+These are known consumer obligations. They do not reopen the resolved semantic
+rules or permit graph, file, cache or registry authority. Relevant implementation
+changes need source goldens plus identity, no-reopen, non-derivability and
+boundary tests; this documentation migration does not claim those consumers
+have been implemented.

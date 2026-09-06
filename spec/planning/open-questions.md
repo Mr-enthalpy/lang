@@ -20,8 +20,10 @@ wiring that applies a closed law is tracked in `roadmap.md`, not here.
 
 The following facts are not open: ordinary Object normalization observes
 Val1/Pattern/owned-Val2; ordinary type equality observes Core; whole-snapshot
-positions observe the complete immutable `tau`; lookup indices, Symbols,
-Places, and whole snapshots are distinct identities.
+positions observe the complete immutable `tau`; lookup indices, name bindings,
+Places, and whole snapshots are distinct identities. Named-type synthesis and
+ordinary OverloadGroup aggregation are different algebras; a group has no
+additional authority over the complete types it aggregates.
 
 ## Pattern representation and extraction IR
 
@@ -30,8 +32,8 @@ Places, and whole snapshots are distinct identities.
   extraction chains, and multiple valuations?
 - How should custom `?` providers expose richer extraction interfaces?
 - How should static Pattern spaces and `Done` be represented in later IR?
-- How should closed control-pattern non-additivity be enforced through package
-  ownership and lookup routing?
+- Which source-level ownership/lookup consumer enforces the existing closed
+  control-pattern non-additivity relation?
 
 The relational interface, Hole identity, DirectPatternChild distinction,
 StructuralDefault family boundary, and genericity-as-extraction are fixed.
@@ -63,37 +65,51 @@ same-Type Policy migration are separate ordinary operations.
 
 Primitive `PolicyMode={const,plain,mut}`, total result demand before maxima,
 three-point preference, 3×3 capability realization, unique selection, and no
-reopen are fixed.
+reopen are fixed. Formal PolicyPair inherits P2; its independent omitted
+PolicyMode is plain. Return-position refinement keeps its separately specified
+P_out rule. These are not competing defaults.
 
 ## Residual and serial evaluation
 
 - What IR represents partially evaluated invocation frames across static and
   runtime phases?
-- Where is the sequencing frontier for effectful expressions under progressive
-  evaluation?
+- What concrete effect and overlay representation implements sequential file
+  actions and unordered common-snapshot sibling composition?
 - What ABI and storage representation carries residual continuations?
 - How do capability and effect summaries compose with residual evaluation?
 - What concrete representation carries `Done`, targeted return, and result
   Pattern delivery?
 
-Runtime continuation may not re-resolve a Symbol, namespace path, candidate
-family, or sealed invocation.
+Runtime continuation may not re-resolve a name, namespace path, candidate
+family, or sealed invocation. E saturation, projection synchronization and
+rewrite revalidation are fixed. Implicit return selects the outermost enclosing
+function layer; consumer alignment is roadmap work.
 
 ## Place, construction, and write algebra
 
-- What final cluster write algebra exposes and replaces individual facets of
-  an existing member?
-- Which IR event closes an ordinary construction window, and how is that event
-  scheduled relative to graph seal?
-- How can external objects intentionally expose extension points?
-- What is the final source integration for an externally navigated call-entry
-  extension?
-- What final syntax exposes coordinated value/ref/share receiver families, if
-  any?
+- What final group bucket/entry representation realizes candidate aggregation
+  (with the current coarse core-tau bucket) without erasing entries through an
+  unrelated cache/value-identity quotient?
+- What IR represents the already defined construction-window termination,
+  meta seal and externally visible name-set closure events?
+- What public spelling should the builtin associated-state callable A use?
+- Should A's globally indexed Place family, with writability dynamically
+  guarded by facts about its key, become a general user-accessible algebraic
+  capability? It is currently restricted to A.
+- Which values beyond closure-expression-produced closures can prove a
+  location-parametric ReinstantiationWitness? The initial domain is fixed;
+  arbitrary owner-changing replication is not admitted.
+- What concrete witness/template and alpha-renaming representation implements
+  anchored replication while preserving captures and internal identity edges?
 
-Binding creation, member creation, member write, assignment, inject, rebind,
-ref, and share remain distinct. `extend` is pure; `inject` is
-read+extend+write; OpenHere, Writable, PolicyMode, and authority are independent.
+Structural let creates a fresh named type and returns mut type ref; following
+assignment is ordinary assignment. Named-contribution positions synthesize
+V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
+requires OpenHere and final anchored closure membership, changing only V_tau;
+Core changes use extend/inject. Ordinary group mutation needs its own Writable,
+not OpenHere of its contained types. A's key-derived guard is checked at write
+Pre even through saved references. Equality, keying and OpenHere retain their
+existing Core/anchor/window/stack meanings.
 
 ## Lifetime, Color, and access
 
@@ -110,18 +126,22 @@ Cleanup is fixed before observation; Pre precedes mutation; Post describes only
 committed success; move ends and starts generations at one continuation cut;
 Color relations are explicit directed rows and Color inheritance is monotone.
 
-## Owner, namespace, and build persistence
+## Owner, namespace, and infrastructure persistence
 
-- What is the manifest file format and version/registry solver?
-- How are package roots, mount identities, namespace snapshots, and
-  MetaInstance roots persisted across incremental builds?
-- What API surface expresses resolver expected-role disambiguation?
-- Are escaped field names needed outside existing object/subspace conflicts?
-- What is the final form of `unique trait`?
-- How do external namespace providers expose candidates while preserving
-  package boundary and stable admission facts?
-- How does type-associated namespace traversal interact with Core equality and
-  whole-snapshot callspace capture?
+- How are semantic owner roots, namespace snapshots, associated-state effects
+  and MetaInstance roots persisted across incremental evaluation?
+- What API expresses context-directed member projection after stable name
+  resolution without turning consumer roles into name ontologies?
+- Are escaped field names needed outside the existing syntax?
+- What is the final form of the existing unique-trait design?
+- What concrete host IO/FFI APIs expose ordinary Objects and policy views?
+- How do traversal/index consumers preserve Core equality while retaining
+  captured complete callspaces in whole-snapshot observations?
+
+Physical normalization, main.lang anchoring, sibling overlays and post-hoc
+DependencyGraph projection are fixed. Manifests, mounts, registry solvers and
+package graphs are not alternative semantic inputs. Retrieval APIs may be
+ordinary source/host work; their implementation does not create authority.
 
 ## Closure, control flow, and ownership
 
@@ -134,7 +154,7 @@ Color relations are explicit directed rows and Color inheritance is monotone.
 - How are `return`, effect, and sync operations integrated into the shared
   semantic continuation?
 - What complete operator-environment selector algebra maps spelling+fixity+arity
-  to an ordinary Symbol?
+  to ordinary callable selection material?
 
 ## Generic navigation and Product surface
 
@@ -153,8 +173,10 @@ Color relations are explicit directed rows and Color inheritance is monotone.
 
 For each compiler-provided operation, determine whether it is a bootstrap seed,
 a source definition still to be connected, an intrinsic observation, or a
-semantic primitive justified by non-bootstrappability. No current family has a
-non-bootstrappability proof.
+semantic primitive justified by non-bootstrappability. A permanent host primitive requires the unavailable-host-capability
+justification; existing representation/library mechanisms take priority. A's
+current builtin status does not prove that its guarded-place algebra cannot
+be generalized.
 
 Concrete source definitions for literal construction, construction/migration
 families, capability entries, StructuralDefault providers, and lifecycle

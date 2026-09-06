@@ -80,7 +80,13 @@ alternate relation or identity.
 - `Object = <Val1?, Pattern, Val2>`; ordinary normalization observes all three.
 - Pattern applicability and extraction come from `R_Gamma(P,c,rho)`.
 - `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
-- NameBinding, Symbol, tau, Place, and TypeValueId are distinct.
+- NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
+- Same-name construction synthesizes a type's V_tau; ordinary lexical let does
+  not aggregate. Structural P let name::path returns mut type ref.
+- Type +=/-= changes only V_tau under Writable, OpenHere and final closure-type
+  membership. Witnessed anchored replication never reparents an existing value.
+- OverloadGroup aggregation has its own bucket algebra and requires Writable.
+  A's indexed group places additionally recheck the key's OpenHere at write Pre.
 - Name resolution happens once before context projection.
 - Calls use value -> exact tau -> associated `()` and one candidate space.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.
@@ -96,6 +102,14 @@ alternate relation or identity.
 - Lifecycle facts are relative to one SemanticContinuation. Cleanup is fixed
   before observation; Pre precedes mutation; Post describes committed success.
 - Color vocabulary is extensible and relation rows are explicit and directed.
+- SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
+  semantic axioms, never missing Pre facts or private optimizer assumptions.
+- Host capabilities return ordinary Objects. Physical normalization and build
+  facilities introduce no semantic facts; E alone owns meaning.
+- E is idempotent and saturates ready actions without rewriting continuations.
+  Optimizer rewrites require revalidation by affected semantic projections.
+- Formal Pv:Pp inherits P2; omitted formal mode is plain. Implicit return targets
+  the outermost enclosing function layer.
 
 ## Scope and Open questions
 

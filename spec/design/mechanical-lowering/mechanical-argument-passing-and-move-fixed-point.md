@@ -196,8 +196,7 @@ Semantic points:
    The guard `arg: type` produces a bool symbol whose Pattern carries the
    `if` / `else` alternatives; matching does not require `?`. Non-value
    material includes type objects, rank objects, namespace objects, meta
-   objects, pattern objects, verification objects, and future manifest/package
-   objects.
+   objects, pattern objects, verification objects.
 
 2. The `else` branch handles value arguments only.
 
@@ -255,8 +254,7 @@ value argument material
 ```
 
 Non-value arguments include, but are not limited to, type objects, rank objects,
-namespace objects, meta objects, pattern objects, verification objects, and
-future manifest/package objects. These must not receive an automatically
+namespace objects, meta objects, pattern objects, verification objects. These must not receive an automatically
 inserted `copy`, `share`, `ref`, or `move`.
 
 This rule prevents ordinary meta/type/pattern material from being mistaken for a
@@ -537,7 +535,14 @@ meaning.
 - `meta-object-invocation-and-policy-reduction.md` — the invocation engine that
   ultimately receives fully decided pass actions.
 - control-flow-local meta evaluation substrate (see
-  `static-pattern-spaces-and-extraction-chains.md`§17) — the guarded
+  [semantic evaluation](../meta-invocation/evaluation-residual-and-optimization.md)) — the guarded
   `T: has_pass` branch relies on the same substrate: if explicit pass is
   present, the default-pass branch is not entered and `get_default_pass` has no
   lookup or policy obligation.
+
+
+The term “non-value” in this lowering denotes material excluded from automatic
+runtime pass/return actions, not a separate language ontology. These remain
+ordinary Objects under their policy views. Mechanical elaboration supplies the
+continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
+optional optimizer search cannot change its rules.

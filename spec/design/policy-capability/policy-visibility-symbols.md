@@ -131,17 +131,10 @@ Neither operation is a Wpre/Wseal membership query. A symbol may belong to the
 materialized world without being externally exposed, and an exported view is a
 projection of the same full symbol identity rather than a second symbol.
 
-The final authority is derived from package crossing. Lookup inside the same
-package can consume `FullNameView`; after a path or mount enters another
-package, lookup consumes `ExternalNameView`. A non-export declaration is
-lexically visible from descendant semantic owners in the same package, but not
-from an unrelated sibling merely because the sibling shares that package:
-
-```text
-LexicalInternalVisible(s, query)
-  = SamePackage(DeclOwner(s), query)
-    && AncestorOrSelf(DeclOwner(s), Owner(query))
-```
+Source-established namespace and access relations determine whether lookup
+uses `FullNameView` or `ExternalNameView`. Lexical internal visibility requires
+the permitted source-defined domain and an ancestor-or-self declaration owner.
+Physical package boundaries and configured mounts establish neither relation.
 
 This is separate from public/private path reachability and from export.
 
@@ -210,7 +203,7 @@ Namespace and Pattern consumers use three projections rather than treating
 export as one universal visibility bit:
 
 ```text
-FullNameView          complete package-internal name/overload view
+FullNameView          complete permitted internal name/type view
 ExternalNameView      export-retained, publicly reachable external candidates
 DefaultExtractionView structural members exposed by default extraction
 ```
@@ -252,8 +245,9 @@ The typed substrate currently provides:
   rejection, permits callable-declared endpoint `PolicyMode`, and performs no
   transitive search;
 - a parent-linked semantic-owner graph plus an owner-aware namespace forest
-  substrate with explicit package boundaries, identity-preserving mount
-  redirects, Full/External view routing, and typed lookup failures.
+  substrate with Full/External view routing and typed lookup failures.
+  Its configured package/mount routing remains an implementation migration
+  gap; source evaluation must establish the namespace and authority facts.
 
 Namespace entries and call candidates retain typed `PolicyPair`, concrete
 `PolicyMode`, visibility/export facts, and capability realization without a
@@ -282,5 +276,6 @@ scalar policy projection.
   readability.
 - Meta is not exposed in SealStatic.
 - Seal policy grants no enumeration capability.
-- `@` remains lifetime syntax and cannot alter completed ordinary overload
-  selection.
+- `@` reifies name interpretation: `N@ is a name iff N is a name`.
+  It cannot alter completed ordinary overload selection. SafetyPolicy is
+  orthogonal to PolicyMode; lifecycle writes obey the unsafe admission owner.
