@@ -108,9 +108,10 @@ require `PolicyLet`; that syntax remains an optional explicit result boundary.
 The phase rule does not choose whole-slot mode: unwritten mode stays `plain`,
 and explicit `const`/`mut` demand is a separate manual choice.
 
-Resolution and exposure are distinct. A `runtime:compile` symbol resolves in
-OpenStatic, exposes no readable runtime value, but exposes its compile Pattern
-and derived compile companion. Seal-only slices are hidden in OpenStatic but
+Resolution and exposure are distinct. A name binding whose resident has a
+`runtime:compile` view resolves in OpenStatic. Subsequent resident projection
+exposes no readable runtime value, but exposes its compile Pattern and derived
+compile companion. Seal-only slices are hidden in OpenStatic but
 their explicit paths are not semantically conflated with unresolved paths.
 
 For `(compile || runtime):compile`, selecting the runtime Policy slice is also
@@ -127,9 +128,10 @@ InternalResolve(path) -> Σ_full
 ExternalResolve(path) -> Σ_export
 ```
 
-Neither operation is a Wpre/Wseal membership query. A symbol may belong to the
-materialized world without being externally exposed, and an exported view is a
-projection of the same full symbol identity rather than a second symbol.
+Neither operation is a Wpre/Wseal membership query. A name binding may exist in
+the materialized world without being externally exposed. Its exported candidate
+views preserve the resident's candidate-entry identities and create no second
+binding or wrapper Object.
 
 Source-established namespace and access relations determine whether lookup
 uses `FullNameView` or `ExternalNameView`. Lexical internal visibility requires
@@ -138,7 +140,7 @@ Physical package boundaries and configured mounts establish neither relation.
 
 This is separate from public/private path reachability and from export.
 
-Ordinary seal code can explicitly resolve committed symbols. Only a
+Ordinary seal code can explicitly resolve committed name bindings. Only a
 compiler-known privileged seal function can enumerate the fixed Wpre scan
 domain; Wseal never enlarges it.
 
@@ -185,7 +187,7 @@ After declaration projection has been applied to actual RHS/result entries,
 each candidate carries a resolved `PolicyPair`. External admission then
 requires both export-retention-closure membership and public reachability
 through every
-path component. For each admitted symbol—including non-root ancestors or
+path component. For each admitted name binding—including non-root ancestors or
 descendants—every resolved candidate is transformed into an identity-preserving
 `ExportCandidateView` whose external policy is another complete `PolicyPair`
 plus its unchanged `PolicyMode`. The Pattern component and stable candidate/
@@ -225,7 +227,8 @@ The typed substrate currently provides:
 - P2 normalization and stage-only function-object derivation;
 - owned P1 restricted views rather than reference-only filtering;
 - explicit resolution followed by phase exposure and facet reads;
-- structural `CompleteSymbolFlow` projection;
+- `CompleteSymbolFlow` projection (legacy Rust carrier name, not a canonical
+  Symbol Object or a binding facet);
 - Wpre and export-retention least-closure helpers;
 - complete and externally projected namespace overload-set carriers that
   require a typed `ExportAdmission { in_export_retention_closure,
@@ -271,7 +274,8 @@ scalar policy projection.
   Type, present output, and unchanged selected `Pp`; callable-declared
   `PolicyMode` endpoints may differ and participate in Bp'.
 - Policy failure cannot repair Type/Pattern structural inapplicability.
-- Runtime value invisibility never deletes the symbol or its Pattern facet.
+- Runtime value invisibility never deletes the name binding or erases its
+  resident's independently exposed Pattern view.
 - Runtime Policy-slice existence does not imply present-phase value
   readability.
 - Meta is not exposed in SealStatic.

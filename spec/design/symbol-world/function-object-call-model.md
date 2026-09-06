@@ -432,9 +432,9 @@ A local `struct` evaluated by an ordinary or `compile` callable uses the
 current callable owner as its ambient Pattern owner. A `compile` invocation
 does not manufacture a meta-style canonical-arguments owner.
 
-An ordinary canonical `meta` invocation is different: symbol construction is
+An ordinary canonical `meta` invocation is different: type construction is
 anchored by a parent-linked
-`MetaInstanceOwner(callee_symbol, canonical_arguments)`.
+`MetaInstanceOwner(callee_identity, canonical_arguments)`.
 Ordinary meta callables still use the implicit-self mechanics described above,
 but their returned type construction is rooted in the meta-instance scope.
 
@@ -607,7 +607,9 @@ Product |> Expr
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
 2. Resolve a name/path to name binding `S`; form `C0 := CallCandidates(NamedType(S))`
    and enumerate that candidate set (one step, no priority, no fallback, no
-   reopening; the same candidate reachable through both paths is deduplicated)
+   reopening). Only repeated exposure of the same stable candidate-entry identity
+   may collapse; distinct contribution entries never deduplicate merely because
+   their values or types normalize equally.
 3. Expose each Val2 object's policy-pair view for the current `Phase`; for
    ordinary result evaluation, derive the candidate-local P1 stage view from
    its P2 under that phase

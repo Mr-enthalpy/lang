@@ -38,7 +38,7 @@ The canonical order is:
 1. callee resolution
 2. pre-C0 family filter
 3. candidate enumeration
-4. identity dedup, visibility, phase, and frame formation
+4. repeated candidate-entry exposure collapse, visibility, phase, and frame formation
 5. hard applicability A, including Pattern relation and declared result Type
 6. declaration fallback/suppression where the language defines it
 7. Policy product preference Bp
@@ -49,6 +49,10 @@ The canonical order is:
 12. InvocationResult
 13. optional result-view satisfaction or same-Type migration
 ```
+
+Only repeated exposure of the same stable candidate-entry identity may collapse.
+Distinct contribution entries never deduplicate merely because their values or
+types normalize equally; equality and interning cannot quotient those entries.
 
 `OutputModeDemand` is total before Bp maxima. Pair/stage result demand is a hard
 candidate constraint; whole-slot mode is the three-point preference coordinate.

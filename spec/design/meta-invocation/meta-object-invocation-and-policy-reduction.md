@@ -53,7 +53,47 @@ Every meta-instance root is a stable semantic owner with whole-slot
 `PolicyMode::Plain`. Root consistency is an owner/identity invariant, not a
 const projection, and plain does not imply writable.
 
-### 2.1 Generic symbolic anchor and compile realization
+### 2.1 Compilation entry uses ordinary meta-root formation
+
+`Compile(Level)` enters an ordinary meta invocation, not a `compile`-stage
+callable that manufactures a root. Its entry callable is the ordinary meta body
+obtained from the normalized source tree. The existing core bootstrap's owner
+root supplies its parent placement; physical discovery supplies body material,
+not an owner, Place, or authority. `F_entry` below denotes that callable's
+semantic identity, not a new primitive or surface name:
+
+```text
+WellFormedMetaCall_Gamma(F_entry, args_entry)
+  => M_compile = MetaInstanceRoot(
+       ParentSemanticOwner_Gamma(F_entry),
+       MetaInstanceKey(F_entry, Canonicalize(args_entry)))
+```
+
+This is precisely the [ordinary meta formation law](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md#41-orthogonal-dimensions).
+Entry and any argument dependencies must satisfy its ordinary admissibility
+and global-keyability premises. A filename or raw Level string is not a
+substitute for callable/argument identity. The existing bootstrap provision of
+owner roots is described in the [bootstrap consumer map](../symbol-world/early-meta-functions-and-namespace-graph.md#core-and-early-semantic-operations);
+it is fixed language bootstrap, not configurable build input.
+
+The invocation's default result construction has an already formed complete
+resident `tau_M` in its ordinary result Place (§4.3.3 of the construction owner).
+`r_root` is the ordinary `mut type ref` to that Place under the invocation's
+result-construction write authority. It is not a reference to the semantic
+owner identity `M_compile`. Its subject is the result's existing construction
+window, with `Anchor(tau_M) = <M_compile, epsilon>`. The active entry frame
+therefore supplies `AuthorityMatches`; `WindowLive` and the result Place's
+ordinary Writable facts remain separate premises. Neither root stability nor
+its `plain` policy supplies Writable.
+
+Normalized root actions execute inside this same meta invocation, using
+`r_root`; they do not enter a second meta frame that would mask its authority.
+Normal return performs the existing default-result seal and ends that window.
+Saved references cannot bypass later write Pre. Thus Level selects the source
+tree supplied to normalization, while evaluator invocation/result formation
+alone establishes the root and its authorized construction context.
+
+### 2.2 Generic symbolic anchor and compile realization
 
 MetaPartner(F) = M(F) names the generic symbolic anchor; CompilePartner(F) =
 C(F) names the derived compile realization. These are independent roles.

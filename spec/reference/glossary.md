@@ -100,9 +100,9 @@ TypeOf(v) membership in the core. The current coarse bucket key is the core tau.
 
 ### SemanticOwner
 
-A node in the typed parent-linked owner graph. Package/namespace, callable,
-MetaInstance, and generated identities qualify their local identities through
-an owner.
+A node in the typed parent-linked owner graph. Source-established namespace
+owners, callable owners, canonical meta-instance owners, and generated owners
+qualify their local identities. A package graph supplies no semantic owner.
 
 ### MetaInstance
 

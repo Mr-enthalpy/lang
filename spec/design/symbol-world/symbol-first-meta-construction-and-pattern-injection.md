@@ -1110,7 +1110,7 @@ Every ordinary canonical meta-function invocation establishes a virtual
 symbolic-navigation and construction-authority scope:
 
 ```text
-M = MetaInstanceScope(callee_symbol, canonical_arguments)
+M = MetaInstanceScope(callee_identity, canonical_arguments)
 ```
 
 `M` is the `MetaInstanceRoot` of §2.1 — the symbolic-navigation, stable-identity,

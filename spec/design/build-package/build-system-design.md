@@ -31,7 +31,13 @@ path. Future optimization options configure planner search without changing E.
       NormalizeBody(D, r_n)
     )
 
-Here r_root is the selected compilation's ordinary root construction reference.
+Here r_root is the ordinary mutable reference to the default result construction
+Place of M_compile, established by the [compilation-entry meta formation law](../meta-invocation/meta-object-invocation-and-policy-reduction.md#21-compilation-entry-uses-ordinary-meta-root-formation).
+The existing bootstrap parent, selected ordinary meta callable and canonical
+arguments determine M_compile; its active frame and result construction window
+provide the ordinary authority premises. Level selects physical input only.
+Normalization neither creates this reference nor grants its Writable/OpenHere
+facts, and M_compile's owner identity is not itself the borrowed resident.
 The selected level adds no extra name segment. Each child-directory basename n
 becomes the selector of a generated ordinary structural let action. That action
 uses the same FreshNamedType formation as written structural let: it commits

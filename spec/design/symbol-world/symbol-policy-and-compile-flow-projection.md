@@ -2190,7 +2190,9 @@ replaces the real runtime call.
 All ordinary bindings and call targets use one selection trunk:
 
 ```text
-C0 = CallableProjection(Resolve(path))
+b = Resolve(path)
+T = ReadNamedType(b)
+C0 = CallCandidates(T)
 C1 = ExposePhaseViews(
        C0,
        EvaluationStageContext(call),
@@ -2203,6 +2205,13 @@ M  = MaxPolicyAndOverloadOrder(
        argument PolicyMode coordinates,
        OutputModeDemand(call))
 ```
+
+Resolve returns a structural NameBinding, not a callable carrier. ReadNamedType
+reads its resident complete named type before candidate projection. An explicitly
+held OverloadGroup G instead supplies CallCandidates(G) at C0; it does not change
+path resolution. Only repeated exposure of the same stable candidate-entry
+identity may collapse; distinct contribution entries never deduplicate merely
+because their values or types normalize equally.
 
 Success requires exactly one maximal candidate. Failure can mean no exposed
 slice, no fully admissible entry, multiple incomparable maxima, a unique delete
