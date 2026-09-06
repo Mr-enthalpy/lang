@@ -355,7 +355,7 @@ that complete frame:
 ```text
 InvocationFrame:
   slot 0 = selected caller-object self view
-  slot 1..n = explicit argument symbol views
+  slot 1..n = explicit argument value views
 
 every slot must satisfy its selected associated () entry policy pattern
 ```
@@ -490,12 +490,12 @@ selected slot's `PolicyMode`; ordinary external calls therefore do not acquire
 an automatic const dependency merely by crossing the boundary.
 
 Automatic capture and call resolution occupy adjoining problem domains: both
-reason about an external symbol identity and its stable external view. This
+reason about an external name-binding identity and its stable external view. This
 does not require either mechanism to consume the other's output, share a pass,
 or run in a prescribed order. Automatic capture does not skip admissibility or
 select a candidate.
 
-Explicit and automatic capture may resolve to the same source symbol but remain
+Explicit and automatic capture may resolve to the same source name binding but remain
 distinct dependency declarations. Explicit capture can rename, project policy,
 use a complex initializer, request `mut`, and carry its own diagnostic
 provenance. No frontend or capture-discovery step erases it as redundant.
@@ -514,13 +514,13 @@ ResolvedCaptureRequirement {
 }
 ```
 
-Namespace lookup supplies the stable source candidate set; it does not consume
-these request fields. The later ordinary capture-legality consumer checks both
+Namespace lookup resolves one source binding; a later consumer projects its
+resident. Lookup does not consume these request fields. The later ordinary capture-legality consumer checks both
 the requested Policy demand and required access capability.
 
 This object is not a `self` field list and does not determine receiver mode,
 copy/reference representation, field ordering, ZST status, or ABI layout.
-Static symbol links, constant embedding, zero-layout dependencies, stack
+Static resolved-value links, constant embedding, zero-layout dependencies, stack
 environments, and stored checked references are possible later lowerings.
 
 For example:
@@ -564,7 +564,7 @@ selects ordinary placement. The parser and normalizer must not infer
 placement from `head.is_some()`.
 
 An in-place closure has no capture clause and no capture environment. Reads of
-outer symbols do not require `[]`. Instead, unresolved outer reads are carried
+outer names do not require `[]`. Instead, unresolved outer reads are carried
 as lazy embedding lookups:
 
 ```text
@@ -576,14 +576,14 @@ candidate use at control-flow layer L:
   missing at L -> diagnostic at that use
 ```
 
-Failure to find the symbol at the syntactic closure site is therefore not yet
+Failure to resolve the name at the syntactic closure site is therefore not yet
 an error. The lookup becomes final only at the layer where that in-place
 candidate is embedded and selected. This is lexical embedding, not textual
-macro substitution: local declarations still shadow normally, symbol identity
+macro substitution: local declarations still shadow normally, name-binding identity
 is used after resolution, and each use is checked in its own embedding
 environment.
 
-An in-place closure may not write any symbol/place outside its closure-local
+An in-place closure may not write any name binding/Place outside its closure-local
 scope:
 
 ```text
@@ -704,9 +704,8 @@ callable: a compile generic `F` has no distinct compile partner, and a meta `F`
 has none either (its realization is `F` itself in both cases). This matches the
 partner classification in meta-object-invocation's Meta-instance identity section: runtime generic `F`
 has `C(F)` plus `M(F)`; compile generic `F` has only `M(F)`; meta `F` has
-neither. A host name binding's symbol-facet
-entry for the companion (overload-resolution §3.3) is a lowering/implementation
-cache, not the semantic cause: removing the cache entry does not remove
+neither. A companion entry in a legacy Rust symbol carrier is a
+lowering/implementation cache, not the semantic cause: removing the cache entry does not remove
 `CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that
 entry alone.
 
@@ -761,7 +760,7 @@ eagerly turn the carrier into a value or allocate its environment.
   `self` fields or physical layout.
 - In-place closures may be overload candidates, have no capture clause or
   automatic capture set, defer unresolved outer reads to their embedding
-  layer, and are forbidden from writing outer symbols/places.
+  layer, and are forbidden from writing outer name bindings/Places.
 - Ordinary and built-in privileged meta functions follow the same
   function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal

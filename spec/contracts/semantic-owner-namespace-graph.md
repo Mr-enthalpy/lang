@@ -318,7 +318,7 @@ Implemented substrate:
 - parent-linked `SemanticOwnerGraph`, namespace/callable/meta/generated owner
   interning, owner-derived standalone anonymous callable types, an explicit
   callable-owner/receiver-type binding carrier, hygienic meta-instance
-  interning, and owner-derived symbol identity;
+  interning, and owner-derived identity of a legacy Rust symbol carrier;
 - frontend callable owners, PatternRoot alpha boundaries, same-root duplicate
   validation, cross-root shadowing, and an explicit
   `SemanticOwnerQualification` handoff that rejects an unmapped or
@@ -350,7 +350,7 @@ Deferred:
   external overload routing. That payload retains identity, pair, mode,
   declaration/intrinsic realization facts, and provenance but no
   context-indexed `DynamicLegality_Γ`; the current entry records eligibility
-  and preserves symbol identity but does not duplicate the candidate projector
+  and preserves legacy Rust symbol carrier identity but does not duplicate the candidate projector
   or form consumer legality;
 - recursive materialization of visibility-bearing structured fields beyond
   the current simple-field struct slice (the decoded Pattern retains the
