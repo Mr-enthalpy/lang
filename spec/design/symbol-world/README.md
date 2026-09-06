@@ -1,40 +1,27 @@
-# Symbol world
+# Names, Pattern Values, Construction, and Calls
 
-This block owns the language’s Object, complete-type, Symbol, Place, Policy,
-construction, and namespace relations.
+This block separates structural name existence from ordinary value algebra.
 
-## Canonical coordinates
+    Name -> complete named type T = <Core(T), V_T>
+    eta(T) = {T} : OverloadGroup
+    type += closure: callspace contribution with OpenHere and anchoring
+    group += type/group: candidate aggregation with group writability
 
-```text
-Object x = <Val1?(x), Pattern(x), Val2(x)>
-complete tau = bind alpha.<Core(tau), V_tau[alpha]>
-Symbol S = <tau?, V_S?>
-Place = horizontal residency coordinate
-```
+- [Name/type/group algebra and structural let](names-and-overload-groups.md)
+- [Complete pattern values and Places](type-values-places-and-borrow-views.md)
+- [Construction, meta identity and OpenHere](symbol-first-meta-construction-and-pattern-injection.md)
+- [Source composition](symbol-construction-units-and-namespace-origin.md)
+- [Associated compile state](associated-compile-state.md)
+- [Closure anchored replication](closure-anchored-replication.md)
+- [Policy and stages](symbol-policy-and-compile-flow-projection.md)
+- [Function objects](function-object-call-model.md)
+- [Self and return capability](function-object-self-and-return-capability.md)
+- [Fields and access trees](type-associated-function-objects-and-access-trees.md)
+- [Lexical aliases](entity-alias-design.md)
+- [Entity-reference syntax](entity-ref-design.md)
+- [Consumer map](early-meta-functions-and-namespace-graph.md)
 
-Object, complete type value, Symbol, Place, owner identity, Policy, capability,
-and lifetime are distinct semantic coordinates. Complete type values have no
-HomeSymbol. Name resolution produces one terminal Symbol before value/type/call
-projection.
-
-## Documents
-
-- `type-values-places-and-borrow-views.md` — Object normalization, complete
-  type observations, Place/resident generations, borrow views, literals and
-  lifetime-name reification.
-- `function-object-call-model.md` — value/type/call projection and associated
-  `()`.
-- `symbol-first-meta-construction-and-pattern-injection.md` — `struct -> tau`,
-  result/install boundary, OpenHere, pure `extend`, and place-level `inject`.
-- `symbol-construction-units-and-namespace-origin.md` — construction ownership
-  and namespace contribution authority.
-- `symbol-policy-and-compile-flow-projection.md` — PolicyPair, PolicyMode,
-  demand, migration, capability, seal and compile projection.
-- `early-meta-functions-and-namespace-graph.md` — bootstrap and namespace
-  graph consumer details.
-- `entity-ref-design.md` — preserved strong entity reference shape.
-- `entity-alias-design.md` — block-local lexical alias mapping.
-
-Read the type/value/place owner first, then construction/ownership, Policy, and
-the relevant consumer. Pattern and overload semantics are owned by
-`../patterns-overload/`; lifecycle is owned by `../lifetime/`.
+Ordinary Core equality/keying and whole-snapshot observations remain distinct.
+OpenHere depends on the existing value anchor/window/stack rules, not a
+carrier's identity. Policy pair inheritance and unwritten plain mode concern
+different dimensions. Implicit return selects the outermost function layer.

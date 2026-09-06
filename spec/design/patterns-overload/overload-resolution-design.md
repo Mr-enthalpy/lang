@@ -4,30 +4,31 @@ Status: Current canonical design
 
 ## 1. Resolve once, then project
 
-Lexical resolution produces one terminal Symbol before callability or
+Lexical resolution produces one terminal name binding before callability or
 applicability is considered:
 
 ```text
 S = Resolve_Gamma(path)
-Invoke(CallableProjection(S))
+Invoke(CallCandidates(NamedType(S)))
 ```
 
-Shadowing therefore precedes applicability. A non-callable nearest Symbol, an
+Shadowing therefore precedes applicability. A non-callable nearest name binding, an
 empty candidate family, or an A-stage rejection never restarts name resolution
-at an outer same-name Symbol.
+at an outer same-name name binding.
 
 ## 2. Callable projection
 
-For Symbol `S` carrying complete type `tau`:
+A resolved structural name denotes its complete named type T. Explicit group
+values use the singleton type embedding:
 
-```text
-CallableProjection(S)
-  = DedupCandidateIdentity(V_S(S) union CallSpace(tau))
-```
+    CallCandidates(T) = CallCandidates(V_tau(T))
+    CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
 
-Symbol-local and TypeMember candidates enter one candidate space. The complete
-type snapshot is the snapshot captured by the value or binding, not a live
-lookup through a Core index.
+Group bucket aggregation does not mutate the candidate types. Each value
+callee uses its exact captured complete type and associated (), with
+Type(callee) = Type(first self). A source binding or Core registry index does
+not supply a later callspace snapshot. See
+[name/type algebra](../symbol-world/names-and-overload-groups.md).
 
 ## 3. Pipeline
 

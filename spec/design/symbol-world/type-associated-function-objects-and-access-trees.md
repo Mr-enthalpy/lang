@@ -68,18 +68,18 @@ silently degrading the selected operation. Erasing policy detail, this is the
 familiar three-signature summary:
 
 ```text
-AssociatedSymbol(T, field):
+AssociatedName(T, field):
   field : (object: T)       -> field
   field : (object: T ref)   -> field ref
   field : (object: T share) -> field share
 
-AssociatedSymbol(T, push):
+AssociatedName(T, push):
   push : (object: T, value) -> result
 ```
 
 The full candidate family is normative; the summary is its policy-erased
 projection and is not the sole specification. For a `struct`-generated field
-these are ordinary typed candidate objects in one associated Symbol.
+these are ordinary typed candidate objects in one associated name binding.
 
 #### Family registration: producer side of `StructuralDefault`
 
@@ -314,52 +314,31 @@ passing. The mechanical pass-insertion semantics are specified in
 
 ## Same-Name Candidate Lookup
 
-One associated field Symbol contains every value/ref/share observation
+One associated field name binding contains every value/ref/share observation
 candidate. `ref` and `share` are types/observation kinds in candidate formals and
 results, not generated namespace subspaces. A structural field literally named
-`ref` or `share` is therefore just another same-name associated Symbol and does
+`ref` or `share` is therefore just another same-name associated name binding and does
 not collide with a projection namespace. Ordinary overload resolution selects
 the candidate from the receiver Pattern and Policy.
 
 ## Derived-Type Associated Forwarding
 
-A derived type construction `D(T)` — `T ref`, `T share`, and any future derived
-construction — does not gain associated capabilities by copying the original
-type's members. Every member of `V_(D(T))` must truly belong to the derived
-type's own structural level:
+A derived type construction D(T), including T ref or T share, preserves
+complete snapshot identity. Its contributed closure members must satisfy:
 
-```text
-τ = ⟨Q, V_τ⟩
+    F in V_tau => TypeOf(F) in Core(tau)
 
-F ∈ V_τ
-=>
-Anonymous(F)
-∧ DirectClassifierHome(F) = TypeMemberScope(Q)
-```
+This is final structural membership, not permission to reparent a callable.
+An eligible closure can be instantiated under the target anchor using its
+ReinstantiationWitness. The original value remains unchanged.
 
-In particular, `F ∈ V_T` never implies `F ∈ V_(T ref)` or `F ∈ V_(T share)`:
-those are three complete type values with three independently home-checked
-callspaces. Foreign-member injection into a derived type's callspace is
-forbidden (`NoForeignTypeMemberInjection`,
-`symbol-first-meta-construction-and-pattern-injection.md` §2.1). The correct
-mechanism is derived associated forwarding: the derived type generates its own
-forwarding member
+Ordinary field forwarding uses a fresh forwarding function object's own self;
+the operated object remains an ordinary subsequent argument. Each forwarder
+captures the base complete snapshot. No receiver coercion or independent
+implementation authority is involved.
 
-```text
-ForwardAssoc(D(T), name)
-```
-
-satisfying:
-
-```text
-ForwardAssoc(D(T), name) ∈ V_(D(T))
-
-DirectClassifierHome(
-  ForwardAssoc(D(T), name)
-)
-=
-TypeMemberScope(Core(τ_(D(T))))
-```
+    ForwardAssoc(D(T), name) in V_(D(T))
+    TypeOf(ForwardAssoc(D(T), name)) in Core(tau_(D(T)))
 
 so the forwarder is a real ordinary member of the derived type, homed in the
 derived type's own level. Its behavior is an ordinary call:
@@ -432,7 +411,7 @@ ForwardBaseSnapshot(f)
 ```
 
 The forwarder `f` is a real ordinary callable homed in `V_(D(T))`
-(`DirectClassifierHome(f) = TypeMemberScope(Core(τ_(D(T))))`). Its body
+(`TypeOf(f) in Core(τ_(D(T)))`). Its body
 performs a new ordinary invocation of `c` against `ForwardBaseSnapshot(f)`.
 The applicability equivalence lets a derived caller discover at selection
 time whether the base family has an applicable candidate — not after
@@ -509,7 +488,7 @@ Field functions live in a type-associated companion *place*, which is distinct
 from the type *value* the bound symbol stores. The access-tree work in this
 document therefore depends on three identities being kept separate:
 
-- a name (`SymbolId`),
+- a name (`NameBindingId`),
 - a writable location (`PlaceId`),
 - a canonical type value (the implementation index root currently called
   `TypeValueId`; the canonical semantic type value is the rank-indexed closure
@@ -523,7 +502,7 @@ The consequences that field/access-tree work must preserve:
   alias.
 - `let f::(t |> (type ref)) = ...` explicitly creates the prospective child under
   `place(t)`, never `place(uint8)`, because `t` is already a pure type slot. For
-  a Symbol `S`, the corresponding place form is `let f::((S ref).type) = ...`.
+  a name binding `S`, the corresponding place form is `let f::((S ref).type) = ...`.
   `AsType(S)` never recovers a place. Type-value
   equality must not canonicalize extension targets, and a `type`-kind symbol may
   own a companion namespace place distinct from the type value it stores.
@@ -542,7 +521,7 @@ The consequences that field/access-tree work must preserve:
   extended purely without a writable carrier.
 
 This is only a summary. For the canonical `TypeValueId` implementation index
-root / `PlaceId` / `SymbolId` distinction — including the object normal form,
+root / `PlaceId` / `NameBindingId` distinction — including the object normal form,
 the borrow views, writability, construction-authority (`OpenHere_Σ` / `WindowLive_Σ`), and the namespace
 member-creation/write pipeline — see
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
@@ -579,10 +558,10 @@ This note does not implement or specify:
   `type-values-places-and-borrow-views.md` §2.3 and §5);
 - access-tree scanning;
 - implementation of complete type closures `tau = <Q,V_τ>`, their optional
-  binder-aware form `bind alpha.<Q,V_τ[alpha]>`, and direct-home TypeMember
+  binder-aware form `bind alpha.<Q,V_τ[alpha]>`, and anchored TypeMember
   classification; target type-as-callee lookup is already
   `CallSpace(tau)=V_τ` and never performs
-  defining-Symbol or carrier-provenance recovery;
+  defining-name binding or carrier-provenance recovery;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;
 - generic meta execution;

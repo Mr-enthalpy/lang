@@ -60,7 +60,7 @@ is not reclassified as an `EntityRef`.
 The parser preserves components and spans only. It does not perform name,
 operator, namespace, dependency, package, type, kind, or overload resolution.
 The lexical-alias consumer resolves the complete RHS once and stores the
-terminal `SemanticSymbolIdentity` in the block-local lexical environment, as
+terminal resolved name-binding identity in the block-local lexical environment, as
 specified by [`entity-alias-design.md`](entity-alias-design.md).
 
 General `EntityRef` use in other strong contexts remains Open. Such contexts

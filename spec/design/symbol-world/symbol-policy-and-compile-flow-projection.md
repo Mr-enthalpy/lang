@@ -1,4 +1,4 @@
-# Symbol Policy and Compile-Flow Projection
+# name binding Policy and Compile-Flow Projection
 
 Status: canonical design contract. The typed model in this document is the
 normative policy algebra.
@@ -36,8 +36,14 @@ edge between a context and an object:
 
 ```text
 PolicyView_Γ(slot, x)
-  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot) ⟩
+  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot), SafetyPolicy_Γ(slot) ⟩
 ```
+
+SafetyPolicy = safe | unsafe is independent of PolicyMode and the pair.
+Its semantic-admission boundary is defined in
+[unsafe admission](../lifetime/unsafe-semantic-admission.md); it grants neither
+write authority nor a substitute for action Pre. The mode comparisons below
+remain their existing three-point relations.
 
 Policy preference, capability realization, and dynamic legality must not be
 collapsed:
@@ -301,8 +307,8 @@ going back out of `τ`:
 
 ```text
 τ
--> recover defining Symbol(...)
--> inspect its V_S
+-> recover defining name binding(...)
+-> inspect the named type's callspace (or the explicit group's type candidates)
 ```
 
 The global `const` / `mut` dispatcher itself does not guarantee conversion
@@ -896,7 +902,7 @@ sigma = ExpressionResultSlot(PolicyLet(P, e))
 
 sigma is not:
   a NameBinding
-  a Symbol
+  a name binding
   a hidden declaration
   an independently acquired or source-addressable Place
 
@@ -1076,7 +1082,7 @@ Pv = runtime
 Pp = compile
 ```
 
-It must not return the original `compile || runtime` entry. Symbol identity and
+It must not return the original `compile || runtime` entry. name binding identity and
 Pattern identity do not change; only the visible slice is cropped.
 
 Result-view satisfaction is existing-view-first:
@@ -1131,26 +1137,20 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
-Every formal parameter first inherits the callable result view `P2` without
-reinterpretation. Its whole-slot PolicyMode is inherited unless the binding
-spelling explicitly overrides that coordinate:
+Each formal inherits the callable's P2 PolicyPair (Pv:Pp). The orthogonal
+whole-slot PolicyMode is elaborated separately; an omitted mode is plain.
 
-```text
-P_in = Overlay(P2(callable), Delta_in)
+    Pair(P_in) = Pair(P2(callable))
+    Mode(P_in) = ExplicitFormalMode or plain
+    stage(P_in) = stage(P2(callable))
 
-stage(P_in) = stage(P2(callable))
-```
+Inheritance and plain concern different coordinates. There is no choice
+between inheriting the pair and using plain mode.
 
-An omitted mode preserves the inherited P2 mode. The three explicit spellings
-select three actual PolicyMode points; plain is not an unspecified variable or
-an instruction to infer one of the other two:
-
-```text
-let x        -> P2 unchanged
-plain let x  -> FormalPolicyView(P2, PolicyMode = plain)
-const let x  -> FormalPolicyView(P2, PolicyMode = const)
-mut let x    -> FormalPolicyView(P2, PolicyMode = mut)
-```
+    let x        -> FormalPolicyView(Pair(P2), PolicyMode = plain)
+    plain let x  -> FormalPolicyView(Pair(P2), PolicyMode = plain)
+    const let x  -> FormalPolicyView(Pair(P2), PolicyMode = const)
+    mut let x    -> FormalPolicyView(Pair(P2), PolicyMode = mut)
 
 Stages, value presence, and the Pattern component remain byte-for-byte the
 inherited P2 dimensions; PolicyMode may neither shrink nor widen them.
@@ -1200,7 +1200,7 @@ stage(P_out) = stage(P1(callable))
 ```
 
 An omitted mode preserves P1's mode. An explicit spelling selects the mode
-symmetrically with the formal-parameter rule while leaving P1's stage/exposure
+under this return-specific rule while leaving P1's stage/exposure
 pair unchanged:
 
 ```text
@@ -1351,7 +1351,7 @@ ProjectExistingViewForDemand(demand, R) != empty
   => no value reconstruction
   => PolicyProjection(identity, R) preserves the accepted view
   => ValueRealization(identity, R) = R
-  => Symbol / TypeValue / PatternValue / Place identity is unchanged
+  => name binding / TypeValue / PatternValue / Place identity is unchanged
 ```
 
 This is the **Existing-First, Constructible-Second** principle:
@@ -1588,9 +1588,9 @@ Residualize unavailable runtime dependencies
 Continue the same already-resolved invocation at Runtime
 ```
 
-Symbol/path/callable identity and ordinary overload selection occur in the
+name binding/path/callable identity and ordinary overload selection occur in the
 static semantic world. A runtime continuation does not reopen namespace
-lookup, Symbol identity, callable identity, or the overload candidate set
+lookup, name binding identity, callable identity, or the overload candidate set
 merely because runtime values become readable. Explicit future dynamic
 dispatch, if introduced, must be a different named mechanism.
 
@@ -1846,38 +1846,23 @@ resolved independently of whether a facet is exposed in the current phase.
 
 ## 8. Mechanical compile-flow projection
 
-Before any of the three phases executes, structurally project:
+StaticFlow and RuntimeResidualFlow are observations of one semantic
+continuation, not independent semantic passes or separate IR worlds.
 
-```text
-CompleteSymbolFlow
-  -> StaticFlow
-  -> RuntimeResidualFlow
-```
+    complete continuation -> static observation
+                          -> runtime residual observation
 
-Projection does not execute calls or perform final overload selection.
+Pattern/type work, ready calls, derived companions and deferred seal work retain
+their ordinary stage rules. Runtime residue retains value computations, runtime
+bodies/effects and branch value selection. D/Done and other control structures
+are projections of the same actions and positions, not separately interpreted
+copies.
 
-`StaticFlow` preserves:
-
-```text
-Pattern/type flow
-meta/compile/seal static call nodes
-derived compile companions
-symbol relationships required by static bindings
-DeferredSealTask nodes
-D/Done and control-flow structure
-```
-
-`RuntimeResidualFlow` preserves:
-
-```text
-runtime value computations and bodies
-runtime branch value selection
-runtime effects
-runtime symbol binding
-required D/Done and control-flow structure
-```
-
-No phase is inferred ad hoc from the original AST after this projection.
+Projection alone executes no call and selects no overload. E exhausts ready
+work under the current continuation, stage, policy and facts; E E = E.
+It does not rewrite runtime bindings into compile bindings to obtain more work.
+[E and optimizer boundaries](../meta-invocation/evaluation-residual-and-optimization.md)
+govern transformations and revalidation by all affected projections.
 
 ## 9. Namespace visibility and export
 
@@ -2157,9 +2142,9 @@ privileged builtin
 ```
 
 An ordinary meta callable's default result is `τ` (`DefaultMetaResult = τ`). An
-explicit `f : … -> symbol` remains legal. `compile` may return a complete type
+explicit ordinary result type, including OverloadGroup, remains legal. `compile` may return a complete type
 value `tau` (participating in Pattern observation through `Core(tau)`, not
-itself an ordinary PatternValue/Object), a Symbol
+itself an ordinary PatternValue/Object), an OverloadGroup
 value, `type ref`, or any other declared ordinary PatternValue. Privileged
 builtins are member-specific: in this closure `struct -> tau`,
 `extend -> type`, and `inject -> type ref`. The root conditions are owned by
@@ -2198,8 +2183,8 @@ there is no later static deferral phase.
 
 ### 11.3 Runtime
 
-Runtime consumes `RuntimeResidualFlow`, exposes runtime value slices, completes
-runtime symbol binding and overload selection, executes runtime bodies/effects,
+Runtime consumes `RuntimeResidualFlow`, exposes runtime value slices, continues
+the already resolved and sealed runtime invocations, executes runtime bodies/effects,
 and performs runtime branch value selection. A derived compile companion never
 replaces the real runtime call.
 

@@ -21,7 +21,7 @@ Other documents may define consumers of this relation. In particular:
 - `../symbol-world/type-values-places-and-borrow-views.md` owns complete type
   values, places, `ProjectionSlot`, and borrow observations;
 - `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
-  owns Symbol construction, `struct`, `extend`, `inject`, and installation;
+  owns name binding construction, `struct`, `extend`, `inject`, and installation;
 - `../../contracts/semantic-owner-namespace-graph.md` owns
   `SemanticOwnerId`, `PatternRoot`, and `HoleBinderId` identity.
 
@@ -298,7 +298,7 @@ Ordinary navigated creation, including:
 let f::((s ref).type) = value;
 ```
 
-may create a `Val2` member or associated Symbol. It cannot add a
+may create a `Val2` member or associated name binding. It cannot add a
 `DirectPatternChild`, `ConstructEdge`, `ExtractEdge`, or `FieldView`. Structural
 registration requires the privilege held by `struct` or `extend`; `inject`
 reaches the same privilege only by invoking `extend` on the value it reads.
@@ -357,7 +357,7 @@ Norm(x)
 ```
 
 Cross-axis comparison uses normalized Object equality. A resident place,
-source carrier, construction spelling, or defining Symbol is not Pattern
+source carrier, construction spelling, or defining name binding is not Pattern
 content identity.
 
 ## 6. Navigation formation and Pattern identity
@@ -783,12 +783,12 @@ ExtractEdge_P_T(C, A, E_C)
 FieldView_P_T(T, inner, A, F)
 ```
 
-`K`, `E`, and `F` are ordinary callable Objects stored in the ordinary Symbol /
+`K`, `E`, and `F` are ordinary callable Objects stored in the ordinary name binding /
 `Val2` / type-member value universe. `P_T` does not own a second copy. It only
 registers the structural or interface role played by that callable.
 
 The namespace/type distinction of a core `Q` is a property of `Q`'s registered
-construction role, never of any later Symbol sibling count. Formally:
+construction role, never of any later name binding sibling count. Formally:
 
 ```text
 HasRegisteredSelfConstruction(Q)
@@ -963,7 +963,7 @@ constrain the same semantic entity.
 
 So `Closed(τ)` also means no new structure or callable may be added from the
 `P × Val2` side, and `WellFormedTau(τ)` also guarantees that the P/Val2
-structural registration and the V_τ direct-home callspace are compatible.
+structural registration and the V_τ anchored callspace are compatible.
 There is no formation order "Q formed first, then some namespace inspected,
 then V_τ attached, then τ obtained"; there is no "P structure is one object,
 V_τ/type callability is another side table"; and there is never a state where
@@ -1003,7 +1003,7 @@ tau = bind alpha. <Q, V_τ[alpha]>
 `V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
 direct TypeMember members placed into `tau` when it was produced
 (`TypeMember_Q` handoff invariants below), not a global function of
-the bare core `Q` and not a post-hoc partition of a shared Symbol space.
+the bare core `Q` and not a post-hoc partition of a shared name binding space.
 Members created under the same `Q` later never retroactively enter
 an existing snapshot, and a copied or extracted `tau` keeps its captured `V_τ`.
 
@@ -1029,7 +1029,7 @@ TypeMemberScope(Q) = MemberScope(CoreAnchor(Q))
 
 HomeEligible_Q(F)                                -- TypeMember_Q(F)
   iff Anonymous(F)
-  and DirectClassifierHome(F) = TypeMemberScope(Q)
+  and TypeOf(F) in Q
 
 TypeMember_τ(F)
   iff F ∈ ClassifierDomain(V_τ)
@@ -1037,7 +1037,7 @@ TypeMember_τ(F)
 
 CreateClassifier_Gamma(
   F,
-  DirectClassifierHome = TypeMemberScope(Q)
+  TypeOf(F) in Q
 )
   => CurrentAuthority_Γ(Q)
 
@@ -1082,7 +1082,7 @@ extend : <Q, V_τ> x Delta -> <Q', V_τ'>
 ```
 
 It is the privileged operation that may add direct structural children and
-their direct-home TypeMember classifiers. It is pure: the old snapshot is not
+their anchored TypeMember classifiers. It is pure: the old snapshot is not
 modified.
 
 `inject` is:
@@ -1135,3 +1135,11 @@ The following do not reopen this base authority:
 
 These are extension, representation, or surface questions. They may consume
 the judgments above but may not redefine them.
+
+
+Closure membership may be established by a fresh anchored replica only when
+its ReinstantiationWitness permits that construction. The original callable
+and capture identities are not mutated; see
+[closure replication](../symbol-world/closure-anchored-replication.md).
+Named type synthesis and explicit candidate groups use their distinct
+[name/type algebras](../symbol-world/names-and-overload-groups.md).

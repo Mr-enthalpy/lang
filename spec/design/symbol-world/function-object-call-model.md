@@ -1,65 +1,41 @@
-# Function Object Call Model
+# Function Objects and Call Projection
 
-Design consolidation note. Not a user-visible syntax document.
-
-The canonical symbol-first/facet boundary is
-`symbol-first-meta-construction-and-pattern-injection.md`. This document owns
-the type-associated `()` call mechanism; it does not redefine how a name first
-resolves to a Symbol and forms the callable candidate set
-`CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (canonical owner
-`symbol-first-meta-construction-and-pattern-injection.md` §2.1).
-Policy pairs, binding P1, result P2, compile companions, and must-select consistency
-are canonical in `symbol-policy-and-compile-flow-projection.md`.
+Status: canonical call semantics. Consumer gaps are tracked in the roadmap.
 
 ## 1. Basic thesis
 
-A function is a value.
+A callable is an ordinary complete function object. A name denotes a named type
+whose V_tau is synthesized by its named contributions. Explicit OverloadGroups
+aggregate type candidates using the singleton embedding eta(T).
 
-```text
-let f = (self) => {};
-```
+    Type(callee) = Type(first self)
+    CallCandidates(T) = CallCandidates(V_tau(T))
+    CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
 
-`f` is a value of an anonymous function-object type `F`. `F` is usually not nameable in source syntax (obtainable as `f |> type`).
+The [name/type algebra](names-and-overload-groups.md) owns these projections
+and the distinct update algebras. There is one ordinary overload pipeline;
+neither a second binding facet nor a defining-name lookup supplements a
+complete type's immutable callspace. Non-callable members contribute no call
+candidates, and an empty projection never restarts name lookup.
 
-The converse is not true: a value entry need not be a function. A symbol's
-callable candidate set `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (canonical owner
-`symbol-first-meta-construction-and-pattern-injection.md` §2.1) may contain
-ordinary uncallable values and multiple heterogeneous values of unrelated
-types. The Symbol's own value-member bucket `V_S` is unioned with the
-intrinsic `CallSpace(τ) = V_τ` of any stored `τ` in one step: there is no
-priority, fallback, or reopening between `V_S` and `V_τ`; the same candidate
-reachable through both paths is deduplicated, and two different callables with
-identical signatures remain two candidates. Callability is tested only in a call
-position by resolving each value's type-associated `()` entry.
-
-Under the associated namespace of `F` there is a call entry `() :: F`. This `()` is the call method of the function object.
-
-Function call is not primitive textual application. It is resolved through the callable object's type-associated namespace.
+Direct function expressions produce a complete anonymous type and a function
+object with its associated () entry. Its own object occupies first self.
+Captures, parameters, result demands and Policy participate through the
+existing ordinary rules.
 
 ## 2. Pipeline call form
 
-```text
-Product |> Expr
-```
+    Product |> expression
+      -> resolved value / named type / explicit candidate group
+      -> ordinary call projection
+      -> exact captured type and associated ()
+      -> ordinary admissibility and preference
+      -> unique sealed invocation
+      -> DynamicLegality and execution
 
-`Expr` is the would-be callable object. The call process:
-
-1. Evaluate/resolve `Expr` as a value object
-2. Obtain `type(Expr)`
-3. Inspect the associated namespace of `type(Expr)`
-4. Find the call entry `()`
-5. Invoke that entry with implicit caller/self + explicit Product
-
-The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
-
-When `Expr` is a name/path, resolution first produces a Symbol `S` and forms
-the candidate set `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` in one step — no
-priority, no fallback, no reopening (symbol-first §2.1); the same candidate
-reachable through both `V_S` and `V_τ` is deduplicated. Candidate preparation
-observes each enumerated object's `Pv:Pp` view for the current lookup domain
-before type-associated call lookup. The remaining steps run independently for
-each surviving value entry; entries without an applicable `()` call entry are
-discarded.
+The explicit Product excludes implicit self. Distinct contributions are not
+erased by content interning; bucket aggregation and ordinary candidate identity
+follow their own rules. A selected failure never reopens selection.
 
 ### 2.1 Compiler-inserted atomic runtime migration call
 
@@ -110,7 +86,7 @@ parameters/results; mode is not tested by Policy-domain intersection.
 Stage, presence, Pp capability, Type, and structural applicability remain hard
 conditions.
 
-As an explanatory model rather than frozen surface syntax, one type Symbol may
+As an explanatory model rather than frozen surface syntax, one type name binding may
 carry the pure Pattern member `:t` plus ordinary value members over all nine
 `output PolicyMode <- input PolicyMode` coordinates. Every coordinate is
 expressible, but no coordinate is required to exist: each may be absent or
@@ -150,7 +126,7 @@ ordinary P1 projection makes this call unreachable. An absent-Val1 entry
 cannot be passed as migration input. Failure after the unique ordinary winner
 is selected cannot reopen the candidate set.
 
-The model does not freeze a special global `transition` Symbol or a new
+The model does not freeze a special global `transition` name binding or a new
 callable ontology. It freezes complete-choice existing projection followed,
 only when that projection is empty and the choice accepts runtime, by one
 ordinary function-object call toward the extracted runtime branch. The
@@ -163,8 +139,8 @@ The connected `lang_build` slice now implements this routing for source
 function objects and toolchain-source associated `()` entries:
 
 ```text
-Semantic Symbol / Pattern owner
-  -> CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
+Semantic name binding / Pattern owner
+  -> CallCandidates(NamedType(S))
   -> TypeValue
   -> PatternValue / ResolvedPatternScope
   -> associated ()
@@ -173,14 +149,14 @@ Semantic Symbol / Pattern owner
   -> ordinary result entries
 ```
 
-The source-Symbol and already-held-Pattern entrances merge at the same
+The source-name binding and already-held-Pattern entrances merge at the same
 candidate pipeline. The latter carries an explicit semantic receiver and does
 not fabricate a source path or require migration metadata.
 
 Name-based source calls and compiler-authorized operations therefore have
 different candidate entrances but one ordinary call trunk. Neither entrance
-requires `TypeValue -> original carrier Symbol`: source navigation resolves a
-Symbol and reads its values, while an already-held complete type value carries
+requires `TypeValue -> original carrier name binding`: source navigation resolves a
+name binding and reads its values, while an already-held complete type value carries
 its own callspace:
 
 ```text
@@ -192,7 +168,7 @@ Candidates(args |> t) = CallSpace(TypeValue(t)) = V_τ
 ```
 
 Copied/extracted type-as-callee lookup selects candidates from that immutable
-`V_τ` snapshot. Complete type values have no HomeSymbol, defining-Symbol
+`V_τ` snapshot. Complete type values have no HomeSymbol, defining-name binding
 recovery, most-recent carrier, or reverse `AsType` candidate entrance.
 
 Associated source navigation obeys the same forward-only rule. If:
@@ -201,11 +177,11 @@ Associated source navigation obeys the same forward-only rule. If:
 let T: type = uint8;
 ```
 
-then a target selected through `T` resolves `Symbol(T)` and reads the complete
+then a target selected through `T` resolves `name binding(T)` and reads the complete
 type snapshot. Type-as-callee candidates come from its `V_τ`; an ordinary
 navigated member may additionally be selected through `Q`/`Val2` under the
 normal navigation rules. Neither path inspects provenance or searches for
-`Symbol(uint8)`.
+`name binding(uint8)`.
 
 Migration callables obtain their result Pattern and complete type observations
 from registered semantic entities. Constructor/extractor materialization and
@@ -255,7 +231,7 @@ projection is empty and the demanded stage accepts runtime; explicit
 `const`/`mut` is a user-visible reconstruction demand. Neither turns `T` into
 `T ref`/`T share`, neither reopens a candidate set after selection, and both
 obtain their conversion capability from the complete `τ`'s callspace
-(`CallSpace(τ) = V_τ`), never from defining-Symbol or carrier-provenance
+(`CallSpace(τ) = V_τ`), never from defining-name binding or carrier-provenance
 recovery.
 
 ## 3. `()` is not an operator
@@ -267,7 +243,7 @@ recovery.
 ## 4. Direct function object call method
 
 For `let f = (self) => {};`, the generated anonymous function-object type `F` has
-one associated call Symbol `()`. Receiver observation is expressed by candidate
+one associated call name binding `()`. Receiver observation is expressed by candidate
 formals, not by generated `ref::F`, `share::F`, or `move::F` namespaces.
 
 A directly defined function object call receives that function object as its
@@ -276,28 +252,22 @@ function-object call method.
 
 ## 5. User-defined callable objects
 
-```text
-Product |> object
-  → object value
-  → type T = object |> type
-  → associated namespace search for `()`
-```
+For a value x of type T, invocation uses T's captured callspace and supplies x
+as first self. A ref/share decorated value has its own exact type and therefore
+its own matching () entry. There is no coercion of T into T ref/share to repair
+a first-self mismatch, and those distinct callee types are not one receiver
+exception under T's call entry.
 
-User-defined call entries are candidates in one same-name associated `()`
-Symbol. Candidates for `object: T`, `object: T ref`, and `object: T share` are
-distinguished by ordinary formal-Pattern matching and Policy. Borrowing changes
-the receiver value's type; it does not navigate to a `ref` or `share` child
-namespace.
+CallableOwner still owns local names, Pattern roots, nested callables and code
+identity. It is not inferred from a parameter's spelling. Member contribution
+requires the closure type to belong to the destination core; eligible closure
+expressions can create a new anchored instance under
+[replication](closure-anchored-replication.md), without changing the original.
 
-The implementation body of a borrowed-receiver candidate does not thereby
-acquire `T ref` as its lexical owner. Its `CallableOwner` still owns local
-symbols, Pattern roots, nested callables, and code identity; `T ref` is only the
-receiver type of invocation slot 0.
-
-Likewise, one `let ()` contribution inside construction of `T` contributes only
-the candidate it writes. Value/ref/share receiver candidates require separate
-authorized contributions but join the same associated `()` Symbol. `move` is
-the type fixed point `T move == T` and requires no additional candidate family.
+A receiving construction can call ordinary compile logic from A[t] with its
+own mutable type reference. That reference is an explicit argument, after the
+selected function object's self. Ordinary field forwarding already uses this
+same distinction and needs no special open-world contribution mechanism.
 
 ### 5.1 First-class field-function closures
 
@@ -448,7 +418,7 @@ receiver-type projection = ReceiverType(C)
 caller value slot       = invocation slot 0
 ```
 
-These are callable-frame labels, not independently stored Symbol facets in the
+These are callable-frame labels, not independently stored name binding facets in the
 target Object ontology.
 
 This does not inject callable-local declarations into the named receiver
@@ -635,7 +605,7 @@ lookup, capture-environment layout, or capture admissibility analysis.
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to Symbol `S`; form `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
+2. Resolve a name/path to name binding `S`; form `C0 := CallCandidates(NamedType(S))`
    and enumerate that candidate set (one step, no priority, no fallback, no
    reopening; the same candidate reachable through both paths is deduplicated)
 3. Expose each Val2 object's policy-pair view for the current `Phase`; for
@@ -687,7 +657,7 @@ plain Mode demand. Its complete operand pipe is resolved once under `P`, then
 preparation and unique Policy-overload selection. The selected migration
 jointly produces the concrete Policy projection and value realization in the
 node's ordinary expression-result slot. That slot has its own mode but is not a
-NameBinding, Symbol, declaration, or independently addressable Place. A later
+NameBinding, name binding, declaration, or independently addressable Place. A later
 outer candidate cannot propagate a formal-mode preference through the
 preserved `PolicyLet` node. The node is not an ordinary Val2 call or a hidden
 binding.
@@ -700,7 +670,7 @@ lookup-failure fallback. If its prepared candidate enters fully admissible set
 Compile projection preserves an ordinary projected call; normal compile
 evaluation later enumerates and selects objects.
 
-The semantic source of a compile companion is derivation, not Symbol
+The semantic source of a compile companion is derivation, not name binding
 injection. The compile realization is defined only for the stage that admits
 one — a runtime generic callable — and is undefined for the other stages:
 
@@ -730,9 +700,9 @@ receiver, and associated static `()` intact. The compile companion's existence
 is a fact about `F` under the compile transform, and only about a runtime
 callable: a compile generic `F` has no distinct compile partner, and a meta `F`
 has none either (its realization is `F` itself in both cases). This matches the
-partner classification table of meta-object-invocation §4: runtime generic `F`
+partner classification in meta-object-invocation's Meta-instance identity section: runtime generic `F`
 has `C(F)` plus `M(F)`; compile generic `F` has only `M(F)`; meta `F` has
-neither. A host Symbol's symbol-facet
+neither. A host name binding's symbol-facet
 entry for the companion (overload-resolution §3.3) is a lowering/implementation
 cache, not the semantic cause: removing the cache entry does not remove
 `CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that
@@ -760,8 +730,7 @@ eagerly turn the carrier into a value or allocate its environment.
 - Every function object has a type.
 - A directly defined function object has an anonymous function-object type.
 - The call entry `()` for a directly defined function object lives under that anonymous type.
-- User-defined callable objects may add value/ref/share receiver candidates to
-  one associated `()` Symbol.
+- Each value/ref/share callee type supplies an associated () with matching first self.
 - `CallableOwner` and receiver type are independent semantic facts.
 - Implicit `self` is always the invoked caller object and is passed by the call
   mechanism.
@@ -775,8 +744,8 @@ eagerly turn the carrier into a value or allocate its environment.
 - `()` is a special type/namespace call entry and can only be a navigation leaf.
 - Struct-associated named lets contribute ordinary Val2 entries; the special
   empty target `let ()` contributes the current owner's call entry.
-- A call-entry owner/first-formal mismatch is handled by ordinary invocation
-  type checking, not by a separate declaration validator.
+- Each selected call entry obeys exact callee/first-self type equality under
+  ordinary invocation checking.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
 - An unwritten function-object mode is `plain`; an explicit declaration P1 may

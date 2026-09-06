@@ -74,27 +74,19 @@ Declaration-context `()` call-entry definitions follow the same invocation
 model: `()` is the call entry and the invocation frame injects the object whose
 type supplied that entry into slot 0.
 
-For declaration-context call-entry injection, the self-position may have a
-non-anonymous type such as `T ref` in:
+For a direct callable instance, the actual callee and first self have the same
+type. T, T ref and T share therefore use matching entries of their respective
+complete types. A candidate expecting T ref does not repair a T callee by
+coercion. The receiver spelling is ordinary; its self role is positional.
 
-```lang
-let ()::(T |> (type ref)) = (object: T ref) => { ... }
-```
+An ordinary field function instead has its own anonymous function-object self,
+with the operated object in a later explicit argument position. Forwarding that
+argument does not create an implementation-injection exception.
 
-The candidate joins the same associated `()` Symbol as value/share receiver
-candidates; `T ref` is its formal receiver type, not a `ref::T` namespace.
-The same rule still holds: `object` is self by position, is passed implicitly,
-and is not part of the explicit argument product. Its spelling has no semantic
-role.
-
-The body above has a lexical `CallableOwner` independent from receiver type
-`T ref`.
-Standalone materialization of an ordinary closure defaults slot 0 to its
-owner-derived anonymous function-object type; associated call-entry
-installation instead uses the selected receiver type. If the actual caller
-type does not satisfy the first formal Pattern, ordinary invocation type
-checking rejects it. This design adds no earlier special consistency check for
-`let ()`; a future diagnostic may refine the general type-mismatch report.
+CallableOwner remains the owner of the implementation body's local identities.
+Closure contribution obeys TypeOf(v) in the destination core. Where supported,
+anchored replication creates a new matching instance and leaves the old owner
+unchanged; see [closure replication](closure-anchored-replication.md).
 
 `self` is not an invisible ambient environment and not an ordinary
 user-supplied argument. It belongs to the invocation / callable frame boundary,

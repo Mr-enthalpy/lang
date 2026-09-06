@@ -14,7 +14,7 @@ Gamma |- let n === q
 ```
 
 Name resolution is context-independent. Both `q` and the local spelling `n`
-resolve to the same terminal Symbol `S`; value, type, and call projections are
+resolve to the same terminal name binding `S`; value, type, and call projections are
 performed only after that resolution.
 
 ```text
@@ -27,13 +27,13 @@ The lexical entry:
 - may be shadowed in a nested lexical scope;
 - cannot cross a normal callable boundary;
 - cannot be installed as a namespace/module member or exported;
-- creates no Symbol, Object, Place, runtime identity, `V_S`, or `V_tau` member;
+- creates no NameBinding, Object, Place, runtime identity, or `V_tau` member;
 - does not participate in ordinary binding freshness.
 
 Consequently, the following laws coexist:
 
 ```text
-NewOrdinaryBinding => FreshSymbol + FreshDestinationPlace
+NewOrdinaryBinding => FreshNameBinding + FreshDestinationPlace
 LexicalAlias       => no binding entity
 ```
 
@@ -42,7 +42,7 @@ The semantic resolver needs only a scoped entry such as:
 ```text
 LexAliasEntry {
     local_name,
-    resolved_target: SemanticSymbolIdentity,
+    resolved_target: ResolvedNameBindingIdentity,
 }
 ```
 
