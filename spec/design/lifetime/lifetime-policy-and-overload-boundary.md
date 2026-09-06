@@ -13,6 +13,14 @@ construction authority (`OpenHere_Σ(value)`) is owned by
 
 ## 1. `@` is continuation-relative name observation
 
+N@ is a name iff N is a name. Reification preserves name interpretation;
+value observations and borrowed lifecycle fields remain distinct. Safe code
+may observe origin/region/color. Acquiring a mutable reference that writes
+back into lifecycle knowledge requires unsafe and the ordinary borrowing,
+Writable and applicable construction premises. This does not make @ a borrow
+constructor. [Unsafe admission](unsafe-semantic-admission.md) defines the
+compatible post-commit fact flow; unsafe cannot supply a missing Pre.
+
 `@` is a normal overloaded operation. It is not a syntax-only marker, not a
 reserved lexical territory without semantics, and not exempt from overload
 resolution:
@@ -231,62 +239,17 @@ the explicit formalization of the privileged actual-place semantics that the
 generated/builtin `ref` / `share` callables already had, not a new arbitrary
 place-reflection facility.
 
-#### 2.0.1 `symbol` ref / share: no global forwarding bridge
+#### 2.0.1 Group and named-type observations
 
-A `symbol`-valued operand is an ordinary value with a `Val1` payload, so the
-ordinary borrow-forming `ref` / `share` defaults apply directly: `s ref` is
-`symbol ref` (a borrow of the symbol value; `Target(s ref) =
-PrivilegedActualPlace(s)`). There is **no global** `symbol` ref/share
-forwarding bridge to type formation, and no implicit `AsType` during matching
-(§4 NoImplicitBorrowFormation,
-[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
-§5.1.2): `symbol =/=> symbol |> type` during matching. The language default is:
+An ordinary OverloadGroup reference observes the actual group Place. It does
+not implicitly borrow a candidate type or manufacture an OpenHere target.
+A structural name denotes its named type, whose type reference and member
+projections use ordinary Place, policy and capability rules.
 
-```text
-s : symbol   ->  s ref : symbol ref      (ordinary borrow of the symbol value)
-t : type     ->  t ref  : type formation (TypeValue t ref; the type-forming
-                                           overload, reached directly because
-                                           `type : type_1`)
-```
-
-A user may still author a local `ref` Symbol whose overload matches `symbol`
-and whose body performs `AsType` inside the selected candidate:
-
-```lang
-let ref =
-    (self, s: symbol):
-    compile => {
-        (s |> type) ref
-    };
-```
-
-That is local Symbol algebra, not a language default and not part of the
-global builtin algebra. No implicit `AsType` is attempted at matching time;
-inside the body, `s |> type` is an explicit `AsType` in a type-expected
-position (§5.6 of type-values), which is permitted; the resulting `tau_S` then
-enters the ordinary type-forming `ref` / `share` overload. This is explicit
-user-authored forwarding, not candidate adaptation and not a reopening of the
-overload boundary.
-
-If `TypeSlot(S) = None` (the symbol carries no type value), that is **not** an
-applicability failure and not a reason for the resolver to revisit other
-candidates. Applicability of a user-authored bridge candidate is decided
-entirely by the ordinary `s : symbol` formal match and policy admissibility,
-before body evaluation:
-
-```text
-CandidateApplicable(bridge, S)      // s : symbol formal + ordinary admissibility
-    -> unique bridge selected
-    -> evaluate body
-    -> AsType(S)
-    -> may fail here
-```
-
-The failure of `AsType(S)` inside the already-selected candidate's body is a
-selected-invocation / body / result-transformation failure, not an implicit
-conversion, and it does not reopen the candidate space: the overload phase
-stays closed exactly as for any other uniquely selected candidate whose body
-fails.
+Call projection uses the singleton type embedding into a candidate group.
+Neither group callability nor an absent call candidate creates name freshness.
+Type selection, borrowing and lifecycle observation retain their independent
+relations; they do not recover a source Place from equal type values.
 
 ### 2.1 `@` yields a lifetime value, uniformly
 
@@ -297,18 +260,18 @@ E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
 
 `@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
 binding evaluates to the complete closure `tau`; an ordinary/namespace consumer observes the projection `Core(tau)=Q`. Reaching the type-level
-place is done explicitly with `t |> (type ref)` (or `(S ref).type` for a Symbol),
+place is done explicitly with `t |> (type ref)` (or `(S ref).type` for a name binding),
 never by `@`. `AsType(S) = S |> type` remains by-value and is never followed by
 `@` to recover a place.
 
-`LifeName` is not a source spelling, NameBinding, Symbol, Place, or ordinary
+`LifeName` is not a source spelling, NameBinding, name binding, Place, or ordinary
 value identity. It is the semantic name whose lifecycle is observed. A bound
 value normally has a stable LifeName; a temporary may receive a generated one.
 This keeps place identity and lifecycle identity distinct.
 
 #### First-class `LifetimeValue`
 
-`ReifyLife` produces an ordinary first-class semantic value, not an ephemeral
+A value observation of `ReifyLife` produces an ordinary first-class semantic value, not an ephemeral
 observation-only expression species:
 
 ```text
@@ -841,3 +804,12 @@ Related canonical contracts:
 - [`../patterns-overload/overload-resolution-design.md`](../patterns-overload/overload-resolution-design.md)
 - [`../symbol-world/symbol-policy-and-compile-flow-projection.md`](../symbol-world/symbol-policy-and-compile-flow-projection.md)
 - [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+
+
+## 7. Continuation transformations
+
+Machine and lifecycle residue are projections of one continuation. After an
+optimizer changes that continuation, old lifecycle facts can guide candidate
+formation but cannot be copied to new positions. All affected projections
+repeat their Pre/commit/Post validation. See
+[evaluation and optimization](../meta-invocation/evaluation-residual-and-optimization.md).

@@ -53,19 +53,33 @@ Every meta-instance root is a stable semantic owner with whole-slot
 `PolicyMode::Plain`. Root consistency is an owner/identity invariant, not a
 const projection, and plain does not imply writable.
 
+### 2.1 Generic symbolic anchor and compile realization
+
+MetaPartner(F) = M(F) names the generic symbolic anchor; CompilePartner(F) =
+C(F) names the derived compile realization. These are independent roles.
+
+| Callable | Distinct compile partner | Generic meta partner |
+| --- | --- | --- |
+| runtime generic F | C(F) | M(F) |
+| compile generic F | none | M(F) |
+| meta F | none | none |
+
+Non-generic callables use their existing CallableRoot for ordinary symbolic
+anchoring. Compile companion derivation does not authorize E to change a
+runtime binding's stage or give an optimizer its own semantic facts.
+
 ## 3. Policy positions
 
-Function parameter and return positions are coordinate-wise overlays:
+Formal pair inheritance and whole-slot mode are different dimensions:
 
-```text
-P_in  = Overlay(P2, Delta_in)
-P_out = Overlay(P1, Delta_out)
-```
+    Pair(P_in) = Pair(P2)
+    Mode(P_in) = explicit formal mode or plain
 
-Evaluation stage is inherited and cannot be overwritten by a position
-annotation. Whole-slot PolicyMode may be explicitly overwritten; otherwise it
-inherits from the base. Position policy does not grant capability or
-writability and does not propagate caller demand back into declaration policy.
+The return position retains its separately specified P_out = Overlay(P1,
+Delta_out) rule, including inherited omitted mode. It is not used to infer a
+formal's mode. Evaluation stage is inherited and cannot be overwritten by a
+position annotation. Neither position policy grants Writable or changes the
+caller's independent result demand.
 
 Call-site `ResultPolicyDemand` is formed independently before maxima and
 participates in the ordinary invocation pipeline.
@@ -92,3 +106,9 @@ Partial evaluation may return `Residual` only through the shared result
 boundary. It does not define a meta-specific result universe or a second value
 ontology. Unsupported forms remain explicit residuals or diagnostics until the
 shared evaluator and continuation consumers are connected.
+
+
+The shared continuation, saturation and projection laws are owned by
+[evaluation and optimization](evaluation-residual-and-optimization.md).
+Host acquisition returns ordinary Objects under
+[host capabilities](host-capabilities-and-machine-objects.md).

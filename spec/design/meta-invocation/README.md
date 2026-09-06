@@ -1,53 +1,20 @@
-# meta-invocation
+# Meta Invocation and Evaluation
 
-**Status: Canonical invocation/result design. The sealed ordinary invocation
-spine, declared result classes, MetaInstance identity, and InvocationResult are
-implemented; Residual transport and full source execution remain pending.**
+Meta, compile and runtime evaluation share Object, Pattern, complete pattern
+value, Place, policy and lifecycle semantics. InvocationResult is the single
+result boundary; execution templates and replay material stay private.
 
-## Scope
+- [Invocation and policy positions](meta-object-invocation-and-policy-reduction.md)
+- [E, residual and optimization](evaluation-residual-and-optimization.md)
+- [Host capabilities and machine Objects](host-capabilities-and-machine-objects.md)
 
-The policy-governed meta object invocation model:
+Construction consumes [name/type algebra](../symbol-world/names-and-overload-groups.md),
+[OpenHere and meta roots](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md),
+[associated state](../symbol-world/associated-compile-state.md), and
+[closure replication](../symbol-world/closure-anchored-replication.md).
+[Safety admission](../lifetime/unsafe-semantic-admission.md) is a post-directed
+fact boundary, not a second invocation system.
 
-- symbol-first heterogeneous value-facet candidate preparation
-- orthogonal execution capability / evaluation demand / result class
-- ordinary-meta `MetaInstanceScope`, return self-root validation, and
-  complete invocation navigation atom
-- bounded compiler-defined `BuiltinPrivilegedAstMetaFunction` invocation,
-  including `struct` / `extend` / `inject` special scope and owner rules
-- the dual judgment of symbol lookup vs callable execution
-- canonical pair views, parameter-policy qualification, and P2 result handoff
-- partial meta reduction vs strict meta execution
-- residualization at runtime-only boundaries
-- unified pattern-match staging rather than `if constexpr` / `if` families
-
-## Not in scope
-
-This block references, and does not redefine, the symbol world, the
-pattern/overload candidate model, and layered policy. It consumes the fully
-admissible set and preference result; it does not specify how those sets are
-built.
-
-## Documents
-
-- `meta-object-invocation-and-policy-reduction.md` — the formal invocation model.
-
-## Reading order
-
-Read
-`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` for
-the canonical Symbol `<tau?,V_S?>` role/member model, `compile` / `meta`, result-rank, pattern-owner,
-`struct` forming complete type values, pure `extend`, place-level `inject`, and meta return self-root
-boundary. Read
-`../symbol-world/symbol-construction-units-and-namespace-origin.md` for the
-`MetaConstructionUnit` transaction and namespace ownership boundary. Then read
-`../symbol-world/symbol-policy-and-compile-flow-projection.md` for `P1` / `P2`,
-compile companions, match staging, and automatic require. Finally read
-`meta-object-invocation-and-policy-reduction.md` for invocation demand and
-policy reduction.
-
-## Dependencies
-
-References `symbol-world/` (symbol role/member projections, construction, lookup),
-`patterns-overload/` (candidate preparation and selection), and
-`policy-capability/` (current metadata mapping and orthogonal policy). The
-mechanical-lowering family feeds it fully decided pass/return actions.
+The generic MetaPartner anchor and derived CompilePartner realization remain
+distinct. A source/evaluator gap stays unavailable until connected; an
+implementation carrier supplies no alternative result or authority.
