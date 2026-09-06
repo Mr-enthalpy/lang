@@ -33,6 +33,15 @@ lifecycle rules remain in force alongside the named-type and associated-state
 algebras. If an unresolved contradiction is found, identify its exact premises;
 do not create another ontology to reconcile it.
 
+## Path nomenclature debt
+
+The `symbol-world/` directory and existing `symbol-*` filenames are retained
+link locations, not semantic categories. Renaming them is nomenclature debt;
+they confer no authority on the retired Symbol model. Use the topic-owner index
+and current definitions to interpret these paths. In implementation descriptions,
+remaining Rust symbol carriers are explicitly marked legacy; lexer `Symbol`
+tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
+
 ## Reading order
 
     Object / complete pattern value / Place

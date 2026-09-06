@@ -2,7 +2,7 @@
 
 This block separates structural name existence from ordinary value algebra.
 
-    Name -> complete named type T = <Core(T), V_T>
+    Name -> complete named type T = bind alpha.<Core(T), V_T[alpha]>
     eta(T) = {T} : OverloadGroup
     type += closure: callspace contribution with OpenHere and anchoring
     group += type/group: candidate aggregation with group writability

@@ -4,8 +4,8 @@ Status: canonical closure capability; source consumer pending.
 
 ## 1. Membership and immutable identity
 
-For T = <tau, V_tau>, a contributed closure v must ultimately satisfy
-TypeOf(v) in tau. A previously formed closure has its own anonymous type and
+For T = bind alpha.<Core(T), V_T[alpha]>, a contributed closure v must satisfy
+TypeOf(v) in Core(T). A previously formed closure has its own anonymous type and
 owner. Writing into another target cannot change that existing owner, rewrite
 its identity, move it under another parent, or reinterpret it as an alias.
 
@@ -28,7 +28,7 @@ For a genuinely different anchor:
     Logic(c') equivalent_to Logic(c)
     c' != c
     TypeOf(c') != TypeOf(c)
-    TypeOf(c') in tau_target
+    TypeOf(c') in Core(T_target)
 
 The original c remains unchanged. Replication constructs a new anchored instance
 of the same logic; it is neither mutation nor move nor aliasing.
@@ -49,14 +49,15 @@ lifecycle checks remain ordinary E projection checks.
 
 ## 4. Type contribution
 
-    AnchorFor(v, tau) = v
-      if TypeOf(v) in tau
-    AnchorFor(v, tau) = InstantiateUnder(v, tau)
-      if the first case does not apply and ReplicableUnder(v, tau)
+    Q = Core(T)
+    AnchorFor(v, Q) = v
+      if TypeOf(v) in Q
+    AnchorFor(v, Q) = InstantiateUnder(v, Q)
+      if the first case does not apply and ReplicableUnder(v, Q)
     otherwise: failure
 
 Type addition requires the actual target's Writable, OpenHere(T), and final
-TypeOf(AnchorFor(v, tau)) in tau. Its write changes only V_tau. Replication does
+TypeOf(AnchorFor(v, Core(T))) in Core(T). Its write changes only V_T. Replication does
 not authorize structural changes to the target Core; those remain extend/inject
 operations. A failed contribution does not retry a sealed overload candidate.
 
@@ -106,7 +107,9 @@ Core(T) already admits the required target-anchored closure type
 c_f = AnchorFor(c, Core(T))
 TypeOf(c_f) in Core(T)
 -------------------------------------------------------------
-ordinary TypeAdd commit: <Core(T), V_tau> -> <Core(T), V_tau + c_f>
+ordinary TypeAdd commit:
+  bind alpha.<Core(T), V_T[alpha]>
+    -> bind alpha.<Core(T), (V_T + c_f)[alpha]>
 ```
 
 If the original type already belongs, c_f = c; otherwise the witness constructs

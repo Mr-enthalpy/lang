@@ -96,7 +96,7 @@ Name binding identity, pattern-value equality and Place identity are distinct.
 An ordinary outer candidate aggregation algebra, with eta(T) = {T}. It can be
 empty. Group += aggregates type/group candidates by its bucket relation without
 mutating the types; type += instead changes V_tau under OpenHere and final
-TypeOf(v) membership in the core. The current coarse bucket key is the core tau.
+TypeOf(v) membership in Core(T). The current coarse bucket key is Core(T).
 
 ### SemanticOwner
 

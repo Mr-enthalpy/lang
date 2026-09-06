@@ -4,16 +4,18 @@ Status: canonical semantics. Source consumers are tracked in the roadmap.
 
 ## 1. Notation and existing observations
 
-In this owner T denotes the complete pattern/type value and tau its core:
+T and tau both denote complete pattern/type values throughout the canonical
+owners. Q denotes a Core projection, never the complete type:
 
-    T = <tau, V_tau>
-    Core(T) = tau
+    T = bind alpha.<Core(T), V_T[alpha]>
+    tau = bind alpha.<Core(tau), V_tau[alpha]>
+    Q = Core(T)
     type : (1 type)
     OverloadGroup : type
 
-Older complete-type notation in other owners writes the complete value as
-tau = bind alpha.<Core(tau), V_tau[alpha]>. These notations describe the same
-two observations; they do not introduce a new coordinate or identity.
+V_T and V_tau name the callspace snapshot of the indicated complete type.
+The two spellings use the same bound-closure notation and observations;
+tau is never a local abbreviation for Core(T).
 Ordinary type equality/keying still observes the canonical Core; designated
 whole-snapshot positions observe the whole bound closure.
 
@@ -32,7 +34,7 @@ the ordinary resident, and a borrow addresses that resident's actual Place.
 Lexical aliases map to the same binding without becoming values themselves.
 
 A structural name denotes a named type T. Same-name contributions synthesize
-that type and its V_tau, not an OverloadGroup at the name position. Occupancy is
+that type and its V_T, not an OverloadGroup at the name position. Occupancy is
 a structural fact, separate from the content of the existing value. A hidden,
 unexported or policy-filtered name still exists. Freshness uses authoritative
 occupancy, not the current lookup view.
@@ -49,7 +51,7 @@ It embeds a type as a singleton:
 
     eta : type -> OverloadGroup
     eta(T) = {T}
-    CallCandidates(T) = CallCandidates(V_tau(T))
+    CallCandidates(T) = CallCandidates(V_T)
     CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
 
 The reverse embedding is not automatic. Empty groups and types without call
@@ -70,8 +72,10 @@ For an ordinary mutable group reference g:
     g += G'  uses G + G'
 
 Group combination aggregates by its bucket relation. The current coarse bucket
-key is the type's core tau; finer bucket rules remain representation/algebra
-detail. Applicable bucket combination may combine equal-bucket candidates.
+key is Core(T): Bucket(T) = Core(T). The semantic candidate domain and current
+aggregation laws are closed; carrier/entry encoding remains open. Any future
+bucket-law refinement is a semantic change, not an encoding choice.
+Applicable bucket combination may combine equal-bucket candidates.
 This does not mutate either input type. Group update therefore requires
 Writable(g), not OpenHere of its contained types. Distinct contribution entries
 must not be erased by an unrelated value-interning or cache equality shortcut;
@@ -80,17 +84,18 @@ only the specified bucket/update relation decides aggregation.
 For a mutable type reference t:
 
     TypeAdd(T, v):
-      <tau, V_tau> -> <tau, V_tau + v'>
-      v' = AnchorFor(v, tau)
-      Writable(t) and OpenHere(T) and TypeOf(v') in tau
+      bind alpha.<Core(T), V_T[alpha]>
+        -> bind alpha.<Core(T), (V_T + v')[alpha]>
+      v' = AnchorFor(v, Core(T))
+      Writable(t) and OpenHere(T) and TypeOf(v') in Core(T)
 
 Only eligible closure-like member values enter this operation. It changes
-V_tau, never tau/Core. Type subtraction likewise changes only V_tau and
+V_T, never Core(T). Type subtraction likewise changes only V_T and
 requires Writable and OpenHere. Structural Core changes remain the work of
 extend/inject. Complete values remain immutable snapshots: a successful write
 replaces the value at the target, without changing an earlier copy.
 
-AnchorFor returns v when it already belongs to tau; otherwise it requires the
+AnchorFor returns v when TypeOf(v) already belongs to Core(T); otherwise it requires the
 closure's ReinstantiationWitness and creates a new anchored instance. It never
 mutates v's owner. See [closure replication](closure-anchored-replication.md).
 
@@ -121,7 +126,7 @@ returning its mutable construction reference. The formation rule is:
     Writable(r) and OpenHere(Read(r)) and ConstructionAuthority(r, kappa)
     q_n = ProjectionSlot(Target(r), n)
     Q_0 = EmptyPattern at the ordinary resolved child navigation n::path
-    T_0 = bind alpha.<Q_0, empty V_tau[alpha]>
+    T_0 = bind alpha.<Q_0, empty V_T0[alpha]>
     ---------------------------------------------------------------
     FreshNamedType(r, n, P):
       install NameBinding(n, q_n), DeclaredPolicy(n) = P
@@ -166,7 +171,7 @@ Only a normalized named-contribution position with a structural construction
 target gives unqualified let name = expression the implicit same-name synthesis
 meaning. On the first contribution the construction uses FreshNamedType from section 5;
 on subsequent contributions it uses the existing named type. These contributions
-form its V_tau under the type-update and anchoring rules. Any required Core
+form its V_T under the type-update and anchoring rules. Any required Core
 construction uses extend/inject before the final membership check; type += cannot
 silently populate an empty Core. Compatible first-contribution formation at the
 same structural target is joined under the named-contribution algebra, not by
@@ -229,7 +234,7 @@ This yields the factorization:
 
 The middle steps describe the formation of Extend's complete result. They do
 not add an extra post-inject +=. Core is changed by the existing extend
-relation; TypeAdd still changes only V_tau. The contribution appears exactly
+relation; TypeAdd still changes only V_T. The contribution appears exactly
 once, and later same-name contributions reuse the same law against the actual
 base snapshot. They do not re-evaluate earlier RHS expressions or reconstruct
 their captures.

@@ -92,9 +92,9 @@ function layer; consumer alignment is roadmap work.
   supplies only the ordinary assignment problem, neither hidden sugar nor a
   prohibition. Every candidate must preserve the existing assignment boundaries.
 
-- What final group bucket/entry representation realizes candidate aggregation
-  (with the current coarse core-tau bucket) without erasing entries through an
-  unrelated cache/value-identity quotient?
+- What carrier/entry encoding realizes the closed group candidate domain and
+  aggregation laws (with Bucket(T) = Core(T)) without erasing entries through an
+  unrelated cache/value-identity quotient? This is not an open semantic codomain.
 - What IR represents the already defined construction-window termination,
   meta seal and externally visible name-set closure events?
 - What public spelling should the builtin associated-state callable A use?

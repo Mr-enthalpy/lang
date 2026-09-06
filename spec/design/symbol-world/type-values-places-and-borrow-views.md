@@ -303,10 +303,12 @@ remains in `P_(T*N)` identity; the current finite length of `T*omega` is visible
 only through its `BareProduct` Val1. These are instances of `Norm(Object)`, not
 compiler-container identities beside it.
 
-OverloadGroup normalization uses this same Object universe. Its codomain and
-entry representation remain open, subject to associative/commutative
-contribution and preservation of distinct entries even when their values are
-equal. It has no distinguished type coordinate. Pattern child normalization
+OverloadGroup normalization uses this same Object universe. Carrier/entry
+encoding remains open; the semantic candidate domain (complete type candidates,
+with eta(type) as singleton embedding) and current aggregation laws are closed
+by the [name/group owner](names-and-overload-groups.md). Encoding must preserve
+associative/commutative contribution and distinct entries even when their values
+are equal. It has no distinguished type coordinate. Pattern child normalization
 and replay use their own existing laws; group aggregation does not replace them.
 
 There is no case split in which one Object component is ignored. A value-bearing
