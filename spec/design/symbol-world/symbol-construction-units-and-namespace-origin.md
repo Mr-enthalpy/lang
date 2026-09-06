@@ -14,9 +14,14 @@ and join under ordinary effect algebra. A sequential implementation must preserv
 that result and cannot make a sibling's new writes available by file ordering.
 main.lang anchors the explicitly selected root; it has no sibling priority.
 
-Files and directories supply provenance, diagnostics, cache/source mapping and
-scheduling information. They do not decide which name a construction owns,
-which subtree can be extended, or which same-name entries may coexist.
+Child-directory basenames normalize to ordinary fresh named-type construction
+followed by evaluation of that directory under the returned mut type ref.
+The selected root and implementation filenames add no segment. This generated
+action obeys the same creation and authority rules as written source; block
+nesting does not install owners itself. [Physical normalization](../build-package/build-system-design.md)
+defines the exact serial wrapper and unordered body law.
+Physical provenance, cache/source mapping and scheduling grant no construction
+permission and impose no same-name contribution prohibition.
 
 ## 2. Construction authority
 

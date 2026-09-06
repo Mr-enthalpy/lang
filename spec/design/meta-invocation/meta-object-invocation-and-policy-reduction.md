@@ -3,8 +3,8 @@
 Status: Current canonical design
 
 Meta evaluation is ordinary semantic evaluation at a meta stage. It shares the
-Object, Pattern, complete type, Symbol, Place, Policy, invocation, and lifecycle
-universes with compile and runtime evaluation.
+Object, Pattern, complete type, OverloadGroup, Place, Policy, invocation, and
+lifecycle relations, with the same structural name-binding relation with compile and runtime evaluation.
 
 ## 1. Invocation boundary
 
@@ -31,7 +31,7 @@ or refine `DeclaredResultClass(F)`.
 
 Primitive and source bodies may use private execution material. Execution
 material is installed or interpreted before `SemanticResult` is constructed;
-it is never itself reported as a complete type, Symbol, or ordinary value.
+it is never itself reported as an additional semantic result class.
 
 `struct` declares `CompleteType` and returns an actual complete type value
 `tau`. The binding boundary receives `tau` explicitly and may derive a Core
@@ -92,13 +92,16 @@ Meta construction separates:
 body execution material
   -> semantic entity materialization
   -> InvocationResult
-  -> outer binding and atomic namespace installation
+  -> explicit outer binding action under ordinary commit rules
 ```
 
 Closure construction uses the current stable meta-instance owner. Injecting the
 resulting closure into a type under construction is a separate operation.
-Neither a construction return Place nor its binding Symbol becomes a
-`HomeSymbol` of the complete type value.
+NameBinding is a structural identity/Place relation, not a returned Object or
+a borrowable wrapper. A complete type retains its own Core and callspace;
+neither a result Place nor a defining binding supplies an additional callspace.
+Fresh structural binding installs the complete empty T_0 before returning its
+mut type ref; subsequent assignment remains ordinary assignment.
 
 ## 5. Partial evaluation
 

@@ -195,7 +195,8 @@ An in-place closure therefore acquires its anonymous classifier owner from the
 ambient meta environment before any return-local construction handle is
 consulted. A source spelling or implementation shortcut may sequence closure
 construction immediately before injection, but it must not use `r:type` as the
-owner anchor, add `HomeSymbol(τ)`, or merge the two semantic operations. Nested
+owner anchor, recover a defining binding from type equality, or merge the two
+semantic operations. Nested
 an unavailable in-place closure-anchoring consumer cannot recover the eventual
 result binding as a substitute owner anchor.
 
@@ -444,7 +445,7 @@ PatternValue's canonical navigation name matches the name binding carrying it, t
 matching spelling does not establish identity.
 
 A normalized fully named body of a named Pattern contains
-complete-navigation to PatternValue entries, not Symbols. A naked Product
+complete-navigation to PatternValue entries, not name-graph bindings. A naked Product
 remains positional even when all of its children are named. Extraction
 resolves a source name binding, reads its PatternValue, and looks up its canonical
 navigation/value entry in the normalized map.
@@ -564,8 +565,7 @@ Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
 `compile` may return any declared ordinary semantic value across result
-classes (§4.1): an ordinary `PatternValue` (including a `name binding` constructor
-value), a complete type value `tau`, or a `type ref` / `type share` borrow
+classes (§4.1): an ordinary `PatternValue`, an explicit OverloadGroup, a complete type value `tau`, or a `type ref` / `type share` borrow
 instance; a returned `tau` participates in Pattern
 observation through `Core(tau)` and is not itself an ordinary
 PatternValue/Object.
@@ -654,10 +654,11 @@ but may not expose that carrier as a callable result ontology.
 
 A cluster-shaped invocation outcome transports multi-member construction
 material after semantic result-class formation. It is not an ontological result
-category. The following three roles remain distinct:
+category. The following roles remain distinct:
 
 ```text
-name binding value ontology          — an ordinary PatternValue (§4.7)
+Explicit group value           — ordinary OverloadGroup (§4.7)
+Name binding                   — structural identity and resident Place relation
 Meta return construction role  — the members a meta body accumulates before seal
 Namespace same-name synthesis  — merging same-named contributions in a namespace
 World installation role        — what a sealed root becomes in the global graph
@@ -681,7 +682,7 @@ compile:
 - ordinary compile-time values (ordinary PatternValues);
 - complete type values `tau` — they participate in Pattern observation through
   `Core(tau)` and are not ordinary PatternValues/Objects;
-- `name binding` constructor values (ordinary PatternValues);
+- explicit OverloadGroups of complete type candidates;
 - `type ref` and `type share` views;
 - structured pattern values.
 
@@ -710,8 +711,8 @@ produces no nominal type that lacks a normal global root
 never promotes a local temporary pattern value into a global type
 ```
 
-This is a conservation law, not a shape restriction. Returning a `name binding` constructor value or
-a `type ref` whose root already exists is legal; manufacturing a rootless
+This is a conservation law, not a shape restriction. Returning an ordinary type/group value or a `type ref` whose root already
+exists is legal; manufacturing a rootless
 nominal type is not. `compile` is therefore not a rootless meta-type generator,
 and "compile may return a type" and "compile may not invent a type root" are
 both true.
@@ -1288,11 +1289,11 @@ keeps `(t fn)` as the returned result's root and includes the externally owned
 `bool::` value as a member beneath that root. It must not be summarized as
 `NamespaceCoreProjection(r) = bool::`.
 
-The self-root check is conditional on the installed type core `Core(τ) = Q`, not
-on `TypeRole(Q)`. A namespace-only `Q` — `NamespaceRole(Q)` and
+The default complete-type result always has Core(τ) = Q and must satisfy the
+self-root check, independently of TypeRole(Q). A namespace-only `Q` — `NamespaceRole(Q)` and
 `not HasRegisteredSelfConstruction(Q)` — is self-rooted and may own fresh
-invocation-local material. A returned result with no installed type core
-does not acquire a synthetic core merely to satisfy this rule. When
+invocation-local material. An explicit group result instead follows its ordinary
+member/escape rules (§4.3.2); it is not an optional-core type result. When
 `TypeRole(Q)` does hold, it is the additional type
 refinement (imported judgment); namespace-only `Q` is not required to define Val1.
 
@@ -1803,9 +1804,8 @@ struct:
 ```
 
 An implementation may carry AST or Normalized AST as a private structured
-carrier. The public result is a complete type value `tau`, not AST, not an
-ordinary name binding PatternValue, and not a separate construction class (§4.1,
-§4.7–§4.8). The formation event is:
+carrier. The public result is the complete type value tau under the ordinary
+invocation boundary (§4.1, §4.7–§4.8). NameBinding is not a value result class. The formation event is:
 
 ```text
 struct(P)
@@ -2376,7 +2376,7 @@ Example. `t1::r` is an ordinary pure-pattern path, so it is not a legal
 assignment left side (§8.2.2); the carrier slot has to be taken first:
 
 ```lang
-let r_ref = (t1::r ref).type;
+let r_ref = (t1::r) |> (type ref);
 (r_ref, (t first, u second)) |> inject;
 ```
 
@@ -2583,8 +2583,8 @@ let b::t = bool;
 ```
 
 ```text
-value(symbol(a::t)) = bool::
-value(symbol(b::t)) = bool::
+Read(Place(resolve(a::t))) = bool::
+Read(Place(resolve(b::t))) = bool::
 
 {
   FullNav(bool::) -> Norm(bool)
@@ -3347,9 +3347,13 @@ OpenHere_Σ(τ)
 ```
 
 `GenerationRegime(τ)` does not participate in `WellFormedTau(τ)` or in Pattern
-identity; it is consulted only by the contextual capability rules above. No new
-`ConstructionSubject` ontology is introduced: the horizontal attributes of a
-complete type value are those of its core `PatternValue`.
+identity; it is consulted only by the contextual capability rules above. The horizontal attributes of a complete type value are those of its core
+PatternValue. The notation subject(t) used by [A](associated-compile-state.md)
+refers to this existing construction/window state subject, not a new language
+Object. Its stable identity is preserved by copy and authorized continuation
+of that construction, including in-place updates; independent equal-Core
+formation must not collapse it. This designated identity observation leaves
+ordinary Core equality unchanged.
 
 - **MetaGenerated.** A value produced inside a meta body has no birthright
   global lifetime. It can be used freely within the same meta computation, and
@@ -3551,14 +3555,23 @@ In a meta body the same sequence is simply legal: the first step is
 `Continue` (the material is `MetaGenerated`), so the open window survives the
 `UseForVal1` and the subsequent extension is admissible.
 
-The empty destination `()` is the special call-entry leaf rather than a normal
-value-member name. Inside construction of `T`, `let () = impl` contributes one
-candidate to the same associated `()` name binding. Candidates for receivers `T`,
-`T ref`, and `T share` are distinguished by their formal object Pattern, not by
-`ref`/`share` navigation subspaces; a borrowed-receiver candidate still requires
-its own authorized contribution. The body of an associated `()` entry has its
-own `CallableOwner`, while invocation-frame slot 0 receives the object matched
-by the selected candidate.
+A direct-call entry belongs to the callee's exact complete type:
+
+    Type(callee) = Type(first self)
+    callee : T       -> matching () in complete type T
+    callee : T ref   -> matching () in complete type T ref
+    callee : T share -> matching () in complete type T share
+
+Constructing T's associated () does not install entries into the complete types
+T ref or T share. A differing formal object Pattern cannot adapt one of those
+callees into another receiver type. Their own authorized construction must
+supply their exact callspaces. Each entry body has a CallableOwner; that code
+owner does not change the exact type of invocation slot 0.
+
+Ordinary field forwarding is separate: its anonymous function object occupies
+first self and the operated T ref/T share value is a later argument. The
+forwarding callable may perform its ordinary checked forwarding to T; this
+does not add a receiver adaptation rule to direct () invocation.
 
 Under equal owner/construction authority, an inner contribution and a later
 inner-to-outer navigated declaration denote the same pending namespace delta:

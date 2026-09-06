@@ -61,7 +61,7 @@ Normalized control-flow end events. `TailValue` delivers the final block value;
 
 The owned semantic ontology `Object = <Val1?, Pattern, Val2>`. Ordinary
 normalization observes all three components. Place, Policy, lifetime,
-capability, and Symbol identity are not Object axes.
+capability, and name-binding identity are not Object axes.
 
 ### Val1
 
@@ -82,7 +82,7 @@ observation distinguishes snapshots.
 ### TypeValueId
 
 An opaque implementation lookup key for Core material. It is not whole `tau`,
-Symbol identity, Place identity, or a defining-Symbol reference.
+name-binding identity, Place identity, or a defining-binding reference.
 
 ### Name binding and named type
 
@@ -279,15 +279,18 @@ extension interfaces until resolved.
 
 ### Structural let expression
 
-P let name::path requires freshness, creates a named type and returns mut type
-ref. Declared policy P is independent of construction-reference mut policy.
+P let name::path requires freshness, installs the complete empty named type
+T_0 as Some(T_0), then returns mut type ref. Empty resident and absent name are
+different states; anchor/window formation follows ordinary construction. Declared policy P is independent of construction-reference mut policy.
 A following = expression is ordinary assignment, with no private rollback rule.
 
 ### Associated compile state A
 
-A builtin globally indexed family of OverloadGroup Places. Its write Pre checks
-OpenHere of the key and ordinary write authority every time, including through
-saved references. Generalizing this guarded place capability remains open.
+A builtin globally indexed family of OverloadGroup Places. Its designated key
+is the stable identity of the existing construction/window subject, not ordinary
+Core equality. Equal keys imply the same OpenHere subject. Its write Pre checks
+that captured subject and ordinary write authority, including through saved
+references and after replacement of the original argument's carrier. Generalizing this guarded place capability remains open.
 
 ### Anchored replication
 

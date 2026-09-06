@@ -5,7 +5,11 @@ Status: canonical semantic handoff; consumer alignment pending.
 ## 1. Source actions create the world
 
 Physical normalization supplies serial file blocks and unordered sibling
-blocks. Their ordinary meta evaluation creates Objects, names, Places, and
+blocks. Child-directory basenames become ordinary fresh-name actions returning
+references to complete empty named types, followed serially by that directory's
+body under the returned reference. The selected root and filenames add no
+segments; [physical normalization](build-system-design.md) owns the desugaring.
+Their ordinary meta evaluation creates Objects, names, Places, and
 semantic owners. Namespace indices are projections of those committed actions.
 
     normalized meta action
@@ -35,7 +39,8 @@ restrictions and package mounts provide no additional admission rules.
 
 ## 3. Resolution and visibility
 
-Resolve a name once, then project the selected group's members for the consumer.
+Resolve a name once, read its named type, then apply the consumer projection.
+An explicitly held OverloadGroup uses its own candidate projection.
 Every explicit navigation host retains its own ordinary view/visibility facts.
 Export and public/private policy remain source-defined language relations;
 their filtering does not establish freshness or change member mode.

@@ -14,13 +14,20 @@ build handoff consumed by that relation.
 Long-lived semantic identity is owner-based:
 
 ```text
-SymbolIdentity = (DeclOwner, LocalSymbolIdentity)
+NameBindingId = (DeclOwner, LocalBindingIdentity)
 GeneratedIdentity = (GeneratingOwner, LocalGenerationIdentity)
 SemanticOwnerId = (SemanticOwnerGraphId, graph-local owner)
 ```
 
-Source files, paths, spans, display names, and printable navigation strings are
-provenance only.
+NameBindingId identifies the structural binding relation and its resident Place;
+it is not an Object or a value with a .type field. GeneratedIdentity and
+SemanticOwnerId index semantic ownership, not an extra result ontology.
+
+Source files, paths, spans and printable navigation strings are provenance.
+Child-directory selectors are first normalized into ordinary fresh-name actions;
+only their evaluation establishes named types/Places/owners. Root levels and
+implementation filenames add no segment. The physical tree installs no owner
+by discovery; see [normalization](../design/build-package/build-system-design.md).
 
 The semantic owner forest contains source-established namespace owners, callable owners,
 canonical meta-instance owners, and generated owners. Every callable,

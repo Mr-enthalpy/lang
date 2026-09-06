@@ -11,7 +11,7 @@ This reading index introduces no separate value or execution ontology.
       -> OpenHere
     actual Place / borrow / policy
       -> Writable
-    key's OpenHere + associated-place write authority
+    stable construction-subject key's OpenHere + associated-place write authority
       -> Writable(A[t])
 
     resolved name / explicit group
@@ -23,6 +23,7 @@ This reading index introduces no separate value or execution ontology.
       -> commit / Post / InvocationResult
 
     PhysicalTree(Level)
+      -> child-directory ordinary fresh-name actions (complete empty T_0)
       -> serial file blocks + unordered sibling overlays
       -> one meta evaluation
       -> synchronous projections of one continuation

@@ -21,13 +21,43 @@ path. Future optimization options configure planner search without changing E.
 ## 2. Neutral physical normalization
 
     PhysicalTree(Level) -> MetaProgram
-    DirBlock = Unordered{FileBlock_i, ChildDir_j, ...}
-    FileBlock_i = Seq(action_i1; action_i2; ...)
+    NormalizeRoot(Level, r_root) = NormalizeBody(Level, r_root)
+    NormalizeBody(D, r) = Unordered{
+      NormalizeFile(f_i, r), NormalizeDir(n_j, D_j, r), ...
+    }
+    NormalizeFile(f, r) = Seq(decoded ordinary meta actions of f under r)
+    NormalizeDir(n, D, r) = Seq(
+      r_n := ordinary fresh-name expression let n::r;
+      NormalizeBody(D, r_n)
+    )
 
-Directory/file discovery and source decoding establish physical blocks and
-provenance. Source-level meta actions uniquely determine the resulting language
-Objects. A physical path is not a construction permission or a namespace owner.
-Implementation filenames do not become semantic identities by discovery.
+Here r_root is the selected compilation's ordinary root construction reference.
+The selected level adds no extra name segment. Each child-directory basename n
+becomes the selector of a generated ordinary structural let action. That action
+uses the same FreshNamedType formation as written structural let: it commits
+Some(T_0), with empty Core/member content at the resolved navigation and empty
+V_tau, then returns mut type ref. Omitted declaration policy uses ordinary bare
+let defaults. See [fresh-name formation](../symbol-world/names-and-overload-groups.md).
+
+Evaluation of the directory body follows its creation in that directory's serial
+wrapper; its child blocks share the post-creation snapshot and r_n. This ordering
+is internal to the wrapper and grants no priority over its parent's siblings.
+Directory contents use ordinary named-contribution positions and extend/inject
+through r_n. They acquire no write privilege from physical containment.
+
+Discovery emits these syntax-directed actions, not preinstalled namespace
+nodes. A generated let must pass the same freshness, Writable, OpenHere and
+construction-authority checks as a source-written action. A conflicting existing
+name is an ordinary creation/write conflict; normalization cannot overwrite it,
+choose a different target or merge it by directory privilege. Selector spelling
+must be representable under ordinary name rules; otherwise normalization reports
+a diagnostic rather than inventing a naming policy.
+
+For a level containing main.lang, helpers.lang and math/vector.lang, both root
+files target r_root, while the math wrapper creates math under r_root and runs
+vector.lang under r_math. Neither filename adds a segment. The directory edge
+has meaning only through this ordinary generated name action; the physical path
+otherwise supplies provenance, not an additional owner or permission.
 
 Each sibling block starts from the common input snapshot and evaluates into its
 own overlay. The unordered join uses ordinary state-update algebra. A serial

@@ -501,9 +501,10 @@ The consequences that field/access-tree work must preserve:
   `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
   alias.
 - `let f::(t |> (type ref)) = ...` explicitly creates the prospective child under
-  `place(t)`, never `place(uint8)`, because `t` is already a pure type slot. For
-  a name binding `S`, the corresponding place form is `let f::((S ref).type) = ...`.
-  `AsType(S)` never recovers a place. Type-value
+  `place(t)`, never `place(uint8)`, because `t` stores the complete type value.
+  Structural names use this same type-level borrow formation; NameBinding is
+  not a wrapper Object and supplies no `.type` field. By-value observation
+  never recovers a Place. Type-value
   equality must not canonicalize extension targets, and a `type`-kind symbol may
   own a companion namespace place distinct from the type value it stores.
 - There is no place-forwarding declaration form. Every binding allocates its own

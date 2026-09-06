@@ -260,11 +260,12 @@ E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
 
 `@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
 binding evaluates to the complete closure `tau`; an ordinary/namespace consumer observes the projection `Core(tau)=Q`. Reaching the type-level
-place is done explicitly with `t |> (type ref)` (or `(S ref).type` for a name binding),
-never by `@`. `AsType(S) = S |> type` remains by-value and is never followed by
-`@` to recover a place.
+place is done explicitly with `t |> (type ref)`, including for a structural
+named type, never by `@`. NameBinding is structural and has no borrowable
+wrapper or `.type` field. A by-value type projection followed by `@` does not
+recover a Place.
 
-`LifeName` is not a source spelling, NameBinding, name binding, Place, or ordinary
+`LifeName` is not a source spelling, NameBinding, Place, or ordinary
 value identity. It is the semantic name whose lifecycle is observed. A bound
 value normally has a stable LifeName; a temporary may receive a generated one.
 This keeps place identity and lifecycle identity distinct.

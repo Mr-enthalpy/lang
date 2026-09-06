@@ -82,11 +82,13 @@ alternate relation or identity.
 - `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
 - NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
 - Same-name construction synthesizes a type's V_tau; ordinary lexical let does
-  not aggregate. Structural P let name::path returns mut type ref.
+  not aggregate. Structural P let name::path installs complete empty T_0 before
+  returning mut type ref; NameBinding is structural, not a wrapper Object.
 - Type +=/-= changes only V_tau under Writable, OpenHere and final closure-type
   membership. Witnessed anchored replication never reparents an existing value.
 - OverloadGroup aggregation has its own bucket algebra and requires Writable.
-  A's indexed group places additionally recheck the key's OpenHere at write Pre.
+  A keys identify existing construction subjects, not Core-equality classes;
+  its indexed group places recheck that same subject's OpenHere at write Pre.
 - Name resolution happens once before context projection.
 - Calls use value -> exact tau -> associated `()` and one candidate space.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.
@@ -104,6 +106,8 @@ alternate relation or identity.
 - Color vocabulary is extensible and relation rows are explicit and directed.
 - SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
   semantic axioms, never missing Pre facts or private optimizer assumptions.
+- Child-directory names normalize to ordinary fresh-name actions followed by
+  body evaluation under the returned type ref; root and filenames add no segment.
 - Host capabilities return ordinary Objects. Physical normalization and build
   facilities introduce no semantic facts; E alone owns meaning.
 - E is idempotent and saturates ready actions without rewriting continuations.

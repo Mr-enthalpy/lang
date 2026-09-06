@@ -73,7 +73,9 @@ TypeValueId
 PatternValue identity
 ```
 
-- `NameBindingId` is the identity of a `name binding` constructor value (name-graph node).
+- `NameBindingId` identifies a structural name-graph binding and its resident
+  Place relation. It is not a language value and cannot be borrowed or carry a
+  `.type` field. A borrow addresses the ordinary value resident at its Place.
 - `PlaceId` is the identity of a location that can be bound, updated, injected
   into, or opened for a namespace delta.
 - `TypeValueId` is the stable first-order root of `Core(tau)` — a registry
@@ -115,18 +117,24 @@ PatternValue identity
 These identities are independent. None implies another:
 
 ```text
-NameBindingId equality does not imply TypeValueId equality.
+NameBindingId does not determine an immutable TypeValueId across resident replacement.
 TypeValueId equality does not imply PlaceId equality.
 PatternValue equality does not imply NameBindingId or PlaceId equality.
 A borrow view names one place from one origin; it relates values and places without erasing the distinction.
 ```
+
+The designated A association key observes the existing construction-window
+subject, not Core equality or the carrier Place. Equal Core values can have
+different subjects; copies retain their subject, and a saved A reference retains
+its captured subject across carrier replacement. See [associated state](associated-compile-state.md).
+This operation does not redefine ordinary type equality or add a value wrapper.
 
 A type expression cares about the *value*. A namespace extension target or a
 declaration-extension site cares about the *place*. A borrow view is itself a
 value that carries a place coordinate. The three concerns must not be folded
 into one another.
 
-A path resolves to its named type; call projection uses V_tau. Explicit
+A structural path resolves to its binding and reads its named type; call projection uses V_tau. Explicit
 OverloadGroups aggregate type candidates through eta(T), without adding a
 second name container. Member projection follows the ordinary consumer rules. A selected tau
 is already self-contained; its Core, CallSpace and whole observations do not
@@ -667,7 +675,7 @@ NamespaceOnly(tau)  iff NamespaceClosure(tau) and not TypeClosure(tau)
 CallSpace(tau) = V_τ
   // Intrinsic property of the closure: the TypeMember set captured in this
   // closure value. It does not depend on the current host name binding, source
-  // binding, carrier name binding, HomeSymbol, or any other provenance recovery.
+  // binding or any other provenance recovery.
   // Members created later under the same Q never retroactively enter an
   // existing snapshot; a copied or extracted tau keeps the same V_τ.
 ```
@@ -1139,10 +1147,10 @@ selects the explicit higher-level ref of that slot:
 let f::(t |> (type ref)) = ...;
 ```
 
-When the source is instead a `name binding` constructor value `S`, it must first be borrowed and
-its ordinary same-name `type` field projected: `let f::((S ref).type) = ...`.
-`AsType(S) = S |> type` is by-value only and never participates in place
-recovery.
+A structural name S already reads its complete named type. Its type-level
+Place is reached with `S |> (type ref)` under the selected privileged
+borrow-forming operation. There is no intervening binding-wrapper value or
+`.type` projection. A by-value type observation never recovers a Place.
 
 ### 3.1 General value binding resolves bindings first
 
@@ -1155,7 +1163,9 @@ let r = expr;
 is:
 
 ```text
-value(symbol(r)) := evaluate(expr)
+v := evaluate(expr)
+fresh binding b_r with fresh Place p_r
+install ordinary resident v at p_r; bind lexical name r to b_r
 ```
 
 When `expr` is a source path, value evaluation is not direct value naming:
@@ -1173,8 +1183,8 @@ Thus:
 let a = b;
 ```
 
-binds the exact value read through `symbol(b)` into the fresh destination
-`symbol(a)`. It does not alias the bindings or merge their places.
+binds the exact resident read through b's resolved binding into a's fresh
+destination Place. It does not alias the bindings or merge their places.
 
 Formally:
 
@@ -1733,7 +1743,8 @@ Here `uint8` evaluates to the complete type value `tau_uint8`, so `t` is
 type-valued. `t ref` selects the type-forming overload and yields the TypeValue
 `tau_(uint8 ref)` — not a borrow instance, and not a borrow of `Core(tau)`.
 Reaching the type-level carrier slot of a pure type binding uses
-`t |> (type ref)` (§5.2). A name binding's type-member slot instead uses `(S ref).type`.
+`t |> (type ref)` (§5.2). This also applies to a structural named type;
+the binding itself is not an intermediate Object.
 
 `share` differs from `ref` in the capability it grants, not in the judgment it
 uses: a `share` view admits reading and passing but is not an assignable place
@@ -1764,7 +1775,7 @@ migration, or automatic argument passing:
 
 ```text
 Object =/=> Object ref | Object share
-name binding =/=> name binding ref | name binding share
+OverloadGroup =/=> OverloadGroup ref | OverloadGroup share
 type   =/=> type ref   | type share
 ```
 
@@ -1904,7 +1915,7 @@ t |> (type ref) is not a general PlaceOf(E) available on every expression
 `@` is a continuation-relative name-reification operation that yields a lifetime value, never a
 borrow view and never a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2.1). Reaching the
-carrier slot explicitly uses `t |> (type ref)` or `(S ref).type`.
+carrier slot explicitly uses `t |> (type ref)`.
 
 #### 5.2.1 `t ref` is type formation; `t |> (type ref)` is the borrow instance
 
@@ -1935,7 +1946,6 @@ The operator choice is decided by what the surface means, never by type-rank:
 | what the expression reads | `E ref` | `E |> (type ref)` needed |
 | --- | --- | --- |
 | ordinary value with `Val1` | borrow of the complete value-bearing object | no |
-| `name binding` constructor value with `Val1` | `symbol ref` | no |
 | type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |
 | pure pattern value | `ref` of that pattern value | only to reach the carrier slot |
 | pure `type` slot | type formation: the TypeValue `t ref` (the borrow type) | yes — for a borrow instance over the carrier place |
@@ -2180,8 +2190,8 @@ In a language-designated type-expected position the elaboration is supplied:
 AsType(E)  =  E |> type
 ```
 
-`AsType` returns the complete type value `tau` carried by a name binding, or
-validates an already-complete TypeValue as
+`AsType` validates an already-complete TypeValue read from a binding, or uses
+an explicitly defined value-side type projection as
 specified in §2.2. It does not compute the type of
 the expression, wrap a namespace-like Object, or raise universe rank:
 
@@ -2218,10 +2228,17 @@ its complete type snapshot when its `Q` satisfies `TypeRole`, without the
 author writing `|> type`, while the very same `E` under
 `ref` is not:
 
+For an explicitly bound ordinary OverloadGroup g whose type projection is
+valid in that designated context (g denotes the group resident, not a binding
+wrapper):
+
 ```lang
-let x: s = ...;             // type-expected: elaborates to s |> type
-let r = s ref;              // operand: no projection; r : OverloadGroup ref
+let x: g = ...;             // type-expected: elaborates to g |> type
+let r = g ref;              // actual group operand: r : OverloadGroup ref
 ```
+
+For a structural named type t instead, t ref forms the borrow type and
+`t |> (type ref)` borrows its resident Place; it never yields a group reference.
 
 The distinction is positional and fixed by the language, never inferred from the
 operand's shape. An operand position never acquires a projection because a
@@ -2353,8 +2370,10 @@ own topology; T*N and T*omega indexing cannot grow a Sequence through let.
     Policy(result construction reference) = mut
     P let name::path = e  ==  (P let name::path) = e
 
-The let expression requires freshness, creates the named type place, records
-P and returns the new construction reference. Bare let uses the ordinary let policy
+The let expression requires freshness and installs the complete empty T_0 from
+FreshNamedType before returning its construction reference. Its existing
+resident is Some(T_0), with the resolved empty Core, empty V_tau, and ordinary
+anchor/live-window formation facts. It records P. Bare let uses the ordinary let policy
 rules. Assignment then uses the ordinary RHS, type, reference and write checks.
 No separate initialization protocol or rollback rule is introduced. Any
 enclosing transaction applies under its existing semantics.
@@ -2371,9 +2390,9 @@ files do not contribute authority.
 
 See [name semantics](names-and-overload-groups.md) for occupancy and positional
 sugar, and [associated compile state](associated-compile-state.md) for A[t].
-A's ordinary keying observes canonical Core equality; its writable reference
-depends on the existing OpenHere and authority judgments rather than a new
-Place-specific construction window.
+A's designated key preserves the existing construction/window subject rather
+than quotienting by ordinary Core equality. Saved references keep that subject;
+write Pre rechecks its OpenHere and authority, not a later carrier resident.
 
 ## 8. Type values in overload and pattern matching
 

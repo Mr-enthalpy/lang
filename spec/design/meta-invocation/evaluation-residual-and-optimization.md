@@ -72,11 +72,13 @@ O2 lowers the cost of residue already accepted for runtime execution: work,
 storage, fusion, scheduling, memory reuse, latency, and code size. The idealized
 objective separation is:
 
-    L E (O1 E)* (O2)*
+    L E (O1 E)* (O2 ; E_affected)*
 
 An actual transform can contain both components. Any newly exposed E work
 returns to E; the objective classification does not exempt O2 from semantic
-validation.
+validation. E_affected synchronizes every affected projection on the rewritten
+continuation through its Pre/commit/Post checks; it is not an optimizer-owned
+validator. Newly ready work still returns to a complete E saturation.
 
 ## 5. Facts belong to E
 

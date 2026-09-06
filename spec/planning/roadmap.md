@@ -168,7 +168,9 @@ wiring is not an open semantic question.
 ## Physical input and infrastructure migration
 
 The target is Compile(Level) through main.lang anchoring, neutral physical
-normalization and ordinary meta evaluation. Each file is serial; sibling
+normalization and ordinary meta evaluation. Child directories desugar to ordinary
+fresh-name construction and body evaluation under the returned type reference;
+root levels and filenames add no segment. Each file is serial; sibling
 blocks use common-snapshot overlays and unordered join. Actual effects produce
 the dependency projection. Host calls return ordinary Objects and target facts.
 
@@ -184,15 +186,18 @@ engineering facilities after their inputs and effects obey the source model.
   synthesis and explicit OverloadGroup aggregation. Existing Rust cluster/result
   labels are implementation encodings, not the target ontology.
 - Connect structural P let name::path as a fresh-name expression returning mut
-  type ref. The current parser requires a let initializer. Following = must use
+  type ref after installing the complete empty T_0 with ordinary anchor/window
+  facts. The current parser requires a let initializer. Following = must use
   ordinary assignment, without an initialization-only transaction.
 - Connect type +=/-= to V_tau updates with Writable, OpenHere and final closure
   membership; connect ordinary group updates to their distinct bucket algebra.
 - Connect witnessed anchored replication, preserving captures, internal
   alpha-renaming and the original closure identity. Do not feed the destination
   anchor backward into parsing or RHS evaluation.
-- Implement builtin A's guarded indexed Places. Recheck the key's OpenHere and
-  write authority in every write Pre, including saved references. Its general
+- Implement builtin A's guarded indexed Places using stable construction-subject
+  identity, not ordinary Core equality. Equal keys must denote the same OpenHere
+  subject; saved references retain that subject across carrier replacement.
+  Recheck its OpenHere and write authority in every write Pre. Its general
   user-facing abstraction is an open question, not an implementation shortcut.
 - Align formal elaboration: Pair inherits P2, omitted formal mode is plain.
   The current policy_pair implementation and a position-policy test still inherit

@@ -102,14 +102,17 @@ function layer; consumer alignment is roadmap work.
 - What concrete witness/template and alpha-renaming representation implements
   anchored replication while preserving captures and internal identity edges?
 
-Structural let creates a fresh named type and returns mut type ref; following
+Structural let commits the complete empty T_0 with its ordinary anchor/window
+facts before returning mut type ref; following
 assignment is ordinary assignment. Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
 requires OpenHere and final anchored closure membership, changing only V_tau;
 Core changes use extend/inject. Ordinary group mutation needs its own Writable,
 not OpenHere of its contained types. A's key-derived guard is checked at write
-Pre even through saved references. Equality, keying and OpenHere retain their
-existing Core/anchor/window/stack meanings.
+Pre even through saved references. A uses a designated stable construction-
+subject key; equal keys imply the same OpenHere subject. Ordinary Core equality
+cannot identify A slots. Persistence encoding is open, this identity law is not.
+Ordinary type equality and OpenHere keep their existing observations.
 
 ## Lifetime, Color, and access
 
@@ -138,7 +141,10 @@ Color relations are explicit directed rows and Color inheritance is monotone.
 - How do traversal/index consumers preserve Core equality while retaining
   captured complete callspaces in whole-snapshot observations?
 
-Physical normalization, main.lang anchoring, sibling overlays and post-hoc
+Physical normalization includes child-directory names desugaring to ordinary
+fresh-name/type actions followed by their body under the resulting reference;
+the selected root and filenames add no segments. This law, main.lang anchoring,
+sibling overlays and post-hoc
 DependencyGraph projection are fixed. Manifests, mounts, registry solvers and
 package graphs are not alternative semantic inputs. Retrieval APIs may be
 ordinary source/host work; their implementation does not create authority.

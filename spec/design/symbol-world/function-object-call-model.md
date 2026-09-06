@@ -168,7 +168,7 @@ Candidates(args |> t) = CallSpace(TypeValue(t)) = V_τ
 ```
 
 Copied/extracted type-as-callee lookup selects candidates from that immutable
-`V_τ` snapshot. Complete type values have no HomeSymbol, defining-name binding
+`V_τ` snapshot. Complete type values require no defining-name binding
 recovery, most-recent carrier, or reverse `AsType` candidate entrance.
 
 Associated source navigation obeys the same forward-only rule. If:

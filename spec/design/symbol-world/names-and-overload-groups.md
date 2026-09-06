@@ -25,6 +25,12 @@ whole-snapshot positions observe the whole bound closure.
     Fresh_Sigma(r, n) iff not HasName_Sigma(r, n)
     Name -> type
 
+NameBinding is structural binding identity and its relation to a resident Place;
+it is not a first-class Object, constructor value, or borrowable wrapper. It has
+no implicit .type field. Resolving a name selects its binding; a value read reads
+the ordinary resident, and a borrow addresses that resident's actual Place.
+Lexical aliases map to the same binding without becoming values themselves.
+
 A structural name denotes a named type T. Same-name contributions synthesize
 that type and its V_tau, not an OverloadGroup at the name position. Occupancy is
 a structural fact, separate from the content of the existing value. A hidden,
@@ -102,16 +108,46 @@ Writable, OpenHere, lifetime and construction authority premises:
     DeclaredPolicy(name) = P
     Policy(result construction reference) = mut
 
-The expression requires freshness, creates the named type place, records P and
-returns its mutable construction reference. DeclaredPolicy is independent of
+The expression requires freshness and commits a complete initial resident before
+returning its mutable construction reference. The formation rule is:
+
+    Fresh_Sigma(r, n)
+    Writable(r) and OpenHere(Read(r)) and ConstructionAuthority(r, kappa)
+    q_n = ProjectionSlot(Target(r), n)
+    Q_0 = EmptyPattern at the ordinary resolved child navigation n::path
+    T_0 = bind alpha.<Q_0, empty V_tau[alpha]>
+    ---------------------------------------------------------------
+    FreshNamedType(r, n, P):
+      install NameBinding(n, q_n), DeclaredPolicy(n) = P
+      begin the resident generation at q_n with Contents(q_n) = Some(T_0)
+      return Ref(q_n) with mut construction policy
+
+Q_0 has no contributed structural children or members; it is the ordinary empty
+Pattern at the resolved navigation, not a missing value or a universal Pattern.
+Its anchor and GenerationRegime are established by the existing construction
+coordinate rules: the meta root with transparent in-place layers in meta,
+and the owning ordinary coordinate with opaque in-place layers otherwise.
+Its construction window begins live under that authority. These are ordinary
+formation/window facts, not a new Object axis or a new window for a copied type.
+The complete T_0 inherits those facts through Q_0 under the existing Core bridge.
+
+    absent name: no binding/resident at the prospective child
+    existing empty named type: binding exists and Contents(q_n) = Some(T_0)
+
+Standalone structural let therefore returns a reference to an existing complete
+empty named type. Fresh-name commit is the binding action that establishes this
+resident; bare assignment does not implement an absence-to-presence transition.
+
+ DeclaredPolicy is independent of
 ConstructionReferencePolicy, so a const name can still be initialized through
 the construction reference. Omitted P uses the same policy-demand/default
 rules as ordinary bare let.
 
     P let name::path = e == (P let name::path) = e
 
-The left expression commits name creation; the subsequent operation is ordinary
-assignment. No let-specific initialization, write or rollback protocol exists.
+The left expression commits name creation with Some(T_0); the subsequent
+ordinary assignment now has its required existing old resident. Its ordinary
+same-Type, Writable, lifetime and other selected-operation checks still apply. No let-specific initialization, write or rollback protocol exists.
 An enclosing meta transaction applies only under its existing rules. The
 returned reference addresses an existing name, not a manipulable fresh value.
 
@@ -122,8 +158,13 @@ retains an actual Place and can identify the prospective creation target.
 
 Only a normalized named-contribution position with a structural construction
 target gives unqualified let name = expression the implicit same-name synthesis
-meaning. These contributions form the named type's V_tau under the type-update
-and anchoring rules. They do not first package each RHS into a separate type
+meaning. On the first contribution the construction uses FreshNamedType from section 5;
+on subsequent contributions it uses the existing named type. These contributions
+form its V_tau under the type-update and anchoring rules. Any required Core
+construction uses extend/inject before the final membership check; type += cannot
+silently populate an empty Core. Compatible first-contribution formation at the
+same structural target is joined under the named-contribution algebra, not by
+merging independently allocated names or treating explicit fresh lets as updates. They do not first package each RHS into a separate type
 and aggregate an OverloadGroup at the name.
 
 Ordinary lexical let remains ordinary Pattern-directed binding; two same-spelled

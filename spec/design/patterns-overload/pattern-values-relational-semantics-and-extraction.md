@@ -295,7 +295,7 @@ therefore neither namespace shape nor the set of currently callable helpers.
 Ordinary navigated creation, including:
 
 ```lang
-let f::((s ref).type) = value;
+let f::(s |> (type ref)) = value;
 ```
 
 may create a `Val2` member or associated name binding. It cannot add a
@@ -1115,7 +1115,7 @@ operation.
 - `_` is a real wildcard position; binder absence is represented explicitly.
 - Pipe branch expansion uses binderless `<>`, not wildcard padding.
 - A complete type value contains Core and immutable callspace observations.
-- Complete types have no defining HomeSymbol or carrier-recovery route.
+- Complete types retain their own callspaces without defining-binding recovery.
 - TypeMember home is explicit and is not implied by descendant classification.
 - Immutable snapshots do not share one mutable current callspace.
 - Recursive references obey stage-sensitive `WellFounded_kappa`: finite static

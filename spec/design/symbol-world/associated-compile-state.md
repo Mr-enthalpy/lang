@@ -16,10 +16,30 @@ not compiler metadata, a package registry, or another Object axis. A is
 currently builtin; that does not claim its guarded-place algebra is incapable
 of a more general language formulation.
 
-Ordinary type keying uses the existing canonical Core observation, as specified
-in [pattern values](type-values-places-and-borrow-views.md#2-semantic-identities).
-An implementation TypeValueId is only an index. A does not redefine equality,
-introduce nominal identity, or require whole-snapshot keying by default.
+A has a designated association observation, distinct from ordinary Core equality:
+
+    subject(t) = the existing construction-window subject of Core(t)
+    key_A(t) = stable identity of subject(t)
+    A[t] = AssociatedPlace(key_A(t))
+
+Here subject(t) denotes the existing state subject carrying Anchor,
+GenerationRegime and WindowLive; it is not a new first-class value or Object
+axis. The key preserves that subject through its authorized construction
+updates and through closure. Copy/transport preserves the same subject rather
+than allocating a new window. Independent formation with equal normalized Core
+does not collapse construction subjects.
+
+    key_A(t1) = key_A(t2) iff subject(t1) = subject(t2)
+    A[t1] = A[t2] iff key_A(t1) = key_A(t2)
+    therefore OpenHere(t1, kappa) = OpenHere(t2, kappa)
+      at the same continuation position and authority context
+
+Ordinary Core equality, group bucket equality, whole-snapshot equality and
+TypeValueId cannot substitute for key_A. Ordinary type equality remains the
+Core observation defined by [pattern values](type-values-places-and-borrow-views.md#2-semantic-identities).
+This is a designated identity-sensitive associated-place operation, not an
+ordinary map quotiented by type equality. It does not change equality or grant
+authority merely from equal values.
 
 A is exposed as an ordinary callable object with reference projections:
 
@@ -32,10 +52,15 @@ assignment and the applicable group update algebra implement =, +=, and -=.
 
 ## 2. A bounded writable window
 
-Let a_t be the associated reference obtained from a construction reference t_ref.
+An associated reference captures k = key_A(t) and addresses AssociatedPlace(k).
+It never follows later replacement of the caller's t_ref resident.
 
-    Writable(a_t, kappa)
-      iff OpenHere(Read(t_ref), kappa) and WriteAuthority(a_t, kappa)
+    Writable(a_k, kappa)
+      iff OpenHere(subject(k), kappa) and WriteAuthority(a_k, kappa)
+
+Every actual write Pre checks this same captured subject, including writes
+through saved mutable references. Assignment of an unrelated type into t_ref
+does not retarget a saved A reference or transfer that new type's open window.
 
 The existing authority, borrow validity, and policy checks still apply. This
 rule composes existing judgments; it adds no independent contribution capability.
@@ -44,6 +69,11 @@ and the authority-frame rules in
 [construction](symbol-first-meta-construction-and-pattern-injection.md#1211-open-authority-is-stack-relative).
 Different carrier Places do not create independent windows for copies of that
 value. Value equality itself grants no write authority.
+
+In particular, if Core(t1) = Core(t2) but their OpenHere judgments differ in the
+same context, key_A(t1) != key_A(t2). Writing A[t2] cannot change A[t1]. If the
+keys are equal, closing their shared subject blocks every alias's write Pre.
+A whole-snapshot key alone would not establish this law either.
 
 True Close irreversibly clears the existing WindowLive fact. A saved reference
 can retain static mut policy while its write Pre fails after Close. Temporary
@@ -109,8 +139,10 @@ that sibling first. A introduces no ordering exception. See
 
 The public spelling, sparse storage, bucket/entry identities, reference
 encoding, and incremental indexing remain local implementation questions.
-The existing pattern-value equality and OpenHere rules are not reopened by
-those choices. Cache replay must preserve effects, entry multiplicity, and
+The subject-preserving association law is fixed. Persistence must encode the
+existing construction subject, not invent a per-carrier window or infer a subject
+from equal Core contents. The existing pattern-value equality and OpenHere rules
+are not reopened by those choices. Cache replay must preserve effects, entry multiplicity, and
 current write Pre checks; it cannot make a saved mutable reference writable.
 
 
