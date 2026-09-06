@@ -92,7 +92,10 @@ available source or program meaning before evaluation.
 
 link is a future host-backed ordinary callable. Its result is bound by ordinary
 language actions. Neither link nor an engineering linker owns namespace
-injection or a hidden package model.
+injection or a hidden package model. Its [root-acquisition effect law](../meta-invocation/host-capabilities-and-machine-objects.md)
+uses E's compilation-wide LinkRegistry: active-root re-entry is a cycle,
+already completed acquisition is a duplicate. Sibling overlays cannot hide
+duplicate root-acquisition effects by joining them idempotently.
 
 ## 5. Engineering responsibilities
 

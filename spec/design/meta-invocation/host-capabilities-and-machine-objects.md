@@ -22,6 +22,53 @@ evaluation can implement acquisition, validation, representation construction,
 specialization, and export without requiring users to operate a separate
 file-to-language-object subsystem.
 
+### 1.1 link-specific effect law
+
+Being an ordinary host callable does not erase link's once-per-compilation
+root-acquisition discipline:
+
+    LinkRegistry is part of State_E
+    LinkState : HierarchyRootId -> {Active, Done}  (partial map)
+    h = CanonicalRootIdentity(source_provider, requested_root)
+
+Absence is registry state, not an optional language result. The provider's
+canonical root identity identifies the source hierarchy; raw request strings,
+relative/absolute spellings, aliases, or alternate handles for the same
+provider/root cannot create distinct h values. Content equality alone does not
+identify independently rooted hierarchies either.
+
+    absent h -> reserve h as Active -> evaluate hierarchy -> Done
+    Active h -> CycleDiagnostic
+    Done h   -> DuplicateLinkDiagnostic
+
+The Active-to-Done transition occurs only after successful evaluation. Failure
+propagates through the ordinary Diagnostic/transaction rules, not a fabricated
+Done entry or implicit retry. The explicitly selected compilation root is
+entered as Active while it evaluates and becomes Done on success, so a link
+back into that active root is also a cycle.
+
+This is one compilation-wide registry owned by E, shared by nested link calls
+and every sibling block. Nested entry cannot allocate a private registry.
+Unordered overlays must retain and validate root-acquisition effects against
+this same registry; they cannot each accept the same absent key and silently
+coalesce it at join. Overlapping sibling acquisitions of the same root are a
+duplicate-root effect conflict (DuplicateLinkDiagnostic); actual re-entry into
+an active evaluation is CycleDiagnostic. A serial or parallel implementation
+must preserve these distinctions rather than choose a winner by filename or
+worker timing. Registry validation does not expose ordinary sibling namespace
+writes or give siblings a new execution-order dependency.
+
+Done means the root has already been acquired in this compilation; it is not
+permission to return a cached result for a second source-level link. A cache
+may realize the first authorized acquisition while preserving its effects,
+identity and Pre/commit/Post checks. A fresh compilation has its own registry.
+
+The returned result is still an ordinary Object, and any resulting names are
+created by ordinary language actions. This operation-specific effect law
+introduces no build graph, mount authority, namespace injection or restriction
+on unrelated host IO callables. DependencyGraph remains a projection of actual
+evaluation effects, including these root-acquisition effects.
+
 ## 2. Primitive admission discipline
 
 For a proposed capability, first ask whether existing IO Objects and ordinary

@@ -196,8 +196,11 @@ engineering facilities after their inputs and effects obey the source model.
 - Connect witnessed anchored replication, preserving captures, internal
   alpha-renaming and the original closure identity. Do not feed the destination
   anchor backward into parsing or RHS evaluation. Structural let = closure
-  does not itself invoke TypeAdd; explicit += or a named-contribution position
-  must select that operation after any required Core preparation.
+  does not itself imply TypeAdd. Any ordinary assignment realization using it
+  requires a legal selected candidate defined by the assignment owner. Automatic
+  first named contribution still needs the explicit v/witness-to-Core-material
+  derivation tracked in open questions; do not mistake its conditional trace
+  for completed source elaboration.
 - Implement builtin A's guarded indexed Places using stable construction-subject
   identity, not ordinary Core equality. Equal keys must denote the same OpenHere
   subject; saved references retain that subject across carrier replacement.
@@ -212,6 +215,10 @@ engineering facilities after their inputs and effects obey the source model.
   one-frame tests do not prove nested-frame correctness.
 - Connect name-preserving @ and ordinary value/borrowed lifecycle fields,
   independent SafetyPolicy, and compatible post-commit external admissions.
+- Connect link's compilation-wide E-owned LinkRegistry using canonical
+  source-provider/root identity. Diagnose Active re-entry as cycle and Done
+  acquisition as duplicate; detect sibling duplicate claims without cache reuse
+  or order-based coalescing. This effect law is closed, its carrier is pending.
 - Connect host/target-machine Objects and their ordinary policy/views; metadata
   availability must not force compile-time payload realization.
 - Implement E saturation and synchronized continuation projections, residual

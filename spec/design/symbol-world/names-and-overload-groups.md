@@ -144,7 +144,7 @@ Standalone structural let therefore returns a reference to an existing complete
 empty named type. Fresh-name commit is the binding action that establishes this
 resident; bare assignment does not implement an absence-to-presence transition.
 
- DeclaredPolicy is independent of
+DeclaredPolicy is independent of
 ConstructionReferencePolicy, so a const name can still be initialized through
 the construction reference. Omitted P uses the same policy-demand/default
 rules as ordinary bare let.
@@ -180,12 +180,48 @@ Explicit structural P let name::path retains its fresh-name precondition.
 Assignment remains ordinary assignment even where a selected ordinary type
 construction operation consumes a closure. This does not define a universal
 equation between = and +=. In particular, structural `let f::path = closure`
-does not request TypeAdd or AnchorFor. It is valid only if ordinary assignment
-accepts that RHS for the type resident; a closure-expression-produced function
-value has no implicit closure-to-type contribution conversion here. The explicit
+does not itself request TypeAdd or AnchorFor; it presents the ordinary assignment
+problem. The assignment-operation owner determines whether a legal selected
+candidate realizes it using type construction/replication. Neither structural
+let nor the witness supplies an implicit conversion or forbids such a candidate. The explicit
 contribution derivation is in [closure replication](closure-anchored-replication.md).
 Anchored replication is a closure capability usable
 by type contribution and inject, not a special RHS rule for let.
+
+### 6.1 First contribution: required trace and remaining premise
+
+For the already evaluated v in a named-contribution construction position:
+
+    v = Eval(e)
+    t_f = FreshNamedType(r, f, P)         -- commits Some(T_0)
+    Delta = Core material derived for (v, target anchor)
+    t_f |> inject(Delta)                 -- schematic ordinary read/extend/write
+    T_1 = Read(Target(t_f))
+    v' = AnchorFor(v, Core(T_1))
+    require TypeOf(v') in Core(T_1)
+    TypeAdd(t_f, v')                     -- changes V_tau only
+
+This is an operation trace, not new callable syntax or a new CorePreparation
+primitive. The concrete Core-changing step is the existing
+Extend_Gamma(T_0, Delta) relation, followed by inject's ordinary write; see the
+[construction owner](symbol-first-meta-construction-and-pattern-injection.md),
+sections 7.3 and 8.1–8.2.3. It can also generate the partners required by that
+material. Those generated members are not an implicit repeat contribution of v.
+
+Those sections determine the result once Delta is supplied. They do not yet
+derive a unique Delta from an arbitrary closure value v: TypeMember_Q is a
+membership obligation, and ReinstantiationWitness supplies a location-parametric
+instance, not a unique target-Core synthesis rule. Several larger Cores may
+admit the same resulting closure type. Normalization of a supplied Pattern
+does not select which Pattern to construct.
+
+Consequently this trace is conditional on that missing material derivation; it
+is not a theorem that v alone already determines Core(T_f). The exact
+closure/witness-to-StructLikeMaterial derivation is recorded in
+[open questions](../../planning/open-questions.md). Explicit prepared-Core +=
+remains defined by the existing relations. A serial source consumer must not
+invent Delta, silently enlarge Core inside TypeAdd, or report automatic first
+named contribution as connected until the derivation is fixed.
 
 ## 7. Identity and closure
 

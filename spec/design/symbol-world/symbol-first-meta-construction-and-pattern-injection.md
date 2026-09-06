@@ -1408,7 +1408,16 @@ is forbidden). When the receiver is already `T ref`, assignment writes
 define setter candidates through `.=`; setter participation does not make
 anything a P structural field.
 
-The `=` family for `T ref` is:
+Structural let first supplies its ordinary type-reference assignment problem;
+it does not itself select a type-contribution operation. The universal family
+below defines same-Type replacement. It neither proves nor forbids an additional
+ordinary assignment candidate whose realization uses the existing type/replication
+algebra. Such a candidate needs its own ordinary declaration, selection and
+legality derivation; no let-specific initialization privilege supplies one.
+Whether that realization is admitted is an assignment-family question, not a
+rule owned by the closure witness.
+
+The universal `=` family for `T ref` is:
 
 ```text
 AssignmentFamily(T):

@@ -69,18 +69,23 @@ semantics; this relation is not an initialization-only exception.
 
 ### 4.1 Source forms and the operation that triggers replication
 
-The following structural form does not trigger this capability:
+The following structural form does not by itself imply this capability:
 
 ```lang
 let f::path = (self) => {};
 ```
 
 Its expansion is ordinary `(let f::path) = closure`: FreshNamedType commits
-T_0 and returns mut type ref, then ordinary assignment checks its RHS. There
-is no implicit TypeAdd/AnchorFor conversion. An ordinary function-object RHS
-does not satisfy the complete-type replacement merely by being a closure;
-without an applicable ordinary assignment operation, that assignment fails,
-leaving T_0 subject to the existing enclosing transaction.
+T_0 and returns mut type ref, then presents the ordinary assignment problem.
+Structural let adds no hidden TypeAdd/AnchorFor sugar. Whether an ordinary
+assignment candidate can realize this operation using existing type construction
+or anchored replication belongs to the [assignment-operation owner](symbol-first-meta-construction-and-pattern-injection.md),
+section 4.5.1. This closure capability neither supplies such a candidate nor
+forbids it. The universal same-Type replacement family alone does not establish
+its existence; only a legal, uniquely selected ordinary candidate can do so.
+If none applies, ordinary assignment fails under the existing transaction rules.
+If one applies, its realization must satisfy all ordinary membership, OpenHere,
+Writable, lifetime and no-reopen obligations.
 
 An explicit contribution has the following schematic source/semantic derivation:
 
@@ -111,9 +116,11 @@ the addition fails; it never expands Core by itself.
 
 An unqualified `let f = c` in a declared named-contribution position uses that
 position's formation/Core-construction/contribution rules and reaches the same
-TypeAdd relation. An ordinary lexical let or structural let's assignment suffix
-does not acquire that sugar. This distinction determines the operation before
-replication, independently of where the RHS was first evaluated.
+TypeAdd relation, conditional on the Core-material derivation described in the
+[name owner](names-and-overload-groups.md). An ordinary lexical let or structural
+let's assignment suffix does not acquire named-contribution sugar. This does
+not preclude the separately selected ordinary assignment realization from using
+replication; candidate selection belongs to the assignment owner.
 
 ## 5. Meta and non-meta anchors
 

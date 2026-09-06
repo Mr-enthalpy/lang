@@ -11,7 +11,11 @@ construct their representation, specialize them and expose ordinary members.
 
 link is one possible future host-backed callable. It is not a mount operation
 or a separate namespace mechanism. The language uses its ordinary calls,
-Patterns, complete pattern values and OverloadGroups at the boundary.
+Patterns, complete pattern values and OverloadGroups at the boundary. The
+link-specific effect law in the host owner still forbids duplicate acquisition
+of the same canonical provider/root identity within a compilation. E's shared
+LinkRegistry diagnoses active re-entry and completed-root duplication; no
+build subsystem owns or resets that registry.
 
 The source decides external resource acquisition and target-machine facts.
 Build manifests, feature configuration, dependency lists and package roots are
