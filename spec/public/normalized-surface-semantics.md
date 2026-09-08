@@ -829,6 +829,13 @@ component is P1 value-dominant projection or P2 shorthand, validate pair stage
 rules, or interpret const/mut/namespace atoms. Those are semantic policy
 elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
+The P1 form `meta let f = expression` uses this existing policy-prefixed
+binding shape. Its `meta` atom remains a Name. P1 meta-instance policy and P2
+meta evaluation stage are distinguished by later contextual policy elaboration;
+normalization establishes neither instance identity nor OpenHere. Plain let
+uses the same syntax shape; its classic meta completion/closure behavior is
+likewise a semantic rule, not a frontend rewrite.
+
 ### Capture binding elaboration
 
 An ordinary closure capture clause is a list of let-shaped bindings:

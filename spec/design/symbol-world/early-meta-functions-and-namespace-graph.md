@@ -42,12 +42,15 @@ HoleBinder identity and MetaInstance parent placement.
 MetaInstanceRootKey
   = ParentSemanticOwner
   x selected callable identity
-  x canonical whole argument Product identity
+  x CanonicalizeInvocationInputs(In)
 ```
 
-Root stability is independent of constness. Every MetaInstance root has
-`PolicyMode=plain`, is a stable semantic owner, and does not thereby become
-Writable.
+Every MetaInstance is a stable semantic owner whose name denotes its instance
+type tau_M. P1 meta retains it under dependency-derived OpenHere, which governs
+mut acquisition; plain let completes and closes it. Ordinary payloads live in
+Val2 and keep their ordinary policies. The general cache preserves instance and
+member Place identity, current observations and checked dependencies. An internal
+plain root marker cannot substitute for the P1 meta qualification.
 
 ## Policy and visibility
 
@@ -117,7 +120,8 @@ ActiveConstructionWindow
 writable Place. Type contribution requires final TypeOf(v) membership in the target core.
 Eligible closure expressions can be instantiated under another anchor while
 preserving the original value. Derived forwarders capture the base complete
-snapshot. A[t] is ordinary guarded compile state, not graph metadata.
+snapshot. A is an ordinary meta instance type with an ordinary Val2 group
+member; its state uses the general invocation cache facilities.
 
 ## Pending consumers
 
@@ -130,6 +134,8 @@ The following are source/evaluator wiring work, not alternative semantics:
 - cleanup schedule production;
 - Residual/Diagnostic continuation transport;
 - derived associated forwarder formation;
+- instance/member residency, P1 meta qualification, input dependency normalization
+  and opening-source propagation, including the derived A instance;
 - serial compile evaluation.
 
 See `spec/planning/roadmap.md` for sequencing and

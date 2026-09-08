@@ -31,7 +31,7 @@ path. Future optimization options configure planner search without changing E.
       NormalizeBody(D, r_n)
     )
 
-Here r_root is the ordinary mutable reference to the default result construction
+Here r_root is the ordinary mutable reference to the instance result construction
 Place of M_compile, established by the [compilation-entry meta formation law](../meta-invocation/meta-object-invocation-and-policy-reduction.md#21-compilation-entry-uses-ordinary-meta-root-formation).
 The existing bootstrap parent, selected ordinary meta callable and canonical
 arguments determine M_compile; its active frame and result construction window
@@ -83,9 +83,10 @@ provenance neither makes them exclusive nor merges distinct entries by value
 equality. Conflicting replacements report an unordered-block write conflict.
 Subtraction and other updates commute only where their ordinary algebra says so.
 
-Associated compile state A[t] follows exactly these same rules. Global
-addressability introduces no global ordering exception and no permanent
-mutability: its existing OpenHere/Writable premises govern each write.
+Invocation-generated result Places follow these same rules, including the
+associated-state member n_A(t). Stable invocation identity/cache reuse grants
+no global ordering exception or permanent mutability. Current resident reads,
+dependency-derived opening sources and ordinary write Pre remain observable.
 
 ## 4. Dependency projection
 

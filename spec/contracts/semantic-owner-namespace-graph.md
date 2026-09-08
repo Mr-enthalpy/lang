@@ -19,7 +19,7 @@ GeneratedIdentity = (GeneratingOwner, LocalGenerationIdentity)
 SemanticOwnerId = (SemanticOwnerGraphId, graph-local owner)
 ```
 
-NameBindingId identifies the structural binding relation and its resident Place;
+NameBindingId identifies the ordinary binding relation and its resident Place;
 it is not an Object or a value with a .type field. GeneratedIdentity and
 SemanticOwnerId index semantic ownership, not an extra result ontology.
 
@@ -76,8 +76,16 @@ A meta instance is interned by:
 (parent owner, resolved meta-function identity, canonical argument key)
 ```
 
-Repeated canonical invocation reuses its owner. A different canonical key
-creates a different child owner.
+CanonicalizeInvocationInputs preserves the selected invocation's value
+observations and semantically observed name/subject/borrow dependencies. Repeated
+completed invocation reuses its instance name/type and ordinary member Places; a
+different full key yields a different invocation. Result names are not input
+structural children. Current instance/member observations and dependency validity
+are checked at use; identity reuse does not freeze a value or grant authority. The
+[invocation owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md)
+defines the full law: the direct result is tau_M rooted at M; arbitrary Val2
+payloads use ordinary navigation. P1 meta retains dependency-derived OpenHere
+and plain let completes/closes the instance. P2 meta is its evaluation stage.
 
 Source navigation remains inner-to-outer. A generated meta-call scope used as
 one outer component must group the complete call expression:
@@ -165,7 +173,7 @@ Path/name resolution returns one terminal NameBinding, preserving the resolved
 host chain and exposure context. It does not return a candidate set:
 
     Resolve(path) -> terminal NameBinding
-      -> read resident complete named type
+      -> read the ordinary resident (a complete named type at named-type positions)
       -> consumer projection (including exposed call candidates)
       -> admissibility and unique overload selection
 
@@ -200,8 +208,8 @@ associated lets contribute to that construction. Generated field/access/
 assignment/borrow partners are ordinary members entering `V_τ` at the formation
 event; a name binding appears only at a subsequent binding/install of the formed
 value. Same-name associated `Val2` named types expose those same members and own
-no second copy. Members satisfying `TypeOf(v) in Q_struct` are part
-of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
+no second copy. Members registered for type callability and satisfying
+`TypeOf(v) in Q_struct` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
 type-as-callee uses `CallSpace(tau)=V_τ`; there is no defining-name binding or
 recent-carrier recovery route.
 
@@ -360,8 +368,11 @@ Deferred:
 - end-to-end installation of associated Val2 contributions, external navigated
   call-entry declarations, and ordinary type checking of the slot-0 receiver
   against the first written formal;
-- source structural-let expression, named-type synthesis, associated state,
-  anchored replication and unordered overlay consumer alignment.
+- invocation-owned ordinary result bindings/Places, dependency-preserving input
+  keys, opening-source meets and current-resident cache reuse; A is derived from
+  those general facilities;
+- source structural-let expression, named-type synthesis, anchored replication
+  and unordered overlay consumer alignment.
 
 The owner-tree homomorphism proof and the persistent namespace consumer/routing
 migration are **P1 integration gates**. They do not reopen the semantic

@@ -34,7 +34,9 @@ The semantic layer is organized around these independent coordinates:
 - construction authority, `OpenHere`, Writable, `extend`, and `inject`;
 - continuation-relative lifecycle facts, Region generations, Pre/Post, and an
   extensible directed Color algebra;
-- guarded associated compile state A and witnessed closure re-instantiation;
+- meta instance names/types, P1 meta retention versus plain completion/closure,
+  dependency-derived openness, ordinary Val2 payloads, generic instance caching,
+  derived associated state A, and witnessed closure re-instantiation;
 - unsafe semantic axiom admission and ordinary host-capability Objects;
 - source-only namespace construction, unordered physical normalization, and
   one evaluator E with synchronized projections and validated optimization.

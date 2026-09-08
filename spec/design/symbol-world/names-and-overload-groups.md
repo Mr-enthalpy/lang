@@ -25,16 +25,28 @@ whole-snapshot positions observe the whole bound closure.
 
     HasName_Sigma(r, n)
     Fresh_Sigma(r, n) iff not HasName_Sigma(r, n)
-    Name -> type
+    FreshNamedType construction name -> named type
+    ordinary Val2 member name -> resident of any ordinary type
+    ordinary name -> binding with an ordinary resident
 
-NameBinding is structural binding identity and its relation to a resident Place;
+NameBinding is binding identity and its relation to a resident Place;
 it is not a first-class Object, constructor value, or borrowable wrapper. It has
 no implicit .type field. Resolving a name selects its binding; a value read reads
 the ordinary resident, and a borrow addresses that resident's actual Place.
 Lexical aliases map to the same binding without becoming values themselves.
 
-A structural name denotes a named type T. Same-name contributions synthesize
-that type and its V_T, not an OverloadGroup at the name position. Occupancy is
+Meta invocation also constructs ordinary names. Their formation owner is the
+invocation identity, and they are not structural children of input values.
+The direct instance name denotes its instance type tau_M itself. Arbitrary
+values and borrows reside in ordinary Val2, accessed through name::path.
+P1 meta retains the instance under OpenHere; plain let closes it on completion.
+Explicit borrowing uses the selected actual Place; it is not the direct result
+of meta invocation. NameBinding gains no Object wrapper or extra value algebra.
+[Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+owns their identity, opening-source propagation, completion and cache laws.
+
+A FreshNamedType name denotes a named type T. At named-contribution positions,
+same-name contributions synthesize that type and its V_T, not an OverloadGroup at the name position. Occupancy is
 a structural fact, separate from the content of the existing value. A hidden,
 unexported or policy-filtered name still exists. Freshness uses authoritative
 occupancy, not the current lookup view.
@@ -100,9 +112,10 @@ closure's ReinstantiationWitness and creates a new anchored instance. It never
 mutates v's owner. See [closure replication](closure-anchored-replication.md).
 
 Group += and type += share operator spelling, not one semantic operation.
-Associated A[t] is a particular guarded group place whose own write condition
-also depends on its key's OpenHere; ordinary group references have no such
-key-derived requirement.
+A's group resident is carried by an invocation-generated name whose opening
+source follows its input dependency. Its write Pre checks that source under
+ordinary name rules; group membership itself creates no opening requirement
+on the candidate types.
 
 ## 5. Fresh-name creation returns a construction reference
 

@@ -70,8 +70,11 @@ opaque leaf that under-merges without inventing equality.
 
 ### Val2
 
-The Object's owned selector-to-Object snapshot. Navigation-visible or inherited
-members are separate observations.
+The Object's owned selector-to-Object snapshot. Ordinary entries may have any
+type and need no callability or Pattern registration. V_tau records the portion
+registered for type callability; Pattern extraction/construction registration is
+independent. Both registered families require their classifiers under tau.
+Navigation-visible or inherited members are separate observations.
 
 ### Complete pattern/type value (`tau`)
 
@@ -87,7 +90,7 @@ name-binding identity, Place identity, or a defining-binding reference.
 ### Name binding and named type
 
 Name existence is a structural fact independent of visibility or value content.
-Structural names denote complete named types; same-name construction contributes
+FreshNamedType names denote complete named types; same-name construction contributes
 to their V_tau. Ordinary lexical binding is not implicit overload synthesis.
 Name binding identity, pattern-value equality and Place identity are distinct.
 
@@ -107,7 +110,24 @@ qualify their local identities. A package graph supplies no semantic owner.
 ### MetaInstance
 
 A semantic owner identified by parent owner, selected callable identity, and
-canonical whole argument Product identity.
+canonical invocation input identity, preserving its declared value observations
+and semantically observed name/subject/borrow dependencies.
+
+### Invocation-generated result name
+
+The ordinary meta instance name denotes its instance type tau_M, rooted at its
+invocation owner. It is not an input structural child or an arbitrary payload
+wrapper. Ordinary Val2 contains arbitrary payloads accessed by name::path. Its
+opening source is the meet over actual semantic input dependencies. The cache
+retains the instance and member Places/current state, not a frozen first value.
+
+### P1 meta policy
+
+`meta let f = expression` retains an ordinary meta instance under its derived
+OpenHere. The instance name is its type value, so OpenHere governs acquisition
+of mut qualification without an independent instance const/mut gate. Plain let
+completes/closes it; later meta let cannot reopen it. P2 meta independently names
+the callable's evaluation stage. Ordinary Val2 payload policies remain ordinary.
 
 ### Place
 
@@ -286,11 +306,13 @@ A following = expression is ordinary assignment, with no private rollback rule.
 
 ### Associated compile state A
 
-A builtin globally indexed family of OverloadGroup Places. Its designated key
-is the stable identity of the existing construction/window subject, not ordinary
-Core equality. Equal keys imply the same OpenHere subject. Its write Pre checks
-that captured subject and ordinary write authority, including through saved
-references and after replacement of the original argument's carrier. Generalizing this guarded place capability remains open.
+A derived meta invocation returning an instance type with ordinary Val2 group
+member n_A(t). Invocation normalization retains t's construction subject, whose
+source bounds the retained instance and group write window. Member value/ref and
+policy rules remain ordinary. Saved group references preserve their member Place
+and dependency across input-carrier replacement; every write Pre rechecks it.
+The general meta cache supplies instance/member residency, without an A-specific
+global map primitive.
 
 ### Anchored replication
 

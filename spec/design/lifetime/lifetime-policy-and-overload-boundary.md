@@ -261,7 +261,7 @@ E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
 `@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
 binding evaluates to the complete closure `tau`; an ordinary/namespace consumer observes the projection `Core(tau)=Q`. Reaching the type-level
 place is done explicitly with `t |> (type ref)`, including for a structural
-named type, never by `@`. NameBinding is structural and has no borrowable
+named type, never by `@`. NameBinding is a binding relation and has no borrowable
 wrapper or `.type` field. A by-value type projection followed by `@` does not
 recover a Place.
 
@@ -661,6 +661,16 @@ Escapes(view, destination)  ->  the storing/returning operation is rejected
 The destinations subject to this check are the ones that can outlive the origin:
 storing into a longer-lived place, returning from a callable, capturing into a
 materialized callable entity, and installing into global namespace material.
+
+Meta invocation-generated names obey this same check. Stable invocation identity
+and cache retention do not extend result residency or borrowed-target regions.
+Admitted open input dependencies may bound an output's opening qualification;
+that meet is not a replacement for ValidRegion. Ordinary meta directly returns
+its instance type; a borrow retained in its Val2 must be valid in the result's
+region. A borrow of an untransferred expiring local is rejected.
+Result completion transfers only owned material and never promotes targets along
+ref/share/rebind edges. See the
+[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md).
 
 ### 3.1 `ValidRegion` is a borrow-lifetime judgment
 

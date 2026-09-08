@@ -83,12 +83,18 @@ alternate relation or identity.
 - NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
 - Same-name construction synthesizes a type's V_tau; ordinary lexical let does
   not aggregate. Structural P let name::path installs complete empty T_0 before
-  returning mut type ref; NameBinding is structural, not a wrapper Object.
+  returning mut type ref; NameBinding relates identity to a Place, not a wrapper Object.
 - Type +=/-= changes only V_tau under Writable, OpenHere and final closure-type
   membership. Witnessed anchored replication never reparents an existing value.
 - OverloadGroup aggregation has its own bucket algebra and requires Writable.
-  A keys identify existing construction subjects, not Core-equality classes;
-  its indexed group places recheck that same subject's OpenHere at write Pre.
+  Ordinary meta constructs an instance name/type tau_M outside input structure;
+  arbitrary payloads occupy ordinary Val2. V_tau callability registration and
+  Pattern-role registration are independent; neither follows from Val2 presence.
+  Input identity retains observed name/subject dependencies; output openness follows
+  their meet. P1 meta let retains the instance under OpenHere, which governs mut
+  acquisition; plain let completes/closes it. P2 meta remains evaluation stage.
+  Invocation caches retain instances/member Places and current state. A consumes
+  these facilities; saved references recheck the original source at write Pre.
 - Name resolution happens once before context projection.
 - Calls use value -> exact tau -> associated `()` and one candidate space.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.

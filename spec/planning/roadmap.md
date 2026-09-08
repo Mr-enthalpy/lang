@@ -78,7 +78,8 @@ semantic relations above.
 | Place / resident generation | Place and ProjectionSlot | binding, Writable and borrow substrate | Implemented; source operation coverage pending |
 | DynamicLegality | sealed post-selection validator | supplied capability/place/lifecycle premises | Implemented; automatic premise formation pending |
 | InvocationResult | declared result class + semantic payload/residual/diagnostic | connected ordinary and core/meta invocation | Implemented; residual transport remains Open |
-| OpenHere / construction | authority, window, Writable and write algebra | meta construction and inject | Implemented |
+| OpenHere / construction | authority, window, Writable and write algebra | meta construction and inject | Base checks implemented; invocation dependency propagation pending |
+| Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
 | SemanticContinuation | lifecycle machine and event ledger | world-owned registration | source action/cleanup wiring pending |
 | Color/access | extensible directed relations and provider interface | lifecycle Pre validation | access-tree construction Open |
@@ -141,6 +142,8 @@ Current families:
 | construction and same-Type migration families | `SourceDefinitionPending` | ordinary selection + DynamicLegality |
 | capability realization entries | `SourceDefinitionPending` | candidate declarations |
 | StructuralDefault providers | `SourceDefinitionPending` | `R_Gamma` |
+| associated state A | `SourceDefinitionPending` | ordinary meta instance type + Val2 group/place algebra |
+| singleton-Val2 compile extraction | `SourceDefinitionPending` (builtin bootstrap permitted) | closed type + exactly one ordinary Val2 entry + ordinary value read |
 | lifecycle move/copy/drop algebra | `SourceDefinitionPending` | lifecycle Pre/commit/Post relations |
 | interning, graph allocation, continuation-position observation | `IntrinsicObservation` | canonical relations consuming those observations |
 
@@ -202,11 +205,34 @@ engineering facilities after their inputs and effects obey the source model.
   section 7.6.1: form the same member material at the target anchor and commit
   Extend's complete result through inject. Do not add a second post-inject
   TypeAdd or infer an arbitrary larger Core from membership alone.
-- Implement builtin A's guarded indexed Places using stable construction-subject
-  identity, not ordinary Core equality. Equal keys must denote the same OpenHere
-  subject; saved references retain that subject across carrier replacement.
-  Recheck its OpenHere and write authority in every write Pre. Its general
-  user-facing abstraction is an open question, not an implementation shortcut.
+- Extend ordinary meta invocation before connecting its A instance: preserve
+  input value observations and semantic name/subject/borrow dependencies;
+  construct the direct instance name/type tau_M and ordinary Val2 payload Places;
+  propagate output opening-source meets. Implement P1 meta qualification before
+  mut-view acquisition and plain completion/closure. Ordinary payload policy,
+  borrowing and lifetime checks remain independent.
+  The current `semantic_world::meta_type_roots` cache stores only a type lookup
+  id and struct construction material. It does not yet retain general instance
+  state with ordinary Val2 payload Places and P1 meta/plain completion rules. `canonical_arguments_product_address` records value observations;
+  it does not supply the general identity-sensitive dependency boundary.
+- Implement generic meta result-name/cache residency with construction status,
+  current reads, ordinary writes, effects and dependency revalidation. Repeated
+  acquisition must not rerun initialization, freeze the first resident, revive a
+  consumed resident or replay stale write authority. The current source meta body
+  path remains unsupported, and base OpenHere has no output dependency meet.
+  Carrier tests of content-sensitive argument keys remain valid for value
+  observations; they do not establish name-dependent invocation semantics.
+- Derive A from those general facilities with its input construction subject and
+  ordinary Val2 group member. Equal full keys retain the same subject through Close
+  and input-carrier replacement; saved references keep their original result
+  Place. Recheck inherited opening and ordinary write authority in every write
+  Pre. No A-only global indexed-place primitive is needed.
+- Connect closed-type singleton-Val2 compile extraction through ordinary navigation:
+  exactly one entry yields its value; zero/multiple entries fail through the
+  chosen compile-error semantics. Count actual Val2, not callspace or visibility
+  projections; preserve access checks. No implicit projection or borrow is added.
+  Cover direct-meta type/root rejection, independent Val2/V_tau/Pattern roles,
+  meta retention, plain closure, mut-after-OpenHere, and no-reopen on cache reuse.
 - Align formal elaboration: Pair inherits P2, omitted formal mode is plain.
   The current policy_pair implementation and a position-policy test still inherit
   mode from P2 and must be corrected when this consumer is changed. Return P_out

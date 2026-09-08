@@ -73,7 +73,7 @@ TypeValueId
 PatternValue identity
 ```
 
-- `NameBindingId` identifies a structural name-graph binding and its resident
+- `NameBindingId` identifies an ordinary binding and its resident
   Place relation. It is not a language value and cannot be borrowed or carry a
   `.type` field. A borrow addresses the ordinary value resident at its Place.
 - `PlaceId` is the identity of a location that can be bound, updated, injected
@@ -123,11 +123,14 @@ PatternValue equality does not imply NameBindingId or PlaceId equality.
 A borrow view names one place from one origin; it relates values and places without erasing the distinction.
 ```
 
-The designated A association key observes the existing construction-window
-subject, not Core equality or the carrier Place. Equal Core values can have
-different subjects; copies retain their subject, and a saved A reference retains
-its captured subject across carrier replacement. See [associated state](associated-compile-state.md).
-This operation does not redefine ordinary type equality or add a value wrapper.
+Meta invocation normalization retains the identities of semantically observed
+name/construction-subject dependencies in addition to its ordinary value
+observations. This does not insert NameBindingId, PlaceId or Anchor into
+Norm(Object). Equal Core values may have different subjects; copies preserve
+an existing subject. A is a derived instance: a saved result reference retains
+its captured invocation Place and subject across input-carrier replacement.
+See [invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+and [associated state](associated-compile-state.md).
 
 A type expression cares about the *value*. A namespace extension target or a
 declaration-extension site cares about the *place*. A borrow view is itself a
@@ -149,21 +152,21 @@ Object x  = ⟨ Val1?(x), P(x), Val2(x) ⟩
 Val1?(x) ∈ 1 + Object
 ```
 
-`Val2` is a finite map from semantic selectors to ordinary Objects. Most
-selectors are names whose value entries are complete named-type residents;
-the built-in bare Product Pattern additionally supplies intrinsic ordinal
-selectors `pos_i` with ordinary Object residents.
+`Val2` is a finite map from semantic selectors to ordinary Objects. Named
+entries can hold arbitrary ordinary values of any type. A complete named type
+is one possible resident, not the universal type of a Val2 entry. The built-in
+bare Product Pattern additionally supplies intrinsic ordinal selectors `pos_i`.
 
 The structural lookup and the value snapshot are distinct:
 
 ```text
 named selector n -> ProjectionSlot(parent, n) / structural NameBinding
-occupied slot q  -> Contents(q) = Some(T)
-Val2(parent)[n]  = resident complete named type T, through its Object observation
+occupied slot q  -> Contents(q) = Some(v)
+Val2(parent)[n]  = ordinary resident v, through its rank-appropriate observation
 ```
 
 NameBinding and ProjectionSlot are not Val2 value entries. Normalization consumes
-the resident T with the existing complete-type/Object observation; it never
+the resident v with its existing complete-type/Object observation; it never
 normalizes a binding wrapper or a cluster carrier.
 Those ordinal entries are not a compiler aggregate outside `Object`.
 
@@ -277,7 +280,7 @@ Norm(x)                    = ⟨ Norm_Val1?^(P(x))(Val1?(x)),
 Norm_Val1?^P(null)         = null
 Norm_Val1?^P(v)            = Norm(v)       -- default owned-object case
 Norm_Val2(V)               = Map_selector( Norm(V[selector]) )
-                               -- named entries denote ordinary complete named types;
+                               -- named entries may have any ordinary resident type;
                                -- bare-Product pos_i entries are ordinary Objects
 ```
 
@@ -488,10 +491,11 @@ Val2(Q_2) contains f and g
 ```
 
 so `Norm_type(tau_1) ≠ Norm_type(tau_2)`. The `compile_fn` calls may consume both
-meta-local observations because compile creates no `MetaInstanceKey`; an
-ordinary nested meta call on fresh `t` would instead fail `GlobalKeyable`.
-Reading only a shared first-order root instead of each carrier's complete
-snapshot would still incorrectly merge the two values.
+meta-local observations through ordinary value transport. A nested meta call
+may also consume valid open dependencies. Its value-snapshot observation must
+still distinguish these values; a name-dependent input additionally preserves
+its stable subject under the invocation identity rules. Reading only a shared
+first-order root would incorrectly merge ordinary snapshot observations.
 
 Memoizing FINISHED cycle-free subtrees is permitted (a shared acyclic diamond
 is DAG reuse, not a cycle), but no `PlaceId` or memo node number may appear in
@@ -624,7 +628,8 @@ WellFormedTau(tau)
 PatternClosureConsistent(Q, V_τ) iff
   WellFormedCore(Q)
   and ∀F ∈ ClassifierDomain(V_τ):
-      F is a complete internally well-formed callable and TypeOf(F) in Q
+      F is registered for this type's own callability
+      and F is a complete internally well-formed callable and TypeOf(F) in Q
       and its () entry obeys Type(callee) = Type(first self)
   and AllBoundRefsBoundAndRestricted(bind α.⟨Norm(Q), Norm_V^α(V_τ)⟩)
       (every BoundRef reachable during Norm_type^α(Q, V_τ) is bound by α
@@ -708,6 +713,21 @@ extend, OpenHere and independent well-formedness rules. Each group's call
 consumer projects its entries; any selected pattern member supplies its own
 complete immutable callspace. Other entries do not supplement that snapshot.
 
+Ordinary Val2, V_tau membership, and Pattern-role registration are three
+separate facts. V_tau is the immutable snapshot of Val2 registered for the
+type's own callability, with the required classifier under tau (the canonical
+`TypeOf(F) in Q` / TypeMemberScope notation). Ordinary Val2 can have any type
+and need not satisfy that anchoring. Classifier eligibility alone does not
+register a member for callability.
+
+Pattern-registered extraction/construction closures likewise have their own
+classifier under tau, but Pattern registration does not imply V_tau membership,
+and V_tau membership does not imply Pattern registration. These are role
+registrations of the same ordinary values, not duplicate value stores. A type
+may therefore hold an unregistered OverloadGroup payload without making that
+group part of its own callspace or its Pattern identity. Closing the type fixes
+its ordinary Val2 structure as well as its registered observations.
+
 Whether `tau` has the type-value role or is namespace-only is decided by
 `Q`'s Pattern relations, never by the sibling count of a name binding space. The
 formal judgments are defined via registered self-construction in
@@ -720,6 +740,7 @@ TypeRole(Q)
   and HasRegisteredSelfConstruction(Q)
       -- iff exists Pattern P of Q, exists s, exists C, exists K:
             Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
+            and K has the required classifier under tau
 
 NamespaceOnly(Q)
   iff NamespaceRole(Q)
@@ -1342,15 +1363,13 @@ value* is the value read through `uint8`, while its *place* is its own. Binding 
 type value does not generate a new type, and it does not forward to `uint8`'s
 name binding or place.
 
-This ordinary declaration rule does not license a meta returned result to use an
-external pure Object as its installed type core. A canonical meta
-instance has an additional self-root invariant, stated per result class:
-for the default result `τ_M`, `Root(Core(τ_M)) = MetaInstanceScope` holds
-unconditionally (`Core(τ_M)` is the first projection of `τ_M`); an explicit group result instead obeys its member ownership/escape rules,
-not an optional-core type rule. For the default complete type, the self-root
-condition is independent of TypeRole(Q). Thus ordinary
-`let T: type = uint8` remains legal while direct `r = uint8` as a meta return
-type construction is rejected.
+An ordinary meta instance name is its instance type value tau_M, with
+Root(Core(tau_M)) = M. It cannot directly carry an arbitrary value, borrow, or
+external type instead. Such payloads belong in ordinary Val2 and retain their
+own type/root or target/escape obligations. P1 meta retains the instance under
+OpenHere, which governs acquisition of its mut view; plain let completes and
+closes it. Ordinary names and payload Places retain their independent policy
+and value facts. See the construction owner, section 4.4.
 
 Consequently, associated-member creation through `T`:
 
@@ -1923,8 +1942,9 @@ ordinary user function spelling the same formal head cannot.
 The domain restriction remains:
 
 ```text
-E |> (type ref) is undefined when E has no carrier place (a freshly computed temporary)
+E |> (type ref) is undefined when E has no carrier place
 t |> (type ref) is not a general PlaceOf(E) available on every expression
+an invocation-generated result name has its own ordinary actual Place
 ```
 
 `@` is a continuation-relative name-reification operation that yields a lifetime value, never a
@@ -2404,10 +2424,10 @@ OpenHere on the read pattern value independently of target Writable. Physical
 files do not contribute authority.
 
 See [name semantics](names-and-overload-groups.md) for occupancy and positional
-sugar, and [associated compile state](associated-compile-state.md) for A[t].
-A's designated key preserves the existing construction/window subject rather
-than quotienting by ordinary Core equality. Saved references keep that subject;
-write Pre rechecks its OpenHere and authority, not a later carrier resident.
+sugar, and [associated compile state](associated-compile-state.md) for the derived name t |> A.
+Its invocation input retains the existing construction/window subject through
+the general name-dependency identity rule. Saved references keep that result
+Place and dependency; write Pre rechecks its source, not a later input resident.
 
 ## 8. Type values in overload and pattern matching
 

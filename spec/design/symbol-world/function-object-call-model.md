@@ -4,7 +4,7 @@ Status: canonical call semantics. Consumer gaps are tracked in the roadmap.
 
 ## 1. Basic thesis
 
-A callable is an ordinary complete function object. A name denotes a named type
+A callable is an ordinary complete function object. A FreshNamedType name denotes a named type
 whose V_tau is synthesized by its named contributions. Explicit OverloadGroups
 aggregate type candidates using the singleton embedding eta(T).
 
@@ -264,8 +264,9 @@ requires the closure type to belong to the destination core; eligible closure
 expressions can create a new anchored instance under
 [replication](closure-anchored-replication.md), without changing the original.
 
-A receiving construction can call ordinary compile logic from A[t] with its
-own mutable type reference. That reference is an explicit argument, after the
+A receiving construction can call ordinary compile logic read from the derived
+instance t |> A through its ordinary Val2 group member, with its own mutable
+type reference. That reference is an explicit argument, after the
 selected function object's self. Ordinary field forwarding already uses this
 same distinction and needs no special open-world contribution mechanism.
 
@@ -432,11 +433,14 @@ A local `struct` evaluated by an ordinary or `compile` callable uses the
 current callable owner as its ambient Pattern owner. A `compile` invocation
 does not manufacture a meta-style canonical-arguments owner.
 
-An ordinary canonical `meta` invocation is different: type construction is
-anchored by a parent-linked
-`MetaInstanceOwner(callee_identity, canonical_arguments)`.
-Ordinary meta callables still use the implicit-self mechanics described above,
-but their returned type construction is rooted in the meta-instance scope.
+An ordinary meta invocation constructs an ordinary result name under
+MetaInstanceRoot(parent, callee, CanonicalizeInvocationInputs(In)). Its direct
+result is the instance type tau_M rooted at M; arbitrary values and borrows may
+be ordinary Val2 payloads. P1 meta retains the instance under OpenHere; plain let
+completes and closes it. Member value/ref observation and migration are ordinary. The
+[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+defines result-name identity, dependency-derived openness and residency/cache
+reuse. All of these use the implicit-self mechanics above.
 
 A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct`,
 `extend`, or `inject`, also has a function object, type, associated `()`, and implicit self,
@@ -766,7 +770,7 @@ eagerly turn the carrier into a value or allocate its environment.
 - Ordinary/compile local pattern construction uses the function-object internal
   Self frame; compile does not create a MetaInstanceScope.
 - Ordinary meta construction is anchored by the canonical MetaInstance anchor
-  `M` (a symbolic-navigation layer); its default result is `τ_M` rooted at `M`;
+  `M` (a symbolic-navigation layer); its direct result is `τ_M` rooted at `M`;
   built-in privileged AST meta functions may instead use their declared special
   scope/owner rule.
 - `.name` is a first-class closure expression whose normalization produces a

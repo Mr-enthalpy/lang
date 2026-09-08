@@ -11,15 +11,15 @@ that the corresponding source semantics is implemented.
 | --- | --- |
 | Names, named-type synthesis, structural let, type/group algebra | [names and groups](symbol-world/names-and-overload-groups.md) |
 | Complete pattern values, Core/whole equality, Places, borrows, literals | [pattern values and Places](symbol-world/type-values-places-and-borrow-views.md) |
-| Meta identity, root/return seal, struct, extend/inject, OpenHere | [construction](symbol-world/symbol-first-meta-construction-and-pattern-injection.md) |
+| Construction roots, struct, extend/inject, OpenHere | [construction](symbol-world/symbol-first-meta-construction-and-pattern-injection.md) |
 | Source composition and construction closure | [composition](symbol-world/symbol-construction-units-and-namespace-origin.md) |
-| Associated guarded compile state A | [associated state](symbol-world/associated-compile-state.md) |
+| Associated state A as a derived meta invocation | [associated state](symbol-world/associated-compile-state.md) |
 | Closure anchored replication | [replication](symbol-world/closure-anchored-replication.md) |
-| PolicyPair, PolicyMode, demand, migration, capability and stages | [policy](symbol-world/symbol-policy-and-compile-flow-projection.md) |
+| PolicyPair, ordinary PolicyMode, P1 meta, demand, migration and stages | [policy](symbol-world/symbol-policy-and-compile-flow-projection.md) |
 | Exact callee/self, ordinary function objects and forwarding | [calling](symbol-world/function-object-call-model.md) |
 | Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
-| Invocation/result and meta partner identity | [invocation](meta-invocation/meta-object-invocation-and-policy-reduction.md) |
+| Meta instance types, input identity, openness, completion/cache and Val2 extraction | [invocation](meta-invocation/meta-object-invocation-and-policy-reduction.md) |
 | E saturation, residual, synchronous projections, O1/O2/planner | [evaluation](meta-invocation/evaluation-residual-and-optimization.md) |
 | Host IO and target-machine Objects | [host capabilities](meta-invocation/host-capabilities-and-machine-objects.md) |
 | Continuation-relative lifecycle, Region, Color and access | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
@@ -46,8 +46,9 @@ tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
 
     Object / complete pattern value / Place
       -> name existence and named-type / group algebra
-      -> construction / OpenHere / anchored replication / A
-      -> Pattern relation / policy / exact-self call / invocation result
+      -> construction / OpenHere / anchored replication
+      -> Pattern relation / policy / exact-self call / invocation-generated names
+      -> dependency-derived openness / invocation residency and caches / A instance
       -> lifecycle / safety admission / host Objects
       -> physical normalization / shared E / residual and optimization
 

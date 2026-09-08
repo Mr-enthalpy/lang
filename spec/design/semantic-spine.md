@@ -11,8 +11,13 @@ This reading index introduces no separate value or execution ontology.
       -> OpenHere
     actual Place / borrow / policy
       -> Writable
-    stable construction-subject key's OpenHere + associated-place write authority
-      -> Writable(A[t])
+    meta callable / normalized inputs and name dependencies
+      -> stable invocation instance name/type tau_M
+      -> P1 meta + dependency-derived OpenHere, or plain completion/closure
+      -> ordinary Val2 payload navigation / explicit compile extraction
+      -> associated-state instance with ordinary group member n_A(t)
+    meta invocation registry/cache
+      -> same instance/member Places and current state, with current Pre revalidation
 
     resolved name / explicit group
       -> ordinary candidate projection

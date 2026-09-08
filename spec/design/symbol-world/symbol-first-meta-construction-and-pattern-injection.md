@@ -19,15 +19,18 @@ returns a mutable construction type reference. Following = e is ordinary
 assignment to that reference. No special initialization transaction is implied.
 
 compile computes ordinary values with the root-conservation rule below.
-Ordinary meta establishes one stable MetaInstance root and seals its owned
-result at return. struct returns a complete tau; extend is a pure value
+Ordinary meta establishes a stable MetaInstance root and constructs an ordinary
+result name. Input dependencies determine inherited openness; ordinary result
+completion, ownership and escape rules determine what may survive return. struct returns a complete tau; extend is a pure value
 transformation; inject is read + extend + write. Their allocation material is
 private execution machinery, not a returned ontology.
 
 Physical files contribute normalized meta blocks under the
 [source composition](symbol-construction-units-and-namespace-origin.md) rules.
-They do not own construction authority. Ordinary globally associated compile
-state is defined in [associated compile state](associated-compile-state.md).
+They do not own construction authority.
+[Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+owns generated result names and dependency propagation.
+[Associated compile state](associated-compile-state.md) applies those laws.
 
 The [pattern-value owner](type-values-places-and-borrow-views.md) defines
 Object normalization, Core/whole observations, Places and borrow views.
@@ -42,8 +45,8 @@ and [safety admission](../lifetime/unsafe-semantic-admission.md) govern its obse
 
 ### 2.1 Named types and ordinary candidate groups
 
-An existing structural name denotes a complete named type T. Same-name
-contributions form its V_tau; they do not build an OverloadGroup at that name.
+A structural name created by FreshNamedType denotes a complete named type T.
+Same-name contributions at a named-contribution position form its V_tau; they do not build an OverloadGroup at that name.
 An ordinary OverloadGroup aggregates type candidates through singleton eta(T)
 and its bucket relation. Empty groups and candidates without callable members
 remain legal. See the name/type algebra owner for the distinct update rules.
@@ -58,8 +61,10 @@ is intrinsic and immutable; copying, transporting, or adding another group
 entry does not amend it. Ordinary type equality/keying observes Core, while
 explicit whole-snapshot observations retain the bound closure.
 
-TypeMember_Q(F) requires TypeOf(F) in Q for an ordinary complete closure
-included in the constructed snapshot's implementation space. Construction actions must satisfy existing
+TypeMember_Q(F) requires registration for the type's own callability and
+TypeOf(F) in Q for the complete closure in that snapshot. Ordinary Val2 may
+hold arbitrary types without either callability or Pattern-role registration.
+The two registrations are independent; classifier eligibility alone adds neither. Construction actions must satisfy existing
 authority and OpenHere; membership is not inferred from file provenance,
 lexical-parent topology, or a special implementation declaration. Functions
 retain their own CallableOwner and complete anonymous implementation layer
@@ -80,7 +85,8 @@ that tau. Distinct contribution entries are not merged because their values
 compare equal. Ordinary candidate/path identity handling does not impose
 general group idempotence.
 
-A receiver can invoke ordinary compile construction logic from A[t] while
+A receiver can invoke ordinary compile construction logic from the group value
+read through an ordinary Val2 member of the instance t |> A while
 holding its own mutable construction reference. That logic can inject through
 the supplied target under its ordinary write and OpenHere checks. The
 [associated-state owner](associated-compile-state.md) defines the source-side
@@ -144,7 +150,7 @@ stable `MetaInstanceRoot` determined at invocation entry, never to a
 meta-local `r` or another ephemeral PatternValue:
 
 ```text
-M = MetaInstanceRoot(MetaInstance(F, args))
+M = MetaInstanceRoot(parent, MetaInstanceKey(F, CanonicalizeInvocationInputs(In)))
 
 HostAnchor(A_F) = M                -- always the stable invocation root
 
@@ -164,23 +170,14 @@ visibility
 cannot become a V_τ enclosing anchor
 ```
 
-While `int Vec::std` is computing, its body may hold a local construction
-result `r`. In ordinary name resolution `r` can be only one of three things: a
-capture-list entry, a local definition, or a global symbolic name. It cannot
-be context-sensitively remembered as "the `r` from the return position": a
-local definition or global lookup finds a *different* `r` (or none), and the
-only candidate that could denote the meta-local value is the capture list. But
-meta-local PatternValues whose lifetime is governed by the open/construction
-window have non-global lifetimes that do not extend by simple copy — whether
-interpreted by value or by borrow — so the capture-list path is closed as
-well. The returned PatternValue and its **dependency closure** must both
-satisfy global survivability; `EscapeDeps` checks this at seal (§4.3.2).
-
-Even when `Value(r) = Value(installed result)`, value equality does not
-retroactively imply `Identity(r) = MetaInstanceRoot`. Permitting such
-retroactive promotion would reintroduce "future promotion can ratify past
-capture" — exactly the model the meta-key / global-stability boundary has
-always prohibited.
+While int Vec::std computes, its body may name a local construction value r.
+That lexical binding is not the invocation owner M. A closure may capture a
+local value only under ordinary capture and region checks; capture never makes
+that value the classifier's stable enclosing root. For a globally published
+result, all external dependencies must already survive globally and fresh owned
+material must pass the explicit transfer/promotion check. A bounded result uses
+its actual admitted region instead. Neither case lets future promotion justify
+an earlier invalid capture or equates a local binding with M by value equality.
 
 Closure construction and TypeMember injection are orthogonal operations:
 
@@ -550,10 +547,10 @@ result class:
     | runtime value
 ```
 
-This is the current result-class set. Invocation results are driven by each
-callable's declared result class — `Result(F)` follows
-`DeclaredResultClass(F)` — and consumers must not maintain separate narrow
-hand-written enumerations of what `compile` or `meta` can return.
+This is the shared result-class universe. Each callable's declaration fixes its
+admissible result class: ordinary meta requires CompleteType and its own tau_M;
+compile may declare other ordinary classes. Consumers use that declaration
+through InvocationResult rather than inventing another result envelope.
 
 An OverloadGroup is an ordinary algebraic value (§4.7); returning one does
 not create a new semantic result universe.
@@ -583,95 +580,53 @@ separate judgments inside the ordinary value/policy model:
 ```text
 F in OrdinaryMetaFunction
   => P2(F) = meta
-  and DefaultMetaResult(F) = τ
+  and DeclaredResultClass(F) = CompleteType
 
-WellFormedMetaCall_Gamma(F, args)
+WellFormedMetaCall_Gamma(F, In)
   <=> F in OrdinaryMetaFunction
-   and Admissible_Gamma(F, args)
-   and forall a in Canonicalize(args): GlobalKeyable_Gamma(a)
-   and forall a in Canonicalize(args): MetaArgumentAdmissible(a)
+   and Admissible_Gamma(F, In)
+   and canonical input identities and dependencies are valid at this use
 
-WellFormedMetaCall_Gamma(F, args)
-  => K = MetaInstanceKey(F, Canonicalize(args))
+WellFormedMetaCall_Gamma(F, In)
+  => K = MetaInstanceKey(F, CanonicalizeInvocationInputs(In))
    and M = MetaInstanceRoot(ParentSemanticOwner_Gamma(F), K)
    and RootIdentityExists(M)
    and ConstructionNavigationAvailable_Gamma(M)
+   and result name n = InvokeName(M)
 ```
 
-The parent owner is an identity coordinate of the root, not diagnostic
-placement metadata:
+The [invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+defines input normalization, result-name identity, dependency-derived openness
+and cache reuse. Parent owner is an identity coordinate; parent-neutral material
+reuse does not merge roots. Value observations and name/subject dependencies
+retain their respective identities. Open input is not rejected for openness;
+identity, authority and lifetime remain independent obligations.
 
-```text
-Identity(M)
-  = <ParentSemanticOwner(M),
-     SelectedCallableIdentity(M),
-     Addr(Product(Canonicalize(args)))>
-```
+    MetaInstanceRoot(M) => StableSemanticOwner(M)
+    Value(InvokeName(M)) = tau_M
+    Root(Core(tau_M)) = M
 
-The callable/argument pair may remain a reusable `MetaInstanceKey`, but a root
-cache must scope that key by `ParentSemanticOwner`; equal callable and argument
-material under distinct stable owners denotes distinct roots.
+The instance name is its type value. P1 `meta let` retains its dependency-bounded
+opening source; OpenHere governs acquisition of a mut view, without an
+independent const/mut gate on the instance. Classic `plain let` completes and
+closes it. P2 `meta` remains the callable's stage. Ordinary Val2 payloads retain
+ordinary policy, migration and borrow rules; they do not widen the direct meta
+result class beyond CompleteType.
 
-Root consistency is a positive invariant of meta-root formation:
+Only ordinary meta establishes an ordinary MetaInstance root. Compile conserves
+roots; privileged builtins use their declared root rules. Stable identity,
+global persistence and result completion are different judgments. GlobalKeyable
+and GlobalSurvivable apply when dependencies must persist globally, not as
+universal meta input premises. No additional result-value class is introduced.
 
-```text
-MetaInstanceRootAlwaysPlain:
-  MetaInstanceRoot(M) => PolicyMode(M) = plain
+    invocation owner M
+    invocation-owned result name n and its Place
+    instance type tau_M, containing ordinary Val2 payloads
+    owned construction material
+    outer lexical or structural destination
 
-MetaInstanceRoot(M) => StableSemanticOwner(M)
-PolicyMode(M) = plain =/> Writable(M)
-```
-
-This `plain` coordinate belongs to root identity/formation and is not a
-contextual default. Parameter/return position overlays and caller demands may
-refine views produced under the root; they cannot change the root itself to
-`const` or `mut`.
-
-Equivalently:
-
-    DefaultMetaResult(F) = tau
-    MetaInstance(M) -> tau_M
-
-The default does not restrict explicitly declared ordinary result types.
-An OverloadGroup result is an ordinary value with its declared result/escape
-obligations; its type-valued entries are already complete values. struct forms
-its complete tau before an outer binding or structural assignment carries it.
-No result is decoded through an optional distinguished type slot.
-
-Callable kind fixes `P2` and `DefaultMetaResult`; `GlobalKeyable` belongs to a
-particular call's well-formedness, never to the callable type itself. A
-successful call establishes a globally stable root identity and makes it
-navigable to the construction, while sealing remains the return-stage effect.
-No `compile` callable may establish or seal this root kind.
-
-This exclusivity does not claim that every stable owner/root in the language is
-a `MetaInstanceRoot`. Lexical declarations and privileged built-ins may
-establish, select, or preserve other root kinds only through their separately
-specified owner rules (§4.8). They cannot use those rules to manufacture an
-ordinary navigable `M`.
-
-This is not a new result class. The default meta result is the complete type
-value `τ` itself, which is not an ordinary `PatternValue`; an explicitly
-declared group result returns an ordinary OverloadGroup. Root authority governs the
-open-window state and global lifetime of the default result's
-`OwnedResultClosure(τ_M)` — `OwnedClosure(Core(τ_M))` plus
-`OwnedCallSpaceClosure(CallSpace(τ_M))`, where `Core(τ_M)` is the first
-projection of the default result and hence always present. An
-implementation may retain a carrier to accumulate those members,
-but may not expose that carrier as a callable result ontology.
-
-Private execution material may transport construction effects before the
-ordinary semantic result is formed; it is not an additional result category. The following roles remain distinct:
-
-```text
-Explicit group value           — ordinary OverloadGroup (§4.7)
-Name binding                   — structural identity and resident Place relation
-Meta return construction role  — the members a meta body accumulates before seal
-Namespace same-name synthesis  — merging same-named contributions in a namespace
-World installation role        — what a sealed root becomes in the global graph
-```
-
-A rule stated for one role does not transfer to another.
+These roles remain distinct. Private execution material is interpreted before
+the ordinary result is exposed through InvocationResult.
 
 ### 4.2 `compile`
 
@@ -841,8 +796,8 @@ globally stable `MetaInstance` anchor, so it may transport local or open
 PatternValues as ordinary values:
 
 ```text
-compile computation   may transport open/local PatternValues
-meta invocation       requires globally survivable inputs (§4.3.3)
+compile computation   transports open/local values without creating a meta root
+meta invocation       constructs a result name with checked input dependencies (§4.3.3)
 
 transport of an open PatternValue
   ≠
@@ -852,7 +807,7 @@ evaluation reentry of that PatternValue
 Transporting an open PatternValue through `compile` is subject to
 `NoOpenEvaluationReentry` (`OpenEvalReentry_κ`, type-values §2.1.1):
 the value may be passed, but no active evaluation edge may be re-entered into
-it. This is the complement of §4.3.3's argument boundary.
+it. The same distinction applies to admitted meta input dependencies.
 
 When a `compile` body uses a local `struct`, ordinary function-object scope
 rules apply. Its ambient lexical/Pattern owner is the current
@@ -866,449 +821,157 @@ Nested paths print in source order, current/innermost callable-local `Self`
 first and outermost `Self` last, but identity is the parent-linked owner graph.
 No `__inner_space` or `__inner_namespace` node participates in canonical
 ownership. This owner is not a meta-instance owner such as
-`MetaInstanceOwner(meta_function, canonical_arguments)`.
+`MetaInstanceRoot(parent, F, CanonicalizeInvocationInputs(In))`.
 
 ### 4.3 Ordinary `meta`
 
-`meta` is construction-stage evaluation. An ordinary meta invocation is the only
-construction that establishes a new navigable `MetaInstanceRoot`, and by §4.1
-every ordinary meta invocation does so:
+Meta invocation constructs an ordinary stable result name under one MetaInstance
+owner. This is not installation beneath an input or an outer lexical binding.
+Successful completion exposes its instance type tau_M through InvocationResult.
+Failed construction exposes no partially initialized result. Repeating a
+completed invocation reacquires its name and Place without reinitializing it.
 
-```text
-WellFormedMetaCall_Gamma(F, args)
-  => M = MetaInstance(F, Canonicalize(args))
-   and RootIdentityExists(M)
-   and ConstructionNavigationAvailable_Gamma(M)
+    M = MetaInstanceRoot(parent, F, CanonicalizeInvocationInputs(In))
+    n = InvokeName(M)
+    direct result: tau_M with Root(Core(tau_M)) = M
+    payload: ordinary Val2(tau_M), accessed by member::(In |> F)
 
-RootIdentityExists(M) != ExternallyInstalled(M)
-ConstructionNavigationAvailable_Gamma(M) != ExternallyInstalled(M)
-```
+The result name is not a structural input child and does not alter input Val2 or
+Norm. It requires no reopening of the input's fixed structural name set.
+Children subsequently constructed under its own resident require ordinary
+construction authority, openness and freshness.
 
-Entering the invocation creates `M` as a **globally identified but unsealed
-root** available to its construction. This does not publish a partially built
-namespace delta. `ExternallyInstalled(M)` becomes true only after the returned
-result crosses an ordinary outer binding/namespace-installation boundary and
-that delta commits atomically (§12.4). The returned value is the default result
-`τ_M` of `M`:
+#### 4.3.1 The body is transparent to its own construction
 
-```text
-meta:
-  accepted parameters
-  -> the default result τ_M of M
-```
+Fresh meta-local material is created under M. In-place closures written inside
+M are transparent to its construction authority:
 
-A meta callable may accept an OverloadGroup parameter, or constrain a parameter to a
-narrower `type` or ordinary PatternValue. That does not introduce another result
-class: successful ordinary meta invocation still defaults to `τ`. `M` exists in
-the global world from body entry; the return stage runs the default-branch seal
-`Seal(DefaultTau(τ_M))` of §4.3.2 —
-well-formedness of `τ_M`, promotion of `OwnedResultClosure(τ_M)`, escape check —
-and seals the result.
+    ConstructionAnchor(in-place closure inside M) = M
+    ClosureType = M::Site
 
-Failure never publishes construction material:
+Transparency does not erase closure identity or lexical Self. Local construction,
+static control, compile calls and permitted nested meta invocations do not by
+themselves close M's material. Untransferred locals have Life = MetaInvocation(M).
+Stable identity extends neither their lifetime nor a borrow target's lifetime.
 
-```text
-FailedMetaCall(M) => not ExternallyObservablePartialInstallation(M)
-```
+Admitted input name/access dependencies retain their source identity and opening
+qualification across the call. The callee uses those edges under the original
+source authority, without reparenting inputs or exposing unpassed outer names.
+NoOpenEvaluationReentry still distinguishes transport or symbolic reference
+from entering an active evaluation.
 
-Whether an implementation retains the failed canonical root identity for cache
-or diagnostics is non-semantic. No partial namespace delta becomes externally
-visible.
+#### 4.3.2 Result completion and owned promotion
 
-Meta functions are divided into two privilege classes:
+The result's inherited opening source is the meet over AccessClosure_out(In),
+owned by the invocation rules. Untransferred body-local windows end with their owning interval. The result
+name and fresh result-owned construction subjects may continue with admitted
+input-derived sources established before completion. Their identity stays under
+M; authority follows those sources without requiring M's body frame to stay
+active or reviving a closed subject.
+P1 meta preserves this qualified result window; P1 plain completes and closes
+the instance. Neither form closes external inputs or borrowed targets.
 
-```text
-MetaFunction
-  |- OrdinaryMetaFunction
-  `- BuiltinPrivilegedAstMetaFunction
-```
+Closed fresh type construction has the following publication obligation:
 
-#### 4.3.1 The body is fully transparent to construction
-
-Everything an ordinary meta body does to its own construction material is
-permitted, and none of it closes the construction. The following are all legal
-inside a meta body and none of them ends the open state of the values being
-built:
-
-```text
-generating local pattern values
-generating the same struct shape repeatedly
-locally modifying material the body itself produced
-using a value for Val1
-passing material through static control flow
-calling compile callables
-entering an in-place closure that the body itself writes
-referring recursively to M
-```
-
-This is the meta-closure transparency rule. The construction anchor of an
-in-place closure written inside `M` is `M` itself:
-
-```text
-ConstructionAnchor( in-place closure inside M ) = M
-```
-
-so material owned by `M` remains open across that closure boundary. Anchor
-transparency is not identity erasure: the closure still has its own anonymous
-callable type identity,
-
-```text
-ClosureType = M::Site
-```
-
-and that identity keeps its own owner and lexical `Self` space. Transparency
-concerns *who owns the construction*, not *which type the closure is*.
-
-Construction transparency is not lifetime promotion. A fresh PatternValue
-created inside an ordinary meta invocation has the invocation-local lifetime:
-
-```text
-Life(LocalPatternValue(M)) = MetaInvocation(M)
-```
-
-It may be copied through local binders, static control, `compile` calls, and
-transparent construction intrinsics without freezing. Those operations do not
-form a new global key. It may not, however, become a dependency of another
-ordinary `MetaInstance` unless it has independently become `GlobalKeyable`.
-Thus:
-
-```text
-No freezing inside M
-  !=
-arbitrary meta-local PatternValues implicitly become global
-```
-
-An anonymous closure type such as `M::Site` is globally stable only when every
-PatternValue dependency in its signature is global-keyable. A signature may not
-capture the identity of an ephemeral local PatternValue merely because the
-closure type itself has a stable site name.
-
-#### 4.3.2 Seal happens only at the return stage
-
-The construction-ending disposition of a meta invocation is its final return
-stage. The default complete pattern result satisfies:
-
-    Seal(DefaultTau(tau_M)):
+    CompleteClosedConstruction(tau_M):
         WellFormedTau(tau_M)
         Q := Core(tau_M)
         Pure(Q)
         Root(Q) = M
-        promote OwnedResultClosure(tau_M) into M (call it P)
-        EscapeDeps(tau_M) subset AlreadyGlobalStable union P
-        seal M
+        transfer OwnedResultClosure(tau_M) to the result's valid region
+        EscapeDeps(tau_M) valid throughout that region
+        close its structural name set and local construction window
 
-An explicitly declared ordinary result follows its result-type-specific seal
-and escape obligations. Group membership neither creates a promotion root nor
-grants promotion to an external member. Traversal observes every entry,
-including the whole callspace of any complete pattern value carried there.
-Empty groups require no special optional-core seal branch. The root and owned
-closure rules below remain authoritative for every complete tau result.
+For global publication, owned transfer is global promotion and external
+dependencies must already be globally stable. A dependency-bounded result obeys
+ordinary region/escape checks at its actual destination. A promise of later
+enclosing promotion is not evidence of GlobalKeyable now.
 
-For the default branch, `Core` is a total projection on complete type
-values, so `τ_M` always has a defined core projection:
+    OwnedResultClosure(tau)
+      = OwnedClosure(Core(tau)) union OwnedCallSpaceClosure(CallSpace(tau))
 
-```text
-τ_M = ⟨Q, V_τ⟩
---------------------------------
-Core(τ_M) = Q
-```
+The callspace component includes ordinary closures, anonymous types, () leaves
+and owned members. OwnedClosure follows direct owned children only; bare or
+external leaves terminate traversal. No jump, owned cycle, or path leaving the
+component and re-entering its ownership is admitted.
 
-This is a pair projection (an elimination rule), not a cardinality count:
-there is no "core collection" to size, no `τ`-absent case to guard, and no
-optional installed-core slot. `Q` is the first projection of `τ_M`. The
-self-root rule is unconditional there: `Root(Core(τ_M)) = M` holds for every
-well-formed default result. A namespace-only core — `NamespaceRole(Core(τ_M))`
-and `not HasRegisteredSelfConstruction(Core(τ_M))` — is
-therefore a valid promotion anchor even when `TypeRole(Core(τ_M))` is false;
-type-role requirements are refinements, not generic result constraints.
+    ref / share / rebind edge = non-owned dependency
+    BoundRef / enclosing-root reference = non-owned dependency
+    external leaf = dependency, not recursively promoted material
 
-For an ordinary group result, borrowed or external entries remain dependency
-edges under the same ownership/escape distinction. A returned reference cannot
-promote its target merely by being stored in a group.
+EscapeDeps traverses the complete result: Core and captured V_tau, Val1/Val2,
+captures and horizontal borrow targets. A group checks every entry. Membership
+never promotes an external member or borrow target. Untransferred locals expire
+at exit; an invalid escaping local borrow is rejected. Completing the result name
+waives no ordinary well-formedness, policy, lifetime or write obligation.
 
-`EscapeDeps(τ)` traverses the whole returned result at the τ level:
-`Core(τ) union CallSpace(τ)` plus every horizontal `ref` / `share` / `rebind`
-dependency target. At the Object level this still runs through
-`Children_Val1 union Children_Val2`, including nested products, Sequences,
-callables, and navigable `Val2` structures; the τ-level entry is what makes
-`V_τ` — its closures, their anonymous types, and their captures — part of the
-escape check rather than an implementation guess. Thus no returned branch can
-smuggle unrelated meta-local material out of the invocation, and no `V_τ`
-member can escape the closure check by being reachable only through the
-callspace.
+#### 4.3.3 `M` as a navigable layer and result name
 
-Promotion is likewise defined at the τ level:
+M supplies symbolic navigation and construction ownership. InvokeName(M) is the
+ordinary result binding; its resident supplies value/type/call projection. Neither
+M nor NameBinding is an Object wrapper. Outer let forms its own fresh destination.
 
-```text
-OwnedResultClosure(τ)
-    = OwnedClosure(Core(τ))
-      union OwnedCallSpaceClosure(CallSpace(τ))
+    ResultName = InvokeName(M)
+    ResultPlace = BindingPlace(ResultName)
+    Value(ResultName) = current complete tau_M snapshot
 
-OwnedCallSpaceClosure(CallSpace(τ))
-    = least closure of the CallSpace(τ) members — including the V_τ closure
-      anonymous types A_F and their () leaves, per the §2.1 V_τ member
-      closure-ownership theorem — under the owned navigation relation of τ
-```
+The return-slot spelling r denotes the declared result position and adds no
+r::M path component. The direct result is tau_M rooted at M.
+Ordinary Val2 payloads keep their own value identities or borrow targets.
+Reading/borrowing/navigation never recovers an owner by reversing value equality.
 
-Horizontal borrow edges are not ownership and are never dragged into either
-component:
+Canonical value input observations follow rank:
 
-```text
-OwnedClosure(x) excludes every ref / share / rebind edge reachable from x
-```
+    group value -> ordinary group identity with entry multiplicity
+    type value -> Core, or whole snapshot where explicitly required
+    ordinary value -> recursive Object normal form
+    reference -> stable target identity and validity dependency
 
-Edge classification is explicit:
+Invocation normalization additionally retains semantically observed name and
+construction-subject dependencies. They survive authorized subject updates;
+ordinary value snapshots remain content-sensitive. This general distinction
+supports stable mutable result names without redefining ordinary type equality.
 
-```text
-BoundRef / stable enclosing-root reference
-    = dependency / backreference, not an owned promotion edge
+GlobalKeyable(a) requires every global-key dependency to be already globally
+stable or promoted at key creation. GlobalSurvivable(a) recursively checks the
+whole value, carried tau, captures and borrows. These stronger judgments govern
+global persistence. Ordinary meta also accepts valid local/open dependencies
+and produces correspondingly bounded results. Visibility and stable identity
+alone prove no longer region.
 
-ref / share / rebind target
-    = escape dependency, not an owned promotion edge
+### 4.4 Instance names are type values
 
-external stable dependency
-    = dependency leaf, not recursively promoted
-```
+The ordinary meta instance name denotes its own type value:
 
-For this promotion, “owned closure” is not arbitrary graph reachability. Let
-`OwnedNavigation_Q(x, y)` hold only when `y` is a genuine direct child owned by
-`x` in Q's construction tree; the callspace component uses the isomorphic
-relation over `CallSpace(τ)`. Then `OwnedClosure(Q)` is the least closure under
-that relation, subject to all of these invariants, applied component-wise:
+    Identity(ResultName) = InvocationIdentity(parent, F, In)
+    Value(ResultName) = tau_M
+    Root(Core(tau_M)) = M
 
-```text
-direct child only:       every step is parent -> direct child
-no jump:                 a parent cannot inherit a deeper descendant directly
-bare termination:        Bare(x) stops expansion for the component
-external termination:    ExternalTo(component, x) is an opaque dependency leaf
-no external re-entry:    expansion never leaves the component, enters an
-                         external subtree, and later re-enters owned material
-no cycle:                 x not-in OwnedNavigation_component+(x)
-
-OwnedNavigation_Q(x, y) => DirectOwnedChild(x, y)
-Bare(x) | ExternalTo(Q, x) => no y: OwnedNavigation_Q(x, y)
-ExternalTo(Q, q_i) => no j > i: Owner(q_j) = Owner(Q)
-```
-
-Borrow edges remain excluded from both components of `OwnedResultClosure(τ)`
-and are never promoted merely because they are referenced.
-
-External leaves may retain their own independently owned trees, but those trees
-are not promoted through `τ`; their dependencies must already be globally
-stable. The ordinary recursive Object normal form still traverses
-`Children_Val1 union Children_Val2`; this construction judgment only determines
-which fresh-owned part may acquire M's global lifetime.
-
-A member reachable only through a borrow view is therefore not promoted, and its
-presence does not extend `M`'s owned material. Its target must already satisfy
-the escape condition. After the seal step, `M` is sealed and nothing may reopen
-it.
-
-#### 4.3.3 `M` as a navigable layer
-
-Every ordinary canonical meta-function invocation establishes a virtual
-symbolic-navigation and construction-authority scope:
-
-```text
-M = MetaInstanceScope(callee_identity, canonical_arguments)
-```
-
-`M` is the `MetaInstanceRoot` of §2.1 — the symbolic-navigation, stable-identity,
-and construction-authority anchor of the invocation. It is **not** itself the
-result value: the default result is `τ_M` with `Root(τ_M) = M`; an explicitly
-explicit group result is an ordinary OverloadGroup.
-A `NameBinding` or installation is a separate outer-graph binding/assembly
-operation and does not constitute the result ontology.
-
-Formation additionally requires:
-
-```text
-for every canonical argument a:
-  GlobalKeyable(a) ∧ MetaArgumentAdmissible(a)
-
-OwnedDependency(a) != GlobalKeyDependency(a)
-
-Borrow(q) in a
-  => Target(q) in GlobalKeyDependency(a)
-
-GlobalKeyable_Γ(a)
-  <=> every d in GlobalKeyDependency(a) is, at key-creation time,
-        AlreadyGlobalStable_Γ(d)
-      | AlreadyPromoted_Γ(d)
-```
-
-A meta invocation is a new stable MetaInstance construction boundary, so its
-arguments must carry no PatternValue dependency that cannot survive globally:
-
-```text
-MetaArgumentAdmissible(a)
-  => GlobalSurvivable(a)
-
-GlobalSurvivable(a)
-  <=> every dependency d reachable from a is globally survivable:
-       direct PatternValue dependency
-     | PatternValue held inside a carried type (τ)
-     | dependency reachable through a type ref / type share target
-     | nested dependency in Val1 / Val2
-     | other escaping semantic dependency
-
-GlobalSurvivable(a) ≠ GloballyVisible(a)
-```
-
-A value may survive globally without being name-visible everywhere, and a
-PatternValue visible in the current lexical scope whose lifetime ends with the
-current meta invocation is **not** admissible as an argument of a deeper meta
-invocation.
-
-A binder local to a meta invocation is not rejected merely for being local: if
-it holds a canonical value whose dependencies are already global-keyable, that
-value may enter the key. What is rejected is a fresh ephemeral PatternValue
-dependency or a borrow of a meta-local place entering a new `MetaInstance` key.
-A closure that might be promoted only when an enclosing meta invocation later
-seals is not `AlreadyPromoted` for an inner key created now. `compile` and transparent
-construction intrinsics impose no such boundary because they establish no
-`MetaInstance` key and no new root.
-
-For:
+It is not a separate container binding whose direct resident can be chosen
+arbitrarily. A non-type direct result, direct borrow, or external type root
+cannot satisfy this construction. An external type supplied as the direct
+result fails MetaReturnRoleRootMismatch; wrapping or retroactive reparenting
+cannot repair it. For example, this body cannot replace its instance with t:
 
 ```lang
-let f = (self, t: type): meta -> r: OverloadGroup => { ... };
+let f = (self, t: type): meta -> r: type => { t; };
 ```
 
-the diagnostic navigation projection of `M` is:
+Instead, the instance can contain t, an ordinary value, or a valid borrow in
+Val2. Ordinary `member::(In |> f)` reads that member, preserving its own type,
+Core/callspace or borrow target. Val2 membership requires neither registration
+in V_tau nor registration on Pattern. Both registration families have their
+own classifier and authority requirements.
 
-```text
-(t f)
-```
-
-This is not merely a folder analogy. `M` is a symbolic-navigation layer that
-participates in default pattern navigation and name shadowing; the stored
-complete type closure and typed value members belong to `τ_M`'s `Core(τ_M)` and
-`V_τ` (not to `M` as a name binding). `M` anchors cache/incremental identity and owns
-the return construction transaction.
-
-The default result is `τ_M` rooted at `M`; an explicit group result is
-an ordinary OverloadGroup. The declared
-return slot is a lexical name for the result value, not a transferable
-construction class:
-
-```text
-ResultValue = τ_M,  Root(τ_M) = M        (default)
-ResultValue = G : OverloadGroup          (explicit group)
-return_slot(r) = NameBinding of τ_M / G (lexical name, not a result class)
-```
-
-The slot name `r` does not add another component to the final navigation path.
-Material written through `r` contributes role/value members or children to
-`τ_M` rooted at `M`; it does not
-create `r::M` or place an extra binding named `r` beneath `M`. For example, a
-structural expression `let t1::(r |> (type ref)) = bool;`, given the already
-formed result resident r, first commits T_0 at the M-rooted child t1, then
-ordinarily assigns the complete bool type. It creates no extra r path segment
-and registers no Pattern-child edge; structural registration remains extend/inject.
-
-Canonical argument identity follows parameter rank:
-
-```text
-group parameter  -> ordinary group value identity, preserving entry multiplicity
-type parameter   -> default Core(tau) = Q observation; `TypeValueId` is only
-                    the implementation/index projection, not semantic equality;
-                    whole-snapshot Addr(Norm_type(tau)) identity applies only
-                    where the language has independently frozen it
-value parameter  -> PatternValue identity
-```
-
-Reference arguments retain their ordinary reference identity and dependence.
-A group's ordinary value key does not acquire the installation Place of the
-name through which it was read.
-
-### 4.4 Ordinary meta return self-root invariant
-
-If the declared complete-pattern result of an ordinary canonical meta invocation
-is `τ`, its core `Core(τ)` — the structural
-material that anchors the returned role root — must have its outermost
-pattern root at the invocation's own `M`:
-
-```text
-ResultValue = τ
-  => Pure(Core(τ))
-   and root_pattern_scope(Core(τ)) = M
-```
-
-This is identity equality between a pattern root and the meta-instance binding
-scope. It is not equality of rendered strings. The root identity is:
-
-```text
-MetaRoleRoot = MetaFunctionIdentity
-             + Normalize(Arguments where every argument is GlobalKeyable)
-```
-
-Nodes beneath the root compare by normalized value: same root and same
-normalized value imply the same pattern node. Source spelling, source binding
-names, and provenance do not participate in node equality.
-
-Consequently, both of these meta bodies are invalid:
-
-```lang
-let f = (self, t: type): meta -> r: type => {
-    let r = t;
-    r;
-};
-
-let fn = (self, t: type): meta -> r: type => {
-    let r = uint8;
-    r;
-};
-```
-
-The right sides are valid external type values, but their `PatternValue` roots
-belong to external scopes. Reading the values through the bindings `t` or `uint8` does not make that external root identical to `(t f)` or `(t fn)`.
-Neither value may directly replace the returned result's required role root.
-The failure is the hard diagnostic `MetaReturnRoleRootMismatch`. An
-implementation must not silently repair the mismatch by wrapping the external
-value in a synthetic self-rooted node; check failure is failure.
-
-A legal meta construction builds under its own scope:
-
-```lang
-let f = (self, t: type): meta -> r: type => {
-    let r = (t inner) |> struct;
-    r;
-};
-```
-
-Its complete pattern is:
-
-```text
-(t inner::(t f))::(t f)
-```
-
-External `PatternValue`s may be members of the self-rooted core; they may not
-replace the root. For example:
-
-```lang
-// In a meta body with its self-rooted complete result already bound as r:
-let t1::(r |> (type ref)) = bool;
-r;
-```
-
-first forms the fresh child T_0 and then assigns the complete bool type. After
-success, it keeps the existing MetaInstance as the result's root and includes the externally owned
-`bool::` value as a member beneath that root. It must not be summarized as
-`NamespaceCoreProjection(r) = bool::`.
-
-The default complete-type result always has Core(τ) = Q and must satisfy the
-self-root check, independently of TypeRole(Q). A namespace-only `Q` — `NamespaceRole(Q)` and
-`not HasRegisteredSelfConstruction(Q)` — is self-rooted and may own fresh
-invocation-local material. An explicit group result instead follows its ordinary
-member/escape rules (§4.3.2); it is not an optional-core type result. When
-`TypeRole(Q)` does hold, it is the additional type
-refinement (imported judgment); namespace-only `Q` is not required to define Val1.
+A compile callable can extract the sole ordinary Val2 member of a closed type.
+Its explicit use has the existing `E |> helper` / `E helper` call shape; it does
+not turn meta itself into a non-type result producer. The definition and error
+boundary are in the [invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md#31-ordinary-val2-extraction-and-compile-convenience).
 
 ### 4.5 Formal return material
 
 Canonical semantics do not give the spelling of a return slot a special creation
-meaning. A meta body computes its result value (`τ` by default); `let` creates its local
+meaning. An ordinary meta body constructs its instance type `tau_M`; `let` creates its local
 members, `=` writes existing places, and the return event transfers that value.
 The explicit return-slot spelling `r` denotes the declared return position; it
 does not create a construction-value ontology.
@@ -1345,8 +1008,8 @@ Add-fresh-member and write-to-existing-target are two distinct construction
 effects. They must not be collapsed into one injection event, and neither is a
 return. Whether contributed material references an existing `PatternValue`,
 computes new material, or projects a name binding member is represented inside the
-construction value; any resulting type core `Core(τ)` must pass the self-root invariant in
-§4.4.
+construction value; fresh nominal material must pass its own root invariant
+in §4.4. External material transported as Val2 payload preserves its existing root.
 
 There is no fourth "alias member" event. A member is created by `let`, written by
 `=`, and nothing forwards an external binding's `Val2` material into a member.
@@ -1493,7 +1156,7 @@ layers:
         from an ordinary assignment
 
 4. semantic-boundary constraints of the enclosing region
-     meta return self-root; ref / pattern-value lifetimes;
+     fresh nominal construction root; ref / pattern-value lifetimes;
      mutability limits on global type-bearing values; seal / global-promotion
      rules; ordinary group entry and result-type obligations
      -- these may run at write time, normalization time, return time, or
@@ -1550,15 +1213,15 @@ explicit construction target: the structural let expression creates f and
 returns its mutable reference before ordinary assignment, and does not change the `r;` terminal semantics.
 
 A successful construction returns the semantic entity declared by the selected
-callable's result class. A returned value does not itself create a name binding; an outer binding
-establishes its own destination identity and Place. Construction effects and replay provenance are
+callable's result class. Ordinary meta supplies its result name before value observation; an outer
+binding separately establishes its own destination identity and Place. Construction effects and replay provenance are
 execution material, not a second value ontology.
 
 Value equality remains independent of source name and navigation path and does
 not merge binding or place identity. However, that general identity separation
-does not waive the meta return self-root invariant (§4.4): `r = uint8` as a direct meta
-return core installation is rejected after binding resolution/value read, rather than
-being reinterpreted as forwarding or accepted as an identity meta type.
+does not waive the root invariant of fresh nominal construction (§4.4).
+Ordinary result transport of uint8 preserves its external root and does not
+claim to construct a fresh type rooted at M.
 
 ### 4.7 OverloadGroups are ordinary algebraic values
 
@@ -1632,8 +1295,10 @@ inferred from the privilege class:
 
 ```text
 ordinary meta:
-  require GlobalKeyable(Norm(args))
-  establish NavigableMetaInstanceRoot(MetaInstance(F, Norm(args)))
+  require normalized input identities and valid semantic dependencies
+  K = MetaInstanceKey(F, CanonicalizeInvocationInputs(In))
+  M = MetaInstanceRoot(ParentSemanticOwner_Gamma(F), K)
+  establish NavigableMetaInstanceRoot(M) and InvokeName(M)
 
 struct:
   establish or select StructLexicalRoot(input_navigation, ambient_scope)
@@ -1708,7 +1373,7 @@ syntax contains a distinguished outer pattern name.
 Example:
 
 ```lang
-let f = (self, t: OverloadGroup): meta -> r: OverloadGroup {
+let f = (self, t: OverloadGroup): meta -> r: type {
     let r = (t first, t second) |> struct;
 };
 ```
@@ -1731,7 +1396,7 @@ The fully resolved pattern is:
 The single-field form uses the same rule:
 
 ```lang
-let f = (self, t: OverloadGroup): meta -> r: OverloadGroup {
+let f = (self, t: OverloadGroup): meta -> r: type {
     let r = (t first) |> struct;
 };
 ```
@@ -2001,8 +1666,9 @@ f : (object: T share) -> A share
 
 `ref` and `share` are not generated navigation subspaces. The same-name family
 is stored once as ordinary callable/member Objects. Its direct anonymous
-classifier home is `TypeMemberScope(Q_struct)`, so it belongs to `V_τ`; `const
-let` / `let` / `mut let` policy and the formal object type determine its
+classifier home is `TypeMemberScope(Q_struct)`, and the generator explicitly
+registers its type-callability contribution in `V_τ`; home eligibility alone
+does not register a callable. `const let` / `let` / `mut let` policy and the formal object type determine its
 candidates.
 
 The `ref` / `share` type constructions do not copy that family. With respect
@@ -3153,9 +2819,9 @@ Writable, and OpenHere are independent. Each navigation layer preserves its
 own exposure and policy facts. A hidden existing name is not fresh. Group
 membership neither changes a member's Pattern nor invents structural incidence.
 
-These operations use the same existing authority judgment below. A[type]'s
-associated place also depends on it; it does not introduce a separate window or
-ownership kind.
+These operations use the same authority judgment below. Invocation-generated
+names derive their opening sources from semantic dependencies; A is an instance
+of that general rule, with no additional window or ownership kind.
 
 #### 12.1.1 Open authority is stack-relative
 
@@ -3225,7 +2891,7 @@ AuthorityFrame_Σ(v)
 CurrentAuthority_Γ     -- typing-context form of the same judgment
 ```
 
-For a **meta** context, walk the compile-time stack in reverse, skipping
+For material owned by the current **meta** context, walk the compile-time stack in reverse, skipping
 `compile` and transparent construction-intrinsic frames. Let `M` be the first
 ordinary meta invocation frame found; `NearestMetaRoot(Σ)` is its MetaInstance
 root. In-place closure navigation is transparent for authority purposes
@@ -3252,8 +2918,8 @@ The original spelling `RootOf(Anchor(v)) = NearestMetaRoot(Σ)` is the
 simplified form of this unified rule under the meta transparent-navigation
 quotient.
 
-Meta invocation is naturally masking. If `M₀ └─ M₁` and the current context
-is `M₁`, a value anchored on `M₀` satisfies:
+Meta masks unpassed outer material. If `M₀ └─ M₁`, the current context is M₁,
+and v has no admitted input dependency, a value anchored on M₀ satisfies:
 
 ```text
 WindowLive_Σ(v) = true   -- window still open
@@ -3265,7 +2931,8 @@ OpenHere_Σ(v)   = false  -- AuthorityFrame_Σ(v) undefined: M₁ is the
 ```
 
 The value may persist in `M₀`'s suspended frame. It cannot be accessed or
-passed as an argument in `M₁`. When the stack returns to `M₀`, the value
+implicitly obtained in M₁. Admitted inputs use the source-preserving rule
+below. When the stack returns to M₀, the value
 becomes visible and `OpenHere` again — this is **not** a reopen. True close is
 the permanent, irreversible transition:
 
@@ -3290,8 +2957,8 @@ AuthorityFrame_Σ(v)                        -- non-meta context
     searched outward from the current frame,
     skipping compile and transparent construction-intrinsic frames,
     and stopping at any meta invocation frame:
-    a meta boundary between the current frame and f masks v and
-    leaves AuthorityFrame_Σ(v) undefined
+    a meta boundary masks v unless an admitted input dependency carries
+    its existing source authority across it
 
 AuthorityMatches_nonmeta(v, Σ)
   iff AuthorityFrame_Σ(v) exists
@@ -3361,6 +3028,14 @@ neither. `CurrentAuthority(Σ)` therefore uses `MetaPartnerRoot(F, GenericArgs)`
 for generic symbolic anchoring, independent of any `CompilePartner(F)`
 consideration.
 
+For an admitted meta input dependency, resolve authority at its preserved
+source coordinate through the checked access edge. It crosses precisely the
+meta boundaries through which the dependency was passed, exposing no unrelated
+outer names. Source WindowLive, original dispositions, capabilities and lifetime
+remain checked. Invocation-generated names interpret the meet of these source
+qualifications at the current point. This does not change Anchor or create an
+owned structural input edge. See the invocation owner for the propagation law.
+
 The required independence is explicit:
 
 ```text
@@ -3417,19 +3092,21 @@ OpenHere_Σ(τ)
 
 `GenerationRegime(τ)` does not participate in `WellFormedTau(τ)` or in Pattern
 identity; it is consulted only by the contextual capability rules above. The horizontal attributes of a complete type value are those of its core
-PatternValue. The notation subject(t) used by [A](associated-compile-state.md)
-refers to this existing construction/window state subject, not a new language
-Object. Its stable identity is preserved by copy and authorized continuation
+PatternValue. A construction subject is this existing window/authority state
+subject, not a new language Object. General invocation input normalization may
+retain its identity as a semantic dependency; [A](associated-compile-state.md)
+uses that rule. Its stable identity is preserved by copy and authorized continuation
 of that construction, including in-place updates; independent equal-Core
 formation must not collapse it. This designated identity observation leaves
 ordinary Core equality unchanged.
 
 - **MetaGenerated.** A value produced inside a meta body has no birthright
-  global lifetime. It can be used freely within the same meta computation, and
-  it may be promoted into a stable result only when the MetaInstance seals and
-  owns/copies the material it owns. The original local value is not magically
-  prolonged: persistence happens by promoting the MetaInstance's stable value,
-  never by extending the local value's lifetime.
+  global lifetime. Result-owned material follows ordinary completion and owned
+  transfer into its admitted region (§4.3.2); global promotion additionally
+  requires global dependency stability and closed structural publication.
+  Fresh result construction subjects can retain valid input-derived opening
+  sources. Untransferred local residents expire; stable identity/cache retention
+  never extends an expired local or reopens a closed window.
 
 - **NonMetaGenerated.** A value produced in an ordinary (non-meta) construction
   context is born globally survivable with a live open window:
@@ -3451,15 +3128,14 @@ EffectiveOpenSegment(p)
 ```
 
 At the value's own outermost open coordinate
-(`CurrentCoordinate = OpenRootCoordinate(p)`), the legal terminal actions end
-the open window (`Terminate`); they are not forbidden, but they close the
-window:
+(`CurrentCoordinate = OpenRootCoordinate(p)`), terminal actions close the window;
+checked meta input transport instead continues it:
 
 ```text
 CurrentCoordinate = OpenRootCoordinate(p)      -- outermost open coordinate
 
 UseForVal1(p)        ->  Terminate   -- legal action; ends the open window
-UseAsMetaArgument(p) ->  Terminate   -- legal action; ends the open window
+UseAsMetaArgument(p) ->  Continue    -- checked input dependency transport
 ControlFlowSplit(p) / ControlFlowMerge(p)
   at generation level                  ->  Terminate
   -- the window requires a single, non-forking, non-merging linear
@@ -3469,8 +3145,7 @@ ControlFlowSplit(p) / ControlFlowMerge(p)
 ```
 
 Inside an opaque non-meta inline closure (the evaluation has already moved
-below the value's own open coordinate), `UseForVal1` and `UseAsMetaArgument`
-are **forbidden** (`Reject`) at any depth, because performing the construction
+below the value's own open coordinate), `UseForVal1` is **forbidden** (`Reject`) at any depth, because performing the construction
 effect would already have crossed the value's legal linear open flow.
 `ControlFlowSplit` / `ControlFlowMerge` are **generation-coordinate** events:
 they terminate the window only at the value's own generation level, and at a
@@ -3483,14 +3158,13 @@ CurrentCoordinate ≻opaque OpenRootCoordinate(p)
      PatternValue's own open coordinate
 
 UseForVal1(p)        ->  Reject
-UseAsMetaArgument(p) ->  Reject
+UseAsMetaArgument(p) ->  Continue -- checked transport; no new authority
 ControlFlowSplit(p) / ControlFlowMerge(p)
   at the generation coordinate    ->  Terminate
   at a deeper ordinary coordinate ->  Continue (irrelevant to outer window)
 ```
 
-The judgment reversal therefore applies only to `UseForVal1` and
-`UseAsMetaArgument`: at the outermost coordinate the action is a legal
+The judgment reversal therefore applies only to `UseForVal1`: at the outermost coordinate the action is a legal
 terminal action; in a nested opaque non-meta level the same action is a
 forbidden one. It cannot be explained as "first allow `UseForVal1`, then
 close": by the time the construction effect happens, the value's legal linear
@@ -3499,10 +3173,9 @@ after the fact" events: they are scoped to the value's own generation
 coordinate, so a split or merge inside a deeper ordinary frame does not reach
 back and close an open value generated at an outer level.
 
-`UseForVal1` and `UseAsMetaArgument` reject/terminate independent of
-call-frame depth at the relevant coordinate: a meta boundary cannot be
-escaped by performing the meta call inside a deeper ordinary frame, and
-installing the value as `Val1` is likewise unconditional. `ControlFlowMerge`
+`UseForVal1` rejects/terminates independent of call-frame depth at the relevant
+coordinate. Admitted meta input transport preserves this source disposition;
+a deeper call cannot manufacture a new window. `ControlFlowMerge`
 and `ControlFlowSplit` apply only at the value's own generation level; a merge
 or split inside a deeper ordinary call frame does not reach back and close an
 open value generated at an outer level. Passing the value into a deeper
@@ -3516,7 +3189,7 @@ In an ordinary, non-meta construction context the concrete dispositions are:
 UseForVal1(x)                                    -> Terminate at OpenRootCoordinate(x)
                                                      Reject inside an opaque non-meta
                                                      inline closure below it
-x used as a meta argument                        -> Terminate / Reject (same rule)
+x used as a meta argument                        -> Continue under checked dependency transport
 x entering a global normalized structure         -> Terminate (at OpenRootCoordinate)
 x in Dependencies(c), for NonMetaStaticControl(c) -> Terminate
                                                      (at generation level)
@@ -3551,52 +3224,24 @@ that fork are terminated even when they did not determine its predicate.
 Leaving the ordinary owner interval remains an independent terminating
 disposition.
 
-#### 12.1.3 Meta construction is transparent but meta-local lifetime is not global
+#### 12.1.3 Meta transparency, input dependencies and result lifetime
 
-The open dispositions of §12.1.2 are scoped to `NonMetaGenerated` values.
-Inside a meta body, material is `MetaGenerated`, and the same actions do
-**not** terminate its open window, because the construction anchor is the
-meta instance itself (§4.3.1). Meta navigation is transparent for authority:
-`ActiveInlineClosurePath_meta` is quotient/erased (`VisibleInlinePath_meta(path)
-= ε`), so meta evaluation never produces the opaque nested state that triggers
-`Reject` for non-meta inline closures. The meta space is governed by
-`NearestMetaRoot`, `MetaArgumentAdmissible`, `GlobalSurvivable`,
-`NoOpenEvaluationReentry`, and seal/promotion rules instead:
+Meta-local construction uses M as its source with transparent in-place paths.
+Its local UseForVal1, static control and construction operations do not terminate
+that window merely by their shape. Nested meta input uses checked dependency
+transport (§4.3), not forced closure or implicit global promotion. It supplies
+no permission to re-enter an active evaluation.
 
-```text
-inside M (MetaGenerated material):
-  UseForVal1(x)                     Continue -- does not end the window
-  using x as a meta argument        Continue -- presupposes meta argument
-                                      admissibility (§4.3.1–§4.3.3):
-                                      MetaArgumentAdmissible(a) =>
-                                        GlobalSurvivable(a), and a
-                                        non-GlobalSurvivable MetaGenerated
-                                        local cannot enter another meta
-                                        invocation at all
-  entering global-normalization     Continue -- does not end the window
-  static control flow               Continue -- does not end the window
-  entering an in-place closure of M Continue -- transparent navigation;
-                                      ActiveInlineClosurePath_meta is erased
-```
+Inputs retain their birth regime, source coordinate and ordinary dispositions.
+Local transparency inside M cannot turn an outer non-meta source into
+MetaGenerated material or evade its UseForVal1 restrictions.
 
-The only capability-ending event for material owned by the meta construction
-is its return-stage seal (§4.3.2). A fresh meta-local PatternValue nevertheless
-has `Life = MetaInvocation(M)`. Attempting to pass it to another ordinary meta
-does not close or promote it; candidate formation rejects the call when the
-canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). The rejection is
-total: the argument never enters the deeper invocation, so meta invocations
-cannot smuggle meta-local open material into the closed world and re-open it
-when the stack unwinds. `compile` and
-transparent construction intrinsics may consume it because they create no new
-MetaInstance key.
-
-At seal, only `OwnedResultClosure(τ)` is promoted: for the default result `τ_M`
-that is `OwnedClosure(Core(τ_M))` plus `OwnedCallSpaceClosure(CallSpace(τ_M))`
-(§4.3.2); an explicitly explicit group result promotes the carried `τ`'s owned
-result closure only when that `τ` is present. Other local
-PatternValues expire with the invocation. Consequently the open-disposition rule for
-`UseForVal1` (§12.1.2) must not be read as a universal invariant, while “meta body is
-transparent” must not be read as implicit global promotion.
+At return, the result name retains the meet-derived qualification of its actual
+input dependencies. Untransferred locals expire; owned result transfer and
+escape checking obey §4.3.2. Globally published fresh construction closes its own
+structural name set. Completion does not close or promote borrow targets or
+terminate an inherited outer source. Saved references and repeated acquisition
+recheck current window and lifetime facts.
 
 #### 12.1.4 The apparent self-typed intersection
 

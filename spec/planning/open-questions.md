@@ -96,11 +96,8 @@ function layer; consumer alignment is roadmap work.
   aggregation laws (with Bucket(T) = Core(T)) without erasing entries through an
   unrelated cache/value-identity quotient? This is not an open semantic codomain.
 - What IR represents the already defined construction-window termination,
-  meta seal and externally visible name-set closure events?
+  meta completion, plain closure and externally visible name-set closure events?
 - What public spelling should the builtin associated-state callable A use?
-- Should A's globally indexed Place family, with writability dynamically
-  guarded by facts about its key, become a general user-accessible algebraic
-  capability? It is currently restricted to A.
 - Which values beyond closure-expression-produced closures can prove a
   location-parametric ReinstantiationWitness? The initial domain is fixed;
   arbitrary owner-changing replication is not admitted.
@@ -113,11 +110,16 @@ assignment is ordinary assignment. Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
 requires OpenHere and final anchored closure membership, changing only V_tau;
 Core changes use extend/inject. Ordinary group mutation needs its own Writable,
-not OpenHere of its contained types. A's key-derived guard is checked at write
-Pre even through saved references. A uses a designated stable construction-
-subject key; equal keys imply the same OpenHere subject. Ordinary Core equality
-cannot identify A slots. Persistence encoding is open, this identity law is not.
-Ordinary type equality and OpenHere keep their existing observations.
+not OpenHere of its contained types. Meta invocation constructs ordinary result
+instance names/types with dependency-derived openness. P1 meta retains that
+qualification; plain let completes/closes the instance. Arbitrary Val2 payloads
+use ordinary navigation and policy; V_tau and Pattern registration are independent.
+Its input normalization retains semantically observed name/subject identities;
+its registry/cache preserves instance/member Places and current state.
+A is a derived instance, with its construction subject retained through Close and
+input-carrier replacement. Generalization is settled by these meta invocation
+laws; ordinary Core equality does not merge subjects or grant write authority.
+Persistent dependency/source encoding remains open, not the propagation law.
 
 ## Lifetime, Color, and access
 
@@ -136,8 +138,11 @@ Color relations are explicit directed rows and Color inheritance is monotone.
 
 ## Owner, namespace, and infrastructure persistence
 
-- How are semantic owner roots, namespace snapshots, associated-state effects
-  and MetaInstance roots persisted across incremental evaluation?
+- How are semantic owner roots, namespace snapshots, MetaInstance result names,
+  current type/member observations, construction status and dependency effects persisted across
+  incremental evaluation without extending dependency lifetimes?
+- What concrete IR represents invocation input identity observations and output
+  access-dependency/opening-source summaries?
 - What API expresses context-directed member projection after stable name
   resolution without turning consumer roles into name ontologies?
 - Are escaped field names needed outside the existing syntax?
@@ -186,8 +191,10 @@ For each compiler-provided operation, determine whether it is a bootstrap seed,
 a source definition still to be connected, an intrinsic observation, or a
 semantic primitive justified by non-bootstrappability. A permanent host primitive requires the unavailable-host-capability
 justification; existing representation/library mechanisms take priority. A's
-current builtin status does not prove that its guarded-place algebra cannot
-be generalized.
+source definition uses a general meta instance type with an ordinary Val2 group
+Place. The singleton-Val2 compile helper may also begin as a builtin and later
+use source enumeration and compile error expression; its public spelling and
+concrete error representation remain to be selected. Its current bootstrap notation creates no independent map primitive.
 
 Concrete source definitions for literal construction, construction/migration
 families, capability entries, StructuralDefault providers, and lifecycle

@@ -787,6 +787,13 @@ FieldView_P_T(T, inner, A, F)
 `Val2` / type-member value universe. `P_T` does not own a second copy. It only
 registers the structural or interface role played by that callable.
 
+A Pattern-registered extraction/construction closure must have the required
+classifier under the containing tau. This is independent of registration for
+that type's own callability in V_tau: neither registration implies the other.
+Ordinary Val2 membership needs neither registration and permits arbitrary
+resident types. Authorized classifier home is eligibility, not automatic
+registration in either role family.
+
 The namespace/type distinction of a core `Q` is a property of `Q`'s registered
 construction role, never of any later name binding sibling count. Formally:
 
@@ -795,6 +802,7 @@ HasRegisteredSelfConstruction(Q)
   iff exists Pattern P of Q, exists s, exists C, exists K:
       Val2(Q)[s] = K
       and ConstructEdge_P_Q(C, Q, K)
+      and K has the required classifier under the containing tau
       -- P is the Pattern of Q, C is a structural input pattern, K is the
          ordinary callable/interface registered for that construction path
          (same registration family and parameter order as ConstructEdge_P_T
@@ -815,7 +823,8 @@ The witness `K` is an actual ordinary callable/interface member registered in
 
 3. Registered construction witness
                           Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
-                          -- the Val2 member and the ConstructEdge agree on the
+                          -- with the required anchored classifier;
+                             the Val2 member and the ConstructEdge agree on the
                              same K; HasRegisteredSelfConstruction(Q) requires
                              this joint witness, not either half alone
 ```
@@ -1034,6 +1043,7 @@ HomeEligible_Q(F)                                -- TypeMember_Q(F)
 TypeMember_τ(F)
   iff F ∈ ClassifierDomain(V_τ)
   and HomeEligible_{Core(τ)}(F)
+  and F is registered for this snapshot's type callability
 
 CreateClassifier_Gamma(
   F,
@@ -1048,7 +1058,7 @@ BoundRef(alpha) notin Children_owned
 ```
 
 `V_τ` is fixed at formation and never grows: classifiers created later under
-the same scope enter only the new snapshot `V_τ'` (extend preserves
+the same scope may enter, when registered, only the new snapshot `V_τ'` (extend preserves
 `CoreAnchor`, so `TypeMemberScope` is stable), never an older `V_τ` — no
 retroactive membership.
 

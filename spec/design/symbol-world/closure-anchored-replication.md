@@ -65,7 +65,8 @@ A closure RHS can therefore be evaluated at its ordinary lexical anchor before
 a later contribution creates the target-anchored instance. It need not know its
 future LHS or receive semantic information backward through normalization.
 The same capability is usable by ordinary type contribution, inject, and the
-construction logic obtained through A[t]. Assignment retains its own ordinary
+construction logic read from an ordinary Val2 group member of t |> A.
+Assignment retains its own ordinary
 semantics; this relation is not an initialization-only exception.
 
 ### 4.1 Source forms and the operation that triggers replication
@@ -131,9 +132,11 @@ replication; candidate selection belongs to the assignment owner.
 
 Within a meta invocation, the MetaInstance root is the unique stable anchor;
 in-place navigation is transparent for authority. Local residents end with the
-invocation, even when their resulting realization is returned. Seal promotes
-the owned result realization, not the local resident's lifetime. struct,
-inject and closure anonymous construction share the existing meta anchor rules.
+invocation unless ordinary owned transfer admits their resulting realization
+into the result region. Global promotion requires global dependency stability;
+a bounded result may retain valid input-derived opening sources. Neither cache
+identity nor result completion extends an expired local resident. struct,
+inject and closure anonymous construction share the same meta anchor rules.
 
 Non-meta pattern values have the existing global-survival semantics and opaque
 in-place navigation levels. Their stable identity cannot be retroactively

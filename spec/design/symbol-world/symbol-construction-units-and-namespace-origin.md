@@ -28,10 +28,13 @@ permission and impose no same-name contribution prohibition.
 Semantic construction uses the existing pattern value, anchor, evaluation
 coordinate, WindowLive and authority-frame judgments. Copying a value preserves
 its anchor and does not create a new open window. Writable belongs to actual
-Places/references and remains independent of the value's OpenHere judgment.
+ordinary Places/references and remains independent of the value's OpenHere
+judgment. The meta instance name/type uses P1 meta, where OpenHere governs its
+mut qualification; this does not collapse policy for ordinary payload Places.
 
-A source action can create or modify a name only through the ordinary structural
-target and capability rules. Physical parenthood does not imply semantic
+A source action creates or modifies structural names through ordinary structural
+target and capability rules. Meta invocation constructs its own ordinary result
+name without adding an input structural child. Physical parenthood does not imply semantic
 authority. A contribution from a different file is neither automatically
 authorized nor automatically prohibited by that fact.
 
@@ -56,12 +59,13 @@ wrapper or cache replay grants the required premises.
 
 ## 4. Associated construction logic
 
-The source pattern value t controls the write window of ordinary compile-global
-A[t]. A receiver supplies its own mutable construction reference r by invoking
-the selected ordinary compile callable in that group. Source-side A[t] mutation
-and target-side r mutation satisfy their separate existing OpenHere/Writable
-checks. The [associated-state owner](associated-compile-state.md) defines this
-composition; no implementation-contribution protocol is necessary.
+Meta invocation constructs ordinary result names whose opening sources follow
+actual input dependencies. A returns an instance type with ordinary Val2 group
+member n_A(t); t supplies its source. A receiver supplies its own mutable
+construction reference r when invoking a selected compile callable from that
+group. Group-source writes and target r writes satisfy their independent
+OpenHere/Writable checks. The general invocation registry/cache supports this
+state. [Associated state](associated-compile-state.md) describes the instance.
 
 ## 5. Closure and external observation
 
@@ -75,9 +79,12 @@ The externally visible names cannot grow after closure. Anonymous implementation
 objects remain in their /tau layer without reopening the parent namespace.
 
 True Close is irreversible under the existing open-window rules. Losing
-visibility across a masking meta frame is not Close. The ordinary meta return
-seal promotes only the owned result closure and checks external/borrow
-dependencies; source composition does not replace those identity/lifetime laws.
+visibility across a masking meta frame is not Close. Meta result completion
+transfers only owned material under the actual result region and checks external
+and borrow dependencies. Global publication additionally requires global
+stability and structural name-set closure. An inherited outer opening source is
+not closed merely by retained P1 meta completion; classic plain let closes
+the instance. Source composition replaces none of these laws.
 
 ## 6. Transactions and implementation
 

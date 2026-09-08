@@ -19,6 +19,13 @@ source policy syntax
 
 ## 1. Complete binding flow and policy pair
 
+The ordinary slot/view laws below apply where a name and its resident value are
+distinct. P1 also admits `meta` for the invocation instance whose name is its
+own type value (§3.0). For that instance OpenHere governs mut qualification;
+ordinary const/mut modes do not supply a second independent gate. This marker
+is contextual P1 policy, not another atom of ordinary PolicyMode's 3×3 tables.
+P2 meta continues to specify the callable's evaluation stage.
+
 Language computation remains one object flow. Every object has the same three
 components:
 
@@ -452,8 +459,9 @@ explicit spelling of that same point. A written choice such as
 mode demand. In particular, `const || mut` is not a neutral whole-slot mode and
 does not elaborate through the general PolicyChoice syntax.
 
-Surface elaboration must factor that whole-slot coordinate before building the
-pair:
+For ordinary slot policies, surface elaboration factors that whole-slot
+coordinate before building the pair. P1 meta-instance policy is recognized by
+its position under §3.0 before applying this ordinary-slot factorization:
 
 ```text
 PolicySurfaceElaboration(surface)
@@ -561,8 +569,9 @@ lowered to the same set insertion operation.
 
 ## 3. Contextual elaboration of P1
 
-Three policy contexts can occupy a binding-shaped surface slot, but use three
-different elaborators.
+Policy contexts can share a binding-shaped surface slot while using their
+position-specific elaborators. P1 meta-instance policy has the following
+qualification before ordinary slot projection.
 
 Two named inference operations must remain distinct:
 
@@ -585,6 +594,48 @@ PolicyOverload(
 `PolicyOverload` is not policy inference, and `plain` is never an inference
 variable. Declaration-side inference produces candidate signatures;
 call-site demand formation produces the concrete demand compared with them.
+
+### 3.0 Meta-instance P1 policy
+
+```lang
+meta let f = expression;
+plain let g = expression;
+```
+
+P1 meta retains the ordinary meta instance denoted by expression. Its instance
+name is its type value tau_M; it cannot be an arbitrary value relabelled with
+meta. In this policy, OpenHere is the governing mutation qualification:
+
+```text
+MetaInstanceMutationQualification(f, Sigma) iff OpenHere(f, Sigma)
+AcquireMutView(f, Sigma) requires OpenHere(f, Sigma)
+```
+
+Unlike an ordinary slot containing a distinct value, there are not independent
+instance const/mut and value openness coordinates to combine. OpenHere is the
+stronger fact: first establish it, then acquire the mut view. Such a view is
+still explicit and its write Pre rechecks the current window. The selected
+operation must exist and satisfy ordinary type, access, capability and lifetime
+rules; meta does not synthesize missing operations or make expired targets live.
+
+The marker retains the invocation's dependency-bounded source through completion.
+Plain let (and the unwritten plain default) instead selects the classic
+complete-and-close meta invocation. This closes the instance, not external input
+subjects or external borrow targets. A later meta let of the same cached instance
+cannot reopen it. A temporary non-OpenHere context is not itself Close.
+
+This is a P1 policy selection, distinct from P2 meta evaluation stage. It is not
+ordinary mut, a choice between const/mut, a new ordinary mode-preference point,
+or an implicit request to change evaluation stage. Incompatible ordinary-mode
+and meta-instance demands cannot be combined to create a stronger authority.
+No new parser shape or Object coordinate is introduced.
+
+Ordinary Val2 payload names still carry distinct values. Their const/plain/mut
+policies, result demand, migration, and borrowing remain ordinary. Meta invocation
+itself directly returns CompleteType; payload navigation and ordinary compile
+extraction, not another meta result class, expose other values. The
+[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+defines instance identity, openness meet, completion and cache behavior.
 
 ### 3.1 Ordinary binding projection
 
@@ -2125,12 +2176,12 @@ is fully admissible.
 Static views include meta values, compile values, compile Pattern/type
 projections of runtime bindings, and derived compile companions. Meta and compile
 callables may invoke one another in one evaluator. Their return ontologies differ
-in authority, not in result class:
+in both root authority and the admissible direct result class:
 
 ```text
 ordinary meta
-        -> establishes and seals one navigable MetaInstanceRoot; returns τ
-                     (DefaultMetaResult = τ)
+        -> constructs its instance name/type tau_M (CompleteType)
+           P1 meta retains dependency-derived openness; plain completes/closes
 compile -> any declared ordinary semantic value across result classes
            (PatternValue, complete type value tau, type ref/share borrow
            instance); root-conserving, with no root authority
@@ -2138,8 +2189,12 @@ privileged builtin
         -> follows its member-declared result and owner rules
 ```
 
-An ordinary meta callable's default result is `τ` (`DefaultMetaResult = τ`). An
-explicit ordinary result type, including OverloadGroup, remains legal. `compile` may return a complete type
+An ordinary meta callable directly returns its instance type tau_M. Arbitrary
+values, external types, groups and valid borrows can be Val2 payloads, with
+ordinary member observation and policy. They cannot replace tau_M as the direct
+meta result. P1 meta qualification follows OpenHere (§3.0). See the
+[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md).
+`compile` may return a complete type
 value `tau` (participating in Pattern observation through `Core(tau)`, not
 itself an ordinary PatternValue/Object), an OverloadGroup
 value, `type ref`, or any other declared ordinary PatternValue. Privileged

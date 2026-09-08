@@ -1,158 +1,133 @@
-# Associated Compile-Time State
+# Associated Compile-Time State as a Meta Invocation
 
-Status: canonical semantics; source integration pending. A is notation, not a
-frozen callable spelling. The names associated and meta_slot remain candidates.
+Status: canonical derived instance; source integration pending. A and the member
+spelling state below are notation, not frozen public callable/member spellings.
 
-## 1. Ordinary language-visible state
+## 1. Derivation from ordinary meta invocation
 
-The meta-evaluation state includes a type-associated map of ordinary groups:
+[Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+constructs an instance name whose value is its instance type. A uses this general
+facility and stores an ordinary OverloadGroup in that type's Val2:
 
-    A_Sigma : type -> Place(OverloadGroup)
-    Read(A[t]) = epsilon_OG              in the absence of an explicit update
+    m_A(t) = InvokeName(A, t)
+    Value(m_A(t)) = tau_A(t)
+    n_A(t) = state::m_A(t)
+    Value(n_A(t)) : OverloadGroup
+    initial group value = epsilon_OG
 
-The indexed place family is conceptually total. Sparse storage introduces no new slot
-freshness/existence semantics. This is language-visible compile-time state,
-not compiler metadata, a package registry, or another Object axis. A is
-currently builtin; that does not claim its guarded-place algebra is incapable
-of a more general language formulation.
+The group can have its ordinary type without being registered in the instance's
+V_tau or Pattern. The direct meta result remains tau_A(t); the instance name is
+not itself a group-valued wrapper. Ordinary navigation retrieves its payload.
 
-A has a designated association observation, distinct from ordinary Core equality:
+A's input dependency is the existing construction subject of t:
 
-    subject(t) = the existing construction-window subject of Core(t)
-    key_A(t) = stable identity of subject(t)
-    A[t] = AssociatedPlace(key_A(t))
+    subject(t) = existing construction-window subject of Core(t)
+    CanonicalizeInvocationInputs_A(t) retains identity(subject(t))
+    m_A(t1) = m_A(t2) iff subject(t1) = subject(t2)
+      for the same resolved A and parent semantic owner
 
-Here subject(t) denotes the existing state subject carrying Anchor,
-GenerationRegime and WindowLive; it is not a new first-class value or Object
-axis. The key preserves that subject through its authorized construction
-updates and through closure. Copy/transport preserves the same subject rather
-than allocating a new window. Independent formation with equal normalized Core
-does not collapse construction subjects.
+The subject carries Anchor, GenerationRegime and WindowLive; it is not a new
+Object. Copies preserve it, authorized updates and Close do not rename it, and
+independent equal-Core formation does not merge it. Ordinary Core equality,
+group bucket equality, whole-snapshot equality and TypeValueId cannot substitute
+for that dependency. Incidental lexical carrier Places do not enter this key.
 
-    key_A(t1) = key_A(t2) iff subject(t1) = subject(t2)
-    A[t1] = A[t2] iff key_A(t1) = key_A(t2)
-    therefore OpenHere(t1, kappa) = OpenHere(t2, kappa)
-      at the same continuation position and authority context
+The general meta invocation cache retains the instance and its ordinary member
+Places/current state. A needs no separate GlobalMap primitive. Sparse maps can
+implement the general facility; their representation does not define A.
 
-Ordinary Core equality, group bucket equality, whole-snapshot equality and
-TypeValueId cannot substitute for key_A. Ordinary type equality remains the
-Core observation defined by [pattern values](type-values-places-and-borrow-views.md#2-semantic-identities).
-This is a designated identity-sensitive associated-place operation, not an
-ordinary map quotiented by type equality. It does not change equality or grant
-authority merely from equal values.
+## 2. Instance policy and ordinary member observation
 
-A is exposed as an ordinary callable object with reference projections:
+Schematic uses of the existing syntax are:
 
-    A(type) -> OverloadGroup ref
-    A(mut type ref) -> mut OverloadGroup ref
+```lang
+meta let instance = t |> A;
+let group_value = state::instance;
+let group_ref = (state::instance) ref;
+```
 
-These signatures show the explicit argument and result; the callable's own
-first self follows the ordinary invocation convention. Ordinary reference
-assignment and the applicable group update algebra implement =, +=, and -=.
+P1 meta retains the instance under its input-derived source. Its name is its type
+value, so OpenHere governs its mutation qualification and must hold before
+acquiring an instance mut view. There is no additional independent const/mut gate
+on that instance. Classic plain let instead completes and closes the instance;
+meta let cannot reopen it later.
 
-## 2. A bounded writable window
+The state member is an ordinary group name/value. Its declared ordinary member
+policy exposes mutable views while the construction source remains open.
+Explicit ref selects the ordinary group borrow and checks actual Place,
+capability and lifetime. Bare member observation reads a group value. Borrowing
+the instance type and borrowing this group are different operations.
 
-An associated reference captures k = key_A(t) and addresses AssociatedPlace(k).
-It never follows later replacement of the caller's t_ref resident.
+A hypothetical A::t would occupy t's namespace. Here:
 
-    Writable(a_k, kappa)
-      iff OpenHere(subject(k), kappa) and WriteAuthority(a_k, kappa)
+    m_A(t) notin StructuralChildren(t)
+    n_A(t) is a member of tau_A(t), not a child of t
+    acquiring either name leaves Val2(t) and Norm(t) unchanged
+    Close(t) => StableStructure(t)
 
-Every actual write Pre checks this same captured subject, including writes
-through saved mutable references. Assignment of an unrelated type into t_ref
-does not retarget a saved A reference or transfer that new type's open window.
+No input DirectPatternChild evidence is created. Group updates also leave the
+candidate types unchanged. Closing the instance fixes its own member structure;
+its separate existence does not reopen the input structure.
 
-The existing authority, borrow validity, and policy checks still apply. This
-rule composes existing judgments; it adds no independent contribution capability.
-OpenHere is determined by the pattern value, through Core, anchor, live window,
-and the authority-frame rules in
-[construction](symbol-first-meta-construction-and-pattern-injection.md#1211-open-authority-is-stack-relative).
-Different carrier Places do not create independent windows for copies of that
-value. Value equality itself grants no write authority.
+## 3. Openness follows the input dependency
 
-In particular, if Core(t1) = Core(t2) but their OpenHere judgments differ in the
-same context, key_A(t1) != key_A(t2). Writing A[t2] cannot change A[t1]. If the
-keys are equal, closing their shared subject blocks every alias's write Pre.
-A whole-snapshot key alone would not establish this law either.
+Before an explicit Close of the instance, the general output meet specializes:
 
-True Close irreversibly clears the existing WindowLive fact. A saved reference
-can retain static mut policy while its write Pre fails after Close. Temporary
-stack masking is not Close and does not create a new window on return.
+    o(m_A(t)) = o(subject(t))
+    OpenHere(m_A(t), Sigma) iff OpenHere(subject(t), Sigma)
 
-    GlobalVisibility does not imply GlobalMutability
-    PolicyMode(mut) does not imply Writable
+The ordinary state member is constructed with this same source. This is the
+member's declared dependency, not a general parent-to-child OpenHere implication.
+Every group write requires its ordinary policy/capability/Place/lifetime facts
+and rechecks that source. Explicit instance closure (including plain completion)
+ends this instance's construction window and its associated state write window.
+Input closure likewise makes their write Pre fail. Saved mut views freeze neither.
 
-Static closure freezes the externally visible members and the associated state
-against later extension. A remains globally addressable while its write window
-is bounded by the existing construction semantics. This does not prevent an
-ordinary writable carrier from being assigned another complete value under its
-own rules, and does not reopen the closed value that it previously carried.
+A saved group reference retains BindingPlace(n_A(t)) and its original subject
+dependency. Replacing the caller's t_ref resident does not retarget it or transfer
+the replacement's window. Only ordinary explicit retargeting selects another
+target. Temporary authority masking is distinct from true Close.
 
-## 3. Construction logic is an ordinary callable
+The group remains readable after closure when ordinary lifetime and visibility
+permit. Reacquisition neither resets it to epsilon_OG nor reopens it. Stable
+identity proves neither global lifetime nor global mutability.
 
-For construction use, the group's candidates expose complete compile function
-objects. A selected function
-accepts a target mutable type reference as an ordinary explicit argument. Its
-body may inspect the target, branch through Pattern relations, call other
-compile functions or host IO, create intermediate Objects, inject several
-times, or do nothing. The group aggregates ordinary type candidates and their callable members, not a special delta or
-an incomplete implementation descriptor.
+## 4. Construction logic is an ordinary callable
 
-The consuming construction invokes it normally:
+The group's candidates expose ordinary complete compile function objects. A
+receiver invokes the explicit group value with its own construction reference:
 
-    (mut let r::some_path) |> (t |> A)
+    (mut let r::some_path) |> state::instance
 
-The selected callable's first self is that callable object. The construction
-reference r is an ordinary subsequent argument:
+Ordinary call projection selects one candidate. First self is the selected
+callable object; r is a later argument. The body may inspect the target, branch,
+invoke compile functions or host Objects, create intermediate Objects, or inject
+several times. Source group mutation and target injection have separate premises:
 
-    Type(callee) = Type(first self)
+    source: updating state requires its ordinary writable view and live source
+    target: extending/injecting r requires its own OpenHere/Writable
 
-Call projection and ordinary overload selection choose one candidate.
-Indistinguishable matches produce ordinary ambiguity. There is no implicit
-fan-out over all entries. A user-defined collection or dispatcher can itself be
-an ordinary entry when sequential execution of several actions is desired.
+Calling grants no hidden target access. Ambiguity remains ordinary ambiguity;
+there is no implicit fan-out. A dispatcher can be an ordinary entry.
 
-The source and target obey independent existing checks:
+For an actually closed instance with exactly one ordinary Val2 entry, the
+[compile extraction helper](../meta-invocation/meta-object-invocation-and-policy-reduction.md#31-ordinary-val2-extraction-and-compile-convenience)
+can provide value convenience via `instance |> only_val2` or `instance only_val2`.
+The helper is not an implicit conversion or an open-state mutation path. While
+constructing or borrowing state, use its ordinary explicit member name.
 
-    source side: A[t] may change only while OpenHere(t)
-    target side: the chosen body may extend r only while OpenHere(r)
+## 5. Effects and implementation boundary
 
-The receiver supplies its own target construction reference by calling the
-group. The construction uses ordinary state and calling, with no additional
-implementation authority. Actual injection is still read + extend +
-write through that reference. Calling through A gives no hidden target access.
+Member Places participate in ordinary evaluation state. Siblings start from a
+common snapshot with independent overlays. Commutative associative contributions
+may join; conflicting replacements report ordinary unordered write conflicts.
+Scheduling does not expose another sibling's new writes.
 
-## 4. Ordinary effects in unordered blocks
+A consumes the general meta instance cache: stable identity, construction status,
+current type/member observations, dependency validity and current Pre. Cache reuse
+preserves effects and entry multiplicity without replaying initialization or
+restoring an earlier group value. Previously copied snapshots stay immutable.
 
-A participates in the same evaluation state and effects as other mutable
-compile-time Objects. Sibling blocks start from a common input snapshot and
-produce independent overlays. Commutative, associative entry contributions can
-join. Different conflicting replacements cannot join and report an ordinary
-unordered-block write conflict. Whether subtraction commutes with another
-update is determined by the ordinary update algebra, not by A or file order.
-
-Reading another sibling's newly written state is not repaired by scheduling
-that sibling first. A introduces no ordering exception. See
-[source normalization](../build-package/build-system-design.md).
-
-## 5. Representation boundary
-
-The public spelling, sparse storage, bucket/entry identities, reference
-encoding, and incremental indexing remain local implementation questions.
-The subject-preserving association law is fixed. Persistence must encode the
-existing construction subject, not invent a per-carrier window or infer a subject
-from equal Core contents. The existing pattern-value equality and OpenHere rules
-are not reopened by those choices. Cache replay must preserve effects, entry multiplicity, and
-current write Pre checks; it cannot make a saved mutable reference writable.
-
-
-The guarded global indexed place family suggested by A is a local open question:
-should key -> Place(value), with write permission dynamically derived from
-facts about the key, become a general user-accessible algebraic capability?
-For now the capability is restricted to builtin A; no IndexedPlace constructor
-or additional capability type is introduced.
-
-Ordinary OverloadGroup mutation needs its own Writable only and does not mutate
-its candidate types. A's extra key-dependent guard belongs to this particular
-place family. Type += instead changes V_tau under OpenHere and the anchored
-closure membership rules of [name/type algebra](names-and-overload-groups.md).
+Public spelling, source definition, sparse storage, persistence and entry encoding
+remain implementation work. The general meta facilities must be implemented
+first; they satisfy A's needs. No A-specific capability remains to be generalized.
