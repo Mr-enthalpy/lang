@@ -609,7 +609,9 @@ lookup, capture-environment layout, or capture admissibility analysis.
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to name binding `S`; form `C0 := CallCandidates(NamedType(S))`
+2. Resolve a name/path to name binding `S`; in the named-type case form
+   `C0 := CallCandidates(NamedType(S))`. Other resident values use the entrances
+   of §2 (ordinary Val2 reading is not restricted to named types),
    and enumerate that candidate set (one step, no priority, no fallback, no
    reopening). Only repeated exposure of the same stable candidate-entry identity
    may collapse; distinct contribution entries never deduplicate merely because

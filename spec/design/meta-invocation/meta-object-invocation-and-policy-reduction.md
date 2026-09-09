@@ -232,6 +232,50 @@ rules apply to these Places like other ordinary state. Persistent identity
 storage cannot extend a dependency's lifetime. This general facility supports
 indexed mutable state; no separate GlobalMap primitive is required.
 
+### 2.0.4 Worked example: instance acquisition and outer binding
+
+```lang
+meta let a = t |> A;
+meta let b = t |> A;
+```
+
+With the same full invocation key, both RHS evaluations acquire the same
+InvokeName(M) and its actual instance Place q_M. Value observation reads its
+current complete tau_M snapshot. Outer binding then uses ordinary destination
+formation and mechanical transfer. P1 meta retains the admitted opening
+qualification; it does not turn `=` into lexical `===`, invent a borrow, or
+merge destination Places.
+
+For ordinary snapshot copies into the two destinations:
+
+    q_a != q_b, and neither destination is q_M
+    at each read: tau_read = Read(InvokeName(M), Sigma_at_read)
+    copy retains type/root and construction-subject facts
+    copy does not turn the snapshot into a current-state lookup
+
+Equal snapshots therefore do not imply shared destination writes. A write to
+a's ordinary copied resident need not appear in b or q_M. To update the retained
+instance state, select its actual member Place through the invocation-generated
+name and form the explicit permitted reference to that target. Copying an
+already formed reference preserves its target under ordinary reference rules;
+it is different from copying the containing type snapshot. Cache reacquisition
+observes writes to the instance/member Places, not arbitrary writes to copies.
+
+This derivation does not choose automatic copy versus move: the existing
+mechanical pass relation owns that choice. Observing the type result is not
+an implicit Move of the stored instance resident out of q_M. Explicit moves
+and payload invalidations keep their ordinary checked effects.
+
+If a later `plain let c = t |> A` successfully completes the producer with
+Close, the shared instance construction subject closes before the outer
+destination transfer. References still targeting its state then fail the
+opening-source check on write; external t itself is not closed by that event.
+A subsequent destination-transfer failure does not by itself undo an already
+committed producer Close. Only an existing enclosing transaction can provide
+rollback. Failure before Close commits leaves that action uncommitted. This
+uses ordinary producer-before-transfer and Pre/commit rules, not a let-specific
+transaction or a cached permission.
+
 ### 2.1 Compilation entry uses ordinary meta-root formation
 
 `Compile(Level)` enters an ordinary meta invocation, not a `compile`-stage

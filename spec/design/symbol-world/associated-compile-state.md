@@ -58,6 +58,14 @@ Explicit ref selects the ordinary group borrow and checks actual Place,
 capability and lifetime. Bare member observation reads a group value. Borrowing
 the instance type and borrowing this group are different operations.
 
+The local `instance` spelling does not imply place forwarding. Ordinary outer
+binding may hold a snapshot in its own destination; a reference to a member of
+that copied resident targets the copy. Shared persistent-state mutation must
+select the actual member Place of the invocation-generated instance name.
+See the [acquisition/binding trace](../meta-invocation/meta-object-invocation-and-policy-reduction.md#204-worked-example-instance-acquisition-and-outer-binding)
+for repeated acquisition, copied values and saved references. P1 meta preserves
+openness, not an implicit alias to a cache entry.
+
 A hypothetical A::t would occupy t's namespace. Here:
 
     m_A(t) notin StructuralChildren(t)

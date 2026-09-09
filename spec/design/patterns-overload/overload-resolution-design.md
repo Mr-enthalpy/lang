@@ -9,6 +9,7 @@ applicability is considered:
 
 ```text
 S = Resolve_Gamma(path)
+-- named-type case of the subsequent consumer projection:
 Invoke(CallCandidates(NamedType(S)))
 ```
 
@@ -18,8 +19,9 @@ at an outer same-name name binding.
 
 ## 2. Callable projection
 
-A resolved structural name denotes its complete named type T. Explicit group
-values use the singleton type embedding:
+A FreshNamedType name denotes its complete named type T. This case does not
+restrict ordinary Val2 residents to types. Explicit group values use the
+singleton type embedding:
 
     CallCandidates(T) = CallCandidates(V_tau(T))
     CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
@@ -29,6 +31,21 @@ callee uses its exact captured complete type and associated (), with
 Type(callee) = Type(first self). A source binding or Core registry index does
 not supply a later callspace snapshot. See
 [name/type algebra](../symbol-world/names-and-overload-groups.md).
+
+### 2.1 Value navigation is broader than candidate projection
+
+Suppose an instance has ordinary Val2 members `data` (a non-callable value),
+`state` (an OverloadGroup G), and a named type T. Each member can be obtained
+through `name::instance` under ordinary access and value rules. Calling the
+read group uses CallCandidates(G); calling T uses its captured V_T. Reading
+data is legal even though its call projection has no candidates. Neither
+successful navigation nor classifier eligibility registers a value in the
+instance's own V_tau.
+
+Thus ReadNamedType describes the named-type case, not an implicit conversion
+applied to every Val2 resident. Ordinary function values use their exact
+complete type and associated (). All these entrances share the pipeline below;
+none retries name resolution or constructs a wrapper to make a value callable.
 
 ## 3. Pipeline
 

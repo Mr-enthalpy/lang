@@ -117,6 +117,32 @@ source follows its input dependency. Its write Pre checks that source under
 ordinary name rules; group membership itself creates no opening requirement
 on the candidate types.
 
+### 4.1 TypeAdd also preserves the complete result's well-formedness
+
+The displayed TypeAdd premises do not replace WellFormedTau of the resulting
+snapshot. V_T registers values from the same ordinary Val2; it is not a second
+value store. Core contains that Val2 observation. Consequently, keeping Core
+fixed also keeps those residents fixed.
+
+For an existing resident f with an eligible classifier, adding its callability
+registration can produce a well-formed new V_T without changing Core. It does
+not automatically add Pattern registration. Conversely, if v' is not a resident
+of that Val2, classifier membership alone does not make TypeAdd legal: the
+proposed result would violate the joint Val2/registration consistency law.
+
+    Core(T') = Core(T)
+    V_T' = V_T + v'
+    WellFormedTau(T') and joint Val2/role consistency
+    ------------------------------------------------
+    no new Val2 resident is created by this TypeAdd
+
+Required new resident or anchored-instance formation belongs to extend/inject
+under the existing one-shot formation law (§6.1). That full formation already
+includes its contribution once; no extra += is implied. Likewise, -= removes
+the selected callability contribution only: it does not delete the ordinary
+resident or its independent Pattern registration. These are consequences of
+the existing update domain and result invariant, not new operation primitives.
+
 ## 5. Fresh-name creation returns a construction reference
 
 Only the final selector may be fresh. Every intermediate parent in a multi-

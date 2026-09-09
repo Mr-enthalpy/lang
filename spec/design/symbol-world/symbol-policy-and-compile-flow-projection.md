@@ -2242,7 +2242,8 @@ replaces the real runtime call.
 
 ## 12. Unified binding and overload selection
 
-All ordinary bindings and call targets use one selection trunk:
+All call-candidate entrances use one selection trunk. The prefix below shows
+its named-type case:
 
 ```text
 b = Resolve(path)
@@ -2262,9 +2263,13 @@ M  = MaxPolicyAndOverloadOrder(
 ```
 
 Resolve returns a structural NameBinding, not a callable carrier. ReadNamedType
-reads its resident complete named type before candidate projection. An explicitly
-held OverloadGroup G instead supplies CallCandidates(G) at C0; it does not change
-path resolution. Only repeated exposure of the same stable candidate-entry
+reads its resident complete named type in this case. Ordinary Val2 navigation
+may read a value of any type; it does not automatically run ReadNamedType or
+register the resident for callability. A held OverloadGroup G, including one
+read through state::instance, supplies CallCandidates(G) at C0. Ordinary function
+values use their exact complete type's associated () entrance. See the
+[navigation and projection example](../patterns-overload/overload-resolution-design.md#21-value-navigation-is-broader-than-candidate-projection).
+Only repeated exposure of the same stable candidate-entry
 identity may collapse; distinct contribution entries never deduplicate merely
 because their values or types normalize equally.
 

@@ -189,7 +189,7 @@ Candidate
 It is applied only after the fully admissible set `A` exists:
 
 ```text
-ResolveNameBinding
+ResolveNameBinding                     -- named-type projection case
   -> ReadNamedType
   -> CallCandidates
   -> ExposePhaseViews
@@ -199,9 +199,13 @@ ResolveNameBinding
   -> UniqueMaximum
 ```
 
-For a path, resolution returns one structural NameBinding; ReadNamedType reads
-its resident complete named type before CallCandidates projects it. An explicitly
-held OverloadGroup G enters at CallCandidates(G). Only repeated exposure of the
+For a path, resolution returns one NameBinding. In the named-type case above,
+ReadNamedType reads its complete type before CallCandidates projects it. This
+does not restrict ordinary Val2 reads to types. A held OverloadGroup G, including
+a member value obtained by navigation, enters at CallCandidates(G); ordinary
+function values use their exact type and associated (). See the
+[value-navigation example](overload-resolution-design.md#21-value-navigation-is-broader-than-candidate-projection).
+Only repeated exposure of the
 same stable candidate-entry identity may collapse; distinct contribution entries
 never deduplicate merely because their values or types normalize equally.
 
