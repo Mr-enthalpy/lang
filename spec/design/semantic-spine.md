@@ -28,7 +28,7 @@ This reading index introduces no separate value or execution ontology.
       -> commit / Post / InvocationResult
 
     PhysicalTree(Level)
-      -> child-directory ordinary fresh-name actions (complete empty T_0)
+      -> child-directory typed name creation -> explicit borrow -> ordinary type initialization
       -> serial file blocks + unordered sibling overlays
       -> one meta evaluation
       -> synchronous projections of one continuation

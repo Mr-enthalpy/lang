@@ -27,7 +27,9 @@ path. Future optimization options configure planner search without changing E.
     }
     NormalizeFile(f, r) = Seq(decoded ordinary meta actions of f under r)
     NormalizeDir(n, D, r) = Seq(
-      r_n := ordinary fresh-name expression let n::r;
+      n_expr := ordinary typed name creation let n::r:type;
+      r_n := explicit ref of n_expr;
+      r_n = ordinary one-shot empty directory type formation at n's coordinate;
       NormalizeBody(D, r_n)
     )
 
@@ -40,13 +42,13 @@ Normalization neither creates this reference nor grants its Writable/OpenHere
 facts, and M_compile's owner identity is not itself the borrowed resident.
 The selected level adds no extra name segment. Each child-directory basename n
 becomes the selector of a generated ordinary structural let action. That action
-uses the same FreshNamedType formation as written structural let: it commits
-Some(T_0), with empty Core/member content at the resolved navigation and empty
-V_tau, then returns mut type ref. Omitted declaration policy uses ordinary bare
-let defaults. See [fresh-name formation](../symbol-world/names-and-overload-groups.md).
+uses typed NameExpr creation, explicit borrowing and ordinary initialization.
+The directory's initial resident is formed by ordinary one-shot construction;
+creation itself installs no dummy type. Only after initialization can its body
+navigate and extend that resident. Omitted policy uses ordinary let defaults. See [fresh-name formation](../symbol-world/names-and-overload-groups.md).
 
 Evaluation of the directory body follows its creation in that directory's serial
-wrapper; its child blocks share the post-creation snapshot and r_n. This ordering
+wrapper; its child blocks share the post-initialization snapshot and r_n. This ordering
 is internal to the wrapper and grants no priority over its parent's siblings.
 Directory contents use ordinary named-contribution positions and extend/inject
 through r_n. They acquire no write privilege from physical containment.
@@ -117,7 +119,7 @@ material can be parent-neutral; semantic roots still use the language's
 MetaInstance identity rules. A cache hit does not grant construction authority.
 
 Atomic storage supports an enclosing semantic transaction when one exists.
-File boundaries and structural let assignment do not independently create
+File boundaries and name-creation/initialization sequences do not independently create
 transactions or rollback promises. Failed action Pre leaves the prior state
 unchanged under the ordinary evaluator contract.
 

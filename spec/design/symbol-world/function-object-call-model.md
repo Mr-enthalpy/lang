@@ -4,7 +4,7 @@ Status: canonical call semantics. Consumer gaps are tracked in the roadmap.
 
 ## 1. Basic thesis
 
-A callable is an ordinary complete function object. A FreshNamedType name denotes a named type
+A callable is an ordinary complete function object. An initialized structural name declared :type denotes a named type
 whose V_tau is synthesized by its named contributions. Explicit OverloadGroups
 aggregate type candidates using the singleton embedding eta(T).
 
@@ -260,7 +260,7 @@ exception under T's call entry.
 
 CallableOwner still owns local names, Pattern roots, nested callables and code
 identity. It is not inferred from a parameter's spelling. Member contribution
-requires the closure type to belong to the destination core; eligible closure
+requires Home(TypeOf(v)) = TypeMemberScope(T) for the complete destination T; eligible closure
 expressions can create a new anchored instance under
 [replication](closure-anchored-replication.md), without changing the original.
 

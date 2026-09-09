@@ -5,9 +5,9 @@ Status: canonical semantic handoff; consumer alignment pending.
 ## 1. Source actions create the world
 
 Physical normalization supplies serial file blocks and unordered sibling
-blocks. Child-directory basenames become ordinary fresh-name actions returning
-references to complete empty named types, followed serially by that directory's
-body under the returned reference. The selected root and filenames add no
+blocks. Child-directory basenames become ordinary typed-name creation actions,
+explicit Place borrows, and ordinary one-shot directory type initialization,
+followed serially by the directory body under that reference. The selected root and filenames add no
 segments; [physical normalization](build-system-design.md) owns the desugaring.
 Their ordinary meta evaluation creates Objects, names, Places, and
 semantic owners. Namespace indices are projections of those committed actions.
@@ -28,10 +28,13 @@ A structural name denotes a named type. An existing name with no callspace
 contributions still shadows an outer same-spelled binding. Freshness is
 authoritative occupancy, independent of view filtering.
 
-Structural P let name::path requires a fresh name and returns mut type ref.
-Following = expression is ordinary assignment. An unqualified let in a
-normalized named-contribution position synthesizes V_tau; ordinary lexical
-let remains binding. See [name semantics](../symbol-world/names-and-overload-groups.md).
+Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged. See [name semantics](../symbol-world/names-and-overload-groups.md).
 
 Sibling contributions join according to ordinary type-contribution/effect algebra.
 Conflicting writes are not repaired by file order. File ownership, one-type-slot

@@ -437,8 +437,9 @@ resulting closure into a type under construction is a separate operation.
 NameBinding is a binding identity/Place relation, not a returned Object or
 a borrowable wrapper. A complete type retains its own Core and callspace;
 neither a result Place nor a defining binding supplies an additional callspace.
-Fresh structural binding installs the complete empty T_0 before returning its
-mut type ref; subsequent assignment remains ordinary assignment.
+Structural creation yields a typed NameExpr with an uninitialized Place.
+Explicit ref borrows that Place without reading; ordinary write initializes it.
+No type resident or mutable reference is produced by name creation itself.
 
 No outer lexical name or structural input child is installed by merely acquiring
 the invocation result name. The direct type is rooted at M; an external type stored as a Val2 payload

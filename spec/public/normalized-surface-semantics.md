@@ -1254,13 +1254,14 @@ surface and must not be assumed:
 
 ## Canonical construction and consumer alignment
 
-Structural P let name::path is an expression that requires a fresh name and
-returns mut type ref. Its declaration policy P differs from the mut policy of
-that construction reference. P let name::path = e means ordinary assignment
-to the reference produced by the left expression, with no separate initialization
-protocol. Unqualified same-name let has synthesis sugar only in a normalized
-named-contribution position: it constructs a named type and its V_tau, not an
-OverloadGroup. Ordinary lexical binding is unchanged.
+Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged.
+These canonical consumers remain pending; current parser carriers do not define them.
 
 The current parser/Norm carrier has not yet connected this expression family;
 its ordinary let form still requires an initializer. This section specifies

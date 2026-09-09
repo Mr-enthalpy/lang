@@ -105,7 +105,9 @@ identity proves neither global lifetime nor global mutability.
 The group's candidates expose ordinary complete compile function objects. A
 receiver invokes the explicit group value with its own construction reference:
 
-    (mut let r::some_path) |> state::instance
+    mut let r_ref = (mut let r::some_path:type) ref;
+    r_ref = initial_complete_target_type;
+    r_ref |> state::instance
 
 Ordinary call projection selects one candidate. First self is the selected
 callable object; r is a later argument. The body may inspect the target, branch,

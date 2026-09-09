@@ -548,10 +548,13 @@ code generation
 
 ## Canonical expression handoff pending source support
 
-P let name::path creates a fresh named type and returns mut type ref. A following
-= expression is ordinary assignment, not a second declaration initializer.
-Unqualified let at named-contribution positions synthesizes V_tau; lexical let
-remains ordinary binding. Current Raw/Norm let carriers do not yet implement
+Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged. Current Raw/Norm let carriers do not yet implement
 this expression family. Consumer work must preserve spans/recovery and add
 golden coverage, without semantic target lookup in parsing or normalization.
 

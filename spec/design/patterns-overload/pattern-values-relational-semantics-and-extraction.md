@@ -214,8 +214,8 @@ identity applied *implicitly* by the language as a call-site filter before
 C0 (see `overload-resolution-design.md` §2.3 / §5.3). The producer side is
 closed symmetrically: every candidate of a `struct`-generated
 `GeneratedFieldFamily(T, name, A)` is registered under
-`StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)` — keyed by the
-stable core anchor, not the whole `Q` snapshot, with a stated stability
+`StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)` — keyed by the
+complete type's stable implementation home, not Core equality, with a stated stability
 theorem (`StructuralFamilyStability`) — so this filter preserves exactly
 those generated cells
 (`symbol-world/type-associated-function-objects-and-access-trees.md`,
@@ -292,13 +292,14 @@ or extraction-visible. A private structural child can remain a direct child
 while being omitted from a default extraction view. Pattern structure is
 therefore neither namespace shape nor the set of currently callable helpers.
 
-Ordinary navigated creation, including:
+For value:ValueType, ordinary navigated creation and initialization, including:
 
 ```lang
-let f::(s |> (type ref)) = value;
+mut let f_ref = (let f::(s |> (type ref)):ValueType) ref;
+f_ref = value;
 ```
 
-may create a `Val2` member or associated name binding. It cannot add a
+create a typed structural name and then initialize its ordinary `Val2` resident. It cannot add a
 `DirectPatternChild`, `ConstructEdge`, `ExtractEdge`, or `FieldView`. Structural
 registration requires the privilege held by `struct` or `extend`; `inject`
 reaches the same privilege only by invoking `extend` on the value it reads.
@@ -992,12 +993,12 @@ WellFormedTau(tau)
   iff tau = <Q, V_τ>
   and Q is a well-formed pure Object
   and V_τ is a well-formed TypeMember set
-      (each F in V_τ satisfies TypeMember_Q(F))
+      (each F in V_τ satisfies TypeMember_tau(F))
   and AllBoundRefsBoundAndRestricted(bind alpha.⟨Norm(Q), Norm_V^alpha(V_τ)⟩)
       (every BoundRef reachable during Norm_type^alpha(Q, V_τ) is bound
        by alpha and belongs to an authorized static edge kind;
        BoundRef(alpha) notin Children_owned)
-  and PatternClosureConsistent(Q, V_τ)
+  and PatternClosureConsistent(tau)
       -- structural, history-free; depends only on the current closure value
          (canonical definition: type-values-places-and-borrow-views.md §2.2)
 
@@ -1011,7 +1012,7 @@ tau = bind alpha. <Q, V_τ[alpha]>
 
 `V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
 direct TypeMember members placed into `tau` when it was produced
-(`TypeMember_Q` handoff invariants below), not a global function of
+(`TypeMember_tau` handoff invariants below), not a global function of
 the bare core `Q` and not a post-hoc partition of a shared name binding space.
 Members created under the same `Q` later never retroactively enter
 an existing snapshot, and a copied or extracted `tau` keeps its captured `V_τ`.
@@ -1030,26 +1031,31 @@ used in transport and in positions the language has independently frozen to
 whole-snapshot semantics. Ordinary Pattern and namespace observation also uses
 `Core(tau) = Q`.
 
-The handoff invariants are:
+The handoff invariants distinguish Core's Pattern anchor from the complete
+bound type's implementation home. Equal Core alone cannot merge type homes.
+Val2 residency, callability registration and Pattern-role registration remain
+independent; both registered closure roles require the same complete-type home:
+
 
 ```text
 CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)      -- canonical §2.1
-TypeMemberScope(Q) = MemberScope(CoreAnchor(Q))
+TypeMemberScope(tau) = /tau(tau)  -- complete bound type implementation home
 
-HomeEligible_Q(F)                                -- TypeMember_Q(F)
+HomeEligible_tau(F)                                -- classifier home only
   iff Anonymous(F)
-  and TypeOf(F) in Q
+  and Home(TypeOf(F)) = TypeMemberScope(tau)
 
 TypeMember_τ(F)
   iff F ∈ ClassifierDomain(V_τ)
-  and HomeEligible_{Core(τ)}(F)
+  and HomeEligible_τ(F)
+  and Resident_tau(F)
   and F is registered for this snapshot's type callability
 
 CreateClassifier_Gamma(
   F,
-  TypeOf(F) in Q
+  Home(TypeOf(F)) = TypeMemberScope(tau)
 )
-  => CurrentAuthority_Γ(Q)
+  => CurrentAuthority_Γ(tau)
 
 V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partition
 
@@ -1059,12 +1065,12 @@ BoundRef(alpha) notin Children_owned
 
 `V_τ` is fixed at formation and never grows: classifiers created later under
 the same scope may enter, when registered, only the new snapshot `V_τ'` (extend preserves
-`CoreAnchor`, so `TypeMemberScope` is stable), never an older `V_τ` — no
+the complete bound implementation owner, so its home is stable), never an older `V_τ` — no
 retroactive membership.
 
 Direct canonical home is fixed at classifier creation. Selecting that home is
 itself privileged: only a process holding current construction authority for
-`Q` may create a classifier directly in `TypeMemberScope(Q)`. Ordinary
+the complete type tau may create a classifier directly in TypeMemberScope(tau). Ordinary
 callable creation, navigated `let`, copying, writing, rebinding, or namespace
 installation cannot forge the home at formation and cannot establish
 membership afterward. Descendant ownership is also insufficient.

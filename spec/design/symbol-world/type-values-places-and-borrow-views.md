@@ -472,15 +472,16 @@ Writable/OpenHere premises and type-valued X/Y:
 
 ```lang
 let t = (() t) |> struct;
-let f::(t |> (type ref)) = X;
+mut let f_ref = (let f::(t |> (type ref)):type) ref;
+f_ref = X;
 let A = t |> compile_fn;
-let g::(t |> (type ref)) = Y;
+mut let g_ref = (let g::(t |> (type ref)):type) ref;
+g_ref = Y;
 let B = t |> compile_fn;
 ```
 
-Each navigated let first installs its complete empty T_0 and then performs
-ordinary assignment of X or Y. Only successful commits produce the following
-two observations of t as different complete type snapshots:
+Each sequence creates a typed Place, explicitly borrows it, and initializes
+it with X or Y. Only successful writes produce these two complete snapshots:
 
 ```text
 tau_1 = <Q_1, V_τ>
@@ -543,8 +544,8 @@ NoNormalForm_kappa(x)
 Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cyclic
 owned Val2 graph with an actual back-edge to its own ancestor all have **no
 normal form** at the stage where they are materialized. A source spelling such
-as `let loop::(t |> (type ref)) = t;` alone does not prove such a cycle: it
-performs fresh formation followed by ordinary snapshot assignment, whose actual
+as creating a typed loop name, explicitly borrowing it and initializing with t
+alone does not prove such a cycle: it performs ordinary snapshot initialization, whose actual
 owned edges must be checked. A finished shared acyclic subtree remains valid DAG
 reuse. `Self_τ` is one restricted static back-reference instance, not the one
 exceptional cycle, and not a general recursive-data constructor.
@@ -623,13 +624,14 @@ CallSpace(tau) = V_τ
 WellFormedTau(tau)
   iff tau = <Q, V_τ>
   and Q is a well-formed pure Object
-  and PatternClosureConsistent(Q, V_τ)
+  and PatternClosureConsistent(tau)
 
-PatternClosureConsistent(Q, V_τ) iff
-  WellFormedCore(Q)
+PatternClosureConsistent(tau) iff
+  Q = Core(tau) and V_τ = CallSpace(tau)
+  and WellFormedCore(Q)
   and ∀F ∈ ClassifierDomain(V_τ):
       F is registered for this type's own callability
-      and F is a complete internally well-formed callable and TypeOf(F) in Q
+      and F is a complete internally well-formed callable and Home(TypeOf(F)) = TypeMemberScope(tau)
       and its () entry obeys Type(callee) = Type(first self)
   and AllBoundRefsBoundAndRestricted(bind α.⟨Norm(Q), Norm_V^α(V_τ)⟩)
       (every BoundRef reachable during Norm_type^α(Q, V_τ) is bound by α
@@ -715,8 +717,8 @@ complete immutable callspace. Other entries do not supplement that snapshot.
 
 Ordinary Val2, V_tau membership, and Pattern-role registration are three
 separate facts. V_tau is the immutable snapshot of Val2 registered for the
-type's own callability, with the required classifier under tau (the canonical
-`TypeOf(F) in Q` / TypeMemberScope notation). Ordinary Val2 can have any type
+type's own callability, with the required classifier in /tau(tau) (the canonical
+`Home(TypeOf(F)) = TypeMemberScope(tau)` notation). Ordinary Val2 can have any type
 and need not satisfy that anchoring. Classifier eligibility alone does not
 register a member for callability.
 
@@ -774,7 +776,7 @@ any formation history.
 
 `V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
 direct TypeMember members placed into `tau` when it was produced
-(`TypeMember_Q`, symbol-first §2.1), not a later partition of a shared name binding
+(`TypeMember_tau`, symbol-first §2.1), not a later partition of a shared name binding
 space and not a global function of the bare core `Q`. `V_τ` is part of the
 closure value itself — snapshot capture is intrinsic to `τ`, not a history
 judgment — so `WellFormedTau` / `TypeValueRole` are not global functions of
@@ -920,7 +922,7 @@ A carrier's stored snapshot is replaced only by ordinary slot replacement
 (§7.1) — a fresh `tau' = <Q', V_τ>` sharing `V_τ`, with no structural incidence
 added. `WellFormedTau(<Q', V_τ>)` is then judged independently and may fail;
 slot replacement is **not** a well-formedness-preservation theorem. A retained member keeps its own complete identity and owner. New closure
-contributions must satisfy TypeOf(v) in Q, either directly or through a
+contributions must satisfy Home(TypeOf(v)) = TypeMemberScope(tau), either directly or through a
 ReinstantiationWitness that constructs a new anchored instance. The original
 value is not reparented; captures and internal identity edges follow
 [closure replication](closure-anchored-replication.md).
@@ -1184,7 +1186,8 @@ These are not interchangeable. Canonical creation beneath a pure type slot
 selects the explicit higher-level ref of that slot:
 
 ```lang
-let f::(t |> (type ref)) = ...;
+mut let f_ref = (let f::(t |> (type ref)):type) ref;
+f_ref = ...;
 ```
 
 A structural name S already reads its complete named type. Its type-level
@@ -1281,20 +1284,20 @@ type value read through `T` after `let T: type = uint8`; comparing the strings
 The same rule applies to an externally owned pattern value:
 
 ```lang
-let t1::(t |> (type ref)) = bool;
+mut let t1_ref = (let t1::(t |> (type ref)):type) ref;
+t1_ref = bool;
 ```
 
 first resolves the existing parent t and forms its authorized type reference.
-FreshNamedType commits the destination's Some(T_0) and returns mut type ref;
-ordinary assignment then reads bool's complete type and, when its checks pass,
-replaces that resident. The assigned value retains its Pattern navigation and
-owner. Formation failure never performs the replacement; assignment failure
-leaves T_0 under the ordinary enclosing transaction rules. This is not the
-ordinary lexical let rule.
+Typed name creation yields NameExpr and an uninitialized Place. Explicit ref
+uses its declared type without reading; ordinary write initializes it with
+bool's complete type. The initialized value retains its own Pattern navigation
+and owner. Failed initialization leaves the Place uninitialized, subject to the
+ordinary enclosing transaction. While it remains uninitialized, Close rejects it.
 
 Literal syntax is the explicit exception only to source-path resolution. It
 still evaluates to a value; an ordinary lexical let then uses lexical binding,
-while a structural let's suffix uses ordinary assignment. In the schematic
+while a structural name is initialized by a separate explicit-ref write. In the schematic
 future spelling `let a = 'a';`, the left `a` is a binding name while the right
 `'a'` denotes a character literal; matching textual content does not make them
 the same object. The frozen lexer does not yet accept that character spelling
@@ -1374,13 +1377,13 @@ and value facts. See the construction owner, section 4.4.
 Consequently, associated-member creation through `T`:
 
 ```text
-let f::(T |> (type ref)) = ...
+mut let f_ref = (let f::(T |> (type ref)):type) ref;
+f_ref = ...;
 ```
 
-executes FreshNamedType under the authorized reference to place(T), commits
-Some(T_0) at f, and then performs the selected ordinary assignment of the RHS.
-It does not perform a parent +=, write to place(uint8), or bypass the copied
-value's existing OpenHere rules. Fresh carrier writability alone is insufficient.
+creates a typed uninitialized Place under the authorized parent. Explicit ref
+and ordinary write then initialize it. It does not perform a parent +=, write
+to place(uint8), or bypass the copied value's existing OpenHere rules. Fresh carrier writability alone is insufficient.
 
 Member creation is a place operation. Structural extension is different: it is
 the pure value transformation `extend`, while `inject` is the explicit
@@ -2365,7 +2368,8 @@ accepted:
 
 ```lang
 let T = (() t) |> struct;
-let f::(T |> (type ref)) = ...;
+mut let f_ref = (let f::(T |> (type ref)):type) ref;
+f_ref = ...;
 ```
 
 No binding or borrow view can amplify the place authority it observes:
@@ -2398,36 +2402,38 @@ supply a prospective target reached from mut type ref with existing Writable,
 OpenHere and construction authority. Named and ordinal selectors retain their
 own topology; T*N and T*omega indexing cannot grow a Sequence through let.
 
-### 7.1 Creation returns a reference; assignment writes through it
+### 7.1 Typed NameExpr, explicit borrowing and first write
 
-    P let name::path : mut type ref
-    DeclaredPolicy(name) = P
-    Policy(result construction reference) = mut
-    P let name::path = e  ==  (P let name::path) = e
+    P let name::path:t -> NameExpr(n)
+    PlaceType(BindingPlace(n)) = t
+    ResidentState(BindingPlace(n)) = Uninitialized
+    P let name::path == P let name::path:type
 
-The let expression requires freshness and installs the complete empty T_0 from
-FreshNamedType before returning its construction reference. Its existing
-resident is Some(T_0), with the resolved empty Core, empty V_tau, and ordinary
-anchor/live-window formation facts. It records P. Bare let uses the ordinary let policy
-rules. Assignment then uses the ordinary RHS, type, reference and write checks.
-No separate initialization protocol or rollback rule is introduced. Any
-enclosing transaction applies under its existing semantics.
+Creation does not install a resident or return a ref. In value context NameExpr
+reads only an initialized resident. Explicit ref borrows the existing typed
+Place without first reading; declared policy, access and lifetime still apply.
 
-Unqualified let name = expression synthesizes the named type's V_tau
-only in a normalized named-contribution position with a structural target.
-Ordinary lexical let does not aggregate by spelling. Group update cannot create
-a previously absent name without the structural name-creation action.
+    CreateName -> explicit Borrow -> ordinary Write
+    Uninitialized -- Write(v:t) --> Initialized(v)
+    Initialized(old) -- Write(v:t) --> Initialized(v)
 
-Creation and assignment do not make a lookup member a real Pattern child.
-Structural extension is pure; injection is Read -> Extend -> Write and checks
-OpenHere on the read pattern value independently of target Writable. Physical
-files do not contribute authority.
+The first write has no old resident to clean up. Replacement retains its ordinary
+same-Type and lifecycle checks. Failed Pre leaves the target state unchanged.
+Uninitialized is non-Object Place state, never a None value or fresh-name value.
+The structural let-with-assignment compound is not canonical; any future sugar
+must expand into these steps. Ordinary lexical let remains unchanged.
 
-See [name semantics](names-and-overload-groups.md) for occupancy and positional
-sugar, and [associated compile state](associated-compile-state.md) for the derived name t |> A.
-Its invocation input retains the existing construction/window subject through
-the general name-dependency identity rule. Saved references keep that result
-Place and dependency; write Pre rechecks its source, not a later input resident.
+Close requires every externally resolvable structural name to be initialized;
+open HasName facts may precede dom(Val2), but closed ordinary structural members
+agree with their initialized Val2 domain. See [name semantics](names-and-overload-groups.md)
+for the formation and closure rules and the first named-contribution trace.
+First contribution forms its complete type by one-shot formation and initializes
+once; only later contributions read an existing type for extend/inject.
+
+Creation/initialization registers neither callability nor Pattern roles.
+Inject still reads an existing resident, extends it and writes the result;
+it cannot initialize an unreadable target. Physical files grant no authority.
+A's instance/member references preserve their original targets and dependencies.
 
 ## 8. Type values in overload and pattern matching
 

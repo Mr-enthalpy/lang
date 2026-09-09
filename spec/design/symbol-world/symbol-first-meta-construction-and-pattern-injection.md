@@ -8,15 +8,16 @@ window rules. Source wiring is tracked in the roadmap.
 
 [Names and OverloadGroups](names-and-overload-groups.md) owns name occupancy,
 ordinary group algebra, member projection, and structural let expressions.
-A name resolves once to a binding denoting its named complete type. Consumer
+A name resolves once to a binding; its declared Place type determines borrowing,
+and an initialized resident determines ordinary value observation. Consumer
 projection never reopens lookup. Complete pattern values are self-contained
 immutable tau values; a group contributes no additional type callspace.
 
 Ordinary lexical let binds a value at fresh destination bindings and Places.
 At a named-contribution position, unqualified let synthesizes the named type's
-V_tau through ordinary type contribution. Explicit P let name::path creates a fresh name and
-returns a mutable construction type reference. Following = e is ordinary
-assignment to that reference. No special initialization transaction is implied.
+V_tau through ordinary type contribution. Explicit P let name::path:t creates
+NameExpr for a fresh typed, uninitialized Place. Explicit ref borrows that Place;
+ordinary write initializes it. Creation installs no type value and returns no ref.
 
 compile computes ordinary values with the root-conservation rule below.
 Ordinary meta establishes a stable MetaInstance root and constructs an ordinary
@@ -45,7 +46,7 @@ and [safety admission](../lifetime/unsafe-semantic-admission.md) govern its obse
 
 ### 2.1 Named types and ordinary candidate groups
 
-A structural name created by FreshNamedType denotes a complete named type T.
+An initialized structural name declared :type denotes a complete named type T.
 Same-name contributions at a named-contribution position form its V_tau; they do not build an OverloadGroup at that name.
 An ordinary OverloadGroup aggregates type candidates through singleton eta(T)
 and its bucket relation. Empty groups and candidates without callable members
@@ -61,8 +62,8 @@ is intrinsic and immutable; copying, transporting, or adding another group
 entry does not amend it. Ordinary type equality/keying observes Core, while
 explicit whole-snapshot observations retain the bound closure.
 
-TypeMember_Q(F) requires registration for the type's own callability and
-TypeOf(F) in Q for the complete closure in that snapshot. Ordinary Val2 may
+TypeMember_tau(F) requires registration for the type's own callability and
+Home(TypeOf(F)) = TypeMemberScope(T) for the complete closure in that snapshot. Ordinary Val2 may
 hold arbitrary types without either callability or Pattern-role registration.
 The two registrations are independent; classifier eligibility alone adds neither. Construction actions must satisfy existing
 authority and OpenHere; membership is not inferred from file provenance,
@@ -111,7 +112,7 @@ closure or constructed through ordinary anonymous structure.
 
 An eligible contribution preserves the original function object's owner,
 captures and type snapshot. Anchored replication, when needed, constructs a
-new instance satisfying TypeOf(F) in the target core; it does not reparent the
+new instance satisfying Home(TypeOf(F)) = TypeMemberScope(T); it does not reparent the
 original. The destination does not gain ownership of
 external dependencies merely by storing the function object. Owned promotion
 and escape traversal continue to distinguish owned children, bound references,
@@ -385,10 +386,11 @@ No declaration form forwards name binding/place lookup (§2.6); shared observati
 another object is expressed only by a borrow view.
 
 The lexical rule applies to ordinary values, including complete type values.
-A nested-path let is instead the structural expression followed by assignment:
+A structural name is created, explicitly borrowed, and initialized:
 
 ```lang
-let t1::t = bool;
+mut let t1_ref = (let t1::t:type) ref;
+t1_ref = bool;
 ```
 
 Here and in subsequent abbreviated examples, t denotes an already obtained
@@ -396,17 +398,17 @@ authorized mut type ref; a type-valued binding must instead be written
 `t |> (type ref)`. Every intermediate parent already exists.
 
 ```text
-r_t1 := FreshNamedType(t, t1, ordinary declared policy)
-  -> commit Contents(Target(r_t1)) = Some(T_0)
-  -> return r_t1 : mut type ref
+n_t1 := CreateName(t, t1, ordinary declared policy, type)
+  -> NameExpr(n_t1), PlaceType(q_t1) = type, ResidentState(q_t1) = Uninitialized
+r_t1 := explicit Borrow(q_t1)
 r_t1 = bool
   -> ordinary assignment of the complete resident read through Resolve(bool)
-  -> validate the selected assignment's Pre and commit the replacement
+  -> validate ordinary write Pre and commit first initialization
 ```
 
-There is no direct Absent-to-RHS binding transition. If formation fails, no
-destination is created; if assignment fails, the formed T_0 remains subject
-only to the existing enclosing transaction. Successful assignment does not
+Name creation and initialization are separate. If creation fails, no
+destination is created; if first write fails, the Place stays uninitialized,
+subject only to the existing enclosing transaction. Successful assignment does not
 reroot the RHS or equate the destination NameBindingId with its Pattern owner.
 
 Likewise:
@@ -487,7 +489,7 @@ fresh-name value, and no operator-name exception creates write authority.
 An ordinary lexical `let f = expr` binds its RHS normally. Only an explicit
 named-contribution construction position synthesizes the named type's
 `V_tau`. Its closure contributions satisfy the target membership judgment
-`TypeOf(v') in Core(T)`; [anchored replication](closure-anchored-replication.md)
+`Home(TypeOf(v')) = TypeMemberScope(T)`; [anchored replication](closure-anchored-replication.md)
 may produce a new eligible instance without modifying the RHS.
 
 An explicit OverloadGroup aggregates type candidates. Some candidates expose
@@ -1071,9 +1073,9 @@ is forbidden). When the receiver is already `T ref`, assignment writes
 define setter candidates through `.=`; setter participation does not make
 anything a P structural field.
 
-Structural let first supplies its ordinary type-reference assignment problem;
-it does not itself select a type-contribution operation. The universal family
-below defines same-Type replacement. It neither proves nor forbids an additional
+Structural let yields a typed NameExpr. Explicit ref supplies a Place reference
+for ordinary initialization or replacement; creation selects no contribution operation. The universal family
+below writes a typed Place: first initialization or same-Type replacement. It neither proves nor forbids an additional
 ordinary assignment candidate whose realization uses the existing type/replication
 algebra. Such a candidate needs its own ordinary declaration, selection and
 legality derivation; no let-specific initialization privilege supplies one.
@@ -1145,8 +1147,11 @@ layers:
      Writable(lhs)
      Compatible( P(lhs), v )
      ValidCapability(lhs)
-     Contents(lhs) = Some(old)
-     -- a type share is not a write target; bare = never creates None
+     PlaceType(Target(lhs)) = t and v : t
+     ResidentState(Target(lhs)) is Uninitialized or Initialized(old)
+     -- Uninitialized -> Initialized(v): first write, no old resident cleanup
+     -- Initialized(old) -> Initialized(v): ordinary replacement/same-Type checks
+     -- these are Place states, not None/Some language values
 
 3. result-object invariants
      WellFounded_kappa(v)
@@ -1208,9 +1213,8 @@ does **not** exempt the result from layers 2–4 — the write result must still
 satisfy every ordinary type, capability, lifetime, normal-form, and boundary
 invariant.
 
-This distinction does not cancel `let f::(t |> (type ref)) = expr` at an
-explicit construction target: the structural let expression creates f and
-returns its mutable reference before ordinary assignment, and does not change the `r;` terminal semantics.
+An explicit typed name creation followed by borrowing and initialization
+remains distinct from the return event; it does not change the `r;` terminal semantics.
 
 A successful construction returns the semantic entity declared by the selected
 callable's result class. Ordinary meta supplies its result name before value observation; an outer
@@ -1231,8 +1235,8 @@ returned or updated through ordinary value/reference operations. Name
 occupancy is outside that algebra; epsilon_OG is an existing empty value.
 
 There is no distinguished optional type component. Group algebra aggregates
-type candidates under the specified bucket relation; its current coarse key is
-Core(T). Bucket combination is distinct from arbitrary value interning and
+type candidates under the specified bucket relation; its key observes the
+whole complete bound type T, including V_T, never just Core(T). Bucket combination is distinct from arbitrary value interning and
 does not mutate a candidate type. Candidates may have heterogeneous structure
 and may contribute nothing to the current call projection.
 
@@ -1564,18 +1568,19 @@ canonical ownership boundary; closures called within it are internal structure.
 Therefore:
 
 ```lang
-let t1::t = (...) |> struct;
+mut let t1_ref = (let t1::t:type) ref;
+t1_ref = (...) |> struct;
 ```
 
 does not reroot the right-hand pattern into the internal pattern scope of
 `t1::t`. Its effect is:
 
 ```text
-FreshNamedType(t, t1, P)
-  -> commit Some(T_0) and return the destination mut type ref
-ordinary assignment through that reference
+CreateName(t, t1, P, type)
+  -> NameExpr and typed Uninitialized Place
+explicit ref, then ordinary first write
   -> evaluate the struct RHS under its own ordinary owner rules
-  -> validate assignment and replace the resident with the complete result
+  -> validate write and initialize with the complete result
   -> preserve the result's resolved owner
 ```
 
@@ -1666,7 +1671,7 @@ f : (object: T share) -> A share
 
 `ref` and `share` are not generated navigation subspaces. The same-name family
 is stored once as ordinary callable/member Objects. Its direct anonymous
-classifier home is `TypeMemberScope(Q_struct)`, and the generator explicitly
+classifier home is `TypeMemberScope(tau_struct)`, and the generator explicitly
 registers its type-callability contribution in `V_τ`; home eligibility alone
 does not register a callable. `const let` / `let` / `mut let` policy and the formal object type determine its
 candidates.
@@ -1707,9 +1712,9 @@ coincident formal shape only, never coincident family identity (canonical
 field-side rules: `type-associated-function-objects-and-access-trees.md`).
 Field write, accessor, and policy cells are all registered under the stable
 call-site family identity `StructuralFamily(T, name, A)` =
-`StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)` that P-internal
-extraction filters on; the identity key is the stable core anchor
-(§2.1), not the whole `Q` snapshot. Family registration and the stability
+`StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)` that P-internal
+extraction filters on; the identity key retains the complete bound type's
+implementation home, not a quotient by Core equality. Family registration and the stability
 theorem are normative in
 `type-associated-function-objects-and-access-trees.md`. Assignment still uses
 the general existing-place write rule and never creates the field. Written
@@ -1756,7 +1761,7 @@ Stage(Index(s, i)) = meet { Stage(d) | d in Dependencies(Index(s, i)) }
 Sequence-specific stage rule exists.
 
 The generated partner candidates are ordinary members whose classifiers
-satisfy `TypeMember_Q_struct`; they enter `V_τ` during the `struct` formation
+satisfy `TypeMember_tau_struct`; they enter `V_τ` during the `struct` formation
 event, and `Core(tau_struct) = Q_struct` exposes them as its associated members.
 Any navigable associated
 view is a projection of those same members, not a second owned copy in
@@ -1861,9 +1866,9 @@ normalized leaf value. It erases only how the child's navigation was obtained
 (inherited versus explicit) and how the child was formed (internal versus
 extended) — never the Pattern entity identity of `inner`.
 
-Structural `let inner::(s |> (type ref)) = bool::;` first forms the fresh
-complete T_0 at inner, then ordinary assignment replaces it with the complete
-type read through bool::. The associated Val2 resident is that complete type,
+Creating `let inner::(s |> (type ref)):type`, explicitly borrowing its Place,
+and writing bool:: initializes it with that complete type. The Val2 resident
+exists only after successful initialization and is that complete type,
 not a binding identity or a raw initializer entry. It does not
 register `inner` in `t`'s Pattern structure. Pattern-member registration is a
 privilege of `struct` inline construction and the `extend` primitive (directly
@@ -1913,7 +1918,8 @@ This determines Core preparation by projection of the existing formation:
 
     Q_1 = Core(S_a(B ; Delta_v))
     v_a = the member instance formed in that result
-    TypeOf(v_a) in Q_1
+    Home(TypeOf(v_a)) = TypeMemberScope(T_1)
+    Resident_T1(v_a), with role registration checked independently
 
 The local contribution step is TypeAdd after that Core preparation, together
 with the ordinary generated-member closure. Extend returns the whole completed
@@ -1922,7 +1928,7 @@ performed inject of Delta_v already includes v_a exactly once. Appending another
 TypeAdd afterward would be a second contribution, not this derivation.
 
 The comparison is a formation law, not replay of source code or equality of
-execution traces. Incremental formation retains its actual FreshNamedType,
+execution traces. Incremental formation retains its actual typed name creation/initialization,
 OpenHere, Writable, lifetime and Pre/commit/Post events. A hypothetical
 one-shot expression grants no missing incremental authority. If the ordinary
 one-shot member formation is undefined (including missing witness or illegal
@@ -2040,9 +2046,9 @@ bound elsewhere, while a closed-window value read through a writable
 `type ref` is rejected. There are deliberately no `type ref` or `type share`
 overloads for `extend`.
 
-A navigated `let child::target = result;` performs FreshNamedType through the
-existing authorized parent reference, then ordinary assignment. It creates an
-associated named-type resident, not a registered Pattern-child edge. It cannot
+A typed structural name creation through an authorized parent reference yields
+NameExpr. Explicit borrowing followed by a write initializes its ordinary
+resident; creation and initialization do not register a Pattern-child edge. It cannot
 substitute for extend's structural registration or inject's write-back.
 
 #### 8.2.3 `inject` is the read--extend--write wrapper
@@ -2325,8 +2331,10 @@ idempotent. Distinct source bindings may remain distinct extraction entry paths
 while contributing only one canonical map entry:
 
 ```lang
-let a::t = bool;
-let b::t = bool;
+mut let a_ref = (let a::t:type) ref;
+a_ref = bool;
+mut let b_ref = (let b::t:type) ref;
+b_ref = bool;
 ```
 
 ```text
@@ -2338,10 +2346,9 @@ Read(Place(resolve(b::t))) = bool::
 }
 ```
 
-Each statement above first commits its own T_0 and then assigns the read
-complete bool type through ordinary assignment. The following equalities and
-normalization describe the state after both assignments succeed, not an
-Absent-to-RHS transition. Both paths may then be used as source navigation paths. After binding
+Each sequence creates a typed uninitialized name, explicitly borrows its Place,
+and writes the complete bool type. The following equalities and normalization
+describe the state after both initializations succeed. Both paths may then be used as source navigation paths. After binding
 resolution and value read, both look up the single `bool::` entry. The layer
 is neither a multiset nor a relation keyed by the carrier name binding's source name.
 It is keyed by canonical complete Pattern navigation.
@@ -2358,7 +2365,8 @@ The `t1::t` key in a normalized map is still canonical Pattern navigation; its
 spelling does not turn it into a name binding reference. Conversely:
 
 ```lang
-let t3::t = bool;
+mut let t3_ref = (let t3::t:type) ref;
+t3_ref = bool;
 ```
 
 after fresh formation and successful ordinary assignment establishes:
@@ -2617,25 +2625,27 @@ the complete type read through that binding. NameBinding is not another Object.
 With t an existing authorized mut type ref:
 
 ```lang
-let t1::t = bool;
+mut let t1_ref = (let t1::t:type) ref;
+t1_ref = bool;
 ```
 
 has exactly this structural trace:
 
 ```text
-FreshNamedType(t, t1, P)
-  -> NameBindingId(t1::t), resident Some(T_0), mut type ref r_t1
-ordinary assignment r_t1 = bool
+CreateName(t, t1, P, type)
+  -> NameExpr(t1::t), typed Uninitialized Place q_t1
+explicit Borrow(q_t1) -> r_t1
+ordinary first write r_t1 = bool
   -> Resolve(bool) = one terminal NameBinding b_bool
   -> Read(BindingPlace(b_bool)) = complete type T_bool
-  -> selected assignment Pre, replacement commit, Post
+  -> selected write Pre, initialization commit, Post
 ```
 
-Formation and replacement have their own resident-generation, window and
+Creation and initialization have their own Place/resident-generation and
 failure events. They are not a direct general lexical binding operation.
 After successful assignment, the stored complete type has Core navigation
-bool::; its owner/navigation is not changed to t1::t. The empty T_0's creation
-anchor does not reparent T_bool or reopen its construction window.
+bool::; its owner/navigation is not changed to t1::t. Creating a typed Place
+does not reparent T_bool or reopen its construction window.
 
 Subsequent normalization/extraction below observes this successfully committed
 state; it does not erase or redefine the preceding construction trace.
@@ -2743,7 +2753,8 @@ For example:
 
 ```lang
 let bool = ((if | else) bool) |> struct;
-let t3::t = bool;
+mut let t3_ref = (let t3::t:type) ref;
+t3_ref = bool;
 ```
 
 and:
@@ -2808,9 +2819,9 @@ The same-spelled structural field's complete generated accessor family is
 ordinary group material; StructuralDefault extraction selects the registered
 real-field family before ordinary overload enumeration.
 
-Explicit P let name::path requires freshness, creates the name, records P, and
-returns a mutable construction type reference. Following assignment is the
-ordinary reference operation. Unqualified let name = expression has implicit
+Explicit P let name::path:t requires freshness and creates a typed NameExpr
+with an uninitialized Place. Explicit ref borrows that Place without reading;
+ordinary write initializes it. Omitted :t defaults to :type without a resident. Unqualified let name = expression has implicit
 named-type synthesis sugar only in a named-contribution position; lexical let
 retains ordinary binding semantics.
 
@@ -3339,9 +3350,9 @@ normal form.
 
 Invocation produces its declared semantic value under the ordinary root,
 normalization and escape rules. An outer lexical binding or named contribution
-carries that value. Structural let first creates its fresh name and returns a
-mutable construction reference; subsequent assignment has ordinary write
-semantics. inject writes through an existing reference.
+carries that value. Structural let creates a typed NameExpr with an uninitialized
+Place. Explicit ref borrows the Place, and ordinary write installs its first
+resident; subsequent writes have ordinary replacement semantics. inject writes through an existing reference.
 
 Namespace indices reflect committed semantic actions. A storage transaction
 may implement an enclosing semantic transaction but cannot invent special

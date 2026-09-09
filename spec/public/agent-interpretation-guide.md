@@ -210,15 +210,19 @@ states which consumers are connected.
 
 ## 8. Semantic construction handoff
 
-[P let name::path](../design/symbol-world/names-and-overload-groups.md) is a
-structural expression returning a mut type ref; its assignment form uses
-ordinary assignment. This canonical expression consumer is pending, and
-existing BindingSlot syntax carriers must not redefine it. Ordinary lexical
-let stays ordinary. Named contribution positions synthesize a type's V_tau,
-whereas explicit OverloadGroup algebra aggregates type candidates.
+Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged.
+See [name semantics](../design/symbol-world/names-and-overload-groups.md).
+These expression consumers are pending; existing BindingSlot carriers do not
+redefine them. Named contributions synthesize types; OverloadGroups aggregate them.
 
-A type contribution requires Writable, OpenHere and final TypeOf(v) membership
-in its Core. [Witnessed anchored replication](../design/symbol-world/closure-anchored-replication.md)
+A type contribution requires Writable, OpenHere and final classifier home
+Home(TypeOf(v)) = TypeMemberScope(T). [Witnessed anchored replication](../design/symbol-world/closure-anchored-replication.md)
 creates a new closure identity and preserves capture obligations; it never
 reparents the RHS. Formal pair inheritance and unwritten plain mode are
 different policy dimensions. Implicit return targets the outermost enclosing

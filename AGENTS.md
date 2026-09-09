@@ -82,11 +82,13 @@ alternate relation or identity.
 - `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
 - NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
 - Same-name construction synthesizes a type's V_tau; ordinary lexical let does
-  not aggregate. Structural P let name::path installs complete empty T_0 before
-  returning mut type ref; NameBinding relates identity to a Place, not a wrapper Object.
-- Type +=/-= changes only V_tau under Writable, OpenHere and final closure-type
-  membership. Witnessed anchored replication never reparents an existing value.
-- OverloadGroup aggregation has its own bucket algebra and requires Writable.
+  not aggregate. Structural P let name::path:t creates typed NameExpr and an
+  Uninitialized Place, not a resident or ref; omitted :t means :type.
+  Explicit ref then ordinary write initializes; Close requires resolvable members
+  initialized. NameBinding is not a wrapper Object.
+- Type +=/-= changes only V_tau under Writable, OpenHere and complete-type /tau classifier home and independent residency/registration. Witnessed anchored replication never reparents an existing value.
+- OverloadGroup aggregation buckets whole bound type snapshots, never Core classes,
+  has its own entry algebra and requires Writable.
   Ordinary meta constructs an instance name/type tau_M outside input structure;
   arbitrary payloads occupy ordinary Val2. V_tau callability registration and
   Pattern-role registration are independent; neither follows from Val2 presence.
@@ -113,7 +115,7 @@ alternate relation or identity.
 - SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
   semantic axioms, never missing Pre facts or private optimizer assumptions.
 - Child-directory names normalize to ordinary fresh-name actions followed by
-  body evaluation under the returned type ref; root and filenames add no segment.
+  explicit ref and one-shot directory type initialization before body evaluation; root and filenames add no segment.
 - Host capabilities return ordinary Objects. Physical normalization and build
   facilities introduce no semantic facts; E alone owns meaning.
 - E is idempotent and saturates ready actions without rewriting continuations.

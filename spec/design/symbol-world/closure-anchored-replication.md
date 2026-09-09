@@ -5,7 +5,7 @@ Status: canonical closure capability; source consumer pending.
 ## 1. Membership and immutable identity
 
 For T = bind alpha.<Core(T), V_T[alpha]>, a contributed closure v must satisfy
-TypeOf(v) in Core(T). A previously formed closure has its own anonymous type and
+Home(TypeOf(v)) = TypeMemberScope(T). A previously formed closure has its own anonymous type and
 owner. Writing into another target cannot change that existing owner, rewrite
 its identity, move it under another parent, or reinterpret it as an alias.
 
@@ -28,7 +28,7 @@ For a genuinely different anchor:
     Logic(c') equivalent_to Logic(c)
     c' != c
     TypeOf(c') != TypeOf(c)
-    TypeOf(c') in Core(T_target)
+    Home(TypeOf(c')) = TypeMemberScope(T_target)
 
 The original c remains unchanged. Replication constructs a new anchored instance
 of the same logic; it is neither mutation nor move nor aliasing.
@@ -47,86 +47,53 @@ references are renamed together. Changing one rendered path is insufficient.
 External references are not reparented. All affected type, policy, capture and
 lifecycle checks remain ordinary E projection checks.
 
-## 4. Type contribution
+## 4. Type contribution targets the complete implementation hierarchy
 
-    Q = Core(T)
-    AnchorFor(v, Q) = v
-      if TypeOf(v) in Q
-    AnchorFor(v, Q) = InstantiateUnder(v, Q)
-      if the first case does not apply and ReplicableUnder(v, Q)
+    TypeMemberScope(T) = /tau(T)
+    AnchorFor(v, T) = v
+      if Home(TypeOf(v)) = TypeMemberScope(T)
+    AnchorFor(v, T) = InstantiateUnder(v, TypeMemberScope(T))
+      otherwise, if ReplicableUnder(v, TypeMemberScope(T))
     otherwise: failure
 
-Type addition requires the actual target's Writable, OpenHere(T), and final
-TypeOf(AnchorFor(v, Core(T))) in Core(T). Its write changes only V_T. Replication does
-not authorize structural changes to the target Core; those remain extend/inject
-operations. A failed contribution does not retry a sealed overload candidate.
+Core equality does not select or equate implementation homes. The target is the
+complete bound type, with its existing anonymous implementation identity.
+Authorized snapshot updates preserve that home through the existing bound-owner
+relation, not by reconstructing it from Core or hashing changing callspace data.
 
-A closure RHS can therefore be evaluated at its ordinary lexical anchor before
-a later contribution creates the target-anchored instance. It need not know its
-future LHS or receive semantic information backward through normalization.
-The same capability is usable by ordinary type contribution, inject, and the
-construction logic read from an ordinary Val2 group member of t |> A.
-Assignment retains its own ordinary
-semantics; this relation is not an initialization-only exception.
+TypeAdd requires Writable, OpenHere(T), and a well-formed resulting snapshot.
+For v' = AnchorFor(v,T), check separately:
 
-### 4.1 Source forms and the operation that triggers replication
+    Home(TypeOf(v')) = TypeMemberScope(T)
+    Resident_T(v')                    -- ordinary Val2 residency
+    RegisteredCallability_T'(v')      -- requested contribution in the new snapshot
 
-The following structural form does not by itself imply this capability:
+Pattern-role registration is independent. A witnessed new anchored instance
+still needs ordinary formation/residency; the witness cannot insert a hidden
+value store or change Core through +=. TypeAdd changes only V_T. See
+[name/type algebra](names-and-overload-groups.md#41-typeadd-also-preserves-the-complete-results-well-formedness).
 
-```lang
-let f::path = (self) => {};
-```
-
-Its expansion is ordinary `(let f::path) = closure`: FreshNamedType commits
-T_0 and returns mut type ref, then presents the ordinary assignment problem.
-Structural let adds no hidden TypeAdd/AnchorFor sugar. Whether an ordinary
-assignment candidate can realize this operation using existing type construction
-or anchored replication belongs to the [assignment-operation owner](symbol-first-meta-construction-and-pattern-injection.md),
-section 4.5.1. This closure capability neither supplies such a candidate nor
-forbids it. The universal same-Type replacement family alone does not establish
-its existence; only a legal, uniquely selected ordinary candidate can do so.
-If none applies, ordinary assignment fails under the existing transaction rules.
-If one applies, its realization must satisfy all ordinary membership, OpenHere,
-Writable, lifetime and no-reopen obligations.
-
-An explicit contribution has the following schematic source/semantic derivation:
+### 4.1 Creation, initialization, and later contribution
 
 ```lang
-let c = (self) => {};
-let t_f = let f::path;
-// Prepare the required target Core through ordinary extend/inject.
-t_f += c;
+mut let f_ref = (let f::path : type) ref;
+f_ref = complete_first_type;
 ```
 
-The creation line denotes binding the result of the structural expression;
-its parser consumer remains pending. The preparation line is an explicit
-premise, not work silently performed by +=. With T = Read(Target(t_f)):
+The first expression creates a typed NameExpr then explicitly borrows its
+uninitialized Place. The next ordinary write initializes it. The RHS must
+satisfy the selected write operation and PlaceType; creation does not supply
+a closure conversion or anchored replication. Structural let-with-assignment
+is not a canonical compound expression.
 
-```text
-Writable(t_f) and OpenHere(T)
-Core(T) already admits the required target-anchored closure type
-c_f = AnchorFor(c, Core(T))
-TypeOf(c_f) in Core(T)
--------------------------------------------------------------
-ordinary TypeAdd commit:
-  bind alpha.<Core(T), V_T[alpha]>
-    -> bind alpha.<Core(T), (V_T + c_f)[alpha]>
-```
-
-If the original type already belongs, c_f = c; otherwise the witness constructs
-a new anchored instance, then final membership and the ordinary write Pre are
-checked. With a fresh empty Core and no preparation satisfying membership,
-the addition fails; it never expands Core by itself.
-
-An unqualified `let f = c` in a declared named-contribution position uses that
-position's formation/Core-construction/contribution rules and reaches the same
-TypeAdd relation as a formation step in Extend's complete result, by the
-[name owner's one-shot equivalence derivation](names-and-overload-groups.md).
-An inject of that full member material already installs the contribution once;
-it is not followed by an additional implicit +=. An ordinary lexical let or structural
-let's assignment suffix does not acquire named-contribution sugar. This does
-not preclude the separately selected ordinary assignment realization from using
-replication; candidate selection belongs to the assignment owner.
+In a named-contribution position, the first closure contribution instead uses
+the existing one-shot formation to produce that complete first type, then
+initializes once. After an initialized T exists, further member material uses
+extend/inject and its complete-type anchoring relation. An explicit += can
+change callability registration when the resident, home and result consistency
+premises hold. Neither the first formation nor an inject is followed by an
+additional implicit +=. Ordinary assignment candidates remain owned by the
+assignment-operation owner; their existence is not inferred from a witness.
 
 ## 5. Meta and non-meta anchors
 

@@ -19,7 +19,7 @@ at an outer same-name name binding.
 
 ## 2. Callable projection
 
-A FreshNamedType name denotes its complete named type T. This case does not
+An initialized structural name declared :type denotes its complete named type T. This case does not
 restrict ordinary Val2 residents to types. Explicit group values use the
 singleton type embedding:
 

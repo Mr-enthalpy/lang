@@ -90,7 +90,7 @@ name-binding identity, Place identity, or a defining-binding reference.
 ### Name binding and named type
 
 Name existence is a structural fact independent of visibility or value content.
-FreshNamedType names denote complete named types; same-name construction contributes
+Initialized structural names declared :type denote complete named types; same-name construction contributes
 to their V_tau. Ordinary lexical binding is not implicit overload synthesis.
 Name binding identity, pattern-value equality and Place identity are distinct.
 
@@ -99,7 +99,8 @@ Name binding identity, pattern-value equality and Place identity are distinct.
 An ordinary outer candidate aggregation algebra, with eta(T) = {T}. It can be
 empty. Group += aggregates type/group candidates by its bucket relation without
 mutating the types; type += instead changes V_tau under OpenHere and final
-TypeOf(v) membership in Core(T). The current coarse bucket key is Core(T).
+Home(TypeOf(v)) = TypeMemberScope(T), with independent residency and registration.
+Buckets compare complete bound type snapshots, never Core equality.
 
 ### SemanticOwner
 
@@ -299,10 +300,13 @@ extension interfaces until resolved.
 
 ### Structural let expression
 
-P let name::path requires freshness, installs the complete empty named type
-T_0 as Some(T_0), then returns mut type ref. Empty resident and absent name are
-different states; anchor/window formation follows ordinary construction. Declared policy P is independent of construction-reference mut policy.
-A following = expression is ordinary assignment, with no private rollback rule.
+Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged.
 
 ### Associated compile state A
 

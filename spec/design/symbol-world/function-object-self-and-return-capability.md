@@ -84,7 +84,7 @@ with the operated object in a later explicit argument position. Forwarding that
 argument does not create an implementation-injection exception.
 
 CallableOwner remains the owner of the implementation body's local identities.
-Closure contribution obeys TypeOf(v) in the destination core. Where supported,
+Closure contribution obeys Home(TypeOf(v)) = TypeMemberScope(T). Where supported,
 anchored replication creates a new matching instance and leaves the old owner
 unchanged; see [closure replication](closure-anchored-replication.md).
 

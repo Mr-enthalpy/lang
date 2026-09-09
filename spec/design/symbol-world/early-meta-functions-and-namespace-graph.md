@@ -117,7 +117,7 @@ ActiveConstructionWindow
 ```
 
 `extend` is a pure transform. `inject` is read+extend+write on an existing
-writable Place. Type contribution requires final TypeOf(v) membership in the target core.
+writable Place. Type contribution requires final classifier home Home(TypeOf(v)) = TypeMemberScope(T).
 Eligible closure expressions can be instantiated under another anchor while
 preserving the original value. Derived forwarders capture the base complete
 snapshot. A is an ordinary meta instance type with an ordinary Val2 group

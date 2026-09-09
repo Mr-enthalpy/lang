@@ -88,12 +88,11 @@ function layer; consumer alignment is roadmap work.
 ## Place, construction, and write algebra
 
 - Which ordinary assignment candidates, if any, realize closure-to-type-ref
-  assignment using existing construction/replication operations? Structural let
-  supplies only the ordinary assignment problem, neither hidden sugar nor a
-  prohibition. Every candidate must preserve the existing assignment boundaries.
+  assignment using existing construction/replication operations? Typed structural
+  name creation and explicit borrowing do not themselves select such a candidate. Every candidate must preserve the existing assignment boundaries.
 
 - What carrier/entry encoding realizes the closed group candidate domain and
-  aggregation laws (with Bucket(T) = Core(T)) without erasing entries through an
+  aggregation laws (with BucketEq(T1,T2) iff Norm_type(T1)=Norm_type(T2)) without erasing entries through an
   unrelated cache/value-identity quotient? This is not an open semantic codomain.
 - What IR represents the already defined construction-window termination,
   meta completion, plain closure and externally visible name-set closure events?
@@ -104,9 +103,11 @@ function layer; consumer alignment is roadmap work.
 - What concrete witness/template and alpha-renaming representation implements
   anchored replication while preserving captures and internal identity edges?
 
-Structural let commits the complete empty T_0 with its ordinary anchor/window
-facts before returning mut type ref; following
-assignment is ordinary assignment. Named-contribution positions synthesize
+Typed structural NameExpr creation establishes an uninitialized Place;
+explicit borrowing and ordinary first write initialize it. Close requires
+initialized resolvable members. First named contribution uses one-shot formation
+and initialization; later contributions extend an existing resident.
+Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
 requires OpenHere and final anchored closure membership, changing only V_tau;
 Core changes use extend/inject. Ordinary group mutation needs its own Writable,

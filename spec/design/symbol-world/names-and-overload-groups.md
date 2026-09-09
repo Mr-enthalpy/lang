@@ -25,7 +25,7 @@ whole-snapshot positions observe the whole bound closure.
 
     HasName_Sigma(r, n)
     Fresh_Sigma(r, n) iff not HasName_Sigma(r, n)
-    FreshNamedType construction name -> named type
+    typed structural name -> typed Place, initially uninitialized
     ordinary Val2 member name -> resident of any ordinary type
     ordinary name -> binding with an ordinary resident
 
@@ -45,7 +45,7 @@ of meta invocation. NameBinding gains no Object wrapper or extra value algebra.
 [Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
 owns their identity, opening-source propagation, completion and cache laws.
 
-A FreshNamedType name denotes a named type T. At named-contribution positions,
+An initialized structural name declared :type denotes a named type T. At named-contribution positions,
 same-name contributions synthesize that type and its V_T, not an OverloadGroup at the name position. Occupancy is
 a structural fact, separate from the content of the existing value. A hidden,
 unexported or policy-filtered name still exists. Freshness uses authoritative
@@ -84,10 +84,17 @@ For an ordinary mutable group reference g:
     g += G'  uses G + G'
 
 Group combination aggregates by its bucket relation. The current coarse bucket
-key is Core(T): Bucket(T) = Core(T). The semantic candidate domain and current
-aggregation laws are closed; carrier/entry encoding remains open. Any future
-bucket-law refinement is a semantic change, not an encoding choice.
-Applicable bucket combination may combine equal-bucket candidates.
+key is the complete type T, observed as its whole bound closure:
+
+    Bucket(T) = WholeTypeObservation(T)
+    BucketEq(T1, T2) iff Norm_type(T1) = Norm_type(T2)
+
+Ordinary type equality still observes Core, but does not define this quotient.
+Equal Core with different V_T snapshots gives different buckets and may expose
+different candidates. WholeTypeObservation is the existing binder-aware whole
+snapshot observation, not a new Object axis. Carrier/entry encoding remains
+open; equal-bucket combination still preserves distinct contribution entries
+unless the specified aggregation operation combines them.
 This does not mutate either input type. Group update therefore requires
 Writable(g), not OpenHere of its contained types. Distinct contribution entries
 must not be erased by an unrelated value-interning or cache equality shortcut;
@@ -98,8 +105,8 @@ For a mutable type reference t:
     TypeAdd(T, v):
       bind alpha.<Core(T), V_T[alpha]>
         -> bind alpha.<Core(T), (V_T + v')[alpha]>
-      v' = AnchorFor(v, Core(T))
-      Writable(t) and OpenHere(T) and TypeOf(v') in Core(T)
+      v' = AnchorFor(v, T)
+      Writable(t) and OpenHere(T) and Home(TypeOf(v')) = TypeMemberScope(T)
 
 Only eligible closure-like member values enter this operation. It changes
 V_T, never Core(T). Type subtraction likewise changes only V_T and
@@ -107,7 +114,9 @@ requires Writable and OpenHere. Structural Core changes remain the work of
 extend/inject. Complete values remain immutable snapshots: a successful write
 replaces the value at the target, without changing an earlier copy.
 
-AnchorFor returns v when TypeOf(v) already belongs to Core(T); otherwise it requires the
+TypeMemberScope(T) denotes /tau(T), the complete bound type's implementation
+hierarchy, not MemberScope(Core(T)). AnchorFor returns v when its classifier
+already has that home; otherwise it requires the
 closure's ReinstantiationWitness and creates a new anchored instance. It never
 mutates v's owner. See [closure replication](closure-anchored-replication.md).
 
@@ -124,10 +133,10 @@ snapshot. V_T registers values from the same ordinary Val2; it is not a second
 value store. Core contains that Val2 observation. Consequently, keeping Core
 fixed also keeps those residents fixed.
 
-For an existing resident f with an eligible classifier, adding its callability
+For an existing resident f with Home(TypeOf(f)) = TypeMemberScope(T), adding its callability
 registration can produce a well-formed new V_T without changing Core. It does
 not automatically add Pattern registration. Conversely, if v' is not a resident
-of that Val2, classifier membership alone does not make TypeAdd legal: the
+of that Val2, classifier home alone does not make TypeAdd legal: the
 proposed result would violate the joint Val2/registration consistency law.
 
     Core(T') = Core(T)
@@ -136,155 +145,149 @@ proposed result would violate the joint Val2/registration consistency law.
     ------------------------------------------------
     no new Val2 resident is created by this TypeAdd
 
-Required new resident or anchored-instance formation belongs to extend/inject
-under the existing one-shot formation law (§6.1). That full formation already
+Required new resident or anchored-instance formation belongs to one-shot
+formation for a first resident, or extend/inject for an existing one (§6.1). That full formation already
 includes its contribution once; no extra += is implied. Likewise, -= removes
 the selected callability contribution only: it does not delete the ordinary
 resident or its independent Pattern registration. These are consequences of
 the existing update domain and result invariant, not new operation primitives.
 
-## 5. Fresh-name creation returns a construction reference
+## 5. Structural let creates a typed NameExpr
 
-Only the final selector may be fresh. Every intermediate parent in a multi-
-segment path must already exist and be navigable under its ordinary view and
-borrow permissions. Resolving a missing intermediate parent fails before
-FreshNamedType; structural let does not create directories of missing parents
-or infer their policy. Explicit successive formation can create such a chain.
+    P let name::path : t  evaluates to NameExpr(n)
+    P let name::path      == P let name::path : type
+    NameExpr != ValueExpr
 
-Given a structural target reached from mut type ref under the existing
-Writable, OpenHere, lifetime and construction authority premises:
+The parent is reached through existing authorized structural navigation from a
+mut type ref. Intermediate parents must exist and be initialized/navigable;
+only the final selector is fresh. Creation checks the existing Writable,
+OpenHere, access, lifetime and construction-authority premises of the parent.
 
-    P let name::path : mut type ref
-    DeclaredPolicy(name) = P
-    Policy(result construction reference) = mut
+    Fresh(parent, n)
+    t is the declared Place type
+    ----------------------------------------------
+    CreateName(parent, n, P, t):
+      establish HasName(parent, n)
+      BindingPlace(n) = q_n
+      DeclaredPolicy(n) = P
+      PlaceType(q_n) = t
+      ResidentState(q_n) = Uninitialized
+      yield NameExpr(n)
 
-The expression requires freshness and commits a complete initial resident before
-returning its mutable construction reference. The formation rule is:
+Uninitialized is evaluator/Place state, not an Object, None value, or
+fresh-name value. Creation installs no readable resident and creates no
+callability or Pattern registration. The declared t may be any ordinary type.
+Omitting :t chooses PlaceType = type, not an already constructed type value.
 
-    Fresh_Sigma(r, n)
-    Writable(r) and OpenHere(Read(r)) and ConstructionAuthority(r, kappa)
-    q_n = ProjectionSlot(Target(r), n)
-    Q_0 = EmptyPattern at the ordinary resolved child navigation n::path
-    T_0 = bind alpha.<Q_0, empty V_T0[alpha]>
-    ---------------------------------------------------------------
-    FreshNamedType(r, n, P):
-      install NameBinding(n, q_n), DeclaredPolicy(n) = P
-      begin the resident generation at q_n with Contents(q_n) = Some(T_0)
-      return Ref(q_n) with mut construction policy
+    NameExpr(n) in value context -> Read(q_n)
+      succeeds only when ResidentState(q_n) = Initialized(v)
+    NameExpr(n) ref -> Borrow(q_n)
+      uses PlaceType(q_n), without first reading a resident
 
-Q_0 has no contributed structural children or members; it is the ordinary empty
-Pattern at the resolved navigation, not a missing value or a universal Pattern.
-Its anchor and GenerationRegime are established by the existing construction
-coordinate rules: the meta root with transparent in-place layers in meta,
-and the owning ordinary coordinate with opaque in-place layers otherwise.
-Its construction window begins live under that authority. These are ordinary
-formation/window facts, not a new Object axis or a new window for a copied type.
-The complete T_0 inherits those facts through Q_0 under the existing Core bridge.
+Borrowing remains explicit and checks the selected operation, declared policy,
+actual Place, access and lifetime. Creation does not itself return a reference
+or grant a mut view independent of those checks.
 
-    absent name: no binding/resident at the prospective child
-    existing empty named type: binding exists and Contents(q_n) = Some(T_0)
+    absent name: no binding/Place
+    existing uninitialized name: binding/typed Place, no readable value
+    existing initialized name: binding/typed Place with resident v
 
-Standalone structural let therefore returns a reference to an existing complete
-empty named type. Fresh-name commit is the binding action that establishes this
-resident; bare assignment does not implement an absence-to-presence transition.
+The ordinary sequence is:
 
-DeclaredPolicy is independent of
-ConstructionReferencePolicy, so a const name can still be initialized through
-the construction reference. Omitted P uses the same policy-demand/default
-rules as ordinary bare let.
+```lang
+mut let name_ref = (P let name::path : t) ref;
+name_ref = expr;
+```
 
-    P let name::path = e == (P let name::path) = e
+    CreateName -> BorrowPlace -> Initialize
 
-The left expression commits name creation with Some(T_0); the subsequent
-ordinary assignment now has its required existing old resident. Its ordinary
-same-Type, Writable, lifetime and other selected-operation checks still apply. No let-specific initialization, write or rollback protocol exists.
-An enclosing meta transaction applies only under its existing rules. The
-returned reference addresses an existing name, not a manipulable fresh value.
+Initialization belongs to ordinary Place/write algebra. With an admitted
+write operation, Writable and the ordinary type/access/lifetime premises:
 
-Value navigation observes existing values. Borrowed structural navigation
-retains an actual Place and can identify the prospective creation target.
+    PlaceType(q) = t, v : t
+    Uninitialized -- Write(v) --> Initialized(v)
+
+Later writes replace the existing resident under the ordinary replacement and
+same-Type rules. Failed write Pre does not initialize the target; an enclosing
+transaction governs rollback, if any. There is no old resident to drop or move
+during first initialization. Value reads of an uninitialized target fail.
+
+Structural `P let name::path = e` is not a canonical compound expression,
+and there is no equality with `(P let name::path) = e`. Any future convenience
+must be pure sugar for the explicit creation/borrow/write sequence and cannot
+own a separate initialization rule.
+
+    NamedType(n) iff DeclaredType(n) = type
+                    and Resident(n) = T : type
+
+Named type is an initialized case of a general structural name, not a distinct
+name-creation primitive.
+
+For example, let r be an authorized construction reference and v:uint8:
+
+```lang
+mut let byte_ref = (mut let byte::r:uint8) ref;
+byte_ref = v;
+```
+
+Between these statements, byte exists and a second creation fails freshness.
+A value read of byte::r fails, but its explicit ref can already have type
+uint8 ref because the Place's declared type is known. A write with an
+incompatible type fails Pre and leaves it uninitialized. After the shown write,
+byte::r reads v; later writes use replacement checks. This ordinary Val2
+payload contributes neither a callability nor a Pattern registration.
+
+### 5.1 Closure requires initialized structural names
+
+    Close(T) requires
+      every n in ExternallyResolvableNames(T) has an initialized resident
+
+    while open: HasName(T,n) may hold while n is absent from dom(Val2(T))
+    after successful Close:
+      ExternallyResolvableNames(T) = dom(Val2(T))
+      for ordinary initialized structural members in the same name view
+
+HasName is structural occupancy; Val2 records actual ordinary values.
+An uninitialized name cannot be silently discarded, filled with a dummy type,
+or hidden by a consumer filter to pass Close. Visibility rules remain ordinary;
+the equality compares the corresponding structural member domain, not intrinsic
+ordinal selectors or a visibility-filtered singleton count. The closed-type
+only_val2 helper therefore still counts actual initialized Val2 entries.
 
 ## 6. Positional synthesis and lexical let
 
-Only a normalized named-contribution position with a structural construction
-target gives unqualified let name = expression the implicit same-name synthesis
-meaning. On the first contribution the construction uses FreshNamedType from section 5;
-on subsequent contributions it uses the existing named type. These contributions
-form its V_T under the type-update and anchoring rules. Any required Core
-construction uses extend/inject before the final membership check; type += cannot
-silently populate an empty Core. Compatible first-contribution formation at the
-same structural target is joined under the named-contribution algebra, not by
-merging independently allocated names or treating explicit fresh lets as updates. They do not first package each RHS into a separate type
-and aggregate an OverloadGroup at the name.
+Only a named-contribution construction position gives unqualified
+`let name = expression` same-name synthesis meaning. Ordinary lexical let
+retains its ordinary binding/transfer rule. Typed structural name creation
+retains freshness and does not itself register any member role.
 
-Ordinary lexical let remains ordinary Pattern-directed binding; two same-spelled
-lexical declarations do not automatically become overload contributions.
-Explicit structural P let name::path retains its fresh-name precondition.
+### 6.1 First contribution forms the first resident directly
 
-Assignment remains ordinary assignment even where a selected ordinary type
-construction operation consumes a closure. This does not define a universal
-equation between = and +=. In particular, structural `let f::path = closure`
-does not itself request TypeAdd or AnchorFor; it presents the ordinary assignment
-problem. The assignment-operation owner determines whether a legal selected
-candidate realizes it using type construction/replication. Neither structural
-let nor the witness supplies an implicit conversion or forbids such a candidate. The explicit
-contribution derivation is in [closure replication](closure-anchored-replication.md).
-Anchored replication is a closure capability usable
-by type contribution and inject, not a special RHS rule for let.
-
-### 6.1 First contribution from one-shot formation equivalence
-
-The member role is fixed by the named-contribution position. Once e evaluates
-to v, its construction material is that same ordinary member material with
-the RHS value v supplied; there is no search for an arbitrary larger Pattern
-that merely happens to admit TypeOf(v).
-
-Let a be the target's already determined anchor, B_0 its empty initial
-construction, and Delta_v that member material. The
-[construction owner, section 7.6.1](symbol-first-meta-construction-and-pattern-injection.md)
-fixes the complete result by equivalence to struct with the member present
-from the beginning:
+Once e evaluates to v, Delta_v is the same ordinary member material accepted
+at that construction position, with the same policy, captures and dependencies.
+The target navigation is fixed by the typed name construction. The existing
+one-shot struct formation relation determines the complete first resident:
 
     v = Eval(e)
-    t_f = FreshNamedType(r, f, P)            -- commits Some(T_0)
-    (t_f, Delta_v) |> inject                 -- the sole actual Extend/write
+    n_f = CreateName(parent, f, P, type)
+    q_f = BindingPlace(n_f), ResidentState(q_f) = Uninitialized
+    T_1 = OneShotFormation(Delta_v)
+    r_f = explicit Borrow(q_f)
+    Initialize(q_f, T_1)               -- one ordinary write
 
-    Postcondition on that successful operation:
-      T_1 = Read(Target(t_f))
-      T_1 equivalent_to S_a(B_0 ; Delta_v)
-      Q_1 = Core(T_1)
-      v_a = the anchored member formed inside that invocation
-      TypeOf(v_a) in Q_1
+OneShotFormation is the existing struct/member formation at the resolved
+construction coordinate, not a new primitive. It forms Core, ordinary Val2,
+the complete /tau(T_1) implementation hierarchy and the explicitly requested
+registrations together. No empty type resident or initial inject is required.
+A failure before successful write leaves no readable first resident, subject
+to ordinary transaction rules; Close cannot publish that uninitialized name.
 
-T_1 denotes the result formed inside the single actual inject invocation.
-There is no earlier computation of T_1 to transfer or reuse, no second witness
-execution, and no additional formation token. S_a is a specification-side
-comparison, not an executed second construction. It denotes the existing
-one-shot formation relation with
-the same role, policy, dependencies, captures and anchor. It is not a new
-callable, a second semantic evaluator, or a replay of the source RHS.
-
-This yields the factorization:
-
-    FreshNamedType
-      -> Core preparation from the corresponding struct formation
-      -> TypeAdd of its anchored member plus ordinary generated-member closure
-      -> inject's ordinary completed-snapshot write
-
-The middle steps describe the formation of Extend's complete result. They do
-not add an extra post-inject +=. Core is changed by the existing extend
-relation; TypeAdd still changes only V_T. The contribution appears exactly
-once, and later same-name contributions reuse the same law against the actual
-base snapshot. They do not re-evaluate earlier RHS expressions or reconstruct
-their captures.
-
-The result is determined up to the existing canonical normalization and bound
-identity-renaming laws whenever that ordinary member formation is defined.
-Missing witness, invalid captures, construction conflicts or failed write
-premises remain ordinary failures. Equivalence cannot supply authority or
-silently broaden the member's construction role. Thus the earlier gap was a
-missing reference/formation bridge, not a new v-to-arbitrary-Core inference
-mechanism.
+For subsequent contributions, T_i = Read(q_f) exists. The existing
+[one-shot/extend equivalence](symbol-first-meta-construction-and-pattern-injection.md)
+determines Extend(T_i, Delta_v); inject is read + extend + write. TypeAdd is
+its callability contribution step with the complete-type home, residency and
+well-formedness checks of §4. Full formation contributes each entry once;
+there is no extra post-inject += and no replay of earlier RHS captures.
 
 ## 7. Identity and closure
 
@@ -293,6 +296,7 @@ index remain distinct. Copying a pattern value preserves its anchor and does
 not open a new construction window. OpenHere uses the existing Core, anchor,
 WindowLive and evaluation-stack judgments independently of carrier writability.
 
-A complete construction result is externally navigable only after its visible
-name set is closed. Anonymous implementation layers remain under /tau.
+Publishing a closed construction result requires its externally resolvable
+structural names to be initialized. Open construction navigation continues to
+obey its ordinary access and authority rules. Anonymous implementation layers remain under /tau.
 Neither physical files nor group aggregation grant target construction authority.

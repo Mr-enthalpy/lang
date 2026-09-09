@@ -14,8 +14,8 @@ and join under ordinary effect algebra. A sequential implementation must preserv
 that result and cannot make a sibling's new writes available by file ordering.
 main.lang anchors the explicitly selected root; it has no sibling priority.
 
-Child-directory basenames normalize to ordinary fresh named-type construction
-followed by evaluation of that directory under the returned mut type ref.
+Child-directory basenames normalize to ordinary typed name creation, explicit
+borrow, and one-shot directory type initialization before body evaluation.
 The selected root and implementation filenames add no segment. This generated
 action obeys the same creation and authority rules as written source; block
 nesting does not install owners itself. [Physical normalization](../build-package/build-system-design.md)
@@ -40,13 +40,16 @@ authorized nor automatically prohibited by that fact.
 
 ## 3. Names and group composition
 
-    P let name::path : mut type ref
-    P let name::path = e == (P let name::path) = e
+    P let name::path:t -> NameExpr(n)
+    CreateName -> explicit Borrow -> Initialize
 
-Structural let requires freshness, creates the fresh named type, records its
-declaration policy and returns its mutable construction reference. Following
-assignment is ordinary assignment. Declared const policy does not remove the
-mutable reference needed during construction.
+Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged.
 
 At a normalized named-contribution position, unqualified let name = e
 contributes to the same named type's V_tau. Different sibling files
@@ -89,7 +92,7 @@ the instance. Source composition replaces none of these laws.
 ## 6. Transactions and implementation
 
 A semantic transaction may stage ordinary state effects and commit them
-atomically. File boundaries and structural let assignment do not invent a
+atomically. File boundaries and explicit name-creation/initialization sequences do not invent a
 special rollback protocol. Indices and NamespaceDelta carriers realize the
 enclosing semantic actions and expose no independent authority.
 

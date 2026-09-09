@@ -45,9 +45,13 @@ These laws are owned by
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
 bodies can perform authorized ordinary binding/inject actions through actual
-mutable type references. Structural `P let name::path` commits fresh-name
-creation and returns such a reference; its `= e` suffix is ordinary assignment,
-without an additional initialization transaction or rollback rule.
+mutable type references. Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged.
 
 Same-name construction synthesizes a named type's V_tau under membership and
 OpenHere checks. An explicit OverloadGroup aggregates type candidates instead.

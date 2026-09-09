@@ -172,7 +172,8 @@ wiring is not an open semantic question.
 
 The target is Compile(Level) through main.lang anchoring, neutral physical
 normalization and ordinary meta evaluation. Child directories desugar to ordinary
-fresh-name construction and body evaluation under the returned type reference;
+typed name creation, explicit borrow, ordinary directory type initialization,
+and body evaluation under that reference;
 root levels and filenames add no segment. Each file is serial; sibling
 blocks use common-snapshot overlays and unordered join. Actual effects produce
 the dependency projection. Host calls return ordinary Objects and target facts.
@@ -190,21 +191,22 @@ engineering facilities after their inputs and effects obey the source model.
   labels are implementation encodings, not the target ontology. In particular,
   DeclaredResultClass::ClusterSymbol must be removed or re-encoded as private
   implementation material; it is not an ordinary semantic result class.
-- Connect structural P let name::path as a fresh-name expression returning mut
-  type ref after installing the complete empty T_0 with ordinary anchor/window
-  facts. The current parser requires a let initializer. Following = must use
-  ordinary assignment, without an initialization-only transaction.
+- Connect typed structural NameExpr creation, explicit Place borrowing without
+  reading, and ordinary first-write initialization. Uninitialized is non-Object
+  state. Do not install a dummy type or return a ref from creation. Require
+  initialized externally resolvable names at Close. Current let parser carriers
+  are pending alignment; no canonical structural let=compound is implied.
 - Connect type +=/-= to V_tau updates with Writable, OpenHere and final closure
   membership; connect ordinary group updates to their distinct bucket algebra.
 - Connect witnessed anchored replication, preserving captures, internal
   alpha-renaming and the original closure identity. Do not feed the destination
-  anchor backward into parsing or RHS evaluation. Structural let = closure
-  does not itself imply TypeAdd. Any ordinary assignment realization using it
-  requires a legal selected candidate defined by the assignment owner. First named
-  contribution uses the one-shot struct/extend equivalence in construction
-  section 7.6.1: form the same member material at the target anchor and commit
-  Extend's complete result through inject. Do not add a second post-inject
-  TypeAdd or infer an arbitrary larger Core from membership alone.
+  anchor backward into parsing or RHS evaluation. Typed name creation does not contribute a closure. First named contribution
+  forms its full type through OneShotFormation and initializes the Place once;
+  subsequent contributions use extend/inject. Check /tau(T) home independently
+  of Val2 residency and either role registration. Group buckets use full bound
+  type observations, not Core or TypeValueId. Add positive/negative cases for
+  uninitialized reads, borrowing before initialization, failed write Pre, Close
+  rejection, equal-Core/different-callspace buckets and distinct type homes.
 - Extend ordinary meta invocation before connecting its A instance: preserve
   input value observations and semantic name/subject/borrow dependencies;
   construct the direct instance name/type tau_M and ordinary Val2 payload Places;

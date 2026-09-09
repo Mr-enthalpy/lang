@@ -209,7 +209,7 @@ assignment/borrow partners are ordinary members entering `V_τ` at the formation
 event; a name binding appears only at a subsequent binding/install of the formed
 value. Same-name associated `Val2` named types expose those same members and own
 no second copy. Members registered for type callability and satisfying
-`TypeOf(v) in Q_struct` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
+`Home(TypeOf(v)) = TypeMemberScope(tau)` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
 type-as-callee uses `CallSpace(tau)=V_τ`; there is no defining-name binding or
 recent-carrier recovery route.
 
@@ -243,10 +243,10 @@ let () = callable_expr
 ```
 
 A named declaration here is in an explicit named-contribution position:
-it first uses FreshNamedType if the name is fresh, otherwise the existing
-named type. Eligible closure contributions enter that named type's V_tau
-under Writable, OpenHere and final anchored membership checks. Required Core
-construction uses extend/inject, not an implicit side effect of type +=.
+a fresh name is created as :type, its first complete type is formed by one-shot
+formation, and ordinary write initializes its explicitly borrowed Place. Later
+contributions use the existing resident through extend/inject/TypeAdd. Complete
+/tau home, residency and role registration are separate checks.
 
 ```text
 named selector -> structural binding / Place
@@ -263,11 +263,14 @@ is separately the current exact callee type's call-entry construction position.
 Closure syntax there supplies complete entry implementation material under its
 own rules; it does not authorize general receiver adaptation.
 
-Structural P let name::path instead commits Some(T_0), returns mut type ref,
-then performs ordinary assignment for its = suffix. Ordinary lexical let uses
-neither named-contribution sugar nor structural fresh-name formation. Final
-membership for a type contribution may use witnessed InstantiateUnder without
-feeding an LHS anchor backward into RHS parsing or normalization.
+Structural P let name::path:t creates NameExpr for a fresh typed Place with
+ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
+:type, not a resident type value. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it, and later writes replace its resident. The structural let=compound
+is not canonical. Close requires externally resolvable structural names to be
+initialized. Ordinary lexical let remains unchanged.
+Anchored replication targets the complete type's /tau layer without RHS feedback.
 
 Named callable contributions remain ordinary function objects. Their first
 written formal is their own caller/self; an object accepted by a member-like

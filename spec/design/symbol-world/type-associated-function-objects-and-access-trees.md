@@ -84,14 +84,12 @@ these are ordinary typed candidate objects in one associated name binding.
 #### Family registration: producer side of `StructuralDefault`
 
 Every candidate of the generated schema is registered in one stable
-call-site candidate family. The identity key is the stable self-observable
-anchor `CoreAnchor(Q_T)`, not the whole `Q` snapshot
-(`CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)`, canonical
-`symbol-first-meta-construction-and-pattern-injection.md` §2.1):
+call-site candidate family. The identity key retains the complete type's stable implementation home
+TypeMemberScope(tau_T), not a quotient by its Core observation:
 
 ```text
 StructuralFamily(T, name, A)
-  = StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)
+  = StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)
 
 c ∈ GeneratedFieldFamily(T, name, A)
 ---------------------------------------
@@ -102,12 +100,12 @@ where `Q_T = Core(τ_T)`. This gives the family-stability theorem:
 
 ```text
 StructuralFamilyStability:
-  CoreAnchor(Q') = CoreAnchor(Q) ∧ same registered structural field name
-  ⇒ StructuralFamily(Q', name, A) = StructuralFamily(Q, name, A)
+  TypeMemberScope(tau') = TypeMemberScope(tau) ∧ same registered structural field name
+  ⇒ StructuralFamily(tau', name, A) = StructuralFamily(tau, name, A)
 ```
 
 An `extend` that adds unrelated virtual helpers (so `Q ≠ Q'` but
-`CoreAnchor(Q') = CoreAnchor(Q)`) therefore keeps every generated structural
+the authorized update preserves the complete bound implementation owner) therefore keeps every generated structural
 candidate's identity: P-internal extraction over the new snapshot still
 filters exactly the inherited generated cells. P-internal extraction
 (`AtomicExtract_P`, canonical
@@ -179,7 +177,7 @@ distinct operations. The field family's identity is
 
 ```text
 FieldWriteFamily(T, name, A)
-  = SetterFamily(CoreAnchor(Q_T), name, StructuralDefault, A)
+  = SetterFamily(TypeMemberScope(tau_T), name, StructuralDefault, A)
     -- ⟨structural-field identity, selector, value type, setter-family kind⟩
     -- never the parameter shape alone
 ```
@@ -326,7 +324,7 @@ the candidate from the receiver Pattern and Policy.
 A derived type construction D(T), including T ref or T share, preserves
 complete snapshot identity. Its contributed closure members must satisfy:
 
-    F in V_tau => TypeOf(F) in Core(tau)
+    F in V_tau => Home(TypeOf(F)) = TypeMemberScope(tau)
 
 This is final structural membership, not permission to reparent a callable.
 An eligible closure can be instantiated under the target anchor using its
@@ -338,7 +336,7 @@ captures the base complete snapshot. No receiver coercion or independent
 implementation authority is involved.
 
     ForwardAssoc(D(T), name) in V_(D(T))
-    TypeOf(ForwardAssoc(D(T), name)) in Core(tau_(D(T)))
+    Home(TypeOf(ForwardAssoc(D(T), name))) = TypeMemberScope(tau_(D(T)))
 
 so the forwarder is a real ordinary member of the derived type, homed in the
 derived type's own level. Its behavior is an ordinary call:
@@ -411,7 +409,7 @@ ForwardBaseSnapshot(f)
 ```
 
 The forwarder `f` is a real ordinary callable homed in `V_(D(T))`
-(`TypeOf(f) in Core(τ_(D(T)))`). Its body
+(`Home(TypeOf(f)) = TypeMemberScope(τ_(D(T)))`). Its body
 performs a new ordinary invocation of `c` against `ForwardBaseSnapshot(f)`.
 The applicability equivalence lets a derived caller discover at selection
 time whether the base family has an applicable candidate — not after
@@ -500,13 +498,12 @@ The consequences that field/access-tree work must preserve:
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
   `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
   alias.
-- `let f::(t |> (type ref)) = ...` explicitly creates the prospective child under
-  `place(t)`, never `place(uint8)`, because `t` stores the complete type value.
-  Structural names use this same type-level borrow formation; NameBinding is
-  not a wrapper Object and supplies no `.type` field. By-value observation
-  never recovers a Place. Type-value
-  equality must not canonicalize extension targets, and a `type`-kind symbol may
-  own a companion namespace place distinct from the type value it stores.
+- Typed structural let creates NameExpr for a fresh uninitialized Place;
+  explicit ref and ordinary write initialize it without role registration.
+  A target reached through `t |> (type ref)` remains under `place(t)`, never
+  `place(uint8)`. NameBinding supplies no wrapper or `.type` field, and value
+  equality cannot canonicalize these distinct construction targets. By-value
+  observation does not recover either Place.
 - There is no place-forwarding declaration form. Every binding allocates its own
   place, so no second name reaches `place(uint8)`. Where shared observation is
   wanted, the value held is a borrow view (`ref` / `share`), and its
