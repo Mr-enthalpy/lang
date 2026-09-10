@@ -45,11 +45,16 @@ These laws are owned by
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
 bodies can perform authorized ordinary binding/inject actions through actual
-mutable type references. Structural P let name::path:t creates NameExpr for a fresh typed Place with
-ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
-:type, not a resident type value. Value use requires initialization; explicit
+mutable type references. Initializer-free P let name:t and P let name::path:t
+create typed NameExpr at lexical and structural destinations respectively.
+Their Place state is Uninitialized, not an Object. The initializer-free
+structural form defaults to :type; P let name = rhs is instead a complete
+lexical binding with RHS type inference. Value use requires initialization; explicit
 ref borrows the Place using its declared type without reading. Ordinary write
-initializes it, and later writes replace its resident. The structural let=compound
+initializes it using authority independent of the name's declaration policy,
+including const. Successful first commit consumes that authority; saved initial
+references do not grant replacement power. Later writes require ordinary
+replacement capability and resident compatibility. The structural let=compound
 is not canonical. Close requires externally resolvable structural names to be
 initialized. Ordinary lexical let remains unchanged.
 

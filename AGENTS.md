@@ -84,8 +84,16 @@ alternate relation or identity.
 - Same-name construction synthesizes a type's V_tau; ordinary lexical let does
   not aggregate. Structural P let name::path:t creates typed NameExpr and an
   Uninitialized Place, not a resident or ref; omitted :t means :type.
+  Initializer-free P let name:t shares typed-name formation at a lexical
+  destination. P let name=rhs is a complete lexical binding with RHS inference;
+  the initializer-free structural default does not apply to it.
   Explicit ref then ordinary write initializes; Close requires resolvable members
   initialized. NameBinding is not a wrapper Object.
+  First initialization uses Place authority independently of DeclaredPolicy,
+  including const; commit consumes it. Saved initial refs do not authorize
+  replacement, and first write never reads nonexistent resident policy.
+  TypeRole(Q) is Q-local; complete tau consistency checks both registered
+  closure roles' /tau homes separately.
 - Type +=/-= changes only V_tau under Writable, OpenHere and complete-type /tau classifier home and independent residency/registration. Witnessed anchored replication never reparents an existing value.
 - OverloadGroup aggregation buckets whole bound type snapshots, never Core classes,
   has its own entry algebra and requires Writable.

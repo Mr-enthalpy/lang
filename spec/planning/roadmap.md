@@ -196,6 +196,16 @@ engineering facilities after their inputs and effects obey the source model.
   state. Do not install a dummy type or return a ref from creation. Require
   initialized externally resolvable names at Close. Current let parser carriers
   are pending alignment; no canonical structural let=compound is implied.
+  Connect initializer-free lexical P let name:t through the same typed-name
+  rules at a lexical destination. Preserve P let name=rhs as a complete binding
+  with RHS inference, not a default-:type declaration plus assignment.
+  Connect initial borrow/write authority independently of DeclaredPolicy;
+  test const/plain/mut first initialization, missing/expired authority, failed
+  Pre without consumption, same-Place aliases and saved-ref rejection after
+  initialization. Replacement alone observes old-resident compatibility.
+  Keep TypeRole(Q) Q-local and check both registered closure homes at complete
+  tau consistency; test equal Core with distinct homes, including a Pattern
+  closure that has no V_tau registration.
 - Connect type +=/-= to V_tau updates with Writable, OpenHere and final closure
   membership; connect ordinary group updates to their distinct bucket algebra.
 - Connect witnessed anchored replication, preserving captures, internal

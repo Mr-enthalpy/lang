@@ -87,6 +87,11 @@ function layer; consumer alignment is roadmap work.
 
 ## Place, construction, and write algebra
 
+- What concrete capability carrier records the Place's pending first-write
+  authority and its consumption across aliases? Declaration-policy independence,
+  const initialization, current Pre checks and no replacement power from saved
+  initial references are closed laws, not representation choices.
+
 - Which ordinary assignment candidates, if any, realize closure-to-type-ref
   assignment using existing construction/replication operations? Typed structural
   name creation and explicit borrowing do not themselves select such a candidate. Every candidate must preserve the existing assignment boundaries.
@@ -104,7 +109,10 @@ function layer; consumer alignment is roadmap work.
   anchored replication while preserving captures and internal identity edges?
 
 Typed structural NameExpr creation establishes an uninitialized Place;
-explicit borrowing and ordinary first write initialize it. Close requires
+explicit borrowing and ordinary first write initialize it. Initialization
+authority is independent of const/plain/mut and is consumed on the successful
+first commit; later replacement has separate capability and resident
+compatibility checks. Close requires
 initialized resolvable members. First named contribution uses one-shot formation
 and initialization; later contributions extend an existing resident.
 Named-contribution positions synthesize

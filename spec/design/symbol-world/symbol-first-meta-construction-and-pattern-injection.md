@@ -14,6 +14,11 @@ projection never reopens lookup. Complete pattern values are self-contained
 immutable tau values; a group contributes no additional type callspace.
 
 Ordinary lexical let binds a value at fresh destination bindings and Places.
+P let name = rhs is one complete lexical binding with RHS type inference;
+P let name:t = rhs retains its explicit type constraint. Neither decomposes
+into a default-type name declaration followed by source assignment.
+Initializer-free P let name:t and P let name::path:t both create typed NameExpr,
+using lexical and structural creation authority respectively.
 At a named-contribution position, unqualified let synthesizes the named type's
 V_tau through ordinary type contribution. Explicit P let name::path:t creates
 NameExpr for a fresh typed, uninitialized Place. Explicit ref borrows that Place;
@@ -69,7 +74,10 @@ The two registrations are independent; classifier eligibility alone adds neither
 authority and OpenHere; membership is not inferred from file provenance,
 lexical-parent topology, or a special implementation declaration. Functions
 retain their own CallableOwner and complete anonymous implementation layer
-under /tau. A callable already belonging to Q can be used directly. Otherwise only a
+under /tau. A callable can be used directly only when
+Home(TypeOf(F)) = TypeMemberScope(T) for the complete destination T;
+residency and the requested role registration are checked separately.
+Equal Core does not identify implementation homes. Otherwise only a
 ReplicableUnder witness permits InstantiateUnder to create a new anchored
 instance; the old callable, its captures and owner remain unchanged. Internal
 identity references are renamed consistently. See
@@ -1082,7 +1090,8 @@ legality derivation; no let-specific initialization privilege supplies one.
 Whether that realization is admitted is an assignment-family question, not a
 rule owned by the closure witness.
 
-The universal `=` family for `T ref` is:
+The universal `=` family for `T ref` is (the modes describe the reference
+view, not DeclaredPolicy of its target name):
 
 ```text
 AssignmentFamily(T):
@@ -1108,7 +1117,12 @@ AssignmentFamily(T):
 ```
 
 Only the selected `default` performs the universal write judgment below. The
-three layers are thereby fully separated:
+ordinary initial-borrow realization can provide such a mut T ref view for an
+uninitialized const-declared name, backed by its separate initialization
+authority. Its capability covers only the first write, not replacement. This
+does not alter the delete cells or turn declaration policy into capability;
+see [Place/write authority](type-values-places-and-borrow-views.md#711-initialization-authority-and-the-two-write-cases).
+The three layers are thereby fully separated:
 
 ```text
 policy
@@ -1143,15 +1157,25 @@ layers:
      Evaluate(rhs) ⇓ v
      -- an extend inside rhs checks its own Open here, not at the write
 
-2. universal write applicability
-     Writable(lhs)
-     Compatible( P(lhs), v )
-     ValidCapability(lhs)
-     PlaceType(Target(lhs)) = t and v : t
-     ResidentState(Target(lhs)) is Uninitialized or Initialized(old)
-     -- Uninitialized -> Initialized(v): first write, no old resident cleanup
-     -- Initialized(old) -> Initialized(v): ordinary replacement/same-Type checks
-     -- these are Place states, not None/Some language values
+2. ordinary Write state cases, with q = Target(lhs)
+     common: PlaceType(q) = t and v : t
+
+     first initialization:
+       ResidentState(q) = Uninitialized
+       InitWriteLegal_Γ(lhs,q)
+       -- live pending initialization authority + initial borrow capability
+       -- + actual access/construction/lifetime legality establish Writable
+       -- for this first write, independently of DeclaredPolicy(name)
+       -- no old resident, no P(old), no old-resident compatibility or cleanup
+       commit: Initialized(v), consume initialization authority
+
+     replacement:
+       ResidentState(q) = Initialized(old)
+       ValidCapability(lhs, Replace(q)) and Writable_Γ(q) for replacement
+       ReplacementCompatible(old,v), ordinary access/lifetime legality
+       -- ordinary same-Type, resident compatibility and old cleanup checks
+       commit: Initialized(v)
+     -- Place states, not None/Some language values; no fallback between cases
 
 3. result-object invariants
      WellFounded_kappa(v)
@@ -1167,6 +1191,13 @@ layers:
      -- these may run at write time, normalization time, return time, or
         install time, but they all remain in force
 ```
+
+InitWriteLegal and authority consumption are defined by the Place owner §7.1.1.
+The original creation authority, not const/plain/mut, permits initial borrowing
+and writing. The state is rechecked at the actual write Pre; a saved initial
+reference cannot replace an initialized resident merely because it still has a
+mut view. Failure preserves the state and never retries a different candidate.
+Initialization is an ordinary Write case, not an initialization rule of let.
 
 Assignment RHS semantics are explicitly value semantics:
 

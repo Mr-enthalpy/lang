@@ -803,7 +803,6 @@ HasRegisteredSelfConstruction(Q)
   iff exists Pattern P of Q, exists s, exists C, exists K:
       Val2(Q)[s] = K
       and ConstructEdge_P_Q(C, Q, K)
-      and K has the required classifier under the containing tau
       -- P is the Pattern of Q, C is a structural input pattern, K is the
          ordinary callable/interface registered for that construction path
          (same registration family and parameter order as ConstructEdge_P_T
@@ -824,8 +823,7 @@ The witness `K` is an actual ordinary callable/interface member registered in
 
 3. Registered construction witness
                           Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
-                          -- with the required anchored classifier;
-                             the Val2 member and the ConstructEdge agree on the
+                          -- the Val2 member and the ConstructEdge agree on the
                              same K; HasRegisteredSelfConstruction(Q) requires
                              this joint witness, not either half alone
 ```
@@ -844,6 +842,15 @@ NamespaceOnly(Q)
   and not TypeRole(Q)
       -- equivalently: NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
 ```
+
+These are Q-local structural judgments. They have no hidden tau argument and
+do not check a complete type's classifier home. CompleteType(tau) separately
+requires PatternClosureConsistent(tau) (§15 and the type-value owner §2.2).
+That complete-closure judgment checks Home(TypeOf(K)) = TypeMemberScope(tau)
+for every Pattern-registered construction/extraction closure, independently of
+whether K is also registered for callability in V_tau. Ordinary Val2 residents
+with neither role need no such home. Registration witnesses in Q and their
+compatibility with a particular /tau(tau) home must not be conflated.
 
 Therefore:
 

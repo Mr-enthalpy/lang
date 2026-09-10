@@ -221,6 +221,33 @@ mechanisms, and the candidate schemas of `=` / field / `ref` / `share` in
 `symbol-first` §4.5.1 and `type-values` §5.1.3 reference exactly this rule
 rather than redefining a second PolicyMode system).
 
+### 1.1.1 Initializing a typed Place before a resident exists
+
+    DeclaredPolicy(name) independent_of InitialInitializationAuthority(place)
+
+A typed Uninitialized Place has a declared type and pending initialization
+authority from its authorized formation, but no resident Object to observe.
+PolicyView(slot,x), P(x), and resident compatibility are not evaluated for a
+missing x. The declaration's const/plain/mut mode determines the initialized
+name's views; it neither creates nor removes the separate first-write authority.
+
+The ordinary explicit initial-borrow realization uses that live authority and
+actual Place/access/lifetime checks to supply a reference capability for the
+first write. It can supply a mut T ref view for a const-declared name; the
+reference view's mode and the target name's declared mode are distinct. The
+existing const/ plain reference delete cells remain delete. Selecting a mut
+reference default still requires the applicable capability and current legality.
+
+First write uses InitWriteLegal; replacement uses the initialized resident and
+its ordinary compatibility rules. Initialization authority is consumed at the
+successful commit for the actual Place. Saved references and cached capability
+metadata do not preserve that authority or turn it into replacement power.
+See [Place/write algebra](type-values-places-and-borrow-views.md#711-initialization-authority-and-the-two-write-cases)
+for the complete branches and const initialization example.
+
+This uses the existing operation/capability/legality separation. It adds no
+PolicyMode, implicit ref, general const-to-mut conversion, or no-reopen exception.
+
 ## 1.2 Explicit `const` / `mut` are value reconstruction, not in-place policy casts
 
 Global `const` / `mut` are not a way to change the policy tag on the current

@@ -75,7 +75,8 @@ PatternValue identity
 
 - `NameBindingId` identifies an ordinary binding and its resident
   Place relation. It is not a language value and cannot be borrowed or carry a
-  `.type` field. A borrow addresses the ordinary value resident at its Place.
+  `.type` field. A borrow addresses its typed Place, including before the first
+  resident exists; its type comes from PlaceType, not an implicit value read.
 - `PlaceId` is the identity of a location that can be bound, updated, injected
   into, or opened for a namespace delta.
 - `TypeValueId` is the stable first-order root of `Core(tau)` — a registry
@@ -160,10 +161,20 @@ bare Product Pattern additionally supplies intrinsic ordinal selectors `pos_i`.
 The structural lookup and the value snapshot are distinct:
 
 ```text
-named selector n -> ProjectionSlot(parent, n) / structural NameBinding
-occupied slot q  -> Contents(q) = Some(v)
-Val2(parent)[n]  = ordinary resident v, through its rank-appropriate observation
+named selector n -> ProjectionSlot(parent, n) / structural NameBinding, if it exists
+initialized q   -> ResidentState(q) = Initialized(v)
+Val2(parent)[n]  = v only in that initialized case
 ```
+
+| HasName(parent,n) | ResidentState(BindingPlace(n)) | Val2 entry |
+| --- | --- | --- |
+| false | no binding/Place | absent |
+| true | Uninitialized | absent |
+| true | Initialized(v) | ordinary resident v |
+
+An internal Contents(q) = Some(v) encoding describes only the last row.
+Structural occupancy is not resident presence, and Uninitialized is not an
+Object or a None value. Close checks the initialized-name condition of §7.1.
 
 NameBinding and ProjectionSlot are not Val2 value entries. Normalization consumes
 the resident v with its existing complete-type/Object observation; it never
@@ -633,6 +644,11 @@ PatternClosureConsistent(tau) iff
       F is registered for this type's own callability
       and F is a complete internally well-formed callable and Home(TypeOf(F)) = TypeMemberScope(tau)
       and its () entry obeys Type(callee) = Type(first self)
+  and ∀K registered as a Pattern construction/extraction closure in Q:
+      K is the actual ordinary Val2 resident referenced by that registration
+      and K is a complete internally well-formed callable
+      and Home(TypeOf(K)) = TypeMemberScope(tau)
+      -- /tau(tau); checked whether or not K is also registered in V_τ
   and AllBoundRefsBoundAndRestricted(bind α.⟨Norm(Q), Norm_V^α(V_τ)⟩)
       (every BoundRef reachable during Norm_type^α(Q, V_τ) is bound by α
        and belongs to an authorized static edge kind;
@@ -742,12 +758,23 @@ TypeRole(Q)
   and HasRegisteredSelfConstruction(Q)
       -- iff exists Pattern P of Q, exists s, exists C, exists K:
             Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
-            and K has the required classifier under tau
 
 NamespaceOnly(Q)
   iff NamespaceRole(Q)
   and not HasRegisteredSelfConstruction(Q)
 ```
+
+This is a Q-local structural witness: there is no implicit tau argument or
+classifier-home test in TypeRole(Q). CompleteType(tau) additionally requires
+PatternClosureConsistent(tau), which checks /tau(tau) homes for both registered
+closure roles independently. Equal Core can establish the same TypeRole answer
+without establishing compatibility with two distinct complete-type homes.
+
+For example, if Q has the joint Val2/ConstructEdge witness K, TypeRole(Q) can
+hold even when K is not in V_tau. If Home(TypeOf(K)) differs from /tau(tau),
+PatternClosureConsistent(tau) fails and tau is not a CompleteType. Removing K
+from the callability projection cannot conceal the failed Pattern-role home
+check. A matching home satisfies that premise but registers no new role.
 
 The distinction is a judgment over `Q`'s Pattern `P` (imported from the
 Pattern relational semantics), independent of group member count. The
@@ -1662,6 +1689,15 @@ position and is not a borrow representation.
 
 ### 5.1 `ref` and `share` are privileged actual-place builtins
 
+The value-operand families below assume a resident value is available. Explicit
+ref consuming an uninitialized typed NameExpr uses the ordinary initial-borrow
+realization of §7.1.1 instead: it obtains the existing Place and PlaceType without
+Read. This is a borrow-forming realization, not another Object or operator role.
+In particular, PlaceType(q)=type does not supply a type-value operand for type
+formation, and DeclaredPolicy(name)=const is not an actual const T resident
+fed into the value family's delete cell. The distinction is made by the operand
+and Place state, never by retrying after a selected value operation fails.
+
 `ref` and `share` are ordinary overloaded callable/operator families on their
 operand — not a single meta-stage operation. Each
 operator has two overload roles (canonical owner
@@ -1829,7 +1865,7 @@ and `ref share`) remain valid (§5.3), as does the separately specified implicit
 
 The borrow-forming defaults inside the formed borrow type's callspace are not
 an ad hoc pair of builtins; they are generated instance families with a fixed
-policy matrix. The `ref` family has two input shapes (`T`, `T ref`), two
+policy matrix for resident value operands. The `ref` family has two input shapes (`T`, `T ref`), two
 member result-policies (`mut`, `const`), and three formal PolicyMode patterns
 (`mut`, `const`, `plain`):
 
@@ -2326,6 +2362,11 @@ default ref/write-family realization:
 ```
 
 The table is a theorem of the builtin ref/write family, not a Policy axiom.
+Here const/plain/mut describe the selected reference view, not the declaration
+policy of a possibly uninitialized target name. The ordinary initial-borrow
+realization in §7.1 can supply a mut reference view with initialization-only
+capability even for a const-declared name. It does not turn a selected delete
+into default or grant replacement through that reference.
 Another family may mark any 3×3 coordinate absent or realize it with
 `default`, `delete`, or `custom`. In particular `mut` selected for a non-ref
 object does not automatically make any place writable.
@@ -2404,14 +2445,23 @@ own topology; T*N and T*omega indexing cannot grow a Sequence through let.
 
 ### 7.1 Typed NameExpr, explicit borrowing and first write
 
+    P let name:t -> NameExpr(n) at an ordinary fresh lexical destination
     P let name::path:t -> NameExpr(n)
     PlaceType(BindingPlace(n)) = t
     ResidentState(BindingPlace(n)) = Uninitialized
     P let name::path == P let name::path:type
 
+These initializer-free declarations share the typed Place/NameExpr rules;
+lexical and structural destinations retain their own creation authority.
+P let name = rhs is instead one complete lexical binding, with ordinary RHS
+type inference; P let name:t = rhs is its explicitly constrained form. Neither
+first defaults to :type nor decomposes into NameExpr followed by source =.
+See [let forms](names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings).
+
 Creation does not install a resident or return a ref. In value context NameExpr
 reads only an initialized resident. Explicit ref borrows the existing typed
-Place without first reading; declared policy, access and lifetime still apply.
+Place without first reading. Its initial borrow uses the initialization
+authority below; ordinary initialized-name views use their declared policy.
 
     CreateName -> explicit Borrow -> ordinary Write
     Uninitialized -- Write(v:t) --> Initialized(v)
@@ -2420,6 +2470,90 @@ Place without first reading; declared policy, access and lifetime still apply.
 The first write has no old resident to clean up. Replacement retains its ordinary
 same-Type and lifecycle checks. Failed Pre leaves the target state unchanged.
 Uninitialized is non-Object Place state, never a None value or fresh-name value.
+
+### 7.1.1 Initialization authority and the two Write cases
+
+    DeclaredPolicy(name) independent_of InitialInitializationAuthority(place)
+
+Successful authorized fresh typed-Place formation establishes a pending
+initialization authority for that actual Place in its creation context,
+regardless of const/plain/mut declaration policy. This is ordinary Place state
+and authority, not a token Object or an additional PolicyMode. It is neither
+inferred from Uninitialized alone nor transferred by equal type/value identity.
+The original authority source, actual Place access, applicable construction constraints
+and borrow lifetime must remain valid at use; saving a reference extends none
+of them. The concrete capability carrier remains an implementation choice.
+
+For such a Place the ordinary explicit ref operation has an initial-borrow
+realization: from the live initialization authority and ordinary access/lifetime
+premises it obtains a T ref view capable of the first write. A mut result view
+can be requested independently of the future resident's declared name policy.
+Its capability is limited to initialization of that Place, with no right to
+read an absent resident or replace a future one. Formation itself returns only
+NameExpr; the explicit borrow remains necessary.
+
+    InitialInitializationAuthority_Γ(q)
+    ResidentState(q) = Uninitialized, PlaceType(q) = t
+    selected ordinary initial-borrow realization, access and lifetime legal
+    ---------------------------------------------------------------------
+    explicit Borrow(q) -> r : t ref
+      with capability for Initialize(q), not Replace(q)
+
+The same ordinary Write family distinguishes the current Place state at Pre:
+
+    InitWriteLegal_Γ(r,q) iff
+      InitialInitializationAuthority_Γ(q) is still live and unconsumed
+      and r targets q with a valid capability for Initialize(q)
+      and the original authority/access/applicable construction/lifetime checks hold
+      -- these premises establish Writable_Γ(q) for this initialization
+
+    ResidentState(q) = Uninitialized, PlaceType(q) = t, v:t
+    InitWriteLegal_Γ(r,q), ordinary RHS/result/boundary checks
+    -------------------------------------------------------
+    Write(r,v): Uninitialized -> Initialized(v)
+      consume the pending initialization authority at successful commit
+
+    ResidentState(q) = Initialized(old), PlaceType(q) = t, v:t
+    valid replacement capability through r, Writable_Γ(q) for replacement
+    ReplacementCompatible(old,v), ordinary access/lifetime/RHS/result checks
+    ---------------------------------------------------------------------
+    Write(r,v): Initialized(old) -> Initialized(v)
+
+Writable is checked for the selected operation and supplied capability; a
+proof for Initialize(q) is not a proof for Replace(q). Only the second case
+observes old and checks resident compatibility or old-resident cleanup.
+ReplacementCompatible(old,v) abbreviates the existing resident compatibility
+check Compatible(P(old),v), together with the ordinary same-Type constraints;
+it is not a new compatibility relation or a policy inferred for an empty Place.
+The first case never evaluates P(old) or Compatible(P(uninitialized),v).
+DeclaredPolicy determines the initialized name's views, not compatibility with
+a nonexistent resident; the supplied v must still satisfy the declared type
+and all independently specified destination/operation constraints.
+
+Successful initialization consumes the authority for all aliases of the same
+Place. A second write through a saved initial reference must establish ordinary
+replacement capability anew; the reference's mut spelling is insufficient.
+Failed Pre consumes nothing and installs nothing. Ordinary enclosing transaction
+rules alone determine rollback. Move/drop, copying a handle or a cache hit do
+not recreate this first-initialization authority. No failed selected operation
+reopens overload selection or retries the other state case.
+
+For an authorized parent path and a legal value v:T:
+
+```lang
+mut let r = (const let x::path:T) ref;
+r = v;
+```
+
+The first line creates x and explicitly borrows its Place using the pending
+initialization authority, not a const resident. The second initializes it.
+Subsequent x views follow its const declaration; a saved r has no replacement
+right from its consumed initial capability. The same construction works for
+plain or mut declarations; neither mode supplies authority by itself. Without
+live initialization authority, the first write fails even if the name is mut.
+
+### 7.1.2 Closure and contribution handoff
+
 The structural let-with-assignment compound is not canonical; any future sugar
 must expand into these steps. Ordinary lexical let remains unchanged.
 

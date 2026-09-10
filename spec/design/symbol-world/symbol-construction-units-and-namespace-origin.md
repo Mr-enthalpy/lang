@@ -43,11 +43,16 @@ authorized nor automatically prohibited by that fact.
     P let name::path:t -> NameExpr(n)
     CreateName -> explicit Borrow -> Initialize
 
-Structural P let name::path:t creates NameExpr for a fresh typed Place with
-ResidentState = Uninitialized (non-Object evaluator state). Omitted :t means
-:type, not a resident type value. Value use requires initialization; explicit
+Initializer-free P let name:t and P let name::path:t create typed NameExpr
+using lexical and structural destinations respectively, with non-Object
+Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
+not an existing type resident. P let name = rhs is a complete lexical binding
+with RHS type inference, so that default does not apply. Value use requires initialization; explicit
 ref borrows the Place using its declared type without reading. Ordinary write
-initializes it, and later writes replace its resident. The structural let=compound
+initializes it using authority independent of the name's declaration policy,
+including const. Successful first commit consumes that authority; saved initial
+references do not grant replacement power. Later writes require ordinary
+replacement capability and resident compatibility. The structural let=compound
 is not canonical. Close requires externally resolvable structural names to be
 initialized. Ordinary lexical let remains unchanged.
 

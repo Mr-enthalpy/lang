@@ -32,7 +32,8 @@ whole-snapshot positions observe the whole bound closure.
 NameBinding is binding identity and its relation to a resident Place;
 it is not a first-class Object, constructor value, or borrowable wrapper. It has
 no implicit .type field. Resolving a name selects its binding; a value read reads
-the ordinary resident, and a borrow addresses that resident's actual Place.
+the ordinary resident, and a borrow addresses the typed Place without requiring
+that a first resident already exists.
 Lexical aliases map to the same binding without becoming values themselves.
 
 Meta invocation also constructs ordinary names. Their formation owner is the
@@ -152,14 +153,22 @@ the selected callability contribution only: it does not delete the ordinary
 resident or its independent Pattern registration. These are consequences of
 the existing update domain and result invariant, not new operation primitives.
 
-## 5. Structural let creates a typed NameExpr
+## 5. Typed name declarations and complete let bindings
 
+    P let name : t        evaluates to NameExpr(n) at a fresh lexical destination
     P let name::path : t  evaluates to NameExpr(n)
     P let name::path      == P let name::path : type
     NameExpr != ValueExpr
 
+The first two are typed name declarations without an initializer. They share
+typed Place formation, explicit borrowing and ordinary initialization. Their
+destination and creation authority differ: the unqualified form uses the
+ordinary fresh lexical binding context, while the qualified form uses the
+explicit structural target. Lexical creation does not require navigating a
+parent mut type ref; structural creation retains those additional premises.
+
 The parent is reached through existing authorized structural navigation from a
-mut type ref. Intermediate parents must exist and be initialized/navigable;
+mut type ref in the qualified case. Intermediate parents must exist and be initialized/navigable;
 only the final selector is fresh. Creation checks the existing Writable,
 OpenHere, access, lifetime and construction-authority premises of the parent.
 
@@ -172,6 +181,7 @@ OpenHere, access, lifetime and construction-authority premises of the parent.
       DeclaredPolicy(n) = P
       PlaceType(q_n) = t
       ResidentState(q_n) = Uninitialized
+      establish pending InitialInitializationAuthority(q_n) from authorized formation
       yield NameExpr(n)
 
 Uninitialized is evaluator/Place state, not an Object, None value, or
@@ -184,9 +194,11 @@ Omitting :t chooses PlaceType = type, not an already constructed type value.
     NameExpr(n) ref -> Borrow(q_n)
       uses PlaceType(q_n), without first reading a resident
 
-Borrowing remains explicit and checks the selected operation, declared policy,
-actual Place, access and lifetime. Creation does not itself return a reference
-or grant a mut view independent of those checks.
+Borrowing remains explicit. For the uninitialized Place it uses the live pending
+initialization authority, selected ordinary initial-borrow operation and actual
+Place/access/lifetime checks. DeclaredPolicy controls the initialized name's
+views, independently of that authority; const does not prevent first
+initialization. Creation returns no reference or general replacement capability.
 
     absent name: no binding/Place
     existing uninitialized name: binding/typed Place, no readable value
@@ -202,15 +214,21 @@ name_ref = expr;
     CreateName -> BorrowPlace -> Initialize
 
 Initialization belongs to ordinary Place/write algebra. With an admitted
-write operation, Writable and the ordinary type/access/lifetime premises:
+write operation and InitWriteLegal established by live initialization authority,
+explicit borrow capability and ordinary access/construction/lifetime premises:
 
     PlaceType(q) = t, v : t
     Uninitialized -- Write(v) --> Initialized(v)
 
-Later writes replace the existing resident under the ordinary replacement and
-same-Type rules. Failed write Pre does not initialize the target; an enclosing
+First write neither observes an old resident policy nor performs old-resident
+compatibility or cleanup. Successful commit consumes the pending authority for
+the Place, including all saved references. Later writes need ordinary replacement
+capability and same-Type/resident compatibility; an initial reference grants none
+of those merely by being saved. Failed write Pre does not initialize the target; an enclosing
 transaction governs rollback, if any. There is no old resident to drop or move
 during first initialization. Value reads of an uninitialized target fail.
+The complete two-case Write derivation and the const-name example are in
+[Place/write algebra](type-values-places-and-borrow-views.md#711-initialization-authority-and-the-two-write-cases).
 
 Structural `P let name::path = e` is not a canonical compound expression,
 and there is no equality with `(P let name::path) = e`. Any future convenience
@@ -222,6 +240,32 @@ own a separate initialization rule.
 
 Named type is an initialized case of a general structural name, not a distinct
 name-creation primitive.
+
+An initializer changes which complete let form is present. In ordinary lexical
+context, P let name = rhs is a whole let binding whose declared type is inferred
+from its RHS under the existing inference rules. It is not a typed-name
+declaration defaulted to type followed by a separate assignment. An explicit
+annotation in P let name:t = rhs supplies the type constraint instead.
+
+```lang
+mut let local_ref = (const let local:uint8) ref;
+local_ref = 1uint8;
+
+const let inferred = 1uint8;
+const let annotated:uint8 = 1uint8;
+```
+
+The first pair explicitly creates and initializes a typed local Place. The
+last two lines are complete lexical bindings: both create initialized uint8
+destinations using the ordinary binding/transfer rules. Their internal first
+resident installation obeys the same Place initialization law; it is not an
+implicit source-level ref or an assignment suffix appended to NameExpr.
+
+Thus the default :type for the initializer-free structural expression
+(P let name::path) does not participate in lexical RHS type inference. Only
+the separately designated named-contribution position changes unqualified
+let name = rhs into named-type synthesis (§6); ordinary lexical binding never
+acquires that meaning merely by spelling.
 
 For example, let r be an authorized construction reference and v:uint8:
 
