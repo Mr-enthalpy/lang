@@ -15,6 +15,7 @@ Long-lived semantic identity is owner-based:
 
 ```text
 NameBindingId = (DeclOwner, LocalBindingIdentity)
+NameCoord = (legal semantic root, semantic selector)
 GeneratedIdentity = (GeneratingOwner, LocalGenerationIdentity)
 SemanticOwnerId = (SemanticOwnerGraphId, graph-local owner)
 ```
@@ -22,6 +23,15 @@ SemanticOwnerId = (SemanticOwnerGraphId, graph-local owner)
 NameBindingId identifies the ordinary binding relation and its resident Place;
 it is not an Object or a value with a .type field. GeneratedIdentity and
 SemanticOwnerId index semantic ownership, not an extra result ontology.
+
+NameCoord is independent of realization: it grants no Place, resident or
+authority. Retained records actual realization; Fresh means not Retained.
+Realize(NameCoord,P,t) establishes the typed Uninitialized Place and its ordinary
+first-write authority. Sibling contributions to the same coordinate merge their
+effects, not independently allocated name identities. LocalBindingIdentity must
+respect this semantic coordinate; syntax occurrence IDs cannot split same-name
+contributions. Resident-specific ProjectionSlot identities remain a different
+layer, invalidated according to ordinary parent-resident rules.
 
 Source files, paths, spans and printable navigation strings are provenance.
 Child-directory selectors are first normalized into ordinary fresh-name actions;

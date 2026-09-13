@@ -89,7 +89,10 @@ name-binding identity, Place identity, or a defining-binding reference.
 
 ### Name binding and named type
 
-Name existence is a structural fact independent of visibility or value content.
+NameCoord(root,selector) exists independently of realization for legal material;
+it is not an Object or Place. Retained records actual realization, and Fresh
+means not Retained. A typed realized name has a Place that may remain
+Uninitialized until ordinary first write. These facts are independent of visibility.
 Initialized structural names declared :type denote complete named types; same-name construction contributes
 to their V_tau. Ordinary lexical binding is not implicit overload synthesis.
 Name binding identity, pattern-value equality and Place identity are distinct.
@@ -179,7 +182,8 @@ nor a union of endpoints.
 ### PolicyView
 
 One observed view with independent PolicyPair, PolicyMode and SafetyPolicy
-coordinates. Formal pair inheritance does not change unwritten plain mode.
+coordinates. Pin overlays P2 and Pout overlays P1; omission is no override,
+explicit plain is a constraint, and an explicit hole is Pattern deduction.
 
 ### ResultPolicyDemand
 
@@ -189,8 +193,25 @@ preference relation.
 
 ### CapabilityRealization
 
-A candidate-local 3x3 input-mode/output-mode table whose cells are
-`absent | default | delete | custom`. It is independent of Policy preference.
+A candidate/family fact with absent/default/delete/custom realizations,
+independent of preference. A 3x3 input/output-mode table is a finite derived
+explanatory view; relational declarations with ordinary Pattern holes need not
+be written as nine primitive declarations.
+
+### Operator Pattern and policy deduction
+
+Grammar-fixed op::type families have ordinary call, registered extraction and
+generative projections. Extraction observes the same relation as construction,
+not a synthesized inverse. Policy +/|| deduction uses those registered
+relations, HoleBinderId, require and ordinary overload selection. Omission,
+explicit concrete mode and explicit hole remain distinct source constraints.
+
+### Generative occurrence
+
+An occurrence forming a requested name/result relation may establish ordinary
+Val2 residency, but supplies no V_tau or Pattern registration evidence. This
+restriction does not permanently taint the value. Concrete name heads and _
+use ordinary specificity, not a separate generation priority.
 
 ### DynamicLegality
 

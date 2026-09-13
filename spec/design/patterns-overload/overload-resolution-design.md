@@ -71,8 +71,11 @@ Only repeated exposure of the same stable candidate-entry identity may collapse.
 Distinct contribution entries never deduplicate merely because their values or
 types normalize equally; equality and interning cannot quotient those entries.
 
-`OutputModeDemand` is total before Bp maxima. Pair/stage result demand is a hard
-candidate constraint; whole-slot mode is the three-point preference coordinate.
+ResultPolicyDemand, when present, is formed before Bp maxima. Omitted mode
+preserves NoWrittenModeConstraint; inherited/contextual constraints or an
+applicable DefaultModeCompletion may resolve a mode demand. Omission alone is
+not explicit plain. Pair/stage result demand is a hard candidate constraint;
+a resolved whole-slot mode supplies the three-point preference coordinate.
 Capability realization and dynamic legality do not grant preference.
 
 ## 4. Pattern applicability
@@ -87,6 +90,18 @@ The valuation `rho` supplies generic Hole bindings. Structural extraction uses
 explicit `DirectPatternChild` evidence and applies `StructuralDefault` before
 candidate enumeration. No product shape or observed-content carrier defines
 Pattern meaning.
+
+Policy holes participate in this same joint relation:
+
+    Pin_i(rho) = Overlay(P2, Delta_in_i(rho))
+    Pout(rho)  = Overlay(P1, Delta_out(rho))
+
+Actuals and optional output demand constrain compatible solutions together;
+neither policy side semantically computes the other. Registered operator
+Patterns and require constraints establish applicability before preference.
+A concrete generative name head f outranks _ through ordinary specificity only
+after matching. Nested producers seal locally; outer candidates cannot reopen
+their chosen result policy or overload.
 
 ## 5. Selection seal
 

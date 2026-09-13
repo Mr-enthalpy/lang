@@ -128,8 +128,16 @@ alternate relation or identity.
   facilities introduce no semantic facts; E alone owns meaning.
 - E is idempotent and saturates ready actions without rewriting continuations.
   Optimizer rewrites require revalidation by affected semantic projections.
-- Formal Pv:Pp inherits P2; omitted formal mode is plain. Implicit return targets
-  the outermost enclosing function layer.
+- P1/P2 are independent; Pin/Pout overlay P2/P1. Bare let writes no override;
+  written plain is explicit, and a formal-local hole is ordinary Pattern deduction.
+  Default completion is separate. Inner-call selection seals before outer use.
+  Implicit return targets the outermost enclosing function layer.
+- NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
+  Ordinary name writes may change Val2(Core) without either registration.
+  Pattern-registered extension uses extend/inject; TypeAdd changes V_tau only.
+- Meta call/value and Pattern/name declarations are equal surface projections.
+  Grammar-fixed op::type families use ordinary call/extract/generative relations;
+  generated occurrences supply no Pattern or V_tau registration evidence.
 
 ## Scope and Open questions
 

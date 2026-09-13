@@ -17,6 +17,15 @@ Raw AST preserves syntax and recovery. It does not resolve names, check types,
 select overloads, materialize closures, execute callable bodies, or interpret
 Pattern packs.
 
+The canonical extension has equal call/value and Pattern/name meta declaration
+surfaces, grammar-fixed op::type families, and distinct omitted/concrete/hole
+policy material. These are handoff obligations, not implemented syntax coverage:
+the current carriers below do not execute generative realization or relational
+operator extraction. A future syntax-directed carrier must retain this material
+without introducing semantic MetaDecl/HIR nodes or lookup in the parser. See
+[operator/declaration semantics](../design/patterns-overload/operator-patterns-and-generative-declarations.md)
+and the [alignment gates](../planning/roadmap.md#canonicalsource-alignment-gates).
+
 ## 2. Lexical contract
 
 Names remain weak `Name` tokens. In particular:
@@ -489,7 +498,7 @@ owner/root, and extend the environment with their own telescope. Ordinary
 value binders do not alter hole identity.
 
 Normalized source capture items are explicit let-shaped bindings. `[x]` is
-explicit shorthand for `[let x = x]` with the unwritten `plain` mode; it is not
+explicit shorthand for `[let x = x]` with no written mode override; it is not
 automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not

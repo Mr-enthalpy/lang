@@ -68,12 +68,16 @@ canonical pattern-value identity:
 
 ```text
 NameBindingId
+NameCoord(root, selector) -- independent of realization
 PlaceId
 TypeValueId
 PatternValue identity
 ```
 
-- `NameBindingId` identifies an ordinary binding and its resident
+- NameCoord is a structural coordinate, not an Object, Place or resident. A
+  coordinate does not establish Retained or BindingPlace. See the name owner
+  for realization and Fresh = not Retained.
+- `NameBindingId` identifies an ordinary realized binding and its resident
   Place relation. It is not a language value and cannot be borrowed or carry a
   `.type` field. A borrow addresses its typed Place, including before the first
   resident exists; its type comes from PlaceType, not an implicit value read.
@@ -161,7 +165,8 @@ bare Product Pattern additionally supplies intrinsic ordinal selectors `pos_i`.
 The structural lookup and the value snapshot are distinct:
 
 ```text
-named selector n -> ProjectionSlot(parent, n) / structural NameBinding, if it exists
+named selector n -> NameCoord(parent,n), independent of realization
+Retained(parent,n) -> realized structural NameBinding / typed Place, when established
 initialized q   -> ResidentState(q) = Initialized(v)
 Val2(parent)[n]  = v only in that initialized case
 ```
@@ -175,6 +180,24 @@ Val2(parent)[n]  = v only in that initialized case
 An internal Contents(q) = Some(v) encoding describes only the last row.
 Structural occupancy is not resident presence, and Uninitialized is not an
 Object or a None value. Close checks the initialized-name condition of §7.1.
+
+HasName in this table means Retained, never the existence of NameCoord. The
+first row still has a coordinate for a legal root/selector, but no borrowable
+Place follows from it. Prospective ProjectionSlot lookup is structural addressing
+material; realization, resident generation and write authority remain separate.
+
+Ordinary name initialization/replacement may update Core's ordinary Val2:
+
+    Q = <Val1?, P, V>
+    OrdinaryNameWrite(q_s,v): V' = V[s -> v]
+    Q' = <Val1?, P, V'>
+
+Thus Q' may differ from Q even though P and its registrations are unchanged.
+The write uses the ordinary Place first-write/replacement rules and their Pre
+checks; it implies no DirectPatternChild, ConstructEdge, ExtractEdge, FieldView
+or V_tau registration. Pattern-registered structural extension is owned by
+extend/inject; TypeAdd separately updates V_tau registration. These are distinct
+relations, not a restriction that every Core change must use extend/inject.
 
 NameBinding and ProjectionSlot are not Val2 value entries. Normalization consumes
 the resident v with its existing complete-type/Object observation; it never

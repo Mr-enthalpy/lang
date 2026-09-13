@@ -13,6 +13,10 @@ Other documents may define consumers of this relation. In particular:
   preparation, not the Pattern relation;
 - `overload-resolution-design.md` owns candidate ordering after applicability,
   not Pattern observation;
+- [Operator Patterns and generative declarations](operator-patterns-and-generative-declarations.md)
+  applies this same relation to operator call/extract/generative projections.
+  Policy deduction uses those registered relations, ordinary HoleBinderId and
+  require constraints; it introduces no separate inference calculus;
 - `static-pattern-spaces-and-extraction-chains.md` owns residual / `Done` /
   control-pattern algebra, not the base matching relation;
 - `return-value-extraction-and-implicit-decomposition.md` applies the

@@ -174,7 +174,7 @@ closure carrier, not a callable value. Only a later explicit binding or call
 consumer may materialize that carrier.
 
 Source-written captures are explicit binding requirements. `[x]` is
-`[let x = x]` with the unwritten `plain` capture mode, not automatic const
+`[let x = x]` with no written mode override, not automatic const
 capture. Any implicit capture requirement needs later resolved free-reference
 and external-eligibility analysis. Capture requirements do not define `self`
 fields, layout, or ABI.
@@ -210,6 +210,15 @@ states which consumers are connected.
 
 ## 8. Semantic construction handoff
 
+NameCoord(root,selector) precedes realization; it is not an Object or Place.
+Fresh means not Retained. The typed-name forms below realize that coordinate,
+rather than manufacture its identity. Ordinary Val2 writes may change Core
+without Pattern or V_tau registration. Generated occurrences supply neither
+registration witness, and operator extraction requires an appropriate registered
+relation rather than an inferred inverse. The
+[operator/declaration owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md)
+defines the equal call/value and Pattern/name meta declaration surfaces.
+
 Initializer-free P let name:t and P let name::path:t create typed NameExpr
 using lexical and structural destinations respectively, with non-Object
 Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
@@ -229,8 +238,8 @@ redefine them. Named contributions synthesize types; OverloadGroups aggregate th
 A type contribution requires Writable, OpenHere and final classifier home
 Home(TypeOf(v)) = TypeMemberScope(T). [Witnessed anchored replication](../design/symbol-world/closure-anchored-replication.md)
 creates a new closure identity and preserves capture obligations; it never
-reparents the RHS. Formal pair inheritance and unwritten plain mode are
-different policy dimensions. Implicit return targets the outermost enclosing
+reparents the RHS. Pin inherits P2 and Pout inherits P1; bare let writes no override. Explicit
+plain is a concrete constraint, distinct from contextual default completion. Implicit return targets the outermost enclosing
 function layer; a current nearest-frame carrier is not semantic authority.
 
 Follow the [semantic spine](../design/semantic-spine.md) for A, lifecycle/unsafe,

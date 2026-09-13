@@ -18,6 +18,7 @@ that the corresponding source semantics is implemented.
 | PolicyPair, ordinary PolicyMode, P1 meta, demand, migration and stages | [policy](symbol-world/symbol-policy-and-compile-flow-projection.md) |
 | Exact callee/self, ordinary function objects and forwarding | [calling](symbol-world/function-object-call-model.md) |
 | Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| Meta declaration dual surface and operator call/extract/generative projections | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
 | Meta instance types, input identity, openness, completion/cache and Val2 extraction | [invocation](meta-invocation/meta-object-invocation-and-policy-reduction.md) |
 | E saturation, residual, synchronous projections, O1/O2/planner | [evaluation](meta-invocation/evaluation-residual-and-optimization.md) |

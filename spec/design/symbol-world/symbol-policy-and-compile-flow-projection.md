@@ -200,7 +200,7 @@ Writable(place)
 PolicyMode(view_slot) = mut
 ```
 
-`const let` / `let` / `mut let` on a formal parameter are first an overload
+`const let` / `plain let` / `mut let` on a formal parameter are first an overload
 preference coordinate (the `succ_const` / `succ_mut` / `succ_plain` partial
 orders of §3.2). A `mut` candidate being preferred and the selected operation
 actually exposing a write are two different facts. Real write capability comes
@@ -267,30 +267,20 @@ For example `val const` logically:
 ```
 
 and `val mut` likewise produces a fresh `T` result carried by a result slot/view
-whose `PolicyMode` is `mut`. This does not assert `Writable(result)`. A
-source-like realization is:
+whose `PolicyMode` is `mut`. This does not assert `Writable(result)`. A relational declaration expresses its input modes with a formal-local hole:
 
-```text
-const let const(self, object:T) -> T
+```lang
+const let const(self, <p> p let object:T) -> T
 { const let r = object |> T; r; }
 
-const let const(self, const let object:T) -> T
-{ const let r = object |> T; r; }
-
-const let const(self, mut let object:T) -> T
-{ const let r = object |> T; r; }
-
-mut let mut(self, object:T) -> T
-{ mut let r = object |> T; r; }
-
-mut let mut(self, const let object:T) -> T
-{ mut let r = object |> T; r; }
-
-mut let mut(self, mut let object:T) -> T
+mut let mut(self, <p> p let object:T) -> T
 { mut let r = object |> T; r; }
 ```
 
-but the normative content is the three theorems, not the six lines.
+Here p belongs to the formal extraction site, not a lifted P1 binder.
+Pin=Overlay(P2,Mode=rho(p)); inherited-only coordinates retain P2.
+With no result override, Pout=P1. Three input rows are a finite explanatory
+expansion of each declaration, not three required primitive declarations.
 
 First:
 
@@ -479,9 +469,9 @@ spelling for `AbsentValuePattern` remains Open. Implementation fixtures use
 
 Elaboration assigns atoms to typed coordinates. `const`, `plain`, and `mut`
 are the three atoms of the whole-slot PolicyMode pattern; none is stored inside
-`Pv` or `Pp`. Unqualified `let` still selects the concrete `plain` point and
-therefore needs no additional source atom, while a written `plain` is an
-explicit spelling of that same point. A written choice such as
+`Pv` or `Pp`. Bare let contributes no explicit override. Written plain constrains the plain
+point; an explicit HoleBinderId is a third, distinct case solved by ordinary
+Pattern extraction. Default completion is separate from written constraints. A written choice such as
 `const || plain`, `plain || mut`, or `const || mut` is not a legal whole-slot
 mode demand. In particular, `const || mut` is not a neutral whole-slot mode and
 does not elaborate through the general PolicyChoice syntax.
@@ -503,18 +493,20 @@ ModeAtom
 
 ModePattern
   ::= ModeAtom
+   |  HoleRef(HoleBinderId)
 ```
 
-A `ModePattern` denotes exactly one of the three whole-slot points. There is no
+Each solved ModePattern denotes one whole-slot point; holes may have several
+solutions before applicability and unique selection. There is no
 set-lifted PolicyMode demand and no second neutral element beside `plain`. It
 may not mix a stage, visibility, presence, or pair atom into that coordinate.
 `plain` therefore always factors as `ModePattern(plain)` when written; it can
 never remain as a residual `PolicyAtom` for `Pv` or `Pp`.
 
-In a result-demand context, absence of a written ModeAtom elaborates to the
-concrete point `plain`. This default does not consume or invalidate the
-residual pair/view policy. Thus `compile || runtime let e` retains the complete
-stage choice and independently carries `PolicyMode = plain`.
+In a result-demand context, omission records NoWrittenModeConstraint. Existing
+inherited/contextual constraints apply first; only a context requiring default
+completion with no such constraint may complete the mode to plain. Thus
+compile || runtime let e retains its stage choice without spelling a mode.
 
 `FactorWholeSlotMode` walks the complete `PolicySpec`, extracts one connected
 Mode Pattern once, and removes those atoms before either colon side is
@@ -594,6 +586,36 @@ The syntax and normalized AST retain `PolicyPair`, `PolicyConjunction`,
 `PolicyChoice`, `PolicyAtom`, and `AbsentValuePattern`; `||` and `+` are never
 lowered to the same set insertion operation.
 
+### 2.3 Deduction is ordinary operator Pattern extraction
+
+Policy + and || consume the corresponding registered operator relations under
+type. Their typed coordinate restrictions remain hard applicability rules.
+
+    R_+(h1,h2,p,rho)
+    R_||(h1,h2,p,rho)
+    independent holes -> distinct HoleBinderId
+    repeated hole -> shared identity/equality constraint
+    require C -> {rho in Solutions | C(rho)}
+
+There is no independent policy deduction calculus:
+
+    P1, P2 independent
+    Pin_i(rho) = Overlay(P2, Delta_in_i(rho))
+    Pout(rho) = Overlay(P1, Delta_out(rho))
+    Omega = <Actual_1,...,Actual_n,Demand?>
+
+Applicability solves the one joint relation against Omega. It does not compute
+Pin from Pout or Pout from Pin. Shared input/output holes must be in ordinary
+scope; independent holes stay distinct until require relates them. Solver order
+may exploit known actuals first, without becoming semantic direction.
+
+    PatternSolve -> require/default/hard admissibility
+      -> fully applicable solutions -> policy/specificity preference
+      -> unique selection -> DynamicLegality
+
+Preference never legalizes an invalid head. CapabilityRealization remains a
+candidate/family fact; failed dynamic legality never reopens selection.
+
 ## 3. Contextual elaboration of P1
 
 Policy contexts can share a binding-shaped surface slot while using their
@@ -610,7 +632,7 @@ DeclarationSidePolicyInference(declaration, initializer)
 
 CallSitePolicyDemandFormation(context, written demand)
   -> CallPolicyDemand
-  // form the actual demand at a call or binding site; bare let has mode plain
+  // form written/inherited/contextual constraints, then any required completion
 
 PolicyOverload(
   CandidatePolicySig × CallPolicyDemand
@@ -618,9 +640,9 @@ PolicyOverload(
   -> product partial order over fully admissible candidates
 ```
 
-`PolicyOverload` is not policy inference, and `plain` is never an inference
-variable. Declaration-side inference produces candidate signatures;
-call-site demand formation produces the concrete demand compared with them.
+These operation names describe consumers of one ordinary Pattern relation,
+not separate inference ontologies. Plain is an atom, not a hole or omission.
+Declaration and call contexts supply observations of the same joint relation.
 
 ### 3.0 Meta-instance P1 policy
 
@@ -646,7 +668,7 @@ operation must exist and satisfy ordinary type, access, capability and lifetime
 rules; meta does not synthesize missing operations or make expired targets live.
 
 The marker retains the invocation's dependency-bounded source through completion.
-Plain let (and the unwritten plain default) instead selects the classic
+Explicit plain let, or a context separately completed to plain, selects the classic
 complete-and-close meta invocation. This closes the instance, not external input
 subjects or external borrow targets. A later meta let of the same cached instance
 cannot reopen it. A temporary non-OpenHere context is not itself Close.
@@ -666,249 +688,94 @@ defines instance identity, openness meet, completion and cache behavior.
 
 ### 3.1 Ordinary binding projection
 
-```lang
-[P1] let x = expr;
-```
-
-Ordinary binding first forms its producer-selection demand/preference, then
-resolves/evaluates the RHS under that preference, and only afterward applies
-the existing pair-view projection and mechanical destination transfer:
+P1 let x = expr is a complete lexical binding. Omission contributes no override,
+not a request to rewrite the producer's mode to plain. Destination type inference
+and policy completion are distinct ordinary relations.
 
 ```text
 OrdinaryBindingElaboration(prefix, expr, destination):
   kappa := CurrentEvaluationPhase
-  demand := BindingDemand(prefix)
-
-  demand.mode
-    := WrittenModeAtom(prefix)     when one is written
-       plain                       for an unwritten mode / bare `let`
-    // explicit `plain let` demands plain; const/mut demand their own points
-
-  demand.pair_query
-    := WrittenPairProjection(prefix)
-
-  CallSitePolicyDemandFormation(binding_context, demand.mode)
-    -> delta_out
-
-  R := ResolveAndEvaluate(
-         expr,
-         evaluation_stage_context = kappa,
-         result_mode_preference = delta_out)
-       // if expr is a call, delta_out is its output PolicyMode coordinate
-       // before ordinary overload maxima are chosen
-       // without a written pair/stage demand, candidate-local P1 stage
-       // exposure follows each candidate's P2 under kappa
-
-  mu_produced := ResultPolicyMode(SelectedCandidate(R))
-  // the selected producer retains this declared concrete result mode
-
-  PairView(destination)
-    := ElabP1(demand.pair_query, R)
-
-  mu_destination := ElaborateDestinationMode(prefix)
-    // bare let / plain let -> plain; const let -> const; mut let -> mut
-
+  written := WrittenPolicyConstraints(prefix)
+  // no mode atom -> NoWrittenModeConstraint, not WrittenModeDemand(plain)
+  demand := CallSitePolicyDemandFormation(binding_context, written)
+  // inherited/contextual constraints first; required defaults second
+  R := ResolveAndEvaluate(expr, kappa, demand)  // demand precedes root maxima
+  mu_produced := ResultPolicyMode(SelectedCandidate(R))  // frozen
+  PairView(destination) := ElabP1(demand.pair_query, R)
+  mu_destination := CompleteDestinationMode(written, inherited_context, R)
   mechanical_pass := SelectMechanicalPass(PairView(destination), destination)
-
   TransferToDestination(
-    source = PairView(destination),
-    produced_mode = mu_produced,
-    destination,
-    destination_mode = mu_destination,
-    mechanical_pass)
-
-  PolicyMode(destination) := mu_destination
-  BindTransferredValue(destination)
+    source = PairView(destination), produced_mode = mu_produced,
+    destination, destination_mode = mu_destination, mechanical_pass)
 ```
 
-`SelectMechanicalPass` names either a preserved explicit pass or the future
-automatic move/copy choice. `CanonicalMechanicalPassCore` fixes its domain and
-action meaning; this binding judgment does not add a new selection algorithm.
+A completed destination has one concrete mode. Completion uses ordinary
+inheritance/context and, where needed and otherwise unconstrained, the default
+plain point. Written plain is an explicit source constraint; omitted mode is
+not. Producer and destination remain separate: transfer never rewrites the
+selected producer's mode. Pair-view projection and mechanical move/copy retain
+their existing rules, with no implicit ref or policy cast.
 
-Destination elaboration always produces one concrete `mu_destination`; a
-surface PolicyChoice containing more than one ModeAtom has already failed typed
-Policy elaboration. The destination must not obtain its mode by rewriting
-`mu_produced`. In particular, the removed
-`ConcretizeOutputMode(demand, candidate)` operation is not a legal semantic
-step.
+SelectMechanicalPass preserves an explicit pass or uses the separately specified
+automatic move/copy consumer of CanonicalMechanicalPassCore. A const producer
+may win under an explicit plain output preference without becoming plain itself;
+ordinary transfer installs its result in the independently completed destination.
+For an existing source that must be preserved, the explicit copy trace remains:
 
-```text
-ProducerConsumerModeSeparation:
+    plain let y = x copy
+      -> tmp := CopyConstruct(x)
+           ~= share -> clone   for ordinary T
+           ~= rebind -> clone  for T ref / T share
+      -> Move(tmp) -> y with PolicyMode=plain
 
-Call-site output PolicyMode selection preference
-  -> preference coordinate in producer overload selection
+There is no move of x before CopyConstruct and no implicit policy conversion.
+Changing the omission rule changes neither that mechanical core nor the sealed
+producer/destination distinction.
 
-ResultPolicyMode(SelectedCandidate(R)) = mu_produced
-  -> retained concrete fact of the selected producer result
+    WrittenModeDemand(mu)
+    NoWrittenModeConstraint
+    ExplicitModeHole(h)
 
-PolicyMode(destination) = mu_destination
-  -> independent fact of the destination slot
+These are distinct elaboration inputs, not new PolicyMode points. A hole is
+solved through the ordinary candidate relation; a missing atom is no hole.
 
-TransferToDestination(R, destination, mechanical_pass)
-  =/=> rewrite ResultPolicyMode(R)
-```
+    DefaultModeCompletion applies only when the context requires completion
+      and no written/inherited/contextual constraint already supplies the mode.
+    DefaultStageCompletion obeys existing one-way stage admissibility.
+    Neither is a general P1-from-P2 or P2-from-P1 semantic deduction.
 
-The producer result mode and destination mode may differ. A unique `const`
-candidate may win under `delta_out=plain` when no plain candidate survives;
-the result remains `const` while the destination remains `plain`.
-
-`WrittenPairProjection` removes the orthogonal mode coordinate from the
-binding prefix and is absent when no pair/view constraint was written. Thus
-omitted P1 retains the complete inferred RHS **pair view**, while bare `let`
-still produces the concrete destination mode `plain`; it does not inherit the
-RHS slot's mode and does not relabel it. A written composite mode Pattern is an
-explicit `CallPolicyDemand`, not omission or inference; producer selection and
-concrete destination-mode elaboration remain separate judgments. A single
-written pair/view policy is a value-dominant projection.
-
-The ordering is load-bearing:
-
-```text
-BindingDemand.mode_pattern
-  -> RHS call output preference coordinate
-  -> ordinary CandidatePolicySig × CallPolicyDemand product order
-  -> unique selected RHS result with retained mu_produced
-  -> pair-view ProjectP1 / migration consumer
-  -> mechanical transfer into independent mu_destination
-  -> bind transferred value
-```
-
-It is forbidden to select an RHS callable first and discover the destination
-mode afterward. `ProjectP1` and atomic migration retain their existing-view-
-first semantics, but they consume the result of the already demand-aware call
-selection rather than creating that output-mode demand.
-
-For a fresh consumable call result, transfer may be one terminal move:
-
-```text
-f() produces R with ResultPolicyMode(R) = const
-delta_out = plain selected that producer by preference
-Move(R) -> destination with PolicyMode = plain
-```
-
-For an existing source that must be preserved, explicit copy uses the same
-canonical mechanical core:
-
-```text
-let y = x copy
-  -> tmp := CopyConstruct(x)
-           ~= share -> clone        for ordinary T
-           ~= rebind -> clone       for T ref / T share
-  -> Move(tmp)
-  -> y with PolicyMode = plain
-```
-
-There is no `x move; CopyConstruct(x); move` sequence and no implicit Policy
-conversion. Nested calls obey an explicit local-closure theorem:
-
-```text
-DefaultEvaluationResultContext:
-
-For every call node c evaluated in phase kappa:
-  EvaluationStageContext(c) = kappa
-
-For each candidate f of c:
-  P2_f := DeclaredResultPair(f)
-
-  ImplicitEvaluationP1StageView(f, kappa)
-    := ExposeAtPhase(
-         kappa,
-         < Stage(P2v_f) || Stage(P2p_f)
-         : Stage(P2p_f) >)
-
-  PhaseAdmissible(f, c)
-    requires that this derived view admits evaluation/exposure in kappa
-```
-
-This is the default **P1-stage-follows-P2** rule for evaluation. The current
-phase and each candidate's already-declared `P2` make the relevant
-`runtime`/`compile` stage view known without first writing `runtime let e` or
-`compile let e`. It is candidate-local phase admissibility plus the existing
-phase-local stage preference, not a candidate-independent target-result demand
-and not a new migration request.
-
-The word “follows” is limited to the stage projection above. It does not copy
-`PolicyMode`, namespace visibility, export status, capability, or value
-presence from `P2`, and it does not replace the canonical declaration `P1`
-authority described in §§4–5. In particular, the current evaluation phase does
-not infer `const` or `mut`: the unwritten whole-slot mode demand remains the
-concrete point `plain`.
-
-An explicit `PolicyLet(P, e)` may still write `runtime`, `compile`, or another
-pair/stage constraint. That spelling is an explicit local boundary and may
-narrow, select, or request migration beyond the phase-derived default. It is
-optional for ordinary phase-directed evaluation. Writing a ModeAtom such as
-`const` or `mut` is the separate manual act that distinguishes that demand
-from default `plain`.
+The current phase always constrains evaluation. Candidate-local stage
+completion may use the established lift when the relevant stage is omitted;
+explicit P1 is never overwritten. ImplicitEvaluationP1StageView names exposure
+of the resulting candidate view in kappa, not another outward authority.
 
 ```text
 CallLocalPolicyClosure:
+  1. form ResultPolicyDemand(c), including omission/completion state, before maxima(c)
+  2. use only already available candidate-independent immediate-consumer constraints
+  3. never use an unresolved outer candidate's formal policy as inner demand
+  4. use plain only through an applicable DefaultModeCompletion;
+     omission itself imposes no plain constraint
+  5. after unique selection, ResultPolicyMode(c)=mu_c is frozen
+  6. the outer call consumes that result and never reopens c
 
-For every call node c:
-  1. delta_out(c) is formed before the candidate maxima of c.
-
-  2. delta_out(c) may depend only on an already-formed,
-     candidate-independent immediate-consumer demand.
-     It may not depend on an unresolved outer candidate or one of that
-     candidate's formal PolicyMode Patterns.
-
-  3. if no candidate-independent immediate output demand exists,
-     delta_out(c) = plain.
-
-  4. after c is uniquely selected,
-     ResultPolicyMode(c) = mu_c is frozen.
-
-  5. an outer call consumes c as an ordinary actual carrying mu_c
-     and never reopens c.
+EvaluationStageContext(c) = kappa
+OutputModeDemand(c) = written/inherited/contextual mode demand
+                   | separately completed mode demand
+                   | NoWrittenModeConstraint
+TargetResultConstraint(c) = optional expected pair/type/rank constraints
 ```
 
-The always-present phase context, always-present mode preference, and optional
-explicit expected-result constraints are three distinct interfaces:
+Demand formation is total: absence is recorded rather than replaced by a
+fabricated written atom. A resolved concrete mode contributes its preference
+coordinate; no constraint contributes no invented preference. Supplied hard
+result constraints participate in applicability. Completion cannot defer a
+known consumer constraint until after root-call selection.
 
-```text
-EvaluationStageContext(c)
-  = current evaluation phase kappa
-  -> derives candidate-local ImplicitEvaluationP1StageView from P2
-  -> participates in phase admissibility / phase-local stage preference
-
-OutputModeDemand(c)
-  = already-formed candidate-independent immediate-consumer PolicyMode point
-      when one exists
-  | plain
-
-TargetResultConstraint(c)
-  = optional expected Pv:Pp / result Type / rank / facet constraints
-
-Every call c:
-  OutputModeDemand(c) participates in the PolicyMode product before maxima(c)
-
-TargetResultConstraint(c) participates in hard admissibility
-  iff the context actually supplies it
-```
-
-`EvaluationStageContext` and `OutputModeDemand` are total.
-`TargetResultConstraint` is optional and explicit when supplied. Its absence
-means “use the phase-derived P1-stage-follow-P2 default,” not “the result stage
-is unknown,” and may not be used to remove the output-mode coordinate.
-
-Thus every nested call closes locally as producer selection, concrete result,
-and then outer consumption/transfer; no cross-call fixed point is introduced.
-Using schematic call notation only (not source syntax):
-
-```text
-let x = g(f())
-
-f()
-  -> derive its phase-local P1 stage view from candidate P2 under kappa
-  -> no candidate-independent outer-formal demand is available
-  -> resolve locally with PolicyMode demand plain
-  -> freeze produced mode mu_f
-
-g(f())
-  -> consume the f result as an ordinary actual carrying mu_f
-  -> use the binding's already-formed plain output demand
-  -> resolve g without reopening f
-```
+In schematic g(f()), f closes under its own immediate context. If that context
+requires otherwise-unconstrained completion, it uses plain through
+DefaultModeCompletion. Then g consumes the frozen mu_f and its independently
+formed demand; it cannot change f's solution.
 
 ### 3.1.1 Explicit expression result-Policy context
 
@@ -930,11 +797,12 @@ P let a |> f          // P let (a |> f)
 ```
 
 The syntax is not required merely to evaluate a call in `compile` or
-`runtime`. Without it, current-phase evaluation already derives the applicable
-P1 stage view from each candidate's P2. `compile let e` / `runtime let e`
+`runtime`. Without it, current-phase evaluation still checks the candidate's
+stage view, using the stage default completion only where applicable.
+`compile let e` / `runtime let e`
 remain available when the programmer wants an explicit stage boundary or
 migration target. `const let e` / `mut let e` are the orthogonal explicit
-ModeAtom cases that replace the default `plain` output-mode demand locally.
+ModeAtom cases that add a written output-mode demand locally.
 
 The normative judgment is:
 
@@ -982,14 +850,15 @@ sigma is not:
   an independently acquired or source-addressable Place
 
 PolicyMode(sigma) = ConcreteMode(pi)
-ConcreteMode(pi) = written ModeAtom, or plain when P writes no ModeAtom
+ConcreteMode(pi) = resolved written/inherited/contextual constraint
+                or a separately required DefaultModeCompletion
 ```
 
 The slot is not an anonymous variable and creates no source entity. It is the
 ordinary result carrier through which a completed expression view is exposed
 to its parent expression. The outward view exposes exactly the concrete
-whole-slot mode elaborated from `P` (default `plain` when unwritten); a
-PolicyChoice with multiple ModeAtoms is not a typed PolicyMode demand. Any
+whole-slot mode completed under the local context. Omission is not an explicit
+plain constraint; typed coordinate legality still applies to written Patterns. Any
 residual `Pv:Pp` choice, including `compile || runtime`, remains part of `pi`.
 
 Producer preference and outward acceptance are different relations:
@@ -1212,25 +1081,24 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
-Each formal inherits the callable's P2 PolicyPair (Pv:Pp). The orthogonal
-whole-slot PolicyMode is elaborated separately; an omitted mode is plain.
+Pin and Pout are symmetric derived positions with independent parents:
 
-    Pair(P_in) = Pair(P2(callable))
-    Mode(P_in) = ExplicitFormalMode or plain
-    stage(P_in) = stage(P2(callable))
+    Pin = Overlay(P2, Delta_in)
+    Pout = Overlay(P1, Delta_out)
+    bare let -> Delta = empty
+    written atom -> explicit override
+    <p> p let -> mode overlay containing the formal-local HoleBinderId p
 
-Inheritance and plain concern different coordinates. There is no choice
-between inheriting the pair and using plain mode.
+    let x          -> Pin=P2
+    plain let x    -> Overlay(P2, Mode=plain)
+    const let x    -> Overlay(P2, Mode=const)
+    mut let x      -> Overlay(P2, Mode=mut)
+    <p> p let x    -> Overlay(P2, Mode=rho(p))
 
-    let x        -> FormalPolicyView(Pair(P2), PolicyMode = plain)
-    plain let x  -> FormalPolicyView(Pair(P2), PolicyMode = plain)
-    const let x  -> FormalPolicyView(Pair(P2), PolicyMode = const)
-    mut let x    -> FormalPolicyView(Pair(P2), PolicyMode = mut)
-
-Stages, value presence, and the Pattern component remain byte-for-byte the
-inherited P2 dimensions; PolicyMode may neither shrink nor widen them.
-`public`, `private`, `export`, stage atoms, value absence, and an explicit pair
-are therefore invalid formal prefixes.
+Mode may be overridden; stage and other inherited-only coordinates remain
+P2's. Omission, explicit concrete mode and explicit hole are not interchangeable.
+Visibility/export do not acquire invented formal/output counterparts.
+SafetyPolicy retains its own independent consumer meaning.
 
 The selected PolicyMode is a formal preference input. It is not an ordinary P1
 query applied to the actual argument. Consequently an oppositely qualified
@@ -1795,9 +1663,10 @@ the canonical P1 authority, not by re-reading the callable's P2 pair as an
 outward visibility source. There is no `P3` return policy, and P2 must not be
 promoted into an ordinary-result outward authority.
 
-## 5. Function-object P1 derivation
+## 5. Function-object default stage completion
 
-For `P2 = P2v:P2p`, lift only stages:
+Only when P1 stage material is omitted and the context requires completion,
+the existing permitted default from P2 = P2v:P2p lifts stages:
 
 ```text
 Stage(P1p) = Stage(P2p)
@@ -1838,8 +1707,9 @@ For a declaration such as:
 let fn = () => { ... };
 ```
 
-the destination binding has `PolicyMode = plain`. This is a concrete mode, not
-an empty `const || mut` domain and not an inference variable. An explicitly
+the source supplies no written mode constraint. An otherwise unconstrained
+ordinary materialization context may separately complete it to plain. That
+completed atom is neither an inference hole nor source omission. An explicitly
 written `const let` or `mut let` selects the corresponding concrete mode. P2
 stage/exposure facts never manufacture or propagate a PolicyMode during stage
 lifting, and export does not silently replace the internal mode with const.
@@ -2304,8 +2174,8 @@ Success requires exactly one maximal candidate. Failure can mean no exposed
 slice, no fully admissible entry, multiple incomparable maxima, a unique delete
 maximum, or an unfinished terminal SealStatic task.
 
-`C1` is the default phase path: candidate P1 stage follows P2 under the current
-evaluation phase. `C2` applies an explicit expected projection when one exists;
+C1 exposes candidate P1 under the current phase, using the permitted stage
+completion only where omitted material requires it. `C2` applies an explicit expected projection when one exists;
 its absence does not make stage policy unknown and does not require
 `PolicyLet`.
 
@@ -2330,15 +2200,15 @@ Multiple positions form a product partial order: `f` dominates `g` iff `f` is
 not worse at every participating position and is strictly better at at least
 one. Crossed advantages remain incomparable. There is no score, exact-match
 count, parameter weighting, lexicographic order, input-before-output rule, or
-separate conversion rank. Every call contributes its total
-`OutputModeDemand(c)` as the output PolicyMode preference coordinate. Optional
+separate conversion rank. Every call accounts for its formed OutputModeDemand;
+only a resolved concrete mode demand contributes a mode preference coordinate. Optional
 target-result pair/type/rank/facet constraints participate only when supplied,
 as hard admissibility in `A`; they are not the output-mode coordinate. The
-separately total `EvaluationStageContext` drives P1-stage-follow-P2 exposure in
-`C1` and never infers a non-plain PolicyMode.
+separately total EvaluationStageContext drives phase exposure in C1. Stage
+completion creates no hidden mode constraint.
 
-Preference and capability are separate relations. Any operation with input and
-output modes has an expressible 3×3 capability space:
+Preference and capability are separate relations. Relational declarations with
+mode holes have the following finite 3×3 explanatory expansion:
 
 ```text
                   input
@@ -2348,8 +2218,10 @@ output plain    P<-C    P<-P    P<-M
 output mut      M<-C    M<-P    M<-M
 ```
 
-Each cell may be realized by an ordinary `default`, `delete`, or custom member,
-or may be absent. A concrete family need not install all nine cells. In
+Each solved coordinate may be default, delete, custom or absent. The table is
+a derived view, not required source declarations or a primitive. One formal-local
+<p> p let covers three inputs; shared/independent output holes and require
+express correlations. A family need not admit all nine solutions. In
 particular, a Policy preference may select a mut candidate whose requested
 operation is deleted or whose target is not writable; capability facts never
 flow backward into the Policy order.
@@ -2434,5 +2306,4 @@ This document does not freeze:
 - arbitrary clause-level Boolean policy logic;
 - a complete runtime reflection API;
 - export reopening syntax;
-- cross-file open overload union;
 - unrelated `?`, `inject`, or new PatternValue mechanisms.

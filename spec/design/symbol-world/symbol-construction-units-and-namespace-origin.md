@@ -41,7 +41,7 @@ authorized nor automatically prohibited by that fact.
 ## 3. Names and group composition
 
     P let name::path:t -> NameExpr(n)
-    CreateName -> explicit Borrow -> Initialize
+    Realize(NameCoord(parent,name),P,t) -> explicit Borrow -> Initialize
 
 Initializer-free P let name:t and P let name::path:t create typed NameExpr
 using lexical and structural destinations respectively, with non-Object
@@ -60,6 +60,13 @@ At a normalized named-contribution position, unqualified let name = e
 contributes to the same named type's V_tau. Different sibling files
 can contribute to that named type. Distinct entry identity survives equal values.
 Ordinary lexical let and Pattern structural-child registration remain separate.
+
+Sibling contributions to f share NameCoord(root,f) before either is retained.
+Their overlays join contribution effects under the ordinary named-contribution
+algebra, including the first one-shot formation. There are no competing name
+identities to choose between and no file-order winner. Exclusive explicit
+declarations may still conflict under realization rules. See the
+[name owner](names-and-overload-groups.md#62-unordered-siblings-share-the-coordinate-before-realization).
 
 Pure extend produces a new complete pattern value. inject reads, extends and
 writes through an actual mutable type reference. No file-level delta, owner

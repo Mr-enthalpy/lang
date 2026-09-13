@@ -11,6 +11,14 @@ these laws; associated state A is an instance of them.
 
 ## 1. Invocation boundary
 
+The declarations P let f = (self,args):meta => B and
+P let (self,args) f => B are equal surface projections of the same declaration.
+The latter keeps ordinary extraction in its head and constrains the requested
+NameCoord through f (or leaves the selector unconstrained through _). The
+[operator/declaration owner](../patterns-overload/operator-patterns-and-generative-declarations.md)
+owns this shared material; neither surface changes invocation identity, the
+direct CompleteType result boundary or construction authority.
+
 Every selected callable declares one result class:
 
 ```text
@@ -335,14 +343,16 @@ runtime binding's stage or give an optimizer its own semantic facts.
 
 ## 3. Policy positions
 
-Formal pair inheritance and whole-slot mode are different dimensions:
+P1 and P2 are independent; Pin and Pout are derived:
 
-    Pair(P_in) = Pair(P2)
-    Mode(P_in) = explicit formal mode or plain
+    Pin = Overlay(P2, Delta_in)
+    Pout = Overlay(P1, Delta_out)
+    bare let -> empty overlay
+    written plain/const/mut -> explicit mode override
+    formal-local <p> p let -> ordinary Pattern solution for Mode=p
 
-The return position retains its separately specified P_out = Overlay(P1,
-Delta_out) rule, including inherited omitted mode. It is not used to infer a
-formal's mode. Evaluation stage is inherited and cannot be overwritten by a
+Input and output constraints belong to one invocation relation; neither policy
+side computes the other. Evaluation stage is inherited and cannot be overwritten by a
 position annotation. Neither position policy grants Writable or changes the
 caller's independent result demand.
 
@@ -364,7 +374,8 @@ When expression constructs an ordinary meta instance, `meta let` retains that
 instance with its dependency-bounded openness. OpenHere must hold before a mut
 view can be acquired, and again at write Pre. `plain let` retains the classic
 complete-and-close invocation: after completion its instance cannot acquire a
-mut view. Bare let keeps the ordinary plain default. Neither form extends the
+mut view. Bare let supplies no override; plain behavior requires a separate applicable
+DefaultModeCompletion when no inherited/contextual constraint supplies one. Neither form extends the
 input window, and reacquiring a closed instance with `meta let` cannot reopen it.
 
 P1 `meta` describes the instance policy; P2 `meta` describes the callable's

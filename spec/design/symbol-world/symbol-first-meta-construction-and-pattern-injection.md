@@ -321,15 +321,13 @@ both components. Single P1 is not `Q:Q`. There is no general
 runtime let x = runtime_value;
 ```
 
-Bare `let` first forms output selection preference `PolicyMode=plain`, before
-RHS call selection; that preference participates with input Policy coordinates
-in the ordinary product order. After unique RHS selection, omitted P1 retains
-and infers the complete RHS pair view, while the selected producer retains its
-declared concrete `ResultPolicyMode`. The destination remains independently
-plain, and ordinary move/copy transfer between the two slots does not rewrite
-the producer mode. See the canonical binding judgment in
-`symbol-policy-and-compile-flow-projection.md` §3.1. The destination does not
-inherit the RHS mode or make runtime the only way to obtain a runtime binding.
+Bare let records no written mode override. Inherited/contextual constraints
+and any applicable default completion form the demand before RHS maxima.
+After selection the producer's concrete ResultPolicyMode is frozen. Ordinary
+pair projection and destination mode completion do not rewrite that producer;
+move/copy transfer keeps the two slot facts separate. See the canonical binding judgment in
+`symbol-policy-and-compile-flow-projection.md` §3.1. Omission does not itself demand plain or make runtime the only way to obtain
+a runtime binding.
 
 Policy migration does not reinterpret a P1 query as an exact target. Any
 non-empty `ProjectP1` result completes the binding and makes
@@ -485,10 +483,15 @@ it maps a spelling to an already resolved binding without creating a value,
 Place, group entry, or exported member. Borrow sharing is expressed through
 ordinary ref/share; @ reifies name interpretation under the lifecycle rules.
 
-Operator environments remain ordinary values mapping operator identity
-(spelling, fixity and arity) to ordinary selection material. Their final
-selector algebra is local surface work. No selector result is a manipulable
-fresh-name value, and no operator-name exception creates write authority.
+Grammar fixes operator vocabulary, fixity, precedence and parse associativity.
+Each token selects its ordinary op::type family under operator::type; source
+contributions supply semantic candidates under ordinary authority. Call,
+registered relational extraction and generative invocation are projections of
+the same operator structure, as defined by the
+[operator owner](../patterns-overload/operator-patterns-and-generative-declarations.md).
+No selector result is a manipulable fresh-name value, and no operator-name
+exception creates write authority. First-class structured Path composition is
+the remaining navigation algebra question.
 
 ## 3. Value Members and Calls
 
@@ -1607,7 +1610,7 @@ does not reroot the right-hand pattern into the internal pattern scope of
 `t1::t`. Its effect is:
 
 ```text
-CreateName(t, t1, P, type)
+Realize(NameCoord(t, t1), P, type)
   -> NameExpr and typed Uninitialized Place
 explicit ref, then ordinary first write
   -> evaluate the struct RHS under its own ordinary owner rules
@@ -2663,7 +2666,7 @@ t1_ref = bool;
 has exactly this structural trace:
 
 ```text
-CreateName(t, t1, P, type)
+Realize(NameCoord(t, t1), P, type)
   -> NameExpr(t1::t), typed Uninitialized Place q_t1
 explicit Borrow(q_t1) -> r_t1
 ordinary first write r_t1 = bool
@@ -3349,7 +3352,9 @@ general name-resolution-then-facet-projection rule.
 
 A structural name denotes a complete type. Named-contribution positions
 synthesize its V_tau under OpenHere and anchored-membership rules. Type +=
-and -= change only V_tau; Core changes use extend/inject. Explicit groups
+and -= change only V_tau registration. Pattern-registered structural extension
+uses extend/inject; ordinary name initialization/replacement can independently
+change Core's Val2 without registering a Pattern or callability role. Explicit groups
 aggregate candidate types without mutating those types. Contributions from sibling source blocks are governed
 by unordered join, not by physical-file exclusivity.
 

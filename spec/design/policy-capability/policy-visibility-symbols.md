@@ -19,8 +19,8 @@ choice, `+` cross-dimension conjunction, and `:` pair structure.
 Semantic elaboration first factors one optional whole-slot `ModePattern` from
 the complete surface policy and only then elaborates the residual `PairSpec` as
 `Pv:Pp`. At most one connected mode Pattern is allowed; neither colon side may
-contain its own semantic mode coordinate. Its typed grammar is the singleton
-`ModeAtom ::= const | plain | mut`. A surface `PolicyChoice` containing more
+contain its own semantic mode coordinate. Concrete ModeAtom is const/plain/mut;
+an explicit Pattern hole supplies a HoleRef instead. A surface `PolicyChoice` containing more
 than one ModeAtom, including `const || mut`, is preserved by
 Raw/Normalized syntax but rejected by typed Policy elaboration. This does not
 restrict same-coordinate pair/view choices such as `compile || runtime`. The
@@ -28,15 +28,16 @@ current rejection of `const:compile`, `runtime:const`, and `const:mut` is an
 empty-residual-side surface rule, not a consequence of
 orthogonality; a future contextual shorthand must still factor mode exactly
 once and leave no mode coordinate in `Pv` or `Pp`. This is not a new
-Raw/Normalized AST node. In a result-demand context, no written ModeAtom means
-the concrete `plain` point while the residual pair/view choice remains intact.
+Raw/Normalized AST node. No written ModeAtom means no explicit override.
+Inherited/contextual constraints and a separately applicable default completion
+determine any concrete demand before maxima; omission is not explicit plain.
 
-P1 has three contextual elaborators:
+Policy positions have contextual elaborators:
 
 ```text
 ordinary binding P1          -> identity-preserving slice restriction
-formal parameter policy      -> inherit P2 pair, then elaborate one whole-slot
-                                PolicyMode Pattern; unwritten mode is plain
+formal parameter policy      -> Pin = Overlay(P2, Delta_in)
+return-position policy       -> Pout = Overlay(P1, Delta_out)
 namespace declaration policy -> visibility plus optional export-root
 ```
 
@@ -59,24 +60,26 @@ Pv and Pp whenever Pv has a static stage.
 | `runtime || compile` | `(runtime || compile):compile` |
 | `runtime || seal` | `(runtime || seal):seal` |
 
-Function-object stage derivation is:
+When stage is omitted and no inherited/contextual constraint supplies it,
+function-object default stage completion may use:
 
 ```text
 Stage(P1p) = Stage(P2p)
 Stage(P1v) = Stage(P2v) || Stage(P2p)
 ```
 
-Only stages lift. `PolicyMode`, visibility, export-root, and value presence
-come from the object declaration.
+P1 and P2 remain independent; the conditional default is not P2-to-P1 semantic
+deduction. Only stages participate in this completion. PolicyMode, visibility,
+export-root and value presence retain their own declaration/context rules.
 
 Each written formal parameter inherits P2 first. The first written formal is
 the caller-object self Pattern even though its actual is passed implicitly;
 later formals consume the explicit call-site Product. An omitted qualifier
-keeps the pair unchanged and elaborates the formal mode to concrete `plain`;
-`const let` / `mut let` restrict only its `PolicyMode` and do not alter any
-other component. The function object's unwritten mode spelling likewise
-elaborates directly to the real `plain` point; an explicit
-declaration P1 may crop it. Namespace
+inherits P2 unchanged, including its mode. Written plain/const/mut or an explicit
+formal-local hole overlays only PolicyMode; inherited-only coordinates retain
+P2. Bare return-position let analogously inherits P1. An omitted function-object
+mode preserves no written override; applicable default completion is separate.
+An explicit declaration P1 may crop the exposed view. Namespace
 declaration elaboration does not crop this complete internal view merely
 because the declaration is exported. Stable external admission is determined
 by export retention plus public path visibility; later consumer dynamic-legality
@@ -102,11 +105,12 @@ Phase = OpenStatic | SealStatic | Runtime
 
 For ordinary call evaluation, the current `Phase` is already known. When no
 explicit target pair/stage Policy is written, each candidate's evaluation P1
-stage view follows its P2 through the stage-only derivation in §2 and is then
+stage view may use the applicable stage-only default completion in §2 and is then
 checked against this table. Therefore `compile`/`runtime` exposure does not
 require `PolicyLet`; that syntax remains an optional explicit result boundary.
-The phase rule does not choose whole-slot mode: unwritten mode stays `plain`,
-and explicit `const`/`mut` demand is a separate manual choice.
+The phase rule does not choose whole-slot mode: no written constraint, explicit
+plain/const/mut and an explicit hole remain distinct. Result demand must be
+resolved from the actual context/completion before maxima; inner selection seals.
 
 Resolution and exposure are distinct. A name binding whose resident has a
 `runtime:compile` view resolves in OpenStatic. Subsequent resident projection
@@ -216,6 +220,11 @@ a future custom `?` design owns richer extraction-interface construction.
 `Wpre/Wseal` membership remains orthogonal to all three views.
 
 ## 5. Rust substrate
+
+The following carriers are implementation inventory, not evidence that the new
+omission/overlay/hole semantics is connected. Existing helpers that insert Plain
+for every omitted binding or call demand need alignment; operator-Pattern policy
+deduction and the joint Pin/Pout solution relation remain pending consumers.
 
 The typed substrate currently provides:
 

@@ -245,10 +245,27 @@ engineering facilities after their inputs and effects obey the source model.
   projections; preserve access checks. No implicit projection or borrow is added.
   Cover direct-meta type/root rejection, independent Val2/V_tau/Pattern roles,
   meta retention, plain closure, mut-after-OpenHere, and no-reopen on cache reuse.
-- Align formal elaboration: Pair inherits P2, omitted formal mode is plain.
-  The current policy_pair implementation and a position-policy test still inherit
-  mode from P2 and must be corrected when this consumer is changed. Return P_out
-  remains its separately defined overlay.
+- Connect Pin=Overlay(P2,Delta_in) and Pout=Overlay(P1,Delta_out), with independent
+  P1/P2. Existing formal mode inheritance is compatible with bare omission; do
+  not replace it with unconditional Plain. Audit binding_result_policy_demand,
+  policy_let_target_demand and ordinary-invocation defaults for the distinction
+  between omitted constraint, explicit concrete atom and explicit HoleRef.
+  Use registered operator Pattern extraction plus require to solve the joint
+  relation; the 3×3 table is a derived view. Test formal-local holes, shared and
+  independent holes, inherited mode, explicit plain override, contextual/default
+  completion, output demand before maxima, sealed inner calls and no reopen.
+- Connect NameCoord before Retained/Place realization. The resident-generation
+  ProjectionSlotIdentity carrier is not automatically the stable coordinate.
+  Test identical sibling contribution coordinates, unordered contribution join,
+  explicit declaration conflicts and distinct root/selector identities.
+  Ordinary Val2 writes may change Core without acquiring either registration.
+- Connect the equal meta declaration surfaces and operator call/extract/generative
+  projections. Current NormExpr::OperatorTarget preserves unresolved grammar
+  material, not these semantic consumers. Add syntax goldens without parser
+  semantic lookup, proof-relevant extraction with zero/one/multiple solutions,
+  concrete/wildcard specificity and occurrence-level registration rejection.
+  Trait-like E laws and optimizer rewrite proofs are ordinary meta results with
+  distinct consumers; parsing cannot depend on source evaluation.
 - Align implicit return selection to the outermost enclosing function layer.
   The current return_target binder selects its most recent frame; current
   one-frame tests do not prove nested-frame correctness.

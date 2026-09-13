@@ -329,8 +329,8 @@ inferred:
 ```
 
 In particular `[x]` elaborates to the explicit empty-policy binding
-`[let x = x]`. Its unwritten capture mode is the real `plain` point; capture
-does not silently turn it into `const`.
+`[let x = x]`. Its omitted capture mode supplies no override; ordinary contextual
+inheritance/completion applies, with no automatic const conversion.
 
 For an ordinary non-in-place closure whose body contains an unresolved free
 outer value reference and no explicit capture binding replaces that reference,

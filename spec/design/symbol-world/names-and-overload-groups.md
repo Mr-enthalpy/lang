@@ -23,11 +23,27 @@ whole-snapshot positions observe the whole bound closure.
 
 ## 2. Name existence and named types
 
-    HasName_Sigma(r, n)
-    Fresh_Sigma(r, n) iff not HasName_Sigma(r, n)
-    typed structural name -> typed Place, initially uninitialized
-    ordinary Val2 member name -> resident of any ordinary type
-    ordinary name -> binding with an ordinary resident
+For a valid semantic root r and selector s, the structural coordinate exists
+independently of evaluation:
+
+    NameCoord(r,s)
+    NameCoord is not Object, Place, NameBinding resident or Val2 entry
+    NameCoord(r,s) does not imply BindingPlace(r,s)
+    NameCoord(r,s) does not imply s in dom(Val2(r))
+
+Evaluation may retain/realize the coordinate:
+
+    Retained_Sigma(r,s)
+    Fresh_Sigma(r,s) iff not Retained_Sigma(r,s)
+    HasName_Sigma(r,s) is the existing spelling for Retained_Sigma(r,s)
+      -- realization/occupancy, never existence of NameCoord itself
+
+A retained coordinate may have a typed Place; that Place may still be
+Uninitialized. Only Initialized(v) contributes the ordinary Val2 entry v.
+The coordinate space is total for legal roots/selectors without eagerly
+allocating an infinite namespace or granting access. Raw strings do not
+construct arbitrary semantic coordinates. Stable coordinate identity must not
+be confused with a particular resident generation or saved borrow target.
 
 NameBinding is binding identity and its relation to a resident Place;
 it is not a first-class Object, constructor value, or borrowable wrapper. It has
@@ -52,7 +68,7 @@ a structural fact, separate from the content of the existing value. A hidden,
 unexported or policy-filtered name still exists. Freshness uses authoritative
 occupancy, not the current lookup view.
 
-A name with no callspace contributions exists even when it yields no call
+A retained name with no callspace contributions exists even when it yields no call
 candidates. Optional storage can encode occupancy internally, but there is no
 fresh-name value or language-level None-to-Some name operation. Empty Pattern
 and empty OverloadGroup values likewise differ from absence.
@@ -111,8 +127,9 @@ For a mutable type reference t:
 
 Only eligible closure-like member values enter this operation. It changes
 V_T, never Core(T). Type subtraction likewise changes only V_T and
-requires Writable and OpenHere. Structural Core changes remain the work of
-extend/inject. Complete values remain immutable snapshots: a successful write
+requires Writable and OpenHere. Pattern-registered structural extension remains
+the work of extend/inject. Ordinary name initialization/replacement can also
+change the Val2 component of Core, without adding either role registration. Complete values remain immutable snapshots: a successful write
 replaces the value at the target, without changing an earlier copy.
 
 TypeMemberScope(T) denotes /tau(T), the complete bound type's implementation
@@ -146,9 +163,12 @@ proposed result would violate the joint Val2/registration consistency law.
     ------------------------------------------------
     no new Val2 resident is created by this TypeAdd
 
-Required new resident or anchored-instance formation belongs to one-shot
-formation for a first resident, or extend/inject for an existing one (§6.1). That full formation already
-includes its contribution once; no extra += is implied. Likewise, -= removes
+An ordinary new resident can be installed through typed-name realization and
+ordinary first write without registering any role. Named-contribution formation
+that also constructs the required hierarchy/registrations uses one-shot formation
+for the first complete type or extend/inject for subsequent registered structural
+extension (§6.1). That full formation includes its requested contribution once;
+no extra += is implied. Likewise, -= removes
 the selected callability contribution only: it does not delete the ordinary
 resident or its independent Pattern registration. These are consequences of
 the existing update domain and result invariant, not new operation primitives.
@@ -175,8 +195,8 @@ OpenHere, access, lifetime and construction-authority premises of the parent.
     Fresh(parent, n)
     t is the declared Place type
     ----------------------------------------------
-    CreateName(parent, n, P, t):
-      establish HasName(parent, n)
+    Realize(NameCoord(parent,n), P, t):
+      establish Retained(parent,n)
       BindingPlace(n) = q_n
       DeclaredPolicy(n) = P
       PlaceType(q_n) = t
@@ -200,7 +220,7 @@ Place/access/lifetime checks. DeclaredPolicy controls the initialized name's
 views, independently of that authority; const does not prevent first
 initialization. Creation returns no reference or general replacement capability.
 
-    absent name: no binding/Place
+    unretained coordinate: NameCoord exists, no binding/Place
     existing uninitialized name: binding/typed Place, no readable value
     existing initialized name: binding/typed Place with resident v
 
@@ -211,7 +231,7 @@ mut let name_ref = (P let name::path : t) ref;
 name_ref = expr;
 ```
 
-    CreateName -> BorrowPlace -> Initialize
+    RealizeNameCoord -> BorrowPlace -> Initialize
 
 Initialization belongs to ordinary Place/write algebra. With an admitted
 write operation and InitWriteLegal established by live initialization authority,
@@ -313,7 +333,7 @@ The target navigation is fixed by the typed name construction. The existing
 one-shot struct formation relation determines the complete first resident:
 
     v = Eval(e)
-    n_f = CreateName(parent, f, P, type)
+    n_f = Realize(NameCoord(parent,f), P, type)
     q_f = BindingPlace(n_f), ResidentState(q_f) = Uninitialized
     T_1 = OneShotFormation(Delta_v)
     r_f = explicit Borrow(q_f)
@@ -332,6 +352,24 @@ determines Extend(T_i, Delta_v); inject is read + extend + write. TypeAdd is
 its callability contribution step with the complete-type home, residency and
 well-formedness checks of §4. Full formation contributes each entry once;
 there is no extra post-inject += and no replay of earlier RHS captures.
+
+### 6.2 Unordered siblings share the coordinate before realization
+
+Two sibling contributions to f under r refer to the same NameCoord(r,f).
+They do not allocate competing name identities:
+
+    Contribution(NameCoord(r,f), Delta_1)
+    Contribution(NameCoord(r,f), Delta_2)
+      -> existing contribution/effect join at that coordinate
+
+For a common snapshot without a retained f, the accepted joined material
+determines one first complete resident by the same OneShotFormation relation
+above. A sequential trace is one presentation of that formation, not a
+requirement that one sibling wins a CreateName race. When a resident already
+exists, the ordinary extension/contribution relation uses that snapshot.
+Explicit mutually exclusive declarations may still conflict under realization
+rules. Coordinate agreement supplies no write authority, no duplication of
+first-initialization capability and no permission to collapse distinct entries.
 
 ## 7. Identity and closure
 

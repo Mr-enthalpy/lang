@@ -45,7 +45,15 @@ becomes the selector of a generated ordinary structural let action. That action
 uses typed NameExpr creation, explicit borrowing and ordinary initialization.
 The directory's initial resident is formed by ordinary one-shot construction;
 creation itself installs no dummy type. Only after initialization can its body
-navigate and extend that resident. Omitted policy uses ordinary let defaults. See [fresh-name formation](../symbol-world/names-and-overload-groups.md).
+navigate and extend that resident. Omitted policy supplies no override; the
+ordinary inherited/contextual policy and applicable default completion apply.
+See [name realization](../symbol-world/names-and-overload-groups.md).
+
+The generated action realizes NameCoord(r,n); it does not manufacture that
+coordinate's identity. Coordinates alone provide no Place or construction
+permission. This normalization-generated syntax is not a generative meta-head
+occurrence: the latter's Val2-only registration rule is a semantic occurrence
+distinction, not a test of a frontend Generated provenance tag.
 
 Evaluation of the directory body follows its creation in that directory's serial
 wrapper; its child blocks share the post-initialization snapshot and r_n. This ordering
@@ -84,6 +92,11 @@ Associative/commutative contributions from different files can join; physical
 provenance neither makes them exclusive nor merges distinct entries by value
 equality. Conflicting replacements report an unordered-block write conflict.
 Subtraction and other updates commute only where their ordinary algebra says so.
+
+Same-name siblings already address the same NameCoord(root,name). If unretained
+in the common snapshot, their accepted joined material forms the first resident
+once by the ordinary one-shot rule. There is no first file that creates its
+semantic identity. Explicit exclusive realization effects can still conflict.
 
 Invocation-generated result Places follow these same rules, including the
 associated-state member n_A(t). Stable invocation identity/cache reuse grants

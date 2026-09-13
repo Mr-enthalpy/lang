@@ -290,6 +290,13 @@ a!
 The operator becomes an unresolved `OperatorTarget` carrying its spelling,
 fixity, and arity. No operator lookup or overload resolution occurs.
 
+The canonical semantic handoff maps the grammar-fixed token to its ordinary
+`op::type` family under `operator::type`. Grammar vocabulary, precedence and
+parse associativity cannot be modified by source meta evaluation. The current
+OperatorTarget carrier does not itself implement family lookup or the registered
+Pattern/generative projections described by the
+[operator owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md).
+
 ### Prefix negative
 
 ```text
@@ -890,8 +897,9 @@ This is syntax-directed capture binding elaboration, not closure environment
 layout, name resolution, or materialization.
 
 These source-written captures are explicit requirements. In particular,
-`[x]` means explicit `[let x = x]` with the ordinary unwritten capture policy
-mode (`plain`); it is not an automatic const capture. A later resolved stage
+`[x]` means explicit `[let x = x]` with no written policy override; inherited
+constraints or separate default completion determine its mode. It is not an
+automatic const capture. A later resolved stage
 may add an implicit capture requirement for an otherwise uncaptured free outer
 value reference. That later operation requires symbol resolution and external
 namespace visibility plus later capability checking and therefore is not
@@ -1253,6 +1261,14 @@ surface and must not be assumed:
 
 
 ## Canonical construction and consumer alignment
+
+The canonical dual meta declaration surfaces `P let f = (self,args):meta => B`
+and `P let (self,args) f => B` preserve the same declaration material. This is
+a syntax/semantic handoff requirement, not a claim that the current parser has
+connected the latter form. Neither form normalizes by resolving a name or
+solving a Pattern. Likewise bare `let` preserves an absent override, written
+`plain` a concrete constraint, and `<p> p let` an explicit deduction hole;
+later elaboration computes Pin/Pout overlays and any default completion.
 
 Initializer-free P let name:t and P let name::path:t create typed NameExpr
 using lexical and structural destinations respectively, with non-Object

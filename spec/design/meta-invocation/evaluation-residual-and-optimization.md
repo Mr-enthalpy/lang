@@ -91,6 +91,13 @@ world. Associativity, commutativity, non-aliasing, representation, machine,
 lifetime, and policy facts are queried from E's projections. There are no
 optimizer-private assumptions or semantic gaps interpreted as permissions.
 
+Operator laws have three distinct consumers: grammar ParseAssociativity fixes
+AST grouping; SemanticLaw_E fixes the operator's relation; RewriteLaw_O supplies
+an E-proved equivalence for a continuation rewrite. Trait-like law queries are
+ordinary meta results. A commutative Pattern must already be unordered in E's
+interpretation; O cannot make it unordered by consulting a later trait query.
+See [operator relations](../patterns-overload/operator-patterns-and-generative-declarations.md).
+
     Facts_E proves R equivalent_to R'
 
 Old continuation facts can guide generation of a rewrite candidate. They cannot

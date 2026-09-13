@@ -371,21 +371,23 @@ written formal 1..n    <- explicit call-site Product positions 0..n-1
 A head with no written formal still has invocation-frame slot 0, but it does
 not bind that object to a source Pattern.
 
-No separate self-policy plane is required. Independently, the function
-object's available stage view is derived from its result P2:
+No separate self-policy plane is required. P1 and P2 are independent. When the
+function-object stage is omitted and no contextual constraint supplies it,
+the existing stage default completion may use:
 
 ```text
 Stage(P1p) = Stage(P2p)
 Stage(P1v) = Stage(P2v) union Stage(P2p)
 ```
 
-Thus the selected object has the static/runtime view required to supply self;
-an optional written P1 prefix merely projects that derived view.
+The completed view must still supply legal self material. This conditional
+default is not a general semantic deduction from P2 to P1; explicit P1 and
+other inherited/contextual constraints retain their own meaning.
 
 Each written formal parameter takes the callable P2 as its base policy pair.
-With no formal prefix, the pair component inherits P2 exactly while the
-unwritten whole-slot mode elaborates to the concrete `plain` point. `const let`
-or `mut let` changes only that whole-slot `PolicyMode`; every stage, presence,
+With no formal prefix, Pin inherits P2 exactly, including its mode. Written
+`plain let`, `const let`, `mut let` or a formal-local deduction hole supplies
+an explicit overlay on `PolicyMode`; every stage, presence,
 and Pattern-side dimension stays equal to P2. That qualifier remains an
 overload-order Pattern, so it must not be implemented by running ordinary
 binding P1 projection over the actual and deleting the oppositely qualified
@@ -459,10 +461,11 @@ may be non-ZST and follows ordinary value-passing and ownership rules.
 
 ### 7.1 Function-object PolicyMode default
 
-The binding created by `let fn = () => { ... }` has an unwritten mode spelling,
-which elaborates to the real `plain` point, not a `const || mut` choice and not
-an inference variable. The mode is not copied from P2. An
-explicit declaration P1 may select another mode. The
+The binding created by `let fn = () => { ... }` has no written mode override.
+Inherited/contextual constraints are considered before a separate applicable
+DefaultModeCompletion can choose plain. Omission is neither an explicit plain
+constraint nor a deduction hole; P1 mode is not generally copied from P2. An
+explicit declaration P1 supplies its written constraint. The
 namespace-declaration spelling `export let fn = ...` does not change this
 complete internal view. Export elaboration derives a stable, identity-preserving
 `Σ_export` from export retention and public path reachability; it neither
@@ -480,8 +483,9 @@ source [E] shorthand          -> ExplicitInferredBinder capture
 unreplaced resolved free ref  -> ImplicitEligible capture
 ```
 
-`[x]` is the explicit shorthand `[let x = x]`. Because its capture mode is
-unwritten, it is `plain`; capture does not silently replace it with `const`.
+`[x]` is the explicit shorthand `[let x = x]`, with no written mode override.
+Its mode follows the ordinary inherited/contextual constraints and any
+applicable default completion; capture does not silently replace it with const.
 Write capability remains a separate family-specific capability and is not
 implied merely by selecting `mut`.
 
@@ -627,12 +631,12 @@ Product |> Expr
    selected associated `()`
 8. Build invocation frame: implicit caller/self + explicit shaped product args
 9. Form fully admissible set A using all hard checks, including receiver and
-   parameter pair compatibility, phase legality of the P1-stage-follow-P2
-   default, P2 result compatibility with any explicit target
+   parameter pair compatibility, phase legality of any applicable stage
+   default completion, result compatibility with any explicit target
    pair/type/rank/facet expectation actually supplied, and require legality
 10. Export every elaborated formal PolicyMode Pattern to its candidate position,
-    add the always-present `OutputModeDemand(call)` (`plain` when no
-    candidate-independent immediate-consumer demand exists), apply PolicyMode
+    add any resolved `OutputModeDemand(call)` from written, inherited or
+    candidate-independent context and applicable default completion, apply PolicyMode
     product-maximal filtering and the remaining fixed-order
     preference filters, including in-place over non-in-place after the
     first-order-over-instantiated filter, then named strategy rules and the
@@ -644,23 +648,24 @@ Every nested producer actual is closed under the canonical
 `CallLocalPolicyClosure` before an unresolved candidate of the current outer
 call can influence it. A nested call uses an already-formed,
 candidate-independent immediate-consumer output demand when one exists;
-otherwise it uses local `plain`. Its selected concrete result mode is then an
+otherwise it preserves the absence of a written mode constraint until applicable
+local completion/selection. Its selected concrete result mode is then an
 ordinary actual fact for this pipeline. Outer ambiguity or failure never
 reopens the nested producer.
 
 The evaluation phase is a separate, already-known input. In the absence of an
-explicit target-result pair/stage constraint, each candidate's default
-evaluation P1 stage view follows its P2 through the canonical stage lift and is
+explicit or inherited target-result pair/stage constraint, an applicable default
+evaluation P1 stage view uses the canonical stage completion and is
 checked against the current phase. Therefore `compile`/`runtime` evaluation is
 not gated on the presence of `PolicyLet`. This default does not derive
-PolicyMode: an unwritten output mode remains `plain`, while an explicit
-`const`/`mut` result context is a manual demand.
+PolicyMode: omission is no override, while an explicit plain/const/mut result
+context is a written demand. DefaultModeCompletion is a separate judgment.
 
 `PolicyLet(P, e)` is the explicit expression boundary that may provide such a
 candidate-independent demand. It is optional for the phase-derived default:
 `compile let e` or `runtime let e` explicitly delimits/narrows the stage
-context, while `const let e` or `mut let e` explicitly replaces the default
-plain Mode demand. Its complete operand pipe is resolved once under `P`, then
+context, while `plain let e`, `const let e` or `mut let e` supplies an explicit
+Mode demand. Its complete operand pipe is resolved once under `P`, then
 `SourcePolicy(result) -> P` enters the ordinary Policy migration candidate
 preparation and unique Policy-overload selection. The selected migration
 jointly produces the concrete Policy projection and value realization in the
@@ -755,8 +760,8 @@ eagerly turn the carrier into a value or allocate its environment.
   ordinary invocation checking.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
-- An unwritten function-object mode is `plain`; an explicit declaration P1 may
-  select another mode. Export preserves the complete namespace-internal mode
+- An unwritten function-object mode is no override; inherited/contextual
+  constraints and applicable default completion determine it. Export preserves the complete namespace-internal mode
   and filters external candidates through independent capability/visibility
   eligibility rather than a universal const projection.
 - Written formal parameters inherit P2 exactly outside the optional whole-slot

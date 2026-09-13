@@ -63,11 +63,13 @@ same-Type Policy migration are separate ordinary operations.
 - Which effect/error/panic/resource capability dimensions are added to
   DynamicLegality?
 
-Primitive `PolicyMode={const,plain,mut}`, total result demand before maxima,
-three-point preference, 3×3 capability realization, unique selection, and no
-reopen are fixed. Formal PolicyPair inherits P2; its independent omitted
-PolicyMode is plain. Return-position refinement keeps its separately specified
-P_out rule. These are not competing defaults.
+Primitive PolicyMode={const,plain,mut}, demand formation before maxima,
+three-point preference, capability realization, unique selection and no reopen
+are fixed. P1/P2 are independent; Pin/Pout overlay P2/P1 respectively. Bare let
+supplies no override; written concrete mode and explicit hole are distinct.
+Policy deduction uses ordinary operator Pattern relations, HoleBinderId and
+require. The 3×3 tables are finite explanatory views of relational declarations,
+not a separate inference primitive. Default completion is not a source constraint.
 
 ## Residual and serial evaluation
 
@@ -118,7 +120,8 @@ and initialization; later contributions extend an existing resident.
 Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
 requires OpenHere and final anchored closure membership, changing only V_tau;
-Core changes use extend/inject. Ordinary group mutation needs its own Writable,
+Pattern-registered structural changes use extend/inject; ordinary name writes
+may independently change Val2(Core). Ordinary group mutation needs its own Writable,
 not OpenHere of its contained types. Meta invocation constructs ordinary result
 instance names/types with dependency-derived openness. P1 meta retains that
 qualification; plain let completes/closes the instance. Arbitrary Val2 payloads
@@ -155,7 +158,7 @@ Color relations are explicit directed rows and Color inheritance is monotone.
 - What API expresses context-directed member projection after stable name
   resolution without turning consumer roles into name ontologies?
 - Are escaped field names needed outside the existing syntax?
-- What is the final form of the existing unique-trait design?
+- What source library/API expresses trait-like laws as ordinary meta results?
 - What concrete host IO/FFI APIs expose ordinary Objects and policy views?
 - How do traversal/index consumers preserve Core equality while retaining
   captured complete callspaces in whole-snapshot observations?
@@ -178,14 +181,14 @@ ordinary source/host work; their implementation does not create authority.
   `if`/`else`/unit absorption through ordinary calls?
 - How are `return`, effect, and sync operations integrated into the shared
   semantic continuation?
-- What complete operator-environment selector algebra maps spelling+fixity+arity
-  to ordinary callable selection material?
+
+Operator tokens/fixity/precedence/parse associativity are grammar facts; semantic
+families are ordinary op::type members under operator::type. Call, registered
+relational extraction and generative invocation are projections of that one
+structure. No independent operator-environment semantic design remains open.
 
 ## Generic navigation and Product surface
 
-- Can a closed complete type carry one finite general navigation operation
-  that extracts a requested binding-name key from known request material,
-  without adding members or introducing a universal name quantifier?
 - Should intrinsic Product ordinal selectors be exposed as a user-visible
   tuple namespace API or remain structural navigation only?
 - How does source code reference or replace a derived compile companion?
@@ -193,6 +196,36 @@ ordinary source/host work; their implementation does not create authority.
   compile Pattern/contract must replace it?
 - What finer-grained identity, if any, is needed for grouped inferred-require
   atoms?
+
+### First-class structured Path algebra
+
+The remaining foundational navigation question is how structured, typed,
+authority-compatible name/path material supports Reroot, Append, DependentSelect
+and composition. Arbitrary String -> SemanticPath injection is excluded. A
+possible .field -> field::adl presentation belongs to this reroot/dependent-path
+and surface question, not to whether a requested name coordinate can exist.
+
+NameCoord exists independently of realization. Finite generative rules can
+match legal requested coordinates without enumerating an infinite Val2 or using
+a universal name quantifier; concrete heads outrank wildcard heads by ordinary
+specificity. Unordered same-name contributions share the coordinate and merge
+their contribution effects, so no first-creator identity choice remains open.
+Generated occurrences supply ordinary Val2 residency only, never registration
+evidence.
+
+### Pending cross-owner closure: generated realization after Close
+
+The generative declaration relation is fixed; one target-ownership premise still
+needs reconciliation. Does a request for an unrealized s on an already closed T
+install Val2(T)[s], or observe a result owned by a separate meta invocation?
+The former changes Norm(Core(T)); current invocation/construction laws preserve
+Close(T) => StableStructure(T), deny mutable views after Close, and keep invocation
+results outside their input structure. The latter needs an explicit navigation
+bridge rather than silently asserting Generated(T,s,v) => Val2(T)[s]=v.
+These alternatives must not be reconciled by compiler-private storage semantics
+or a new implicit write authority. Until this premise is settled, no consumer
+may use the new generative notation to bypass Close. This is a cross-owner
+compatibility question, not reopening NameCoord identity or operator extraction.
 
 ## Bootstrap boundary
 
