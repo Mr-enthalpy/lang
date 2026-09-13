@@ -95,6 +95,19 @@ realization and invocation laws. That occurrence supplies no V_tau registration
 and no Pattern structural registration: no DirectPatternChild, ConstructEdge,
 ExtractEdge or FieldView evidence follows from it.
 
+The two exclusions have distinct reasons. V_tau callable values do not acquire
+val::path navigation through callability registration; their anonymous
+classifiers' /tau homes do not change that fact. Pattern registrations determine
+the type's structured construction/extraction form and therefore must be
+non-generative. Neither role is a history-dependent discovery of requested values.
+
+Close freezes those non-generative registrations and ends their construction
+window; it does not prohibit later ordinary generated Val2 realization. The
+[name owner](../symbol-world/names-and-overload-groups.md#71-generated-val2-after-registered-structure-is-closed)
+defines current observations, retained snapshots and the unchanged no-reopen
+boundary. Generated realization cannot obtain a closed parent's mut construction
+view or mutate a registered witness.
+
 This restriction belongs to the occurrence, not permanently to the value. The
 same ordinary value may obtain an appropriate witness through another lawful,
 non-generative declaration. Neither callspace registration nor Pattern role

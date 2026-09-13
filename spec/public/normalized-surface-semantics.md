@@ -1280,8 +1280,9 @@ initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
 replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires externally resolvable structural names to be
-initialized. Ordinary lexical let remains unchanged.
+is not canonical. Close requires retained structural names being published to be
+initialized; it does not require all future generated coordinates to be realized.
+Ordinary lexical let remains unchanged.
 These canonical consumers remain pending; current parser carriers do not define them.
 
 The current parser/Norm carrier has not yet connected this expression family;

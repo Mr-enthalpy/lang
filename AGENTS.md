@@ -87,14 +87,17 @@ alternate relation or identity.
   Initializer-free P let name:t shares typed-name formation at a lexical
   destination. P let name=rhs is a complete lexical binding with RHS inference;
   the initializer-free structural default does not apply to it.
-  Explicit ref then ordinary write initializes; Close requires resolvable members
-  initialized. NameBinding is not a wrapper Object.
+  Explicit ref then ordinary write initializes; Close requires retained members
+  being published initialized, not every future coordinate realized. NameBinding is not a wrapper Object.
   First initialization uses Place authority independently of DeclaredPolicy,
   including const; commit consumes it. Saved initial refs do not authorize
   replacement, and first write never reads nonexistent resident policy.
   TypeRole(Q) is Q-local; complete tau consistency checks both registered
   closure roles' /tau homes separately.
-- Type +=/-= changes only V_tau under Writable, OpenHere and complete-type /tau classifier home and independent residency/registration. Witnessed anchored replication never reparents an existing value.
+- Type +=/-= changes only V_tau under Writable, OpenHere, complete-type /tau
+  classifier home and non-generative registration. Named Val2 residency is neither
+  required nor implied; classifier navigation is not callable-value navigation.
+  Witnessed anchored replication never reparents an existing value.
 - OverloadGroup aggregation buckets whole bound type snapshots, never Core classes,
   has its own entry algebra and requires Writable.
   Ordinary meta constructs an instance name/type tau_M outside input structure;
@@ -138,6 +141,9 @@ alternate relation or identity.
 - Meta call/value and Pattern/name declarations are equal surface projections.
   Grammar-fixed op::type families use ordinary call/extract/generative relations;
   generated occurrences supply no Pattern or V_tau registration evidence.
+- Close freezes non-generative registered structure, not future ordinary generated
+  Val2 realization. Such results reopen no construction view and do not alter old
+  snapshots. Current Norm/only_val2 observations remain continuation-relative.
 
 ## Scope and Open questions
 

@@ -55,8 +55,9 @@ initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
 replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires externally resolvable structural names to be
-initialized. Ordinary lexical let remains unchanged.
+is not canonical. Close requires retained structural names being published to be
+initialized; it does not require all future generated coordinates to be realized.
+Ordinary lexical let remains unchanged.
 
 Same-name construction synthesizes a named type's V_tau under membership and
 OpenHere checks. An explicit OverloadGroup aggregates type candidates instead.

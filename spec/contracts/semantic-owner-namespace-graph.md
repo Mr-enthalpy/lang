@@ -214,11 +214,14 @@ consumer Policy-selection and dynamic-legality failures.
 
 `struct` forms a complete type value `tau` whose core `Q_struct = Core(tau)`
 satisfies `Pure(Q_struct)` and `TypeRole(Q_struct)`; structural leaves and
-associated lets contribute to that construction. Generated field/access/
-assignment/borrow partners are ordinary members entering `V_τ` at the formation
+associated lets contribute to that construction. Mechanically produced field/access/
+assignment/borrow partners with non-generative registration enter V_tau at the formation
 event; a name binding appears only at a subsequent binding/install of the formed
-value. Same-name associated `Val2` named types expose those same members and own
-no second copy. Members registered for type callability and satisfying
+value. Independent associated Val2 names may expose the same values without
+copying them for that reason. V_tau itself requires no named resident and grants
+no val::path selector; the anonymous classifier's /tau home is distinct from
+value navigation. Requested-name generative occurrences supply ordinary Val2
+only and cannot supply either registration. Members registered for type callability and satisfying
 `Home(TypeOf(v)) = TypeMemberScope(tau)` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
 type-as-callee uses `CallSpace(tau)=V_τ`; there is no defining-name binding or
 recent-carrier recovery route.
@@ -283,8 +286,9 @@ initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
 replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires externally resolvable structural names to be
-initialized. Ordinary lexical let remains unchanged.
+is not canonical. Close requires retained structural names being published to be
+initialized, not every future generated coordinate realized. Ordinary lexical
+let remains unchanged.
 Anchored replication targets the complete type's /tau layer without RHS feedback.
 
 Named callable contributions remain ordinary function objects. Their first

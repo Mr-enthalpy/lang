@@ -799,6 +799,12 @@ Ordinary Val2 membership needs neither registration and permits arbitrary
 resident types. Authorized classifier home is eligibility, not automatic
 registration in either role family.
 
+Pattern structural registration is non-generative because it determines the
+structured construction/extraction form. A requested-name generative occurrence
+may yield an ordinary Val2 value but supplies none of these structural witnesses.
+V_tau registration is also non-generative and does not require or grant named
+Val2 navigation to its callable value; classifier home is a separate condition.
+
 The namespace/type distinction of a core `Q` is a property of `Q`'s registered
 construction role, never of any later name binding sibling count. Formally:
 
@@ -970,7 +976,7 @@ TypeClosureView(X) = τ = ⟨Q, V_τ⟩
 τ ≡ DescriptionClosure(P, Val2)
 ```
 
-This is not `V_τ = Val2`: `V_τ` is the type-callspace portion observed from
+This is not `V_τ = Val2`: `V_τ` is the type-callspace snapshot observed from
 the same closed entity, and `Q` is its core/Object-structure observation. The
 consistency law is:
 
@@ -982,8 +988,9 @@ a constraint on ⟨Q,V_τ⟩
 constrain the same semantic entity.
 ```
 
-So `Closed(τ)` also means no new structure or callable may be added from the
-`P × Val2` side, and `WellFormedTau(τ)` also guarantees that the P/Val2
+Closed(tau) freezes the non-generative Pattern structure and V_tau registration;
+ordinary generated Val2 results may still be realized without either role.
+WellFormedTau(tau) guarantees that the P/Val2
 structural registration and the V_τ anchored callspace are compatible.
 There is no formation order "Q formed first, then some namespace inspected,
 then V_τ attached, then τ obtained"; there is no "P structure is one object,
@@ -1059,8 +1066,7 @@ HomeEligible_tau(F)                                -- classifier home only
 TypeMember_τ(F)
   iff F ∈ ClassifierDomain(V_τ)
   and HomeEligible_τ(F)
-  and Resident_tau(F)
-  and F is registered for this snapshot's type callability
+  and F has non-generative registration for this snapshot's type callability
 
 CreateClassifier_Gamma(
   F,
@@ -1073,6 +1079,18 @@ V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partit
 Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
+
+TypeMember registration does not require a named Val2 resident or grant a
+val::path selector for F. The anonymous classifier has its /tau home; navigation
+to that classifier is not navigation to F. A separate ordinary binding may expose
+the same value without changing its callability or Pattern registration.
+
+Pattern-registered members determine the structured construction/extraction
+relation and must be non-generative. GeneratedOccurrence cannot supply
+DirectPatternChild, ConstructEdge, ExtractEdge, FieldView or V_tau evidence.
+This is an occurrence restriction, not a permanent prohibition on the value.
+Mechanically produced struct helpers belong to their ordinary non-generative
+formation; a frontend Generated provenance tag is not a generative name rule.
 
 `V_τ` is fixed at formation and never grows: classifiers created later under
 the same scope may enter, when registered, only the new snapshot `V_τ'` (extend preserves

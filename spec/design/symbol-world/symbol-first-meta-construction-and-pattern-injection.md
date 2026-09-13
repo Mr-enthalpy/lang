@@ -76,7 +76,8 @@ lexical-parent topology, or a special implementation declaration. Functions
 retain their own CallableOwner and complete anonymous implementation layer
 under /tau. A callable can be used directly only when
 Home(TypeOf(F)) = TypeMemberScope(T) for the complete destination T;
-residency and the requested role registration are checked separately.
+any independently requested named residency and the non-generative role
+registration are checked separately. Callability needs no val::path resident.
 Equal Core does not identify implementation homes. Otherwise only a
 ReplicableUnder witness permits InstantiateUnder to create a new anchored
 instance; the old callable, its captures and owner remain unchanged. Internal
@@ -850,9 +851,11 @@ completed invocation reacquires its name and Place without reinitializing it.
     payload: ordinary Val2(tau_M), accessed by member::(In |> F)
 
 The result name is not a structural input child and does not alter input Val2 or
-Norm. It requires no reopening of the input's fixed structural name set.
-Children subsequently constructed under its own resident require ordinary
-construction authority, openness and freshness.
+Norm merely by being acquired. It requires no reopening of the input's
+non-generative registered structure. Explicit construction under its own resident
+requires ordinary authority, openness and freshness. Generated ordinary Val2
+realization is a separate result effect and supplies neither registration nor
+an open construction view, as specified by the name owner.
 
 #### 4.3.1 The body is transparent to its own construction
 
@@ -893,7 +896,8 @@ Closed fresh type construction has the following publication obligation:
         Root(Q) = M
         transfer OwnedResultClosure(tau_M) to the result's valid region
         EscapeDeps(tau_M) valid throughout that region
-        close its structural name set and local construction window
+        initialize retained names being published
+        close non-generative registered structure and the local construction window
 
 For global publication, owned transfer is global promotion and external
 dependencies must already be globally stable. A dependency-bounded result obeys
@@ -1535,7 +1539,7 @@ struct(P)
 
 where the core `Q_struct = Core(tau_struct)` is produced
 during the formation event, satisfying `TypeRole(Q_struct)`, and the
-direct TypeMembers generated during that formation event enter `V_τ`
+direct TypeMembers mechanically produced and non-generatively registered during that formation event enter `V_τ`
 immediately; there is no intermediate name binding from which `Q_struct` or `V_τ`
 is later projected. Section 7.5 closes the mechanically generated
 field/access/ref/share/assignment partners in that complete type snapshot and
@@ -1543,6 +1547,12 @@ exposes corresponding associated views. Other authorized ordinary members, when
 present, are likewise part of that snapshot's `V_τ`; type-as-callee never
 recovers a defining name binding. This bounded capability does not expose a general
 macro system.
+
+Here mechanical production by struct is not a requested-name generative
+occurrence. The latter may produce ordinary Val2 results but cannot supply V_tau
+or Pattern registration. A registered callable's anonymous classifier is rooted
+under /tau; that fact neither requires nor creates val::path navigation to the
+callable value itself. Associated named exposure, when requested, is independent.
 
 In the complete-type notation this producer-specific guarantee is:
 
@@ -1953,7 +1963,8 @@ This determines Core preparation by projection of the existing formation:
     Q_1 = Core(S_a(B ; Delta_v))
     v_a = the member instance formed in that result
     Home(TypeOf(v_a)) = TypeMemberScope(T_1)
-    Resident_T1(v_a), with role registration checked independently
+    named Val2 residency only if requested by that member material
+    non-generative role registration checked independently
 
 The local contribution step is TypeAdd after that Core preparation, together
 with the ordinary generated-member closure. Extend returns the whole completed
@@ -3284,7 +3295,8 @@ MetaGenerated material or evade its UseForVal1 restrictions.
 At return, the result name retains the meet-derived qualification of its actual
 input dependencies. Untransferred locals expire; owned result transfer and
 escape checking obey §4.3.2. Globally published fresh construction closes its own
-structural name set. Completion does not close or promote borrow targets or
+non-generative registered structure. Ordinary generated Val2 realization does
+not reopen that construction window. Completion does not close or promote borrow targets or
 terminate an inherited outer source. Saved references and repeated acquisition
 recheck current window and lifetime facts.
 

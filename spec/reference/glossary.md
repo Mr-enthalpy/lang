@@ -71,10 +71,20 @@ opaque leaf that under-merges without inventing equality.
 ### Val2
 
 The Object's owned selector-to-Object snapshot. Ordinary entries may have any
-type and need no callability or Pattern registration. V_tau records the portion
-registered for type callability; Pattern extraction/construction registration is
-independent. Both registered families require their classifiers under tau.
+type and need no callability or Pattern registration. V_tau registers callable
+values without requiring or granting val::path navigation to them; Pattern
+extraction/construction registration is independent. Both registered families
+are non-generative and require their classifiers under tau.
 Navigation-visible or inherited members are separate observations.
+
+### Close and generated realization
+
+Close ends the construction window and freezes non-generative Pattern/V_tau
+registrations. It requires the retained names being published to be initialized,
+not all possible coordinates to be realized. Ordinary generated Val2 results
+may still be realized without registration or a reopened construction view.
+Current Core/Val2 observations may change; earlier copied snapshots do not.
+only_val2 counts its actual snapshot, not every future generated result.
 
 ### Complete pattern/type value (`tau`)
 
@@ -331,8 +341,9 @@ initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
 replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires externally resolvable structural names to be
-initialized. Ordinary lexical let remains unchanged.
+is not canonical. Close requires retained structural names being published to be
+initialized, not every future generated coordinate realized. Ordinary lexical
+let remains unchanged.
 
 ### Associated compile state A
 

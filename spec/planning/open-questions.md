@@ -102,7 +102,7 @@ function layer; consumer alignment is roadmap work.
   aggregation laws (with BucketEq(T1,T2) iff Norm_type(T1)=Norm_type(T2)) without erasing entries through an
   unrelated cache/value-identity quotient? This is not an open semantic codomain.
 - What IR represents the already defined construction-window termination,
-  meta completion, plain closure and externally visible name-set closure events?
+  meta completion, plain closure and registered-structure closure events?
 - What public spelling should the builtin associated-state callable A use?
 - Which values beyond closure-expression-produced closures can prove a
   location-parametric ReinstantiationWitness? The initial domain is fixed;
@@ -115,7 +115,8 @@ explicit borrowing and ordinary first write initialize it. Initialization
 authority is independent of const/plain/mut and is consumed on the successful
 first commit; later replacement has separate capability and resident
 compatibility checks. Close requires
-initialized resolvable members. First named contribution uses one-shot formation
+initialized retained members being published, not realization of every coordinate.
+First named contribution uses one-shot formation
 and initialization; later contributions extend an existing resident.
 Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
@@ -213,19 +214,13 @@ their contribution effects, so no first-creator identity choice remains open.
 Generated occurrences supply ordinary Val2 residency only, never registration
 evidence.
 
-### Pending cross-owner closure: generated realization after Close
-
-The generative declaration relation is fixed; one target-ownership premise still
-needs reconciliation. Does a request for an unrealized s on an already closed T
-install Val2(T)[s], or observe a result owned by a separate meta invocation?
-The former changes Norm(Core(T)); current invocation/construction laws preserve
-Close(T) => StableStructure(T), deny mutable views after Close, and keep invocation
-results outside their input structure. The latter needs an explicit navigation
-bridge rather than silently asserting Generated(T,s,v) => Val2(T)[s]=v.
-These alternatives must not be reconciled by compiler-private storage semantics
-or a new implicit write authority. Until this premise is settled, no consumer
-may use the new generative notation to bypass Close. This is a cross-owner
-compatibility question, not reopening NameCoord identity or operator extraction.
+The former Close/realization question is closed: ordinary generated Val2 results
+are permitted; neither V_tau nor Pattern registration can come from a generated
+occurrence. Close freezes non-generative registered structure, not all future
+Val2 realization. V_tau callable values need no val::path resident; classifier
+home is distinct. Current observations, prior immutable snapshots and no-reopen
+checks follow the [name owner](../design/symbol-world/names-and-overload-groups.md#71-generated-val2-after-registered-structure-is-closed).
+Representation of these effects is consumer work, not a second navigation ontology.
 
 ## Bootstrap boundary
 

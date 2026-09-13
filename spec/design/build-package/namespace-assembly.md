@@ -24,7 +24,8 @@ construction authority, semantic equality or name occupancy.
 
 ## 2. Names and contributions
 
-A structural name denotes a named type. An existing name with no callspace
+A structural name may hold any declared resident type; an initialized :type name
+denotes a named type. An existing name with no callspace
 contributions still shadows an outer same-spelled binding. Freshness is
 authoritative occupancy, independent of view filtering.
 
@@ -38,8 +39,9 @@ initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
 replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires externally resolvable structural names to be
-initialized. Ordinary lexical let remains unchanged. See [name semantics](../symbol-world/names-and-overload-groups.md).
+is not canonical. Close requires retained structural names being published to be
+initialized, not every future generated coordinate realized. Ordinary lexical
+let remains unchanged. See [name semantics](../symbol-world/names-and-overload-groups.md).
 
 Sibling contributions join according to ordinary type-contribution/effect algebra.
 Conflicting writes are not repaired by file order. File ownership, one-type-slot
@@ -47,7 +49,8 @@ restrictions and package mounts provide no additional admission rules.
 
 ## 3. Resolution and visibility
 
-Resolve a name once, read its named type, then apply the consumer projection.
+Resolve a name once, read its resident (a named type in the :type case), then apply
+the consumer projection.
 An explicitly held OverloadGroup uses its own candidate projection.
 Every explicit navigation host retains its own ordinary view/visibility facts.
 Export and public/private policy remain source-defined language relations;
@@ -60,8 +63,10 @@ target's identity nor its authority. A configured mount is not a source action.
 ## 4. Construction closure
 
 Existing OpenHere, Writable, reference validity and construction authority govern
-mutation. A meta result is externally navigable only after its externally
-visible name set is closed. Anonymous implementation material stays under /tau.
+ordinary construction mutation. External navigation follows completion of the
+selected meta call. Close freezes non-generative registered structure, while
+ordinary generated Val2 results may still be realized without either registration.
+Anonymous classifiers stay under /tau; this grants no navigation to their values.
 Associated compile state closes under its source pattern value's existing
 window; target injection independently requires the receiver's open reference.
 

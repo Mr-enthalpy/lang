@@ -117,7 +117,7 @@ result name supplies the ordinary extraction/value interface.
 FormationOwner(n) = invocation M
 n notin StructuralChildren(input)
 forming or reacquiring n leaves Val2(input) and Norm(input) unchanged
-Close(input) => StableStructure(input)
+Close(input) => stable non-generative registered structure
 ```
 
 A structural name such as `child::t` instead occupies t's structural namespace
@@ -125,7 +125,11 @@ and its resident participates in t's owned Val2 observation. Structural
 namespace membership and registered DirectPatternChild evidence remain
 distinct. Invocation ownership establishes neither relation to an input.
 The name's own resident can have ordinary structure and members under their
-ordinary construction rules.
+ordinary construction rules. This statement concerns acquiring the invocation
+result itself. A separate generative name realization may establish an ordinary
+Val2 member at its requested coordinate, including on a closed type; it supplies
+neither V_tau nor Pattern registration and does not reopen construction authority.
+See [generated Val2](../symbol-world/names-and-overload-groups.md#71-generated-val2-after-registered-structure-is-closed).
 
 ### 2.0.2 Open inputs and output dependency closure
 
@@ -395,8 +399,9 @@ selection or a closed construction window.
 
 ### 3.1 Ordinary Val2 extraction and compile convenience
 
-A type can hold arbitrary ordinary values in Val2. `V_tau` is only the portion
-registered for the type's own callability; Pattern construction/extraction
+A type can hold arbitrary ordinary values in Val2. V_tau registers ordinary
+callable values for the type's own callability without requiring or granting
+val::path navigation to those values. Pattern construction/extraction
 registration is separate again. Their precise separation is owned by
 [type values](../symbol-world/type-values-places-and-borrow-views.md#22-complete-type-values-are-closed-snapshots-over-object-cores).
 No callability or Pattern registration is needed merely to store a payload.
@@ -414,6 +419,12 @@ compile-error path; the concrete error representation remains owned by compile
 error semantics. The count is over actual Val2, not V_tau, Pattern-registered
 roles, candidates, or a visibility-filtered subset. Ordinary access checks still
 apply; the helper does not disclose private members.
+
+Close fixes non-generative registrations, not the number of every future ordinary
+generated member. This helper counts the actual finite Val2 snapshot at its
+evaluation position, without invoking every possible name rule. A later ordinary
+realization may give a different current count; it neither changes an earlier
+value snapshot nor makes its count a timeless optimization premise.
 
 The input must actually be closed, not merely temporarily non-OpenHere. The
 helper neither closes it implicitly nor selects an arbitrary entry. It performs
@@ -482,7 +493,8 @@ type-forming versus borrow-forming distinction.
 | Equal-Core inputs with distinct observed construction subjects | Distinct name-dependent keys; no shared window |
 | Copy an input preserving its observed subject | Same subject-dependent result name |
 | Update a subject without changing its identity | Preserve the name-dependent association; ordinary value-snapshot keys remain content-sensitive |
-| Obtain a result name after input structural closure | No new input child, Val2 entry or Norm change |
+| Merely acquire an invocation result after input closure | No new input child, Val2 entry or Norm change from that acquisition |
+| Realize a generated member on a closed type | Ordinary Val2 result only; registered Pattern/V_tau structure stays fixed and no construction window reopens |
 | Read a group-valued Val2 member without ref | Ordinary group value observation; the meta call itself returns tau_M |
 | Explicitly borrow a result name | Ordinary actual-Place/capability/lifetime checks; no implicit borrowing |
 | P1 meta while OpenHere holds | Retain the instance; derive mut qualification from OpenHere |

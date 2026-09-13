@@ -147,31 +147,30 @@ on the candidate types.
 ### 4.1 TypeAdd also preserves the complete result's well-formedness
 
 The displayed TypeAdd premises do not replace WellFormedTau of the resulting
-snapshot. V_T registers values from the same ordinary Val2; it is not a second
-value store. Core contains that Val2 observation. Consequently, keeping Core
-fixed also keeps those residents fixed.
-
-For an existing resident f with Home(TypeOf(f)) = TypeMemberScope(T), adding its callability
-registration can produce a well-formed new V_T without changing Core. It does
-not automatically add Pattern registration. Conversely, if v' is not a resident
-of that Val2, classifier home alone does not make TypeAdd legal: the
-proposed result would violate the joint Val2/registration consistency law.
+snapshot. They also do not require v' to have a named, navigable Val2 resident.
+V_T holds ordinary callable values under the complete type's callspace relation;
+registration does not provide a val::path selector for those values. Their
+anonymous classifiers have the required /tau(T) home. Classifier navigation and
+value navigation are distinct facts.
 
     Core(T') = Core(T)
     V_T' = V_T + v'
-    WellFormedTau(T') and joint Val2/role consistency
-    ------------------------------------------------
-    no new Val2 resident is created by this TypeAdd
+    Home(TypeOf(v')) = TypeMemberScope(T)
+    non-generative callability registration and WellFormedTau(T')
+    ------------------------------------------------------------
+    TypeAdd adds no named Val2 entry and needs no such entry as a premise
 
-An ordinary new resident can be installed through typed-name realization and
-ordinary first write without registering any role. Named-contribution formation
-that also constructs the required hierarchy/registrations uses one-shot formation
-for the first complete type or extend/inject for subsequent registered structural
-extension (§6.1). That full formation includes its requested contribution once;
-no extra += is implied. Likewise, -= removes
-the selected callability contribution only: it does not delete the ordinary
-resident or its independent Pattern registration. These are consequences of
-the existing update domain and result invariant, not new operation primitives.
+An eligible anchored replica can therefore enter V_T without first being bound
+as val::path. Captures, identity, lifetime, Writable and OpenHere checks still
+apply. A separate ordinary name may expose the same value, but this is an
+independent residency/binding action, not a required callspace representation.
+
+Ordinary name writes and generated name occurrences can establish Val2 residents
+without either registration. A generated occurrence cannot supply V_T or Pattern
+registration evidence. Non-generative one-shot/extend formation may establish
+the roles requested by its material, once each. Type subtraction removes the
+selected callability contribution only; it neither removes an independently
+named resident nor its independent Pattern registration.
 
 ## 5. Typed name declarations and complete let bindings
 
@@ -303,20 +302,20 @@ payload contributes neither a callability nor a Pattern registration.
 
 ### 5.1 Closure requires initialized structural names
 
-    Close(T) requires
-      every n in ExternallyResolvableNames(T) has an initialized resident
+At the Close continuation position, every retained structural name being
+published must have an initialized resident. An uninitialized name cannot be
+silently discarded, filled with a dummy type or hidden by a consumer filter.
+HasName means Retained, not every legal NameCoord or every future generative
+request. At any observation, actual named Val2 entries are precisely initialized
+retained residents in that corresponding view.
 
-    while open: HasName(T,n) may hold while n is absent from dom(Val2(T))
-    after successful Close:
-      ExternallyResolvableNames(T) = dom(Val2(T))
-      for ordinary initialized structural members in the same name view
-
-HasName is structural occupancy; Val2 records actual ordinary values.
-An uninitialized name cannot be silently discarded, filled with a dummy type,
-or hidden by a consumer filter to pass Close. Visibility rules remain ordinary;
-the equality compares the corresponding structural member domain, not intrinsic
-ordinal selectors or a visibility-filtered singleton count. The closed-type
-only_val2 helper therefore still counts actual initialized Val2 entries.
+Close ends the construction window and freezes the non-generative registered
+structure: V_T callability and Pattern construction/extraction registrations.
+It does not assert that all future ordinary Val2 realization is impossible.
+The already established finite generative rules may answer later legal requested coordinates with
+ordinary Val2 results; those occurrences add neither registration. See §7.1.
+The only_val2 helper counts the actual entries at its observation position, not
+all coordinates or possible future realizations.
 
 ## 6. Positional synthesis and lexical let
 
@@ -382,3 +381,43 @@ Publishing a closed construction result requires its externally resolvable
 structural names to be initialized. Open construction navigation continues to
 obey its ordinary access and authority rules. Anonymous implementation layers remain under /tau.
 Neither physical files nor group aggregation grant target construction authority.
+
+### 7.1 Generated Val2 after registered structure is closed
+
+The generative declaration rule may realize an ordinary member on a closed T:
+
+    GeneratedOccurrence(T,s,v) -> Val2_current(T)[s] = v
+    no V_T registration from this occurrence
+    no Pattern registration from this occurrence
+
+Here current denotes the ordinary evaluator observation, not an extra Object
+axis or a private cache. A previously copied complete snapshot stays unchanged;
+if realization changes current Val2, its new Core/Norm observation is visible to
+E. Close is not a proof of constant Norm(Core) across such effects. E facts and
+only_val2 counts remain tied to their snapshot/continuation position.
+
+This is the selected generative rule's result realization, not permission to
+obtain a mut construction view of closed T, perform arbitrary structural let,
+inject a Pattern extension or update V_T. Its ordinary name/result formation,
+access, dependency, Place and lifecycle checks still apply. A saved construction
+ref remains closed. Generation cannot replace an existing registered witness
+and thereby alter the frozen Pattern structure.
+
+The distinction is semantic occurrence, not implementation provenance: a struct
+operation may mechanically produce helpers as part of its non-generative
+registered formation. Conversely, a requested-name generative occurrence cannot
+register its result even when that result has a correctly anchored classifier.
+The same value may be registered by another authorized non-generative occurrence.
+
+For example, let closed T already carry a rule for requested selector s:
+
+    before request: NameCoord(T,s), not Retained(T,s)
+    selected rule realizes v at s -> current Val2(T)[s] = v
+    after request:  s::T reads v, subject to ordinary access
+    Pattern registrations and V_T are unchanged
+
+Even if v is callable and its classifier has the right home, this occurrence
+cannot add v to V_T or make s a Pattern child. Conversely, while a target is open,
+an authorized non-generative TypeAdd of an eligible f need not first create
+f::T. The classifier's /tau path still does not name the f value. These two
+examples exercise different independent relations, not two kinds of Object.

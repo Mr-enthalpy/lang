@@ -65,12 +65,13 @@ TypeAdd requires Writable, OpenHere(T), and a well-formed resulting snapshot.
 For v' = AnchorFor(v,T), check separately:
 
     Home(TypeOf(v')) = TypeMemberScope(T)
-    Resident_T(v')                    -- ordinary Val2 residency
-    RegisteredCallability_T'(v')      -- requested contribution in the new snapshot
+    RegisteredCallability_T'(v')      -- authorized non-generative contribution
 
-Pattern-role registration is independent. A witnessed new anchored instance
-still needs ordinary formation/residency; the witness cannot insert a hidden
-value store or change Core through +=. TypeAdd changes only V_T. See
+Pattern-role registration and named Val2 residency are independent. The callable
+value needs no val::path resident; its anonymous classifier's /tau home does not
+make the value navigable. A witnessed new instance still obeys ordinary formation,
+capture and lifetime checks; TypeAdd neither changes Core nor grants a named
+selector. Generated-name occurrences cannot supply either registration. See
 [name/type algebra](names-and-overload-groups.md#41-typeadd-also-preserves-the-complete-results-well-formedness).
 
 ### 4.1 Creation, initialization, and later contribution
@@ -90,7 +91,7 @@ In a named-contribution position, the first closure contribution instead uses
 the existing one-shot formation to produce that complete first type, then
 initializes once. After an initialized T exists, further member material uses
 extend/inject and its complete-type anchoring relation. An explicit += can
-change callability registration when the resident, home and result consistency
+change callability registration when the home, non-generative registration and result consistency
 premises hold. Neither the first formation nor an inject is followed by an
 additional implicit +=. Ordinary assignment candidates remain owned by the
 assignment-operation owner; their existence is not inferred from a witness.

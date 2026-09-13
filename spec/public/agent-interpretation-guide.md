@@ -229,8 +229,9 @@ initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
 replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires externally resolvable structural names to be
-initialized. Ordinary lexical let remains unchanged.
+is not canonical. Close requires retained structural names being published to be
+initialized; it does not require all future generated coordinates to be realized.
+Ordinary lexical let remains unchanged.
 See [name semantics](../design/symbol-world/names-and-overload-groups.md).
 These expression consumers are pending; existing BindingSlot carriers do not
 redefine them. Named contributions synthesize types; OverloadGroups aggregate them.

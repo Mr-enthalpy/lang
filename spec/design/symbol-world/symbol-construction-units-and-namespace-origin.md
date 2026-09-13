@@ -53,8 +53,9 @@ initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
 replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires externally resolvable structural names to be
-initialized. Ordinary lexical let remains unchanged.
+is not canonical. Close requires retained structural names being published to be
+initialized; it does not require all future generated coordinates to be realized.
+Ordinary lexical let remains unchanged.
 
 At a normalized named-contribution position, unqualified let name = e
 contributes to the same named type's V_tau. Different sibling files
@@ -86,18 +87,20 @@ state. [Associated state](associated-compile-state.md) describes the instance.
 
     receiver construction
       -> ordinary construction calls and writes
-      -> name-set closure
+      -> non-generative registered-structure closure
       -> external resolution
 
 For foo::(t meta_call), the meta call completes before external foo resolution.
-The externally visible names cannot grow after closure. Anonymous implementation
-objects remain in their /tau layer without reopening the parent namespace.
+The registered structure and callspace cannot grow after closure. Ordinary
+generated Val2 names may still be realized by the selected generative rules;
+they do not extend Pattern structure or V_tau. Anonymous implementation
+classifiers remain in /tau without giving their callable values named navigation.
 
 True Close is irreversible under the existing open-window rules. Losing
 visibility across a masking meta frame is not Close. Meta result completion
 transfers only owned material under the actual result region and checks external
 and borrow dependencies. Global publication additionally requires global
-stability and structural name-set closure. An inherited outer opening source is
+stability and closure of the non-generative registered structure. An inherited outer opening source is
 not closed merely by retained P1 meta completion; classic plain let closes
 the instance. Source composition replaces none of these laws.
 

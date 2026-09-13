@@ -194,7 +194,8 @@ engineering facilities after their inputs and effects obey the source model.
 - Connect typed structural NameExpr creation, explicit Place borrowing without
   reading, and ordinary first-write initialization. Uninitialized is non-Object
   state. Do not install a dummy type or return a ref from creation. Require
-  initialized externally resolvable names at Close. Current let parser carriers
+  initialized retained names being published at Close, without enumerating all
+  future generative coordinates. Current let parser carriers
   are pending alignment; no canonical structural let=compound is implied.
   Connect initializer-free lexical P let name:t through the same typed-name
   rules at a lexical destination. Preserve P let name=rhs as a complete binding
@@ -213,7 +214,8 @@ engineering facilities after their inputs and effects obey the source model.
   anchor backward into parsing or RHS evaluation. Typed name creation does not contribute a closure. First named contribution
   forms its full type through OneShotFormation and initializes the Place once;
   subsequent contributions use extend/inject. Check /tau(T) home independently
-  of Val2 residency and either role registration. Group buckets use full bound
+  of named Val2 residency and either role registration; V_tau membership needs
+  no val::path resident. Group buckets use full bound
   type observations, not Core or TypeValueId. Add positive/negative cases for
   uninitialized reads, borrowing before initialization, failed write Pre, Close
   rejection, equal-Core/different-callspace buckets and distinct type homes.
@@ -266,6 +268,14 @@ engineering facilities after their inputs and effects obey the source model.
   concrete/wildcard specificity and occurrence-level registration rejection.
   Trait-like E laws and optimizer rewrite proofs are ordinary meta results with
   distinct consumers; parsing cannot depend on source evaluation.
+- Connect generated Val2 realization after registered structure closure without
+  reopening a construction view. Test a later requested member, stable Pattern/
+  V_tau registrations, rejection of generative registration evidence, and an
+  anchored V_tau callable with no named Val2 resident. Distinguish mechanical
+  struct helper production from generative name occurrences. Check current Norm
+  and only_val2 counts after effects while preserving prior copied snapshots;
+  cached facts must remain snapshot/continuation-relative. A's state references
+  still fail their own opening-source check after Close.
 - Align implicit return selection to the outermost enclosing function layer.
   The current return_target binder selects its most recent frame; current
   one-frame tests do not prove nested-frame correctness.

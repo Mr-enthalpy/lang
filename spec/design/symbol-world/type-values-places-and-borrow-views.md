@@ -710,7 +710,9 @@ SameEntityTypeInvariant:
 entity; they are not two objects later mapped to each other, and neither
 `⟨P,Val2⟩` nor `⟨Q,Vτ⟩` is an entity prior to or beside the other. The
 closed/well-formedness constraints on the two views apply jointly to that
-one entity; neither view may be extended independently of the other. This is
+one entity; an update observed in one view must satisfy the resulting complete
+closure's constraints. This does not identify ordinary Val2 residency with
+callspace registration or freeze all generated Val2 realization at Close. This is
 not the identity `V_τ = Val2`: it is the statement that both sides constrain
 the same semantic entity.
 
@@ -755,19 +757,26 @@ consumer projects its entries; any selected pattern member supplies its own
 complete immutable callspace. Other entries do not supplement that snapshot.
 
 Ordinary Val2, V_tau membership, and Pattern-role registration are three
-separate facts. V_tau is the immutable snapshot of Val2 registered for the
-type's own callability, with the required classifier in /tau(tau) (the canonical
+separate facts. V_tau is the immutable snapshot of ordinary callable values
+registered for the type's own callability, with classifiers in /tau(tau) (the canonical
 `Home(TypeOf(F)) = TypeMemberScope(tau)` notation). Ordinary Val2 can have any type
 and need not satisfy that anchoring. Classifier eligibility alone does not
-register a member for callability.
+register a member for callability. V_tau registration gives the callable value
+no val::path selector and requires no named Val2 resident. The anonymous
+classifier's navigable home does not establish navigation to that value.
 
 Pattern-registered extraction/construction closures likewise have their own
 classifier under tau, but Pattern registration does not imply V_tau membership,
 and V_tau membership does not imply Pattern registration. These are role
-registrations of the same ordinary values, not duplicate value stores. A type
+registrations over ordinary values; the same value may have both roles without
+being copied for that reason. A type
 may therefore hold an unregistered OverloadGroup payload without making that
-group part of its own callspace or its Pattern identity. Closing the type fixes
-its ordinary Val2 structure as well as its registered observations.
+group part of its own callspace or its Pattern identity. Both registrations are
+non-generative. Pattern registration fixes the structured construction/extraction
+form, while ordinary generated Val2 results carry neither registration.
+Close freezes the registered structure and ends construction authority; it does
+not freeze the set of all future ordinary generated Val2 realizations. Those
+effects remain ordinary observable Core changes, never hidden cache facts.
 
 Whether `tau` has the type-value role or is namespace-only is decided by
 `Q`'s Pattern relations, never by the sibling count of a name binding space. The
@@ -2580,9 +2589,10 @@ live initialization authority, the first write fails even if the name is mut.
 The structural let-with-assignment compound is not canonical; any future sugar
 must expand into these steps. Ordinary lexical let remains unchanged.
 
-Close requires every externally resolvable structural name to be initialized;
-open HasName facts may precede dom(Val2), but closed ordinary structural members
-agree with their initialized Val2 domain. See [name semantics](names-and-overload-groups.md)
+Close requires retained structural names being published to be initialized;
+open HasName facts may precede dom(Val2). Legal coordinates not yet retained are
+not uninitialized members and need not all be realized before Close. Later
+generated ordinary Val2 results do not reopen registered structure. See [name semantics](names-and-overload-groups.md)
 for the formation and closure rules and the first named-contribution trace.
 First contribution forms its complete type by one-shot formation and initializes
 once; only later contributions read an existing type for extend/inject.

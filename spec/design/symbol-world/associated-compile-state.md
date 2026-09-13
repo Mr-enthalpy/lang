@@ -71,11 +71,14 @@ A hypothetical A::t would occupy t's namespace. Here:
     m_A(t) notin StructuralChildren(t)
     n_A(t) is a member of tau_A(t), not a child of t
     acquiring either name leaves Val2(t) and Norm(t) unchanged
-    Close(t) => StableStructure(t)
+    Close(t) => stable non-generative registered structure
 
 No input DirectPatternChild evidence is created. Group updates also leave the
-candidate types unchanged. Closing the instance fixes its own member structure;
-its separate existence does not reopen the input structure.
+candidate types unchanged. Closing the instance fixes its non-generative
+registrations and ends the declared state write window. It does not freeze every
+possible ordinary generated Val2 realization; those cannot add registration or
+revive this state reference's source. A's separate existence does not reopen
+the input construction window.
 
 ## 3. Openness follows the input dependency
 
@@ -125,6 +128,8 @@ For an actually closed instance with exactly one ordinary Val2 entry, the
 can provide value convenience via `instance |> only_val2` or `instance only_val2`.
 The helper is not an implicit conversion or an open-state mutation path. While
 constructing or borrowing state, use its ordinary explicit member name.
+The count observes the current finite Val2 snapshot, not all future requested
+coordinates; Close alone is not a proof that the count can never change.
 
 ## 5. Effects and implementation boundary
 
