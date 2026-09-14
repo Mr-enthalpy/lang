@@ -1,5 +1,10 @@
 # Roadmap
 
+This document separates implemented storage/consumer slices from canonical
+semantics. Existing tests of a carrier do not establish that the migrated
+source semantics is connected. The [topic index](../design/README.md) owns the
+semantic contracts.
+
 This document records current implementation frontiers. Canonical meaning is
 owned by the topic documents under `spec/design/`; unresolved decisions are
 owned by `spec/planning/open-questions.md`.
@@ -39,7 +44,7 @@ semantic vocabulary:
 - proof-relevant `R_Gamma(P,c,rho)` Pattern applicability and Hole valuation;
 - complete `tau = bind alpha.<Core(tau), V_tau[alpha]>` with immutable callspace
   snapshots;
-- separate Symbol, semantic value, Place, resident generation, and
+- separate name-binding, semantic value, Place, resident generation, and
   ProjectionSlot identities;
 - `PolicyPair`, primitive `PolicyMode = {const, plain, mut}`,
   `ResultPolicyDemand`, and independent 3×3 `CapabilityRealization`;
@@ -73,7 +78,8 @@ semantic relations above.
 | Place / resident generation | Place and ProjectionSlot | binding, Writable and borrow substrate | Implemented; source operation coverage pending |
 | DynamicLegality | sealed post-selection validator | supplied capability/place/lifecycle premises | Implemented; automatic premise formation pending |
 | InvocationResult | declared result class + semantic payload/residual/diagnostic | connected ordinary and core/meta invocation | Implemented; residual transport remains Open |
-| OpenHere / construction | authority, window, Writable and write algebra | meta construction and inject | Implemented |
+| OpenHere / construction | authority, window, Writable and write algebra | meta construction and inject | Base checks implemented; invocation dependency propagation pending |
+| Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
 | SemanticContinuation | lifecycle machine and event ledger | world-owned registration | source action/cleanup wiring pending |
 | Color/access | extensible directed relations and provider interface | lifecycle Pre validation | access-tree construction Open |
@@ -83,8 +89,8 @@ relation is used; it does not mean the language rule is undecided.
 
 ## Source and evaluator connection frontier
 
-The next implementation frontier connects source occurrences to the existing
-relations without changing their meaning:
+The next implementation frontier connects source occurrences to the canonical
+relations under the alignment gates below:
 
 1. protected structural extraction through `StructuralDefault` before C0;
 2. operation-driven capability, Writable, authority, and lifecycle premises;
@@ -93,7 +99,7 @@ relations without changing their meaning:
 5. cleanup placement before lifecycle observation;
 6. Residual and Diagnostic transport through the unified invocation boundary;
 7. derived associated forwarding that captures the base complete-type
-   snapshot and creates fresh direct-home members;
+   snapshot and creates anchored forwarding instances;
 8. block-local `let ===` lexical entries that create no semantic entity.
 
 Each wiring step must preserve unique selection and no reopen.
@@ -136,6 +142,8 @@ Current families:
 | construction and same-Type migration families | `SourceDefinitionPending` | ordinary selection + DynamicLegality |
 | capability realization entries | `SourceDefinitionPending` | candidate declarations |
 | StructuralDefault providers | `SourceDefinitionPending` | `R_Gamma` |
+| associated state A | `SourceDefinitionPending` | ordinary meta instance type + Val2 group/place algebra |
+| singleton-Val2 compile extraction | `SourceDefinitionPending` (builtin bootstrap permitted) | closed type + exactly one ordinary Val2 entry + ordinary value read |
 | lifecycle move/copy/drop algebra | `SourceDefinitionPending` | lifecycle Pre/commit/Post relations |
 | interning, graph allocation, continuation-position observation | `IntrinsicObservation` | canonical relations consuming those observations |
 
@@ -160,15 +168,142 @@ for:
 These questions remain in `spec/planning/open-questions.md`. Missing source
 wiring is not an open semantic question.
 
-## Build/package track
+## Physical input and infrastructure migration
 
-The build system assembles a namespace graph from package manifests, source
-roots, physical namespaces, explicit mounts, and source contributions. Source
-filenames are not namespace segments. The language has no source-level
-import/use/include/module/package syntax.
+The target is Compile(Level) through main.lang anchoring, neutral physical
+normalization and ordinary meta evaluation. Child directories desugar to ordinary
+typed name creation, explicit borrow, ordinary directory type initialization,
+and body evaluation under that reference;
+root levels and filenames add no segment. Each file is serial; sibling
+blocks use common-snapshot overlays and unordered join. Actual effects produce
+the dependency projection. Host calls return ordinary Objects and target facts.
 
-The build layer provides package identity, transactional namespace
-deltas, provenance, typed owner qualification, role-aware name admission,
-default core mounting, and cache validation. Remote retrieval, full version
-solving, lockfiles, package distribution policy, and persistent root encoding
-remain future work.
+Current code still accepts configured source roots and a package/workspace graph,
+then consumes sorted files with per-declaration shared-world commits. These
+paths require migration; they cannot remain semantic input alternatives.
+Cache, discovery, decoding, diagnostics and artifact persistence remain useful
+engineering facilities after their inputs and effects obey the source model.
+
+## Canonical/source alignment gates
+
+- Replace the optional pure-P/sibling cluster carrier semantics with named-type
+  synthesis and explicit OverloadGroup aggregation. Existing Rust cluster/result
+  labels are implementation encodings, not the target ontology. In particular,
+  DeclaredResultClass::ClusterSymbol must be removed or re-encoded as private
+  implementation material; it is not an ordinary semantic result class.
+- Connect typed structural NameExpr creation, explicit Place borrowing without
+  reading, and ordinary first-write initialization. Uninitialized is non-Object
+  state. Qualified formation resolves a structural root and checks its current
+  type's OpenHere; do not require parent Writable or parent mut type ref. Test
+  formation under an open type with no parent write capability, rejection for
+  a closed type, and distinct NameCoords for equal type values at distinct roots.
+  Keep generated-after-Close realization outside this explicit formation path.
+  Connect the narrow meta type/ref qualification and explicit ConfirmMut
+  consumer alongside direct mut borrowing. Test same-target/generation/capability
+  coherence, no amplification on non-Writable targets, Close invalidation of
+  both routes and saved writes, replacement without reference retargeting,
+  rejection of arbitrary meta X ref, and no implicit chaining/reopen. This
+  consumer is pending; current Rust capability carriers do not implement it.
+  Do not install a dummy type or return a ref from creation. Require
+  initialized retained names being published at Close, without enumerating all
+  future generative coordinates. Current let parser carriers
+  are pending alignment; no canonical structural let=compound is implied.
+  Connect initializer-free lexical P let name:t through the same typed-name
+  rules at a lexical destination. Preserve P let name=rhs as a complete binding
+  with RHS inference, not a default-:type declaration plus assignment.
+  Connect initial borrow/write authority independently of DeclaredPolicy;
+  test const/plain/mut first initialization, missing/expired authority, failed
+  Pre without consumption, same-Place aliases and saved-ref rejection after
+  initialization. Replacement alone observes old-resident compatibility.
+  Keep TypeRole(Q) Q-local and check both registered closure homes at complete
+  tau consistency; test equal Core with distinct homes, including a Pattern
+  closure that has no V_tau registration.
+- Connect type +=/-= to V_tau updates with Writable, OpenHere and final closure
+  membership; connect ordinary group updates to their distinct bucket algebra.
+- Connect witnessed anchored replication, preserving captures, internal
+  alpha-renaming and the original closure identity. Do not feed the destination
+  anchor backward into parsing or RHS evaluation. Typed name creation does not contribute a closure. First named contribution
+  forms its full type through OneShotFormation and initializes the Place once;
+  subsequent contributions use extend/inject. Check /tau(T) home independently
+  of named Val2 residency and either role registration; V_tau membership needs
+  no val::path resident. Group buckets use full bound
+  type observations, not Core or TypeValueId. Add positive/negative cases for
+  uninitialized reads, borrowing before initialization, failed write Pre, Close
+  rejection, equal-Core/different-callspace buckets and distinct type homes.
+- Extend ordinary meta invocation before connecting its A instance: preserve
+  input value observations and semantic name/subject/borrow dependencies;
+  construct the direct instance name/type tau_M and ordinary Val2 payload Places;
+  propagate output opening-source meets. Implement P1 meta qualification before
+  mut-view acquisition and plain completion/closure. Ordinary payload policy,
+  borrowing and lifetime checks remain independent.
+  The current `semantic_world::meta_type_roots` cache stores only a type lookup
+  id and struct construction material. It does not yet retain general instance
+  state with ordinary Val2 payload Places and P1 meta/plain completion rules. `canonical_arguments_product_address` records value observations;
+  it does not supply the general identity-sensitive dependency boundary.
+- Implement generic meta result-name/cache residency with construction status,
+  current reads, ordinary writes, effects and dependency revalidation. Repeated
+  acquisition must not rerun initialization, freeze the first resident, revive a
+  consumed resident or replay stale write authority. The current source meta body
+  path remains unsupported, and base OpenHere has no output dependency meet.
+  Carrier tests of content-sensitive argument keys remain valid for value
+  observations; they do not establish name-dependent invocation semantics.
+- Derive A from those general facilities with its input construction subject and
+  ordinary Val2 group member. Equal full keys retain the same subject through Close
+  and input-carrier replacement; saved references keep their original result
+  Place. Recheck inherited opening and ordinary write authority in every write
+  Pre. No A-only global indexed-place primitive is needed.
+- Connect closed-type singleton-Val2 compile extraction through ordinary navigation:
+  exactly one entry yields its value; zero/multiple entries fail through the
+  chosen compile-error semantics. Count actual Val2, not callspace or visibility
+  projections; preserve access checks. No implicit projection or borrow is added.
+  Cover direct-meta type/root rejection, independent Val2/V_tau/Pattern roles,
+  meta retention, plain closure, mut-after-OpenHere, and no-reopen on cache reuse.
+- Connect Pin=Overlay(P2,Delta_in) and Pout=Overlay(P1,Delta_out), with independent
+  P1/P2. Existing formal mode inheritance is compatible with bare omission; do
+  not replace it with unconditional Plain. Audit binding_result_policy_demand,
+  policy_let_target_demand and ordinary-invocation defaults for the distinction
+  between omitted constraint, explicit concrete atom and explicit HoleRef.
+  Use registered operator Pattern extraction plus require to solve the joint
+  relation; the 3×3 table is a derived view. Test formal-local holes, shared and
+  independent holes, inherited mode, explicit plain override, contextual/default
+  completion, output demand before maxima, sealed inner calls and no reopen.
+- Connect NameCoord before Retained/Place realization. The resident-generation
+  ProjectionSlotIdentity carrier is not automatically the stable coordinate.
+  Test identical sibling contribution coordinates, unordered contribution join,
+  explicit declaration conflicts and distinct root/selector identities.
+  Ordinary Val2 writes may change Core without acquiring either registration.
+- Connect the equal meta declaration surfaces and operator call/extract/generative
+  projections. Current NormExpr::OperatorTarget preserves unresolved grammar
+  material, not these semantic consumers. Add syntax goldens without parser
+  semantic lookup, proof-relevant extraction with zero/one/multiple solutions,
+  concrete/wildcard specificity and occurrence-level registration rejection.
+  Trait-like E laws and optimizer rewrite proofs are ordinary meta results with
+  distinct consumers; parsing cannot depend on source evaluation.
+- Connect generated Val2 realization after registered structure closure without
+  reopening a construction view. Test a later requested member, stable Pattern/
+  V_tau registrations, rejection of generative registration evidence, and an
+  anchored V_tau callable with no named Val2 resident. Distinguish mechanical
+  struct helper production from generative name occurrences. Check current Norm
+  and only_val2 counts after effects while preserving prior copied snapshots;
+  cached facts must remain snapshot/continuation-relative. A's state references
+  still fail their own opening-source check after Close.
+- Align implicit return selection to the outermost enclosing function layer.
+  The current return_target binder selects its most recent frame; current
+  one-frame tests do not prove nested-frame correctness.
+- Connect name-preserving @ and ordinary value/borrowed lifecycle fields,
+  independent SafetyPolicy, and compatible post-commit external admissions.
+- Connect link's compilation-wide E-owned LinkRegistry using canonical
+  source-provider/root identity. Diagnose Active re-entry as cycle and Done
+  acquisition as duplicate; detect sibling duplicate claims without cache reuse
+  or order-based coalescing. This effect law is closed, its carrier is pending.
+- Connect host/target-machine Objects and their ordinary policy/views; metadata
+  availability must not force compile-time payload realization.
+- Implement E saturation and synchronized continuation projections, residual
+  transport, and revalidation after equivalent O1/O2 rewrites. Planner search
+  never changes E or supplies private facts.
+
+These are known consumer obligations. They do not reopen the resolved semantic
+rules or permit graph, file, cache or registry authority. Relevant implementation
+changes need source goldens plus identity, no-reopen, non-derivability and
+boundary tests; this documentation migration does not claim those consumers
+have been implemented.

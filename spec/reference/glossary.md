@@ -61,7 +61,7 @@ Normalized control-flow end events. `TailValue` delivers the final block value;
 
 The owned semantic ontology `Object = <Val1?, Pattern, Val2>`. Ordinary
 normalization observes all three components. Place, Policy, lifetime,
-capability, and Symbol identity are not Object axes.
+capability, and name-binding identity are not Object axes.
 
 ### Val1
 
@@ -70,10 +70,23 @@ opaque leaf that under-merges without inventing equality.
 
 ### Val2
 
-The Object's owned selector-to-Object snapshot. Navigation-visible or inherited
-members are separate observations.
+The Object's owned selector-to-Object snapshot. Ordinary entries may have any
+type and need no callability or Pattern registration. V_tau registers callable
+values without requiring or granting val::path navigation to them; Pattern
+extraction/construction registration is independent. Both registered families
+are non-generative and require their classifiers under tau.
+Navigation-visible or inherited members are separate observations.
 
-### Complete type value (`tau`)
+### Close and generated realization
+
+Close ends the construction window and freezes non-generative Pattern/V_tau
+registrations. It requires the retained names being published to be initialized,
+not all possible coordinates to be realized. Ordinary generated Val2 results
+may still be realized without registration or a reopened construction view.
+Current Core/Val2 observations may change; earlier copied snapshots do not.
+only_val2 counts its actual snapshot, not every future generated result.
+
+### Complete pattern/type value (`tau`)
 
 `tau = bind alpha.<Core(tau), V_tau[alpha]>`. `Core(tau)` supplies ordinary
 type equality; `V_tau` is an immutable TypeMember callspace snapshot; the whole
@@ -82,23 +95,59 @@ observation distinguishes snapshots.
 ### TypeValueId
 
 An opaque implementation lookup key for Core material. It is not whole `tau`,
-Symbol identity, Place identity, or a defining-Symbol reference.
+name-binding identity, Place identity, or a defining-binding reference.
 
-### Symbol
+### Name binding and named type
 
-A semantic name-bearing cluster with identity independent of every value or
-type it carries. NameBinding, Symbol, `tau`, and Place are distinct.
+NameCoord(root,selector) exists independently of realization for legal material;
+it is not an Object or Place. Retained records actual realization, and Fresh
+means not Retained. A typed realized name has a Place that may remain
+Uninitialized until ordinary first write. These facts are independent of visibility.
+Initialized structural names declared :type denote complete named types; same-name construction contributes
+to their V_tau. Ordinary lexical binding is not implicit overload synthesis.
+Name binding identity, pattern-value equality and Place identity are distinct.
+
+### OverloadGroup
+
+An ordinary outer candidate aggregation algebra, with eta(T) = {T}. It can be
+empty. Group += aggregates type/group candidates by its bucket relation without
+mutating the types; type += instead changes V_tau under OpenHere and final
+Home(TypeOf(v)) = TypeMemberScope(T), with independent residency and registration.
+Buckets compare complete bound type snapshots, never Core equality.
 
 ### SemanticOwner
 
-A node in the typed parent-linked owner graph. Package/namespace, callable,
-MetaInstance, and generated identities qualify their local identities through
-an owner.
+A node in the typed parent-linked owner graph. Source-established namespace
+owners, callable owners, canonical meta-instance owners, and generated owners
+qualify their local identities. A package graph supplies no semantic owner.
 
 ### MetaInstance
 
 A semantic owner identified by parent owner, selected callable identity, and
-canonical whole argument Product identity.
+canonical invocation input identity, preserving its declared value observations
+and semantically observed name/subject/borrow dependencies.
+
+### Invocation-generated result name
+
+The ordinary meta instance name denotes its instance type tau_M, rooted at its
+invocation owner. It is not an input structural child or an arbitrary payload
+wrapper. Ordinary Val2 contains arbitrary payloads accessed by name::path. Its
+opening source is the meet over actual semantic input dependencies. The cache
+retains the instance and member Places/current state, not a frozen first value.
+
+### P1 meta policy
+
+Contextual openness qualification, currently limited to type and type ref,
+not a fourth PolicyMode or arbitrary meta X ref. Meta refs preserve the actual
+Place and original borrowed generation/opening subject. Writable candidates
+and explicit ConfirmMut require current OpenHere plus independent target
+Writable and ordinary capability/access/lifetime; no authority is amplified.
+
+`meta let f = expression` retains an ordinary meta instance under its derived
+OpenHere. The instance name is its type value, so OpenHere governs acquisition
+of mut qualification without an independent instance const/mut gate. Plain let
+completes/closes it; later meta let cannot reopen it. P2 meta independently names
+the callable's evaluation stage. Ordinary Val2 payload policies remain ordinary.
 
 ### Place
 
@@ -148,8 +197,9 @@ nor a union of endpoints.
 
 ### PolicyView
 
-One complete observed view containing a `PolicyPair` and an independent
-`PolicyMode`.
+One observed view with independent PolicyPair, PolicyMode and SafetyPolicy
+coordinates. Pin overlays P2 and Pout overlays P1; omission is no override,
+explicit plain is a constraint, and an explicit hole is Pattern deduction.
 
 ### ResultPolicyDemand
 
@@ -159,8 +209,25 @@ preference relation.
 
 ### CapabilityRealization
 
-A candidate-local 3x3 input-mode/output-mode table whose cells are
-`absent | default | delete | custom`. It is independent of Policy preference.
+A candidate/family fact with absent/default/delete/custom realizations,
+independent of preference. A 3x3 input/output-mode table is a finite derived
+explanatory view; relational declarations with ordinary Pattern holes need not
+be written as nine primitive declarations.
+
+### Operator Pattern and policy deduction
+
+Grammar-fixed op::type families have ordinary call, registered extraction and
+generative projections. Extraction observes the same relation as construction,
+not a synthesized inverse. Policy +/|| deduction uses those registered
+relations, HoleBinderId, require and ordinary overload selection. Omission,
+explicit concrete mode and explicit hole remain distinct source constraints.
+
+### Generative occurrence
+
+An occurrence forming a requested name/result relation may establish ordinary
+Val2 residency, but supplies no V_tau or Pattern registration evidence. This
+restriction does not permanently taint the value. Concrete name heads and _
+use ordinary specificity, not a separate generation priority.
 
 ### DynamicLegality
 
@@ -170,8 +237,8 @@ overload resolution.
 
 ### CallableProjection
 
-The single candidate space formed by identity-deduplicating Symbol-local and
-complete-type callspace candidates. Name resolution occurs before this
+The ordinary call candidates of a named type's V_tau or of an explicit
+OverloadGroup through singleton type embedding. Name resolution occurs before this
 projection and is never retried because callability or applicability fails.
 
 ### Sealed selected invocation
@@ -235,8 +302,8 @@ committed actions.
 ### LifeName / NameView / LifetimeValue
 
 `LifeName` identifies a lifecycle subject; `NameView` is its observation at a
-continuation position; `LifetimeValue` is the first-class result of `@`.
-Reification does not require a Place.
+continuation position; `LifetimeValue` is its ordinary value observation. N@ is a name iff N is a
+name. Value and borrowed lifecycle fields remain distinct.
 
 ### Region generation
 
@@ -266,3 +333,67 @@ answer.
 A representation or semantic choice explicitly listed in
 `spec/planning/open-questions.md`. Open questions use opaque carriers and
 extension interfaces until resolved.
+
+
+### Structural let expression
+
+Qualified formation resolves a structural root identity and observes the current
+resident type's OpenHere, selector validity, non-retention and ordinary
+access/path/type legality. It requires no parent Writable or parent mut type ref.
+Equal type values do not merge structural root/name/Place identities. Borrowing
+is a separate Place-side judgment. Initialized type names admit direct mut
+borrowing or explicit meta type ref followed by ConfirmMut, subject to the same
+current OpenHere, target Writable, capability and lifetime checks. These coherent
+routes introduce no implicit chain; saved refs retain their borrowed generation
+and cannot write after Close. Initial refs remain initialization-only. See the
+[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+
+Initializer-free P let name:t and P let name::path:t create typed NameExpr
+using lexical and structural destinations respectively, with non-Object
+Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
+not an existing type resident. P let name = rhs is a complete lexical binding
+with RHS type inference, so that default does not apply. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it using authority independent of the name's declaration policy,
+including const. Successful first commit consumes that authority; saved initial
+references do not grant replacement power. Later writes require ordinary
+replacement capability and resident compatibility. The structural let=compound
+is not canonical. Close requires retained structural names being published to be
+initialized, not every future generated coordinate realized. Ordinary lexical
+let remains unchanged.
+
+### Associated compile state A
+
+A derived meta invocation returning an instance type with ordinary Val2 group
+member n_A(t). Invocation normalization retains t's construction subject, whose
+source bounds the retained instance and group write window. Member value/ref and
+policy rules remain ordinary. Saved group references preserve their member Place
+and dependency across input-carrier replacement; every write Pre rechecks it.
+The general meta cache supplies instance/member residency, without an A-specific
+global map primitive.
+
+### Anchored replication
+
+A ReinstantiationWitness for an eligible closure permits a new instance under
+a target anchor. Captures keep their semantic values and ordinary borrow rules;
+internal identities are consistently renamed. The original owner is unchanged.
+
+### SafetyPolicy and unsafe admission
+
+safe/unsafe is orthogonal to const/plain/mut. Unsafe admits compatible external
+facts after successful commit; it cannot satisfy a missing Pre or revoke
+history. The admitted axioms form the program's trusted semantic base; UB is
+external reality failing to satisfy an explicit unsafe admission.
+
+### HostCapability
+
+An otherwise unavailable host capability returning ordinary Object. Its source
+meta use determines acquisition and target-machine facts; no build side input
+or private optimizer assumptions supply them.
+
+### E, O1, O2 and planner
+
+E saturates ready actions without opportunity-seeking rewrites, E E = E, as
+synchronous projections of one continuation. O1 exposes new legal E work; O2
+lowers accepted runtime residue costs. Both use E facts and revalidate affected
+projections. The planner controls search, never meaning.

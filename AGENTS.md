@@ -80,7 +80,46 @@ alternate relation or identity.
 - `Object = <Val1?, Pattern, Val2>`; ordinary normalization observes all three.
 - Pattern applicability and extraction come from `R_Gamma(P,c,rho)`.
 - `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
-- NameBinding, Symbol, tau, Place, and TypeValueId are distinct.
+- NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
+- Same-name construction synthesizes a type's V_tau; ordinary lexical let does
+  not aggregate. Structural P let name::path:t creates typed NameExpr and an
+  Uninitialized Place, not a resident or ref; omitted :t means :type.
+  Qualified formation uses resolved structural root identity and the current
+  resident type's OpenHere, selector/non-retention/access/path/type checks;
+  parent Writable and parent mut type ref are not premises. Equal type values
+  do not merge NameCoords or Places. Ref acquisition is a separate judgment.
+  Initializer-free P let name:t shares typed-name formation at a lexical
+  destination. P let name=rhs is a complete lexical binding with RHS inference;
+  the initializer-free structural default does not apply to it.
+  Explicit ref then ordinary write initializes; Close requires retained members
+  being published initialized, not every future coordinate realized. NameBinding is not a wrapper Object.
+  First initialization uses Place authority independently of DeclaredPolicy,
+  including const; commit consumes it. Saved initial refs do not authorize
+  replacement, and first write never reads nonexistent resident policy.
+  TypeRole(Q) is Q-local; complete tau consistency checks both registered
+  closure roles' /tau homes separately.
+- Contextual meta qualification is limited to type/type ref, not a fourth
+  PolicyMode. Initialized type names retain direct mut borrowing and explicit
+  meta-ref-to-mut confirmation; both require current OpenHere, target Writable
+  and ordinary capability/access/lifetime. Same-position routes are coherent,
+  not implicit chains. Meta refs retain their actual Place and original borrowed
+  generation/opening subject. Close defeats both mutable routes and saved-ref
+  writes. InitialTypeSlotRef remains separate one-shot initialization authority.
+  Frozen generated Val2 realization after Close invokes none of these ref paths.
+- Type +=/-= changes only V_tau under Writable, OpenHere, complete-type /tau
+  classifier home and non-generative registration. Named Val2 residency is neither
+  required nor implied; classifier navigation is not callable-value navigation.
+  Witnessed anchored replication never reparents an existing value.
+- OverloadGroup aggregation buckets whole bound type snapshots, never Core classes,
+  has its own entry algebra and requires Writable.
+  Ordinary meta constructs an instance name/type tau_M outside input structure;
+  arbitrary payloads occupy ordinary Val2. V_tau callability registration and
+  Pattern-role registration are independent; neither follows from Val2 presence.
+  Input identity retains observed name/subject dependencies; output openness follows
+  their meet. P1 meta let retains the instance under OpenHere, which governs mut
+  acquisition; plain let completes/closes it. P2 meta remains evaluation stage.
+  Invocation caches retain instances/member Places and current state. A consumes
+  these facilities; saved references recheck the original source at write Pre.
 - Name resolution happens once before context projection.
 - Calls use value -> exact tau -> associated `()` and one candidate space.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.
@@ -96,6 +135,27 @@ alternate relation or identity.
 - Lifecycle facts are relative to one SemanticContinuation. Cleanup is fixed
   before observation; Pre precedes mutation; Post describes committed success.
 - Color vocabulary is extensible and relation rows are explicit and directed.
+- SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
+  semantic axioms, never missing Pre facts or private optimizer assumptions.
+- Child-directory names normalize to ordinary fresh-name actions followed by
+  explicit ref and one-shot directory type initialization before body evaluation; root and filenames add no segment.
+- Host capabilities return ordinary Objects. Physical normalization and build
+  facilities introduce no semantic facts; E alone owns meaning.
+- E is idempotent and saturates ready actions without rewriting continuations.
+  Optimizer rewrites require revalidation by affected semantic projections.
+- P1/P2 are independent; Pin/Pout overlay P2/P1. Bare let writes no override;
+  written plain is explicit, and a formal-local hole is ordinary Pattern deduction.
+  Default completion is separate. Inner-call selection seals before outer use.
+  Implicit return targets the outermost enclosing function layer.
+- NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
+  Ordinary name writes may change Val2(Core) without either registration.
+  Pattern-registered extension uses extend/inject; TypeAdd changes V_tau only.
+- Meta call/value and Pattern/name declarations are equal surface projections.
+  Grammar-fixed op::type families use ordinary call/extract/generative relations;
+  generated occurrences supply no Pattern or V_tau registration evidence.
+- Close freezes non-generative registered structure, not future ordinary generated
+  Val2 realization. Such results reopen no construction view and do not alter old
+  snapshots. Current Norm/only_val2 observations remain continuation-relative.
 
 ## Scope and Open questions
 

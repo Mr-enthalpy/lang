@@ -37,7 +37,7 @@ ClosurePlacement
 
 CallableImplementation
   = UserBody {
-      strategy: Ordinary | Named(Symbol),
+      strategy: Ordinary | Named(UnresolvedName),
       body: Block
     }
   | Defaulted
@@ -189,14 +189,25 @@ Candidate
 It is applied only after the fully admissible set `A` exists:
 
 ```text
-ResolveSymbol
-  -> CallableProjection
+ResolveNameBinding                     -- named-type projection case
+  -> ReadNamedType
+  -> CallCandidates
   -> ExposePhaseViews
   -> ProjectExpectedPolicy
   -> FullyAdmissible
   -> ApplyStrategyAndPartialOrders
   -> UniqueMaximum
 ```
+
+For a path, resolution returns one NameBinding. In the named-type case above,
+ReadNamedType reads its complete type before CallCandidates projects it. This
+does not restrict ordinary Val2 reads to types. A held OverloadGroup G, including
+a member value obtained by navigation, enters at CallCandidates(G); ordinary
+function values use their exact type and associated (). See the
+[value-navigation example](overload-resolution-design.md#21-value-navigation-is-broader-than-candidate-projection).
+Only repeated exposure of the
+same stable candidate-entry identity may collapse; distinct contribution entries
+never deduplicate merely because their values or types normalize equally.
 
 A strategy cannot make an inapplicable candidate admissible, read a runtime
 value to decide a static candidate relation, erase the ordinary status of a
@@ -277,7 +288,7 @@ of its non-call occurrence.
 
 Only free names participate. Parameters, local let binders, capture binders,
 and other nested binding Patterns do not pollute an outer shorthand.
-This analysis requires no symbol resolution: it consumes only the normalized
+This analysis requires no name resolution: it consumes only the normalized
 call spine, local binders, and bare name text.
 
 ### 2.2 Initializer scope is simultaneous
@@ -318,8 +329,8 @@ inferred:
 ```
 
 In particular `[x]` elaborates to the explicit empty-policy binding
-`[let x = x]`. Its unwritten capture mode is the real `plain` point; capture
-does not silently turn it into `const`.
+`[let x = x]`. Its omitted capture mode supplies no override; ordinary contextual
+inheritance/completion applies, with no automatic const conversion.
 
 For an ordinary non-in-place closure whose body contains an unresolved free
 outer value reference and no explicit capture binding replaces that reference,
@@ -327,14 +338,14 @@ the resolved layer later forms:
 
 ```text
 AutoCapture(C, s)
-  = capture local binder s from source symbol s
+  = capture local binder s from source name binding s
     after authority-appropriate stable namespace lookup
     carrying requested Policy and required access capability
     with origin ImplicitEligible
 ```
 
 This automatic capture cannot run in Raw-to-Norm normalization. It requires
-name resolution, closure-local binder exclusion, value-facet selection, and
+name resolution, closure-local binder exclusion, resident value-view selection, and
 namespace visibility checking. Capability-specific capture legality remains a
 later ordinary consumer of the resolved requirement. A resolved semantic
 handoff therefore distinguishes:
@@ -357,7 +368,7 @@ Internal explicit navigation instead searches the complete namespace-internal
 view and does not prove export membership:
 
 ```text
-ResolveExplicitNavigation(path, ExternalAuthority) = exported symbol s
+ResolveExplicitNavigation(path, ExternalAuthority) = exported name binding s
   -> AutoCapture(C, s, requested policy, required access capability)
 
 ResolveExplicitNavigation(path, InternalAuthority)
@@ -367,13 +378,13 @@ ResolveExplicitNavigation(path, InternalAuthority)
 External callable references may therefore enter an ordinary closure as
 automatic eligible dependencies rather than source-written capture bindings.
 Automatic capture and call resolution meet in the same problem domain because
-both reason about an external symbol's identity and stable external view. This
+both reason about an external name binding's identity and stable external view. This
 observation imposes no pass ordering, data flow, shared intermediate object, or
 implementation dependency between them. Automatic capture does not itself
 choose an overload.
 
 An explicit capture and an automatic capture may resolve to the same source
-symbol, but they remain distinct dependency declarations. Explicit capture can
+name binding, but they remain distinct dependency declarations. Explicit capture can
 rename the local binder, request a policy projection, use a complex
 initializer, request `mut`, or preserve source-level dependency and diagnostic
 provenance:
@@ -403,15 +414,16 @@ ResolvedCaptureRequirement {
 
 The namespace resolver does not consume either request coordinate. A later
 ordinary capture-legality step applies the requested Policy demand and access
-capability to the candidates returned by stable lookup.
+capability after stable lookup has resolved a binding and the consumer has
+projected its resident.
 
 It does not state that the dependency is a `self` field, a copied value, a
 reference, a receiver mode, or an ABI slot. Representation selection may later
 choose an environment field, checked reference, stack environment, static
-symbol link, constant embedding, or zero-layout dependency edge.
+resolved-value link, constant embedding, or zero-layout dependency edge.
 
 For example an exported closure that explicitly depends on an internal
-namespace symbol is written:
+namespace name binding is written:
 
 ```lang
 mut let internal_state = ...;
@@ -506,7 +518,7 @@ let f = <A>(self, x: A) -> r: A => {
 };
 ```
 
-Here `r` is the explicit symbol bound to the returned object, while `A` is the
+Here `r` is the explicit binder bound to the returned object, while `A` is the
 postfix annotation Pattern on that binder. If the callable returns an ordinary
 value, `r` denotes that value; if it returns a type/Pattern object, `r` denotes
 that type/Pattern object. The parser does not classify `r` itself as a type.
@@ -549,7 +561,7 @@ ungrouped `NormNavComponent::Name`. Callable-wide scope means that the hole
 environment reaches the whole callable, while exact binding is currently
 performed only for Pattern/policy occurrences. Value-side names, including
 the generated `T` component in `field::T`, remain unresolved input to the
-future resolved-symbol pass.
+future name-resolution pass.
 
 The anonymous `_` placeholder has no named binder identity.
 
@@ -602,7 +614,7 @@ BindingShape(P1 |> .name P2)
 ```
 
 The equality is about the general pipe/product/call spine; the leaf retains
-its own symbol identity and provenance. `.name` does not decide whether a
+its own name-reference identity and provenance. `.name` does not decide whether a
 following item becomes an argument, how many following items are absorbed,
 where a target expression ends, or whether first-product-only and legality
 repair apply. Those decisions belong exclusively to the existing expression,
@@ -656,7 +668,7 @@ These positions share syntax/normalization only. Their later semantic consumer
 (ordinary binding, argument matching, or return-result matching) determines
 what the remainder is relative to; no parameter-only pack object is created.
 
-`...args` binds that remainder to the ordinary symbol `args`. It does not
+`...args` binds that remainder to the ordinary name `args`. It does not
 construct a new pack value kind, type kind, ABI class, or runtime container.
 
 ### 4.1 Canonical Sequence children

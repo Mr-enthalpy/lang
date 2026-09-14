@@ -1,21 +1,14 @@
-# Lifetime design
+# Lifecycle and Semantic Admission
 
-The canonical owner is
-[`lifetime-policy-and-overload-boundary.md`](lifetime-policy-and-overload-boundary.md).
+- [Continuation, Region, Color and access](lifetime-policy-and-overload-boundary.md)
+- [SafetyPolicy and external semantic admission](unsafe-semantic-admission.md)
 
-Its core relation is:
+Cleanup is fixed before observation. Pre precedes commit; Post records only
+success. N@ is a name iff N is a name; value and borrowed fields remain
+ordinary distinct projections. SafetyPolicy is orthogonal to PolicyMode.
+Unsafe adds compatible external facts after commit without revoking history,
+satisfying a missing Pre or granting write authority.
 
-```text
-@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
-```
-
-`@` returns an ordinary first-class `LifetimeValue`; it is not a borrow or
-place-acquisition operation and does not require the operand to have a Place.
-`ref` and `share` are explicit borrow constructors with privileged access to
-the actual Place.
-
-The owner also defines LifeName/NameView, cleanup-before-observation, gapless
-half-open Region generations, exact move cuts, Pre/commit/Post, monotone Color
-inheritance, extensible directed Color relations, and the post-selection
-lifetime boundary. Concrete IR, source action wiring, access-tree construction,
-summary compression, and diagnostics remain implementation frontiers.
+Lifecycle residue is a projection of the same continuation as machine residue.
+[Continuation rewrites](../meta-invocation/evaluation-residual-and-optimization.md)
+must revalidate all affected projections.

@@ -13,6 +13,10 @@ Other documents may define consumers of this relation. In particular:
   preparation, not the Pattern relation;
 - `overload-resolution-design.md` owns candidate ordering after applicability,
   not Pattern observation;
+- [Operator Patterns and generative declarations](operator-patterns-and-generative-declarations.md)
+  applies this same relation to operator call/extract/generative projections.
+  Policy deduction uses those registered relations, ordinary HoleBinderId and
+  require constraints; it introduces no separate inference calculus;
 - `static-pattern-spaces-and-extraction-chains.md` owns residual / `Done` /
   control-pattern algebra, not the base matching relation;
 - `return-value-extraction-and-implicit-decomposition.md` applies the
@@ -21,7 +25,7 @@ Other documents may define consumers of this relation. In particular:
 - `../symbol-world/type-values-places-and-borrow-views.md` owns complete type
   values, places, `ProjectionSlot`, and borrow observations;
 - `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
-  owns Symbol construction, `struct`, `extend`, `inject`, and installation;
+  owns name binding construction, `struct`, `extend`, `inject`, and installation;
 - `../../contracts/semantic-owner-namespace-graph.md` owns
   `SemanticOwnerId`, `PatternRoot`, and `HoleBinderId` identity.
 
@@ -214,8 +218,8 @@ identity applied *implicitly* by the language as a call-site filter before
 C0 (see `overload-resolution-design.md` §2.3 / §5.3). The producer side is
 closed symmetrically: every candidate of a `struct`-generated
 `GeneratedFieldFamily(T, name, A)` is registered under
-`StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)` — keyed by the
-stable core anchor, not the whole `Q` snapshot, with a stated stability
+`StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)` — keyed by the
+complete type's stable implementation home, not Core equality, with a stated stability
 theorem (`StructuralFamilyStability`) — so this filter preserves exactly
 those generated cells
 (`symbol-world/type-associated-function-objects-and-access-trees.md`,
@@ -292,13 +296,14 @@ or extraction-visible. A private structural child can remain a direct child
 while being omitted from a default extraction view. Pattern structure is
 therefore neither namespace shape nor the set of currently callable helpers.
 
-Ordinary navigated creation, including:
+For value:ValueType, ordinary navigated creation and initialization, including:
 
 ```lang
-let f::((s ref).type) = value;
+mut let f_ref = (let f::s:ValueType) ref;
+f_ref = value;
 ```
 
-may create a `Val2` member or associated Symbol. It cannot add a
+create a typed structural name and then initialize its ordinary `Val2` resident. It cannot add a
 `DirectPatternChild`, `ConstructEdge`, `ExtractEdge`, or `FieldView`. Structural
 registration requires the privilege held by `struct` or `extend`; `inject`
 reaches the same privilege only by invoking `extend` on the value it reads.
@@ -357,7 +362,7 @@ Norm(x)
 ```
 
 Cross-axis comparison uses normalized Object equality. A resident place,
-source carrier, construction spelling, or defining Symbol is not Pattern
+source carrier, construction spelling, or defining name binding is not Pattern
 content identity.
 
 ## 6. Navigation formation and Pattern identity
@@ -783,12 +788,25 @@ ExtractEdge_P_T(C, A, E_C)
 FieldView_P_T(T, inner, A, F)
 ```
 
-`K`, `E`, and `F` are ordinary callable Objects stored in the ordinary Symbol /
+`K`, `E`, and `F` are ordinary callable Objects stored in the ordinary name binding /
 `Val2` / type-member value universe. `P_T` does not own a second copy. It only
 registers the structural or interface role played by that callable.
 
+A Pattern-registered extraction/construction closure must have the required
+classifier under the containing tau. This is independent of registration for
+that type's own callability in V_tau: neither registration implies the other.
+Ordinary Val2 membership needs neither registration and permits arbitrary
+resident types. Authorized classifier home is eligibility, not automatic
+registration in either role family.
+
+Pattern structural registration is non-generative because it determines the
+structured construction/extraction form. A requested-name generative occurrence
+may yield an ordinary Val2 value but supplies none of these structural witnesses.
+V_tau registration is also non-generative and does not require or grant named
+Val2 navigation to its callable value; classifier home is a separate condition.
+
 The namespace/type distinction of a core `Q` is a property of `Q`'s registered
-construction role, never of any later Symbol sibling count. Formally:
+construction role, never of any later name binding sibling count. Formally:
 
 ```text
 HasRegisteredSelfConstruction(Q)
@@ -834,6 +852,15 @@ NamespaceOnly(Q)
   and not TypeRole(Q)
       -- equivalently: NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
 ```
+
+These are Q-local structural judgments. They have no hidden tau argument and
+do not check a complete type's classifier home. CompleteType(tau) separately
+requires PatternClosureConsistent(tau) (§15 and the type-value owner §2.2).
+That complete-closure judgment checks Home(TypeOf(K)) = TypeMemberScope(tau)
+for every Pattern-registered construction/extraction closure, independently of
+whether K is also registered for callability in V_tau. Ordinary Val2 residents
+with neither role need no such home. Registration witnesses in Q and their
+compatibility with a particular /tau(tau) home must not be conflated.
 
 Therefore:
 
@@ -949,7 +976,7 @@ TypeClosureView(X) = τ = ⟨Q, V_τ⟩
 τ ≡ DescriptionClosure(P, Val2)
 ```
 
-This is not `V_τ = Val2`: `V_τ` is the type-callspace portion observed from
+This is not `V_τ = Val2`: `V_τ` is the type-callspace snapshot observed from
 the same closed entity, and `Q` is its core/Object-structure observation. The
 consistency law is:
 
@@ -961,9 +988,10 @@ a constraint on ⟨Q,V_τ⟩
 constrain the same semantic entity.
 ```
 
-So `Closed(τ)` also means no new structure or callable may be added from the
-`P × Val2` side, and `WellFormedTau(τ)` also guarantees that the P/Val2
-structural registration and the V_τ direct-home callspace are compatible.
+Closed(tau) freezes the non-generative Pattern structure and V_tau registration;
+ordinary generated Val2 results may still be realized without either role.
+WellFormedTau(tau) guarantees that the P/Val2
+structural registration and the V_τ anchored callspace are compatible.
 There is no formation order "Q formed first, then some namespace inspected,
 then V_τ attached, then τ obtained"; there is no "P structure is one object,
 V_τ/type callability is another side table"; and there is never a state where
@@ -983,12 +1011,12 @@ WellFormedTau(tau)
   iff tau = <Q, V_τ>
   and Q is a well-formed pure Object
   and V_τ is a well-formed TypeMember set
-      (each F in V_τ satisfies TypeMember_Q(F))
+      (each F in V_τ satisfies TypeMember_tau(F))
   and AllBoundRefsBoundAndRestricted(bind alpha.⟨Norm(Q), Norm_V^alpha(V_τ)⟩)
       (every BoundRef reachable during Norm_type^alpha(Q, V_τ) is bound
        by alpha and belongs to an authorized static edge kind;
        BoundRef(alpha) notin Children_owned)
-  and PatternClosureConsistent(Q, V_τ)
+  and PatternClosureConsistent(tau)
       -- structural, history-free; depends only on the current closure value
          (canonical definition: type-values-places-and-borrow-views.md §2.2)
 
@@ -1002,8 +1030,8 @@ tau = bind alpha. <Q, V_τ[alpha]>
 
 `V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
 direct TypeMember members placed into `tau` when it was produced
-(`TypeMember_Q` handoff invariants below), not a global function of
-the bare core `Q` and not a post-hoc partition of a shared Symbol space.
+(`TypeMember_tau` handoff invariants below), not a global function of
+the bare core `Q` and not a post-hoc partition of a shared name binding space.
 Members created under the same `Q` later never retroactively enter
 an existing snapshot, and a copied or extracted `tau` keeps its captured `V_τ`.
 
@@ -1021,25 +1049,30 @@ used in transport and in positions the language has independently frozen to
 whole-snapshot semantics. Ordinary Pattern and namespace observation also uses
 `Core(tau) = Q`.
 
-The handoff invariants are:
+The handoff invariants distinguish Core's Pattern anchor from the complete
+bound type's implementation home. Equal Core alone cannot merge type homes.
+Val2 residency, callability registration and Pattern-role registration remain
+independent; both registered closure roles require the same complete-type home:
+
 
 ```text
 CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)      -- canonical §2.1
-TypeMemberScope(Q) = MemberScope(CoreAnchor(Q))
+TypeMemberScope(tau) = /tau(tau)  -- complete bound type implementation home
 
-HomeEligible_Q(F)                                -- TypeMember_Q(F)
+HomeEligible_tau(F)                                -- classifier home only
   iff Anonymous(F)
-  and DirectClassifierHome(F) = TypeMemberScope(Q)
+  and Home(TypeOf(F)) = TypeMemberScope(tau)
 
 TypeMember_τ(F)
   iff F ∈ ClassifierDomain(V_τ)
-  and HomeEligible_{Core(τ)}(F)
+  and HomeEligible_τ(F)
+  and F has non-generative registration for this snapshot's type callability
 
 CreateClassifier_Gamma(
   F,
-  DirectClassifierHome = TypeMemberScope(Q)
+  Home(TypeOf(F)) = TypeMemberScope(tau)
 )
-  => CurrentAuthority_Γ(Q)
+  => CurrentAuthority_Γ(tau)
 
 V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partition
 
@@ -1047,14 +1080,26 @@ Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
 
+TypeMember registration does not require a named Val2 resident or grant a
+val::path selector for F. The anonymous classifier has its /tau home; navigation
+to that classifier is not navigation to F. A separate ordinary binding may expose
+the same value without changing its callability or Pattern registration.
+
+Pattern-registered members determine the structured construction/extraction
+relation and must be non-generative. GeneratedOccurrence cannot supply
+DirectPatternChild, ConstructEdge, ExtractEdge, FieldView or V_tau evidence.
+This is an occurrence restriction, not a permanent prohibition on the value.
+Mechanically produced struct helpers belong to their ordinary non-generative
+formation; a frontend Generated provenance tag is not a generative name rule.
+
 `V_τ` is fixed at formation and never grows: classifiers created later under
-the same scope enter only the new snapshot `V_τ'` (extend preserves
-`CoreAnchor`, so `TypeMemberScope` is stable), never an older `V_τ` — no
+the same scope may enter, when registered, only the new snapshot `V_τ'` (extend preserves
+the complete bound implementation owner, so its home is stable), never an older `V_τ` — no
 retroactive membership.
 
 Direct canonical home is fixed at classifier creation. Selecting that home is
 itself privileged: only a process holding current construction authority for
-`Q` may create a classifier directly in `TypeMemberScope(Q)`. Ordinary
+the complete type tau may create a classifier directly in TypeMemberScope(tau). Ordinary
 callable creation, navigated `let`, copying, writing, rebinding, or namespace
 installation cannot forge the home at formation and cannot establish
 membership afterward. Descendant ownership is also insufficient.
@@ -1082,7 +1127,7 @@ extend : <Q, V_τ> x Delta -> <Q', V_τ'>
 ```
 
 It is the privileged operation that may add direct structural children and
-their direct-home TypeMember classifiers. It is pure: the old snapshot is not
+their anchored TypeMember classifiers. It is pure: the old snapshot is not
 modified.
 
 `inject` is:
@@ -1115,7 +1160,7 @@ operation.
 - `_` is a real wildcard position; binder absence is represented explicitly.
 - Pipe branch expansion uses binderless `<>`, not wildcard padding.
 - A complete type value contains Core and immutable callspace observations.
-- Complete types have no defining HomeSymbol or carrier-recovery route.
+- Complete types retain their own callspaces without defining-binding recovery.
 - TypeMember home is explicit and is not implied by descendant classification.
 - Immutable snapshots do not share one mutable current callspace.
 - Recursive references obey stage-sensitive `WellFounded_kappa`: finite static
@@ -1135,3 +1180,11 @@ The following do not reopen this base authority:
 
 These are extension, representation, or surface questions. They may consume
 the judgments above but may not redefine them.
+
+
+Closure membership may be established by a fresh anchored replica only when
+its ReinstantiationWitness permits that construction. The original callable
+and capture identities are not mutated; see
+[closure replication](../symbol-world/closure-anchored-replication.md).
+Named type synthesis and explicit candidate groups use their distinct
+[name/type algebras](../symbol-world/names-and-overload-groups.md).

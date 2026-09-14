@@ -68,30 +68,28 @@ silently degrading the selected operation. Erasing policy detail, this is the
 familiar three-signature summary:
 
 ```text
-AssociatedSymbol(T, field):
+AssociatedName(T, field):
   field : (object: T)       -> field
   field : (object: T ref)   -> field ref
   field : (object: T share) -> field share
 
-AssociatedSymbol(T, push):
+AssociatedName(T, push):
   push : (object: T, value) -> result
 ```
 
 The full candidate family is normative; the summary is its policy-erased
 projection and is not the sole specification. For a `struct`-generated field
-these are ordinary typed candidate objects in one associated Symbol.
+these are ordinary typed candidate objects in one associated name binding.
 
 #### Family registration: producer side of `StructuralDefault`
 
 Every candidate of the generated schema is registered in one stable
-call-site candidate family. The identity key is the stable self-observable
-anchor `CoreAnchor(Q_T)`, not the whole `Q` snapshot
-(`CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)`, canonical
-`symbol-first-meta-construction-and-pattern-injection.md` §2.1):
+call-site candidate family. The identity key retains the complete type's stable implementation home
+TypeMemberScope(tau_T), not a quotient by its Core observation:
 
 ```text
 StructuralFamily(T, name, A)
-  = StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)
+  = StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)
 
 c ∈ GeneratedFieldFamily(T, name, A)
 ---------------------------------------
@@ -102,12 +100,12 @@ where `Q_T = Core(τ_T)`. This gives the family-stability theorem:
 
 ```text
 StructuralFamilyStability:
-  CoreAnchor(Q') = CoreAnchor(Q) ∧ same registered structural field name
-  ⇒ StructuralFamily(Q', name, A) = StructuralFamily(Q, name, A)
+  TypeMemberScope(tau') = TypeMemberScope(tau) ∧ same registered structural field name
+  ⇒ StructuralFamily(tau', name, A) = StructuralFamily(tau, name, A)
 ```
 
 An `extend` that adds unrelated virtual helpers (so `Q ≠ Q'` but
-`CoreAnchor(Q') = CoreAnchor(Q)`) therefore keeps every generated structural
+the authorized update preserves the complete bound implementation owner) therefore keeps every generated structural
 candidate's identity: P-internal extraction over the new snapshot still
 filters exactly the inherited generated cells. P-internal extraction
 (`AtomicExtract_P`, canonical
@@ -179,7 +177,7 @@ distinct operations. The field family's identity is
 
 ```text
 FieldWriteFamily(T, name, A)
-  = SetterFamily(CoreAnchor(Q_T), name, StructuralDefault, A)
+  = SetterFamily(TypeMemberScope(tau_T), name, StructuralDefault, A)
     -- ⟨structural-field identity, selector, value type, setter-family kind⟩
     -- never the parameter shape alone
 ```
@@ -314,52 +312,31 @@ passing. The mechanical pass-insertion semantics are specified in
 
 ## Same-Name Candidate Lookup
 
-One associated field Symbol contains every value/ref/share observation
+One associated field name binding contains every value/ref/share observation
 candidate. `ref` and `share` are types/observation kinds in candidate formals and
 results, not generated namespace subspaces. A structural field literally named
-`ref` or `share` is therefore just another same-name associated Symbol and does
+`ref` or `share` is therefore just another same-name associated name binding and does
 not collide with a projection namespace. Ordinary overload resolution selects
 the candidate from the receiver Pattern and Policy.
 
 ## Derived-Type Associated Forwarding
 
-A derived type construction `D(T)` — `T ref`, `T share`, and any future derived
-construction — does not gain associated capabilities by copying the original
-type's members. Every member of `V_(D(T))` must truly belong to the derived
-type's own structural level:
+A derived type construction D(T), including T ref or T share, preserves
+complete snapshot identity. Its contributed closure members must satisfy:
 
-```text
-τ = ⟨Q, V_τ⟩
+    F in V_tau => Home(TypeOf(F)) = TypeMemberScope(tau)
 
-F ∈ V_τ
-=>
-Anonymous(F)
-∧ DirectClassifierHome(F) = TypeMemberScope(Q)
-```
+This is final structural membership, not permission to reparent a callable.
+An eligible closure can be instantiated under the target anchor using its
+ReinstantiationWitness. The original value remains unchanged.
 
-In particular, `F ∈ V_T` never implies `F ∈ V_(T ref)` or `F ∈ V_(T share)`:
-those are three complete type values with three independently home-checked
-callspaces. Foreign-member injection into a derived type's callspace is
-forbidden (`NoForeignTypeMemberInjection`,
-`symbol-first-meta-construction-and-pattern-injection.md` §2.1). The correct
-mechanism is derived associated forwarding: the derived type generates its own
-forwarding member
+Ordinary field forwarding uses a fresh forwarding function object's own self;
+the operated object remains an ordinary subsequent argument. Each forwarder
+captures the base complete snapshot. No receiver coercion or independent
+implementation authority is involved.
 
-```text
-ForwardAssoc(D(T), name)
-```
-
-satisfying:
-
-```text
-ForwardAssoc(D(T), name) ∈ V_(D(T))
-
-DirectClassifierHome(
-  ForwardAssoc(D(T), name)
-)
-=
-TypeMemberScope(Core(τ_(D(T))))
-```
+    ForwardAssoc(D(T), name) in V_(D(T))
+    Home(TypeOf(ForwardAssoc(D(T), name))) = TypeMemberScope(tau_(D(T)))
 
 so the forwarder is a real ordinary member of the derived type, homed in the
 derived type's own level. Its behavior is an ordinary call:
@@ -432,7 +409,7 @@ ForwardBaseSnapshot(f)
 ```
 
 The forwarder `f` is a real ordinary callable homed in `V_(D(T))`
-(`DirectClassifierHome(f) = TypeMemberScope(Core(τ_(D(T))))`). Its body
+(`Home(TypeOf(f)) = TypeMemberScope(τ_(D(T)))`). Its body
 performs a new ordinary invocation of `c` against `ForwardBaseSnapshot(f)`.
 The applicability equivalence lets a derived caller discover at selection
 time whether the base family has an applicable candidate — not after
@@ -509,7 +486,7 @@ Field functions live in a type-associated companion *place*, which is distinct
 from the type *value* the bound symbol stores. The access-tree work in this
 document therefore depends on three identities being kept separate:
 
-- a name (`SymbolId`),
+- a name (`NameBindingId`),
 - a writable location (`PlaceId`),
 - a canonical type value (the implementation index root currently called
   `TypeValueId`; the canonical semantic type value is the rank-indexed closure
@@ -517,32 +494,40 @@ document therefore depends on three identities being kept separate:
 
 The consequences that field/access-tree work must preserve:
 
-- `let t: type = uint8` creates a fresh symbol and a fresh current-level writable
+- `let t: type = uint8` creates a fresh name binding and a fresh current-level
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
-  `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
+  `place(t) != place(uint8)`. It is not a fresh nominal type and not a binding
   alias.
-- `let f::(t |> (type ref)) = ...` explicitly creates the prospective child under
-  `place(t)`, never `place(uint8)`, because `t` is already a pure type slot. For
-  a Symbol `S`, the corresponding place form is `let f::((S ref).type) = ...`.
-  `AsType(S)` never recovers a place. Type-value
-  equality must not canonicalize extension targets, and a `type`-kind symbol may
-  own a companion namespace place distinct from the type value it stores.
+- Typed structural let creates NameExpr for a fresh uninitialized Place;
+  explicit ref and ordinary write initialize it without role registration.
+  Qualified formation uses the resolved structural root and current type's
+  OpenHere, not parent Writable or a parent type ref. Its NameCoord remains
+  rooted at t, never uint8 merely through value equality. An explicitly borrowed
+  target likewise preserves its actual Place. NameBinding supplies no wrapper
+  or `.type` field, and value
+  equality cannot canonicalize these distinct construction targets. By-value
+  observation does not recover either Place.
 - There is no place-forwarding declaration form. Every binding allocates its own
   place, so no second name reaches `place(uint8)`. Where shared observation is
   wanted, the value held is a borrow view (`ref` / `share`), and its
   capability never exceeds the underlying place's own. A missing final child
-  still has stable `ProjectionSlot(parent, selector)` identity: `let` may instantiate
-  it, while bare `=` may only write `Some(existing)`.
+  has NameCoord independently of realization. Typed let may realize its Place;
+  ordinary first write initializes that typed Uninitialized Place using one-shot
+  authority. Replacement requires initialized resident compatibility and a
+  separate replacement capability. Assignment never realizes an unretained name.
 - That prospective coordinate is not the target identity of a borrow already
   formed from a resident child. Parent wholesale replacement may invalidate the
   old borrow, but never redirects it to a new child at the same coordinate;
   only `rebind` selects a new target.
-- `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. A closed-window type slot
-  may remain writable for wholesale replacement, and an open-window value may be
-  extended purely without a writable carrier.
+- `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. Writable
+  alone cannot permit replacement through a type ref after Close: direct mut
+  refs and meta-ref writable candidates require OpenHere of their original
+  borrowed generation. An open-window value may be extended purely without a
+  writable carrier. Explicit meta-to-mut confirmation preserves target and
+  capability; it does not amplify authority or introduce implicit chaining.
 
 This is only a summary. For the canonical `TypeValueId` implementation index
-root / `PlaceId` / `SymbolId` distinction — including the object normal form,
+root / `PlaceId` / `NameBindingId` distinction — including the object normal form,
 the borrow views, writability, construction-authority (`OpenHere_Σ` / `WindowLive_Σ`), and the namespace
 member-creation/write pipeline — see
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
@@ -579,10 +564,10 @@ This note does not implement or specify:
   `type-values-places-and-borrow-views.md` §2.3 and §5);
 - access-tree scanning;
 - implementation of complete type closures `tau = <Q,V_τ>`, their optional
-  binder-aware form `bind alpha.<Q,V_τ[alpha]>`, and direct-home TypeMember
+  binder-aware form `bind alpha.<Q,V_τ[alpha]>`, and anchored TypeMember
   classification; target type-as-callee lookup is already
   `CallSpace(tau)=V_τ` and never performs
-  defining-Symbol or carrier-provenance recovery;
+  defining-name binding or carrier-provenance recovery;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;
 - generic meta execution;

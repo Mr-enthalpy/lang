@@ -4,30 +4,48 @@ Status: Current canonical design
 
 ## 1. Resolve once, then project
 
-Lexical resolution produces one terminal Symbol before callability or
+Lexical resolution produces one terminal name binding before callability or
 applicability is considered:
 
 ```text
 S = Resolve_Gamma(path)
-Invoke(CallableProjection(S))
+-- named-type case of the subsequent consumer projection:
+Invoke(CallCandidates(NamedType(S)))
 ```
 
-Shadowing therefore precedes applicability. A non-callable nearest Symbol, an
+Shadowing therefore precedes applicability. A non-callable nearest name binding, an
 empty candidate family, or an A-stage rejection never restarts name resolution
-at an outer same-name Symbol.
+at an outer same-name name binding.
 
 ## 2. Callable projection
 
-For Symbol `S` carrying complete type `tau`:
+An initialized structural name declared :type denotes its complete named type T. This case does not
+restrict ordinary Val2 residents to types. Explicit group values use the
+singleton type embedding:
 
-```text
-CallableProjection(S)
-  = DedupCandidateIdentity(V_S(S) union CallSpace(tau))
-```
+    CallCandidates(T) = CallCandidates(V_tau(T))
+    CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
 
-Symbol-local and TypeMember candidates enter one candidate space. The complete
-type snapshot is the snapshot captured by the value or binding, not a live
-lookup through a Core index.
+Group bucket aggregation does not mutate the candidate types. Each value
+callee uses its exact captured complete type and associated (), with
+Type(callee) = Type(first self). A source binding or Core registry index does
+not supply a later callspace snapshot. See
+[name/type algebra](../symbol-world/names-and-overload-groups.md).
+
+### 2.1 Value navigation is broader than candidate projection
+
+Suppose an instance has ordinary Val2 members `data` (a non-callable value),
+`state` (an OverloadGroup G), and a named type T. Each member can be obtained
+through `name::instance` under ordinary access and value rules. Calling the
+read group uses CallCandidates(G); calling T uses its captured V_T. Reading
+data is legal even though its call projection has no candidates. Neither
+successful navigation nor classifier eligibility registers a value in the
+instance's own V_tau.
+
+Thus ReadNamedType describes the named-type case, not an implicit conversion
+applied to every Val2 resident. Ordinary function values use their exact
+complete type and associated (). All these entrances share the pipeline below;
+none retries name resolution or constructs a wrapper to make a value callable.
 
 ## 3. Pipeline
 
@@ -37,7 +55,7 @@ The canonical order is:
 1. callee resolution
 2. pre-C0 family filter
 3. candidate enumeration
-4. identity dedup, visibility, phase, and frame formation
+4. repeated candidate-entry exposure collapse, visibility, phase, and frame formation
 5. hard applicability A, including Pattern relation and declared result Type
 6. declaration fallback/suppression where the language defines it
 7. Policy product preference Bp
@@ -49,8 +67,15 @@ The canonical order is:
 13. optional result-view satisfaction or same-Type migration
 ```
 
-`OutputModeDemand` is total before Bp maxima. Pair/stage result demand is a hard
-candidate constraint; whole-slot mode is the three-point preference coordinate.
+Only repeated exposure of the same stable candidate-entry identity may collapse.
+Distinct contribution entries never deduplicate merely because their values or
+types normalize equally; equality and interning cannot quotient those entries.
+
+ResultPolicyDemand, when present, is formed before Bp maxima. Omitted mode
+preserves NoWrittenModeConstraint; inherited/contextual constraints or an
+applicable DefaultModeCompletion may resolve a mode demand. Omission alone is
+not explicit plain. Pair/stage result demand is a hard candidate constraint;
+a resolved whole-slot mode supplies the three-point preference coordinate.
 Capability realization and dynamic legality do not grant preference.
 
 ## 4. Pattern applicability
@@ -65,6 +90,18 @@ The valuation `rho` supplies generic Hole bindings. Structural extraction uses
 explicit `DirectPatternChild` evidence and applies `StructuralDefault` before
 candidate enumeration. No product shape or observed-content carrier defines
 Pattern meaning.
+
+Policy holes participate in this same joint relation:
+
+    Pin_i(rho) = Overlay(P2, Delta_in_i(rho))
+    Pout(rho)  = Overlay(P1, Delta_out(rho))
+
+Actuals and optional output demand constrain compatible solutions together;
+neither policy side semantically computes the other. Registered operator
+Patterns and require constraints establish applicability before preference.
+A concrete generative name head f outranks _ through ordinary specificity only
+after matching. Nested producers seal locally; outer candidates cannot reopen
+their chosen result policy or overload.
 
 ## 5. Selection seal
 

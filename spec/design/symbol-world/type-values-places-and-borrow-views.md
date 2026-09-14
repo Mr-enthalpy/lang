@@ -1,9 +1,14 @@
-# Type Values, Places, and Borrow Views
+# Complete Pattern Values, Places, and Borrow Views
+
+Complete type values are called complete pattern values (tau). Core observation,
+whole-snapshot observation, and ordinary Pattern algebra retain the distinctions
+specified below. [Names and OverloadGroups](names-and-overload-groups.md) owns
+name occupancy and group algebra; they do not add an Object axis.
 
 **Status: canonical semantic authority for Object identity, complete
 type-closure identity, Place identity, and borrow views.**
 
-This document specifies the semantic boundary between *object values*, *symbol
+This document specifies the semantic boundary between *object values*, *binding
 identity*, *places*, *borrow views*, and *namespace extension targets*. It
 defines what an object is, what a place is, which borrow operators exist, which
 overloads they have, and when each overload is callable. It is a semantic
@@ -13,12 +18,12 @@ The document is self-contained. It does not require the reader to assemble its
 meaning from `type-associated-function-objects-and-access-trees.md` or
 `early-meta-functions-and-namespace-graph.md`. Those documents are background
 or adjacent design only; the model here stands on its own and is the canonical
-authority for the value / place / symbol / borrow-view distinction.
+authority for the value / place / binding / borrow-view distinction.
 
 There is no ordinary symbol-alias or place-forwarding declaration form in this
-language. `let a = b;` copies a value into a fresh symbol with a fresh place.
+language. `let a = b;` copies a value into a fresh binding with a fresh place.
 Sharing an observation of another object is expressed by the borrow operators
-defined in §5, never by a declaration that makes two symbols name one place.
+defined in §5, never by a declaration that makes two bindings name one place.
 
 The broader symbol-first facet, `PatternValue`, `compile` / `meta`, pattern
 scope, `struct`, pure `extend`, and place-level `inject` model is canonicalized in
@@ -31,12 +36,12 @@ The language must distinguish three things that look similar in source text but
 are semantically different: the identity of a name, the identity of a writable
 location, and the identity of a type value. Conflating them produces subtle
 errors — for example, injecting a declaration into a built-in type because its
-type value happens to equal a freshly bound symbol's type value.
+type value happens to equal the type value stored in a fresh binding.
 
 The invariants this document protects:
 
 ```text
-value equality must not collapse symbol-place identity
+value equality must not collapse binding/place identity
 a borrow view must not manufacture a place that its source does not own
 member creation must target a place or stable prospective ProjectionSlot
 structural extension must transform an Open value, not borrow authority
@@ -53,22 +58,29 @@ This document does **not** define:
 
 Three phrasings are explicitly rejected throughout. `let T: type = uint8` is
 **not** fresh nominal type generation. A borrow view is **not** textual
-substitution and **not** a second name for a Symbol. And value equality is
+substitution and **not** a second name for a name binding. And value equality is
 **not** place equality.
 
 ## 2. Semantic identities
 
-Three distinct symbol/type identities participate in this model, alongside
+Three distinct binding/type identities participate in this model, alongside
 canonical pattern-value identity:
 
 ```text
-SymbolId
+NameBindingId
+NameCoord(root, selector) -- independent of realization
 PlaceId
 TypeValueId
 PatternValue identity
 ```
 
-- `SymbolId` is the identity of a `Symbol` constructor value (name-graph node).
+- NameCoord is a structural coordinate, not an Object, Place or resident. A
+  coordinate does not establish Retained or BindingPlace. See the name owner
+  for realization and Fresh = not Retained.
+- `NameBindingId` identifies an ordinary realized binding and its resident
+  Place relation. It is not a language value and cannot be borrowed or carry a
+  `.type` field. A borrow addresses its typed Place, including before the first
+  resident exists; its type comes from PlaceType, not an implicit value read.
 - `PlaceId` is the identity of a location that can be bound, updated, injected
   into, or opened for a namespace delta.
 - `TypeValueId` is the stable first-order root of `Core(tau)` — a registry
@@ -110,23 +122,31 @@ PatternValue identity
 These identities are independent. None implies another:
 
 ```text
-SymbolId equality does not imply TypeValueId equality.
+NameBindingId does not determine an immutable TypeValueId across resident replacement.
 TypeValueId equality does not imply PlaceId equality.
-PatternValue equality does not imply SymbolId or PlaceId equality.
+PatternValue equality does not imply NameBindingId or PlaceId equality.
 A borrow view names one place from one origin; it relates values and places without erasing the distinction.
 ```
+
+Meta invocation normalization retains the identities of semantically observed
+name/construction-subject dependencies in addition to its ordinary value
+observations. This does not insert NameBindingId, PlaceId or Anchor into
+Norm(Object). Equal Core values may have different subjects; copies preserve
+an existing subject. A is a derived instance: a saved result reference retains
+its captured invocation Place and subject across input-carrier replacement.
+See [invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+and [associated state](associated-compile-state.md).
 
 A type expression cares about the *value*. A namespace extension target or a
 declaration-extension site cares about the *place*. A borrow view is itself a
 value that carries a place coordinate. The three concerns must not be folded
 into one another.
 
-In the symbol-first model, a path initially resolves to one Symbol and the use
-site then projects the complete immutable type closure `tau` (if any) and the
-heterogeneous typed value members `V_S`. Type projection returns the `tau` that
-was formed at installation; namespace projection returns `Core(tau) = Q` when
-`tau` is present. Projection does not collapse these identities and is not a
-cast.
+A structural path resolves to its binding and reads its named type; call projection uses V_tau. Explicit
+OverloadGroups aggregate type candidates through eta(T), without adding a
+second name container. Member projection follows the ordinary consumer rules. A selected tau
+is already self-contained; its Core, CallSpace and whole observations do not
+come from a privileged group slot or the other entries.
 
 ### 2.1 Object identity is the recursive three-component normal form
 
@@ -137,9 +157,51 @@ Object x  = ⟨ Val1?(x), P(x), Val2(x) ⟩
 Val1?(x) ∈ 1 + Object
 ```
 
-`Val2` is a finite map from semantic selectors to ordinary Objects. Most
-selectors are names and their entries are same-name Symbols; the built-in bare
-Product Pattern additionally supplies intrinsic ordinal selectors `pos_i`.
+`Val2` is a finite map from semantic selectors to ordinary Objects. Named
+entries can hold arbitrary ordinary values of any type. A complete named type
+is one possible resident, not the universal type of a Val2 entry. The built-in
+bare Product Pattern additionally supplies intrinsic ordinal selectors `pos_i`.
+
+The structural lookup and the value snapshot are distinct:
+
+```text
+named selector n -> NameCoord(parent,n), independent of realization
+Retained(parent,n) -> realized structural NameBinding / typed Place, when established
+initialized q   -> ResidentState(q) = Initialized(v)
+Val2(parent)[n]  = v only in that initialized case
+```
+
+| HasName(parent,n) | ResidentState(BindingPlace(n)) | Val2 entry |
+| --- | --- | --- |
+| false | no binding/Place | absent |
+| true | Uninitialized | absent |
+| true | Initialized(v) | ordinary resident v |
+
+An internal Contents(q) = Some(v) encoding describes only the last row.
+Structural occupancy is not resident presence, and Uninitialized is not an
+Object or a None value. Close checks the initialized-name condition of §7.1.
+
+HasName in this table means Retained, never the existence of NameCoord. The
+first row still has a coordinate for a legal root/selector, but no borrowable
+Place follows from it. Prospective ProjectionSlot lookup is structural addressing
+material; realization, resident generation and write authority remain separate.
+
+Ordinary name initialization/replacement may update Core's ordinary Val2:
+
+    Q = <Val1?, P, V>
+    OrdinaryNameWrite(q_s,v): V' = V[s -> v]
+    Q' = <Val1?, P, V'>
+
+Thus Q' may differ from Q even though P and its registrations are unchanged.
+The write uses the ordinary Place first-write/replacement rules and their Pre
+checks; it implies no DirectPatternChild, ConstructEdge, ExtractEdge, FieldView
+or V_tau registration. Pattern-registered structural extension is owned by
+extend/inject; TypeAdd separately updates V_tau registration. These are distinct
+relations, not a restriction that every Core change must use extend/inject.
+
+NameBinding and ProjectionSlot are not Val2 value entries. Normalization consumes
+the resident v with its existing complete-type/Object observation; it never
+normalizes a binding wrapper or a cluster carrier.
 Those ordinal entries are not a compiler aggregate outside `Object`.
 
 The least Object domain is closed by the following constructors:
@@ -235,7 +297,7 @@ ordinary selectors; whether a tuple-like user-facing namespace API exposes
 that capability remains a narrow surface question.
 
 An Object carrying `Val1` may still be used where a type is expected when an
-ordinary projection such as Symbol's `Q` projection under `TypeRole(Q)` applies
+ordinary value-side projection of the read resident under TypeRole(Q) applies
 (§5.6). Conversely, `Pure(x)` alone does not imply `TypeRole(x)`. Keeping these
 judgments separate prevents payload presence from becoming an implicit kind
 classifier.
@@ -251,12 +313,8 @@ Norm(x)                    = ⟨ Norm_Val1?^(P(x))(Val1?(x)),
                                 Norm_Val2(Val2(x)) ⟩
 Norm_Val1?^P(null)         = null
 Norm_Val1?^P(v)            = Norm(v)       -- default owned-object case
-DecodeSymbolPayload(Σ_Object) = ⟨ τ?, V_S ⟩
-Norm_Val1?^P_symbol(Σ_Object) = ⟨ Norm_type(τ)? ,
-                                Map_{Norm(T_c)}(
-                                  Set{ Norm(v) | v in V_S[T_c] }) ⟩
 Norm_Val2(V)               = Map_selector( Norm(V[selector]) )
-                               -- named entries are ordinary Symbols;
+                               -- named entries may have any ordinary resident type;
                                -- bare-Product pos_i entries are ordinary Objects
 ```
 
@@ -282,26 +340,13 @@ remains in `P_(T*N)` identity; the current finite length of `T*omega` is visible
 only through its `BareProduct` Val1. These are instances of `Norm(Object)`, not
 compiler-container identities beside it.
 
-The `P_symbol` clause first decodes the two ordinal positions of the ordinary
-`Σ_Object` composition specified in `symbol-first-meta-construction-and-pattern-injection.md`,
-then applies a Pattern-specific quotient to the logical view
-`Σ = ⟨tau?, V_S⟩`, where `tau`, when present, is the complete type value
-carried by the Symbol,
-`V_S = ⨄_{T_c} V_S[T_c]`, and every homogeneous bucket
-`V_S[T_c] : T_c * omega`. The member objects inside a bucket retain their own
-ordinary recursive identity, including stable declaration/candidate identity,
-callable body, and every annotation that affects semantic selection. There is no
-universal `SemanticMember` wrapper type and no exception to the homogeneity of
-`T * omega`.
-
-Multiplicity is not retained by the final Symbol normal form. Replaying the
-same contribution of the same stable member is idempotent in value identity;
-conflicting declarations and duplicate definitions are rejected by construction
-or well-formedness before the quotient is observed. Two distinct members are
-not collapsed merely because their bodies normalize alike. In particular,
-inserting `a` then `b` and inserting `b` then `a` produce the same Symbol normal
-form exactly when the stored `tau` (if any) and every normalized `V_S[T_c]` set are
-equal.
+OverloadGroup normalization uses this same Object universe. Carrier/entry
+encoding remains open; the semantic candidate domain (complete type candidates,
+with eta(type) as singleton embedding) and current aggregation laws are closed
+by the [name/group owner](names-and-overload-groups.md). Encoding must preserve
+associative/commutative contribution and distinct entries even when their values
+are equal. It has no distinguished type coordinate. Pattern child normalization
+and replay use their own existing laws; group aggregation does not replace them.
 
 There is no case split in which one Object component is ignored. A value-bearing
 Object whose `Val2` differs is a different Object, and a pure Core `Q` whose
@@ -318,7 +363,7 @@ is covered below.
 ```text
 CarrierPlace(ordinary object)         ∉ Norm(ordinary object)
 ResidencyObjectPlaceId(ordinary object) ∉ Norm(ordinary object)
-SymbolId                              ∉ Norm(ordinary object)
+NameBindingId                              ∉ Norm(ordinary object)
 allocation order                     ∉ Norm(ordinary object)
 provenance                           ∉ Norm(ordinary object)
 ```
@@ -446,29 +491,31 @@ state when two snapshots are the same snapshot; they do not by themselves decide
 which observation a particular old rule must use (see the classification in
 §2.2). A list of
 allocated value ids under each name is not a normal form:
-allocation order is not semantic content, so the walk must resolve each name to
-its cluster symbol and normalize that symbol's own members.
+allocation order is not semantic content. For a live place observation, first
+read each occupied named slot's complete resident T. For a captured Val2
+snapshot, those resident values are already present; recursively normalize
+them without consulting the live name graph. Neither path includes NameBindingId
+or PlaceId in an ordinary by-value normal form.
 
 This exclusion does not erase `StableTargetIdentity(place)` from a borrow-view
 normal form. In the ordinary object case a place is an observation source; in
 the borrow-view case the target is what the value denotes.
 
-This is what makes an open construction observable at all. Given
+This makes an open construction observable. Within one meta body, with ordinary
+Writable/OpenHere premises and type-valued X/Y:
 
 ```lang
-let fn = (...): meta -> _ :symbol = {
-    let t = (() t) |> struct;
-
-    let f::(t |> (type ref)) = X;
-    let A = t |> compile_fn;
-
-    let g::(t |> (type ref)) = Y;
-    let B = t |> compile_fn;
-    t;
-};
+let t = (() t) |> struct;
+mut let f_ref = (let f::t:type) ref;
+f_ref = X;
+let A = t |> compile_fn;
+mut let g_ref = (let g::t:type) ref;
+g_ref = Y;
+let B = t |> compile_fn;
 ```
 
-the two observations of `t` are different complete type snapshots:
+Each sequence creates a typed Place, explicitly borrows it, and initializes
+it with X or Y. Only successful writes produce these two complete snapshots:
 
 ```text
 tau_1 = <Q_1, V_τ>
@@ -479,10 +526,11 @@ Val2(Q_2) contains f and g
 ```
 
 so `Norm_type(tau_1) ≠ Norm_type(tau_2)`. The `compile_fn` calls may consume both
-meta-local observations because compile creates no `MetaInstanceKey`; an
-ordinary nested meta call on fresh `t` would instead fail `GlobalKeyable`.
-Reading only a shared first-order root instead of each carrier's complete
-snapshot would still incorrectly merge the two values.
+meta-local observations through ordinary value transport. A nested meta call
+may also consume valid open dependencies. Its value-snapshot observation must
+still distinguish these values; a name-dependent input additionally preserves
+its stable subject under the invocation identity rules. Reading only a shared
+first-order root would incorrectly merge ordinary snapshot observations.
 
 Memoizing FINISHED cycle-free subtrees is permitted (a shared acyclic diamond
 is DAG reuse, not a cycle), but no `PlaceId` or memo node number may appear in
@@ -496,7 +544,7 @@ equivalence than the implementation actually decides, and never a licence to
 treat `Val1` as excluded from the normal form: the target rule is that `Val1?`
 normalizes recursively like every other component. The opaque leaf preserves
 safe under-merge until a content normalizer is available. It does not
-override a defined Pattern-specific quotient such as `P_symbol` above.
+override a defined Pattern-specific quotient of an ordinary Pattern family.
 
 Complete type values contain one tightly scoped normal-form binder
 back-reference, defined below. Such a `BoundRef(alpha)` is not an owned child
@@ -528,8 +576,11 @@ NoNormalForm_kappa(x)
 ```
 
 Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cyclic
-`Val2` such as `let loop::t = t;` all have **no normal form** at the stage where
-they are materialized. A finished shared acyclic subtree remains valid DAG
+owned Val2 graph with an actual back-edge to its own ancestor all have **no
+normal form** at the stage where they are materialized. A source spelling such
+as creating a typed loop name, explicitly borrowing it and initializing with t
+alone does not prove such a cycle: it performs ordinary snapshot initialization, whose actual
+owned edges must be checked. A finished shared acyclic subtree remains valid DAG
 reuse. `Self_τ` is one restricted static back-reference instance, not the one
 exceptional cycle, and not a general recursive-data constructor.
 
@@ -607,13 +658,20 @@ CallSpace(tau) = V_τ
 WellFormedTau(tau)
   iff tau = <Q, V_τ>
   and Q is a well-formed pure Object
-  and PatternClosureConsistent(Q, V_τ)
+  and PatternClosureConsistent(tau)
 
-PatternClosureConsistent(Q, V_τ) iff
-  WellFormedCore(Q)
+PatternClosureConsistent(tau) iff
+  Q = Core(tau) and V_τ = CallSpace(tau)
+  and WellFormedCore(Q)
   and ∀F ∈ ClassifierDomain(V_τ):
-      Anonymous(F) ∧ DirectClassifierHome(F) = TypeMemberScope(Q)
-      (home eligibility; equivalent to HomeEligible_Q(F), canonical §2.1)
+      F is registered for this type's own callability
+      and F is a complete internally well-formed callable and Home(TypeOf(F)) = TypeMemberScope(tau)
+      and its () entry obeys Type(callee) = Type(first self)
+  and ∀K registered as a Pattern construction/extraction closure in Q:
+      K is the actual ordinary Val2 resident referenced by that registration
+      and K is a complete internally well-formed callable
+      and Home(TypeOf(K)) = TypeMemberScope(tau)
+      -- /tau(tau); checked whether or not K is also registered in V_τ
   and AllBoundRefsBoundAndRestricted(bind α.⟨Norm(Q), Norm_V^α(V_τ)⟩)
       (every BoundRef reachable during Norm_type^α(Q, V_τ) is bound by α
        and belongs to an authorized static edge kind;
@@ -623,9 +681,8 @@ PatternClosureConsistent(Q, V_τ) iff
   and no CurrentAuthority / OpenHere_Σ / GenerationRegime /
       WindowLive_Σ / stack / provenance premise is used
   -- a structural judgment over the current closure value, with no
-     dependence on how tau was produced; the member condition compares
-     DirectClassifierHome(F) with the current TypeMemberScope(Q) — it
-     never asks for which old core F was created
+     dependence on how tau was produced; member identity and captured
+     callspaces remain intrinsic to the contributed complete values
 
 WellFormedTau is history-free:
   Norm_type(τ₁) = Norm_type(τ₂)
@@ -653,7 +710,9 @@ SameEntityTypeInvariant:
 entity; they are not two objects later mapped to each other, and neither
 `⟨P,Val2⟩` nor `⟨Q,Vτ⟩` is an entity prior to or beside the other. The
 closed/well-formedness constraints on the two views apply jointly to that
-one entity; neither view may be extended independently of the other. This is
+one entity; an update observed in one view must satisfy the resulting complete
+closure's constraints. This does not identify ordinary Val2 residency with
+callspace registration or freeze all generated Val2 realization at Close. This is
 not the identity `V_τ = Val2`: it is the statement that both sides constrain
 the same semantic entity.
 
@@ -682,44 +741,45 @@ NamespaceOnly(tau)  iff NamespaceClosure(tau) and not TypeClosure(tau)
 
 CallSpace(tau) = V_τ
   // Intrinsic property of the closure: the TypeMember set captured in this
-  // closure value. It does not depend on the current host Symbol, source
-  // binding, carrier Symbol, HomeSymbol, or any other provenance recovery.
+  // closure value. It does not depend on the current host name binding, source
+  // binding or any other provenance recovery.
   // Members created later under the same Q never retroactively enter an
   // existing snapshot; a copied or extracted tau keeps the same V_τ.
 ```
 
-The closure value is first-class: `copy(τ)`, `extract(τ)`, and ordinary
-parameter-passing of `τ` preserve `CallSpace(τ)` unchanged. Ordinary Symbol
-sibling operations only modify `V_S`:
+The closure value is first-class: copying, extraction and argument transport
+retain its captured callspace. Adding or removing an entry from an ordinary
+OverloadGroup changes that group, not the tau encapsulated in any entry.
 
-```text
-RemoveSibling(<tau, V_S>, F) = <tau, V_S \ {F}>
-```
+Changing V_tau produces a new complete pattern value, under the existing
+extend, OpenHere and independent well-formedness rules. Each group's call
+consumer projects its entries; any selected pattern member supplies its own
+complete immutable callspace. Other entries do not supplement that snapshot.
 
-They do not modify the `V_τ` already encapsulated in `τ`; `-=`, sibling
-removal, or any ordinary mutation of `V_S` cannot reach into the closure.
-Changing `V_τ` requires a semantic operation that produces a new type value
-(principally `extend`; the legality of that step is the contextual judgment
-`AdmissibleExtend_Γ`, and the result satisfies `WellFormedTau(τ')`
-independently — never by inheritance along a formation history).
+Ordinary Val2, V_tau membership, and Pattern-role registration are three
+separate facts. V_tau is the immutable snapshot of ordinary callable values
+registered for the type's own callability, with classifiers in /tau(tau) (the canonical
+`Home(TypeOf(F)) = TypeMemberScope(tau)` notation). Ordinary Val2 can have any type
+and need not satisfy that anchoring. Classifier eligibility alone does not
+register a member for callability. V_tau registration gives the callable value
+no val::path selector and requires no named Val2 resident. The anonymous
+classifier's navigable home does not establish navigation to that value.
 
-When a `Symbol` constructor value carries both `V_S` and `τ`,
-
-```text
-CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
-```
-
-is the Symbol's call-interface exposing, in one step, the candidate-identity
-quotient of the Symbol's own sibling candidates and the callspace carried by
-its embedded closure (normative form defined in
-`symbol-first-meta-construction-and-pattern-injection.md` §2.1; written
-`V_S ∪ V_τ` only as shorthand after deduplication). This does not make `V_τ` a
-function of `S`; `V_τ` remains an intrinsic snapshot of `τ`, and the formula is
-only the exposure of that embedded closure callspace through the Symbol call
-interface.
+Pattern-registered extraction/construction closures likewise have their own
+classifier under tau, but Pattern registration does not imply V_tau membership,
+and V_tau membership does not imply Pattern registration. These are role
+registrations over ordinary values; the same value may have both roles without
+being copied for that reason. A type
+may therefore hold an unregistered OverloadGroup payload without making that
+group part of its own callspace or its Pattern identity. Both registrations are
+non-generative. Pattern registration fixes the structured construction/extraction
+form, while ordinary generated Val2 results carry neither registration.
+Close freezes the registered structure and ends construction authority; it does
+not freeze the set of all future ordinary generated Val2 realizations. Those
+effects remain ordinary observable Core changes, never hidden cache facts.
 
 Whether `tau` has the type-value role or is namespace-only is decided by
-`Q`'s Pattern relations, never by the sibling count of a Symbol space. The
+`Q`'s Pattern relations, never by the sibling count of a name binding space. The
 formal judgments are defined via registered self-construction in
 `pattern-values-relational-semantics-and-extraction.md` §13; the witness is a
 member actually registered in `Q`'s `Val2`:
@@ -736,8 +796,20 @@ NamespaceOnly(Q)
   and not HasRegisteredSelfConstruction(Q)
 ```
 
+This is a Q-local structural witness: there is no implicit tau argument or
+classifier-home test in TypeRole(Q). CompleteType(tau) additionally requires
+PatternClosureConsistent(tau), which checks /tau(tau) homes for both registered
+closure roles independently. Equal Core can establish the same TypeRole answer
+without establishing compatibility with two distinct complete-type homes.
+
+For example, if Q has the joint Val2/ConstructEdge witness K, TypeRole(Q) can
+hold even when K is not in V_tau. If Home(TypeOf(K)) differs from /tau(tau),
+PatternClosureConsistent(tau) fails and tau is not a CompleteType. Removing K
+from the callability projection cannot conceal the failed Pattern-role home
+check. A matching home satisfies that premise but registers no new role.
+
 The distinction is a judgment over `Q`'s Pattern `P` (imported from the
-Pattern relational semantics), **never** `count(pure members in V_S)`. The
+Pattern relational semantics), independent of group member count. The
 `NamespaceClosure`/`TypeClosure` split above follows the same core judgment.
 
 A snapshot `tau' = <Q', V_τ>` written by an ordinary slot update is checked
@@ -755,13 +827,15 @@ register `ConstructEdge_P(C, Q, K')`. The original joint witness disappears,
 so `TypeRole(Q)` may become `¬TypeRole(Q')`. There is no global theorem
 `ordinary write ⇒ TypeRole preserved`.
 
-Only structural transformations (`extend`) produce a new `V_τ'`; the resulting
+Type +=/-= can produce a new V_tau with Core fixed under OpenHere and
+anchored closure membership. Structural extend/inject can change the Core.
+The resulting
 `τ'` satisfies `WellFormedTau(τ')` by its own structure, never by inheriting
 any formation history.
 
 `V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
 direct TypeMember members placed into `tau` when it was produced
-(`TypeMember_Q`, symbol-first §2.1), not a later partition of a shared Symbol
+(`TypeMember_tau`, symbol-first §2.1), not a later partition of a shared name binding
 space and not a global function of the bare core `Q`. `V_τ` is part of the
 closure value itself — snapshot capture is intrinsic to `τ`, not a history
 judgment — so `WellFormedTau` / `TypeValueRole` are not global functions of
@@ -894,7 +968,7 @@ ordinary slot replacement:
 
 structural transformation:
     Extend_Σ(old, Δ) -> new
-    -- the only τ -> τ' construction transformation
+    -- the structural Core-changing transformation
 
 place wrapper:
     Inject_Σ(r, Δ)
@@ -906,18 +980,14 @@ Each `tau` is an immutable snapshot; no operation mutates an existing closure.
 A carrier's stored snapshot is replaced only by ordinary slot replacement
 (§7.1) — a fresh `tau' = <Q', V_τ>` sharing `V_τ`, with no structural incidence
 added. `WellFormedTau(<Q', V_τ>)` is then judged independently and may fail;
-slot replacement is **not** a well-formedness-preservation theorem. The
-scope-preserving case is the one that keeps the member homes valid:
-
-```text
-WF(⟨Q, V⟩) ∧ CoreAnchor(Q') = CoreAnchor(Q) ∧ WellFormedCore(Q')
-  ⇒ HomeCompatibility(Q', V)
-      -- every F ∈ ClassifierDomain(V) keeps
-         DirectClassifierHome(F) = TypeMemberScope(Q')
-         (TypeMemberScopeStability, canonical §2.1)
-but WF(⟨Q', V⟩) still requires all other conditions and is not
-inherited from WF(⟨Q, V⟩)
-```
+slot replacement is **not** a well-formedness-preservation theorem. A retained member keeps its own complete identity and owner. New closure
+contributions must satisfy Home(TypeOf(v)) = TypeMemberScope(tau), either directly or through a
+ReinstantiationWitness that constructs a new anchored instance. The original
+value is not reparented; captures and internal identity edges follow
+[closure replication](closure-anchored-replication.md).
+The newly written value must satisfy the current closure's structural,
+binding-reference and registration checks; no construction history substitutes
+for them.
 
 Copying a type-valued binding copies the
 whole closure:
@@ -945,8 +1015,9 @@ No `old -> new` derivation is implied: the written `new_value` is a fresh
 snapshot validated on its own structure. If a persistent implementation
 reconstructs the parent snapshot to realise a slot update (old parent
 -> reconstructed parent), that is a lowering / storage representation,
-not a source-semantic transformation. Only `extend` produces a new `V_τ'`
-(`τ -> τ'`), and the legality of that modification step is a contextual
+not a source-semantic transformation. Type contribution produces a new
+callspace snapshot with Core fixed; extend handles structural change. The
+legality of either modification is a contextual
 operation judgment, separate from well-formedness:
 
 ```text
@@ -971,7 +1042,7 @@ Root(tau_old) = Root(tau_new)
 ```
 
 An old copy retains `V_old`. No
-`Root(tau) -> current mutable Symbol -> current V` indirection participates in
+`Root(tau) -> current mutable name binding -> current V` indirection participates in
 type identity or call lookup.
 
 ### 2.3 Rank and typing naturality
@@ -1150,8 +1221,9 @@ no-implicit-borrow rule are canonical in
 
 ## 3. Value judgment versus place judgment
 
-The model uses two distinct judgments. One evaluates an expression to a value;
-the other resolves a name to a writable place.
+Value-side formation and Place-side borrowing/writing use distinct judgments.
+NameExpr formation observes the current type value through a resolved structural
+root identity; it does not acquire a writable parent Place.
 
 Value evaluation:
 
@@ -1167,20 +1239,22 @@ Place resolution:
 Γ ⊢ x ⇐ p
 ```
 
-means a declaration extension / namespace injection / assignment-like operation
-resolves `x` to a writable place `p`.
+means a selected write/inject operation resolves `x` to its actual writable
+Place `p`. This is not the judgment for forming a qualified NameExpr: formation
+checks the current root type value and creates the child Place before borrowing.
 
-These are not interchangeable. Canonical creation beneath a pure type slot
-selects the explicit higher-level ref of that slot:
+These are not interchangeable. Canonical creation beneath an open type name
+uses the resolved value/path, then separately borrows the new typed Place:
 
 ```lang
-let f::(t |> (type ref)) = ...;
+mut let f_ref = (let f::t:type) ref;
+f_ref = ...;
 ```
 
-When the source is instead a `Symbol` constructor value `S`, it must first be borrowed and
-its ordinary same-name `type` field projected: `let f::((S ref).type) = ...`.
-`AsType(S) = S |> type` is by-value only and never participates in place
-recovery.
+A structural name S already reads its complete named type. Its type-level
+Place is reached with `S |> (type ref)` under the selected privileged
+borrow-forming operation. There is no intervening binding-wrapper value or
+`.type` projection. A by-value type observation never recovers a Place.
 
 ### 3.1 General value binding resolves bindings first
 
@@ -1193,16 +1267,18 @@ let r = expr;
 is:
 
 ```text
-value(symbol(r)) := evaluate(expr)
+v := evaluate(expr)
+fresh binding b_r with fresh Place p_r
+install ordinary resident v at p_r; bind lexical name r to b_r
 ```
 
 When `expr` is a source path, value evaluation is not direct value naming:
 
 ```text
 source path
-  -> resolve Symbol
-  -> read the selected value / PatternValue from that Symbol
-  -> bind the value to the destination Symbol/Place
+  -> resolve name binding
+  -> read the selected value / PatternValue from that name binding
+  -> bind the value to the destination name binding/Place
 ```
 
 Thus:
@@ -1211,15 +1287,15 @@ Thus:
 let a = b;
 ```
 
-binds the exact value read through `symbol(b)` into the fresh destination
-`symbol(a)`. It does not alias the bindings or merge their places.
+binds the exact resident read through b's resolved binding into a's fresh
+destination Place. It does not alias the bindings or merge their places.
 
 Formally:
 
 ```text
 resolve(b) = s_b
 read(s_b)  = v
-fresh SymbolId s_a
+fresh NameBindingId s_a
 fresh PlaceId p_a
 --------------------------------
 bind(a, v)
@@ -1228,7 +1304,7 @@ bind(a, v)
 The source carrier `s_b` is not stored as part of `v` after evaluation.
 Provenance may mention it; semantic value identity does not. Consequently no
 ordinary binding path may recover associated operations by mapping
-`TypeValueId` back to an “original defining Symbol”. A source Symbol projects
+`TypeValueId` back to an “original defining name binding”. A source name binding projects
 `tau=<Q,V_τ>` directly; an already-held type value uses its intrinsic
 `CallSpace(tau)=V_τ`. Ordinary Pattern/namespace observation separately follows
 `Core(tau)=Q`.
@@ -1241,21 +1317,21 @@ shared-root snapshots):
 
 ```text
 field source path
-  -> carrier Symbol
+  -> carrier name binding
   -> read TypeValue tau
   -> record Core(tau) = Q as field-type identity
 ```
 
-An implementation may temporarily retain the carrier Symbol for graph
+An implementation may temporarily retain the carrier name binding for graph
 navigation or provenance, but it is not part of field-type equality,
 Pattern-head identity, or struct construction-material identity. Consequently
 `(uint8 field) struct` and `(T field) struct` have the same field-type material
-after `let T: type = uint8`; a reverse `TypeValueId -> original Symbol` lookup
+after `let T: type = uint8`; a reverse `TypeValueId -> original name binding` lookup
 would incorrectly make ordinary binding observable.
 
 Extraction interfaces follow the same split. Their semantic owner/type
 coordinates are the owner `TypeValue` and Pattern identity. A graph carrier may
-still be present to reach installed field projection Symbols, but
+still be present to reach installed field projection name bindings, but
 `semantic_eq` cannot distinguish two extraction shapes merely because the same
 type value is carried by different bindings.
 
@@ -1269,154 +1345,57 @@ type value read through `T` after `let T: type = uint8`; comparing the strings
 The same rule applies to an externally owned pattern value:
 
 ```lang
-let t1::(t |> (type ref)) = bool;
+mut let t1_ref = (let t1::t:type) ref;
+t1_ref = bool;
 ```
 
-resolves `symbol(bool)`, reads its `PatternValue`, and binds that value to the
-destination prospective ProjectionSlot under `(t |> (type ref))`. It does not reroot the pattern, rewrite its
-navigation, or make the destination symbol identical to the pattern owner.
+first resolves the existing parent t and checks its current type's OpenHere,
+selector legality, freshness and ordinary access/type/path well-formedness.
+Typed name creation yields NameExpr and an uninitialized Place. Explicit ref
+uses its declared type without reading; ordinary write initializes it with
+bool's complete type. The initialized value retains its own Pattern navigation
+and owner. Failed initialization leaves the Place uninitialized, subject to the
+ordinary enclosing transaction. While it remains uninitialized, Close rejects it.
 
 Literal syntax is the explicit exception only to source-path resolution. It
-still evaluates to a value and uses the same binding rule. In the schematic
+still evaluates to a value; an ordinary lexical let then uses lexical binding,
+while a structural name is initialized by a separate explicit-ref write. In the schematic
 future spelling `let a = 'a';`, the left `a` is a binding name while the right
 `'a'` denotes a character literal; matching textual content does not make them
 the same object. The frozen lexer does not yet accept that character spelling
 (§4.1.3).
 Pattern values have no analogous standalone literal syntax, so same-spelled
-Symbol paths and pattern diagnostic names must be kept especially distinct.
+name binding paths and pattern diagnostic names must be kept especially distinct.
 
-### 3.2 One navigator, many projections
-
-Symbol-first resolution is a single ordered pipeline:
-
-```text
-Path -> SelectedHead -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection
-```
-
-The stability claim applies to the complete resolution, including the head.
-The path is resolved before the consumer asks for a call, type, value,
-injection, or extraction projection. One spelling in one lexical environment
-therefore denotes one terminal Symbol in every use context.
+### 3.2 Name resolution and navigation
 
 #### 3.2.1 Head selection: bare versus explicitly anchored
 
-The two forms do not use the same rule, and the difference is confined to this
-step:
+    bare head: nearest same-spelled binding, then stop
+    explicit head: the written anchor, with no outward retry
+    resolved binding -> named type -> context-directed member projection
 
-```text
-ResolveBare(name)
-  = the nearest enclosing Symbol spelled `name`
+A failed projection, empty group, hidden view, or non-callable member does not
+restart name resolution. The same source binding remains selected for value,
+type, call and Pattern uses.
 
-ResolveExplicit(path)
-  = the uniquely designated anchor, taken as written
-```
+#### 3.2.2 Value navigation and borrowed structural navigation
 
-A bare head may look outward only until it finds the nearest same-spelled
-Symbol. No facet demanded by the use site participates in that search. An
-explicitly anchored path may not look outward at all. The search discipline is:
+Ordinary value navigation selects existing members of an Object. A group
+consumer uses the ordinary member projection appropriate to the navigation
+position; it does not assume one distinguished object/type facet.
 
-```text
-bare head    : walk outward; stop at the first same-spelled Symbol
-explicit head: no outward walk; the written anchor is the head or resolution fails
-```
+Borrowed structural navigation begins from an actual type reference and
+retains its target Place, resident generation and ordinary capabilities.
+It may identify a prospective final slot, but is not a prerequisite for typed
+NameExpr formation. Value-side formation uses the resolved structural identity
+and current value's OpenHere, not parent Writable. Neither path can
+turn missing-name occupancy into an optional ordinary language value.
 
-The outward walk is bounded to exactly one decision. Once a same-spelled Symbol
-is found, that Symbol is the head, permanently:
-
-```text
-overload resolution failing inside the selected head
-  -> the program is ill-formed
-  -> NOT a reason to resume the outward walk
-```
-
-Callability is not a name-resolution predicate. It is a projection of the
-already resolved Symbol:
-
-```text
-CallablyPresent(S)
-  iff CallableProjection(S) != ∅
-
-CallableProjection(S)
-  = DedupCandidateIdentity(V_S ⊎ V_τ)
-
-final call projection
-  = CallableProjection(ResolveBare(name))
-```
-
-A Symbol `S = <τ, None>` with a non-empty `V_τ` may therefore be callable even
-though it carries no value-facet members: `CallableProjection(S)` observes both
-`V_S` and `V_τ`. Conversely, a nearer non-callable Symbol still shadows an
-outer callable Symbol of the same spelling. A failed call projection and an
-empty hard-admissibility set are final failures of that resolved Symbol; they
-never mean "retry outward until something type-checks".
-
-Formally, for every use context `q`:
-
-```text
-Resolve_value(path)
-  = Resolve_type(path)
-  = Resolve_call(path)
-  = Resolve(path)
-```
-
-The equalities identify the same terminal Symbol. Context enters only in the
-subsequent projection.
-
-#### 3.2.2 Tail navigation is context-independent
-
-After the head is fixed, one navigation algorithm serves every context:
-
-```text
-SelectedHead                                     -> Symbol
-for each following component:
-    select the current Symbol's object facet
-    push that object as a host layer onto HostChain
-    enter that object's OWN Val2 place
-    look up the next associated Symbol
--> ⟨HostChain, terminal Symbol⟩
-```
-
-Only the final step is context-directed, and it projects a facet of the already
-chosen terminal symbol:
-
-| context | projection |
-| --- | --- |
-| call target | `CallableProjection(S)` |
-| type | pure-P member |
-| value | sibling vals |
-| extension target | extendable host object / place |
-| extraction | Pattern facet |
-
-Consequently `f::T` denotes `Val2(T)[f]` in all of
-
-```lang
-let A: type = f::T;
-let B = (f::T) meta_fn;
-let g::(U |> (type ref)) = f::T;
-(…) |> f::T;
-g::f::T
-```
-
-and differs only in the facet each site reads. Resolving the same spelling as
-an object-level `Val2` path in one context and as a namespace path in another
-would make path meaning depend on its consumer, which is name-category-first
-resolution in disguise. Namespace children remain reachable: a step consults
-the current symbol's object facet and its associated namespace, so ordinary
-namespace paths keep resolving unchanged.
-
-There is no coarse-facet exception at the head. Shadowing precedes projection,
-applicability, Policy preference, and DynamicLegality.
-
-The host layers traversed on the way are retained as an ordered `HostChain`,
-because per-layer exposure is a conjunction over every layer
-(`Expose(g::f::T, φ) = Expose(T_t, φ) ∧ Expose(C_f, φ) ∧ …`) rather than a
-property of the terminal symbol alone. Consumers do not re-derive this chain:
-ordinary invocation reads the whole navigation and refuses the target unless
-**every** host layer is exposed at the current phase, so a hidden outer layer
-cannot be bypassed by a visible terminal reached through it. Cross-root
-resolution likewise deduplicates on the full `⟨HostChain, TerminalSymbol⟩`; two
-roots that reach one terminal through different host chains are a navigation
-ambiguity, not a silently-merged result.
+Each resolved host layer is retained for exposure and policy checks; the whole
+host chain must admit the access. Different host chains are not silently merged
+merely because they reach one terminal. Neither navigation route introduces
+lookup fallback or a second name authority.
 
 ## 4. Ordinary type-value binding
 
@@ -1430,7 +1409,7 @@ let T: type = uint8
 means:
 
 ```text
-symbol(T) = fresh symbol
+NameBindingId(T) = fresh structural binding identity
 place(T) = fresh writable place at current lexical level
 value(T) = value(uint8)
 type_value(T) = type_value(uint8)
@@ -1441,7 +1420,7 @@ This must be read precisely:
 
 ```text
 T is not a fresh nominal type.
-T is not a Symbol alias.
+T is not a name binding alias.
 T has fresh place identity.
 T may evaluate to an existing type value.
 ```
@@ -1449,39 +1428,31 @@ T may evaluate to an existing type value.
 `T` is a new binding with its own fresh, current-level writable place. Its *type
 value* is the value read through `uint8`, while its *place* is its own. Binding to an existing
 type value does not generate a new type, and it does not forward to `uint8`'s
-Symbol or place.
+name binding or place.
 
-This ordinary declaration rule does not license a meta returned result to use an
-external pure Object as its installed type core. A canonical meta
-instance has an additional self-root invariant, stated per result class:
-for the default result `τ_M`, `Root(Core(τ_M)) = MetaInstanceScope` holds
-unconditionally (`Core(τ_M)` is the first projection of `τ_M`); an explicitly
-declared result that carries an installed type core `Q` requires `Q`'s outer
-Pattern root to be the `MetaInstanceScope` when `Q` is present. The condition is
-`Q`'s presence, independent of
-`TypeRole(Q)`. Thus ordinary
-`let T: type = uint8` remains legal while direct `r = uint8` as a meta return
-type construction is rejected.
+An ordinary meta instance name is its instance type value tau_M, with
+Root(Core(tau_M)) = M. It cannot directly carry an arbitrary value, borrow, or
+external type instead. Such payloads belong in ordinary Val2 and retain their
+own type/root or target/escape obligations. P1 meta retains the instance under
+OpenHere, which governs acquisition of its mut view; plain let completes and
+closes it. Ordinary names and payload Places retain their independent policy
+and value facts. See the construction owner, section 4.4.
 
 Consequently, associated-member creation through `T`:
 
 ```text
-let f::(T |> (type ref)) = ...
+mut let f_ref = (let f::T:type) ref;
+f_ref = ...;
 ```
 
-executes:
+creates a typed uninitialized Place under T's resolved structural root after
+the value-side formation checks. Explicit ref
+and ordinary write then initialize it. It does not perform a parent +=, write
+to place(uint8), or bypass the copied value's existing OpenHere rules. Parent
+writability is not required; equal values do not identify name coordinates.
 
-```text
-place(T) += { f ↦ ... }
-```
-
-and not:
-
-```text
-place(uint8) += { f ↦ ... }
-```
-
-Member creation is a place operation. Structural extension is different: it is
+NameExpr formation is value-side; borrowing and initializing its resulting
+Place are separate operations. Structural extension is different: it is
 the pure value transformation `extend`, while `inject` is the explicit
 read--extend--write wrapper defined in the symbol-first construction document.
 
@@ -1565,7 +1536,7 @@ Thus a ranked string denotes `str@compile`; it does not first denote
 `character`, does not belong to the three abstract scalar denotation Types, and
 does not imply `str ref`, hidden storage, or a lifetime extension. The current
 `LiteralFamily::String` carrier preserves that source family. Whether the core
-bootstrap has installed a concrete `str` Type symbol is an implementation
+bootstrap has installed a concrete `str` Type binding is an implementation
 availability question, not the owner of this semantic path.
 
 The frozen lexer continues to preserve spelling only. It does not choose
@@ -1688,8 +1659,8 @@ or `tau_character`; it does not contextually retarget the literal to a later
 snapshot. Each intrinsic `delete` member is an ordinary associated callable and
 participates in the ordinary resolver/must-select pipeline.
 
-The result follows solely from the existing complete-type snapshot invariants.
-As established in §2.2 and the canonical `NoForeignTypeMemberInjection` theorem in
+The result follows from the existing complete-type snapshot invariants.
+As established in §2.2 and the immutable callspace rule in
 [`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md),
 `V_tau` is fixed when `tau` is formed and later associated contributions cannot
 mutate that existing snapshot:
@@ -1710,7 +1681,7 @@ non-deleted same-Type materializer to `tau_integer`, `tau_real`, or
 
 These deleted cells therefore belong to each canonical Type's ordinary
 associated callspace. Their non-overridability follows mechanically from
-immutable complete-type snapshots plus `NoForeignTypeMemberInjection`, not
+immutable complete-type snapshots, not
 from an ad hoc abstract-literal checker branch or an unformalized global ban.
 Abstract denotations must first enter ordinary construction to another,
 concrete machine-semantic Type. A normal integer path is therefore
@@ -1751,12 +1722,21 @@ an abstract literal's identity nor implement contextual construction.
 
 ## 5. Borrow views
 
-There is no declaration form that makes two bindings share one Symbol identity
+There is no declaration form that makes two bindings share one name binding identity
 or one place. Shared observation is expressed by the borrow constructors `ref`
 and `share`; `@` reifies a `LifeName` at the current semantic-continuation
 position and is not a borrow representation.
 
 ### 5.1 `ref` and `share` are privileged actual-place builtins
+
+The value-operand families below assume a resident value is available. Explicit
+ref consuming an uninitialized typed NameExpr uses the ordinary initial-borrow
+realization of §7.1.1 instead: it obtains the existing Place and PlaceType without
+Read. This is a borrow-forming realization, not another Object or operator role.
+In particular, PlaceType(q)=type does not supply a type-value operand for type
+formation, and DeclaredPolicy(name)=const is not an actual const T resident
+fed into the value family's delete cell. The distinction is made by the operand
+and Place state, never by retrying after a selected value operation fails.
 
 `ref` and `share` are ordinary overloaded callable/operator families on their
 operand — not a single meta-stage operation. Each
@@ -1864,7 +1844,7 @@ carrier slot; a temporary must first be bound to a named place before it can
 be borrowed.
 
 `ref` is an ordinary overloaded callable family member. It does not ask which
-symbol slot the value came out of, and does not consult, capture, or export
+binding slot the value came out of, and does not consult, capture, or export
 it. Therefore:
 
 ```lang
@@ -1876,78 +1856,30 @@ Here `uint8` evaluates to the complete type value `tau_uint8`, so `t` is
 type-valued. `t ref` selects the type-forming overload and yields the TypeValue
 `tau_(uint8 ref)` — not a borrow instance, and not a borrow of `Core(tau)`.
 Reaching the type-level carrier slot of a pure type binding uses
-`t |> (type ref)` (§5.2). A Symbol's type-member slot instead uses `(S ref).type`.
+`t |> (type ref)` (§5.2). This also applies to a structural named type;
+the binding itself is not an intermediate Object.
 
 `share` differs from `ref` in the capability it grants, not in the judgment it
 uses: a `share` view admits reading and passing but is not an assignable place
 and cannot be an `inject` target (§5.5).
 
-#### 5.1.1 A `Val1` payload makes `ref` sufficient on its own
+#### 5.1.1 Borrowing an ordinary group or pattern value
 
-When the operand slot has a `Val1` payload, `Read` yields the complete object
-that carries it, and `ref` borrows that object. Nothing further is required, and
-nothing is elaborated in front of the operator:
+A borrow observes the actual operand's Place. Reading or borrowing an ordinary
+OverloadGroup does not implicitly select one of its members or project a type.
 
-```lang
-let s: symbol = ...;
-let r = s ref;              // Read(s) : symbol, so r : symbol ref
-```
+    g : OverloadGroup
+    g ref : OverloadGroup ref
 
-A `Symbol` constructor value is value-bearing, so `s ref` is the ordinary "form a borrow of
-this value" operation. Because `Read` does not descend into `Val1`, `r` is a
-`symbol ref` and **not** a reference to the member array held inside the
-symbol. The referent is the value that `s` holds: `Target(s ref) =
-PrivilegedActualPlace(s)` (§5.1.0) — the borrow target has one source:
-`CarrierPlace(actual)`; there is no second `ObjectPlace(Read(actual))`.
+An explicit type projection selects a complete pattern value under the ordinary
+type consumer's rules. TypeRole and NamespaceRole remain judgments over the
+selected value's Core, not classifications of the group. A type-expected
+position may elaborate AsType where already specified; candidate enumeration
+does not insert a conversion merely to make a competing candidate applicable.
 
-When the intent is to form a borrow of the `Symbol`'s **type** rather than the
-`Symbol` value itself — i.e. `(s |> type) ref` — an explicit `AsType` in a
-type-expected position is required: there is **no global** `symbol` ref/share
-forwarding bridge (lifetime §2.0.1) and no implicit `AsType` during candidate
-matching. A bridge overload authored in a local `ref` Symbol is local Symbol
-algebra, not a language default.
-
-The rule is about the presence of the `Val1` dimension, not about type-rank. An
-object that happens to sit at type rank and still carries a payload takes the
-same path, and is likewise named by its own host Pattern:
-
-```text
-x        = ⟨ v, P_val_has_type_field, Val2 ⟩
-Read(x)  = ⟨ v, P_val_has_type_field, Val2 ⟩
-x ref    : val_has_type_field ref
-```
-
-Reaching `v` itself is an ordinary member/projection operation on the read
-result, not something `Read` or `ref` performs implicitly.
-
-No implicit projection or conversion participates in an operand position. `s ref`
-is never elaborated into `s |> type` or another role projection, because an
-operand or argument position performs no implicit type conversion. An explicit
-`AsType(E) = E |> type` has two ordinary cases:
-
-```text
-AsType(S : symbol) = TypeProjection(S)
-  = tau_S
-    when TypeSlot(S) = Some(tau_S) and TypeValueRole(tau_S)
-
-AsType(τ) = τ   iff TypeValueRole(τ)
-
-WellFormedTau(τ) ∧ NamespaceOnly(τ)
-  => AsType(τ) undefined
-```
-
-The second rule validates an existing **type-role** τ, not any well-formed
-τ. It does not treat a bare pure namespace Object as a complete type, wrap a
-namespace, or search for a hidden type member. A Symbol may carry any
-`WellFormedTau` (§2.2): no τ (no type projection), a namespace-only τ
-(`WellFormedTau(τ) ∧ NamespaceOnly(τ)`, for which `AsType` is undefined), or
-a type-role τ (`TypeValueRole(τ)`). When a type-role τ is present, the
-complete result is the whole `tau = <Q, V_τ>`, whose callspace `V_τ` was fixed
-at formation (the direct TypeMember members of symbol-first §2.1). A copied
-or extracted `tau` keeps its captured `V_τ`; members created under the same `Q`
-later never enter an existing snapshot. Payload presence alone remains
-irrelevant to type applicability. A language-designated type-expected position
-may insert `AsType`; ordinary operand positions may not. See §5.6.
+Borrowed member projection follows ordinary reference/field rules and keeps
+the actual target identity. A complete pattern value's captured callspace is
+not replaced by searching a source binding or registry.
 
 #### 5.1.2 No implicit borrow formation
 
@@ -1956,7 +1888,7 @@ migration, or automatic argument passing:
 
 ```text
 Object =/=> Object ref | Object share
-Symbol =/=> Symbol ref | Symbol share
+OverloadGroup =/=> OverloadGroup ref | OverloadGroup share
 type   =/=> type ref   | type share
 ```
 
@@ -1973,7 +1905,7 @@ and `ref share`) remain valid (§5.3), as does the separately specified implicit
 
 The borrow-forming defaults inside the formed borrow type's callspace are not
 an ad hoc pair of builtins; they are generated instance families with a fixed
-policy matrix. The `ref` family has two input shapes (`T`, `T ref`), two
+policy matrix for resident value operands. The `ref` family has two input shapes (`T`, `T ref`), two
 member result-policies (`mut`, `const`), and three formal PolicyMode patterns
 (`mut`, `const`, `plain`):
 
@@ -2089,14 +2021,15 @@ ordinary user function spelling the same formal head cannot.
 The domain restriction remains:
 
 ```text
-E |> (type ref) is undefined when E has no carrier place (a freshly computed temporary)
+E |> (type ref) is undefined when E has no carrier place
 t |> (type ref) is not a general PlaceOf(E) available on every expression
+an invocation-generated result name has its own ordinary actual Place
 ```
 
 `@` is a continuation-relative name-reification operation that yields a lifetime value, never a
 borrow view and never a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2.1). Reaching the
-carrier slot explicitly uses `t |> (type ref)` or `(S ref).type`.
+carrier slot explicitly uses `t |> (type ref)`.
 
 #### 5.2.1 `t ref` is type formation; `t |> (type ref)` is the borrow instance
 
@@ -2127,7 +2060,6 @@ The operator choice is decided by what the surface means, never by type-rank:
 | what the expression reads | `E ref` | `E |> (type ref)` needed |
 | --- | --- | --- |
 | ordinary value with `Val1` | borrow of the complete value-bearing object | no |
-| `Symbol` constructor value with `Val1` | `symbol ref` | no |
 | type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |
 | pure pattern value | `ref` of that pattern value | only to reach the carrier slot |
 | pure `type` slot | type formation: the TypeValue `t ref` (the borrow type) | yes — for a borrow instance over the carrier place |
@@ -2142,6 +2074,112 @@ Consequently the compile stage offers no implicit borrow formation for an
 operand that has a `Val1` payload — `s ref` already does that job. `@` is not a
 fallback for `ref` and is not a borrow constructor
 (`NoImplicitBorrowFormation`).
+
+#### 5.2.2 Initialized type names, meta references and mut confirmation
+
+Contextual meta qualification currently has the narrow domain type and type ref.
+It is not a fourth PolicyMode point and does not generalize to arbitrary meta X
+ref. P2 meta remains evaluation stage. Qualifying an ordinary type value does
+not turn its name into a MetaInstance or change its root identity.
+
+NameExpr formation and borrowing are separate. The cases are:
+
+| Name's Place state | Initialization/mutable-view consumer (non-mut views remain ordinary) |
+| --- | --- |
+| Uninitialized(type) | InitialTypeSlotRef: pending one-shot initialization authority only |
+| Initialized(T:type) | Ordinary direct mut type ref, or an explicit meta type ref view |
+
+InitialTypeSlotRef names the existing initial-borrow judgment, not a new Object
+or policy. It does not read a nonexistent T, cannot use meta qualification to
+replace its initialization authority, and grants no replacement after commit.
+
+For an initialized name n, direct mutable borrowing remains available:
+
+    q = BindingPlace(n), Read(q) = T : type
+    OpenHere_Sigma(T), Writable_Sigma(q)
+    ordinary borrow capability, AccessLegal(q), LifetimeLegal(q)
+    ---------------------------------------------------------
+    DirectMut(n) : mut type ref
+    Target(DirectMut(n)) = q
+
+Explicit MetaRef(n) instead retains the actual target Place, borrowed type
+generation/construction subject and the source at which openness is rechecked:
+
+    r_m : meta type ref
+    Target(r_m) = q
+    OpeningSubject(r_m) = the borrowed T/generation's construction subject
+    MetaOpen_Sigma(r_m) iff OpenHere_Sigma(OpeningSubject(r_m))
+
+Its formation uses ordinary actual-Place, borrow, access and lifetime checks.
+It stores no enduring writable proof. Replacement of q's resident cannot silently
+retarget OpeningSubject; ordinary generation invalidation and explicit rebind
+rules apply. A saved identity may remain meaningful after Close while every
+writable use of it fails.
+
+The meta-qualified ref family admits ordinary writable candidates, not just a
+read marker. Their applicability and write Pre require current facts:
+
+    MetaWriteApplicable(r_m) requires
+      OpenHere_Sigma(OpeningSubject(r_m))
+      Writable_Sigma(Target(r_m)) and the selected operation's Place capability
+      ordinary type/access/lifetime checks
+
+Meta qualification alone implies neither Writable nor an operation's existence.
+The body and write still use ordinary Pre/commit/Post and assignment constraints.
+
+An explicit ordinary candidate confirms the mutable view:
+
+    ConfirmMut : meta type ref -> mut type ref
+    requires MetaOpen_Sigma(r_m), Writable_Sigma(Target(r_m))
+             and ordinary capability/access/lifetime legality
+    r_mu = ConfirmMut(r_m)
+    Target(r_mu) = Target(r_m)
+    BorrowedGeneration(r_mu) = BorrowedGeneration(r_m)
+    Capability(r_mu) <= Capability(Target(r_m))
+
+This confirms existing facts; it converts no authority and does not revive an
+expired borrow. The operation names above specify candidate judgments, not new
+syntax or an implicit conversion path.
+
+At the same continuation position, if both explicit routes are legal:
+
+    Target(DirectMut(n)) = Target(ConfirmMut(MetaRef(n)))
+    realizable ordinary mut capability is the same
+
+This coherence does not license resolver chaining Name -> meta -> mut. Each
+explicit operation uses ordinary selection; selected failure never reopens.
+
+For initialized-type mutable references the irreversible Close law is:
+
+    Valid_Sigma(r : mut type ref) => OpenHere_Sigma(BorrowedType(r))
+    Read(BindingPlace(n)) = T : type and Closed(T)
+      => neither DirectMut(n) nor ConfirmMut(MetaRef(n)) succeeds
+    not MetaOpen_Sigma(r_m) => not MetaWriteApplicable(r_m)
+
+Previously obtained mutable refs recheck this condition on subsequent validity/
+write Pre. Ordinary non-mut observations may survive under their lifetime rules;
+InitialTypeSlotRef remains governed by its separate uninitialized-state law.
+GeneratedOccurrence(T,s,v) implies none of these refs or opening facts: a frozen
+generative rule may realize ordinary Val2 after Close without entering this
+formation/borrow/write path.
+
+These cases distinguish the judgments without introducing new syntax:
+
+| Current facts and operation | Required outcome |
+| --- | --- |
+| path resolves an open T; parent Place is not Writable; selector is valid/unretained and access/path/type checks pass | `const let child::path:U` forms an uninitialized NameExpr; no parent ref is needed |
+| Explicit ref of that child, then first write of v:U with live initial authority | Initializes even though the child is declared const; consumes initialization authority |
+| Reuse that initial ref to replace the resident | No replacement authority follows from the initial ref |
+| Initialized type name, OpenHere and Writable plus ordinary borrow checks | Both direct mut and explicit MetaRef then ConfirmMut yield the same target/generation and realizable mut capability |
+| Same type is OpenHere but target lacks Writable | Neither mut route nor meta write becomes legal merely from openness |
+| Save both kinds of ref, then Close their borrowed subject | Later mut validity/write and ConfirmMut fail; saving the ref does not save the proof |
+| An authorized resident replacement changes generation | A saved ref is checked against its original generation; it does not switch OpeningSubject to the new resident |
+| Equal type values in distinct resolved root bindings | Formation addresses distinct NameCoords, even if both current values are OpenHere |
+| A frozen generator realizes a new ordinary member after Close | No explicit name-formation, ref acquisition, or write-capability inference occurs |
+
+These are semantic conformance cases. Source consumers for the new contextual
+meta ref family remain pending in the implementation; the table does not claim
+that current Rust carriers execute them.
 
 ### 5.3 Borrow constructors have fixed points
 
@@ -2290,14 +2328,16 @@ ordinary borrow coordinates:
 ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
-A closed-window type-valued slot may still be observed through `type ref`. If the view
-is writable, the complete current value may be replaced by any compatible,
-well-formed type value. What is forbidden is using the closed-window pointee as the
-`old` input of `extend`; holding a reference does not change that value's
-anchor or open window.
+A closed-window type-valued slot may still admit non-mut observations under
+ordinary borrow/lifetime rules. An initialized-type mut reference is valid only
+while its borrowed type generation is OpenHere (§5.2.2); holding it does not
+authorize replacement after Close. Writable(target) alone cannot repair that
+failure. Meta-qualified writable candidates and ConfirmMut recheck the same
+original opening subject; neither follows whatever resident later occupies q.
 
-The holdable interval is consequently its ordinary borrow-valid region, not an
-Open window. Weakening remains useful when write authority is unnecessary:
+Identity retention/non-mut observation follows the ordinary borrow-valid region;
+mutable type-reference use additionally requires the live opening condition.
+Weakening remains useful when write authority is unnecessary:
 
 ```lang
 r share    // type share: still observable, no write authority
@@ -2334,14 +2374,17 @@ The following obligations never collapse into one check:
 
 ```text
 extend on a type value      ->  OpenHere_Σ(value)
-inject through a type ref   ->  OpenHere_Σ(Read(ref)) and Writable(Target(ref))
+inject through a type ref   ->  valid selected ref capability, OpenHere_Σ(Read(ref))
+                               and Writable(Target(ref))
 returning / storing a ref   ->  ordinary lifetime/capability escape check
 ```
 
 Returning a `type ref` from a `compile` callable is therefore governed by the
-same borrow escape rule as any other reference. It may remain usable after the
-pointee's open window closes; a later `extend`/`inject` attempt rechecks the current value's
-window state and may fail independently of the reference's validity.
+same borrow escape rule as any other reference. Its identity and permitted
+non-mut observation may survive closure within that lifetime. Mutable type-ref
+validity additionally requires OpenHere of the original borrowed generation;
+neither a saved mut ref nor a meta ref supplies a write after Close. A later
+resident at the same Place does not retarget that reference (§5.2.2).
 
 ### 5.6 Type-expected positions elaborate `|> type`; candidate discovery does not
 
@@ -2372,8 +2415,8 @@ In a language-designated type-expected position the elaboration is supplied:
 AsType(E)  =  E |> type
 ```
 
-`AsType` returns the complete type value `tau` carried by a Symbol, or
-validates an already-complete TypeValue as
+`AsType` validates an already-complete TypeValue read from a binding, or uses
+an explicitly defined value-side type projection as
 specified in §2.2. It does not compute the type of
 the expression, wrap a namespace-like Object, or raise universe rank:
 
@@ -2388,11 +2431,11 @@ Only explicit type-of extraction — for example the future canonical form
 
 ```text
 TypeOf(type)   = type_1
-TypeOf(symbol) = type
+TypeOf(OverloadGroup) = type
 ```
 
 With `tau = <Q, V_τ>`, `type` carries its own callspace, so
-`TypeOf(type) = type_1` directly; no Symbol recovery participates.
+`TypeOf(type) = type_1` directly; no name binding recovery participates.
 
 The designated positions are:
 
@@ -2410,55 +2453,52 @@ its complete type snapshot when its `Q` satisfies `TypeRole`, without the
 author writing `|> type`, while the very same `E` under
 `ref` is not:
 
+For an explicitly bound ordinary OverloadGroup g whose type projection is
+valid in that designated context (g denotes the group resident, not a binding
+wrapper):
+
 ```lang
-let x: s = ...;             // type-expected: elaborates to s |> type
-let r = s ref;              // operand: no projection; r : symbol ref
+let x: g = ...;             // type-expected: elaborates to g |> type
+let r = g ref;              // actual group operand: r : OverloadGroup ref
 ```
+
+For a structural named type t instead, t ref forms the borrow type and
+`t |> (type ref)` borrows its resident Place; it never yields a group reference.
 
 The distinction is positional and fixed by the language, never inferred from the
 operand's shape. An operand position never acquires a projection because a
 projection would make the program check.
 
-`@` is always an operand operation, so it never performs this implicit
-projection. `AsType` therefore cannot be followed by `@` to recover the source
-Symbol's type-member slot. `@` yields a lifetime value, not a borrow
-(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1). Symbol provides
-an ordinary same-name field/accessor family instead:
-
-```lang
-S.type         : type
-(S ref).type   : type ref
-(S share).type : type share
-```
-
-`S.type` is the by-value projection of the complete type snapshot whose `Q`
-satisfies `TypeRole`, and agrees in value with `AsType(S)`. The ref/share cases
-preserve their borrow observation through
-ordinary field projection; they do not reverse-map a type value to an origin.
-When `t` itself is already a pure `type` slot, `t |> (type ref)` is the explicit
-construction that reaches the type-level place. No `S@` or `(S |> type)@`
-shorthand is defined.
+@ preserves name interpretation: N@ is a name iff N is a name. It does not
+perform an implicit AsType conversion or itself create a borrow. Lifecycle
+value fields and borrowed fields follow ordinary projection rules. Safe code
+can observe the values; a mutable reference that writes back into lifecycle
+knowledge additionally requires unsafe and all ordinary permissions.
+The [admission owner](../lifetime/unsafe-semantic-admission.md) defines the
+post-commit, compatibility-checked information flow.
 
 ## 6. Writability, member creation, and construction openness
 
-The checker owns three independent judgments:
+The checker distinguishes the following judgments:
 
 ```text
 Writable_Γ(q)
-CanCreateMember_Γ(parent_place, selector)
+CanCreateMember_Σ(resolved_root, selector)
 OpenHere_Σ(v)
 ```
 
-`Writable` is a place/borrow-capability question. `CanCreateMember` combines a
-stable parent place with construction-unit, lexical, policy, and freshness
-authority. `OpenHere_Σ` is an open-authority question used by structural
-`extend`.
-None is a spelling or proof of another:
+`Writable` is a Place/borrow-capability question. `CanCreateMember` is value-side:
+read the initialized type at the resolved structural root, check its OpenHere,
+selector validity, non-retention and ordinary access/path/type well-formedness.
+It neither requires parent Writable nor acquires a parent mut type ref.
+The coordinate root remains structural identity, not the type's normalized value.
+OpenHere is also required by pure structural `extend`; by itself it grants no
+Place capability:
 
 ```text
 Writable_Γ(q)           does not imply OpenHere_Σ(Read(q))
 OpenHere_Σ(v)           does not imply Writable_Γ(Carrier(v))
-CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
+CanCreateMember_Σ(r, n) does not follow from Writable_Γ(Carrier(r)) alone
 ```
 
 `PolicyMode` is equally orthogonal to object shape and operation capability:
@@ -2475,19 +2515,25 @@ default ref/write-family realization:
 ```
 
 The table is a theorem of the builtin ref/write family, not a Policy axiom.
+Here const/plain/mut describe the selected reference view, not the declaration
+policy of a possibly uninitialized target name. The ordinary initial-borrow
+realization in §7.1 can supply a mut reference view with initialization-only
+capability even for a const-declared name. It does not turn a selected delete
+into default or grant replacement through that reference.
 Another family may mark any 3×3 coordinate absent or realize it with
 `default`, `delete`, or `custom`. In particular `mut` selected for a non-ref
 object does not automatically make any place writable.
 
-A writable slot may contain a closed-window type value that can be replaced wholesale
-but cannot be structurally extended from. Conversely an open-window value may be
+A Place's Writable fact alone does not permit replacing a closed type through
+a type ref: the selected mutable type-reference capability also requires
+OpenHere of its borrowed generation (§5.2.2). Conversely an open-window value may be
 extended purely and bound elsewhere even when its source is immutable or has no
 write-back place.
 
 At minimum, ordinary place operations reject a core/external stable place, a
 place reached only through `share`, a place outside its borrow lifetime, or a
-place whose policy denies the action. Member creation additionally rejects a
-parent outside the current construction unit or an already-instantiated child.
+place whose policy denies the action. Name formation separately rejects a
+non-OpenHere current parent type or an already-retained selector.
 Structural `extend` independently rejects a value whose window is
 closed (`WindowLive_Σ = false`) or whose `Anchor` lacks authority under the
 authority-frame resolution
@@ -2517,7 +2563,8 @@ accepted:
 
 ```lang
 let T = (() t) |> struct;
-let f::(T |> (type ref)) = ...;
+mut let f_ref = (let f::T:type) ref;
+f_ref = ...;
 ```
 
 No binding or borrow view can amplify the place authority it observes:
@@ -2526,172 +2573,163 @@ No binding or borrow view can amplify the place authority it observes:
 Capability(view of p) ≤ Capability(p)
 ```
 
-## 7. Projection slots and namespace extension targets
+## 7. Projection slots and structural name expressions
 
-Namespace/member creation is a *place* operation, not a value operation. The
-target is not determined by ordinary expression evaluation of the target path.
+A prospective structural target consists of a parent Place/resident and a
+selector. Its coordinate may be represented before a child name exists:
 
-The intended flow:
+    ProjectionCoordinate(parent_place, selector)
+    ProjectionSlotIdentity = <ParentResidentIdentity, selector>
+    Fresh_Sigma(parent, name) iff not HasName_Sigma(parent, name)
 
-```text
-parse / normalize the target path
-resolve the path as a parent place plus selector
-obtain the stable prospective ProjectionSlot
-check creation or write applicability
-install NamespaceDelta under that place
-```
+Occupancy is a structural judgment. Implementations may store an optional
+payload, but that representation does not define an optional-name value.
+Hidden or policy-filtered names remain occupied.
 
-Navigation does not fail merely because the final child has not yet been
-instantiated:
+An existing borrow preserves its formation-time target generation. Replacing
+the parent resident invalidates the old projection under the ordinary lifetime
+rules; it never redirects an old borrow to the replacement's same-spelled slot.
+Only ordinary rebind can acquire a new target. The concrete generation encoding
+remains open.
 
-```text
-ProjectionCoordinate(parent_place, selector)
-ProjectionSlot(parent_resident, selector)
-ProjectionSlotIdentity
-  = <ParentResidentIdentity(parent_resident), selector>
-Contents(ProjectionSlot) ∈ Some(Object) | None
-```
+Value/path-based name formation uses the resolved structural root identity,
+current resident T:type, OpenHere(T), selector/freshness and ordinary access/type/
+path checks. Parent Writable and a parent mut type ref are not premises. A
+borrowed navigation route preserves its actual target but is not required to
+form the typed child NameExpr. Named and ordinal selectors retain their
+own topology; T*N and T*omega indexing cannot grow a Sequence through let.
 
-`ProjectionCoordinate` is the reusable logical navigation coordinate.
-`ProjectionSlotIdentity` additionally names the current parent resident. `let`
-may change one slot's contents from `None` to `Some(value)` without changing the
-slot identity; ordinary `=` requires `Some(existing)` and never creates the
-missing child. Continuing navigation *from* `None` is ill-formed because there
-is no child Object whose own `Val2` could host the next selector.
+### 7.1 Typed NameExpr, explicit borrowing and first write
 
-Borrowing a projection records its formation-time `ProjectionSlotIdentity`,
-including when `Contents = None`:
+    P let name:t -> NameExpr(n) at an ordinary fresh lexical destination
+    P let name::path:t -> NameExpr(n)
+    PlaceType(BindingPlace(n)) = t
+    ResidentState(BindingPlace(n)) = Uninitialized
+    P let name::path == P let name::path:type
 
-```text
-ProjectionCoordinate(parent_place, selector)
-  != ProjectionSlotIdentity(parent_resident, selector)
+These initializer-free declarations share the typed Place/NameExpr rules;
+lexical and structural destinations retain their own creation authority.
+P let name = rhs is instead one complete lexical binding, with ordinary RHS
+type inference; P let name:t = rhs is its explicitly constrained form. Neither
+first defaults to :type nor decomposes into NameExpr followed by source =.
+See [let forms](names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings).
 
-Target(Borrow(Nav(parent_borrow, selector)))
-  = ProjectionSlotIdentity(parent_resident_at_formation, selector)
-```
+Creation does not install a resident or return a ref. In value context NameExpr
+reads only an initialized resident. Explicit ref borrows the existing typed
+Place without first reading. Its initial borrow uses the initialization
+authority below; ordinary initialized-name views use their declared policy.
 
-Changing `None` to `Some` within that slot is not retargeting. Wholesale parent
-replacement ends the old parent resident, produces a distinct family of
-projection slots, and invalidates borrows of the old slots under ordinary
-lifetime rules. It never redirects them to the replacement parent's same-named
-or same-positioned slot; only `rebind` acquires that new target (§5.4). The
-concrete generation/version encoding is an Open representation boundary; the
-resident-slot distinction is canonical semantics.
+    CreateName -> explicit Borrow -> ordinary Write
+    Uninitialized -- Write(v:t) --> Initialized(v)
+    Initialized(old) -- Write(v:t) --> Initialized(v)
 
-Navigation preserves the observation kind:
+The first write has no old resident to clean up. Replacement retains its ordinary
+same-Type and lifecycle checks. Failed Pre leaves the target state unchanged.
+Uninitialized is non-Object Place state, never a None value or fresh-name value.
 
-```text
-Nav(type,       n) -> type | None
-Nav(type ref,   n) -> (type | None) ref
-Nav(type share, n) -> (type | None) share
-```
+### 7.1.1 Initialization authority and the two Write cases
 
-The optionality describes current slot contents, not the existence of the
-ProjectionSlot. Full optional-pattern algebra remains deferred.
+    DeclaredPolicy(name) independent_of InitialInitializationAuthority(place)
 
-Named selectors and bare-Product ordinal selectors use this same mechanism:
+Successful authorized fresh typed-Place formation establishes a pending
+initialization authority for that actual Place in its creation context,
+regardless of const/plain/mut declaration policy. This is ordinary Place state
+and authority, not a token Object or an additional PolicyMode. It is neither
+inferred from Uninitialized alone nor transferred by equal type/value identity.
+The original authority source, actual Place access, applicable construction constraints
+and borrow lifetime must remain valid at use; saving a reference extends none
+of them. The concrete capability carrier remains an implementation choice.
 
-```text
-ProjectionSlot(parent_resident, name)
-ProjectionSlot(parent_resident, pos_i)
-```
+For such a Place the ordinary explicit ref operation has an initial-borrow
+realization: from the live initialization authority and ordinary access/lifetime
+premises it obtains a T ref view capable of the first write. A mut result view
+can be requested independently of the future resident's declared name policy.
+Its capability is limited to initialization of that Place, with no right to
+read an absent resident or replace a future one. Formation itself returns only
+NameExpr; the explicit borrow remains necessary.
 
-For `T*N` and `T*omega`, ordinal topology belongs to the current Sequence value,
-so `CanCreateMember(sequence, pos_i) = false`. Indexing observes an existing
-in-domain slot; it cannot grow or resize a Sequence through `let`.
+    InitialInitializationAuthority_Γ(q)
+    ResidentState(q) = Uninitialized, PlaceType(q) = t
+    selected ordinary initial-borrow realization, access and lifetime legal
+    ---------------------------------------------------------------------
+    explicit Borrow(q) -> r : t ref
+      with capability for Initialize(q), not Replace(q)
 
-There is no forwarding-chain step: a path resolves to exactly one place, and a
-borrow view interposed on that path either denotes the same place (`ref`) or
-removes eligibility entirely (`share`).
+The same ordinary Write family distinguishes the current Place state at Pre:
 
-The resolver here is asking "which eligible place does this path name?", not
-"what value does this path evaluate to?". An extension that resolves to a value
-rather than a place is ill-formed.
+    InitWriteLegal_Γ(r,q) iff
+      InitialInitializationAuthority_Γ(q) is still live and unconsumed
+      and r targets q with a valid capability for Initialize(q)
+      and the original authority/access/applicable construction/lifetime checks hold
+      -- these premises establish Writable_Γ(q) for this initialization
 
-Writability alone does not grant construction ownership. Under the current
-future construction contract, another source file cannot reopen a namespace,
-type, pattern, ordinary value-member, or overload subtree created by a parallel
-`SourceConstructionUnit`, even to add a previously absent child. Physical
-directory authority and construction-unit ownership are specified in
-`symbol-construction-units-and-namespace-origin.md`.
+    ResidentState(q) = Uninitialized, PlaceType(q) = t, v:t
+    InitWriteLegal_Γ(r,q), ordinary RHS/result/boundary checks
+    -------------------------------------------------------
+    Write(r,v): Uninitialized -> Initialized(v)
+      consume the pending initialization authority at successful commit
 
-An ordinary Symbol's type core is installed at most once. Repeating:
+    ResidentState(q) = Initialized(old), PlaceType(q) = t, v:t
+    valid replacement capability through r, Writable_Γ(q) for replacement
+    ReplacementCompatible(old,v), ordinary access/lifetime/RHS/result checks
+    ---------------------------------------------------------------------
+    Write(r,v): Initialized(old) -> Initialized(v)
+
+Writable is checked for the selected operation and supplied capability; a
+proof for Initialize(q) is not a proof for Replace(q). Only the second case
+observes old and checks resident compatibility or old-resident cleanup.
+ReplacementCompatible(old,v) abbreviates the existing resident compatibility
+check Compatible(P(old),v), together with the ordinary same-Type constraints;
+it is not a new compatibility relation or a policy inferred for an empty Place.
+The first case never evaluates P(old) or Compatible(P(uninitialized),v).
+DeclaredPolicy determines the initialized name's views, not compatibility with
+a nonexistent resident; the supplied v must still satisfy the declared type
+and all independently specified destination/operation constraints.
+
+Successful initialization consumes the authority for all aliases of the same
+Place. A second write through a saved initial reference must establish ordinary
+replacement capability anew; the reference's mut spelling is insufficient.
+Failed Pre consumes nothing and installs nothing. Ordinary enclosing transaction
+rules alone determine rollback. Move/drop, copying a handle or a cache hit do
+not recreate this first-initialization authority. No failed selected operation
+reopens overload selection or retries the other state case.
+
+For an authorized parent path and a legal value v:T:
 
 ```lang
-let T = A;
-let T = B;
+mut let r = (const let x::path:T) ref;
+r = v;
 ```
 
-as two competing core-installation definitions is a conflict, not implicit `A | B`.
-For `struct`, the installed member additionally satisfies `TypeRole`. Child
-construction and sum construction require explicit APIs and remain distinct
-from repeated ordinary binding.
+The first line creates x and explicitly borrows its Place using the pending
+initialization authority, not a const resident. The second initializes it.
+Subsequent x views follow its const declaration; a saved r has no replacement
+right from its consumed initial capability. The same construction works for
+plain or mut declarations; neither mode supplies authority by itself. Without
+live initialization authority, the first write fails even if the name is mut.
 
-### 7.1 `let` creates a member; `=` writes an existing target
+### 7.1.2 Closure and contribution handoff
 
-The two forms are distinct operations on the same resolved prospective target:
+The structural let-with-assignment compound is not canonical; any future sugar
+must expand into these steps. Ordinary lexical let remains unchanged.
 
-```text
-let f::(T |> (type ref)) = expr   — instantiate a missing associated member
-f::(T |> (type ref)) = expr       — write an already existing member
-```
+Close requires retained structural names being published to be initialized;
+open HasName facts may precede dom(Val2). Legal coordinates not yet retained are
+not uninitialized members and need not all be realized before Close. Later
+generated ordinary Val2 results do not reopen registered structure. See [name semantics](names-and-overload-groups.md)
+for the formation and closure rules and the first named-contribution trace.
+First contribution forms its complete type by one-shot formation and initializes
+once; only later contributions read an existing type for extend/inject.
 
-Bare `=` never creates a missing member. There is no declaration shorthand in
-which omitting `let` silently recovers creation semantics. Both forms use the
-place resolution of §7, but they discharge different obligations:
-
-```text
-let: Contents(slot) = None and CanCreateMember(parent, selector)
-=  : Contents(slot) = Some(old) and Writable(slot)
-```
-
-Freshness never implies creation authority, and writability never implies
-freshness. `let` is the only operation that changes `None` to `Some(value)`.
-
-The two forms also differ in what they change about the host:
-
-```text
-let f::(T |> (type ref)) = expr -> Write(slot, <Q',V_τ>); P and V_τ unchanged (§2.2)
-extend(TypeValue(T), Δ)      -> new tau' = <Q',V_τ'> snapshot
-inject(T |> (type ref), Δ)   -> read + extend + write through the type ref
-```
-
-An ordinary member declaration adds a `Val2` entry under an existing pattern
-name; it does not widen `P(T)`. Widening the host pattern with a new child
-pattern is exactly what `extend` does; `inject` is its place-level wrapper. Both
-are specified in
-`symbol-first-meta-construction-and-pattern-injection.md` §8. Both are limited to
-extending the current parent pattern with a *direct* child; neither reaches into
-a grandchild pattern.
-
-Assignment carries no `extend`-specific construction-authority check, but that is
-not the same as carrying no check. The canonical four-layer assignment model in
-`symbol-first-meta-construction-and-pattern-injection.md` §4.5.1 governs, and the
-text below only spells out its layer 2 for this document.
-
-Layer 2 — universal write applicability checks exactly:
-
-```text
-Writable(lhs)              — the left side names a writable place
-Compatible(P(lhs), rhs)    — the right value conforms to the target's Pattern
-ValidCapability(lhs)       — lifetime and capability conditions of lhs hold
-```
-
-Assignment performs no `extend`-specific construction-authority check: there is no
-requirement that the RHS came from a particular producer. That freedom covers
-layer 1 (the RHS operation, including `extend`, discharged its own Open check)
-and nothing more. Layers 1, 3,
-and 4 of the canonical model — RHS operation legality, result-object invariants
-(`WellFounded` / `Canonicalizable` / `NoForbiddenCycle`), and the enclosing
-region's semantic-boundary constraints (meta self-root, ref / pattern-value
-lifetimes, global type-bearing mutability limits, seal /
-global promotion, single-τ-installation bound) — remain independently applicable to
-the write result.
+Creation/initialization registers neither callability nor Pattern roles.
+Inject still reads an existing resident, extends it and writes the result;
+it cannot initialize an unreadable target. Physical files grant no authority.
+A's instance/member references preserve their original targets and dependencies.
 
 ## 8. Type values in overload and pattern matching
 
 Ordinary type matching for overload and pattern compatibility compares
-canonical type values, not source symbol names:
+canonical type values, not source binding names:
 
 ```text
 OrdinaryTypeObservation(τ) = Core(τ) = Q
@@ -2727,10 +2765,10 @@ The same separation applies to normalized pattern layers. If the layer is the
 body of a Pattern and every direct element has a complete top-pattern
 navigation name, it is
 `Map<CanonicalFullNavigation, CanonicalPatternValue>`. A naked Product remains
-positional regardless of whether its elements are named. `SymbolId` and
+positional regardless of whether its elements are named. `NameBindingId` and
 `PlaceId` identify carriers/locations; they are neither map keys nor resident
-values. Extraction resolves a source Symbol, reads its `PatternValue`, and
-looks up that value by complete navigation and normalized resident. A symbol
+values. Extraction resolves a source name binding, reads its `PatternValue`, and
+looks up that value by complete navigation and normalized resident. A binding
 path may share the value's navigation spelling or differ from it without
 changing this sequence. Source/provenance classification does not participate
 in `PatternValue` identity.
@@ -2790,7 +2828,7 @@ meaning.
   symbol-first facet resolution, `PatternValue`, `compile` / `meta`, pattern
   scopes, `struct`, pure `extend`, place-level `inject`, open-authority
   `OpenHere_Σ`, and the
-  binding/install boundary. It uses this document's `SymbolId` / `PlaceId` /
+  binding/install boundary. It uses this document's `NameBindingId` / `PlaceId` /
   `TypeValueId` and place judgments.
 - `../lifetime/lifetime-policy-and-overload-boundary.md` — canonical owner of
   `@` (continuation-relative name reification yielding a lifetime value) and of

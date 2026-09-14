@@ -290,6 +290,13 @@ a!
 The operator becomes an unresolved `OperatorTarget` carrying its spelling,
 fixity, and arity. No operator lookup or overload resolution occurs.
 
+The canonical semantic handoff maps the grammar-fixed token to its ordinary
+`op::type` family under `operator::type`. Grammar vocabulary, precedence and
+parse associativity cannot be modified by source meta evaluation. The current
+OperatorTarget carrier does not itself implement family lookup or the registered
+Pattern/generative projections described by the
+[operator owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md).
+
 ### Prefix negative
 
 ```text
@@ -829,6 +836,15 @@ component is P1 value-dominant projection or P2 shorthand, validate pair stage
 rules, or interpret const/mut/namespace atoms. Those are semantic policy
 elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
+The P1 form `meta let f = expression` uses this existing policy-prefixed
+binding shape. Its `meta` atom remains a Name. Contextual meta qualification is
+currently limited to type/type ref, with instance retention as one consumer;
+it is not a fourth PolicyMode. P1 openness qualification and P2
+meta evaluation stage are distinguished by later contextual policy elaboration;
+normalization establishes neither instance identity nor OpenHere. Plain let
+uses the same syntax shape; its classic meta completion/closure behavior is
+likewise a semantic rule, not a frontend rewrite.
+
 ### Capture binding elaboration
 
 An ordinary closure capture clause is a list of let-shaped bindings:
@@ -883,8 +899,9 @@ This is syntax-directed capture binding elaboration, not closure environment
 layout, name resolution, or materialization.
 
 These source-written captures are explicit requirements. In particular,
-`[x]` means explicit `[let x = x]` with the ordinary unwritten capture policy
-mode (`plain`); it is not an automatic const capture. A later resolved stage
+`[x]` means explicit `[let x = x]` with no written policy override; inherited
+constraints or separate default completion determine its mode. It is not an
+automatic const capture. A later resolved stage
 may add an implicit capture requirement for an otherwise uncaptured free outer
 value reference. That later operation requires symbol resolution and external
 namespace visibility plus later capability checking and therefore is not
@@ -936,9 +953,9 @@ Nested Pattern structure remains in that root. Same-root hole duplicates fail;
 a different root may lexically shadow an inherited spelling.
 
 Namespace consumers keep `FullNameView`, `ExternalNameView`, and
-`DefaultExtractionView` separate. Package-boundary crossing selects the
-external view; mount metadata redirects to an existing namespace without
-copying symbol identity. Private structural members remain in the full
+`DefaultExtractionView` separate. Source-established namespace/access
+relations select the external view; physical package boundaries and configured
+mounts have no semantic authority. Private structural members remain in the full
 structural model but are omitted from default extraction.
 
 Resolved capture requirements are abstract dependencies, not a declaration of
@@ -1243,3 +1260,52 @@ surface and must not be assumed:
 - D-reduction / Done_Return
 - Control-flow propagation
 - Result-slot injection
+
+
+## Canonical construction and consumer alignment
+
+The canonical dual meta declaration surfaces `P let f = (self,args):meta => B`
+and `P let (self,args) f => B` preserve the same declaration material. This is
+a syntax/semantic handoff requirement, not a claim that the current parser has
+connected the latter form. Neither form normalizes by resolving a name or
+solving a Pattern. Likewise bare `let` preserves an absent override, written
+`plain` a concrete constraint, and `<p> p let` an explicit deduction hole;
+later elaboration computes Pin/Pout overlays and any default completion.
+
+Qualified formation resolves a structural root identity and observes the current
+resident type's OpenHere, selector validity, non-retention and ordinary
+access/path/type legality. It requires no parent Writable or parent mut type ref.
+Equal type values do not merge structural root/name/Place identities. Borrowing
+is a separate Place-side judgment. Initialized type names admit direct mut
+borrowing or explicit meta type ref followed by ConfirmMut, subject to the same
+current OpenHere, target Writable, capability and lifetime checks. These coherent
+routes introduce no implicit chain; saved refs retain their borrowed generation
+and cannot write after Close. Initial refs remain initialization-only. See the
+[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+
+Initializer-free P let name:t and P let name::path:t create typed NameExpr
+using lexical and structural destinations respectively, with non-Object
+Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
+not an existing type resident. P let name = rhs is a complete lexical binding
+with RHS type inference, so that default does not apply. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it using authority independent of the name's declaration policy,
+including const. Successful first commit consumes that authority; saved initial
+references do not grant replacement power. Later writes require ordinary
+replacement capability and resident compatibility. The structural let=compound
+is not canonical. Close requires retained structural names being published to be
+initialized; it does not require all future generated coordinates to be realized.
+Ordinary lexical let remains unchanged.
+These canonical consumers remain pending; current parser carriers do not define them.
+
+The current parser/Norm carrier has not yet connected this expression family;
+its ordinary let form still requires an initializer. This section specifies
+the canonical handoff, not implemented syntax coverage. The future carrier
+must keep syntax-directed positional distinctions without resolving targets.
+[Name/type algebra](../design/symbol-world/names-and-overload-groups.md) owns the
+semantics; [closure replication](../design/symbol-world/closure-anchored-replication.md)
+removes any need to pass the LHS anchor backward into RHS normalization.
+
+The current ImplicitNearest return tag is structural spelling only. Implicit
+E return selects the outermost enclosing function layer. The build binder is
+pending alignment; neither parser nor normalizer resolves that target.

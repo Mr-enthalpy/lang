@@ -1,6 +1,6 @@
 # Namespace graph and early semantic bootstrap
 
-**Status:** implementation-facing consumer map. Canonical Object, type, Symbol,
+**Status:** implementation-facing consumer map. Canonical Object, type, name binding,
 Pattern, Policy, invocation, and construction meaning is owned by the focused
 topic documents in this directory and `../patterns-overload/`.
 
@@ -10,11 +10,12 @@ Build one persistent semantic world in which core and source declarations are
 ordinary graph contributions:
 
 ```text
-package/source roots
-  -> physical namespace skeleton
+compilation Level with main.lang anchor
+  -> neutral physical block normalization
+  -> ordinary source meta evaluation
   -> typed SemanticOwner qualification
   -> transactional declaration contribution
-  -> one terminal Symbol per resolved path
+  -> one terminal name binding per resolved path
   -> context projection and ordinary invocation
 ```
 
@@ -23,35 +24,33 @@ ordinary graph entries, not parser keywords.
 
 ## Namespace graph invariants
 
-- A source filename is not a namespace segment.
-- Each namespace-role Object has one construction origin.
-- A contribution is admitted atomically through a namespace delta.
-- Physical directories authorize direct contributions to their namespace.
-- A source or meta construction unit may build its newly created subtree but
-  cannot reopen another unit’s closed subtree without explicit authority.
-- Same-role duplicate children are hard conflicts.
-- Object/function and namespace-subspace roles may share spelling while
-  retaining distinct typed roles.
-- Mount redirects preserve terminal Symbol identity.
-- Internal and external views project the same admitted Symbol identities.
-- Namespace lookup enumerates identities; overload selection happens later.
+- Physical files supply provenance, not identity or construction authority.
+- Source actions create names and Objects under ordinary capability rules.
+- Same-name named-contribution positions synthesize a named type's V_tau.
+- Sibling blocks use common-snapshot overlays and ordinary unordered join.
+- Name occupancy is independent of value content and visibility.
+- Internal/external views retain semantic identity; overload selection is later.
+- Storage transactions realize the enclosing semantic action, not file authority.
 
 ## Semantic owner graph
 
 Owner qualification maps frontend owner/root identities into a parent-linked
 persistent graph. It preserves callable owner, PatternRoot alpha boundary,
-HoleBinder identity, package boundary, and MetaInstance parent placement.
+HoleBinder identity and MetaInstance parent placement.
 
 ```text
 MetaInstanceRootKey
   = ParentSemanticOwner
   x selected callable identity
-  x canonical whole argument Product identity
+  x CanonicalizeInvocationInputs(In)
 ```
 
-Root stability is independent of constness. Every MetaInstance root has
-`PolicyMode=plain`, is a stable semantic owner, and does not thereby become
-Writable.
+Every MetaInstance is a stable semantic owner whose name denotes its instance
+type tau_M. P1 meta retains it under dependency-derived OpenHere, which governs
+mut acquisition; plain let completes and closes it. Ordinary payloads live in
+Val2 and keep their ordinary policies. The general cache preserves instance and
+member Place identity, current observations and checked dependencies. An internal
+plain root marker cannot substitute for the P1 meta qualification.
 
 ## Policy and visibility
 
@@ -84,14 +83,14 @@ Core bootstrap supplies:
 Bootstrap implementation does not create a separate language ontology.
 `struct` follows the ordinary call pipeline and returns an exact complete type
 value. Primitive execution material is installed before the CompleteType
-semantic result is formed. Outer binding creates the destination Symbol/Place
+semantic result is formed. Outer binding creates the destination name binding/Place
 and graph rendering.
 
 ## Call path
 
 ```text
 ResolveName(path) = S
-  -> CallableProjection(S) = Dedup(V_S union V_tau)
+  -> CallCandidates(NamedType(S)), or the explicit group's candidate projection
   -> InvocationFrame
   -> Pattern applicability
   -> Policy preference
@@ -103,7 +102,7 @@ ResolveName(path) = S
 
 The exact immutable `tau` captured at value formation supplies `V_tau`.
 Callability, applicability failure, selected failure, or result failure never
-causes name resolution to search an outer same-name Symbol.
+causes name resolution to search an outer same-name name binding.
 
 ## Construction boundary
 
@@ -118,9 +117,11 @@ ActiveConstructionWindow
 ```
 
 `extend` is a pure transform. `inject` is read+extend+write on an existing
-writable Place. TypeMember contributions require direct-home evidence;
-derived forwarding creates a fresh direct-home member that captures the base
-complete-type snapshot.
+writable Place. Type contribution requires final classifier home Home(TypeOf(v)) = TypeMemberScope(T).
+Eligible closure expressions can be instantiated under another anchor while
+preserving the original value. Derived forwarders capture the base complete
+snapshot. A is an ordinary meta instance type with an ordinary Val2 group
+member; its state uses the general invocation cache facilities.
 
 ## Pending consumers
 
@@ -133,6 +134,8 @@ The following are source/evaluator wiring work, not alternative semantics:
 - cleanup schedule production;
 - Residual/Diagnostic continuation transport;
 - derived associated forwarder formation;
+- instance/member residency, P1 meta qualification, input dependency normalization
+  and opening-source propagation, including the derived A instance;
 - serial compile evaluation.
 
 See `spec/planning/roadmap.md` for sequencing and

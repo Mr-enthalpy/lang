@@ -17,6 +17,15 @@ Raw AST preserves syntax and recovery. It does not resolve names, check types,
 select overloads, materialize closures, execute callable bodies, or interpret
 Pattern packs.
 
+The canonical extension has equal call/value and Pattern/name meta declaration
+surfaces, grammar-fixed op::type families, and distinct omitted/concrete/hole
+policy material. These are handoff obligations, not implemented syntax coverage:
+the current carriers below do not execute generative realization or relational
+operator extraction. A future syntax-directed carrier must retain this material
+without introducing semantic MetaDecl/HIR nodes or lookup in the parser. See
+[operator/declaration semantics](../design/patterns-overload/operator-patterns-and-generative-declarations.md)
+and the [alignment gates](../planning/roadmap.md#canonicalsource-alignment-gates).
+
 ## 2. Lexical contract
 
 Names remain weak `Name` tokens. In particular:
@@ -489,7 +498,7 @@ owner/root, and extend the environment with their own telescope. Ordinary
 value binders do not alter hole identity.
 
 Normalized source capture items are explicit let-shaped bindings. `[x]` is
-explicit shorthand for `[let x = x]` with the unwritten `plain` mode; it is not
+explicit shorthand for `[let x = x]` with no written mode override; it is not
 automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not
@@ -544,3 +553,26 @@ overload execution
 runtime evaluation
 code generation
 ```
+
+
+## Canonical expression handoff pending source support
+
+Initializer-free P let name:t and P let name::path:t create typed NameExpr
+using lexical and structural destinations respectively, with non-Object
+Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
+not an existing type resident. P let name = rhs is a complete lexical binding
+with RHS type inference, so that default does not apply. Value use requires initialization; explicit
+ref borrows the Place using its declared type without reading. Ordinary write
+initializes it using authority independent of the name's declaration policy,
+including const. Successful first commit consumes that authority; saved initial
+references do not grant replacement power. Later writes require ordinary
+replacement capability and resident compatibility. The structural let=compound
+is not canonical. Close requires retained structural names being published to be
+initialized, not all future coordinates realized. Ordinary lexical let remains
+unchanged. Current Raw/Norm let carriers do not yet implement
+this expression family. Consumer work must preserve spans/recovery and add
+golden coverage, without semantic target lookup in parsing or normalization.
+
+Anonymous closure anchoring is resolved by ordinary formation or witnessed
+anchored replication at contribution, not by feeding the LHS destination back
+into the frontend. See [name/type semantics](../design/symbol-world/names-and-overload-groups.md).

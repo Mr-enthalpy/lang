@@ -1,128 +1,34 @@
-# Package manifest
+# Compiler Input and Tool Configuration Boundary
 
-**Status: Open manifest-format design. This is not parser syntax and does not
-specify an implemented manifest file format.**
+Status: canonical input boundary. This path documents engineering configuration;
+it does not define a manifest language with program-meaning authority.
 
-## 1. Scope
+The compiler selects one compilation level and finds main.lang as its explicit
+root anchor. Source meta evaluation determines Objects, dependencies, external
+resources, policies, and the target machine. Configuration cannot add semantic
+facts through dependency mounts, package roots, target options, feature flags,
+defines, include paths or library paths.
 
-This document describes the open build-manifest design surface needed to
-guide future build-system work. It does not finalize a complete manifest schema.
+Distinguish CompilerSemanticInvocation from surrounding process/tool setup:
 
-The manifest is an input to the **package/build layer**. It does not define
-source syntax, and it does not introduce any package declaration inside `.lang`
-source files. A manifest records the build facts that are projected into the
-namespace graph and that stabilize candidate identity for future meta object
-invocation. It is not a package-manager configuration tutorial; its purpose is
-semantic: to make build facts available as referenceable objects.
+    CompilerSemanticInvocation = selected Level + optional O1/O2 planner controls
+    ProcessConfiguration = engineering storage/scheduling/diagnostic facilities
 
-The canonical layering (package/build layer → namespace graph layer → source
-language layer) and the projection model are described in
-`spec/design/build-package/build-system-design.md`. This document focuses on what the manifest
-records and why each record matters semantically.
+Extra parameters of the language compiler invocation control only planner search;
+they do not add cache, target, feature or namespace choices to that interface.
+A surrounding process may arrange cache storage, parallel workers, diagnostics
+and artifact locations where they preserve program meaning. That process setup
+is not another langc semantic argument channel. Planner controls may alter
+equivalent-rewrite search budget and strategy without altering E.
+A convenience tool that generates source still produces explicit source actions;
+its private configuration is not a second evaluator input.
 
-## 2. Manifest records
+Dependency/version retrieval can be implemented through ordinary source-defined
+host IO and representation. A registry/version solver is not a prerequisite
+language subsystem or a namespace authority.
 
-A package manifest records, at least, the following. Each record is a build fact
-that later projects into the namespace graph or participates in candidate
-identity.
-
-| Record | Description |
-|---|---|
-| Package identity | Globally unique package identity (`PackageId`). |
-| Package kind | `library`, `application`, `test`, `plugin`, or future unit kinds. |
-| Namespace root | The top-level namespace segment this package provides (e.g., `mylib`, `myapp`). |
-| Source roots | Directories containing implementation source fragments (e.g., `["src"]`). |
-| Toolchain global source roots | API-level, toolchain-owned source bundles carrying explicit authority to install at or below `::`; not ordinary package manifest syntax. |
-| Dependencies | External packages whose namespace roots are mounted into the compilation namespace graph. |
-| Mount table | Mapping from dependency names to their exposed namespace roots, with optional aliases. |
-| Export surface | Which declarations are externally visible across the package boundary. |
-| Feature/configuration set | Build-time feature flags and compiler configuration. |
-| Entry point | For applications, a namespace path naming the entry declaration (e.g., `myapp::main`). |
-| Lockfile relationship | Resolved dependency versions, hashes, and conflict resolutions for reproducible builds. |
-| Distribution form | `static`, `dynamic`, `source`, or `interface+binary`. |
-| Cache/fingerprint metadata | Keys for build-artifact caching (package version, compiler version, feature set, instantiation arguments). |
-| Trust/access policy | Reserved package-level policy field. |
-
-## 3. Semantic role of each record
-
-The records are not just configuration fields. Each has a semantic role in
-namespace graph projection and in future meta object invocation.
-
-- **Package identity** — used for diagnostics, cache keys, candidate provenance,
-  and cross-package uniqueness. Two candidates that share a symbol path but come
-  from different packages are distinguished by package identity.
-- **Package kind** — selects whether the package merely provides a namespace
-  root (library) or also carries an entry point (application), and which future
-  distribution/build treatment applies. It is build metadata, not source syntax.
-- **Namespace root** — defines the root under which this package's contents are
-  projected into the namespace graph.
-- **Source roots** — provide the input directories from which the physical
-  namespace skeleton is built. Implementation file names remain source-fragment
-  names and do not contribute namespace segments.
-- **Toolchain global source roots** — are a current API-level compiler input,
-  deliberately separate from ordinary package roots. Only this typed authority
-  may use an empty install prefix. It does not make the installed Symbols a
-  prelude or give ordinary projects root-construction authority.
-- **Dependencies** — define the static build-graph ordering and the dependency
-  fingerprint flow: a dependency's fingerprint participates in the dependent's
-  cache key.
-- **Mount table** — defines alternative paths that redirect to existing
-  dependency namespace roots, including optional aliases. A mount never copies
-  the target namespace or changes target symbol identity.
-- **Export surface** — defines which symbols, namespaces, and callables an
-  external lookup may see. It is a visibility boundary projected into the
-  namespace graph, not a source-level import/export pair.
-- **Feature/configuration set** — affects the generated namespace graph and the
-  cache fingerprint: the same source under a different configuration may produce
-  a different graph and therefore a different cache key.
-- **Entry point** — for applications, names the entry declaration as a namespace
-  path. It is metadata about how the build is consumed, not a source construct.
-- **Lockfile relationship** — pins resolved dependency versions/hashes so a
-  build is reproducible from package metadata and lock data, while source paths
-  stay version-free.
-- **Distribution form** — affects metadata availability, linking, and loading.
-  It must not change the namespace path spelling that source code writes.
-- **Cache/fingerprint metadata** — supplies the keys that let generated and
-  instantiated namespace nodes be cached and correctly invalidated.
-- **Trust/access policy** — a reserved field for package-level
-  trust/access policy; it does not define any current behavior.
-
-## 4. Manifest is not source import
-
-The manifest is a build-layer input, not a source-language construct.
-
-```text
-The manifest may mount packages, but source files do not import packages.
-The source language sees namespace paths after projection, not manifest clauses.
-```
-
-Mounting a dependency makes its namespace root resolvable through the namespace
-graph. Source code then refers to namespace paths such as `Vec::std`; it never
-writes manifest clauses, import statements, or mount directives.
-
-Package identity is explicit semantic metadata. Physical directories may feed
-namespace assembly, but a directory name is neither package identity nor symbol
-identity. A nested `PackageBoundary { package_id }` overrides the inherited
-package domain for its subtree.
-
-## 5. Current implementation boundary
-
-The current `crates/lang_build` slice has **no** manifest file parser. Tests and
-the build API construct values such as `BuildWorkspace`, `PackageBuildSpec`, and
-`BuildManifest` directly in Rust. This is an implementation slice, not the final
-manifest surface, and it must not be read as manifest-file syntax. A manifest
-file format, dependency solving, lockfiles, remote retrieval, linking, and
-binary metadata are future work and are not implemented.
-
-## 6. Non-goals
-
-- No source-level import syntax.
-- No package declarations in source files.
-- No namespace resolution in the parser.
-- No type checking.
-- No linking.
-- No remote package retrieval.
-- No lockfile completeness.
-- No binary/interface distribution metadata implementation.
-- No cache validation implementation.
-- No dependency solver implementation.
+The existing Rust BuildManifest and package/workspace records are current
+implementation carriers whose source wiring is pending migration. Their presence
+does not establish canonical input semantics. See
+[physical normalization](build-system-design.md) and the
+[roadmap](../../planning/roadmap.md).
