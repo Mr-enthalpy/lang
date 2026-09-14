@@ -105,8 +105,10 @@ Close freezes those non-generative registrations and ends their construction
 window; it does not prohibit later ordinary generated Val2 realization. The
 [name owner](../symbol-world/names-and-overload-groups.md#71-generated-val2-after-registered-structure-is-closed)
 defines current observations, retained snapshots and the unchanged no-reopen
-boundary. Generated realization cannot obtain a closed parent's mut construction
-view or mutate a registered witness.
+boundary. Frozen generative matching directly realizes an ordinary occurrence;
+it is not explicit NameExpr formation followed by ref acquisition and write.
+It implies no OpenHere, mut type ref or meta type ref, and cannot mutate a
+registered witness. No separate closed-generative authority is introduced.
 
 This restriction belongs to the occurrence, not permanently to the value. The
 same ordinary value may obtain an appropriate witness through another lawful,

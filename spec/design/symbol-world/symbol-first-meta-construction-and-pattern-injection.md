@@ -1910,7 +1910,7 @@ normalized leaf value. It erases only how the child's navigation was obtained
 (inherited versus explicit) and how the child was formed (internal versus
 extended) — never the Pattern entity identity of `inner`.
 
-Creating `let inner::(s |> (type ref)):type`, explicitly borrowing its Place,
+Forming `let inner::s:type` through s's current open type value, explicitly borrowing its child Place,
 and writing bool:: initializes it with that complete type. The Val2 resident
 exists only after successful initialization and is that complete type,
 not a binding identity or a raw initializer entry. It does not
@@ -2091,8 +2091,11 @@ bound elsewhere, while a closed-window value read through a writable
 `type ref` is rejected. There are deliberately no `type ref` or `type share`
 overloads for `extend`.
 
-A typed structural name creation through an authorized parent reference yields
-NameExpr. Explicit borrowing followed by a write initializes its ordinary
+A typed structural name formation resolves a structural root and checks its
+current type value's OpenHere, valid selector, non-retention and ordinary
+access/path/type rules. It yields NameExpr without requiring parent Writable
+or a parent mut type ref. Explicit borrowing of the new child Place followed
+by its one-shot initial write initializes its ordinary
 resident; creation and initialization do not register a Pattern-child edge. It cannot
 substitute for extend's structural registration or inject's write-back.
 
@@ -2104,6 +2107,7 @@ substitute for extend's structural registration or inject's write-back.
 inject : type ref × StructLikeMaterial ⇀ type ref
 
 Inject_Σ(r, Δ):
+  require ValidSelectedTypeRef_Σ(r)  -- original borrowed generation; §5.2.2 of type/ref owner
   require Writable_Γ(Target(r))
   old := Clone(Read(r))
   new := Extend_Σ(old, Δ)       -- independently requires OpenHere_Σ(old)
@@ -2115,23 +2119,28 @@ The two requirements are deliberately independent:
 
 ```text
 CanInject_Σ(r, Δ)
-  = Writable_Γ(Target(r))
+  = ValidSelectedTypeRef_Σ(r)
+  ∧ Writable_Γ(Target(r))
   ∧ CanExtend_Σ(Clone(Read(r)), Δ)
 ```
 
 `inject` is the composition `clone/read old τ → Extend → ordinary Write back`.
 The step that depends on construction authority is `Extend`; the final
-`Write` is an ordinary slot replacement (`slot := x'`) that needs only
-`Writable_Γ(p)` and the slot's local constraints. Ordinary slot replacement
+`Write` is an ordinary slot replacement (`slot := x'`) that checks the selected
+ref capability's current validity, `Writable_Γ(p)` and the slot's local constraints.
+Ordinary slot replacement
 is **not** a `τ -> τ'` construction transformation: it does not require
 formation history, and it does not automatically acquire `extend` semantics
 just because the carrier is a type value.
 
-`r : type ref` proves target/lifetime/capability only. It never proves the
-current pointee satisfies `OpenHere_Σ`. A closed-window pointee may
-therefore be replaced wholesale by ordinary assignment through a writable
-ref, while `inject(r, Δ)` fails before the write because its `extend` step is
-inadmissible.
+A saved ref carries target/generation identity, not a permanent OpenHere proof.
+Both an ordinary mut type ref and a writable candidate for meta type ref must
+recheck the original opening subject. Close therefore prevents ordinary
+replacement through either route as well as inject. A different later resident
+does not retarget the saved ref. Direct mut acquisition and explicit meta-to-mut
+confirmation remain distinct, coherent ordinary candidates; neither introduces
+implicit chaining. The [type/ref owner](type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation)
+owns these validity rules.
 
 Failure before `Write` leaves the target unchanged. `type share` has no
 `inject` candidate because it is not writable; by-value `type` has no `inject`

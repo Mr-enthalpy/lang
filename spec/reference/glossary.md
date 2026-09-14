@@ -137,6 +137,12 @@ retains the instance and member Places/current state, not a frozen first value.
 
 ### P1 meta policy
 
+Contextual openness qualification, currently limited to type and type ref,
+not a fourth PolicyMode or arbitrary meta X ref. Meta refs preserve the actual
+Place and original borrowed generation/opening subject. Writable candidates
+and explicit ConfirmMut require current OpenHere plus independent target
+Writable and ordinary capability/access/lifetime; no authority is amplified.
+
 `meta let f = expression` retains an ordinary meta instance under its derived
 OpenHere. The instance name is its type value, so OpenHere governs acquisition
 of mut qualification without an independent instance const/mut gate. Plain let
@@ -330,6 +336,17 @@ extension interfaces until resolved.
 
 
 ### Structural let expression
+
+Qualified formation resolves a structural root identity and observes the current
+resident type's OpenHere, selector validity, non-retention and ordinary
+access/path/type legality. It requires no parent Writable or parent mut type ref.
+Equal type values do not merge structural root/name/Place identities. Borrowing
+is a separate Place-side judgment. Initialized type names admit direct mut
+borrowing or explicit meta type ref followed by ConfirmMut, subject to the same
+current OpenHere, target Writable, capability and lifetime checks. These coherent
+routes introduce no implicit chain; saved refs retain their borrowed generation
+and cannot write after Close. Initial refs remain initialization-only. See the
+[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
 
 Initializer-free P let name:t and P let name::path:t create typed NameExpr
 using lexical and structural destinations respectively, with non-Object

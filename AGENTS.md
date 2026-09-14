@@ -84,6 +84,10 @@ alternate relation or identity.
 - Same-name construction synthesizes a type's V_tau; ordinary lexical let does
   not aggregate. Structural P let name::path:t creates typed NameExpr and an
   Uninitialized Place, not a resident or ref; omitted :t means :type.
+  Qualified formation uses resolved structural root identity and the current
+  resident type's OpenHere, selector/non-retention/access/path/type checks;
+  parent Writable and parent mut type ref are not premises. Equal type values
+  do not merge NameCoords or Places. Ref acquisition is a separate judgment.
   Initializer-free P let name:t shares typed-name formation at a lexical
   destination. P let name=rhs is a complete lexical binding with RHS inference;
   the initializer-free structural default does not apply to it.
@@ -94,6 +98,14 @@ alternate relation or identity.
   replacement, and first write never reads nonexistent resident policy.
   TypeRole(Q) is Q-local; complete tau consistency checks both registered
   closure roles' /tau homes separately.
+- Contextual meta qualification is limited to type/type ref, not a fourth
+  PolicyMode. Initialized type names retain direct mut borrowing and explicit
+  meta-ref-to-mut confirmation; both require current OpenHere, target Writable
+  and ordinary capability/access/lifetime. Same-position routes are coherent,
+  not implicit chains. Meta refs retain their actual Place and original borrowed
+  generation/opening subject. Close defeats both mutable routes and saved-ref
+  writes. InitialTypeSlotRef remains separate one-shot initialization authority.
+  Frozen generated Val2 realization after Close invokes none of these ref paths.
 - Type +=/-= changes only V_tau under Writable, OpenHere, complete-type /tau
   classifier home and non-generative registration. Named Val2 residency is neither
   required nor implied; classifier navigation is not callable-value navigation.

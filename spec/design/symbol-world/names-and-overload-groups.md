@@ -181,27 +181,40 @@ named resident nor its independent Pattern registration.
 
 The first two are typed name declarations without an initializer. They share
 typed Place formation, explicit borrowing and ordinary initialization. Their
-destination and creation authority differ: the unqualified form uses the
-ordinary fresh lexical binding context, while the qualified form uses the
-explicit structural target. Lexical creation does not require navigating a
-parent mut type ref; structural creation retains those additional premises.
+destination differs: the unqualified form uses the ordinary fresh lexical
+binding context, while the qualified form resolves its structural root/name
+identity and observes that binding's current type value. NameExpr formation is
+a value-side judgment, not acquisition of a parent write capability.
 
-The parent is reached through existing authorized structural navigation from a
-mut type ref in the qualified case. Intermediate parents must exist and be initialized/navigable;
-only the final selector is fresh. Creation checks the existing Writable,
-OpenHere, access, lifetime and construction-authority premises of the parent.
+Intermediate parents must exist and be initialized/navigable; only the final
+selector is fresh. Qualified formation requires:
 
-    Fresh(parent, n)
-    t is the declared Place type
+    b = ResolveStructuralRoot(path)
+    r = StructuralRootIdentity(b)
+    Read_Sigma(b) = T : type
+    OpenHere_Sigma(T), ValidSelector(T,n), not Retained_Sigma(r,n)
+    ordinary access and type/path well-formedness
+    t is the declared child Place type
     ----------------------------------------------
-    Realize(NameCoord(parent,n), P, t):
-      establish Retained(parent,n)
+    Realize(NameCoord(r,n), P, t):
+      establish Retained(r,n)
       BindingPlace(n) = q_n
       DeclaredPolicy(n) = P
       PlaceType(q_n) = t
       ResidentState(q_n) = Uninitialized
       establish pending InitialInitializationAuthority(q_n) from authorized formation
       yield NameExpr(n)
+
+Neither Writable(parent) nor parent:mut type ref is a formation premise.
+OpenHere already uses the existing value/anchor/window judgment; formation does
+not turn it into parent Place writability. A path may retain a borrowed target
+identity when explicitly supplied, but such a borrow is not required to form
+the child name. Borrowing the resulting child Place is a subsequent judgment.
+
+NameCoord's root is r, never Norm(T). For let T:type = uint8, value equality
+does not equate NameCoord(T,f) with NameCoord(uint8,f), their binding identities
+or their Places. Each formation still checks OpenHere of the current value;
+copying a closed type into a fresh binding does not reopen it.
 
 Uninitialized is evaluator/Place state, not an Object, None value, or
 fresh-name value. Creation installs no readable resident and creates no
@@ -286,19 +299,24 @@ the separately designated named-contribution position changes unqualified
 let name = rhs into named-type synthesis (§6); ordinary lexical binding never
 acquires that meaning merely by spelling.
 
-For example, let r be an authorized construction reference and v:uint8:
+For example, let path resolve to a type value T with OpenHere(T), and v:uint8:
 
 ```lang
-mut let byte_ref = (mut let byte::r:uint8) ref;
+mut let byte_ref = (mut let byte::path:uint8) ref;
 byte_ref = v;
 ```
 
 Between these statements, byte exists and a second creation fails freshness.
-A value read of byte::r fails, but its explicit ref can already have type
+A value read of byte::path fails, but its explicit ref can already have type
 uint8 ref because the Place's declared type is known. A write with an
 incompatible type fails Pre and leaves it uninitialized. After the shown write,
-byte::r reads v; later writes use replacement checks. This ordinary Val2
+byte::path reads v; later writes use replacement checks. This ordinary Val2
 payload contributes neither a callability nor a Pattern registration.
+
+For an uninitialized :type Place, that initial reference is InitialTypeSlotRef,
+not meta type ref and not an initialized-type replacement capability. Once it
+holds T:type, ordinary direct mut borrowing and the narrow meta type/ref view
+family apply as specified by [type-reference views](type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
 
 ### 5.1 Closure requires initialized structural names
 
@@ -396,7 +414,9 @@ if realization changes current Val2, its new Core/Norm observation is visible to
 E. Close is not a proof of constant Norm(Core) across such effects. E facts and
 only_val2 counts remain tied to their snapshot/continuation position.
 
-This is the selected generative rule's result realization, not permission to
+This is the selected generative rule's result realization, not a derivation
+through explicit NameExpr formation, GetMutRef and Write. It implies neither
+OpenHere(T), meta type ref nor mut type ref. It is not permission to
 obtain a mut construction view of closed T, perform arbitrary structural let,
 inject a Pattern extension or update V_T. Its ordinary name/result formation,
 access, dependency, Place and lifecycle checks still apply. A saved construction

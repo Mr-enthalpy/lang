@@ -323,8 +323,12 @@ therefore supplies `AuthorityMatches`; `WindowLive` and the result Place's
 ordinary Writable facts remain separate premises. Root stability supplies no opening qualification; the active meta instance
 obtains its mut view from OpenHere.
 
-Normalized root actions execute inside this same meta invocation, using
-`r_root`; they do not enter a second meta frame that would mask its authority.
+Normalized root actions execute inside this same meta invocation, using the
+result name `n_compile` as their structural root. Explicit name formation
+checks the current tau_M's OpenHere and ordinary selector/retention/access
+conditions, not r_root's Writable. The separately obtained `r_root` serves
+actual writes. Neither operation enters a second meta frame that would mask
+the entry frame's authority.
 Normal return completes this closed compilation result and ends its own window.
 Saved references cannot bypass later write Pre. Thus Level selects the source
 tree supplied to normalization, while evaluator invocation/result formation
@@ -387,8 +391,19 @@ evaluation stage. Their positions are distinct. P1 `meta` is not an alias for
 ordinary `mut`, a fourth point in its 3×3 capability table, or permission to
 execute arbitrary runtime expressions at meta stage. The
 [policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md#3-contextual-elaboration-of-p1)
-owns its contextual elaboration. An expression without the required instance
-identity cannot acquire it by relabelling an ordinary value.
+owns its contextual elaboration, whose narrow openness domain also includes
+ordinary `type` and `type ref`. That qualification preserves an existing
+opening subject; it cannot create an invocation identity. Ordinary meta still
+directly constructs its own CompleteType instance, not an arbitrary payload
+or an external type resident.
+
+Explicit instance borrowing follows the same two coherent routes as other
+initialized type names: direct mut type ref, or meta type ref followed by
+explicit ConfirmMut. Both require independent Place Writable/capability,
+access and lifetime as well as current OpenHere. Meta refs retain their
+original borrowed generation, not a proof or a lookup of any later resident.
+Close disables both mutable routes and saved-ref writes. The initial ref of
+an uninitialized name remains a separate one-shot initialization capability.
 
 Value observation remains the default. Explicit type-Place borrowing is distinct
 from `t ref` forming a borrow type. For ordinary Val2 members, explicit borrowing,

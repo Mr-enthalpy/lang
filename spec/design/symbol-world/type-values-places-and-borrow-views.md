@@ -506,10 +506,10 @@ Writable/OpenHere premises and type-valued X/Y:
 
 ```lang
 let t = (() t) |> struct;
-mut let f_ref = (let f::(t |> (type ref)):type) ref;
+mut let f_ref = (let f::t:type) ref;
 f_ref = X;
 let A = t |> compile_fn;
-mut let g_ref = (let g::(t |> (type ref)):type) ref;
+mut let g_ref = (let g::t:type) ref;
 g_ref = Y;
 let B = t |> compile_fn;
 ```
@@ -1221,8 +1221,9 @@ no-implicit-borrow rule are canonical in
 
 ## 3. Value judgment versus place judgment
 
-The model uses two distinct judgments. One evaluates an expression to a value;
-the other resolves a name to a writable place.
+Value-side formation and Place-side borrowing/writing use distinct judgments.
+NameExpr formation observes the current type value through a resolved structural
+root identity; it does not acquire a writable parent Place.
 
 Value evaluation:
 
@@ -1238,14 +1239,15 @@ Place resolution:
 Γ ⊢ x ⇐ p
 ```
 
-means a declaration extension / namespace injection / assignment-like operation
-resolves `x` to a writable place `p`.
+means a selected write/inject operation resolves `x` to its actual writable
+Place `p`. This is not the judgment for forming a qualified NameExpr: formation
+checks the current root type value and creates the child Place before borrowing.
 
-These are not interchangeable. Canonical creation beneath a pure type slot
-selects the explicit higher-level ref of that slot:
+These are not interchangeable. Canonical creation beneath an open type name
+uses the resolved value/path, then separately borrows the new typed Place:
 
 ```lang
-mut let f_ref = (let f::(t |> (type ref)):type) ref;
+mut let f_ref = (let f::t:type) ref;
 f_ref = ...;
 ```
 
@@ -1343,11 +1345,12 @@ type value read through `T` after `let T: type = uint8`; comparing the strings
 The same rule applies to an externally owned pattern value:
 
 ```lang
-mut let t1_ref = (let t1::(t |> (type ref)):type) ref;
+mut let t1_ref = (let t1::t:type) ref;
 t1_ref = bool;
 ```
 
-first resolves the existing parent t and forms its authorized type reference.
+first resolves the existing parent t and checks its current type's OpenHere,
+selector legality, freshness and ordinary access/type/path well-formedness.
 Typed name creation yields NameExpr and an uninitialized Place. Explicit ref
 uses its declared type without reading; ordinary write initializes it with
 bool's complete type. The initialized value retains its own Pattern navigation
@@ -1384,7 +1387,9 @@ position; it does not assume one distinguished object/type facet.
 
 Borrowed structural navigation begins from an actual type reference and
 retains its target Place, resident generation and ordinary capabilities.
-It may identify a prospective final slot for fresh-name creation. It does not
+It may identify a prospective final slot, but is not a prerequisite for typed
+NameExpr formation. Value-side formation uses the resolved structural identity
+and current value's OpenHere, not parent Writable. Neither path can
 turn missing-name occupancy into an optional ordinary language value.
 
 Each resolved host layer is retained for exposure and policy checks; the whole
@@ -1436,15 +1441,18 @@ and value facts. See the construction owner, section 4.4.
 Consequently, associated-member creation through `T`:
 
 ```text
-mut let f_ref = (let f::(T |> (type ref)):type) ref;
+mut let f_ref = (let f::T:type) ref;
 f_ref = ...;
 ```
 
-creates a typed uninitialized Place under the authorized parent. Explicit ref
+creates a typed uninitialized Place under T's resolved structural root after
+the value-side formation checks. Explicit ref
 and ordinary write then initialize it. It does not perform a parent +=, write
-to place(uint8), or bypass the copied value's existing OpenHere rules. Fresh carrier writability alone is insufficient.
+to place(uint8), or bypass the copied value's existing OpenHere rules. Parent
+writability is not required; equal values do not identify name coordinates.
 
-Member creation is a place operation. Structural extension is different: it is
+NameExpr formation is value-side; borrowing and initializing its resulting
+Place are separate operations. Structural extension is different: it is
 the pure value transformation `extend`, while `inject` is the explicit
 read--extend--write wrapper defined in the symbol-first construction document.
 
@@ -2067,6 +2075,112 @@ operand that has a `Val1` payload — `s ref` already does that job. `@` is not 
 fallback for `ref` and is not a borrow constructor
 (`NoImplicitBorrowFormation`).
 
+#### 5.2.2 Initialized type names, meta references and mut confirmation
+
+Contextual meta qualification currently has the narrow domain type and type ref.
+It is not a fourth PolicyMode point and does not generalize to arbitrary meta X
+ref. P2 meta remains evaluation stage. Qualifying an ordinary type value does
+not turn its name into a MetaInstance or change its root identity.
+
+NameExpr formation and borrowing are separate. The cases are:
+
+| Name's Place state | Initialization/mutable-view consumer (non-mut views remain ordinary) |
+| --- | --- |
+| Uninitialized(type) | InitialTypeSlotRef: pending one-shot initialization authority only |
+| Initialized(T:type) | Ordinary direct mut type ref, or an explicit meta type ref view |
+
+InitialTypeSlotRef names the existing initial-borrow judgment, not a new Object
+or policy. It does not read a nonexistent T, cannot use meta qualification to
+replace its initialization authority, and grants no replacement after commit.
+
+For an initialized name n, direct mutable borrowing remains available:
+
+    q = BindingPlace(n), Read(q) = T : type
+    OpenHere_Sigma(T), Writable_Sigma(q)
+    ordinary borrow capability, AccessLegal(q), LifetimeLegal(q)
+    ---------------------------------------------------------
+    DirectMut(n) : mut type ref
+    Target(DirectMut(n)) = q
+
+Explicit MetaRef(n) instead retains the actual target Place, borrowed type
+generation/construction subject and the source at which openness is rechecked:
+
+    r_m : meta type ref
+    Target(r_m) = q
+    OpeningSubject(r_m) = the borrowed T/generation's construction subject
+    MetaOpen_Sigma(r_m) iff OpenHere_Sigma(OpeningSubject(r_m))
+
+Its formation uses ordinary actual-Place, borrow, access and lifetime checks.
+It stores no enduring writable proof. Replacement of q's resident cannot silently
+retarget OpeningSubject; ordinary generation invalidation and explicit rebind
+rules apply. A saved identity may remain meaningful after Close while every
+writable use of it fails.
+
+The meta-qualified ref family admits ordinary writable candidates, not just a
+read marker. Their applicability and write Pre require current facts:
+
+    MetaWriteApplicable(r_m) requires
+      OpenHere_Sigma(OpeningSubject(r_m))
+      Writable_Sigma(Target(r_m)) and the selected operation's Place capability
+      ordinary type/access/lifetime checks
+
+Meta qualification alone implies neither Writable nor an operation's existence.
+The body and write still use ordinary Pre/commit/Post and assignment constraints.
+
+An explicit ordinary candidate confirms the mutable view:
+
+    ConfirmMut : meta type ref -> mut type ref
+    requires MetaOpen_Sigma(r_m), Writable_Sigma(Target(r_m))
+             and ordinary capability/access/lifetime legality
+    r_mu = ConfirmMut(r_m)
+    Target(r_mu) = Target(r_m)
+    BorrowedGeneration(r_mu) = BorrowedGeneration(r_m)
+    Capability(r_mu) <= Capability(Target(r_m))
+
+This confirms existing facts; it converts no authority and does not revive an
+expired borrow. The operation names above specify candidate judgments, not new
+syntax or an implicit conversion path.
+
+At the same continuation position, if both explicit routes are legal:
+
+    Target(DirectMut(n)) = Target(ConfirmMut(MetaRef(n)))
+    realizable ordinary mut capability is the same
+
+This coherence does not license resolver chaining Name -> meta -> mut. Each
+explicit operation uses ordinary selection; selected failure never reopens.
+
+For initialized-type mutable references the irreversible Close law is:
+
+    Valid_Sigma(r : mut type ref) => OpenHere_Sigma(BorrowedType(r))
+    Read(BindingPlace(n)) = T : type and Closed(T)
+      => neither DirectMut(n) nor ConfirmMut(MetaRef(n)) succeeds
+    not MetaOpen_Sigma(r_m) => not MetaWriteApplicable(r_m)
+
+Previously obtained mutable refs recheck this condition on subsequent validity/
+write Pre. Ordinary non-mut observations may survive under their lifetime rules;
+InitialTypeSlotRef remains governed by its separate uninitialized-state law.
+GeneratedOccurrence(T,s,v) implies none of these refs or opening facts: a frozen
+generative rule may realize ordinary Val2 after Close without entering this
+formation/borrow/write path.
+
+These cases distinguish the judgments without introducing new syntax:
+
+| Current facts and operation | Required outcome |
+| --- | --- |
+| path resolves an open T; parent Place is not Writable; selector is valid/unretained and access/path/type checks pass | `const let child::path:U` forms an uninitialized NameExpr; no parent ref is needed |
+| Explicit ref of that child, then first write of v:U with live initial authority | Initializes even though the child is declared const; consumes initialization authority |
+| Reuse that initial ref to replace the resident | No replacement authority follows from the initial ref |
+| Initialized type name, OpenHere and Writable plus ordinary borrow checks | Both direct mut and explicit MetaRef then ConfirmMut yield the same target/generation and realizable mut capability |
+| Same type is OpenHere but target lacks Writable | Neither mut route nor meta write becomes legal merely from openness |
+| Save both kinds of ref, then Close their borrowed subject | Later mut validity/write and ConfirmMut fail; saving the ref does not save the proof |
+| An authorized resident replacement changes generation | A saved ref is checked against its original generation; it does not switch OpeningSubject to the new resident |
+| Equal type values in distinct resolved root bindings | Formation addresses distinct NameCoords, even if both current values are OpenHere |
+| A frozen generator realizes a new ordinary member after Close | No explicit name-formation, ref acquisition, or write-capability inference occurs |
+
+These are semantic conformance cases. Source consumers for the new contextual
+meta ref family remain pending in the implementation; the table does not claim
+that current Rust carriers execute them.
+
 ### 5.3 Borrow constructors have fixed points
 
 Applying a borrow operator to something that is already a borrow view is
@@ -2214,14 +2328,16 @@ ordinary borrow coordinates:
 ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
-A closed-window type-valued slot may still be observed through `type ref`. If the view
-is writable, the complete current value may be replaced by any compatible,
-well-formed type value. What is forbidden is using the closed-window pointee as the
-`old` input of `extend`; holding a reference does not change that value's
-anchor or open window.
+A closed-window type-valued slot may still admit non-mut observations under
+ordinary borrow/lifetime rules. An initialized-type mut reference is valid only
+while its borrowed type generation is OpenHere (§5.2.2); holding it does not
+authorize replacement after Close. Writable(target) alone cannot repair that
+failure. Meta-qualified writable candidates and ConfirmMut recheck the same
+original opening subject; neither follows whatever resident later occupies q.
 
-The holdable interval is consequently its ordinary borrow-valid region, not an
-Open window. Weakening remains useful when write authority is unnecessary:
+Identity retention/non-mut observation follows the ordinary borrow-valid region;
+mutable type-reference use additionally requires the live opening condition.
+Weakening remains useful when write authority is unnecessary:
 
 ```lang
 r share    // type share: still observable, no write authority
@@ -2258,14 +2374,17 @@ The following obligations never collapse into one check:
 
 ```text
 extend on a type value      ->  OpenHere_Σ(value)
-inject through a type ref   ->  OpenHere_Σ(Read(ref)) and Writable(Target(ref))
+inject through a type ref   ->  valid selected ref capability, OpenHere_Σ(Read(ref))
+                               and Writable(Target(ref))
 returning / storing a ref   ->  ordinary lifetime/capability escape check
 ```
 
 Returning a `type ref` from a `compile` callable is therefore governed by the
-same borrow escape rule as any other reference. It may remain usable after the
-pointee's open window closes; a later `extend`/`inject` attempt rechecks the current value's
-window state and may fail independently of the reference's validity.
+same borrow escape rule as any other reference. Its identity and permitted
+non-mut observation may survive closure within that lifetime. Mutable type-ref
+validity additionally requires OpenHere of the original borrowed generation;
+neither a saved mut ref nor a meta ref supplies a write after Close. A later
+resident at the same Place does not retarget that reference (§5.2.2).
 
 ### 5.6 Type-expected positions elaborate `|> type`; candidate discovery does not
 
@@ -2360,24 +2479,26 @@ post-commit, compatibility-checked information flow.
 
 ## 6. Writability, member creation, and construction openness
 
-The checker owns three independent judgments:
+The checker distinguishes the following judgments:
 
 ```text
 Writable_Γ(q)
-CanCreateMember_Γ(parent_place, selector)
+CanCreateMember_Σ(resolved_root, selector)
 OpenHere_Σ(v)
 ```
 
-`Writable` is a place/borrow-capability question. `CanCreateMember` combines a
-stable parent place with construction-unit, lexical, policy, and freshness
-authority. `OpenHere_Σ` is an open-authority question used by structural
-`extend`.
-None is a spelling or proof of another:
+`Writable` is a Place/borrow-capability question. `CanCreateMember` is value-side:
+read the initialized type at the resolved structural root, check its OpenHere,
+selector validity, non-retention and ordinary access/path/type well-formedness.
+It neither requires parent Writable nor acquires a parent mut type ref.
+The coordinate root remains structural identity, not the type's normalized value.
+OpenHere is also required by pure structural `extend`; by itself it grants no
+Place capability:
 
 ```text
 Writable_Γ(q)           does not imply OpenHere_Σ(Read(q))
 OpenHere_Σ(v)           does not imply Writable_Γ(Carrier(v))
-CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
+CanCreateMember_Σ(r, n) does not follow from Writable_Γ(Carrier(r)) alone
 ```
 
 `PolicyMode` is equally orthogonal to object shape and operation capability:
@@ -2403,15 +2524,16 @@ Another family may mark any 3×3 coordinate absent or realize it with
 `default`, `delete`, or `custom`. In particular `mut` selected for a non-ref
 object does not automatically make any place writable.
 
-A writable slot may contain a closed-window type value that can be replaced wholesale
-but cannot be structurally extended from. Conversely an open-window value may be
+A Place's Writable fact alone does not permit replacing a closed type through
+a type ref: the selected mutable type-reference capability also requires
+OpenHere of its borrowed generation (§5.2.2). Conversely an open-window value may be
 extended purely and bound elsewhere even when its source is immutable or has no
 write-back place.
 
 At minimum, ordinary place operations reject a core/external stable place, a
 place reached only through `share`, a place outside its borrow lifetime, or a
-place whose policy denies the action. Member creation additionally rejects a
-parent outside the current construction unit or an already-instantiated child.
+place whose policy denies the action. Name formation separately rejects a
+non-OpenHere current parent type or an already-retained selector.
 Structural `extend` independently rejects a value whose window is
 closed (`WindowLive_Σ = false`) or whose `Anchor` lacks authority under the
 authority-frame resolution
@@ -2441,7 +2563,7 @@ accepted:
 
 ```lang
 let T = (() t) |> struct;
-mut let f_ref = (let f::(T |> (type ref)):type) ref;
+mut let f_ref = (let f::T:type) ref;
 f_ref = ...;
 ```
 
@@ -2470,9 +2592,11 @@ rules; it never redirects an old borrow to the replacement's same-spelled slot.
 Only ordinary rebind can acquire a new target. The concrete generation encoding
 remains open.
 
-Value navigation observes existing objects. Borrowed structural navigation can
-supply a prospective target reached from mut type ref with existing Writable,
-OpenHere and construction authority. Named and ordinal selectors retain their
+Value/path-based name formation uses the resolved structural root identity,
+current resident T:type, OpenHere(T), selector/freshness and ordinary access/type/
+path checks. Parent Writable and a parent mut type ref are not premises. A
+borrowed navigation route preserves its actual target but is not required to
+form the typed child NameExpr. Named and ordinal selectors retain their
 own topology; T*N and T*omega indexing cannot grow a Sequence through let.
 
 ### 7.1 Typed NameExpr, explicit borrowing and first write

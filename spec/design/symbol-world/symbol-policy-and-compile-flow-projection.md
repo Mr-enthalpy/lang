@@ -646,14 +646,40 @@ Declaration and call contexts supply observations of the same joint relation.
 
 ### 3.0 Meta-instance P1 policy
 
+The contextual openness qualification has the narrow domain `type` and
+`type ref`: `meta type` and `meta type ref` are admitted, not arbitrary
+`meta X ref`. This is not a fourth PolicyMode point. Qualifying an ordinary
+type preserves its existing opening subject; it does not manufacture a meta
+invocation identity, a construction window, or a writable Place. P2 `meta`
+continues to denote evaluation stage.
+
+For initialized type names, both direct `NameExpr -> mut type ref` and explicit
+`NameExpr -> meta type ref -> mut type ref` remain available ordinary routes.
+A meta ref records its actual Place, borrowed generation and OpeningSubject;
+its writable candidates require current OpenHere of that subject, independent
+Writable of the target, and the selected capability/access/type/lifetime checks.
+It contains no permanent writable proof. `ConfirmMut` is an explicit ordinary
+candidate that confirms these facts, preserving target/generation and never
+amplifying capability. Where both routes are legal at the same continuation
+position they have the same target and realizable mut capability. Coherence
+does not authorize implicit chaining, candidate retry, or reopen.
+
+Close defeats direct mut acquisition, meta-to-mut confirmation and later
+writes through saved refs. A replacement resident does not retarget a saved
+opening subject. An uninitialized typed Place instead uses the separate
+one-shot initial-borrow/write rules; `InitialTypeSlotRef` is not `meta type ref`.
+The [type/ref owner](type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation)
+gives the precise judgments. The instance-specific retention behavior is:
+
 ```lang
 meta let f = expression;
 plain let g = expression;
 ```
 
-P1 meta retains the ordinary meta instance denoted by expression. Its instance
-name is its type value tau_M; it cannot be an arbitrary value relabelled with
-meta. In this policy, OpenHere is the governing mutation qualification:
+When expression denotes an ordinary meta instance, P1 meta retains it. Its
+instance name is its own type value tau_M; the narrow policy domain does not
+broaden the direct result class to arbitrary payloads or external types.
+In this policy, OpenHere is the governing mutation qualification:
 
 ```text
 MetaInstanceMutationQualification(f, Sigma) iff OpenHere(f, Sigma)
@@ -664,7 +690,8 @@ Unlike an ordinary slot containing a distinct value, there are not independent
 instance const/mut and value openness coordinates to combine. OpenHere is the
 stronger fact: first establish it, then acquire the mut view. Such a view is
 still explicit and its write Pre rechecks the current window. The selected
-operation must exist and satisfy ordinary type, access, capability and lifetime
+operation must exist and satisfy independent target Writable and ordinary type,
+access, capability and lifetime
 rules; meta does not synthesize missing operations or make expired targets live.
 
 The marker retains the invocation's dependency-bounded source through completion.

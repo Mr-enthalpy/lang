@@ -44,9 +44,12 @@ These laws are owned by
 
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
-bodies can perform authorized ordinary binding/inject actions through actual
-mutable type references. Initializer-free P let name:t and P let name::path:t
+bodies perform value-side name formation and separately authorized ref/write
+or inject actions. Initializer-free P let name:t and P let name::path:t
 create typed NameExpr at lexical and structural destinations respectively.
+Qualified formation uses resolved structural root identity and the current
+resident type's OpenHere, valid selector, non-retention and ordinary access/path/type
+checks; it requires neither parent Writable nor a parent mut type ref.
 Their Place state is Uninitialized, not an Object. The initializer-free
 structural form defaults to :type; P let name = rhs is instead a complete
 lexical binding with RHS type inference. Value use requires initialization; explicit

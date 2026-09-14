@@ -193,7 +193,18 @@ engineering facilities after their inputs and effects obey the source model.
   implementation material; it is not an ordinary semantic result class.
 - Connect typed structural NameExpr creation, explicit Place borrowing without
   reading, and ordinary first-write initialization. Uninitialized is non-Object
-  state. Do not install a dummy type or return a ref from creation. Require
+  state. Qualified formation resolves a structural root and checks its current
+  type's OpenHere; do not require parent Writable or parent mut type ref. Test
+  formation under an open type with no parent write capability, rejection for
+  a closed type, and distinct NameCoords for equal type values at distinct roots.
+  Keep generated-after-Close realization outside this explicit formation path.
+  Connect the narrow meta type/ref qualification and explicit ConfirmMut
+  consumer alongside direct mut borrowing. Test same-target/generation/capability
+  coherence, no amplification on non-Writable targets, Close invalidation of
+  both routes and saved writes, replacement without reference retargeting,
+  rejection of arbitrary meta X ref, and no implicit chaining/reopen. This
+  consumer is pending; current Rust capability carriers do not implement it.
+  Do not install a dummy type or return a ref from creation. Require
   initialized retained names being published at Close, without enumerating all
   future generative coordinates. Current let parser carriers
   are pending alignment; no canonical structural let=compound is implied.

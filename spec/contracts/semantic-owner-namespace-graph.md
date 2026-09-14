@@ -276,6 +276,17 @@ is separately the current exact callee type's call-entry construction position.
 Closure syntax there supplies complete entry implementation material under its
 own rules; it does not authorize general receiver adaptation.
 
+Qualified formation resolves a structural root identity and observes the current
+resident type's OpenHere, selector validity, non-retention and ordinary
+access/path/type legality. It requires no parent Writable or parent mut type ref.
+Equal type values do not merge structural root/name/Place identities. Borrowing
+is a separate Place-side judgment. Initialized type names admit direct mut
+borrowing or explicit meta type ref followed by ConfirmMut, subject to the same
+current OpenHere, target Writable, capability and lifetime checks. These coherent
+routes introduce no implicit chain; saved refs retain their borrowed generation
+and cannot write after Close. Initial refs remain initialization-only. See the
+[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+
 Initializer-free P let name:t and P let name::path:t create typed NameExpr
 using lexical and structural destinations respectively, with non-Object
 Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,

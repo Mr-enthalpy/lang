@@ -111,7 +111,14 @@ function layer; consumer alignment is roadmap work.
   anchored replication while preserving captures and internal identity edges?
 
 Typed structural NameExpr creation establishes an uninitialized Place;
-explicit borrowing and ordinary first write initialize it. Initialization
+qualified formation is value-side, using resolved structural root identity and
+current type OpenHere without parent Writable or parent mut type ref. Explicit
+borrowing is Place-side. Contextual meta qualification is closed for type/type
+ref only; direct mut and explicit meta-to-mut confirmation are coherent ordinary
+candidates, not an implicit chain. Both recheck OpenHere, target Writable and
+ordinary capability/access/lifetime. Saved refs preserve their borrowed subject
+and cannot evade Close. These are closed laws; consumer encoding remains pending.
+Explicit borrowing and ordinary first write initialize the Place. Initialization
 authority is independent of const/plain/mut and is consumed on the successful
 first commit; later replacement has separate capability and resident
 compatibility checks. Close requires

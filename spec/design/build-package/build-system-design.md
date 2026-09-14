@@ -21,25 +21,29 @@ path. Future optimization options configure planner search without changing E.
 ## 2. Neutral physical normalization
 
     PhysicalTree(Level) -> MetaProgram
-    NormalizeRoot(Level, r_root) = NormalizeBody(Level, r_root)
-    NormalizeBody(D, r) = Unordered{
-      NormalizeFile(f_i, r), NormalizeDir(n_j, D_j, r), ...
+    NormalizeRoot(Level, b_root) = NormalizeBody(Level, b_root)
+    NormalizeBody(D, b) = Unordered{
+      NormalizeFile(f_i, b), NormalizeDir(n_j, D_j, b), ...
     }
-    NormalizeFile(f, r) = Seq(decoded ordinary meta actions of f under r)
-    NormalizeDir(n, D, r) = Seq(
-      n_expr := ordinary typed name creation let n::r:type;
+    NormalizeFile(f, b) = Seq(decoded ordinary meta actions of f under b)
+    NormalizeDir(n, D, b) = Seq(
+      n_expr := ordinary typed name formation let n::b:type;
       r_n := explicit ref of n_expr;
       r_n = ordinary one-shot empty directory type formation at n's coordinate;
-      NormalizeBody(D, r_n)
+      NormalizeBody(D, n_expr)
     )
 
-Here r_root is the ordinary mutable reference to the instance result construction
-Place of M_compile, established by the [compilation-entry meta formation law](../meta-invocation/meta-object-invocation-and-policy-reduction.md#21-compilation-entry-uses-ordinary-meta-root-formation).
+Here b_root is the invocation result name/binding n_compile of M_compile,
+established by the [compilation-entry meta formation law](../meta-invocation/meta-object-invocation-and-policy-reduction.md#21-compilation-entry-uses-ordinary-meta-root-formation).
 The existing bootstrap parent, selected ordinary meta callable and canonical
 arguments determine M_compile; its active frame and result construction window
 provide the ordinary authority premises. Level selects physical input only.
-Normalization neither creates this reference nor grants its Writable/OpenHere
-facts, and M_compile's owner identity is not itself the borrowed resident.
+Normalization neither creates that root nor grants its OpenHere facts. Name
+formation reads its current type value and uses the resolved structural root
+identity, never Norm of that value. It needs no parent Writable or parent mut
+type ref. The entry's ordinary authorized r_root remains available for actual
+writes under the separate ref rules; M_compile's owner identity is not itself
+the borrowed resident.
 The selected level adds no extra name segment. Each child-directory basename n
 becomes the selector of a generated ordinary structural let action. That action
 uses typed NameExpr creation, explicit borrowing and ordinary initialization.
@@ -49,29 +53,35 @@ navigate and extend that resident. Omitted policy supplies no override; the
 ordinary inherited/contextual policy and applicable default completion apply.
 See [name realization](../symbol-world/names-and-overload-groups.md).
 
-The generated action realizes NameCoord(r,n); it does not manufacture that
+The generated action realizes NameCoord(StructuralRootIdentity(b),n); it does not manufacture that
 coordinate's identity. Coordinates alone provide no Place or construction
 permission. This normalization-generated syntax is not a generative meta-head
 occurrence: the latter's Val2-only registration rule is a semantic occurrence
 distinction, not a test of a frontend Generated provenance tag.
 
 Evaluation of the directory body follows its creation in that directory's serial
-wrapper; its child blocks share the post-initialization snapshot and r_n. This ordering
+wrapper; its child blocks share the post-initialization snapshot and initialized
+name n_expr. This ordering
 is internal to the wrapper and grants no priority over its parent's siblings.
-Directory contents use ordinary named-contribution positions and extend/inject
-through r_n. They acquire no write privilege from physical containment.
+Directory contents use ordinary named-contribution positions and extend/inject.
+The initial ref r_n loses its initialization capability at commit. Later writes
+require a separately applicable ordinary ref/write candidate, including direct
+mut or explicit meta-to-mut confirmation for an initialized type. Physical
+containment grants no write privilege.
 
 Discovery emits these syntax-directed actions, not preinstalled namespace
-nodes. A generated let must pass the same freshness, Writable, OpenHere and
-construction-authority checks as a source-written action. A conflicting existing
+nodes. A generated let must pass the same value-side OpenHere, selector,
+non-retention and access/path/type checks as a source-written action. Child
+borrowing and initialization independently check the existing one-shot Place
+authority. A conflicting existing
 name is an ordinary creation/write conflict; normalization cannot overwrite it,
 choose a different target or merge it by directory privilege. Selector spelling
 must be representable under ordinary name rules; otherwise normalization reports
 a diagnostic rather than inventing a naming policy.
 
 For a level containing main.lang, helpers.lang and math/vector.lang, both root
-files target r_root, while the math wrapper creates math under r_root and runs
-vector.lang under r_math. Neither filename adds a segment. The directory edge
+files target b_root, while the math wrapper realizes math under b_root and runs
+vector.lang under the initialized math name. Neither filename adds a segment. The directory edge
 has meaning only through this ordinary generated name action; the physical path
 otherwise supplies provenance, not an additional owner or permission.
 

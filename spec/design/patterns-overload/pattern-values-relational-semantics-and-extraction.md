@@ -299,7 +299,7 @@ therefore neither namespace shape nor the set of currently callable helpers.
 For value:ValueType, ordinary navigated creation and initialization, including:
 
 ```lang
-mut let f_ref = (let f::(s |> (type ref)):ValueType) ref;
+mut let f_ref = (let f::s:ValueType) ref;
 f_ref = value;
 ```
 

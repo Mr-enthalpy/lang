@@ -494,29 +494,37 @@ document therefore depends on three identities being kept separate:
 
 The consequences that field/access-tree work must preserve:
 
-- `let t: type = uint8` creates a fresh symbol and a fresh current-level writable
+- `let t: type = uint8` creates a fresh name binding and a fresh current-level
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
-  `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
+  `place(t) != place(uint8)`. It is not a fresh nominal type and not a binding
   alias.
 - Typed structural let creates NameExpr for a fresh uninitialized Place;
   explicit ref and ordinary write initialize it without role registration.
-  A target reached through `t |> (type ref)` remains under `place(t)`, never
-  `place(uint8)`. NameBinding supplies no wrapper or `.type` field, and value
+  Qualified formation uses the resolved structural root and current type's
+  OpenHere, not parent Writable or a parent type ref. Its NameCoord remains
+  rooted at t, never uint8 merely through value equality. An explicitly borrowed
+  target likewise preserves its actual Place. NameBinding supplies no wrapper
+  or `.type` field, and value
   equality cannot canonicalize these distinct construction targets. By-value
   observation does not recover either Place.
 - There is no place-forwarding declaration form. Every binding allocates its own
   place, so no second name reaches `place(uint8)`. Where shared observation is
   wanted, the value held is a borrow view (`ref` / `share`), and its
   capability never exceeds the underlying place's own. A missing final child
-  still has stable `ProjectionSlot(parent, selector)` identity: `let` may instantiate
-  it, while bare `=` may only write `Some(existing)`.
+  has NameCoord independently of realization. Typed let may realize its Place;
+  ordinary first write initializes that typed Uninitialized Place using one-shot
+  authority. Replacement requires initialized resident compatibility and a
+  separate replacement capability. Assignment never realizes an unretained name.
 - That prospective coordinate is not the target identity of a borrow already
   formed from a resident child. Parent wholesale replacement may invalidate the
   old borrow, but never redirects it to a new child at the same coordinate;
   only `rebind` selects a new target.
-- `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. A closed-window type slot
-  may remain writable for wholesale replacement, and an open-window value may be
-  extended purely without a writable carrier.
+- `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. Writable
+  alone cannot permit replacement through a type ref after Close: direct mut
+  refs and meta-ref writable candidates require OpenHere of their original
+  borrowed generation. An open-window value may be extended purely without a
+  writable carrier. Explicit meta-to-mut confirmation preserves target and
+  capability; it does not amplify authority or introduce implicit chaining.
 
 This is only a summary. For the canonical `TypeValueId` implementation index
 root / `PlaceId` / `NameBindingId` distinction — including the object normal form,
