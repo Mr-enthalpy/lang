@@ -31,7 +31,7 @@ and every semantically observed name/subject/borrow dependency identity. The
 result name is not an input structural child and changes neither input Val2 nor
 Norm. Its openness source is the meet over AccessClosure_out(In); open inputs
 are admitted with ordinary identity, access and lifetime checks. P1 meta retains the instance under OpenHere, which governs mut acquisition;
-plain let completes and closes it. P2 meta remains the evaluation stage. Global persistence requires the stronger
+plain let completes and closes it. P2 meta remains the evaluation horizon. Global persistence requires the stronger
 global stability/escape judgments.
 
 The invocation registry/cache associates the full key with the same result
@@ -62,8 +62,10 @@ is not canonical. Close requires retained structural names being published to be
 initialized; it does not require all future generated coordinates to be realized.
 Ordinary lexical let remains unchanged.
 
-Same-name construction synthesizes a named type's V_tau under membership and
-OpenHere checks. An explicit OverloadGroup aggregates type candidates instead.
+Implementation-layer closure expressions produce tau_C; ordinary let binds the
+result. Same-name synthesis requires an established structural contribution
+role and membership/OpenHere checks; ordinary legal binding/shadowing/mutation
+never becomes contribution by RHS shape or failed execution. An explicit OverloadGroup aggregates type candidates instead.
 See [names and type algebra](../design/symbol-world/names-and-overload-groups.md),
 [closure replication](../design/symbol-world/closure-anchored-replication.md),
 and [associated state A](../design/symbol-world/associated-compile-state.md),
@@ -71,3 +73,8 @@ which is derived from the general invocation facilities.
 Legacy result-class/cell carriers do not add a semantic result ontology.
 Construction effects participate in the enclosing evaluator's existing commit
 rules; files do not supply construction authority.
+
+Compilation entry has runtime P2 and omitted ordinary P1 defaults to runtime.
+Bootstrap or ordinary legal meta formation supplies stable roots, without an
+active meta wrapper over all compilation. Actual MetaDom forbids seal work;
+actual SealDom forbids meta invocation, including cache hits and helper calls.

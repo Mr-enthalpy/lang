@@ -22,8 +22,8 @@ the complete surface policy and only then elaborates the residual `PairSpec` as
 contain its own semantic mode coordinate. Concrete ModeAtom is const/plain/mut;
 an explicit Pattern hole supplies a HoleRef instead. A surface `PolicyChoice` containing more
 than one ModeAtom, including `const || mut`, is preserved by
-Raw/Normalized syntax but rejected by typed Policy elaboration. This does not
-restrict same-coordinate pair/view choices such as `compile || runtime`. The
+Raw/Normalized syntax but rejected by typed Policy elaboration. Resolved stages likewise contain one atom; multi-stage unions are invalid.
+Solver alternatives remain possible until they yield concrete solutions. The
 current rejection of `const:compile`, `runtime:const`, and `const:mut` is an
 empty-residual-side surface rule, not a consequence of
 orthogonality; a future contextual shorthand must still factor mode exactly
@@ -36,59 +36,35 @@ Policy positions have contextual elaborators:
 
 ```text
 ordinary binding P1          -> identity-preserving slice restriction
-formal parameter policy      -> Pin = Overlay(P2, Delta_in)
-return-position policy       -> Pout = Overlay(P1, Delta_out)
+formal parameter policy      -> Pin = ElabIn(P2, Delta_in)
+return-position policy       -> Pout = ElabOut(P1, Delta_out)
 namespace declaration policy -> visibility plus optional export-root
 ```
 
-A single ordinary P1 is value-dominant, not `Q:Q`. Its selected value stage set
-is intersected with the requested set; the associated Pattern identity is
-retained. Any non-empty projection completes ordinary binding elaboration.
-Unselected alternatives in the P1 query are not missing-value demands.
+A concrete accepted existing view satisfies a demand without reconstruction.
+No unresolved solver alternative manufactures a missing view.
 
 ## 2. P2 and function objects
 
-Explicit P2 requires no runtime stage in Pp and equal static stage sets between
-Pv and Pp whenever Pv has a static stage.
+P2 is the evaluation horizon, P1/Pout producer visibility, InputAdmissible the
+input relation and Ready the current execution condition. Resolved Stage is
+{meta,compile,seal,runtime}; the order contains only identity and the three
+static-to-runtime edges. Static atoms are mutually incomparable.
 
-| Single P2 | Pair |
-|---|---|
-| `meta` | `meta:meta` |
-| `compile` | `compile:compile` |
-| `seal` | `seal:seal` |
-| `runtime` | `runtime:compile` |
-| `runtime || compile` | `(runtime || compile):compile` |
-| `runtime || seal` | `(runtime || seal):seal` |
+Pv:Pp remains an observation pair: runtime:compile and runtime:seal are valid.
+Omitted ordinary P1 stage defaults from runtime P2 to runtime, seal to seal,
+compile to compile; contextual meta qualification has its separate owner.
+Explicit P1 is never overwritten and bare let is not a late wildcard.
 
-When stage is omitted and no inherited/contextual constraint supplies it,
-function-object default stage completion may use:
+Pin inherits P2 with explicit stage/mode atoms or ordinary holes where written.
+Pout inherits P1's stage and permits mode refinement. A runtime callable can
+therefore have heterogeneous compile/runtime Pins. Compile can admit a seal
+input and defer through InputAdmissible/Ready without a seal-to-compile
+migration. Self remains the first written formal, supplied implicitly.
 
-```text
-Stage(P1p) = Stage(P2p)
-Stage(P1v) = Stage(P2v) || Stage(P2p)
-```
-
-P1 and P2 remain independent; the conditional default is not P2-to-P1 semantic
-deduction. Only stages participate in this completion. PolicyMode, visibility,
-export-root and value presence retain their own declaration/context rules.
-
-Each written formal parameter inherits P2 first. The first written formal is
-the caller-object self Pattern even though its actual is passed implicitly;
-later formals consume the explicit call-site Product. An omitted qualifier
-inherits P2 unchanged, including its mode. Written plain/const/mut or an explicit
-formal-local hole overlays only PolicyMode; inherited-only coordinates retain
-P2. Bare return-position let analogously inherits P1. An omitted function-object
-mode preserves no written override; applicable default completion is separate.
-An explicit declaration P1 may crop the exposed view. Namespace
-declaration elaboration does not crop this complete internal view merely
-because the declaration is exported. Stable external admission is determined
-by export retention plus public path visibility; later consumer dynamic-legality
-checks do not rewrite namespace membership or the internal mode to `const`.
-
-Formal elaboration has two consumers of the same result: the entered callable
-body receives the effective pair and mode, and overload candidate formation
-copies the mode into that parameter's external three-point product-order position.
-Neither consumer may reconstruct a different policy.
+Formal elaboration feeds the same position facts to body entry and ordinary
+candidate comparison. Namespace export retains identity and stable declaration
+facts; later consumer demand and DynamicLegality create no second view owner.
 
 ## 3. Phase mapping
 
@@ -118,12 +94,11 @@ exposes no readable runtime value, but exposes its compile Pattern and derived
 compile companion. Seal-only slices are hidden in OpenStatic but
 their explicit paths are not semantically conflated with unresolved paths.
 
-For `(compile || runtime):compile`, selecting the runtime Policy slice is also
-distinct from reading it. The slice already exists extensionally, so demand
-satisfaction does not invoke migration. In OpenStatic/SealStatic its runtime
-value is still unreadable and remains residual. The later Runtime continuation
-uses the already resolved binding/callable identity rather than reopening
-ordinary namespace or overload selection.
+A declared runtime view can exist while its Val1 is unreadable at a static
+frontier. Hiding that Val1 preserves the Object, Pattern, Val2 and argument
+slot. R_vis prepares admissible C_sigma projections before ordinary hard A,
+fallback suppression and Policy/Pattern selection. Once selected, every
+projection and runtime residue keeps the same origin and frame.
 
 Explicit-path resolution is authority-sensitive:
 
@@ -203,7 +178,7 @@ lookup by ordinary selection; the consumer then forms
 `DynamicLegality_Γ_consumer` for the selected invocation from its place,
 lifetime, access, escape, and authority facts. `absent:Pp` is not
 special-cased by mode. The generic policy parser and function-object stage
-lifting do not perform these operations.
+completion do not perform these operations.
 
 Namespace and Pattern consumers use three projections rather than treating
 export as one universal visibility bit:
@@ -221,8 +196,9 @@ a future custom `?` design owns richer extraction-interface construction.
 
 ## 5. Rust substrate
 
-The following carriers are implementation inventory, not evidence that the new
-omission/overlay/hole semantics is connected. Existing helpers that insert Plain
+The following carriers are implementation inventory, not evidence that the
+single-stage or R_vis/C_sigma model is connected. StageSet and union-accepting
+helpers/tests still require migration; the mapping below is not normative algebra. Existing helpers that insert Plain
 for every omitted binding or call demand need alignment; operator-Pattern policy
 deduction and the joint Pin/Pout solution relation remain pending consumers.
 
@@ -269,14 +245,13 @@ scalar policy projection.
 
 - Policy words remain contextual names, not lexer keywords.
 - Pattern `|` is never policy choice; policy choice is `||`.
-- Single P2 `runtime` normalizes to `runtime:compile`.
+- Runtime horizon uses runtime:compile for ordinary value/Pattern observation.
 - Explicit `runtime:seal` remains valid.
 - P1 projection crops an exposed slice.
 - A non-empty ordinary P1 projection never manufactures absent query
   alternatives and makes migration unreachable.
-- After the complete existing projection is empty, an accepted runtime
-  alternative may be extracted as the constructible branch; other alternatives
-  are not manufactured.
+- After existing projection is empty, a concrete runtime demand may admit one
+  direct same-Type migration; solver alternatives are not manufactured views.
 - Policy slicing of `Pp` does not extract, navigate, reroot, or otherwise
   transform a PatternValue.
 - Atomic migration mandates only the static-to-runtime stage edge, unchanged

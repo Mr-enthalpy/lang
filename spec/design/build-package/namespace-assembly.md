@@ -9,10 +9,10 @@ blocks. Child-directory basenames become ordinary typed-name creation actions,
 explicit Place borrows, and ordinary one-shot directory type initialization,
 followed serially by the directory body under that reference. The selected root and filenames add no
 segments; [physical normalization](build-system-design.md) owns the desugaring.
-Their ordinary meta evaluation creates Objects, names, Places, and
+Their ordinary evaluation creates Objects, names, Places, and
 semantic owners. Namespace indices are projections of those committed actions.
 
-    normalized meta action
+    normalized source action
       -> ordinary resolution and invocation
       -> Pre
       -> semantic commit
@@ -43,7 +43,11 @@ is not canonical. Close requires retained structural names being published to be
 initialized, not every future generated coordinate realized. Ordinary lexical
 let remains unchanged. See [name semantics](../symbol-world/names-and-overload-groups.md).
 
-Sibling contributions join according to ordinary type-contribution/effect algebra.
+Implementation-layer closure expressions return tau_C; let binds the evaluated
+RHS. Only established structural contribution roles join by ordinary
+type-contribution/effect algebra. Equal NameCoord or callable RHS alone does
+not reclassify a legal binding/shadow/write. Entry has runtime P2; stable root
+ownership establishes no permanent active MetaDom.
 Conflicting writes are not repaired by file order. File ownership, one-type-slot
 restrictions and package mounts provide no additional admission rules.
 

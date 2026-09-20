@@ -337,15 +337,39 @@ all coordinates or possible future realizations.
 
 ## 6. Positional synthesis and lexical let
 
-Only a named-contribution construction position gives unqualified
-`let name = expression` same-name synthesis meaning. Ordinary lexical let
-retains its ordinary binding/transfer rule. Typed structural name creation
-retains freshness and does not itself register any member role.
+In the specified structural namespace implementation layer, evaluating a
+closure expression C produces the complete type tau_C. The let action binds
+that evaluated RHS by its ordinary rule; it does not wrap an already evaluated
+function value into a second type. Other materialization layers retain the
+ordinary function-object result.
+
+```text
+Eval_impl(C) = tau_C
+let f = C  => bind the evaluated tau_C
+let a = uint8 => ordinary binding of uint8
+```
+
+The first closure's result is fixed at its evaluation, independently of
+whether later material contributes to f. Contribution synthesis produces a
+complete type T_f, never an implicit OverloadGroup.
+
+Only an explicitly established structural contribution role admits subsequent
+same-name contribution. Conservative legality repair recognizes predetermined
+syntactic contribution shapes that cannot be ordinary legal statements. It
+preserves every legal binding, shadowing, mutation and explicit group action.
+It never runs an ordinary action, catches failure and retries as contribution;
+callable/type RHS shape and same-name spelling alone are insufficient.
+
+Typed structural name formation retains freshness and establishes no member
+registration by itself.
 
 ### 6.1 First contribution forms the first resident directly
 
-Once e evaluates to v, Delta_v is the same ordinary member material accepted
-at that construction position, with the same policy, captures and dependencies.
+For established contribution material, Delta_v carries its entry identity,
+policy, captures and dependencies. At the implementation-layer closure
+position the evaluated RHS already supplies tau_C; ordinary binding retains
+that result without an additional wrapper. For joined explicit contribution
+material the existing formation relation applies:
 The target navigation is fixed by the typed name construction. The existing
 one-shot struct formation relation determines the complete first resident:
 
@@ -363,7 +387,11 @@ registrations together. No empty type resident or initial inject is required.
 A failure before successful write leaves no readable first resident, subject
 to ordinary transaction rules; Close cannot publish that uninitialized name.
 
-For subsequent contributions, T_i = Read(q_f) exists. The existing
+Contributions preserve classifier homes, actual construction authority and
+lifetime. Eligible anchored replication requires its ReinstantiationWitness;
+it never reparents an existing closure or blindly copies V_tau entries.
+
+For subsequent explicitly established contributions, T_i = Read(q_f) exists. The existing
 [one-shot/extend equivalence](symbol-first-meta-construction-and-pattern-injection.md)
 determines Extend(T_i, Delta_v); inject is read + extend + write. TypeAdd is
 its callability contribution step with the complete-type home, residency and
@@ -372,7 +400,8 @@ there is no extra post-inject += and no replay of earlier RHS captures.
 
 ### 6.2 Unordered siblings share the coordinate before realization
 
-Two sibling contributions to f under r refer to the same NameCoord(r,f).
+Two sibling actions already established as contributions to f under r refer
+to the same NameCoord(r,f). Equal coordinates alone do not establish that role.
 They do not allocate competing name identities:
 
     Contribution(NameCoord(r,f), Delta_1)
@@ -384,8 +413,9 @@ determines one first complete resident by the same OneShotFormation relation
 above. A sequential trace is one presentation of that formation, not a
 requirement that one sibling wins a CreateName race. When a resident already
 exists, the ordinary extension/contribution relation uses that snapshot.
-Explicit mutually exclusive declarations may still conflict under realization
-rules. Coordinate agreement supplies no write authority, no duplication of
+Exclusive ordinary initializations conflict under realization rules; they do
+not merge as contributions. No filename or sibling execution order gets
+priority over the common snapshot. Coordinate agreement supplies no write authority, no duplication of
 first-initialization capability and no permission to collapse distinct entries.
 
 ## 7. Identity and closure

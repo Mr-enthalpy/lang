@@ -55,7 +55,8 @@ The canonical order is:
 1. callee resolution
 2. pre-C0 family filter
 3. candidate enumeration
-4. repeated candidate-entry exposure collapse, visibility, phase, and frame formation
+4. R_vis(c,Omega,sigma): visibility, InputAdmissible and projection evidence
+   -> ordinary C_sigma(c) preparation where required; frame formation
 5. hard applicability A, including Pattern relation and declared result Type
 6. declaration fallback/suppression where the language defines it
 7. Policy product preference Bp
@@ -71,7 +72,7 @@ Only repeated exposure of the same stable candidate-entry identity may collapse.
 Distinct contribution entries never deduplicate merely because their values or
 types normalize equally; equality and interning cannot quotient those entries.
 
-ResultPolicyDemand, when present, is formed before Bp maxima. Omitted mode
+ResultPolicyDemand is total before maxima, recording absence when unconstrained. Omitted mode
 preserves NoWrittenModeConstraint; inherited/contextual constraints or an
 applicable DefaultModeCompletion may resolve a mode demand. Omission alone is
 not explicit plain. Pair/stage result demand is a hard candidate constraint;
@@ -93,8 +94,12 @@ Pattern meaning.
 
 Policy holes participate in this same joint relation:
 
-    Pin_i(rho) = Overlay(P2, Delta_in_i(rho))
-    Pout(rho)  = Overlay(P1, Delta_out(rho))
+    Pin_i(rho) = ElabIn(P2, Delta_in_i(rho))
+    Pout(rho)  = ElabOut(P1, Delta_out(rho))
+
+Pin allows explicit stage atoms/holes; Pout.stage=P1.stage. R_vis executes no
+speculative candidate bodies or effects. Unresolved projection evidence stays
+in the continuation, not an arbitrary candidate choice.
 
 Actuals and optional output demand constrain compatible solutions together;
 neither policy side semantically computes the other. Registered operator
@@ -106,7 +111,9 @@ their chosen result policy or overload.
 ## 5. Selection seal
 
 Unique selection yields a sealed invocation token containing the selected
-candidate identity and completed frame. Execution receives that token, not the
+candidate identity, projection configuration and completed frame:
+Selected=(c*,sigma*,frame). Compile projections and runtime residue retain
+that same selected origin; runtime does not reselect. Execution receives that token, not the
 candidate list. Any later failure—capability, place, lifetime, authority,
 projection, body, result class, or migration realization—is terminal for that
 invocation and cannot select a runner-up.

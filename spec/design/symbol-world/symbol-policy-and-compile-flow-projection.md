@@ -10,8 +10,9 @@ source policy syntax
   -> contextual elaboration
   -> PolicyPair
   -> binding resolution
-  -> phase-slice exposure
-  -> binding/overload selection
+  -> visibility/input evidence R_vis
+  -> ordinary compile realization C_sigma where required
+  -> hard admissibility / ordinary overload selection
   -> OpenStatic evaluation
   -> SealStatic evaluation
   -> Runtime binding and evaluation
@@ -24,7 +25,7 @@ distinct. P1 also admits `meta` for the invocation instance whose name is its
 own type value (§3.0). For that instance OpenHere governs mut qualification;
 ordinary const/mut modes do not supply a second independent gate. This marker
 is contextual P1 policy, not another atom of ordinary PolicyMode's 3×3 tables.
-P2 meta continues to specify the callable's evaluation stage.
+P2 meta continues to specify the callable's evaluation horizon.
 
 Language computation remains one object flow. Every object has the same three
 components:
@@ -103,8 +104,8 @@ Pp  policy of the Pattern/anonymous-type component observed at this edge
 There is no scalar replacement for this pair, no third `Pv`/`Pp` component, and
 no independent complete P3 Policy product. Parameter and return positions do
 nevertheless have position Policies: `P_in` overlays P2 and `P_out` overlays
-P1. Their inherited pair/stage coordinates remain fixed while their orthogonal
-whole-slot `PolicyMode` may be explicitly refined. A result object carries its
+P1. Pin admits explicit stage constraints and ordinary stage holes; Pout inherits
+P1's stage. Both positions may refine their orthogonal whole-slot PolicyMode. A result object carries its
 own `PolicyPair` when it re-enters the flow.
 
 The pair is an observation edge, but its two axes are constrained by whether the
@@ -115,7 +116,7 @@ constrain the whole-slot PolicyMode coordinate:
 Val1?(x) = null  =>  Pv = Pp
 
 Pv != Pp  =>  Val1?(x) != null
-          and runtime ∈ Stage(Pv)
+          and Stage(Pv) = runtime
 
 Pv = absent  does not imply  Val1?(x) = null
 
@@ -432,13 +433,13 @@ Precedence, from tightest to loosest, is:
 Thus:
 
 ```text
-const + runtime || compile : compile
+const + runtime : compile
 ```
 
 means:
 
 ```text
-const + (runtime || compile) : compile
+(const + runtime) : compile
 ```
 
 ### 2.1 Policy grammar
@@ -505,8 +506,7 @@ never remain as a residual `PolicyAtom` for `Pv` or `Pp`.
 
 In a result-demand context, omission records NoWrittenModeConstraint. Existing
 inherited/contextual constraints apply first; only a context requiring default
-completion with no such constraint may complete the mode to plain. Thus
-compile || runtime let e retains its stage choice without spelling a mode.
+completion with no such constraint may complete the mode to plain. Thus a written compile stage constraint need not spell a mode.
 
 `FactorWholeSlotMode` walks the complete `PolicySpec`, extracts one connected
 Mode Pattern once, and removes those atoms before either colon side is
@@ -544,47 +544,31 @@ change.
 
 ### 2.2 Algebra
 
-`||` selects alternatives within one dimension:
+A completed stage coordinate is one atom:
 
 ```text
-runtime || compile
-meta || compile
-runtime || S
+Stage = {meta, compile, seal, runtime}
+<=stage = Id ∪ {(meta,runtime), (compile,runtime), (seal,runtime)}
 ```
 
-It is not arbitrary clause-level Boolean disjunction. These are invalid:
+The three static atoms are pairwise incomparable. They share one static
+evaluator; neither that fact nor execution readiness establishes a stage edge.
+The static-to-runtime edges require an admitted ordinary same-Type migration.
+No runtime-to-compile or seal-to-compile conversion follows.
 
-```text
-runtime || const
-runtime || plain
-const || plain
-plain || mut
-const || mut
-const || plain || mut
-compile || public
-mut || export
-(const + runtime) || (mut + compile)
-```
+PolicyChoice remains syntax and ordinary Pattern material. It does not make
+`runtime || compile`, `meta || compile`, or `seal || compile` a resolved
+stage. A solver may retain several candidate valuations until unique selection;
+each solution still has one atom. Explicit stage holes and omission are distinct.
 
-`+` combines different dimensions:
+`+` combines orthogonal constraints, for example `const + runtime`.
+`const + mut`, `public + private`, cross-dimension choices and multi-point
+PolicyMode demands are invalid. Presence alternatives remain their own
+coordinate. The AST retains PolicyPair, PolicyConjunction, PolicyChoice,
+PolicyAtom and AbsentValuePattern; typed elaboration validates their meanings.
 
-```text
-const + runtime
-plain + runtime
-mut + (runtime || compile)
-public + compile
-```
-
-It cannot combine mutually exclusive values in one dimension:
-
-```text
-const + mut
-public + private
-```
-
-The syntax and normalized AST retain `PolicyPair`, `PolicyConjunction`,
-`PolicyChoice`, `PolicyAtom`, and `AbsentValuePattern`; `||` and `+` are never
-lowered to the same set insertion operation.
+`Pv:Pp` remains a pair. In particular `runtime:compile` and
+`runtime:seal` are valid; they do not denote unions of stages.
 
 ### 2.3 Deduction is ordinary operator Pattern extraction
 
@@ -768,11 +752,11 @@ solved through the ordinary candidate relation; a missing atom is no hole.
 
     DefaultModeCompletion applies only when the context requires completion
       and no written/inherited/contextual constraint already supplies the mode.
-    DefaultStageCompletion obeys existing one-way stage admissibility.
+    DefaultStageCompletion follows §5 and returns one stage atom.
     Neither is a general P1-from-P2 or P2-from-P1 semantic deduction.
 
 The current phase always constrains evaluation. Candidate-local stage
-completion may use the established lift when the relevant stage is omitted;
+completion may use §5 when the relevant stage is omitted;
 explicit P1 is never overwritten. ImplicitEvaluationP1StageView names exposure
 of the resulting candidate view in kappa, not another outward authority.
 
@@ -886,7 +870,7 @@ ordinary result carrier through which a completed expression view is exposed
 to its parent expression. The outward view exposes exactly the concrete
 whole-slot mode completed under the local context. Omission is not an explicit
 plain constraint; typed coordinate legality still applies to written Patterns. Any
-residual `Pv:Pp` choice, including `compile || runtime`, remains part of `pi`.
+residual `Pv:Pp` constraints remain part of `pi`; each solved stage is one atom.
 
 Producer preference and outward acceptance are different relations:
 
@@ -1042,7 +1026,7 @@ Qv:Qp let x = expr;
 Projection returns an identity-preserving restricted view. Given:
 
 ```text
-Pv = compile || runtime
+Pv = runtime
 Pp = compile
 ```
 
@@ -1053,8 +1037,8 @@ Pv = runtime
 Pp = compile
 ```
 
-It must not return the original `compile || runtime` entry. name binding identity and
-Pattern identity do not change; only the visible slice is cropped.
+The query accepts this concrete observation without reconstruction. Binding
+and Pattern identities remain unchanged; there is no second stage slice.
 
 Result-view satisfaction is existing-view-first:
 
@@ -1108,10 +1092,10 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
-Pin and Pout are symmetric derived positions with independent parents:
+Pin and Pout have independent parents and different stage rules:
 
-    Pin = Overlay(P2, Delta_in)
-    Pout = Overlay(P1, Delta_out)
+    Pin = ElabIn(P2, Delta_in)
+    Pout = ElabOut(P1, Delta_out)
     bare let -> Delta = empty
     written atom -> explicit override
     <p> p let -> mode overlay containing the formal-local HoleBinderId p
@@ -1122,8 +1106,11 @@ Pin and Pout are symmetric derived positions with independent parents:
     mut let x      -> Overlay(P2, Mode=mut)
     <p> p let x    -> Overlay(P2, Mode=rho(p))
 
-Mode may be overridden; stage and other inherited-only coordinates remain
-P2's. Omission, explicit concrete mode and explicit hole are not interchangeable.
+Pin may override stage with an explicit atom or an ordinary Pattern hole.
+For example a runtime-horizon callable can have one compile Pin and one
+runtime Pin. Missing input stage inherits P2; a hole is solved, never defaulted
+as if omitted. InputAdmissible checks each actual against its position, rather
+than comparing every input stage with P2 in a total order. Omission, explicit concrete mode and explicit hole are not interchangeable.
 Visibility/export do not acquire invented formal/output counterparts.
 SafetyPolicy retains its own independent consumer meaning.
 
@@ -1153,8 +1140,8 @@ FormalPolicyMode(parameter)
   -> MaxPolicyProduct
 ```
 
-Thus P2 still governs the pair visible inside the body, while the whole-slot
-mode participates in comparison against other fully admissible overloads.
+Thus the elaborated Pin governs each body's input observation, while its
+whole-slot mode participates in comparison against fully admissible overloads.
 Implementations must not collapse `plain` back into an unspecified carrier.
 
 #### 3.2.1 Return policy refinement inherits P1
@@ -1331,11 +1318,10 @@ This is the **Existing-First, Constructible-Second** principle:
 2. language-constructible accepted views
 ```
 
-The current set of stage branches admitted for non-identity construction is
-exactly `{ runtime }`. Construction does not mean every alternative in `Q`
-becomes an obligation.
-The original query may be `meta || runtime`; if its complete existing
-projection is empty, the derived migration target is only its runtime branch.
+A stage-changing migration has a selected static source atom and runtime
+target atom. Unresolved solver alternatives are not a completed Policy view.
+Migration evidence may constrain R_vis, but speculative candidate enumeration
+executes no migration body or effect.
 
 ```text
 OnePolicyMigrationAlgebra:
@@ -1360,9 +1346,8 @@ Policy transition merely because its return value has a useful shape.
 
 `BindingP1Demand` uses the exact conservative `ProjectP1` theorem in §3.1.
 Formal parameter and result consumers retain their existing policy-Pattern and
-applicability rules. A demand that accepts `compile || runtime` is satisfied by
-an available compile slice; the mere spelling of `runtime` as another accepted
-alternative creates no materialization obligation.
+applicability rules. An existing accepted concrete view is consumed without materialization.
+An unresolved stage hole is not an instruction to construct all possible views.
 
 `MechanicalPolicyDemand` records the origin of a language-selected mechanical
 realization within a selected migration. It does not imply that arbitrary
@@ -1370,213 +1355,67 @@ Policy failure may search `ref`, `share`, `@`, or another structure-changing
 operation. Those operations occur only when separately required by their own
 language rule and then use ordinary function-object invocation.
 
-### 3.5 Slicing and atomic runtime migration
-
-Slicing and migration are sequential, not freely competing alternatives:
+### 3.5 Existing views and atomic runtime migration
 
 ```text
-source result
-  -> Project_in: select an existing source Policy view
-  -> Migration: one authorized directed runtime materialization
-  -> ordinary result object
-  -> Project_out: select the demanded output Policy view
+source -> Project_in -> one selected Migration -> ordinary result -> Project_out
 ```
 
-Conceptually:
+Projection selects an existing concrete view; it does not construct an object.
+If the complete query already has an accepted view, identity is the only
+migration candidate. Otherwise one admitted direct family may provide:
 
 ```text
-Project_out o Migration o Project_in
+S:S, Type T -> runtime:S, Type T    where S ∈ {meta, compile, seal}
 ```
 
-`Project_in` and `Project_out` belong to existing Policy slicing algebra.
-Migration is a directed operation, not a partial order. No transitive closure
-or migration-chain search is formed. An operation implementation may call
-other ordinary operations explicitly, but the demand satisfier prepares at
-most one direct migration layer.
+The selected callable provides coherent PolicyProjection and ValueRealization.
+Pp is preserved; ordinary result semantics preserves the Pattern identity rules.
+Source and destination modes are separate ordinary endpoint coordinates: a
+declared const-compile to mut-runtime constructor can create a fresh result.
+Mode is ranked by the ordinary product order; stage, presence, Type and
+structural applicability remain hard conditions. A failed selected realization
+does not reopen selection. No chain search, reverse edge, Type repair, or
+implicit ref/share formation is admitted.
 
-The existing P2 legality rule in §4 is the precondition:
+### 3.6 Producer visibility, admissible inputs and readiness
+
+P1/Pout controls producer visibility; P2 controls evaluation horizon;
+InputAdmissible controls input position compatibility; Ready controls whether
+this action can execute at the current continuation frontier. None replaces
+another. A runtime-produced result remains runtime-produced even if all its
+inputs are known during static evaluation. Hiding its unreadable Val1 does not
+remove its Object, Pattern, Val2, binding or argument slot.
+
+A compile callable may admit a seal input through InputAdmissible and wait
+for its formation. This is deferred execution under the same compile horizon,
+not a seal-to-compile Policy migration. A pending seal let is a
+continuation/Place formation obligation, never a fabricated resident value.
+
+### 3.7 Progressive evaluation and sealed source identity
+
+A source candidate c may have a family of ordinary compile realizations:
 
 ```text
-Static(Pv) = Pv - runtime
-
-runtime not in Pp
-Static(Pv) is empty or Static(Pv) = Pp
+C(c) = { C_sigma(c) | admissible projection configuration sigma }
+Selected = (c*, sigma*, InvocationFrame)
 ```
 
-Therefore a legal value stage domain has at most one additional runtime branch
-beyond its Pattern-policy stage domain, or is the runtime-only special case.
+The family may be represented lazily. Each C_sigma has ordinary call structure,
+a correspondence to the same source invocation, and its concrete visibility
+and input evidence. Unreadable runtime Val1 is hidden without deleting
+arguments, Pattern observations, Val2 or identity. Generic meta partner M(c)
+has separate anchored identity; it is not this projection family.
 
-The compiler-mandated skeleton of atomic runtime migration is:
+Resolve once, progressively evaluate ready work, and retain unavailable
+dependencies in the same continuation. Every projection and runtime residue
+of Selected retains c*, sigma* and the fixed frame. Runtime resumes that
+invocation, never namespace lookup or candidate selection.
 
-```text
-input selected static view:
-  Pv.stage = S
-  Pp = S
-  Type = T
-
-output selected view:
-  Pv.stage = runtime
-  Pv.presence = present
-  Pp = S
-  Type = T
-```
-
-The compiler mandates only the selected-static-stage to runtime-stage edge.
-Pattern-policy capability does not migrate to runtime and may not be
-manufactured, and Type is unchanged. The whole-slot input/output PolicyModes
-belong to the selected ordinary callable. In particular:
-
-```text
-PolicyMode(input_slot)
-PolicyMode(output_slot)
-```
-
-need not be equal. A callable may declare `const + compile -> mut + runtime`
-because it constructs a fresh runtime object; the compiler does not infer or
-invent that `mut` capability. The declared input/output coordinates participate
-in ordinary Bp' comparison. Opposite const/mut endpoint Patterns are not
-removed by a hard Policy-domain intersection. They reuse ordinary
-actual-relative preference:
-
-```text
-const actual/demand: const > plain > mut
-mut actual/demand:   mut > plain > const
-plain demand:        plain > const = mut
-```
-
-Stage, presence, Pp capability, Type, and structural applicability remain hard
-endpoint conditions. PolicyMode is a preference coordinate, not a structural
-repair and not a capability intersection. In the plain-demand row, equal
-maximal `const` and `mut` endpoints remain ambiguous when no `plain` endpoint
-survives.
-
-`Pp` equality is about Policy capability; it is not an implementation license
-to copy or reroot a source Pattern object. The eventual result Pattern comes
-from ordinary invocation result semantics.
-
-For a runtime demand:
-
-```text
-ProjectExistingView(complete query, source) is non-empty
-  => consume that existing accepted slice
-
-complete existing projection is empty
-and runtime is accepted by the query
-and Static(source.Pv) is non-empty
-and the demanded Pp slice is available
-  => extract RuntimeBranch(query)
-  => select a pure-static Project_in endpoint
-  => atomic runtime migration may be prepared
-```
-
-The complete source may already contain a runtime branch that is incompatible
-with another requested coordinate. For example, a const
-`compile || runtime` source does not satisfy `mut + runtime`; its const compile
-view may still be selected as `Project_in` for a callable-declared
-`const compile -> mut runtime` materialization. The invariant checked by the
-migration request is that the **selected input endpoint** is static, not that
-the complete result contains no runtime branch.
-
-A failed Policy demand cannot repair failed Type/Pattern structural
-applicability:
-
-```text
-not StructurallyApplicable(candidate, actual)
-  => Policy migration alone cannot make candidate admissible
-```
-
-In particular, `T` is never changed implicitly to `T ref` merely because a
-consumer requires runtime. This is `NoImplicitBorrowFormation`: explicit `ref`,
-`share`, or `@` remains an independent ordinary operation, never candidate or
-Policy repair.
-
-### 3.6 Existing runtime capability versus runtime value readability
-
-For:
-
-```text
-Pv = compile || runtime
-Pp = compile
-```
-
-a runtime query is an existing slice:
-
-```text
-ProjectPolicy(runtime, R) != empty
-```
-
-It is not a new compile-to-runtime invocation. The two explanations are:
-
-```text
-extensional availability:
-  runtime is already a member of Pv
-
-operational provenance:
-  the language's atomic migration capability may explain
-  how that branch can eventually be provided
-```
-
-Migration explains availability; slicing consumes availability. This preserves
-the phase-layer separation:
-
-```text
-Resolve
-ExposePolicySlice
-ReadValue
-ReadPattern
-```
-
-During a static phase, `ExposePolicySlice(runtime)` may establish that the
-runtime branch exists in the semantic object while `ReadValue(runtime)` remains
-unavailable until Runtime or is represented by residual computation. Runtime
-Policy availability is not present-phase value readability.
-
-### 3.7 Mixed-stage evaluation boundary
-
-The core meaning of a mixed-stage result such as
-`(compile || runtime):compile` is fixed:
-
-```text
-runtime in Pv
-  => the runtime Policy slice already exists
-  => ExposePolicySlice(runtime) does not invoke migration
-
-compile-readable slice/dependency
-  => expose, read, bind, and evaluate in the current static phase
-
-runtime-dependent slot/computation
-  => preserve the already-resolved identity
-  => residualize until Runtime supplies the missing value
-```
-
-Therefore the frozen evaluation foundation is:
-
-```text
-Resolve once
-Evaluate progressively
-Residualize unavailable runtime dependencies
-Continue the same already-resolved invocation at Runtime
-```
-
-name binding/path/callable identity and ordinary overload selection occur in the
-static semantic world. A runtime continuation does not reopen namespace
-lookup, name binding identity, callable identity, or the overload candidate set
-merely because runtime values become readable. Explicit future dynamic
-dispatch, if introduced, must be a different named mechanism.
-
-Evaluation should compute the maximal phase-admissible portion subject to data
-dependency and effect/sequencing constraints. Runtime-dependent portions are
-residualized and later continue the same resolved computation.
-
-What remains open is the implementation and effect boundary, not the existence
-or basic binding meaning of the mixed-stage Policy domain:
-
-- the exact residual object/IR representation;
-- the physical representation of a mixed-stage `InvocationFrame`;
-- the maximal-static-evaluation algorithm under data dependencies and effects;
-- the exact sequencing frontier for effectful expressions;
-- the continuation ABI and OpenStatic/SealStatic/Runtime handoff;
-- composition with future capability/effect systems.
+Residual IR, cache layout, continuation ABI and scheduling algorithms remain
+implementation choices. Their observations must preserve source invocation
+identity, actual read/write/borrow/lifetime/effect dependencies and cleanup
+order. They cannot relabel stages to obtain readiness.
 
 ### 3.8 Static frontier and deferred materialization invariants
 
@@ -1628,118 +1467,55 @@ These are deferred positive constraints, not claims that runtime lowering,
 cache identity, `[[global]]` seal scanning, or lifetime checking is currently
 implemented.
 
-## 4. P2 normalization
+## 4. P2 evaluation horizon and result observations
 
-P2 is the result pair of a call or expression:
+P2 specifies the callable's evaluation horizon, a concrete Stage. It is
+independent of the declaration's producer P1 and its output Pout.
+Position elaboration forms Pin from P2 and the written position constraints.
+Call-result observations still have the ordinary Pv:Pp pair:
 
-```text
-P2 = P2v:P2p
-```
-
-Explicit pairs include:
-
-```text
-runtime:compile
-runtime:seal
-(runtime || compile):compile
-(runtime || seal):seal
-const + (runtime || compile):compile
-```
-
-`runtime` is forbidden in P2p. If P2v contains a static stage, its static stage
-set must equal P2p. Consequently these are invalid:
-
-```text
-runtime:runtime
-compile:seal
-meta:compile
-```
-
-For a single policy `P`:
-
-```text
-Pv = P
-Pp = P - runtime
-```
-
-If that subtraction is empty, Pp is `compile`:
-
-| Source P2 | Normalized pair |
+| Concrete value stage | Ordinary pair |
 |---|---|
-| `meta` | `meta:meta` |
-| `compile` | `compile:compile` |
-| `seal` | `seal:seal` |
-| `runtime` | `runtime:compile` |
-| `runtime || compile` | `(runtime || compile):compile` |
-| `runtime || seal` | `(runtime || seal):seal` |
+| meta | meta:meta |
+| compile | compile:compile |
+| seal | seal:seal |
+| runtime | runtime:compile |
 
-`runtime:seal` remains a valid explicit pair; it means that the value is a
-runtime value whose Pattern/type is first exposed during SealStatic.
-
-P2 answers result-type and input-compatibility questions only. Three
-authorities around an invocation result must stay separate:
+An explicitly seal-formed Pattern permits runtime:seal. Runtime is not a
+Pattern formation stage. Distinct static atoms cannot make compile:seal or
+meta:compile into an admissible static split. A hidden Val1 retains the
+underlying Object (§1).
 
 ```text
-InvocationResultExposure   := canonical P1 of the producing declaration
-ClusterMemberViewPolicy    := each member's own policy entry
-ResultType / InputCompat   := P2
+producer visibility = P1 / Pout
+evaluation horizon = P2
+position input acceptance = InputAdmissible(actual, Pin, context)
+execution now = Ready(action, continuation frontier)
 ```
 
-Whether an invocation result is outwardly visible at a phase is decided by
-the canonical P1 authority, not by re-reading the callable's P2 pair as an
-outward visibility source. There is no `P3` return policy, and P2 must not be
-promoted into an ordinary-result outward authority.
+There is no additional P3 and no inference that known inputs change Pout.
 
 ## 5. Function-object default stage completion
 
-Only when P1 stage material is omitted and the context requires completion,
-the existing permitted default from P2 = P2v:P2p lifts stages:
+Omitted stage, explicit stage atom and explicit stage hole are separate inputs.
+Only omission admits default completion:
 
-```text
-Stage(P1p) = Stage(P2p)
-Stage(P1v) = Stage(P2v) || Stage(P2p)
-```
+| P2 horizon | Omitted ordinary P1 stage |
+|---|---|
+| runtime | runtime |
+| seal | seal |
+| compile | compile |
 
-Examples:
+Meta instance P1 retains the contextual openness rules of §3.0; it is not a
+fourth mode or a stage union. Explicit P1 is never overwritten by the table.
+A bare ordinary let completes its stage at its formation context; it is not
+a wildcard that later uses can reinterpret. Default mode completion remains
+separate and considers written/inherited/contextual constraints before plain.
 
-```text
-P2 runtime:compile -> P1stage (runtime || compile):compile
-P2 runtime:seal    -> P1stage (runtime || seal):seal
-P2 meta:meta       -> P1stage meta:meta
-```
-
-The evaluator uses this stage lift candidate-locally as its default result
-stage context. Because `CurrentEvaluationPhase` is already fixed, ordinary
-`compile`/`runtime` exposure is known from `P2` without an explicit
-`PolicyLet`. This evaluation default does not mutate the declaration's
-canonical P1, add an outward authority, or manufacture an absent pair slice;
-it selects/exposes the P1 stage view admitted by the current phase. An explicit
-result Policy remains available when the programmer wants a narrower stage
-boundary or a migration target.
-
-The following never propagate from P2 to the function object:
-
-```text
-const / mut
-public / private
-export-root
-value presence
-```
-
-Those properties come only from the function object's declaration.
-
-For a declaration such as:
-
-```lang
-let fn = () => { ... };
-```
-
-the source supplies no written mode constraint. An otherwise unconstrained
-ordinary materialization context may separately complete it to plain. That
-completed atom is neither an inference hole nor source omission. An explicitly
-written `const let` or `mut let` selects the corresponding concrete mode. P2
-stage/exposure facts never manufacture or propagate a PolicyMode during stage
-lifting, and export does not silently replace the internal mode with const.
+Pin may explicitly constrain stage or deduce a stage hole. Pout.stage is
+P1.stage; output mode refinement creates no independent output stage vector.
+P1 and P2 never infer one another generally. Public/private, export, presence
+and mode do not propagate through stage completion.
 
 ## 6. Three execution phases
 
@@ -1793,7 +1569,7 @@ has this OpenStatic behavior:
 binding/path resolves
 runtime value is unreadable
 compile Pattern/type is readable
-derived compile companion (CompilePartner(F) = C(F)) may join static overload resolution
+the admissible compile-realization family C_sigma(F) may enter round two
 original runtime computation remains in RuntimeResidualFlow
 ```
 
@@ -1801,8 +1577,8 @@ Conversely, exposing or selecting an existing runtime Policy slice in a static
 phase is not permission to read its value:
 
 ```text
-runtime in Pv
-  => the runtime capability/view exists
+Stage(Pv) = runtime
+  => the declared runtime view exists
 
 current Phase is OpenStatic or SealStatic
   => ReadValue(runtime slice) is unavailable
@@ -2044,9 +1820,10 @@ ExternallyVisible(path)
 The export-retention closure may retain private dependencies without
 installing them in `Σ_export`.
 
-## 10. Wpre and seal world
+## 10. Wpre and seal snapshots
 
-Immediately before SealStatic, compute the least semantic materialization
+Wpre and Wseal are observations of one semantic continuation, not separate
+semantic worlds. Immediately before SealStatic, compute the least semantic materialization
 closure:
 
 ```text
@@ -2088,123 +1865,71 @@ authority, and policy rules. Internal authority may resolve it through
 Its absence from the current Wpre scan does not make it unaddressable, and its
 presence in Wseal does not make it exported.
 
-## 11. Phase execution
+## 11. Phase execution and active dominance
 
-### 11.1 OpenStatic
-
-Exposed stages are `meta` and `compile`; seal and runtime value slices are not
-exposed. A call may evaluate when its callable exposes a meta/compile view, all
-arguments supply the required static views, and the associated `()` candidate
-is fully admissible.
-
-Static views include meta values, compile values, compile Pattern/type
-projections of runtime bindings, and derived compile companions. Meta and compile
-callables may invoke one another in one evaluator. Their return ontologies differ
-in both root authority and the admissible direct result class:
+OpenStatic and SealStatic use the same E and ordinary object machinery.
+Their readiness frontiers do not order the static Stage atoms. Active stack
+frames impose these independent restrictions:
 
 ```text
-ordinary meta
-        -> constructs its instance name/type tau_M (CompleteType)
-           P1 meta retains dependency-derived openness; plain completes/closes
-compile -> any declared ordinary semantic value across result classes
-           (PatternValue, complete type value tau, type ref/share borrow
-           instance); root-conserving, with no root authority
-privileged builtin
-        -> follows its member-declared result and owner rules
+MetaDom(Sigma) => no seal candidate and no seal let
+SealDom(Sigma) => no meta invocation and no meta let
 ```
 
-An ordinary meta callable directly returns its instance type tau_M. Arbitrary
-values, external types, groups and valid borrows can be Val2 payloads, with
-ordinary member observation and policy. They cannot replace tau_M as the direct
-meta result. P1 meta qualification follows OpenHere (§3.0). See the
-[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md).
-`compile` may return a complete type
-value `tau` (participating in Pattern observation through `Core(tau)`, not
-itself an ordinary PatternValue/Object), an OverloadGroup
-value, `type ref`, or any other declared ordinary PatternValue. Privileged
-builtins are member-specific: in this closure `struct -> tau`,
-`extend -> type`, and `inject -> type ref`. The root conditions are owned by
-`symbol-first-meta-construction-and-pattern-injection.md`.
+Restrictions propagate through compile helpers and are tested before candidate
+admission/entry, including a cached meta invocation. They end when the actual
+dominating frame returns. Stable owner ancestry, a meta-created payload, root
+bootstrap and a callable's P2 do not themselves create an active MetaDom.
 
-No OpenStatic task may read a runtime value or depend on a runtime effect. If a
-task is blocked only by a seal-only view, preserve its call node, Pattern
-arguments, binding dependencies, and overload inputs as a `DeferredSealTask`.
+Completed meta payloads can be ordinary inputs to seal work when their
+observations are legal. This gives neither meta <= seal nor a migration edge.
+A compile helper waiting on seal material defers with its original identity,
+inputs, effects and dependencies; it is not reclassified seal.
 
-When otherwise equal and fully admissible, phase specificity uses the narrower
-visible domain:
+E runs only Ready actions. Deferral preserves dependencies on reads, writes,
+borrows, lifetime events and effect order, including pending formation.
+Legal ready schedules have the same observable result; scheduling trace is
+not semantic identity. No rule promises termination of infinite static work.
+Unresolved terminal static requirements diagnose or retain the appropriate
+unsupported residual, rather than inventing a value.
 
-```text
-Vis(meta) ⊂ Vis(compile), therefore meta > compile in OpenStatic
-```
-
-This is one dimension of the complete partial order, not an unconditional
-global priority.
-
-### 11.2 SealStatic
-
-Exposed stages are `seal` and `compile`; meta and runtime value slices are not.
-The same static evaluator and symbol-construction machinery consumes deferred
-tasks, explicit seal/compile callables, privileged seal calls, fixed Wpre scan
-results, and ordinary explicitly resolved bindings.
-
-When otherwise equal and fully admissible:
-
-```text
-Vis(seal) ⊂ Vis(compile), therefore seal > compile in SealStatic
-```
-
-SealStatic is terminal for static work. Missing bindings/projections/companions,
-runtime value/effect dependencies, or non-unique overload maxima are errors;
-there is no later static deferral phase.
-
-### 11.3 Runtime
-
-Runtime consumes `RuntimeResidualFlow`, exposes runtime value slices, continues
-the already resolved and sealed runtime invocations, executes runtime bodies/effects,
-and performs runtime branch value selection. A derived compile companion never
-replaces the real runtime call.
+Runtime consumes the sealed runtime residue and executes retained bodies,
+effects and branch choices. Compile realizations do not replace the original
+runtime invocation.
 
 ## 12. Unified binding and overload selection
 
 All call-candidate entrances use one selection trunk. The prefix below shows
 its named-type case:
 
+Resolve once to a binding and read its ordinary resident. Values project
+through their exact complete type's associated (). An explicit OverloadGroup
+supplies its ordinary candidate algebra. Pre-C0 family filtering retains its
+separate position.
+
 ```text
-b = Resolve(path)
-T = ReadNamedType(b)
-C0 = CallCandidates(T)
-C1 = ExposePhaseViews(
-       C0,
-       EvaluationStageContext(call),
-       candidate_stage_view = StageLiftP2(P2(candidate)))
-C2 = ProjectExpectedPolicy(C1, P1_or_expected_facet)
-T? = TargetResultConstraint(call)
-A  = FullyAdmissible(C2, argument_frame, T?)
-M  = MaxPolicyAndOverloadOrder(
-       A,
-       argument PolicyMode coordinates,
-       OutputModeDemand(call))
+C0 = Enumerate(ResolvedTarget, PreC0Filter)
+Cvis = { (c,sigma,evidence) | c in C0 and R_vis(c,Omega,sigma) }
+Cprepared = ordinary C_sigma(c) where required, otherwise c
+A = FullyAdmissible(Cprepared, frame, total ResultPolicyDemand)
+D = SuppressFallback(A)
+Bp = MaxPolicyProduct(D, input modes, output demand, migration endpoints)
+B = ordinary Pattern specificity and remaining declared filters(Bp)
+Selected = Unique(B)
 ```
 
-Resolve returns a structural NameBinding, not a callable carrier. ReadNamedType
-reads its resident complete named type in this case. Ordinary Val2 navigation
-may read a value of any type; it does not automatically run ReadNamedType or
-register the resident for callability. A held OverloadGroup G, including one
-read through state::instance, supplies CallCandidates(G) at C0. Ordinary function
-values use their exact complete type's associated () entrance. See the
-[navigation and projection example](../patterns-overload/overload-resolution-design.md#21-value-navigation-is-broader-than-candidate-projection).
-Only repeated exposure of the same stable candidate-entry
-identity may collapse; distinct contribution entries never deduplicate merely
-because their values or types normalize equally.
+Round one R_vis solves producer visibility, position InputAdmissible,
+projection configuration and required migration evidence without executing
+speculative bodies or effects. If evidence is not ready, retain the unresolved
+continuation. Round two uses the ordinary callable relation; compile
+realizations are not a second dispatch language.
 
-Success requires exactly one maximal candidate. Failure can mean no exposed
-slice, no fully admissible entry, multiple incomparable maxima, a unique delete
-maximum, or an unfinished terminal SealStatic task.
-
-C1 exposes candidate P1 under the current phase, using the permitted stage
-completion only where omitted material requires it. `C2` applies an explicit expected projection when one exists;
-its absence does not make stage policy unknown and does not require
-`PolicyLet`.
+The total output demand is formed before maxima from candidate-independent
+immediate-consumer facts. An unresolved outer candidate cannot send its
+formal policy backward into a sealed inner call. Selection fixes
+(c*,sigma*,frame); selected extraction, migration, delete, lifetime or dynamic
+legality failure never reopens candidates. Distinct entry identities do not
+collapse merely because their values/types normalize equally.
 
 For each whole-slot PolicyMode comparison position:
 
@@ -2231,7 +1956,7 @@ separate conversion rank. Every call accounts for its formed OutputModeDemand;
 only a resolved concrete mode demand contributes a mode preference coordinate. Optional
 target-result pair/type/rank/facet constraints participate only when supplied,
 as hard admissibility in `A`; they are not the output-mode coordinate. The
-separately total EvaluationStageContext drives phase exposure in C1. Stage
+separately total EvaluationStageContext constrains R_vis evidence. Stage
 completion creates no hidden mode constraint.
 
 Preference and capability are separate relations. Relational declarations with
@@ -2272,9 +1997,7 @@ unchanged.
 Delete members enter the same fully admissible set and order. A unique maximal
 delete produces a diagnostic naming that member.
 
-Current source cannot construct a fallback candidate role, so the ordinary
-declaration-policy stage is currently `D = A`. If a future fallback strategy is
-introduced, its already-fixed semantics applies inside `D` after full
+Source wiring of fallback remains pending. Its canonical semantics applies inside `D` after full
 admissibility and before `Bp'`: any admissible non-fallback member, including
 `delete`, permanently removes fallback. A distinct call-site candidate-family
 annotation acts before candidate generation; only that position is closed, not

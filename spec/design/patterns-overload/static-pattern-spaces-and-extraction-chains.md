@@ -78,16 +78,77 @@ open. Implementations expose an opaque relation/proof interface and must not
 promote a convenient product or sum shape carrier into the canonical Pattern
 IR.
 
-## 5. Extraction chains and result boundaries
+## 5. Residual splitting and extraction chains
 
-Nested extraction composes proof-relevant derivations. Each step observes the
-value produced by the preceding step and extends the same qualified valuation
-when binder identities agree. A branch miss is a failed derivation; an
-execution failure after unique selection is a terminal invocation failure.
+```text
+Split_Gamma(A,S) -> <H,R,delta>
+D(A,S) = R
+```
 
-Call results use the shared `InvocationResult` boundary. Pattern extraction may
-project a successful semantic result, but it does not define a private result
-class, residual universe, or diagnostic channel.
+H is the matched part, R the residual and delta the proof-relevant extraction
+evidence. This is a restricted consumer of R_Gamma; it does not assert a
+general Boolean difference, arbitrary Pattern complement or synthesized
+inverse. A finite sum with registered direct cases admits its corresponding
+case split. Product integrity obligations are separate from a sum branch
+miss. Once a unique extractor is sealed, its execution/projection/capability
+failure is terminal; it does not turn into a miss or try the next extractor.
+
+An extraction chain has an internal boundary identity chi:
+
+```text
+Chain_chi = <R, Q_completed>
+match H -> evaluate selected branch -> Done_chi(v)
+miss R -> retain ordinary residual for the next branch
+```
+
+Done_chi(v) is evaluator completion state, never an Object, Pattern, user
+value, name, Val2 member, stored value or source constructor. It participates
+in no ordinary lookup, Norm, @, ref/share, migration or Pattern matching.
+A user declaration named Done is ordinary and grants no completion privilege.
+The boundary consumes its own completed channel and exposes only ordinary
+payload results. A nested chain unwraps at its boundary before the outer
+chain makes its independent completion; no user-visible Done(Done(v)) arises.
+
+Compile-known guards execute only the chosen branch; unchosen bodies produce
+no effects or require/lookup obligations. A runtime guard retains both
+possible branch continuations, sealed identities and their lawful effects
+until the choice is ready. A seal dependency defers the same guarded action.
+
+Targeted return uses a distinct internal target completion with ordinary
+ReturnPattern delivery, as owned by
+[targeted return](../control-flow/targeted-return-and-d-reduction.md).
+It contributes no fabricated local unit result.
+
+## 5.1 Residual escape is a separate boundary decision
+
+```text
+CanEscape_Sigma(R,B)
+```
+
+This fixed consumer asks whether residual R may leave boundary B. It does not
+change D, branch matching, Done or require an empty residual universally.
+An if|else Pattern can legally flow through its matching chain and be rejected
+only where a forbidden residual would escape; other ordinary residuals may
+escape when admitted.
+
+F_residual is an ordinary meta query returning its instance type tau_M. Its
+allow/deny payload lives in ordinary Val2. Default instance formation,
+OpenHere/Writable member customization, current committed reads, snapshot/Close
+discipline and cache/dominance checks follow
+[ordinary meta defaults](../meta-invocation/meta-object-invocation-and-policy-reduction.md#7-ordinary-meta-defaults-and-current-state-consumers).
+Writing an outer result copy does not customize the retained instance. The
+consumer reads at its own frontier; later changes have no retroactive effect.
+SealDom cannot invoke meta indirectly to answer the query; an independently
+available completed observation must suffice or the action is unavailable.
+
+## 5.2 Result Pattern boundary
+
+With an expected result Pattern R, every delivered ordinary payload is checked
+against R through ordinary extraction. Without an expected R, use the
+ordinary partial result-combination relation where defined. There is no
+universal least upper bound and no theorem that unit absorbs arbitrary results.
+Control completion is not a value that participates in result joining.
+InvocationResult remains the sole semantic result/Residual/Diagnostic envelope.
 
 ## 6. Invariants
 

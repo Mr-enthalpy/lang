@@ -8,7 +8,7 @@ End-to-end invocation and lifetime behavior remain future work.**
 that mention `self..return(d)` reference this document rather than redefining
 the semantics:
 
-- Pattern-space consequences: `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §6.3.1, §7.5
+- Pattern-space consequences: `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §5
 - Mechanical lowering consequences: `spec/design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md` §6.1
 
 ## 1. Purpose
@@ -148,19 +148,19 @@ escape hatch.
 
 A call to `self..return(d)` has three semantic effects:
 
-### 5.1 Local branch completion with `Done(unit)`
+### 5.1 Local branch completion
 
-In the local pattern/type-check continuation, the branch completes with
-`Done(unit)`. No further same-level pattern material is contributed by this
-branch. `unit` is later absorbed as the zero element of `+`.
+The branch has no normal local result contribution. It produces no synthetic
+unit and no user-observable Done value.
 
-### 5.2 Final return accumulator contribution
+### 5.2 Target completion
 
-Simultaneously, `Done(D)` is contributed to the enclosing function's return
-accumulator. This is independent of the local branch pattern space — the
-accumulator does not need to know which branch produced the value, and the
-local extraction/type-check path does not need to know the final accumulator
-value.
+An internal target-qualified completion carries the ordinary return payload
+to the resolved enclosing frame. Intermediate boundaries propagate it without
+matching its payload as a fresh ordinary chain input. The matching frame
+consumes it and performs ordinary ReturnPattern delivery. Internal completion
+is unavailable to source lookup, Pattern matching, Norm, @, ref/share and
+storage; a user name Done has no special meaning.
 
 ### 5.3 Lifetime postcondition
 
@@ -177,15 +177,9 @@ not inferred from body analysis.
 Because the return capability consumes `self`'s mutable borrow, any subsequent
 same-block code that implicitly borrows `self` is ill-formed.
 
-The canonical repair is:
-
-```text
-self..return(d);
-()
-```
-
-where `()` is the branch's explicit unit return — permissible because `()`
-does not require a mutable borrow of `self`.
+No synthetic trailing () is inserted as a completion or type-combination
+repair. An explicitly written ordinary unit remains an ordinary value; it
+does not grant a missing self capability or absorb arbitrary result Patterns.
 
 ## 7. Relation to `Error.handle`
 
@@ -193,8 +187,8 @@ does not require a mutable borrow of `self`.
 behavior. This is not an exception mechanism. It is an ordinary call through
 the callable frame's return capability, subject to the same lifetime
 postcondition: after the error handler invokes `self..return(error)`, the
-current branch is complete, `Done(unit)` is contributed to the local pattern
-space, and `Done(error)` is contributed to the final return accumulator.
+current branch has no normal contribution, and an internal target completion
+carries the error payload to ordinary ReturnPattern delivery.
 
 ## 8. Consumer frontier
 

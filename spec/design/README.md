@@ -15,17 +15,19 @@ that the corresponding source semantics is implemented.
 | Source composition and construction closure | [composition](symbol-world/symbol-construction-units-and-namespace-origin.md) |
 | Associated state A as a derived meta invocation | [associated state](symbol-world/associated-compile-state.md) |
 | Closure anchored replication | [replication](symbol-world/closure-anchored-replication.md) |
-| PolicyPair, ordinary PolicyMode, P1 meta, demand, migration and stages | [policy](symbol-world/symbol-policy-and-compile-flow-projection.md) |
-| Exact callee/self, ordinary function objects and forwarding | [calling](symbol-world/function-object-call-model.md) |
+| Single Stage, P1/P2/Pin/Pout, R_vis, demand and migration | [policy](symbol-world/symbol-policy-and-compile-flow-projection.md) |
+| Exact callee/self, ordinary C_sigma family and forwarding | [calling](symbol-world/function-object-call-model.md) |
 | Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
-| Meta declaration dual surface and operator call/extract/generative projections | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
+| Restricted Split/D, internal chain completion and residual escape | [extraction chains](patterns-overload/static-pattern-spaces-and-extraction-chains.md) |
+| Pass action, move fixed point and directed with cleanup placement | [mechanical passing](mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
+| Meta declaration surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
 | Meta instance types, input identity, openness, completion/cache and Val2 extraction | [invocation](meta-invocation/meta-object-invocation-and-policy-reduction.md) |
-| E saturation, residual, synchronous projections, O1/O2/planner | [evaluation](meta-invocation/evaluation-residual-and-optimization.md) |
+| Runtime main, active dominance, readiness, E projections and O1/O2 | [evaluation](meta-invocation/evaluation-residual-and-optimization.md) |
 | Host IO and target-machine Objects | [host capabilities](meta-invocation/host-capabilities-and-machine-objects.md) |
-| Continuation-relative lifecycle, Region, Color and access | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
+| Instance Killable/MoveEffect/Movable, same-K @, Region and Color | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
-| Outermost return, D reduction and completion handoff | [control flow](control-flow/targeted-return-and-d-reduction.md) |
+| Outermost return and internal target completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
 | Level/main.lang anchor and PhysicalTree normalization | [physical source](build-package/build-system-design.md) |
 
 Satellite documents consume these relations rather than redefine them. Existing
@@ -54,6 +56,7 @@ tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
       -> physical normalization / shared E / residual and optimization
 
 [Semantic spine](semantic-spine.md) supplies the compact dependency map.
-[Roadmap](../planning/roadmap.md) describes actual consumer coverage;
+[Conformance scenarios](../planning/canonical-semantic-conformance.md) record
+the 64 revision cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
 [open questions](../planning/open-questions.md) contains only remaining choices.
 Historical files are non-authoritative and are not rewritten for current rules.

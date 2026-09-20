@@ -123,7 +123,7 @@ machinery; no `RefType` primitive is introduced:
 The `ref`/`share` family is not a single meta stage: the **type-forming**
 member is a **meta** member (`T : U_n ⊢ T |> ref = RefTy(T)`, producing the
 borrow TypeValue), while the **borrow-forming** member inside the formed
-borrow type's callspace is a **runtime || compile** builtin/default member and
+borrow type's callspace has ordinary concrete-stage builtin/default realizations and
 is the only family member that may obtain `PrivilegedActualPlace`. The
 declarations below are the type-forming members; the borrow-forming members
 live inside each formed borrow type's callspace (canonical owner
@@ -227,9 +227,12 @@ parameter semantics:
 ```lang
 mut let ref =
     (self, mut let object: t):
-    runtime||compile -> _: t ref
+    s -> _: t ref
     => default;
 ```
+
+Here s is schematic for one admitted concrete stage, not a resolved union;
+projection and readiness obey the ordinary Policy owner.
 
 The head's `object : t` displays the candidate head, Pattern, and policy so the
 member participates in ordinary overload resolution. It must not be read as
@@ -457,11 +460,11 @@ Region(n) = [i, j)
 events    = use | move | drop
 ```
 
-`use` records an observation point. Affine move rebuilds only the first-level
+`use` records an observation point. When MoveEffect=Kill, move rebuilds only the first-level
 generation/Region and preserves the deeper origin exactly:
 
 ```text
-MoveOriginPreservation:
+MoveOriginPreservation (MoveEffect_K(old,m)=Kill):
 
 old@ = { name = n_old, origin = o, region = r_old }
 move(old -> new)
@@ -523,6 +526,44 @@ origin effects do not authorize a pre-move of `x`.
 generation. Path-sensitive facts are represented by a region slice plus a
 regular origin path, not by turning Region into an arbitrary CFG subgraph.
 
+#### 2.1.3.1 Instance killability and move legality
+
+```text
+Killable_K(n)                  -- property of this lifecycle instance
+MoveEffect_K(n,m) ∈ {Kill, Preserve}
+Movable_K(n,m)                 -- legality at this action's frontier
+```
+
+These are independent judgments. Killable is not a Type trait; equal type
+values, ZST layout, compile knowledge and meta provenance do not decide it.
+Movable requires the ordinary selected action's access, borrow, capability,
+origin and lifetime Pre. Nonkillability proves neither Movable nor Copyable.
+
+The effect is fixed before lifecycle observation. Kill ends the old generation
+and begins the transferred generation at the same continuation cut, preserving
+its deeper origin (§2.1.3). No separate destructor/drop is inserted for the
+consumed old generation. Preserve requires the narrow proof that the subject
+cannot legally die or that preserving it is observationally equivalent under
+all admitted observations, including @, borrow/access capabilities, origin and
+destructor effects. It is not a silent choice of a clone candidate.
+
+The ordinary realization is killing; Preserve is confined to that proved
+exception. A stable meta root or global Val2 resident cannot be killed merely
+by local transport of its observation. Moving a local instance into a legal
+destination starts the destination generation; it never extends the old local
+name's lifetime into a global one. Failed Pre cannot switch the fixed effect.
+
+Compile, runtime, meta, type, Pattern and borrow instances all participate.
+An ordinary non-meta type instance follows its existing global-survival rule;
+a meta-local type temporary can end. A stable meta result root, a local copy,
+and a globally retained equal resident remain different lifecycle subjects.
+Construction OpenHere neither extends a lifetime nor makes a subject killable.
+
+Every expression occurrence, including a temporary without a Place, has its
+continuation-relative LifeName. Lifecycle Pre/Post applies even when no source
+@ is written. Value/name companions observe the same action positions; @
+does not expose a compiler execution or scheduling trace.
+
 #### 2.1.4 Cleanup placement precedes lifetime observation
 
 ```text
@@ -530,8 +571,9 @@ CleanupPlacementBeforeLifetimeObservation
 ```
 
 Ordinary control-flow, ownership, and end-event semantics place cleanup/drop
-events first. Lifetime observation then describes that fixed continuation. It
-does not move cleanup to satisfy a constraint and does not participate in a
+events first. Lifetime observation then describes that fixed continuation. The NLL/lexical defaults and directed with constraints are defined in
+[mechanical cleanup](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md#15-cleanup-placement-and-with).
+It does not move cleanup to satisfy a constraint and does not participate in a
 cleanup/lifetime fixed point.
 
 #### 2.1.5 Pre-check and post-commit
@@ -690,9 +732,11 @@ The two views differ in write capability, not in whether their pointee is Open:
 | `type ref` | read and policy-bounded write | no | no |
 | `type share` | read/observe only | no | no |
 
-Both views may remain valid after the current pointee's open window closes. `type ref` may
-then replace the pointee wholesale if `Writable(Target)` holds, but neither view
-can make the closed-window value admissible as `extend`'s old value.
+Lifetime validity does not establish write permission after Close. Initialized
+type refs preserve their original borrowed generation/opening subject; direct
+mut and explicit meta-to-mut writes require current OpenHere as well as
+Writable. Close defeats both routes and saved-ref writes. Neither view makes
+a closed value admissible as extend's old value. See type/ref owner §5.2.2.
 
 ### 3.2 Borrow validity never discharges construction openness
 

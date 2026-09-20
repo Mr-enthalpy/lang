@@ -320,6 +320,13 @@ perform result-slot injection.
 
 ### 7.3 Deferred Semantics
 
+Canonical completion is internal and chain/target-qualified. It is not an
+Object, Pattern, source Done constructor or observable value; no lookup, @,
+ref/share or storage consumer can re-enter it. Return has no fabricated local
+unit contribution and delivers its ordinary payload against the target's
+ReturnPattern. These laws are owned by the targeted-return and extraction-chain
+documents; the following carriers do not implement them.
+
 The following are **not** implemented and must not be assumed by consumers of
 this contract:
 

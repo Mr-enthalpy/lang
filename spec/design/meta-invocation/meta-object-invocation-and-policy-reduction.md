@@ -288,80 +288,53 @@ rollback. Failure before Close commits leaves that action uncommitted. This
 uses ordinary producer-before-transfer and Pre/commit rules, not a let-specific
 transaction or a cached permission.
 
-### 2.1 Compilation entry uses ordinary meta-root formation
+### 2.1 Compilation entry and root formation
 
-`Compile(Level)` enters an ordinary meta invocation, not a `compile`-stage
-callable that manufactures a root. Its entry callable is the ordinary meta body
-obtained from the normalized source tree. The existing core bootstrap's owner
-root supplies its parent placement; physical discovery supplies body material,
-not an owner, Place, or authority. `F_entry` below denotes that callable's
-semantic identity, not a new primitive or surface name:
+Entry has runtime horizon: main.P2=runtime, and an omitted ordinary main.P1
+stage completes to runtime. The normalized physical tree supplies ordinary
+source actions to EntryContinuation(L,F_main), as specified by the
+[evaluation owner](evaluation-residual-and-optimization.md#1-compilation-entry).
 
-```text
-WellFormedMetaCall_Gamma(F_entry, args_entry)
-  => M_compile = MetaInstanceRoot(
-       ParentSemanticOwner_Gamma(F_entry),
-       MetaInstanceKey(F_entry, CanonicalizeInvocationInputs(args_entry)))
-   and result name n_compile = InvokeName(M_compile)
-```
+Stable roots come from the existing bootstrap or an independently legal
+ordinary meta formation. Root identity, root construction authority, active
+MetaDom and main's P2 are separate facts. There is no global active meta frame
+wrapping all compilation. Each root/name/ref/write action must have its own
+ordinary authority, OpenHere, Writable, access and lifetime evidence.
 
-This is precisely the [ordinary meta formation law](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md#41-orthogonal-dimensions).
-Entry and argument dependencies satisfy ordinary invocation admissibility.
-This globally persisted compilation result additionally requires global
-key/dependency stability. A filename or raw Level string is not a
-substitute for callable/argument identity. The existing bootstrap provision of
-owner roots is described in the [bootstrap consumer map](../symbol-world/early-meta-functions-and-namespace-graph.md#core-and-early-semantic-operations);
-it is fixed language bootstrap, not configurable build input.
-
-The invocation's result construction has an already formed complete
-resident `tau_M` in its ordinary result Place (§4.3.3 of the construction owner).
-`r_root` is the ordinary `mut type ref` to that Place under the invocation's
-result-construction write authority. It is not a reference to the semantic
-owner identity `M_compile`. Its subject is the result's existing construction
-window, with `Anchor(tau_M) = <M_compile, epsilon>`. The active entry frame
-therefore supplies `AuthorityMatches`; `WindowLive` and the result Place's
-ordinary Writable facts remain separate premises. Root stability supplies no opening qualification; the active meta instance
-obtains its mut view from OpenHere.
-
-Normalized root actions execute inside this same meta invocation, using the
-result name `n_compile` as their structural root. Explicit name formation
-checks the current tau_M's OpenHere and ordinary selector/retention/access
-conditions, not r_root's Writable. The separately obtained `r_root` serves
-actual writes. Neither operation enters a second meta frame that would mask
-the entry frame's authority.
-Normal return completes this closed compilation result and ends its own window.
-Saved references cannot bypass later write Pre. Thus Level selects the source
-tree supplied to normalization, while evaluator invocation/result formation
-alone establishes the root and its authorized construction context.
+An actual meta invocation establishes its ordinary instance tau_M and active
+frame, and imposes MetaDom while that frame is active. Returning restores the
+enclosing context; a stable root or completed meta payload retains no active
+dominance. Seal therefore cannot be globally forbidden merely because a root
+was formed by meta. Conversely, invoking meta through a compile helper or cache
+inside SealDom remains forbidden.
 
 ### 2.2 Generic symbolic anchor and compile realization
 
-MetaPartner(F) = M(F) names the generic symbolic anchor; CompilePartner(F) =
-C(F) names the derived compile realization. These are independent roles.
+MetaPartner(F)=M(F) is the generic symbolic anchor. Compile realization is the
+independent family C(F)={C_sigma(F)} admitted by the Policy projection relation.
+A runtime generic can have both this family and M(F); a compile generic uses
+its ordinary compile evaluation and may have M(F); an ordinary meta callable
+does not acquire a second meta partner.
 
-| Callable | Distinct compile partner | Generic meta partner |
-| --- | --- | --- |
-| runtime generic F | C(F) | M(F) |
-| compile generic F | none | M(F) |
-| meta F | none | none |
-
-Non-generic callables use their existing CallableRoot for ordinary symbolic
-anchoring. Compile companion derivation does not authorize E to change a
-runtime binding's stage or give an optimizer its own semantic facts.
+Projection members retain the source invocation and sealed frame, while M(F)
+has its separately anchored identity. Lazy representation is permitted, but a
+single cached C(F) record is not the entire semantic family. Non-generic
+callables retain their CallableRoot. Neither partner construction relabels a
+runtime binding's Pout.
 
 ## 3. Policy positions
 
 P1 and P2 are independent; Pin and Pout are derived:
 
-    Pin = Overlay(P2, Delta_in)
-    Pout = Overlay(P1, Delta_out)
+    Pin = ElabIn(P2, Delta_in)
+    Pout = ElabOut(P1, Delta_out)
     bare let -> empty overlay
     written plain/const/mut -> explicit mode override
     formal-local <p> p let -> ordinary Pattern solution for Mode=p
 
 Input and output constraints belong to one invocation relation; neither policy
-side computes the other. Evaluation stage is inherited and cannot be overwritten by a
-position annotation. Neither position policy grants Writable or changes the
+side computes the other. Pin admits explicit stage constraints and stage holes; Pout.stage remains
+P1.stage. A missing dimension is not an explicit hole or wildcard. Neither position policy grants Writable or changes the
 caller's independent result demand.
 
 Call-site `ResultPolicyDemand` is formed independently before maxima and
@@ -387,7 +360,7 @@ DefaultModeCompletion when no inherited/contextual constraint supplies one. Neit
 input window, and reacquiring a closed instance with `meta let` cannot reopen it.
 
 P1 `meta` describes the instance policy; P2 `meta` describes the callable's
-evaluation stage. Their positions are distinct. P1 `meta` is not an alias for
+evaluation horizon. Their positions are distinct. P1 `meta` is not an alias for
 ordinary `mut`, a fourth point in its 3×3 capability table, or permission to
 execute arbitrary runtime expressions at meta stage. The
 [policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md#3-contextual-elaboration-of-p1)
@@ -537,3 +510,25 @@ Implement the general input identity, result-name residency and opening-source
 relations first. A then uses these facilities as an ordinary instance. Concrete
 IR, persistence and access-summary algorithms are representation work; missing
 consumers remain explicit Diagnostic/Residual boundaries.
+
+## 7. Ordinary meta defaults and current-state consumers
+
+A trait-like query such as F_residual is an ordinary meta callable. Its direct
+result is its invocation instance type tau_M. Allow/deny or other helper
+material resides in ordinary Val2, accessed by ordinary navigation/extraction;
+there is no trait-result ontology.
+
+The default instance is formed by its first legal invocation. Customization
+writes the retained instance's actual member Place with current OpenHere,
+Writable and ordinary access/lifetime evidence. Copying the outer result and
+writing that copy does not mutate the retained default instance. Consumers
+read the currently committed member observation at their own continuation
+frontier; subsequent writes do not retroactively alter an already committed
+decision. A consumer requiring stability must use its declared snapshot/Close
+discipline.
+
+Meta cache reuse preserves instance and member Places/current state and
+rechecks dependencies. It never grants permission to invoke meta under
+SealDom. A previously completed payload may be read there if ordinary rules
+admit the read. Fixed language consumers such as residual escape are defined
+by their topic owners, not by an unconstrained user trait dispatcher.

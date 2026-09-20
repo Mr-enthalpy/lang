@@ -3,18 +3,29 @@
 Status: canonical semantic boundary. The complete evaluator and optimizer
 consumers are pending; implementation phases do not define additional semantics.
 
-## 1. One compilation is one meta evaluation
+## 1. Compilation entry
 
-    Compile(Level)
-      = Materialize(Residual(MetaEval(Normalize(PhysicalTree(Level)))))
+```text
+L = Normalize(PhysicalTree(Level))
+main.P2 = runtime
+omitted ordinary main.P1.stage = runtime
+K_entry = EntryContinuation(L, F_main)
+Compile(Level) = Materialize(Pi_machine(Residual(E(K_entry))))
+```
 
-Level selects an explicit compilation root anchored by main.lang. Physical
-normalization and source meta actions produce the program; the resulting machine
-program is the materialized residual continuation closure. Source acquisition,
-type construction, policy, lifetime, and runtime residue belong to this same
-evaluation. The [build boundary](../build-package/build-system-design.md) defines
-the input normalization; [host capabilities](host-capabilities-and-machine-objects.md)
-define the ordinary Object boundary for external resources and machine facts.
+Level selects the compilation root anchored by main.lang. File statements
+retain source order; sibling files are unordered contributions/actions and
+main.lang receives no execution priority. Physical normalization installs no
+semantic owner or authority.
+
+Existing bootstrap or independently legal ordinary meta formation establishes
+stable roots. Root ownership does not imply an active meta frame around
+K_entry. Actual meta/seal frames impose their stack-relative dominance only
+during their own activity, including through compile helpers.
+[Build normalization](../build-package/build-system-design.md) and
+[meta entry](meta-object-invocation-and-policy-reduction.md#21-compilation-entry-and-root-formation)
+supply the ordinary source/owner handoffs; host capabilities return ordinary
+Objects and add no build-side semantic facts.
 
 ## 2. Semantic saturation
 
@@ -122,9 +133,28 @@ remain ordinary consequences of the established facts.
 
 ## 7. Consumer handoff
 
-A Simple Serial Meta Evaluation consumer executes normalized actions, checks
+A Simple Serial Semantic Evaluation consumer executes normalized actions, checks
 the common projections, commits, delivers results/completions, and transports
 residue. It references the established name, construction, policy, lifecycle,
 host, and physical normalization laws. It does not repair or redefine them.
 Concrete residual frames, effect summaries, storage, and planner algorithms
 remain representation/implementation work.
+
+## 8. Seal readiness and scheduling
+
+P1 seal formation can remain a pending continuation/Place obligation with no
+resident yet. Compile work may admit that input and defer until it is ready;
+this is not a stage conversion. Ready includes actual read, write, borrow,
+lifetime and effect dependencies as well as formation order. Moving the work
+to a convenient scheduler queue cannot change those dependencies.
+
+MetaDom forbids seal entry and seal let; SealDom forbids meta invocation and
+meta let, including cache hits. Completed meta payloads are ordinary readable
+inputs when independently legal. Wpre/Wseal are snapshots of this one
+continuation; privileged scans keep their fixed Wpre domain.
+
+All legal ready schedules preserve observable results, instance/call origin,
+cleanup and effects. Scheduler traces do not become identity. Saturation is a
+semantic fixed point for ready work, not a guarantee that infinite static work
+terminates. Representations and scheduling algorithms remain implementation
+frontiers.

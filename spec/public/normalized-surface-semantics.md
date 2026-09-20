@@ -290,8 +290,9 @@ a!
 The operator becomes an unresolved `OperatorTarget` carrying its spelling,
 fixity, and arity. No operator lookup or overload resolution occurs.
 
-The canonical semantic handoff maps the grammar-fixed token to its ordinary
-`op::type` family under `operator::type`. Grammar vocabulary, precedence and
+The canonical semantic handoff distinguishes naked OperatorUse -> operator[op],
+OperatorNameValue (ordinary name read without recursive dispatch), dot .op ->
+op::adl, and explicit paths as written. Grammar vocabulary, precedence and
 parse associativity cannot be modified by source meta evaluation. The current
 OperatorTarget carrier does not itself implement family lookup or the registered
 Pattern/generative projections described by the
@@ -840,7 +841,7 @@ The P1 form `meta let f = expression` uses this existing policy-prefixed
 binding shape. Its `meta` atom remains a Name. Contextual meta qualification is
 currently limited to type/type ref, with instance retention as one consumer;
 it is not a fourth PolicyMode. P1 openness qualification and P2
-meta evaluation stage are distinguished by later contextual policy elaboration;
+meta evaluation horizon are distinguished by later contextual policy elaboration;
 normalization establishes neither instance identity nor OpenHere. Plain let
 uses the same syntax shape; its classic meta completion/closure behavior is
 likewise a semantic rule, not a frontend rewrite.
@@ -1309,3 +1310,20 @@ removes any need to pass the LHS anchor backward into RHS normalization.
 The current ImplicitNearest return tag is structural spelling only. Implicit
 E return selects the outermost enclosing function layer. The build binder is
 pending alignment; neither parser nor normalizer resolves that target.
+
+### Semantic consumer alignment
+
+Current syntax carriers do not establish R_vis/C_sigma execution or OG_s
+selection. OG_s's spelling extraction and current-environment slot lookup
+belong to ordinary semantic invocation, not normalization. Missing source
+forms remain pending and need golden coverage when connected.
+
+The existing with carrier's explicit-empty/items distinction feeds mechanical
+placement: omitted means default NLL, empty means lexical cleanup, and
+x with{a} adds x's actual touches to a's placement requirements. It does not
+create borrow/access edges or a second lifetime interpreter.
+
+In the specified structural namespace implementation layer a closure expression
+evaluates to tau_C before ordinary binding. Conservative contribution repair
+preserves every legal ordinary let, shadow, mutation and explicit group action.
+Normalization neither inspects RHS semantic type nor retries failed execution.

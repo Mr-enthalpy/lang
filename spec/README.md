@@ -43,17 +43,20 @@ is:
 Object / complete tau / Place
   -> names / named type / OverloadGroup / owner graph
   -> relational Pattern
-  -> Policy and overload
+  -> single-stage positions / R_vis / C_sigma / ordinary overload
   -> invocation/result
   -> construction/migration
-  -> lifecycle / unsafe admissions
+  -> instance move effects / with cleanup / lifecycle / unsafe admissions
   -> host Objects / physical normalization
-  -> evaluator projections / residual / optimizer boundary
+  -> runtime entry / active dominance / evaluator projections
+  -> restricted residual / internal completion / escape / optimizer boundary
 ```
 
 Current implementation coverage is recorded in
 [`planning/roadmap.md`](planning/roadmap.md). A missing consumer is an explicit
-frontier; it does not authorize an alternate semantic relation.
+frontier; it does not authorize an alternate semantic relation. The
+[64-case conformance matrix](planning/canonical-semantic-conformance.md)
+links canonical acceptance scenarios to owners and pending consumers.
 
 ## Contracts
 

@@ -2,7 +2,7 @@
 
 **Status: Partially implemented.**
 
-This document describes future semantic lowering for targeted return
+This document defines canonical semantic lowering for targeted return
 syntax and D-reduction. The current implementation deliberately stops
 at return target binding.
 
@@ -50,9 +50,9 @@ E (T return);
   => targeted return to resolved T
 ```
 
-where `Self₀` is the current enclosing callable-frame self,
-obtained from the active return-target context at the point
-where the return event is lowered.
+where Self₀ identifies the outermost enclosing function frame selected by
+implicit return, obtained from the active return-target context. It does not
+mean the most recently entered callable frame.
 
 The implicit return spelling `E return;` selects the outermost enclosing
 function layer. The current active-frame binder still selects its most recent
@@ -60,7 +60,7 @@ frame; alignment to this rule is consumer work, not an alternate semantics.
 
 ## 2. Return Capability Completion
 
-Future return completion is mediated by the callable frame's return
+Canonical return completion is mediated by the callable frame's return
 capability. That capability is exposed through the callable-local `Self` space
 as an ordinary callable capability value, as described in
 `spec/design/symbol-world/function-object-self-and-return-capability.md`.
@@ -92,27 +92,24 @@ where:
 - `pattern(E)` is the structural pattern of the returned value.
 - `value(E)` is the evaluated return value.
 
-`Done_Return` is a semantic IR concept. It is **not** represented
+Done_Return is notation for internal target-completion state, not an Object,
+Pattern or user constructor. It is unavailable to lookup, Norm, @, ref/share,
+storage or ordinary Pattern matching. A user name with that spelling has no
+completion authority. Representation may use ReturnComplete instead. It is **not** represented
 in the current normalized AST. The current `NormReturnEvent` is a
 surface-structure node, not a semantic completion.
 
-## 4. Local Unit Contribution
-
-At the local (intra-block) level, a `ReturnEvent` contributes unit
-to the local pattern space so that local pattern reasoning can
-continue:
+## 4. No local normal result contribution
 
 ```text
-Local pattern space: A - S + Done(unit)
-Return accumulator:  ReturnAccumulator + Done(D)
+LocalNormalContribution(ReturnEvent) = none
+TargetCompletion = ReturnComplete(target, ordinary payload)
 ```
 
-`Done(unit)` is absorbed as the zero element during local pattern
-combination. This allows the enclosing context to continue
-processing remaining pattern material while the return completion
-propagates to the target boundary.
-
-This behavior is **not** implemented in the current build evaluator.
+The local path is completed; it does not produce unit, zero or a user-visible
+Done value. Target completion propagates internally until its matching frame.
+Its eventual payload undergoes ordinary ReturnPattern delivery.
+The current build evaluator does not execute this propagation.
 
 ## 5. D-Reduction Boundary
 
@@ -122,8 +119,8 @@ the target result slot.
 
 ```text
 At boundary matching Selfᵢ:
-  Done(D) is consumed from the return accumulator
-  D is injected into the matched result slot
+  the internal target completion is consumed
+  its ordinary payload is checked against the target ReturnPattern
 ```
 
 D-reduction is a future semantic concept. It is not implemented
@@ -172,8 +169,8 @@ boundaries until `Selfᵢ` is reached:
 
 ```text
 Each intermediate boundary:
-  - passes Done(D) upward (return accumulator propagation)
-  - contributes Done(unit) locally (local pattern completeness)
+  - propagates the internal target completion upward
+  - contributes no normal local result
 
 When Selfᵢ is reached:
   - D-reduction occurs
@@ -200,7 +197,7 @@ completions or perform D-reduction.
 | Extraction-result delivery | Not executed | Explicit writes target each binder; a terminal expression matches the whole result Pattern |
 | `Done_Return` | Not represented | Semantic IR concept |
 | D-reduction | Not implemented | Future boundary action |
-| `Done(unit)` contribution | Not implemented | Local pattern completeness |
+| Local return contribution | Not implemented | No normal value contribution; no fabricated unit |
 | Target propagation | Not implemented | Future traversal |
 | Target validity check | Minimal active-frame diagnostics | Full target reachability diagnostics |
 

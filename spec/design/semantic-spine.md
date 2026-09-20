@@ -21,16 +21,19 @@ This reading index introduces no separate value or execution ontology.
 
     resolved name / explicit group
       -> ordinary candidate projection
-      -> R_Gamma applicability and extracted Hole valuation
+      -> R_vis visibility/input evidence and ordinary C_sigma preparation
+      -> R_Gamma hard applicability and extracted Hole valuation
+      -> fallback suppression
       -> total demand and Policy preference
-      -> unique sealed invocation
+      -> unique Selected=(c*,sigma*,frame)
       -> DynamicLegality / Pre
       -> commit / Post / InvocationResult
 
     PhysicalTree(Level)
       -> child-directory typed name creation -> explicit borrow -> ordinary type initialization
       -> serial file blocks + unordered sibling overlays
-      -> one meta evaluation
+      -> EntryContinuation(L,F_main), main.P2=runtime
+      -> E saturation, actual meta/seal dominance and readiness
       -> synchronous projections of one continuation
       -> residual closure
       -> materialization
@@ -45,3 +48,17 @@ Host results and post-directed unsafe admissions enter that same fact world.
 from pending source consumers. Indices, templates, caches, source paths, graph
 rendering and allocation cannot define equality, authority, candidate identity,
 lifecycle or result meaning.
+
+Stage is one atom; static atoms are pairwise incomparable. Pin can constrain
+stage explicitly; Pout.stage=P1.stage. InputAdmissible, migration and Ready
+are separate. Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
+
+Instance Killable, fixed MoveEffect and frontier Movable remain independent.
+Mechanical with placement precedes @; killing move adds no old-generation drop.
+Split/D preserves residual material, while Done is internal boundary completion.
+Residual escape consumes current ordinary meta payload facts.
+
+Naked operator use selects operator[op], dot .op selects op::adl; OG_s retains
+spelling and selects the current slot. Implementation-layer closure expressions
+produce tau_C; ordinary let binds them and conservative structural contributions
+preserve existing legal bindings.

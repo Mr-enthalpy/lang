@@ -147,7 +147,7 @@ Writable and ordinary capability/access/lifetime; no authority is amplified.
 OpenHere. The instance name is its type value, so OpenHere governs acquisition
 of mut qualification without an independent instance const/mut gate. Plain let
 completes/closes it; later meta let cannot reopen it. P2 meta independently names
-the callable's evaluation stage. Ordinary Val2 payload policies remain ordinary.
+the callable's evaluation horizon. Ordinary Val2 payload policies remain ordinary.
 
 ### Place
 
@@ -216,8 +216,11 @@ be written as nine primitive declarations.
 
 ### Operator Pattern and policy deduction
 
-Grammar-fixed op::type families have ordinary call, registered extraction and
-generative projections. Extraction observes the same relation as construction,
+Naked OperatorUse selects operator[op], dot .op selects op::adl and explicit
+paths stay explicit. OperatorNameValue reads without recursively dispatching.
+OG_s is an ordinary spelling-retaining type family with explicit Forget_s to
+OverloadGroup; selection reads the current environment slot. Ordinary call,
+registered extraction and generative projections retain their distinct roles. Extraction observes the same relation as construction,
 not a synthesized inverse. Policy +/|| deduction uses those registered
 relations, HoleBinderId, require and ordinary overload selection. Omission,
 explicit concrete mode and explicit hole remain distinct source constraints.
@@ -307,8 +310,8 @@ name. Value and borrowed lifecycle fields remain distinct.
 
 ### Region generation
 
-A gapless half-open interval delimited by use/move/drop events. Move ends the
-source generation and begins its replacement at one continuation cut.
+A gapless half-open interval delimited by use/move/drop events. A killing move ends the source generation and begins its replacement at one
+continuation cut. Preserve follows its independent narrow proof.
 
 ### Pre / Post
 
@@ -397,3 +400,53 @@ E saturates ready actions without opportunity-seeking rewrites, E E = E, as
 synchronous projections of one continuation. O1 exposes new legal E work; O2
 lowers accepted runtime residue costs. Both use E facts and revalidate affected
 projections. The planner controls search, never meaning.
+
+### Stage, horizon, producer visibility and readiness
+
+Stage={meta,compile,seal,runtime}, one atom per resolved coordinate. Static
+atoms are pairwise incomparable; only identity and static-to-runtime edges
+exist. P2 is evaluation horizon; P1/Pout is producer visibility; InputAdmissible
+is position-sensitive acceptance and Ready is frontier execution legality.
+Neither acceptance nor deferral is Policy migration.
+
+### R_vis and C_sigma
+
+Round-one visibility/input/projection evidence prepares ordinary compile
+realizations C_sigma(c). Round two performs hard A, fallback suppression and
+ordinary Policy/Pattern selection. Selected=(c*,sigma*,frame) fixes the shared
+origin of all projections and runtime residue. No speculative bodies or
+runtime reselection occur.
+
+### Active MetaDom / SealDom
+
+Restrictions imposed by actual active frames, propagated through helpers.
+MetaDom excludes seal; SealDom excludes meta invocation, including cache hits.
+Stable owner history does not establish active dominance. Main has runtime P2.
+
+### Killable / MoveEffect / Movable
+
+Killable_K(n) describes an instance; MoveEffect_K(n,m) is predetermined Kill or
+Preserve; Movable_K(n,m) checks current Pre. Nonkillability is neither movement
+nor copy permission. Type equality, stage and ZST layout do not collapse them.
+
+### With placement
+
+x with{a} adds x's actual Use/Consume/Destroy touches to a's placement uses.
+Existing destructors order x before a; a's uses do not extend x. Empty with
+anchors lexical cleanup; omission uses NLL. Killing move adds no old-generation
+destructor. Placement precedes lifetime observation and grants no access edge.
+
+### Split / internal completion / residual escape
+
+Split_Gamma(A,S)=<H,R,delta> is a restricted proof-relevant split; D returns R.
+Done_chi(v) is internal chain completion, never an Object or user Pattern.
+Target return has no fabricated local unit. CanEscape_Sigma(R,B) is a separate
+fixed consumer of current ordinary meta payload facts, not a universal
+empty-residual rule or a new trait ontology.
+
+### Implementation-layer closure formation
+
+At the specified structural namespace implementation layer Eval(C)=tau_C.
+Ordinary let binds the evaluated RHS. Additional synthesis requires explicit
+structural contribution roles; conservative repair cannot override legal
+binding, shadowing, mutation or group actions.

@@ -3,16 +3,19 @@
 Status: canonical semantics. Physical provenance and semantic construction
 authority are independent.
 
-## 1. Physical blocks and ordinary meta actions
+## 1. Physical blocks and ordinary source actions
 
-    PhysicalTree(Level) -> MetaProgram
+    PhysicalTree(Level) -> normalized source actions
     directory -> Unordered{sibling file blocks, child-directory blocks}
-    file -> Seq(meta actions)
+    file -> Seq(source actions)
 
 Sibling blocks start from a common input snapshot, produce independent overlays
 and join under ordinary effect algebra. A sequential implementation must preserve
 that result and cannot make a sibling's new writes available by file ordering.
 main.lang anchors the explicitly selected root; it has no sibling priority.
+Entry has runtime P2, and omitted ordinary P1 defaults to runtime. Bootstrap or
+legal meta formation supplies stable roots, not an active meta wrapper around
+all source actions.
 
 Child-directory basenames normalize to ordinary typed name creation, explicit
 borrow, and one-shot directory type initialization before body evaluation.
@@ -57,12 +60,15 @@ is not canonical. Close requires retained structural names being published to be
 initialized; it does not require all future generated coordinates to be realized.
 Ordinary lexical let remains unchanged.
 
-At a normalized named-contribution position, unqualified let name = e
-contributes to the same named type's V_tau. Different sibling files
+In the specified structural namespace implementation layer, a closure RHS
+returns tau_C and ordinary let binds it. Further contribution to the named
+type's V_tau requires an established structural contribution role. Different sibling files
 can contribute to that named type. Distinct entry identity survives equal values.
 Ordinary lexical let and Pattern structural-child registration remain separate.
 
-Sibling contributions to f share NameCoord(root,f) before either is retained.
+Sibling actions established as contributions to f share NameCoord(root,f)
+before either is retained. Coordinate equality alone does not establish
+contribution status; ordinary legal bindings and mutations retain their meaning.
 Their overlays join contribution effects under the ordinary named-contribution
 algebra, including the first one-shot formation. There are no competing name
 identities to choose between and no file-order winner. Exclusive explicit

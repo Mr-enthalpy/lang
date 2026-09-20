@@ -12,11 +12,10 @@ pass modes are mechanically inserted, source-expressible actions — not backend
 ABI heuristics and not optimizer decisions — and that `move` is the fixed point
 of pass normalization.
 
-It is not current public language behavior or an implemented pass. Only
-`CanonicalMechanicalPassCore` is normative target semantics; examples,
-selection heuristics, and lowering/IR descriptions are implementation guidance.
-The document is self-contained: it does not require the reader to assemble its
-meaning from other documents.
+It is not current public language behavior or an implemented pass. The pass-action core, instance lifecycle boundary and cleanup/with rules are
+normative. Selection algorithms and lowering/IR representations remain pending.
+The [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md)
+defines the shared Killable, MoveEffect, Movable and Pre/Post judgments.
 
 ## 0. Canonical pass-action core
 
@@ -153,7 +152,7 @@ arg |> copy   => copy
 Once a source or normalized argument slot already carries an explicit pass mode,
 automatic strategy must not rewrite it.
 
-A manual `move` always consumes the object. `Copyable` only guarantees that a
+A manual move performs its predetermined MoveEffect, Kill or Preserve. `Copyable` only guarantees that a
 value *can* be copied; it does not permit optimizing an explicit `move` into a
 `copy`, and it does not permit downgrading an explicit `move` into a `share` or
 `ref`.
@@ -161,104 +160,38 @@ value *can* be copied; it does not permit optimizing an explicit `move` into a
 Manual pass modes are not free hints. They are semantic requirements, and future
 work will introduce corresponding compile-time legality checks — for example,
 explicit `copy` requires copyable, explicit `ref` requires an exclusive borrow,
-explicit `share` requires a shared borrow, and explicit `move` requires that the
-current object can be consumed. The detailed conditions are out of scope here;
+explicit `share` requires a shared borrow, and explicit move requires Movable at the current continuation frontier. The detailed conditions are out of scope here;
 the point is that a manual pass mode is a requirement, not a suggestion.
 
-## 4. Default Pass Insertion
+## 4. Default pass insertion
 
-When no explicit pass mode is given, the lowering framework inserts a concrete
-`move` or `copy` action selected from the value argument's first-order type and
-static facts. It never inserts `ref`, `share`, or `@`. The action must be
-explicit after lowering; the IR must not carry a deferred "default pass" state.
+An argument with an explicit pass retains it. Otherwise the ordinary
+instance/context-dependent pass judgment selects a concrete move or copy.
+It never inserts ref, share or @. Before action lowering there must be a
+selected realization with its ordinary legality evidence; no unresolved
+default-pass marker reaches an executing action.
 
-The inserted action can be described schematically in language-shaped form:
+Copyable establishes a possible copy realization, not a mandatory default.
+Type, policy, target facts and ordinary instance facts can constrain selection;
+layout size alone supplies no capability. The concrete selection algorithm is
+pending and cannot substitute a heuristic for the canonical judgment.
 
-```lang
-(arg: type)? |>
-  if { arg; } |>
-  else {
-      arg |> <T: type>(self, arg: T) {
-          (T: has_pass)? |>
-              if {
-                  arg;
-              } |>
-              else {
-                  arg |> (T |> get_default_pass);
-              };
-      }
-}
-```
+## 5. Uniform instance participation
 
-Semantic points:
-
-1. `(arg: type)? |> if { arg; }` uses an optional one-layer top Pattern view.
-   The guard `arg: type` produces a bool symbol whose Pattern carries the
-   `if` / `else` alternatives; matching does not require `?`. Non-value
-   material includes type objects, rank objects, namespace objects, meta
-   objects, pattern objects, verification objects.
-
-2. The `else` branch handles value arguments only.
-
-3. `arg |> <T: type>(self, arg: T) { ... }` binds the generated helper's
-   implicitly passed caller object (here the generated helper function object)
-   to its first written formal `self`, then
-   binds the explicit value argument `arg` and its first-order type `T`.
-
-4. `(T: has_pass)? |> if { ... }` means: the guarded predicate produces a bool
-   symbol and `?` explicitly peels one top Pattern layer. The branch could read
-   the Pattern directly. If explicit
-   pass is present, the lowering preserves `arg` and does not automatically
-   rewrite it.
-
-5. `arg |> (T |> get_default_pass)` means: when no explicit pass is present,
-   obtain the default pass action from `T`'s default pass policy / static facts
-   and insert that action into the argument slot.
-
-6. This example describes the mechanical lowering framework. It does not
-   implement a full trait solver, target ABI decision, borrow checker, copy
-   legality checker, or concrete pass-selection algorithm.
-
-`T |> get_default_pass` denotes the static pass-selection interface. Its result
-domain is `move | copy`; it may depend on
-`Copyable`, layout/size, target facts, and
-policy. Those details are not the inserted action's surface shape. The inserted
-argument action is still explicit after lowering; the IR must not receive an
-undecided default pass.
-
-Key properties:
-
-- automatic default insertion applies only when no explicit pass action exists;
-- the default action is not implicitly `move`;
-- the default action must become a concrete pass action before IR/action lower;
-- `Copyable` only guarantees copyability; it does not guarantee that the default
-  copies;
-- a large `Copyable` object may still move rather than copy under default policy;
-- a small but non-copyable object is not copied merely because it is small;
-- no default policy forms a `ref` or `share` view;
-- if no selected pass action is viable, a later checking stage should report an
-  error; this document does not define the full error conditions.
-
-## 5. Non-Value Arguments Pass Through Unchanged
-
-Automatic pass insertion applies only to value arguments:
+Type, rank, namespace, meta, Pattern and verification material do not form a
+non-value pass-through category. Every transported Object instance follows
+the same pass-action and lifecycle relations. Stage affects observation and
+readiness, not whether a lifecycle subject exists.
 
 ```text
-non-value argument material
-  -> pass unchanged
-
-value argument material
-  -> bind first-order type T
-  -> preserve explicit pass if present
-  -> otherwise insert T |> get_default_pass
+Killable_K(n) != Movable_K(n,m)
+MoveEffect_K(n,m) ∈ {Kill, Preserve}
 ```
 
-Non-value arguments include, but are not limited to, type objects, rank objects,
-namespace objects, meta objects, pattern objects, verification objects. These must not receive an automatically
-inserted `copy`, `share`, `ref`, or `move`.
-
-This rule prevents ordinary meta/type/pattern material from being mistaken for a
-runtime value at an argument slot.
+The lifetime owner defines the narrow Preserve proof and the frontier Pre.
+A globally surviving type instance and a meta-local type temporary may have
+different effects despite equal values. Nonkillability does not grant copy,
+borrow or movement capability.
 
 ## 6. Move is the fixed point
 
@@ -271,9 +204,8 @@ move(move(x)) == move(x)
 ```
 
 `move` is not a type constructor. It does not produce a new type value such as
-`T move`, it does not change rank, and it does not change a classifier. It is the
-consuming transfer of an object's resource / handle from its location into the
-argument slot.
+`T move`, it does not change rank, and it does not change a classifier. It is the selected transfer into the destination with its predetermined
+Kill or Preserve effect.
 
 Therefore pass normalization must not recursively produce:
 
@@ -297,8 +229,9 @@ There are four mechanical modes, defined in terms of `move`:
 
 ```text
 move(x):
-  consume x
-  transfer x into argument slot
+  require Movable_K(x,m)
+  perform the predetermined MoveEffect_K(x,m)
+  transfer into the argument slot
 
 copy(x):
   tmp = CopyConstruct(x)
@@ -318,9 +251,9 @@ share(x):
 Here `copy`, `ref`, and `share` are not endpoints. Each constructs some object
 that can then be `move`d. The only passing endpoint is `move`.
 
-- `copy(x)` consumes `tmp`, not `x`.
-- `ref(x)` / `share(x)` consume the borrow handle `b`, not `x`.
-- `move(x)` consumes `x` itself.
+- copy(x) applies the terminal move to tmp, without a pre-move of x.
+- ref(x)/share(x) apply the terminal move to the formed handle b.
+- move(x) ends x's generation exactly when its predetermined effect is Kill.
 - Every materialized pass handle ultimately reaches a single terminal `move`
   action.
 
@@ -355,8 +288,8 @@ move(borrow_node(parent = p, kind = k))
 ```
 
 The equality here is a fixed point on type / rank / access shape. It does not
-claim that the same runtime handle has no linear state change: the old handle
-dies, and a new handle inherits the same parent/origin/kind.
+claim that the same runtime handle has no linear state change: when MoveEffect=Kill the old handle dies and a new handle inherits the same
+parent/origin/kind. Preserve follows its independent proof.
 
 If `b1` is a borrow produced from `x`, then `move(b1)` produces a *sibling*
 borrow handle with the same origin as `b1`, not a *child* borrow of `b1`.
@@ -378,7 +311,7 @@ separates callee-independent normalization from candidate-dependent adaptation:
 
 ```text
 callee-independent raw argument normalization:
-  detect is_val
+  identify the argument instance and its ordinary observation
   detect explicit pass
   form RawArgShape
 
@@ -422,7 +355,7 @@ argument automatic in, parameter expects copy
   => adapt to copy if legal
 
 argument automatic in, parameter pass unspecified
-  => use default in(T)
+  => use the ordinary instance/context default-pass judgment
 ```
 
 This document does not define candidate ranking; it only states that pass
@@ -517,9 +450,7 @@ No final IR instruction format.
 
 ## 14. Relationship to other documents
 
-The documents below are adjacent design. They do not define the mechanical
-passing model specified here, and this document does not depend on them for its
-meaning.
+The documents below own the adjacent relations consumed by this model.
 
 - `pattern-normalization-and-first-order-overload.md` — produces the
   `RawArgShape` / `ParameterShape` objects that argument adaptation consumes.
@@ -541,8 +472,32 @@ meaning.
   lookup or policy obligation.
 
 
-The term “non-value” in this lowering denotes material excluded from automatic
-runtime pass/return actions, not a separate language ontology. These remain
-ordinary Objects under their policy views. Mechanical elaboration supplies the
-continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
-optional optimizer search cannot change its rules.
+## 15. Cleanup placement and with
+
+Cleanup is placed before @ or other lifetime observation. Omitted with always
+uses the ordinary NLL default; explicit empty with{} anchors cleanup at the
+lexical boundary. Neither supplies missing access, borrow, capture, type or
+construction authority.
+
+```text
+x with{a,b}  =>  x -> a and x -> b
+Touch(x) = Use(x) ∪ Consume(x) ∪ Destroy(x)
+UseForPlacement(a)
+  = OrdinaryRequiredUses(a) ∪ ⋃{Touch(x) | x -> a}
+```
+
+Only actual continuation events belong to Touch. Each outgoing edge makes the
+dependency a survive the dependent x's required touches. If both destruction
+events exist, Destroy(x) < Destroy(a). Ordinary uses of a do not extend x.
+Transitive y -> x -> a orders their existing destructors y before x before a.
+Strict cycles have no legal cleanup placement and diagnose.
+
+A killing move discharges the old generation's cleanup obligation at its
+consumption cut. It adds no second Destroy/drop, even with lexical with{}.
+Required uses of the transferred generation follow that generation's ordinary
+relations. Observable destructors and effects cannot be removed to satisfy
+the graph. NLL and lexical anchors are defaults/constraints within this same
+placement relation, not an iterative lifetime repair algorithm.
+
+The current Raw/Norm with carrier preserves items, explicit emptiness and
+errors. It does not implement Touch, cleanup scheduling or lifetime checking.

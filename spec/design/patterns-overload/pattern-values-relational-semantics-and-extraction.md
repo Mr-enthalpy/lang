@@ -1188,3 +1188,13 @@ and capture identities are not mutated; see
 [closure replication](../symbol-world/closure-anchored-replication.md).
 Named type synthesis and explicit candidate groups use their distinct
 [name/type algebras](../symbol-world/names-and-overload-groups.md).
+
+## Restricted residual consumer
+
+[Extraction chains](static-pattern-spaces-and-extraction-chains.md#5-residual-splitting-and-extraction-chains)
+consume R_Gamma through Split_Gamma(A,S)=<H,R,delta>; D returns R. Finite
+registered sum cases admit direct splitting, but this interface establishes
+no general Boolean difference, arbitrary inverse, or universal result join.
+Product integrity and sum miss remain separate. A sealed extractor's failure
+is terminal, never another derivation or arm. Internal Done is not a Pattern
+constructor and residual escape is a distinct boundary consumer.

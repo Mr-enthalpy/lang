@@ -4,15 +4,18 @@ Status: canonical semantics; the current build substrate is pending alignment.
 
 ## 1. Compilation input
 
-    Compile(Level)
-      = Materialize(Residual(MetaEval(Normalize(PhysicalTree(Level)))))
+    L = Normalize(PhysicalTree(Level))
+    K_entry = EntryContinuation(L, F_main)
+    main.P2 = runtime
+    omitted ordinary main.P1.stage = runtime
+    Compile(Level) = Materialize(Pi_machine(Residual(E(K_entry))))
 
 Before planner parameters are added, the compiler's semantic invocation selects
 one compilation level. The compiler finds main.lang there as an explicit
 compilation-root anchor. It is an ordinary sibling file after that selection,
 not an execution-order authority.
 
-Source meta actions determine how Objects are formed, how dependencies arise,
+Source actions, including legal ordinary meta invocations, determine how Objects are formed, how dependencies arise,
 how external libraries are acquired and how target machines are described.
 There is no second program-meaning input through a manifest, dependency list,
 mount table, target flag, feature flag, package graph, include path or library
@@ -20,12 +23,12 @@ path. Future optimization options configure planner search without changing E.
 
 ## 2. Neutral physical normalization
 
-    PhysicalTree(Level) -> MetaProgram
+    PhysicalTree(Level) -> normalized source actions
     NormalizeRoot(Level, b_root) = NormalizeBody(Level, b_root)
     NormalizeBody(D, b) = Unordered{
       NormalizeFile(f_i, b), NormalizeDir(n_j, D_j, b), ...
     }
-    NormalizeFile(f, b) = Seq(decoded ordinary meta actions of f under b)
+    NormalizeFile(f, b) = Seq(decoded ordinary source actions of f under b)
     NormalizeDir(n, D, b) = Seq(
       n_expr := ordinary typed name formation let n::b:type;
       r_n := explicit ref of n_expr;
@@ -33,17 +36,20 @@ path. Future optimization options configure planner search without changing E.
       NormalizeBody(D, n_expr)
     )
 
-Here b_root is the invocation result name/binding n_compile of M_compile,
-established by the [compilation-entry meta formation law](../meta-invocation/meta-object-invocation-and-policy-reduction.md#21-compilation-entry-uses-ordinary-meta-root-formation).
-The existing bootstrap parent, selected ordinary meta callable and canonical
-arguments determine M_compile; its active frame and result construction window
-provide the ordinary authority premises. Level selects physical input only.
-Normalization neither creates that root nor grants its OpenHere facts. Name
-formation reads its current type value and uses the resolved structural root
-identity, never Norm of that value. It needs no parent Writable or parent mut
-type ref. The entry's ordinary authorized r_root remains available for actual
-writes under the separate ref rules; M_compile's owner identity is not itself
-the borrowed resident.
+Here b_root is the stable structural root supplied by bootstrap or an
+independently legal ordinary meta formation. Its identity is not an active
+meta frame around the entire compilation. The
+[entry law](../meta-invocation/meta-object-invocation-and-policy-reduction.md#21-compilation-entry-and-root-formation)
+separates root identity, actual stack dominance, main's runtime P2 and
+construction authority.
+
+Level selects physical input only. Normalization creates neither the root
+nor OpenHere/Writable evidence. Name formation observes the current resident
+type and resolved structural root identity, not Norm equality. Explicit
+borrowing and actual writes separately require their ordinary authority.
+Each meta/seal frame imposes dominance during its activity and restores its
+enclosing context on return.
+
 The selected level adds no extra name segment. Each child-directory basename n
 becomes the selector of a generated ordinary structural let action. That action
 uses typed NameExpr creation, explicit borrowing and ordinary initialization.
@@ -63,7 +69,9 @@ Evaluation of the directory body follows its creation in that directory's serial
 wrapper; its child blocks share the post-initialization snapshot and initialized
 name n_expr. This ordering
 is internal to the wrapper and grants no priority over its parent's siblings.
-Directory contents use ordinary named-contribution positions and extend/inject.
+Directory contents retain ordinary binding/action semantics. Only established
+structural contribution roles synthesize the named type; explicit extend/inject
+keeps its ordinary checks.
 The initial ref r_n loses its initialization capability at commit. Later writes
 require a separately applicable ordinary ref/write candidate, including direct
 mut or explicit meta-to-mut confirmation for an initialized type. Physical
@@ -103,7 +111,9 @@ provenance neither makes them exclusive nor merges distinct entries by value
 equality. Conflicting replacements report an unordered-block write conflict.
 Subtraction and other updates commute only where their ordinary algebra says so.
 
-Same-name siblings already address the same NameCoord(root,name). If unretained
+Sibling actions already established as contributions address the same
+NameCoord(root,name). Equal coordinates do not turn ordinary actions into
+contributions. If unretained
 in the common snapshot, their accepted joined material forms the first resident
 once by the ordinary one-shot rule. There is no first file that creates its
 semantic identity. Explicit exclusive realization effects can still conflict.

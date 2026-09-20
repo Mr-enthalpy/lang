@@ -18,7 +18,7 @@ select overloads, materialize closures, execute callable bodies, or interpret
 Pattern packs.
 
 The canonical extension has equal call/value and Pattern/name meta declaration
-surfaces, grammar-fixed op::type families, and distinct omitted/concrete/hole
+surfaces, grammar-fixed operator syntax, and distinct omitted/concrete/hole
 policy material. These are handoff obligations, not implemented syntax coverage:
 the current carriers below do not execute generative realization or relational
 operator extraction. A future syntax-directed carrier must retain this material
@@ -576,3 +576,27 @@ golden coverage, without semantic target lookup in parsing or normalization.
 Anonymous closure anchoring is resolved by ordinary formation or witnessed
 anchored replication at contribution, not by feeding the LHS destination back
 into the frontend. See [name/type semantics](../design/symbol-world/names-and-overload-groups.md).
+
+## Semantic revision handoff and preserved carriers
+
+The current OperatorTarget preserves spelling/fixity/arity. Future connected
+consumers must distinguish OperatorUse from OperatorNameValue: naked use
+selects operator[op], the selector argument reads the ordinary name, dot .op
+uses op::adl, and explicit paths stay as written. This is an evaluator handoff,
+not a claim that current direct operator-name bindings or OG_s execution work.
+
+WithClauseAst already preserves Empty, Items and Error; Norm retains names,
+explicit_empty, error and origin. No new with AST is required. Directed Touch
+placement, lexical empty-with and default NLL are semantic consumers, not parser
+interpretation. See the mechanical/lifetime owners.
+
+Policy syntax preserves omitted, concrete and explicit-hole material without
+choosing a stage or treating omission as _. A resolved stage is a single atom;
+Raw PolicyChoice syntax does not authorize stage unions. Pin's stage extraction
+and Pout's inherited stage are contextual elaboration.
+
+Structural implementation-layer closure evaluation and conservative contribution
+roles remain semantic work. Normalization must preserve ordinary legal
+binding/shadowing/write interpretations; it never executes a failing statement
+and reparses it as contribution. New source wiring requires span/recovery and
+golden coverage, and may not feed semantic facts back into parsing.

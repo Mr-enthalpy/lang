@@ -28,7 +28,8 @@ The semantic layer is organized around these independent coordinates:
   and lookup IDs;
 - `PolicyPair`, primitive `PolicyMode = {const, plain, mut}`, capability
   realization, and post-selection DynamicLegality;
-- one name-resolution result followed by value/type/call projection;
+- one resolved target, R_vis evidence, ordinary C_sigma realizations and sealed
+  selection shared by static projections and runtime residue;
 - unique sealed invocation, no reopen, and unified `InvocationResult`;
 - candidate-driven same-Type Policy migration;
 - construction authority, `OpenHere`, Writable, `extend`, and `inject`;
@@ -41,8 +42,16 @@ The semantic layer is organized around these independent coordinates:
 - source-only namespace construction, unordered physical normalization, and
   one evaluator E with synchronized projections and validated optimization.
 
-Same-name construction synthesizes a named type; OverloadGroup is the separate
-candidate aggregation algebra. Current Rust carriers do not yet implement every
+Stage is a single atom. P2 is horizon, Pin admits explicit stage constraints,
+and Pout follows P1. Runtime main enters one E/K; active meta/seal dominance
+is independent of stable root history. Instance move effects and directed with
+cleanup feed the same lifecycle observations. Done is internal completion;
+residual escape separately consumes ordinary meta facts.
+
+Implementation-layer closure expressions produce complete types before ordinary
+let binding. Explicit structural contributions synthesize named types;
+OverloadGroup is the separate aggregation algebra. Naked operators select
+operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
 
 ## Workspace
@@ -66,6 +75,7 @@ tests                frontend golden tests
 - [Raw AST contract](spec/contracts/raw-ast-contract.md)
 - [Canonical semantic owners](spec/design/README.md)
 - [Implementation roadmap](spec/planning/roadmap.md)
+- [Canonical conformance scenarios](spec/planning/canonical-semantic-conformance.md)
 - [Open questions](spec/planning/open-questions.md)
 - [Glossary](spec/reference/glossary.md)
 

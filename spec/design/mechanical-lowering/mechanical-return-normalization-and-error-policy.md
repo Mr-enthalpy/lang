@@ -11,8 +11,8 @@ meta invocation — not through a built-in exception channel.
 
 It is a future design note. It is not current public language behavior, not an
 implemented pass, not a parser or normalizer rule, and not a current type or
-effect checker. The document is self-contained: it does not require the reader to
-assemble its meaning from other documents.
+effect checker. Canonical stage, instance lifetime and internal completion laws constrain this
+future sketch; it supplies no competing rule for those topics.
 
 ## 1. Purpose
 
@@ -29,11 +29,9 @@ alias/binding, and callable execution.
 The core structure of return normalization is:
 
 ```text
-non-value return material
-  -> return unchanged
-
-value return material
-  -> bind first-order type T
+ordinary returned instance
+  -> retain ordinary lifecycle/pass obligations
+  -> obtain its ordinary type observation T
   -> guard on T |> has(Error)
   -> branch over the visible Error carrier shape only when the guard is true
 ```
@@ -64,88 +62,19 @@ It is not type checking itself, not exception syntax, not a runtime catch, and
 not macro expansion. It is an ordinary meta-action framework inserted during the
 normalization / lowering stage.
 
-The inserted normalization action can be described schematically in
-language-shaped form:
+A possible future consumer obtains the returned instance's ordinary type
+observation and guards on an explicitly defined Error-carrier predicate.
+It then invokes an admitted handler or delivers the ordinary result. This
+sketch does not freeze a complete error/effect policy.
 
-```lang
-(r: type)? |>
-  if { r; } |>
-  else {
-      r |> <T: type>(helper_self, r: T) {
-          (T |> has(Error))? |>
-              if {
-                  r |> (branch_self, e Error) {
-                      return_owner..return(e Error);
-                  } |> (branch_self, val: _) {
-                      val;
-                  };
-              } |>
-              else {
-                  r;
-              };
-      }
-}
-```
+## 3. Uniform returned instances
 
-Semantic points:
-
-1. `(r: type)? |> if { r; }` uses an optional explicit one-layer top Pattern
-   view. The guard `r: type` produces a bool symbol whose Pattern carries the
-   `if` / `else` alternatives; matching does not require `?`. If `r` is non-value
-   material — type-rank material, a type object, meta material, namespace
-   material, pattern material, or similar — the `if` branch returns `r`
-   unchanged. It does not enter automatic error normalization.
-
-2. The `else` branch handles value returns only.
-
-3. `r |> <T: type>(helper_self, r: T) { ... }` is rank-pattern /
-   type-binding shape. The generated helper's first written formal binds its
-   implicitly passed callable object; the next formal binds value `r` and its
-   first-order type `T`, then the body runs guarded predicates over `T`.
-
-4. `(T |> has(Error))? |> if { ... }` explicitly peels one top Pattern layer
-   from the bool result. The branch chain could also read the bool Pattern
-   directly without `?`. The
-   predicate is evaluated at compile time. Only when the predicate is true
-   does the error branch run. The branch that is not entered creates no
-   `Error` lookup obligation.
-
-5. `r |> (branch_self, e Error) { ... } |> (branch_self, val: _) { ... }` is
-   the Error-carrier branch shape inside the guarded `T |> has(Error)` branch:
-   - each branch's first written formal binds that branch callable's implicit
-     self slot;
-   - the Error branch binds `e Error`;
-   - the value branch binds `val`.
-
-6. `return_owner..return(e Error)` is schematic notation for a call to the
-   enclosing callable frame's return capability. It is deliberately not the
-   branch-local self formal.
-
-7. `helper_self` and `branch_self` are ordinary binder spellings for their
-   respective callables' first formal position. The self role is positional,
-   not attached to the spelling `self`; each actual callable object is passed
-   implicitly in invocation-frame slot 0.
-
-8. `return_owner..return(e Error)` is not an exception throw, runtime exception,
-   throw/catch operation, or compiler-intrinsic jump. It is the return
-   capability exposed by the current function object. The capability has a
-   special semantic effect, but it is still entered through symbol / capability
-   boundaries.
-
-## 3. Value Returns vs Non-Value Returns
-
-Automatic error normalization applies only to value returns. Non-value objects
-return unchanged.
-
-```text
-Only value returns enter automatic error normalization.
-Non-value material is passed through unchanged.
-```
-
-Non-value material includes type objects, namespace objects, meta objects,
-pattern objects, and rank/type material. These must not be subjected to default
-error-carrier branching. This avoids mistaking type/meta/pattern material for a
-runtime result-like value.
+Type, meta, namespace and Pattern results remain ordinary instances. They
+are not categorically exempt from movement or lifecycle checks. Any future
+Error normalization must define its predicate's applicable domain using
+ordinary relations and preserve the canonical result/completion boundary.
+A known false guard enters no Error branch; runtime or seal-dependent guards
+retain/defer their lawful continuation instead of speculatively running both.
 
 ## 4. Error Carrier Detection: `T |> has(Error)`
 
@@ -237,12 +166,10 @@ the self role is a position;
 return capability. It is lookupable through the resolved function-object
 capability position, but its semantic effect is special:
 
-1. **Local pattern/type-check channel**: it completes the current branch with
-   `Done(unit)`. The branch contributes no further pattern material to the
-   same-level continuation. `unit` is absorbed as the zero element of `+`.
+1. The branch has no normal local result contribution; it manufactures no unit.
 
-2. **Enclosing function return accumulator**: it contributes `Done(D)` to the
-   final return accumulator, independently of the local branch pattern space.
+2. An internal target-qualified completion carries the ordinary payload to
+   ReturnPattern delivery. It is not a user-visible Done Object.
 
 3. **Lifetime postcondition**: the return capability declares that the
    return-relevant mutable capability of the enclosing callable object is
@@ -381,11 +308,11 @@ error-policy checker exists. The relevant dimensions are:
 - the current P1-projected value view and namespace visibility determine which
   `Error` branch predicate or handler objects are available;
 - receiver/parameter policy pairs and stage constraints determine whether a
-  handler call is admissible, while P2 describes its result pair;
+  handler call is admissible; P2 is its evaluation horizon;
 - the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material;
   there is no independent arbitrary complete return-policy `P3` or scalar
   replacement for its `Pv:Pp` pair; instead `P_out` inherits P1's pair and
-  evaluation stage exactly, inherits omitted mode, and permits an explicit
+  producer stage exactly, inherits omitted mode, and permits an explicit
   mode-only overlay;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
@@ -415,7 +342,7 @@ the dependency:
 
 ```text
 return normalization depends on:
-  is_val
+  ordinary returned-instance observation
   first-order TypeValueId projection material
   T |> has(Error) predicate
   guarded branch evaluation
@@ -443,13 +370,12 @@ No eager branch lookup.
 
 ## 13. Relationship to Other Documents
 
-The documents below are adjacent design. They do not define the return-normalization
-model specified here, and this document does not depend on them for its meaning.
+The canonical owners below constrain this future return-normalization sketch.
 
 - `meta-object-invocation-and-policy-reduction.md` — the unified policy-aware
   lookup and invocation engine that `Error` branch lookup and branch guarding
   should reuse.
-- `pattern-normalization-and-first-order-overload.md` — provides `is_val` and the
+- `pattern-normalization-and-first-order-overload.md` — provides the
   first-order type information that `T |> has(Error)` is evaluated over.
 - `type-values-places-and-borrow-views.md` — defines `TypeValueId`, over
   which `T |> has(Error)` is computed as projection material.
@@ -473,10 +399,3 @@ model specified here, and this document does not depend on them for its meaning.
   substrate: the false branch has no Error lookup or return-capability
   obligation, and the true branch alone checks the Error carrier branch and
   `return_owner..return(e Error)` capability.
-
-
-The term “non-value” in this lowering denotes material excluded from automatic
-runtime pass/return actions, not a separate language ontology. These remain
-ordinary Objects under their policy views. Mechanical elaboration supplies the
-continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
-optional optimizer search cannot change its rules.

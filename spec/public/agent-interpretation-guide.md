@@ -250,10 +250,39 @@ redefine them. Named contributions synthesize types; OverloadGroups aggregate th
 A type contribution requires Writable, OpenHere and final classifier home
 Home(TypeOf(v)) = TypeMemberScope(T). [Witnessed anchored replication](../design/symbol-world/closure-anchored-replication.md)
 creates a new closure identity and preserves capture obligations; it never
-reparents the RHS. Pin inherits P2 and Pout inherits P1; bare let writes no override. Explicit
+reparents the RHS. Pin elaborates P2 with explicit stage/mode constraints or holes; Pout inherits
+P1's stage and may refine mode. Bare let writes no override. Explicit
 plain is a concrete constraint, distinct from contextual default completion. Implicit return targets the outermost enclosing
 function layer; a current nearest-frame carrier is not semantic authority.
 
 Follow the [semantic spine](../design/semantic-spine.md) for A, lifecycle/unsafe,
 host capabilities, source normalization and E. Representation, cache, scheduler
 and optimizer structures cannot introduce program facts.
+
+## Canonical evaluation and lifecycle guardrails
+
+- Stage is one atom; meta/compile/seal are mutually incomparable. P2 is horizon,
+  P1/Pout producer visibility. InputAdmissible, migration and Ready are separate.
+  Runtime P2 defaults omitted P1 to runtime; seal defaults to seal. Omission
+  is not a hole. Known runtime inputs do not change the producer stage.
+- Resolve once, R_vis evidence, ordinary C_sigma preparation, hard A, fallback
+  suppression, Policy/Pattern order, unique Selected=(c*,sigma*,frame).
+  No speculative candidate bodies and no runtime reselection.
+- Main has runtime horizon. Stable roots do not establish active MetaDom.
+  Actual meta/seal frames exclude seal/meta respectively, including through
+  compile helpers and caches; deferred work preserves actual dependencies.
+- Killable is instance-local; MoveEffect is fixed before observation; Movable
+  is frontier legality. Equal types and ZST layout prove no blanket exemption.
+  with placement precedes @; killing move adds no old-generation destructor.
+- Split/D is restricted residualization, Done is internal boundary completion,
+  and residual escape is a separate current-state ordinary meta consumer.
+  Return contributes no synthetic local unit.
+- Naked operators use operator[op], dot .op uses op::adl, explicit paths stay
+  explicit. OG_s retains spelling, and its selector reads the current slot.
+- Implementation-layer closure expressions return tau_C; ordinary let binds
+  it. Contribution roles are conservative and cannot override legal binding,
+  shadowing, write or group behavior.
+
+The [conformance matrix](../planning/canonical-semantic-conformance.md) lists
+the acceptance cases. Current carriers and their passing tests are not proof
+that these pending consumers are implemented.
