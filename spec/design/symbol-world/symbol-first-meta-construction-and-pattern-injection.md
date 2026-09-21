@@ -408,21 +408,31 @@ mut let t1_ref = (let t1::t:type) ref;
 t1_ref = bool;
 ```
 
-Here and in subsequent abbreviated examples, t denotes an already obtained
-authorized mut type ref; a type-valued binding must instead be written
-`t |> (type ref)`. Every intermediate parent already exists.
+Here and in subsequent abbreviated examples, t may be a legally resolved
+type-valued name expression or an explicitly supplied borrow path preserving
+the corresponding target identity. Every intermediate parent already exists.
+Child-name formation follows the [name owner's](names-and-overload-groups.md)
+value-side judgment: current OpenHere, valid selector, non-retention and
+ordinary path/type/access conditions. It requires neither parent Writable nor
+a prior parent mut type ref. An explicit `t |> (type ref)` path remains
+available under its ordinary borrow rules; it is not a prerequisite for name
+formation. Borrowing the new child slot and initializing it then check their
+own capabilities separately.
 
 ```text
-n_t1 := CreateName(t, t1, ordinary declared policy, type)
-  -> NameExpr(n_t1), PlaceType(q_t1) = type, ResidentState(q_t1) = Uninitialized
+n_t1 := Realize(NameCoord(StructuralRootIdentity(t), t1), ordinary declared policy, type)
+  -> NameExpr(n_t1)
+q_t1 := BindingPlace(n_t1)
+PlaceType(q_t1) = type, ResidentState(q_t1) = Uninitialized
 r_t1 := explicit Borrow(q_t1)
 r_t1 = bool
   -> ordinary assignment of the complete resident read through Resolve(bool)
   -> validate ordinary write Pre and commit first initialization
 ```
 
-Name creation and initialization are separate. If creation fails, no
-destination is created; if first write fails, the Place stays uninitialized,
+Typed realization and initialization are separate; NameCoord exists before
+either action. If realization fails, no destination Place is established;
+if first write fails, the Place stays uninitialized,
 subject only to the existing enclosing transaction. Successful assignment does not
 reroot the RHS or equate the destination NameBindingId with its Pattern owner.
 
