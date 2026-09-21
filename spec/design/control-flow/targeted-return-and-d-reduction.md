@@ -1,15 +1,17 @@
 # Targeted Return and D-Reduction
 
-**Status: Partially implemented.**
+**Status: Canonical semantics; return-target binding substrate is partially
+implemented, while completion propagation and whole-Pattern delivery remain
+pending consumers.**
 
-This document describes future semantic lowering for targeted return
+This document defines canonical semantic lowering for targeted return
 syntax and D-reduction. The current implementation deliberately stops
 at return target binding.
 
 The current implementation provides the structural syntax and normalized
 AST (`ReturnEvent`, `TailValue`, and unresolved return target syntax) plus
 a minimal semantic return-target binding pass. D-reduction, completion
-propagation, and execution/lowering semantics remain deferred.
+propagation, and execution/lowering consumers remain unconnected.
 
 This document owns targeted-return completion and its D-reduction boundary.
 Automatic require does not define a second return/control algebra. Match
@@ -37,7 +39,7 @@ lifetime postconditions, lower to HIR/ABI, or create `Done_Return`.
 
 ## 1. Targeted Return Core Idea
 
-Future semantic lowering for the three return terminal forms:
+Canonical semantic lowering for the three return terminal forms:
 
 ```text
 E return;
@@ -50,9 +52,9 @@ E (T return);
   => targeted return to resolved T
 ```
 
-where `Self₀` is the current enclosing callable-frame self,
-obtained from the active return-target context at the point
-where the return event is lowered.
+where Self₀ identifies the outermost enclosing function frame selected by
+implicit return, obtained from the active return-target context. It does not
+mean the most recently entered callable frame.
 
 The implicit return spelling `E return;` selects the outermost enclosing
 function layer. The current active-frame binder still selects its most recent
@@ -60,7 +62,7 @@ frame; alignment to this rule is consumer work, not an alternate semantics.
 
 ## 2. Return Capability Completion
 
-Future return completion is mediated by the callable frame's return
+Canonical return completion is mediated by the callable frame's return
 capability. That capability is exposed through the callable-local `Self` space
 as an ordinary callable capability value, as described in
 `spec/design/symbol-world/function-object-self-and-return-capability.md`.
@@ -78,7 +80,7 @@ including an extraction/product Pattern. It does not collapse
 `-> (r first, d second)` to one synthetic result name. Pattern-directed value
 delivery remains a later pass.
 
-## 3. Future Return Completion
+## 3. Internal Return Completion
 
 Targeted return produces a `Done_Return` completion:
 
@@ -92,42 +94,40 @@ where:
 - `pattern(E)` is the structural pattern of the returned value.
 - `value(E)` is the evaluated return value.
 
-`Done_Return` is a semantic IR concept. It is **not** represented
+Done_Return is notation for internal target-completion state, not an Object,
+Pattern or user constructor. It is unavailable to lookup, Norm, @, ref/share,
+storage or ordinary Pattern matching. A user name with that spelling has no
+completion authority. Representation may use ReturnComplete instead. It is **not** represented
 in the current normalized AST. The current `NormReturnEvent` is a
 surface-structure node, not a semantic completion.
 
-## 4. Local Unit Contribution
-
-At the local (intra-block) level, a `ReturnEvent` contributes unit
-to the local pattern space so that local pattern reasoning can
-continue:
+## 4. No local normal result contribution
 
 ```text
-Local pattern space: A - S + Done(unit)
-Return accumulator:  ReturnAccumulator + Done(D)
+LocalNormalContribution(ReturnEvent) = none
+TargetCompletion = ReturnComplete(target, ordinary payload)
 ```
 
-`Done(unit)` is absorbed as the zero element during local pattern
-combination. This allows the enclosing context to continue
-processing remaining pattern material while the return completion
-propagates to the target boundary.
-
-This behavior is **not** implemented in the current build evaluator.
+The local path is completed; it does not produce unit, zero or a user-visible
+Done value. Target completion propagates internally until its matching frame.
+Its eventual payload undergoes ordinary ReturnPattern delivery.
+The current build evaluator does not execute this propagation.
 
 ## 5. D-Reduction Boundary
 
-At the matching control-flow / binding / extraction boundary,
-the targeted return completion injects the returned pattern into
-the target result slot.
+At the boundary matching the resolved return target, the internal completion
+is consumed and its ordinary payload undergoes whole-Pattern delivery against
+the target ReturnPattern.
 
 ```text
 At boundary matching Selfᵢ:
-  Done(D) is consumed from the return accumulator
-  D is injected into the matched result slot
+  the internal target completion is consumed
+  its ordinary payload is checked against the target ReturnPattern
 ```
 
-D-reduction is a future semantic concept. It is not implemented
-in the current parser, normalizer, or build evaluator.
+D-reduction semantics is defined here; its completion-propagation and delivery
+consumers are not connected in the build evaluator. The parser and normalizer
+preserve source structure rather than execute this semantic boundary.
 
 ### 5.1 Result delivery is ordinary Pattern binding
 
@@ -172,12 +172,12 @@ boundaries until `Selfᵢ` is reached:
 
 ```text
 Each intermediate boundary:
-  - passes Done(D) upward (return accumulator propagation)
-  - contributes Done(unit) locally (local pattern completeness)
+  - propagates the internal target completion upward
+  - contributes no normal local result
 
 When Selfᵢ is reached:
-  - D-reduction occurs
-  - result is injected into the matched slot
+  - the internal target completion is consumed
+  - its ordinary payload undergoes whole-Pattern delivery against the target ReturnPattern
 ```
 
 If no matching active target exists at any reachable boundary,
@@ -198,10 +198,10 @@ completions or perform D-reduction.
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |
 | Return binding slot | Complete normalized slot/Pattern retained on the target frame | Used as `let ResultPattern = expr` expectation |
 | Extraction-result delivery | Not executed | Explicit writes target each binder; a terminal expression matches the whole result Pattern |
-| `Done_Return` | Not represented | Semantic IR concept |
-| D-reduction | Not implemented | Future boundary action |
-| `Done(unit)` contribution | Not implemented | Local pattern completeness |
-| Target propagation | Not implemented | Future traversal |
+| `Done_Return` | Not represented | Internal target-qualified completion |
+| D-reduction | Not implemented | Consume target completion and perform ordinary whole-Pattern delivery |
+| Local return contribution | Not implemented | No normal value contribution; no fabricated unit |
+| Target propagation | Not implemented | Propagate internal completion to its matching target |
 | Target validity check | Minimal active-frame diagnostics | Full target reachability diagnostics |
 
 ## 8. Current Return Target Binding Substrate

@@ -1,7 +1,8 @@
 # Physical Source and Build Infrastructure
 
-This block owns the normalization of physical source into a meta program and
-the engineering boundary around its evaluation.
+This block owns the normalization of physical source into ordinary source
+actions and the engineering boundary around their evaluation by E. Main has
+runtime horizon; stable root ownership does not impose an active meta wrapper.
 
 - [Compilation and physical normalization](build-system-design.md)
 - [Namespace projection of evaluation](namespace-assembly.md)

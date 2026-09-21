@@ -19,8 +19,10 @@ P let name:t = rhs retains its explicit type constraint. Neither decomposes
 into a default-type name declaration followed by source assignment.
 Initializer-free P let name:t and P let name::path:t both create typed NameExpr,
 using lexical and structural creation authority respectively.
-At a named-contribution position, unqualified let synthesizes the named type's
-V_tau through ordinary type contribution. Explicit P let name::path:t creates
+In a structural namespace implementation layer, a closure expression itself
+produces tau_C and ordinary let binds it. Further synthesis requires an
+explicit structural contribution role under the conservative rules in the
+name owner; callable/type RHS shape or same-name spelling is insufficient. Explicit P let name::path:t creates
 NameExpr for a fresh typed, uninitialized Place. Explicit ref borrows that Place;
 ordinary write initializes it. Creation installs no type value and returns no ref.
 
@@ -31,7 +33,7 @@ completion, ownership and escape rules determine what may survive return. struct
 transformation; inject is read + extend + write. Their allocation material is
 private execution machinery, not a returned ontology.
 
-Physical files contribute normalized meta blocks under the
+Physical files contribute normalized source-action blocks under the
 [source composition](symbol-construction-units-and-namespace-origin.md) rules.
 They do not own construction authority.
 [Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
@@ -110,14 +112,20 @@ separately from ordinary group membership.
 
 ### 2.1.1 V_τ closure materialization: derived semantics
 
-A newly materialized closure has an anonymous complete function-object type
+At an ordinary materialization position a closure has an anonymous complete function-object type
 and its associated () leaf. Its own first self has that exact type. The
 anonymous implementation layer remains under /tau. The same structural
 formation semantics apply whether the function object is expressed as a
 closure or constructed through ordinary anonymous structure.
 
-    MaterializeClosure(C)
+    OrdinaryMaterializeClosure(C)
       = anonymous complete type A with associated () + callable object of A
+    Eval_impl(C) = tau_C
+      -- specified structural namespace implementation layer
+
+The latter result is fixed when the expression is evaluated. Binding it does
+not create a second wrapper and later contributions cannot retroactively change
+what the first RHS returned.
 
 An eligible contribution preserves the original function object's owner,
 captures and type snapshot. Anchored replication, when needed, constructs a
@@ -400,21 +408,31 @@ mut let t1_ref = (let t1::t:type) ref;
 t1_ref = bool;
 ```
 
-Here and in subsequent abbreviated examples, t denotes an already obtained
-authorized mut type ref; a type-valued binding must instead be written
-`t |> (type ref)`. Every intermediate parent already exists.
+Here and in subsequent abbreviated examples, t may be a legally resolved
+type-valued name expression or an explicitly supplied borrow path preserving
+the corresponding target identity. Every intermediate parent already exists.
+Child-name formation follows the [name owner's](names-and-overload-groups.md)
+value-side judgment: current OpenHere, valid selector, non-retention and
+ordinary path/type/access conditions. It requires neither parent Writable nor
+a prior parent mut type ref. An explicit `t |> (type ref)` path remains
+available under its ordinary borrow rules; it is not a prerequisite for name
+formation. Borrowing the new child slot and initializing it then check their
+own capabilities separately.
 
 ```text
-n_t1 := CreateName(t, t1, ordinary declared policy, type)
-  -> NameExpr(n_t1), PlaceType(q_t1) = type, ResidentState(q_t1) = Uninitialized
+n_t1 := Realize(NameCoord(StructuralRootIdentity(t), t1), ordinary declared policy, type)
+  -> NameExpr(n_t1)
+q_t1 := BindingPlace(n_t1)
+PlaceType(q_t1) = type, ResidentState(q_t1) = Uninitialized
 r_t1 := explicit Borrow(q_t1)
 r_t1 = bool
   -> ordinary assignment of the complete resident read through Resolve(bool)
   -> validate ordinary write Pre and commit first initialization
 ```
 
-Name creation and initialization are separate. If creation fails, no
-destination is created; if first write fails, the Place stays uninitialized,
+Typed realization and initialization are separate; NameCoord exists before
+either action. If realization fails, no destination Place is established;
+if first write fails, the Place stays uninitialized,
 subject only to the existing enclosing transaction. Successful assignment does not
 reroot the RHS or equate the destination NameBindingId with its Pattern owner.
 
@@ -485,7 +503,11 @@ Place, group entry, or exported member. Borrow sharing is expressed through
 ordinary ref/share; @ reifies name interpretation under the lifecycle rules.
 
 Grammar fixes operator vocabulary, fixity, precedence and parse associativity.
-Each token selects its ordinary op::type family under operator::type; source
+Naked operator use dispatches through operator[op], dot .op through op::adl,
+and explicit paths remain as written. OperatorNameValue reads the selector
+argument without recursively dispatching it. OG_s retains an extractable ASCII
+grammar spelling and selects that current environment slot; Forget_s is an
+explicit ordinary projection, not an implicit group conversion. Source
 contributions supply semantic candidates under ordinary authority. Call,
 registered relational extraction and generative invocation are projections of
 the same operator structure, as defined by the
@@ -516,14 +538,15 @@ A call position performs the following conceptual flow:
 resolve name binding
   -> form CallCandidates(NamedType(S))
   -> enumerate heterogeneous values
-  -> observe each Val2 object's Pv:Pp view for the current lookup stage
+  -> R_vis(c,Omega,sigma): producer visibility and input/projection evidence
+  -> form ordinary C_sigma(c) where required, without speculative execution
   -> obtain each value's type
   -> resolve the type-associated `()` call entry
   -> discard non-callable or non-applicable entries
   -> form fully admissible set A using structure, Pattern/type/result checks,
-     receiver/parameter policy-pair compatibility, P2 target-result
-     compatibility when constrained, stage legality, and concept/require legality
-  -> retain phase-specificity/const-mut product-maximal candidates
+     receiver/Pin compatibility, Pout and total output-demand
+     compatibility when constrained, active dominance and require legality
+  -> suppress fallback after A, then retain Policy product maxima
   -> apply the remaining fixed-order preference filters
   -> enforce must-select consistency and require one final candidate
 ```
@@ -535,8 +558,8 @@ invalid and does not turn it into a function overload.
 Candidate identity and applicability belong to the candidate/invocation model;
 name-first resolution only establishes where the heterogeneous values come
 from. Derived compile companions are complete first-class `Val2` function
-objects whose existence is derived under the compile transform
-(`CompilePartner(F) = C(F)`, function-object-call-model §8), not post-failure
+objects in the admissible family C(F)={C_sigma(F)} with correspondence to
+the same source invocation (function-object-call-model §8), not post-failure
 fallback entries; their policy and overload
 obligations are defined in
 `symbol-policy-and-compile-flow-projection.md`.
@@ -548,7 +571,7 @@ obligations are defined in
 The model has three independent dimensions:
 
 ```text
-execution capability:
+evaluation horizon P2:
     meta / compile / seal / runtime
 
 evaluation demand:
@@ -1376,14 +1399,17 @@ facet-construction primitive, but each must receive its own capability boundary.
 
 ## 5. Physical source normalization and semantic construction
 
-PhysicalTree(Level) normalizes into a meta program. Each file contains serial
-meta actions; sibling file and directory blocks start from the same input
+PhysicalTree(Level) normalizes into ordinary source actions. Entry has runtime
+P2 and omitted P1 defaults to runtime, without a global active meta frame.
+Stable owner roots come from bootstrap or independently legal meta formation;
+active dominance follows actual frames, not root history. Each file contains serial
+actions; sibling file and directory blocks start from the same input
 snapshot, produce overlays, and join by ordinary unordered effect composition.
 A serial implementation cannot expose an earlier sibling's new writes to a
 later sibling merely because of filename order.
 
 Source locations are provenance for discovery, decoding, diagnostics and
-caching. Actual source meta actions create names and Objects under their
+caching. Actual source actions create names and Objects under their
 existing capabilities. Files and directories provide no additional ownership,
 reopening permission, or prohibition on same-name entry aggregation.
 
@@ -1776,9 +1802,9 @@ RuntimeField(f)
     and Materializable_0(Val1_f)
     and not RequiresStaticPattern(f)
 
-Stage(accessor(f))
-  = runtime || compile   if RuntimeField(f)
-  = compile              otherwise
+RuntimeField(f) permits an ordinary runtime accessor realization.
+Each generated callable/view has one concrete stage, with admissible
+C_sigma projections; otherwise its observation requires static formation.
 ```
 
 `Materializable_0` means that the current first-order runtime object model can
@@ -1798,11 +1824,13 @@ selected element but retain all ordinary call dependencies:
 Dependencies(Index(s, i)) = { container observation s,
                               index observation i,
                               selected element observation }
-Stage(Index(s, i)) = meet { Stage(d) | d in Dependencies(Index(s, i)) }
+InputAdmissible checks each dependency's declared position.
+Ready(Index(s,i),K) requires the actual observations and effect order.
 ```
 
-`RuntimeField(selected element)` is one local condition inside that meet. No
-Sequence-specific stage rule exists.
+RuntimeField(selected element) is one local realization condition. It creates
+neither a static-stage meet nor a stage union; unavailable seal observations
+defer the same invocation. No Sequence-specific stage conversion exists.
 
 The generated partner candidates are ordinary members whose classifiers
 satisfy `TypeMember_tau_struct`; they enter `V_τ` during the `struct` formation
@@ -2875,9 +2903,11 @@ real-field family before ordinary overload enumeration.
 
 Explicit P let name::path:t requires freshness and creates a typed NameExpr
 with an uninitialized Place. Explicit ref borrows that Place without reading;
-ordinary write initializes it. Omitted :t defaults to :type without a resident. Unqualified let name = expression has implicit
-named-type synthesis sugar only in a named-contribution position; lexical let
-retains ordinary binding semantics.
+ordinary write initializes it. Omitted :t defaults to :type without a resident.
+At the specified implementation layer a closure RHS evaluates to tau_C before
+ordinary binding. Further named-type synthesis requires established structural
+contribution material; legal ordinary lets, shadowing, mutation and groups are
+preserved. Failed execution never retries as contribution.
 
 Declared policy, construction-reference mut policy, per-member visibility,
 Writable, and OpenHere are independent. Each navigation layer preserves its
@@ -3083,11 +3113,11 @@ Generic(F) => MetaPartnerRoot(F, GenericArgs)
 ```
 
 It is **not** conditioned on whether `F` also has a `CompilePartner(F)`. The
-compile partner `CompilePartner(F) = C(F)` (function-object-call-model §8)
+compile-realization family C(F)={C_sigma(F)} (function-object-call-model §8)
 answers how the compile-time realization of `F` is produced; the meta partner
 `MetaPartner(F) = M(F)` (meta-object-invocation §4) answers at which level the
 callable's generic symbolic identity is anchored. The two partners are
-orthogonal: a runtime generic `F` has both `C(F)` and `M(F)`; a compile generic
+orthogonal: a runtime generic F has the admitted C_sigma(F) family and M(F); a compile generic
 `F` has no distinct compile partner but still has `M(F)`; a meta `F` has
 neither. `CurrentAuthority(Σ)` therefore uses `MetaPartnerRoot(F, GenericArgs)`
 for generic symbolic anchoring, independent of any `CompilePartner(F)`

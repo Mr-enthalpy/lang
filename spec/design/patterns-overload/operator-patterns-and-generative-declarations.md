@@ -39,24 +39,73 @@ ordinary Pattern specificity, after applicability. There is no generator or
 fallback-name priority. Multiple incomparable maxima remain ambiguous; selected
 failure never reopens another generator.
 
-## 2. Grammar facts and ordinary operator families
+## 2. Grammar facts and ordinary operator dispatch
 
-The grammar fixes a finite OpTok vocabulary and its fixity, precedence and parse
-associativity. For each recognized token:
+Grammar fixes OpTok spelling, fixity, precedence and parse associativity.
+Semantic dispatch preserves three distinct forms:
 
-    ParseOperator(op) = <op::type, Fixity, Precedence, ParseAssociativity>
-    *::type belongs to operator::type
+```text
+naked OperatorUse(op) -> operator[op]
+dot operator .op     -> op::adl
+explicit path        -> the written ordinary path
+```
 
-The fixed family path is unresolved language material until semantic lookup;
-the parser does not enumerate semantic candidates. Programs may contribute
-ordinary callable semantics to existing families under ordinary authority, but
-cannot create operator tokens or change grammar precedence during their own
-meta evaluation. There is no Parse -> Eval -> Parse feedback and no separate
-OperatorObject ontology.
+Paths such as op::type remain ordinary library paths, not the grammar's
+hardwired target. Source cannot create tokens or change parsing by meta
+evaluation. OperatorUse and OperatorNameValue are distinct roles: the op
+argument of operator[op] reads the ordinary operator name and does not
+recursively invoke operator[op]. Ordinary lookup, type, policy and lifetime
+checks still apply; this rule is not a raw token bypass.
 
-An application a*b carries the structure OpApp(*::type,a,b). Surface omission
-of callable-object self does not change Type(callee)=Type(first self). The
-explicit value/call form remains available when that self must be named.
+### 2.1 OperatorOverloadGroup and current-slot selection
+
+```text
+OG_s = s |> OperatorOverloadGroup
+```
+
+This ordinary string-to-type meta family accepts ASCII spellings in the
+grammar's valid operator vocabulary. OG_s retains extractable spelling s.
+A formal a:b OperatorOverloadGroup uses an explicit HoleBinder for b; it
+extracts spelling independently of the ordinary value binder a.
+
+The ordinary explicit Forget_s operation projects OG_s to OverloadGroup.
+It establishes no subtype, implicit conversion, overload preference or
+automatic adaptation. A plain OverloadGroup carries no recoverable spelling;
+there is no inverse inference of s.
+
+operator[a:OG_s] selects the current environment's ordinary slot named s.
+It does not simply return the candidate contents carried by a. Thus a carried
+selector can choose the current binding after ordinary shadowing.
+
+Successful selection preserves the spelling-indexed result type:
+
+```text
+a : OG_s
+operator[a] -> g_s : OG_s
+```
+
+For example, subject to ordinary lookup, policy and lifetime checks:
+
+```lang
+let selected = operator[+];
+operator[selected]
+```
+
+The second selection still extracts "+" from selected's OG_"+" type and
+reads the current environment's "+" slot. Selection does not erase its result
+to plain OverloadGroup. Only explicit Forget_s performs that projection;
+spelling cannot subsequently be recovered from the resulting plain group.
+
+Direct declarations such as `let + = closure` and
+`let + = operator[+]` bind the ordinary operator name subject to the same
+rules. Their intended source consumer is pending. They are not a general
+left-hand-side-free compound assignment `let += g`; compound assignment
+and operator-name binding remain distinct syntax roles.
+
+Same-slot ordinary combination retains OG_s and its spelling. It does not
+implicitly combine different spellings, infer a selector from an arbitrary
+group, or create String-to-Path conversion. General first-class .field/path
+algebra remains open; the dot-operator rule above does not close that topic.
 
 ## 3. Three projections of one application structure
 
@@ -84,7 +133,7 @@ registration alone provides no extraction proof.
 P let x * y => B
 ```
 
-Here * already denotes the grammar-selected *::type family. The head observes
+Here * follows the ordinary operator[*] dispatch relation. The head observes
 its generative invocation/name relation, not GenerateToken("*"). No fourth
 operator projection or separate parameter system is introduced.
 
@@ -140,3 +189,9 @@ revalidated under the [ordinary E/O boundary](../meta-invocation/evaluation-resi
 Policy + and || deduction is a consumer of these same registered relations,
 HoleBinderId and require constraints. The [policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md)
 owns coordinate legality, omission/inheritance and the joint invocation relation.
+
+The ordinary law query's default state follows the meta owner's retained
+instance/member Place protocol. Customization requires current OpenHere and
+Writable; consumers observe the current committed payload, not a copied
+outer binding or an optimizer-private fact. Later writes do not change a
+previous committed semantic decision.

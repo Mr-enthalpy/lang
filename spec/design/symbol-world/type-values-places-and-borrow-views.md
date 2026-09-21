@@ -1755,10 +1755,10 @@ type-forming member:    meta
          constructor RefTy(T) is defined in
          lifetime-policy-and-overload-boundary.md §2
 
-borrow-forming member:  runtime || compile
+borrow-forming members: concrete stage declarations / admissible projections
   E |> RefTy(T)
-      -- forms the actual borrow instance; the runtime || compile
-         builtin/default member, and the only family member that may
+      -- forms the actual borrow instance; a selected ordinary
+         builtin/default realization, the only family role that may
          obtain PrivilegedActualPlace
 ```
 
@@ -2846,3 +2846,17 @@ meaning.
 - `pattern-normalization-and-first-order-overload.md` — the pattern/type
   candidate-preparation layer that consumes ordinary type-value observation
   (`Core(τ) = Q`) for first-order type matching.
+
+## Instance lifetime and type transport
+
+Type value equality, stable root identity, local binding, Place and lifecycle
+instance remain separate. Non-meta type instances follow the existing global
+survival rule; meta-local type temporaries may have finite generations and a
+killing move. A stable meta root, an equal local copy and an equal globally
+retained resident do not thereby share lifetime or Killable facts.
+
+The [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#2131-instance-killability-and-move-legality)
+defines Killable_K, predetermined MoveEffect and frontier Movable uniformly
+for type, meta, compile and runtime instances. OpenHere, Writable, Place
+residency and lifetime imply none of one another. A narrow Preserve proof is
+not an implicit clone and does not exempt the action from borrow/access Pre.

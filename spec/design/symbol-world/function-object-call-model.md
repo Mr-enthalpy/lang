@@ -18,8 +18,11 @@ neither a second binding facet nor a defining-name lookup supplements a
 complete type's immutable callspace. Non-callable members contribute no call
 candidates, and an empty projection never restarts name lookup.
 
-Direct function expressions produce a complete anonymous type and a function
-object with its associated () entry. Its own object occupies first self.
+At ordinary materialization positions, function expressions produce a complete
+anonymous type and a function object with its associated () entry. In the
+specified structural namespace implementation layer, the closure expression
+itself evaluates to a complete type tau_C; ordinary let binds that result.
+See [positional construction](names-and-overload-groups.md#6-positional-synthesis-and-lexical-let). Its own object occupies first self.
 Captures, parameters, result demands and Policy participate through the
 existing ordinary rules.
 
@@ -94,22 +97,10 @@ realized by `default`, `delete`, or `custom`. More specific Pattern members may
 refine or delete regions of that capability relation. This 3×3 relation is not
 the three-point Policy preference order.
 
-Those ordinary transport members expose complete callable Policies, not
-special `compile -> runtime` signatures:
-
-```text
-candidate formal P2:
-  (compile || runtime):compile
-
-candidate complete result P2:
-  (compile || runtime):compile
-
-selected static source
-  -> Project_in(complete formal)
-  -> ordinary invocation
-  -> complete ordinary result
-  -> Project_out(runtime demand)
-```
+Those ordinary transport members have concrete declared input/output endpoints
+or ordinary stage holes solved to concrete endpoints. A selected compile:compile
+input and runtime:compile output remains an ordinary callable declaration;
+no completed formal or result has a runtime/compile stage union.
 
 Policy migration selects views around an ordinary call; it does not rewrite
 the callable's complete P2 into a migration edge.
@@ -371,27 +362,17 @@ written formal 1..n    <- explicit call-site Product positions 0..n-1
 A head with no written formal still has invocation-frame slot 0, but it does
 not bind that object to a source Pattern.
 
-No separate self-policy plane is required. P1 and P2 are independent. When the
-function-object stage is omitted and no contextual constraint supplies it,
-the existing stage default completion may use:
+No separate self-policy plane is required. P1/P2 are independent. For
+omitted ordinary P1 stage, runtime P2 defaults to runtime, seal to seal, and
+compile to compile; meta qualification follows its own owner. Explicit P1
+is never overwritten. The completed view must supply legal self material.
 
-```text
-Stage(P1p) = Stage(P2p)
-Stage(P1v) = Stage(P2v) union Stage(P2p)
-```
-
-The completed view must still supply legal self material. This conditional
-default is not a general semantic deduction from P2 to P1; explicit P1 and
-other inherited/contextual constraints retain their own meaning.
-
-Each written formal parameter takes the callable P2 as its base policy pair.
-With no formal prefix, Pin inherits P2 exactly, including its mode. Written
-`plain let`, `const let`, `mut let` or a formal-local deduction hole supplies
-an explicit overlay on `PolicyMode`; every stage, presence,
-and Pattern-side dimension stays equal to P2. That qualifier remains an
-overload-order Pattern, so it must not be implemented by running ordinary
-binding P1 projection over the actual and deleting the oppositely qualified
-candidate early.
+Pin = ElabIn(P2, Delta_in). Omission inherits the applicable base; explicit
+plain/const/mut refines mode, and explicit stage atoms/holes constrain stage.
+Thus a runtime callable may have heterogeneous compile and runtime Pins.
+Pout = ElabOut(P1, Delta_out), with Pout.stage = P1.stage. A mode qualifier
+remains an overload-order Pattern, not ordinary binding P1 projection that
+deletes an oppositely qualified actual before ranking.
 
 Candidate preparation also carries that qualifier outward as the parameter's
 three-point product-order position. It therefore affects selection between
@@ -451,13 +432,11 @@ ordinary externally navigable `MetaInstanceScope`.
 
 ## 7. ZST function objects
 
-A function object with no stored environment is normally zero-sized. ZST values
-are not move-killed, so a zero-sized function object can naturally be called
-multiple times. Reusability follows from the general ZST movement rule.
-
-A capture requirement does not by itself imply a stored field or non-ZST
-layout. If representation selection chooses stored state, the resulting object
-may be non-ZST and follows ordinary value-passing and ownership rules.
+A function object with no stored environment is normally zero-sized.
+Representation alone proves neither Killable nor Movable nor Copyable.
+Reusable movement requires the instance-level Preserve proof and ordinary
+frontier legality defined by the lifetime owner. Stored capture layout and
+type equality do not replace those judgments.
 
 ### 7.1 Function-object PolicyMode default
 
@@ -610,115 +589,46 @@ lookup, capture-environment layout, or capture admissibility analysis.
 ## 8. Call lookup pipeline
 
 ```text
-Product |> Expr
-
-1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to name binding `S`; in the named-type case form
-   `C0 := CallCandidates(NamedType(S))`. Other resident values use the entrances
-   of §2 (ordinary Val2 reading is not restricted to named types),
-   and enumerate that candidate set (one step, no priority, no fallback, no
-   reopening). Only repeated exposure of the same stable candidate-entry identity
-   may collapse; distinct contribution entries never deduplicate merely because
-   their values or types normalize equally.
-3. Expose each Val2 object's policy-pair view for the current `Phase`; for
-   ordinary result evaluation, derive the candidate-local P1 stage view from
-   its P2 under that phase
-4. For each surviving value entry, obtain its type / TypeValueId
-5. Find call entry: type(value).associated_namespace → lookup `()`
-6. Discard non-callable/non-applicable entries
-   while retaining visible derived companion objects
-7. Determine receiver binding: caller type `F` / `T ref` / `T share` and
-   selected associated `()`
-8. Build invocation frame: implicit caller/self + explicit shaped product args
-9. Form fully admissible set A using all hard checks, including receiver and
-   parameter pair compatibility, phase legality of any applicable stage
-   default completion, result compatibility with any explicit target
-   pair/type/rank/facet expectation actually supplied, and require legality
-10. Export every elaborated formal PolicyMode Pattern to its candidate position,
-    add any resolved `OutputModeDemand(call)` from written, inherited or
-    candidate-independent context and applicable default completion, apply PolicyMode
-    product-maximal filtering and the remaining fixed-order
-    preference filters, including in-place over non-in-place after the
-    first-order-over-instantiated filter, then named strategy rules and the
-    must-select check
-11. Enter the unique selected invocation or defer according to demand
+shape explicit Product; retain implicit self in invocation frame
+resolve target once -> exact complete type / associated () / candidate group
+apply pre-C0 family filter -> enumerate C0
+R_vis(c,Omega,sigma) -> candidate plus visibility/input/projection evidence
+prepare ordinary C_sigma(c) where required
+FullyAdmissible A including total output demand and require
+fallback suppression D
+Policy product maxima (including migration endpoints when applicable)
+Pattern specificity / first-order / in-place / named filters
+unique Selected=(c*,sigma*,frame)
+DynamicLegality -> Ready execution or retained continuation
 ```
 
-Every nested producer actual is closed under the canonical
-`CallLocalPolicyClosure` before an unresolved candidate of the current outer
-call can influence it. A nested call uses an already-formed,
-candidate-independent immediate-consumer output demand when one exists;
-otherwise it preserves the absence of a written mode constraint until applicable
-local completion/selection. Its selected concrete result mode is then an
-ordinary actual fact for this pipeline. Outer ambiguity or failure never
-reopens the nested producer.
+The two rounds are owned by
+[Policy §12](symbol-policy-and-compile-flow-projection.md#12-unified-binding-and-overload-selection).
+Round one executes no speculative body or migration. Round two is ordinary
+overload selection. Unresolved projection evidence retains a continuation.
+Each nested producer seals under candidate-independent immediate-consumer
+demand before an unresolved outer candidate can influence it. Delete,
+selected extraction, migration, lifetime and execution failure are terminal.
 
-The evaluation phase is a separate, already-known input. In the absence of an
-explicit or inherited target-result pair/stage constraint, an applicable default
-evaluation P1 stage view uses the canonical stage completion and is
-checked against the current phase. Therefore `compile`/`runtime` evaluation is
-not gated on the presence of `PolicyLet`. This default does not derive
-PolicyMode: omission is no override, while an explicit plain/const/mut result
-context is a written demand. DefaultModeCompletion is a separate judgment.
+PolicyLet is an optional explicit result-demand boundary. Its complete operand
+is selected once; existing-first same-Type migration then provides a coherent
+projection and realization. Its result slot is not a hidden NameBinding or
+independently addressable Place. Knowing all runtime inputs during static
+evaluation does not relabel the producer's Pout.
 
-`PolicyLet(P, e)` is the explicit expression boundary that may provide such a
-candidate-independent demand. It is optional for the phase-derived default:
-`compile let e` or `runtime let e` explicitly delimits/narrows the stage
-context, while `plain let e`, `const let e` or `mut let e` supplies an explicit
-Mode demand. Its complete operand pipe is resolved once under `P`, then
-`SourcePolicy(result) -> P` enters the ordinary Policy migration candidate
-preparation and unique Policy-overload selection. The selected migration
-jointly produces the concrete Policy projection and value realization in the
-node's ordinary expression-result slot. That slot has its own mode but is not a
-NameBinding, name binding, declaration, or independently addressable Place. A later
-outer candidate cannot propagate a formal-mode preference through the
-preserved `PolicyLet` node. The node is not an ordinary Val2 call or a hidden
-binding.
+Compile realization is a family C(c)={C_sigma(c)} with an ordinary callable
+structure and correspondence to the same source invocation. It may be lazy;
+one global C(F) cannot represent every admissible input/output configuration.
+It hides unreadable runtime Val1 without erasing an argument, its Pattern,
+Val2 or semantic identity. Every projection and runtime residue retains the
+sealed (c*,sigma*,frame); runtime does not reselect.
 
-A derived compile companion is a complete `Val2` function object with stable
-origin, its own type, and its own associated static `()`. For origin result
-`runtime:Qstatic`, that result pair is `Qstatic:Qstatic`. It is not a
-lookup-failure fallback. If its prepared candidate enters fully admissible set
-`A`, its must-select strategy requires it to be the final unique candidate.
-Compile projection preserves an ordinary projected call; normal compile
-evaluation later enumerates and selects objects.
-
-The semantic source of a compile companion is derivation, not name binding
-injection. The compile realization is defined only for the stage that admits
-one — a runtime generic callable — and is undefined for the other stages:
-
-```text
-CompileRealization(F)
-  = C(F)        if Stage(F) = runtime
-  = F           if Stage(F) = compile
-  = undefined   if Stage(F) = meta
-    -- a partner operation is undefined for meta callables
-
-DistinctCompilePartner(F)
-  iff Stage(F) = runtime
-  -- equivalently: CompileRealization(F) = C(F) != F
-
-CompilePartner(F) = C(F)   -- defined exactly when DistinctCompilePartner(F)
-
-C(n) = n  with produced-runtime-Val1 := absent
-         if ManufacturesRuntimeVal1(n)
-C(n) = n  otherwise
-C(F) = Resolve(CompileTransform(body(F)))
-```
-
-`CompileTransform(body(F))` rewrites the callable body's result
-classification so that a runtime-value-producing body instead produces its
-static result (absent runtime `Val1`), leaving the callable structure,
-receiver, and associated static `()` intact. The compile companion's existence
-is a fact about `F` under the compile transform, and only about a runtime
-callable: a compile generic `F` has no distinct compile partner, and a meta `F`
-has none either (its realization is `F` itself in both cases). This matches the
-partner classification in meta-object-invocation's Meta-instance identity section: runtime generic `F`
-has `C(F)` plus `M(F)`; compile generic `F` has only `M(F)`; meta `F` has
-neither. A companion entry in a legacy Rust symbol carrier is a
-lowering/implementation cache, not the semantic cause: removing the cache entry does not remove
-`CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that
-entry alone.
+Generic meta partner M(F) has a separate symbolic anchor and invocation
+identity. It is not C_sigma(F). A cached companion entry records a derivation;
+it neither creates semantic callability nor grants a second dispatch route.
+Existing ordinary source-call and associated-entry carriers implement only
+the connected slice recorded in the roadmap; they do not establish the full
+R_vis/C_sigma consumer.
 
 ## 9. Normalized call-site handoff
 
@@ -758,14 +668,13 @@ eagerly turn the carrier into a value or allocate its environment.
   empty target `let ()` contributes the current owner's call entry.
 - Each selected call entry obeys exact callee/first-self type equality under
   ordinary invocation checking.
-- ZST function objects are reusable because ZST values are not move-killed.
+- Reusability requires instance MoveEffect=Preserve and frontier Movable; ZST alone proves neither.
 - Non-ZST function objects obey ordinary ownership and passing rules.
 - An unwritten function-object mode is no override; inherited/contextual
   constraints and applicable default completion determine it. Export preserves the complete namespace-internal mode
   and filters external candidates through independent capability/visibility
   eligibility rather than a universal const projection.
-- Written formal parameters inherit P2 exactly outside the optional whole-slot
-  PolicyMode axis.
+- Pin inherits P2 with explicit stage/mode constraints or holes; Pout stage inherits P1.
 - Ordinary closures distinguish explicit, explicit-inferred-binder, and
   implicit-eligible capture requirements; those requirements do not define
   `self` fields or physical layout.

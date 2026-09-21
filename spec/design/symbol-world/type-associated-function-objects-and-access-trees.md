@@ -214,8 +214,9 @@ RuntimeField(f)
     and Materializable_0(Val1_f)
     and not RequiresStaticPattern(f)
 
-Stage(accessor(f)) = runtime || compile  if RuntimeField(f)
-Stage(accessor(f)) = compile             otherwise
+RuntimeField(f) permits an ordinary runtime accessor realization.
+Each callable/view has one concrete stage and admissible C_sigma projections;
+other field observations require static formation.
 ```
 
 A type-valued field is compile-only only because it currently fails this
@@ -311,6 +312,11 @@ passing. The mechanical pass-insertion semantics are specified in
 `spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
 ## Same-Name Candidate Lookup
+
+Movement consumes the lifetime owner's predetermined MoveEffect and frontier
+Pre. Type shape, stage and layout alone grant no movement or access capability.
+Directed with cleanup constraints create no access-tree edge or borrow;
+placement precedes the same continuation's lifecycle observations.
 
 One associated field name binding contains every value/ref/share observation
 candidate. `ref` and `share` are types/observation kinds in candidate formals and

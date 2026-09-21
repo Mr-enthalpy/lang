@@ -27,8 +27,9 @@ SemanticOwnerId index semantic ownership, not an extra result ontology.
 NameCoord is independent of realization: it grants no Place, resident or
 authority. Retained records actual realization; Fresh means not Retained.
 Realize(NameCoord,P,t) establishes the typed Uninitialized Place and its ordinary
-first-write authority. Sibling contributions to the same coordinate merge their
-effects, not independently allocated name identities. LocalBindingIdentity must
+first-write authority. Sibling actions already established as contributions to the same coordinate
+merge their effects, not independently allocated name identities. Coordinate
+equality alone never converts an ordinary binding/write into a contribution. LocalBindingIdentity must
 respect this semantic coordinate; syntax occurrence IDs cannot split same-name
 contributions. Resident-specific ProjectionSlot identities remain a different
 layer, invalidated according to ordinary parent-resident rules.
@@ -95,7 +96,8 @@ are checked at use; identity reuse does not freeze a value or grant authority. T
 [invocation owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md)
 defines the full law: the direct result is tau_M rooted at M; arbitrary Val2
 payloads use ordinary navigation. P1 meta retains dependency-derived OpenHere
-and plain let completes/closes the instance. P2 meta is its evaluation stage.
+and plain let completes/closes the instance. P2 meta is its evaluation horizon. Stable owner ancestry creates no active
+MetaDom; actual stack frames impose meta/seal dominance.
 
 Source navigation remains inner-to-outer. A generated meta-call scope used as
 one outer component must group the complete call expression:
@@ -255,11 +257,16 @@ private let name = expr
 let () = callable_expr
 ```
 
-A named declaration here is in an explicit named-contribution position:
-a fresh name is created as :type, its first complete type is formed by one-shot
-formation, and ordinary write initializes its explicitly borrowed Place. Later
-contributions use the existing resident through extend/inject/TypeAdd. Complete
-/tau home, residency and role registration are separate checks.
+At a specified structural namespace implementation layer, a closure expression
+itself evaluates to tau_C; the ordinary let action binds that RHS. Other RHS
+values retain ordinary binding, so let a=uint8 does not manufacture a wrapper.
+Further synthesis requires an explicit structural contribution role. Only
+predetermined syntactic repair shapes that cannot be legal ordinary statements
+may receive that role; legal binding, shadowing, mutation and group actions
+are preserved. Failed execution never retries as contribution. Joined material
+uses ordinary one-shot formation and initialization; subsequent contributions
+use extend/inject/TypeAdd with complete /tau home, residency and registration
+checks. Anchored replication must be witnessed, never a blind V_tau copy.
 
 ```text
 named selector -> structural binding / Place
@@ -267,8 +274,8 @@ occupied resident -> complete named type T
 contribution -> T.V_tau through ordinary type contribution
 ```
 
-The initializer is not inserted directly as Val2[name]. Neither the binding
-identity nor an independently collected initializer bag is a Val2 Object.
+An explicit contribution is not an independently collected initializer bag.
+Ordinary let still binds the evaluated RHS; binding identity is not a Val2 Object.
 This form does not register a structural field or replace the postfix field
 form. A named target requires one plain binder; extraction/Product/Sequence/Pack
 targets do not acquire named-contribution sugar. The empty Product target ()
@@ -321,10 +328,11 @@ RuntimeField(f)
   and not RequiresStaticPattern(f)
 ```
 
-`RuntimeField` generates runtime-or-compile accessors; every other field is
-compile-only. Type is not a special field category. Generated Sequence `[]`
-uses `RuntimeField` only for its selected observation; its complete stage is the
-ordinary dependency meet over container, index, and selection. Its ordinal
+RuntimeField permits ordinary runtime realizations; each declared view has one
+concrete stage and admissible compile projections. Other fields require static
+formation. Type is not a special field category. Generated Sequence `[]`
+uses `RuntimeField` only for its selected observation; InputAdmissible and Ready independently check container, index and selection
+observations, preserving actual effects and deferred dependencies. Its ordinal
 slot is under the resident bare Product in `Val1(sequence)`, not under the
 outer Sequence Object's generated `Val2`.
 `OpenHere_Σ(v)` is per-value and per-window: it depends only on

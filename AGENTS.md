@@ -120,7 +120,14 @@ alternate relation or identity.
   acquisition; plain let completes/closes it. P2 meta remains evaluation stage.
   Invocation caches retain instances/member Places and current state. A consumes
   these facilities; saved references recheck the original source at write Pre.
-- Name resolution happens once before context projection.
+- Stage is one atom; static stages are pairwise incomparable. P2 is horizon,
+  P1/Pout producer visibility; InputAdmissible, migration and Ready are separate.
+  Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
+- Main has runtime horizon; stable roots imply no active MetaDom. Actual
+  meta/seal frames exclude seal/meta work through helpers and cache hits.
+- Name resolution happens once before R_vis evidence and ordinary C_sigma
+  preparation. Hard A, fallback suppression and Policy/Pattern order seal
+  (candidate, projection, frame); runtime preserves that origin.
 - Calls use value -> exact tau -> associated `()` and one candidate space.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.
 - Policy preference, CapabilityRealization, Writable, and DynamicLegality are
@@ -132,8 +139,9 @@ alternate relation or identity.
   another. `extend` is pure; `inject` is read + extend + write.
 - `InvocationResult` is the single semantic result envelope; `struct` returns
   complete tau.
-- Lifecycle facts are relative to one SemanticContinuation. Cleanup is fixed
-  before observation; Pre precedes mutation; Post describes committed success.
+- Lifecycle facts are relative to one SemanticContinuation. Killable is instance-local, MoveEffect is fixed, Movable is frontier legality.
+  Cleanup/with placement is fixed before observation; killing move adds no
+  old-generation destructor; Pre precedes mutation; Post describes committed success.
 - Color vocabulary is extensible and relation rows are explicit and directed.
 - SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
   semantic axioms, never missing Pre facts or private optimizer assumptions.
@@ -143,15 +151,25 @@ alternate relation or identity.
   facilities introduce no semantic facts; E alone owns meaning.
 - E is idempotent and saturates ready actions without rewriting continuations.
   Optimizer rewrites require revalidation by affected semantic projections.
-- P1/P2 are independent; Pin/Pout overlay P2/P1. Bare let writes no override;
+- P1/P2 are independent; Pin permits explicit stage/mode constraints and holes
+  over P2; Pout.stage=P1.stage. Bare let writes no override;
   written plain is explicit, and a formal-local hole is ordinary Pattern deduction.
   Default completion is separate. Inner-call selection seals before outer use.
   Implicit return targets the outermost enclosing function layer.
+- Done is internal chain/target completion, never an Object or Pattern.
+  Split/D is restricted; residual escape separately reads ordinary meta facts.
+  Return has no synthetic local unit contribution.
+- Implementation-layer closure expressions return tau_C before ordinary let
+  binding. Contribution repair preserves all legal binding/shadow/write/group
+  actions and never retries failed execution as contribution.
 - NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
   Ordinary name writes may change Val2(Core) without either registration.
   Pattern-registered extension uses extend/inject; TypeAdd changes V_tau only.
 - Meta call/value and Pattern/name declarations are equal surface projections.
-  Grammar-fixed op::type families use ordinary call/extract/generative relations;
+  Grammar-fixed operator use selects operator[op]; dot .op selects op::adl;
+  explicit paths remain explicit. OperatorNameValue reads without recursive
+  dispatch. OG_s retains spelling and selects the current slot. Ordinary
+  call/extract/generative relations apply;
   generated occurrences supply no Pattern or V_tau registration evidence.
 - Close freezes non-generative registered structure, not future ordinary generated
   Val2 realization. Such results reopen no construction view and do not alter old

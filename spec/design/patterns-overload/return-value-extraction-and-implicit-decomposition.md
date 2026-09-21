@@ -517,8 +517,7 @@ projection retains the Pattern and inferred require retains all
 runtime-reachable alternatives as pattern-guarded contracts.
 
 
-The term “non-value” in this lowering denotes material excluded from automatic
-runtime pass/return actions, not a separate language ontology. These remain
-ordinary Objects under their policy views. Mechanical elaboration supplies the
+Type/meta/Pattern material remains ordinary instance material with normal
+pass and lifecycle obligations; shape or stage creates no automatic exemption. Mechanical elaboration supplies the
 continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
 optional optimizer search cannot change its rules.

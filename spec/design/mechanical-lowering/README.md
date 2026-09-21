@@ -2,7 +2,8 @@
 
 **Status: Mixed. `CanonicalMechanicalPassCore` in
 `mechanical-argument-passing-and-move-fixed-point.md` is canonical target
-semantics. Selection algorithms, return/call-mode design, normalizer/checker/IR
+semantics, along with instance move effects and cleanup/with placement.
+Selection algorithms, return/call-mode design, normalizer/checker/IR
 integration, ABI, optimizer, and runtime behavior remain non-normative and
 unimplemented. This block is not a machine-ABI design.**
 
@@ -28,8 +29,9 @@ pattern space. They produce a bool-protected control result:
 (if | else) bool
 ```
 
-The `bool` construction prevents naked control-pattern material from being
-combined as an ordinary result pattern. Pattern matching reads the bool
+The bool construction supplies the ordinary condition Pattern. Residual
+control material can remain inside its chain; a separate CanEscape consumer
+checks forbidden boundary escape using ordinary meta facts. Pattern matching reads the bool
 symbol's Pattern layer directly:
 
 ```text
@@ -41,10 +43,9 @@ not required to begin extraction and is not a special conditional entrance.
 Older examples in this block that spell `?` use that optional explicit view.
 
 ## For compile/meta construction work, read
-`spec/contracts/meta-construction-boundary.md` first. Its
-non-value argument boundary applies here: type objects, rank objects, namespace
-objects, meta objects, and pattern objects are not value arguments and must not
-receive automatic pass insertion.
+`spec/contracts/meta-construction-boundary.md` first. Its ordinary instance boundary applies here: type/meta/Pattern material has
+ordinary pass and lifecycle obligations. Stage and shape do not exempt it.
+The lifetime owner supplies Killable, fixed MoveEffect and frontier Movable.
 
 ## Not in scope
 

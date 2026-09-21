@@ -32,11 +32,12 @@ additional authority over the complete types it aggregates.
   extraction chains, and multiple valuations?
 - How should custom `?` providers expose richer extraction interfaces?
 - How should static Pattern spaces and `Done` be represented in later IR?
-- Which source-level ownership/lookup consumer enforces the existing closed
-  control-pattern non-additivity relation?
 
 The relational interface, Hole identity, DirectPatternChild distinction,
-StructuralDefault family boundary, and genericity-as-extraction are fixed.
+StructuralDefault family boundary and genericity-as-extraction are fixed.
+Restricted Split/D, internal chain/target completion and separate residual escape
+are closed. General Boolean difference, arbitrary custom residual protocols and
+universal result joins are not implied.
 
 ## Literals and concrete type catalog
 
@@ -65,7 +66,10 @@ same-Type Policy migration are separate ordinary operations.
 
 Primitive PolicyMode={const,plain,mut}, demand formation before maxima,
 three-point preference, capability realization, unique selection and no reopen
-are fixed. P1/P2 are independent; Pin/Pout overlay P2/P1 respectively. Bare let
+are fixed. Stage is one atom; the static trio is pairwise incomparable. P2 is
+horizon, P1/Pout producer visibility. Pin admits explicit stage constraints and
+holes; Pout.stage=P1.stage. InputAdmissible, migration and Ready are separate.
+Runtime P2 defaults omitted P1 to runtime; seal defaults to seal. Bare let
 supplies no override; written concrete mode and explicit hole are distinct.
 Policy deduction uses ordinary operator Pattern relations, HoleBinderId and
 require. The 3×3 tables are finite explanatory views of relational declarations,
@@ -81,6 +85,10 @@ not a separate inference primitive. Default completion is not a source constrain
 - How do capability and effect summaries compose with residual evaluation?
 - What concrete representation carries `Done`, targeted return, and result
   Pattern delivery?
+
+Runtime main and actual stack-relative MetaDom/SealDom, two-round R_vis then
+ordinary C_sigma selection, no speculative candidate execution and retained
+selected origin are closed. Concrete witness/cache representation is open.
 
 Runtime continuation may not re-resolve a name, namespace path, candidate
 family, or sealed invocation. E saturation, projection synchronization and
@@ -153,7 +161,10 @@ Persistent dependency/source encoding remains open, not the propagation law.
   an uncached judgment or an explicit requirement summary?
 
 Cleanup is fixed before observation; Pre precedes mutation; Post describes only
-committed success; move ends and starts generations at one continuation cut;
+committed success. Killable is instance-local, MoveEffect is fixed, and Movable
+is frontier legality. A killing move ends and starts generations at one cut;
+preserving moves require the narrow proof. Directed with placement, default NLL,
+lexical empty-with, no duplicate destructor and same-K @ observations are closed;
 Color relations are explicit directed rows and Color inheritance is monotone.
 
 ## Owner, namespace, and infrastructure persistence
@@ -185,15 +196,20 @@ ordinary source/host work; their implementation does not create authority.
   explicit/automatic captures?
 - How are in-place closure embedding reads resolved without inventing captures?
 - How should the NLL/control-flow graph be represented?
-- What source-defined control-pattern family expresses D-reduction and
-  `if`/`else`/unit absorption through ordinary calls?
 - How are `return`, effect, and sync operations integrated into the shared
   semantic continuation?
 
 Operator tokens/fixity/precedence/parse associativity are grammar facts; semantic
-families are ordinary op::type members under operator::type. Call, registered
-relational extraction and generative invocation are projections of that one
-structure. No independent operator-environment semantic design remains open.
+naked use selects operator[op], dot .op selects op::adl and explicit paths stay
+explicit. OG_s's ordinary string-to-type construction, spelling extraction,
+explicit Forget_s and current-slot selection are closed. Call, registered
+extraction and generative invocation use ordinary relations. Source wiring
+remains roadmap work; this does not close general structured Path algebra.
+
+In the specified structural implementation layer a closure expression returns
+tau_C before ordinary let binding. Conservative contribution roles preserve
+legal ordinary actions and never retry failed execution. These are closed laws,
+not a pending choice based on RHS type or declaration count.
 
 ## Generic navigation and Product surface
 

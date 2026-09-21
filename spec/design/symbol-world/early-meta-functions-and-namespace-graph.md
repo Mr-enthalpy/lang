@@ -12,7 +12,7 @@ ordinary graph contributions:
 ```text
 compilation Level with main.lang anchor
   -> neutral physical block normalization
-  -> ordinary source meta evaluation
+  -> ordinary E evaluation of the runtime-horizon entry
   -> typed SemanticOwner qualification
   -> transactional declaration contribution
   -> one terminal name binding per resolved path
@@ -26,7 +26,8 @@ ordinary graph entries, not parser keywords.
 
 - Physical files supply provenance, not identity or construction authority.
 - Source actions create names and Objects under ordinary capability rules.
-- Same-name named-contribution positions synthesize a named type's V_tau.
+- Implementation-layer closure expressions return tau_C; ordinary let binds it.
+- Explicit structural contribution roles synthesize a named type's V_tau.
 - Sibling blocks use common-snapshot overlays and ordinary unordered join.
 - Name occupancy is independent of value content and visibility.
 - Internal/external views retain semantic identity; overload selection is later.
@@ -81,6 +82,8 @@ Core bootstrap supplies:
 - namespace and owner roots.
 
 Bootstrap implementation does not create a separate language ontology.
+Stable roots imply no active MetaDom; only actual active frames impose
+meta/seal dominance. main has runtime P2 and defaults its omitted P1 to runtime.
 `struct` follows the ordinary call pipeline and returns an exact complete type
 value. Primitive execution material is installed before the CompleteType
 semantic result is formed. Outer binding creates the destination name binding/Place
@@ -91,8 +94,10 @@ and graph rendering.
 ```text
 ResolveName(path) = S
   -> CallCandidates(NamedType(S)), or the explicit group's candidate projection
+  -> R_vis visibility/input evidence and ordinary C_sigma preparation
   -> InvocationFrame
-  -> Pattern applicability
+  -> hard Pattern applicability and total output demand
+  -> fallback suppression
   -> Policy preference
   -> unique sealed invocation
   -> DynamicLegality

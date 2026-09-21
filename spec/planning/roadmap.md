@@ -29,7 +29,8 @@ The semantic pipeline is:
 Normalized AST
   -> typed owner / namespace resolution
   -> canonical semantic entities and views
-  -> candidate enumeration and relational Pattern applicability
+  -> R_vis visibility/input evidence and ordinary C_sigma preparation
+  -> hard relational Pattern applicability and fallback suppression
   -> Policy preference
   -> unique sealed invocation
   -> DynamicLegality
@@ -171,7 +172,7 @@ wiring is not an open semantic question.
 ## Physical input and infrastructure migration
 
 The target is Compile(Level) through main.lang anchoring, neutral physical
-normalization and ordinary meta evaluation. Child directories desugar to ordinary
+normalization and E of EntryContinuation(L,F_main), with main.P2=runtime. Child directories desugar to ordinary
 typed name creation, explicit borrow, ordinary directory type initialization,
 and body evaluation under that reference;
 root levels and filenames add no segment. Each file is serial; sibling
@@ -258,8 +259,8 @@ engineering facilities after their inputs and effects obey the source model.
   projections; preserve access checks. No implicit projection or borrow is added.
   Cover direct-meta type/root rejection, independent Val2/V_tau/Pattern roles,
   meta retention, plain closure, mut-after-OpenHere, and no-reopen on cache reuse.
-- Connect Pin=Overlay(P2,Delta_in) and Pout=Overlay(P1,Delta_out), with independent
-  P1/P2. Existing formal mode inheritance is compatible with bare omission; do
+- Connect Pin=ElabIn(P2,Delta_in) and Pout=ElabOut(P1,Delta_out), with independent
+  P1/P2, explicit Pin stage atoms/holes, and Pout.stage=P1.stage. Existing formal mode inheritance is compatible with bare omission; do
   not replace it with unconditional Plain. Audit binding_result_policy_demand,
   policy_let_target_demand and ordinary-invocation defaults for the distinction
   between omitted constraint, explicit concrete atom and explicit HoleRef.
@@ -307,3 +308,34 @@ rules or permit graph, file, cache or registry authority. Relevant implementatio
 changes need source goldens plus identity, no-reopen, non-derivability and
 boundary tests; this documentation migration does not claim those consumers
 have been implemented.
+
+## Canonical semantic revision implementation gates
+
+The [64-case conformance matrix](canonical-semantic-conformance.md) records
+semantic obligations, not passing source tests. This revision changes owners
+and handoffs only. Existing Rust carrier tests still describe connected slices;
+they cannot authorize an alternate implementation of these rules.
+
+| Gate | Existing evidence | Required consumer and acceptance coverage |
+|---|---|---|
+| Single-stage positions | lang_build/src/policy_pair.rs has PolicyStage but also StageSet; policy_pair_semantics tests admit unions | Replace resolved set semantics; preserve unresolved solver alternatives, position omission/atom/hole, heterogeneous Pin and Pout authority. S01–S08, S12 |
+| Two rounds and origin | ordinary_invocation.rs routes the ordinary trunk; phase_flow.rs has a single derived_compile_companion helper | Connect R_vis evidence, lazy C_sigma family, ordinary A/D/Policy/Pattern selection and shared selected origin. S09–S11 |
+| Runtime entry and Seal | phase_flow.rs has DeferredToSealStatic; CLI currently exposes frontend commands | Connect EntryContinuation, runtime main, active dominance, real readiness dependencies, pending seal formation and scheduler invariance. E01–E09 |
+| Instance lifecycle and cleanup | lifetime substrate records events; Raw WithClauseAst and NormWithClause preserve shape | Connect Killable/MoveEffect/Movable, uniform type/meta instances, directed Touch closure, default NLL, lexical empty-with and no duplicate drop. L01–L08, W01–W08 |
+| Chain and residual boundary | phase_flow.rs carries Done/ControlFlow; InvocationResult residual is an opaque class/provenance carrier | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
+| Ordinary meta query state | current meta root cache lacks the full retained instance/member state protocol | Connect default formation, actual member mutation, current committed reads, snapshot/Close and SealDom checks. P09–P12, E06 |
+| Operator dispatch | Norm OperatorTarget retains spelling/fixity/arity; world.rs directly resolves operator spelling | Connect OperatorUse/OperatorNameValue, operator[op]/op::adl, OG_s extraction, explicit Forget_s and current slot. Add source goldens for supported operator-name forms. O01–O07 |
+| Expression formation and contribution | source declaration carriers and sorted discovery do not supply positional expression evaluation/common-snapshot join | Connect implementation-layer ClosureExpr -> tau_C, ordinary binding, explicit conservative contribution roles and anchored formation. N01–N08 |
+
+Paths in the table are relative to crates/ except frontend carriers in
+crates/lang_syntax and the CLI in crates/lang_cli. Carrier names are locating
+evidence, not semantic definitions. Tests of the new consumers must cover
+positive/negative cases, identity versus equality, no reopen, non-derivability,
+authority uniqueness and observable effects where relevant.
+
+A small finite-sum fixture can validate Split without implementing arbitrary
+Pattern difference. Likewise a minimal projection-family fixture can validate
+origin retention without a complete runtime backend. Do not make old carrier
+tests pass by relaxing the canonical acceptance scenarios. Full residual IR,
+ABI/layout, effect/error/sync interfaces, arbitrary Pattern algebra and general
+first-class Path operations remain outside this revision.
