@@ -77,6 +77,25 @@ operator[a:OG_s] selects the current environment's ordinary slot named s.
 It does not simply return the candidate contents carried by a. Thus a carried
 selector can choose the current binding after ordinary shadowing.
 
+Successful selection preserves the spelling-indexed result type:
+
+```text
+a : OG_s
+operator[a] -> g_s : OG_s
+```
+
+For example, subject to ordinary lookup, policy and lifetime checks:
+
+```lang
+let selected = operator[+];
+operator[selected]
+```
+
+The second selection still extracts "+" from selected's OG_"+" type and
+reads the current environment's "+" slot. Selection does not erase its result
+to plain OverloadGroup. Only explicit Forget_s performs that projection;
+spelling cannot subsequently be recovered from the resulting plain group.
+
 Direct declarations such as `let + = closure` and
 `let + = operator[+]` bind the ordinary operator name subject to the same
 rules. Their intended source consumer is pending. They are not a general

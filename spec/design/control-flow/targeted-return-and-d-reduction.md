@@ -1,6 +1,8 @@
 # Targeted Return and D-Reduction
 
-**Status: Partially implemented.**
+**Status: Canonical semantics; return-target binding substrate is partially
+implemented, while completion propagation and whole-Pattern delivery remain
+pending consumers.**
 
 This document defines canonical semantic lowering for targeted return
 syntax and D-reduction. The current implementation deliberately stops
@@ -9,7 +11,7 @@ at return target binding.
 The current implementation provides the structural syntax and normalized
 AST (`ReturnEvent`, `TailValue`, and unresolved return target syntax) plus
 a minimal semantic return-target binding pass. D-reduction, completion
-propagation, and execution/lowering semantics remain deferred.
+propagation, and execution/lowering consumers remain unconnected.
 
 This document owns targeted-return completion and its D-reduction boundary.
 Automatic require does not define a second return/control algebra. Match
@@ -37,7 +39,7 @@ lifetime postconditions, lower to HIR/ABI, or create `Done_Return`.
 
 ## 1. Targeted Return Core Idea
 
-Future semantic lowering for the three return terminal forms:
+Canonical semantic lowering for the three return terminal forms:
 
 ```text
 E return;
@@ -78,7 +80,7 @@ including an extraction/product Pattern. It does not collapse
 `-> (r first, d second)` to one synthetic result name. Pattern-directed value
 delivery remains a later pass.
 
-## 3. Future Return Completion
+## 3. Internal Return Completion
 
 Targeted return produces a `Done_Return` completion:
 
@@ -113,9 +115,9 @@ The current build evaluator does not execute this propagation.
 
 ## 5. D-Reduction Boundary
 
-At the matching control-flow / binding / extraction boundary,
-the targeted return completion injects the returned pattern into
-the target result slot.
+At the boundary matching the resolved return target, the internal completion
+is consumed and its ordinary payload undergoes whole-Pattern delivery against
+the target ReturnPattern.
 
 ```text
 At boundary matching Selfᵢ:
@@ -123,8 +125,9 @@ At boundary matching Selfᵢ:
   its ordinary payload is checked against the target ReturnPattern
 ```
 
-D-reduction is a future semantic concept. It is not implemented
-in the current parser, normalizer, or build evaluator.
+D-reduction semantics is defined here; its completion-propagation and delivery
+consumers are not connected in the build evaluator. The parser and normalizer
+preserve source structure rather than execute this semantic boundary.
 
 ### 5.1 Result delivery is ordinary Pattern binding
 
@@ -173,8 +176,8 @@ Each intermediate boundary:
   - contributes no normal local result
 
 When Selfᵢ is reached:
-  - D-reduction occurs
-  - result is injected into the matched slot
+  - the internal target completion is consumed
+  - its ordinary payload undergoes whole-Pattern delivery against the target ReturnPattern
 ```
 
 If no matching active target exists at any reachable boundary,
@@ -195,10 +198,10 @@ completions or perform D-reduction.
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |
 | Return binding slot | Complete normalized slot/Pattern retained on the target frame | Used as `let ResultPattern = expr` expectation |
 | Extraction-result delivery | Not executed | Explicit writes target each binder; a terminal expression matches the whole result Pattern |
-| `Done_Return` | Not represented | Semantic IR concept |
-| D-reduction | Not implemented | Future boundary action |
+| `Done_Return` | Not represented | Internal target-qualified completion |
+| D-reduction | Not implemented | Consume target completion and perform ordinary whole-Pattern delivery |
 | Local return contribution | Not implemented | No normal value contribution; no fabricated unit |
-| Target propagation | Not implemented | Future traversal |
+| Target propagation | Not implemented | Propagate internal completion to its matching target |
 | Target validity check | Minimal active-frame diagnostics | Full target reachability diagnostics |
 
 ## 8. Current Return Target Binding Substrate
