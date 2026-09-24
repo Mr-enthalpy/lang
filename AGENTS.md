@@ -159,8 +159,10 @@ alternate relation or identity.
 - Done is internal chain/target completion, never an Object or Pattern.
   Split/D is restricted; residual escape separately reads ordinary meta facts.
   Return has no synthetic local unit contribution.
-- Implementation-layer closure expressions return tau_C before ordinary let
-  binding. Contribution repair preserves all legal binding/shadow/write/group
+- Every legal completed closure expression returns full tau_C through ordinary
+  struct, with tau_C/c_C/A_C/() distinct and a finite implementation leaf.
+  File implementation-layer let installs at the established package root;
+  true lexical local let remains binding. Contribution repair preserves all legal binding/shadow/write/group
   actions and never retries failed execution as contribution.
 - NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
   Ordinary name writes may change Val2(Core) without either registration.
@@ -174,6 +176,23 @@ alternate relation or identity.
 - Close freezes non-generative registered structure, not future ordinary generated
   Val2 realization. Such results reopen no construction view and do not alter old
   snapshots. Current Norm/only_val2 observations remain continuation-relative.
+
+- Product layers with all direct entries named are unordered; any bare entry
+  makes that whole layer ordered. Nested layers decide independently. Unordered
+  to bare sequence requires named extraction and explicit ordered assembly.
+- Structured Path precedes external Read. Textual roots resolve at actual use;
+  explicit value/reference roots retain anchors and dependencies. # quotes Path;
+  general $ consumes ready Pattern material while preserving Hole identities.
+- Public Policy pair syntax is retired; internal value/type observations remain
+  independent and share the source evaluation edge only for direct projections.
+  Concrete atoms, omission, holes and splice remain distinct.
+- Terminal ReturnPattern/Pout demand precedes immediate root maxima; established
+  outer P1/P2 jointly constrain inner positions, without an implicit semantic temp.
+- Dependencies separate requirements, semantic realization and layout. [] is one
+  source; initialization occurs once per formation and projections never recapture.
+  Current in-place permission is direct invocation/legal candidate embedding.
+  Lifetime persistence/escape refinement retains all ordinary checks; tau status
+  grants no global lifetime and local dependency grants no universal prohibition.
 
 ## Scope and Open questions
 

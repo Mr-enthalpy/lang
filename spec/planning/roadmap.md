@@ -311,7 +311,7 @@ have been implemented.
 
 ## Canonical semantic revision implementation gates
 
-The [64-case conformance matrix](canonical-semantic-conformance.md) records
+The [170-case conformance matrix](canonical-semantic-conformance.md) records
 semantic obligations, not passing source tests. This revision changes owners
 and handoffs only. Existing Rust carrier tests still describe connected slices;
 they cannot authorize an alternate implementation of these rules.
@@ -325,7 +325,7 @@ they cannot authorize an alternate implementation of these rules.
 | Chain and residual boundary | phase_flow.rs carries Done/ControlFlow; InvocationResult residual is an opaque class/provenance carrier | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
 | Ordinary meta query state | current meta root cache lacks the full retained instance/member state protocol | Connect default formation, actual member mutation, current committed reads, snapshot/Close and SealDom checks. P09–P12, E06 |
 | Operator dispatch | Norm OperatorTarget retains spelling/fixity/arity; world.rs directly resolves operator spelling | Connect OperatorUse/OperatorNameValue, operator[op]/op::adl, OG_s extraction, explicit Forget_s and current slot. Add source goldens for supported operator-name forms. O01–O07 |
-| Expression formation and contribution | source declaration carriers and sorted discovery do not supply positional expression evaluation/common-snapshot join | Connect implementation-layer ClosureExpr -> tau_C, ordinary binding, explicit conservative contribution roles and anchored formation. N01–N08 |
+| Expression formation and contribution | source declaration carriers and sorted discovery do not supply positional expression evaluation/common-snapshot join | Connect every legal completed ClosureExpr -> tau_C through struct, file structural installation, true lexical binding, explicit contribution roles and anchored formation. N01–N08 |
 
 Paths in the table are relative to crates/ except frontend carriers in
 crates/lang_syntax and the CLI in crates/lang_cli. Carrier names are locating
@@ -337,5 +337,32 @@ A small finite-sum fixture can validate Split without implementing arbitrary
 Pattern difference. Likewise a minimal projection-family fixture can validate
 origin retention without a complete runtime backend. Do not make old carrier
 tests pass by relaxing the canonical acceptance scenarios. Full residual IR,
-ABI/layout, effect/error/sync interfaces, arbitrary Pattern algebra and general
-first-class Path operations remain outside this revision.
+ABI/layout, effect/error/sync interfaces and arbitrary Pattern algebra remain
+outside this revision. Structured Path semantics are defined; their source and
+evaluator consumers remain pending. Broader quotation and the exact ordinal API
+remain open.
+
+
+## PR106 consumer gates
+
+The semantic revision is docs-only. The 64 earlier cases are retained (N01/N03
+clarified), with 106 new cases and D01–D23 owner links. No new source behavior
+is claimed by a successful existing Rust test suite.
+
+| Gate | Current locating evidence | Required consumer / acceptance |
+|---|---|---|
+| Product layers and named open observations | `lang_syntax/src/norm.rs` preserves Product/Pattern carriers | All-named layer unorderedness; explicit named extraction/ordered assembly; finite named open Product. 106-PD/NM |
+| Path, quote and splice | `lang_syntax/src/ast.rs` NavPath is restricted; `token.rs` has Dollar but no Hash consumer | Ordinary extractable linked structure, endpoint direction, late versus anchored roots, # and ready $ preserving holes. 106-PT/SP |
+| Generative/intermediate extraction | Current declaration/Pattern carriers do not implement the new relation end to end | Optional callable head, Concrete/Wildcard/HoleRef selector, expression body, compatible intermediate R valuations and layer cardinality. 106-GN |
+| Public Policy observations | `lang_syntax/src/parser/policy.rs` retains colon/choice grammar; `lang_build/src/policy_pair.rs` retains internal pairs | Retire public pair syntax while preserving full internal observations, same-edge type projection, concrete/hole/splice/omission. 106-SP/RP |
+| Direct result demand | `norm.rs` TailValue and `lang_build/src/control_flow_end.rs` preserve terminal shape | Immediate selected ReturnPattern/Pout before inner maxima; both outer positions constrain inner positions; no implicit temp/no reopen. 106-RP |
+| Ordinary ADL | `lang_syntax/src/norm.rs` still creates DotClosureLowering and an in-place helper | Emit ordinary field::adl entrance; generate the ordinary forwarder through Path/name relations. Existing goldens describe migration debt. 106-AD |
+| General dependency realization | NormCapture/BindingSlot preserve explicit formation; source callable carriers retain NormClosure | Needs -> semantic realization -> layout; common name environment, ordered effects, once-per-formation, no recapture or hidden semantic storage. 106-DP |
+| Universal closure and file installation | `lang_build/src/model.rs` SourceCallableObject and `semantic_world.rs` OrdinaryCallEntry retain closure carriers | struct Material_C -> tau_C/c_C/A_C/() with finite leaf and same-formation callable; retain homes/roles and conservative in-place permission. File package-root installation distinct from lexical binding. 106-CL/NS |
+| Lifetime integration | Existing lifecycle substrate supplies continuation/Pre/Post primitives | Preserve actual dependencies and action obligations. Further region/escape/state refinement is handed off, not a PR106 blocker. 106-LF |
+
+Paths in this table are relative to `crates/`. Full ordinary meta body
+execution also remains unsupported/deferred in `lang_build/src/meta_body.rs`;
+new closures and general expression bodies must not silently use a substitute
+evaluator. Consumer tests must cover positive/negative cases, identity/equality,
+no-reopen, non-derivability, authority uniqueness and observable effects.

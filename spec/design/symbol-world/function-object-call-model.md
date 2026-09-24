@@ -18,13 +18,33 @@ neither a second binding facet nor a defining-name lookup supplements a
 complete type's immutable callspace. Non-callable members contribute no call
 candidates, and an empty projection never restarts name lookup.
 
-At ordinary materialization positions, function expressions produce a complete
-anonymous type and a function object with its associated () entry. In the
-specified structural namespace implementation layer, the closure expression
-itself evaluates to a complete type tau_C; ordinary let binds that result.
-See [positional construction](names-and-overload-groups.md#6-positional-synthesis-and-lexical-let). Its own object occupies first self.
-Captures, parameters, result demands and Policy participate through the
-existing ordinary rules.
+Every closure expression's legal completed evaluation returns a complete tau_C,
+whether ordinary, in-place, generated, file-level or local. Formation is ordinary
+struct construction of head/body/dependency material; equivalent material can
+participate in extend/inject under their own premises. See
+[construction](symbol-first-meta-construction-and-pattern-injection.md#211-v_τ-closure-materialization-derived-semantics).
+This is not an extra conversion of a type into a value, nor a promise of readiness
+or lifetime permission in every context.
+
+```text
+Eval(ClosureExpr_C) = tau_C
+c_C in V_tau_C
+A_C = Type(c_C)
+Home(A_C) = TypeMemberScope(tau_C)
+() = existing terminal implementation leaf
+```
+
+The first c_C is formed in that same construction, not by recursively creating
+another closure or later bootstrapping an arbitrary x:tau_C. TypeRole, named
+residency, callability and Pattern registration retain their distinct judgments.
+Call projection selects c_C and supplies its exact self; it does not replace
+all self types with type. User-defined x:T with direct () still receives x.
+
+Ordinary let binds the completed tau without a wrapper. In-place operations are
+limited by §7.3; result category alone grants no binding/escape permission.
+General [dependencies](dependency-observation-and-realization.md) precede capture
+and layout. Closure lifetime propagation is explicitly handed to the lifetime
+owner, not inferred from tau, Core equality, ZST or placement.
 
 ## 2. Pipeline call form
 
@@ -233,13 +253,11 @@ recovery.
 
 ## 4. Direct function object call method
 
-For `let f = (self) => {};`, the generated anonymous function-object type `F` has
-one associated call name binding `()`. Receiver observation is expressed by candidate
-formals, not by generated `ref::F`, `share::F`, or `move::F` namespaces.
-
-A directly defined function object call receives that function object as its
-caller/self. Ownership is not written by the user — it is part of the generated
-function-object call method.
+For `let f = (self) => {};`, the expression returns tau_C and f binds it.
+Call projection selects the ordinary c_C formed within that tau; its associated
+() leaf receives c_C as self with Type(c_C)=A_C. Ownership is fixed by the
+construction context, never inferred back from f. The implementation leaf
+terminates this formation rather than recursively allocating another closure.
 
 ## 5. User-defined callable objects
 
@@ -261,40 +279,24 @@ type reference. That reference is an explicit argument, after the
 selected function object's self. Ordinary field forwarding already uses this
 same distinction and needs no special open-world contribution mechanism.
 
-### 5.1 First-class field-function closures
+### 5.1 Ordinary ADL field forwarding
 
-`.name` is itself a function-object expression. It normalizes without a
-receiver to:
+`.name` denotes `name::adl`; `E.name` uses that same entry through the
+ordinary Product/call binding spine. The [generative declaration owner](../patterns-overload/operator-patterns-and-generative-declarations.md)
+defines its ordinary requested-name forwarder. The receiver object remains an
+explicit argument after the selected callable's own self.
 
-```lang
-(self, val: T, ...args) {
-    (val, args) |> name::T
-}
-```
+The normalizer preserves the dot/name/path source role; it has no semantic
+authority to manufacture the forwarding implementation. Its current
+DotClosureLowering carrier is pending replacement. Generated provenance never
+changes suffix/pipe/Product association or first-product-only binding.
+`..name` retains its distinct direct-call surface.
 
-`self` is the generated first formal for the implicitly passed field-function
-object. The first explicit call-site argument binds `val` and supplies `T`;
-`...args` is a Pattern remainder binding, not a pack type. Consequently
-`.name` can be stored and passed independently.
-After `.name` becomes that ordinary function-object expression, its origin
-grants no call-binding privilege. In particular, for `let d = .name`:
-
-```text
-BindingShape(P1 |> .name P2)
-  == BindingShape(P1 |> d P2)
-```
-
-The surrounding ordinary expression/pipe/product rules alone determine
-whether `P2` is a source-product continuation, later target, or legality
-repair. The normalizer must not inspect `DotClosureLowering` provenance to
-override those rules.
-
-Raw AST may preserve `E.name` as member sugar, but normalization routes it
-mechanically through the same `DotClosure(name)` core as `E |> .name`, then
-returns the resulting ordinary expression to the existing suffix/space
-environment. `E..name(product)` remains separate direct member-call sugar; it
-is not removed by the more general `.name` form. No lookup or dispatch occurs
-during this normalization.
+Once F is selected, its established P1 and P2 jointly constrain its terminal
+inner call G. The ReturnPattern/Pout directly supplies G's immediate result
+demand before maxima; no ordinary temp binding is inserted. H(G(...)) still
+closes G independently of unresolved H formals. Registered structural extraction
+retains StructuralDefault; custom ordinary ADL cannot redefine real fields.
 
 ### 5.2 Associated Val2 functions are ordinary function objects
 
@@ -308,7 +310,8 @@ let fun = (self_fun, object: T, ...args) => { ... };
 This does not create a special method kind. Invocation of `fun` has:
 
 ```text
-slot 0 = the `fun` function object
+fun binds the completed tau_fun; ordinary selection reaches c_fun
+slot 0 = the actual selected c_fun callable, of A_fun = Type(c_fun)
 slot 1 = object
 slot 2.. = remaining explicit arguments
 ```
@@ -451,88 +454,31 @@ complete internal view. Export elaboration derives a stable, identity-preserving
 filters candidates by a future consumer demand nor projects the mode to
 `const`.
 
-### 7.2 Ordinary closure capture requirements
+### 7.2 Ordinary closures consume general dependencies
 
-Ordinary closures combine source-explicit capture bindings with resolved-stage
-automatic eligible capture:
+The [dependency owner](dependency-observation-and-realization.md) starts from
+Needs(action,source,observation,Gamma,Sigma), distinguishes requirement,
+semantic realization and physical representation, and owns projection and
+once-per-formation laws.
 
-```text
-source [let x = E] / [x = E] -> Explicit capture
-source [E] shorthand          -> ExplicitInferredBinder capture
-unreplaced resolved free ref  -> ImplicitEligible capture
-```
+`[let x=E]`, `[x=E]` and legal `[E]` shorthand are explicit let-shaped
+dependency formation. `[x]` implies no const, borrow or write grant. Resolved
+free external observations may use an eligible implicit realization under
+ordinary lookup, Policy/access and lifetime checks. Capture is one surface
+consumer, not the ontology of every function/type/host/Path dependency.
 
-`[x]` is the explicit shorthand `[let x = x]`, with no written mode override.
-Its mode follows the ordinary inherited/contextual constraints and any
-applicable default completion; capture does not silently replace it with const.
-Write capability remains a separate family-specific capability and is not
-implied merely by selecting `mut`.
+Initializers share the pre-capture name environment, not concurrent effects.
+They execute only at the reached formation occurrence, never once per body
+invocation or projection. Snapshot versus live-place behavior is decided by
+semantic realization before layout. Actual owned state participates in ordinary
+structure and identity; refs retain targets/generations. Neither hidden
+semantic side tables nor mandatory public self.Val2 fields are allowed.
 
-External explicit navigation resolves through the stable namespace export view;
-the resulting capture requirement later enters ordinary capability-family and
-Policy checks.
-Internal explicit navigation resolves through the complete namespace view and
-does not prove export membership. Eligibility and visibility do not alter the
-selected slot's `PolicyMode`; ordinary external calls therefore do not acquire
-an automatic const dependency merely by crossing the boundary.
-
-Automatic capture and call resolution occupy adjoining problem domains: both
-reason about an external name-binding identity and its stable external view. This
-does not require either mechanism to consume the other's output, share a pass,
-or run in a prescribed order. Automatic capture does not skip admissibility or
-select a candidate.
-
-Explicit and automatic capture may resolve to the same source name binding but remain
-distinct dependency declarations. Explicit capture can rename, project policy,
-use a complex initializer, request `mut`, and carry its own diagnostic
-provenance. No frontend or capture-discovery step erases it as redundant.
-Equivalent storage/link requirements may be coalesced only by a later layout
-pass while preserving binder identity, policy, and provenance.
-
-Resolved capture analysis produces abstract dependencies:
-
-```text
-ResolvedCaptureRequirement {
-  local_binder,
-  source,
-  requested_policy,
-  required_access_capability,
-  origin
-}
-```
-
-Namespace lookup resolves one source binding; a later consumer projects its
-resident. Lookup does not consume these request fields. The later ordinary capture-legality consumer checks both
-the requested Policy demand and required access capability.
-
-This object is not a `self` field list and does not determine receiver mode,
-copy/reference representation, field ordering, ZST status, or ABI layout.
-Static resolved-value links, constant embedding, zero-layout dependencies, stack
-environments, and stored checked references are possible later lowerings.
-
-For example:
-
-```lang
-mut let internal_state = ...;
-
-export let exported_fn =
-    [internal_state]() => {
-        use internal_state;
-    };
-```
-
-The explicit dependency may lower to an internal static link. It neither
-exports `internal_state` nor requires an address field in every
-`exported_fn` object.
-
-Before materialization, each requirement must lower to a lifetime-checkable
-form naming its source place, requested access view, origin/region relation,
-and storage-or-link category. This is only a handoff obligation. Automatic
-mechanical move-vs-copy selection, concrete borrow/copy representation, Region
-IR construction, escape-check implementation, and ABI remain open; entry
-origin defaults, the exact move-origin/Region boundary, and the selected
-share/rebind-plus-clone realization lifecycle-post boundary are closed by the
-lifetime owner; `CopyConstruct` adds no default origin equation.
+Explicit and implicit declarations remain distinct even for the same source.
+A layout optimization may coalesce equivalent storage only preserving semantic
+binder, view and source obligations. Copy/replication preserves formed
+dependencies without rerunning initializers, relookup or extending lifetimes.
+Runtime formation residue is retained when not ready.
 
 ### 7.3 In-place closures are embedded callable candidates
 
@@ -540,9 +486,13 @@ An in-place closure is distinguished by
 `NormClosure.placement = NormClosurePlacement::InPlace`. Generated provenance
 is carried independently by `NormClosure.origin`; it is never a placement
 variant. Its
-semantic object remains embedded in the control-flow layer at which it is
-used; it is not converted into a freely escaping captured closure. It may
-nevertheless contribute a normal callable candidate to an overload set.
+completed result is the same ordinary tau construction. Current conservative
+permission admits direct call and legal candidate embedding, not ordinary
+binding, return-as-value, store or argument transfer. This is an operational
+domain, not a theorem that in-place is untyped/non-value or forever immovable.
+Wrapping it in Product, group or tau does not bypass actual embedding
+conditions; no fourth-axis flag supplies that check. Future bounded first-class
+permissions belong to lifetime refinement.
 
 Head presence is independent of that placement. Bare `{ ... }`,
 `() -> r name { ... }`, and `() -> r [[strategy]] { ... }` are all in-place;
@@ -640,11 +590,11 @@ target expression → target value → target type →
   type-associated namespace → `()` call entry
 ```
 
-If the target expression is a `NormClosure`, the target position is an
-explicit materialization consumer. Likewise, a declaration initializer is a
-materialization consumer when it binds that carrier. Normalization itself
-creates only a closure carrier; an arbitrary surrounding expression does not
-eagerly turn the carrier into a value or allocate its environment.
+A NormClosure is non-semantic source material. Its connected evaluator must
+use ordinary complete-tau construction wherever a closure expression legally
+completes, with the actual placement, dependency and readiness obligations.
+Normalization neither constructs values nor allocates environments.
+Current source carriers do not implement this full consumer.
 
 ## 10. Invariants
 
@@ -689,9 +639,8 @@ eagerly turn the carrier into a value or allocate its environment.
   `M` (a symbolic-navigation layer); its direct result is `τ_M` rooted at `M`;
   built-in privileged AST meta functions may instead use their declared special
   scope/owner rule.
-- `.name` is a first-class closure expression whose normalization produces a
-  generated in-place `NormClosure` carrier. Binding or explicit call context
-  may materialize that carrier; normalization does not. `E.name` uses the same
-  carrier, while `..name` remains direct member-call sugar.
+- `.name` uses ordinary name::adl generation/forwarding; E.name shares that
+  entrance, while ..name retains its direct-call surface. Private normalized
+  forwarding-body generation is a legacy carrier, not canonical authority.
 - Callable-tail named strategy metadata operates only on fully admissible
   candidates and cannot reopen ordinary overload enumeration.

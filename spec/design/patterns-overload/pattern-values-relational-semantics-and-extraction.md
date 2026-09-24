@@ -394,28 +394,42 @@ different Pattern child identity
 -> equal after deleting the child or its name
 ```
 
+Internal Path formation and its default external Read are separate; see the
+[Path owner](../symbol-world/structured-path-algebra-and-pattern-splice.md).
+Inherited navigation is composition under existing Pattern-parent links, not
+an alternate lookup calculus. Pure quoted structure need not yet resolve.
+
 For a child `inner`, explicit/external and inherited formation routes complete
 to the same canonical entry `inner::bool` and the same child identity. Exact
 source spelling follows the current grammar; normalization preserves `inner`.
 
-## 7. Ordered bare Product is the unnamed-value calculus
+## 7. Product ordering is local to each layer
 
-Unnamed or bare values do not create another Pattern kind. They are represented
-by the existing ordered Product Object:
+Product is the ordinary carrier, distinct from parentheses Group and from
+OverloadGroup. For the direct entries of each layer L:
 
 ```text
-BareProduct(v_0, ..., v_n)
-Val2(BareProduct)[pos_i] = v_i
+Unordered(L) iff every direct entry of L is Named
+Ordered(L) iff some direct entry of L is Bare
+RootNamed(L) is independent of Order(L)
 ```
 
-Matching is positional and order-sensitive. Naked Product material, unnamed
-positional values, and a Pattern body containing a bare direct child all use
-this Product calculus.
+An all-named Product needs no top Pattern name, wildcard or special anonymous
+wrapper to be unordered. Adding one bare entry makes the entire layer ordered.
+Nested layers make their own decision; an ordered parent does not order an
+all-named child. In `(a,b)` where a and b are ordinary local values, their
+variable spellings do not confer structural names: this is a BareProduct.
 
-No separate Pattern kind is introduced for bare, naked, or unnamed positional
-material. Named Pattern structure may normalize by canonical navigation. Bare Product
-structure remains positional; the two rules do not create parallel Object
-domains.
+BareProduct retains positional selectors and order. An unordered Product has
+no implicit conversion to a bare ordered sequence by source order, serializer
+sorting or selector enumeration. Extract named entries with R_Gamma, then
+explicitly assemble `BareProduct(extracted_a,extracted_b)` in the wanted order.
+NamedSelector and OrdinalSelector are distinct; a public ordinal API is deferred.
+
+All-named permutations preserve normalized structure under ordinary conflict
+checks. True nested boundaries remain intact, and result order-insensitivity
+does not reorder construction effects. `?` may remove one top name without
+changing the direct-entry criterion or flattening a real layer.
 
 ## 8. Binder presence, holes, and binderless Patterns
 
@@ -612,6 +626,25 @@ statements (for example `RankTransparent(F) iff ∀n. F : U_n -> U_n`) is
 ordinary mathematical quantification and remains valid. Language genericity is
 Hole extraction and valuation, not a language-level `forall` ontology.
 
+### 8.2 Intermediate-layer extraction
+
+For `let <a> (c Pattern) a`, first reach the a layer, retaining the evidence
+and that layer's material u_a, then apply the same relation again:
+
+```text
+OuterExtract_Gamma(a,x,rho0,u_a)
+R_(Gamma,rho0)(P_c,u_a,rho1)
+rho = rho0 join rho1  -- compatible valuations required
+```
+
+The name observation, reached layer and its payload are different observations;
+they are not all rho(a). An unordered layer admits at most one unpositioned
+whole intermediate extraction; that whole Pattern may contain many named
+children. An ordered layer admits multiple extractions aligned in its order.
+This does not relax Pack cardinality or admit several arbitrary remainders.
+Generation reverses the direction of the declaration consumer, not this
+known-content extraction judgment.
+
 ## 9. Pure Pattern nodes and pipe branch shorthand
 
 A pure Pattern node needs no artificial wildcard/value padding layer. For example:
@@ -767,7 +800,7 @@ K_i : A_i -> C_i
 E_i : C_i -> A_i
 
 K_T : (C_1, ..., C_n) -> T
-E_T : T -> BareProduct(C_1, ..., C_n)
+E_T : T -> Product(C_1, ..., C_n)  -- preserve each child's structural name
 ```
 
 The formula `Field_i = E_i o pi_i o E_T` is not universal. A terminal leaf

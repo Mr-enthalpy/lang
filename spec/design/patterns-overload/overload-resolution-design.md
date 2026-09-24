@@ -124,3 +124,15 @@ The order and no-reopen rule are closed. The complete set of later-B filters and
 their future source controls remain open. A new filter must register at the
 appropriate stage and may not bypass resolve-once, hard A, unique selection, or
 DynamicLegality.
+
+
+## 7. Immediate call-boundary demand
+
+Established outer P1 and P2 jointly constrain the immediate inner call's P1
+and P2. A terminal root call receives the selected ReturnPattern/Pout demand
+before maxima; no semantic temporary is inserted. When H calls G, H cannot
+deduce its demand by running G's unresolved formal or its body. Ready dependency
+initializers execute once in the ordinary formation order; speculative body
+execution cannot justify a dependency or Policy hole. Explicit user temporaries
+remain real boundaries, and selection failure never reopens a sealed inner call.
+See the [Policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md).

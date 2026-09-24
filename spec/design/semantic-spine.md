@@ -59,6 +59,16 @@ Split/D preserves residual material, while Done is internal boundary completion.
 Residual escape consumes current ordinary meta payload facts.
 
 Naked operator use selects operator[op], dot .op selects op::adl; OG_s retains
-spelling and selects the current slot. Implementation-layer closure expressions
-produce tau_C; ordinary let binds them and conservative structural contributions
-preserve existing legal bindings.
+spelling and selects the current slot. Every legal completed closure expression
+produces tau_C through ordinary struct; file implementation-layer let installs
+under the established package root, while true lexical let remains a binding.
+
+Structured Path algebra precedes external Read: textual roots resolve at the
+actual use, explicit value/reference roots retain their dependencies. `#` quotes
+Path structure; `$` injects ready ordinary material into a Pattern consumer.
+All directly named Product entries form an unordered layer; a bare entry makes
+that layer ordered. Named extraction plus explicit assembly supplies sequence.
+Policy value/type observations retain the same evaluation edge; public policy
+pair syntax is retired. Terminal demand reaches the immediate root call before
+maxima. General dependencies are realized once before layout; complete closure
+results retain the lifetime refinement handoff.

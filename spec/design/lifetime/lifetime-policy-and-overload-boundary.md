@@ -554,7 +554,7 @@ destination starts the destination generation; it never extends the old local
 name's lifetime into a global one. Failed Pre cannot switch the fixed effect.
 
 Compile, runtime, meta, type, Pattern and borrow instances all participate.
-An ordinary non-meta type instance follows its existing global-survival rule;
+An ordinary non-meta type instance in the established domain follows its existing global-survival rule; this is not generalized to every dependency-bearing closure-generated tau (§8).
 a meta-local type temporary can end. A stable meta result root, a local copy,
 and a globally retained equal resident remain different lifecycle subjects.
 Construction OpenHere neither extends a lifetime nor makes a subject killable.
@@ -811,27 +811,30 @@ ordinary selection has completed" and "`@` is itself resolved by ordinary
 selection" describe steps 3 and 2 respectively, and neither feeds back into the
 other.
 
-## 5. Closure capture handoff
+## 5. General dependency handoff
 
-The positive obligation established for closure capture is:
+[Dependency observation and realization](../symbol-world/dependency-observation-and-realization.md)
+owns dependency requirements and their semantic realization. Explicit closure
+captures are one source of those requirements:
 
 ```text
-ResolvedCaptureRequirement
-  -> CheckableCaptureForm {
+DependencyRequirement
+  -> SemanticRealization {
        source_life_name,
        source_place?,
        requested_access_view,
        origin_or_region_relation,
        storage_or_link_category
      }
-  -> LifetimeValidation (§3 escape check)
+  -> LifetimeValidation
   -> RepresentationSelection
 ```
 
-No capture may enter a materialized callable entity through an implicit,
-uncheckable representation side channel. Every capture presents a checkable form
-whose `origin_or_region_relation` is exactly the input the §3 escape check
-consumes.
+Snapshot versus live reference is decided by semantic realization, before
+representation/layout. No capture or other dependency enters a completed
+closure through an uncheckable side channel. Formation and each later action
+pass their actual dependencies and obligations to the ordinary lifetime checks;
+a type/call/Pattern projection does not repeat initialization or recapture.
 
 ## 6. Open representation questions
 
@@ -868,3 +871,74 @@ optimizer changes that continuation, old lifecycle facts can guide candidate
 formation but cannot be copied to new positions. All affected projections
 repeat their Pre/commit/Post validation. See
 [evaluation and optimization](../meta-invocation/evaluation-residual-and-optimization.md).
+
+
+## 8. Closure dependency lifetime refinement handoff
+
+### 8.1 Handoff subject
+
+```text
+Eval(ClosureExpr_C) = tau_C
+D = Dependencies(tau_C)
+```
+
+Closure formation fixes D's sources, Pattern/Policy observations, formation
+actions and absence of recapture. Lifetime implementation and refinement own:
+
+- the regions/generations in which D may persist;
+- move/copy/preserve of tau_C and its members;
+- return, storage, escape and promotion;
+- persistence of bounded runtime state alongside stable descriptions;
+- possible restricted first-class uses of in-place results.
+
+These refinements do not block the defined closure formation semantics.
+
+### 8.2 Preserve checks without inventing conclusions
+
+Formation and later actions retain the existing interfaces:
+
+```text
+FormationLegal
+LifetimeLegal
+Pre / Post
+MoveEffect / Movable
+EscapeLegal
+owned transfer / promotion checks
+```
+
+Established rules continue to decide actual actions. Unrefined cases retain
+their explicit scope; neither temporary global lifetime nor a blanket ban on
+all future local dependencies substitutes for the missing refinement.
+
+None of the following implications is established:
+
+```text
+ClosureTau => GlobalLifetime
+LocalDependency => not Returnable
+OrdinaryClosure => Escapable
+InPlace => not Movable in every future context
+```
+
+TypeRole, ZST layout, Core equality, cache reuse and the absence of machine
+storage prove none of these capabilities.
+
+### 8.3 Established non-meta type survival
+
+Existing global-survival rules for non-meta types remain in their established
+domain. Universal closure-to-tau formation must not mechanically extend those
+rules into a new theorem globalizing closure dependencies.
+
+The lifetime topic must integrate persistence and transport of complete
+closure-generated results with the general dependency model. Existing facts
+remain valid; syntax categories alone establish neither new capabilities nor
+new prohibitions.
+
+### 8.4 Deferral is not an implementation shortcut
+
+The handoff does not permit omitted checks, undefined behavior or a claim that
+bounded closures are implemented. Acceptance verifies preservation and delivery
+of dependencies and action obligations; it does not require uniformly accepting
+or rejecting every closure with local references.
+
+Path, ADL, Policy and closure formation retain defined semantics through these
+interfaces without deciding every future lifetime refinement.

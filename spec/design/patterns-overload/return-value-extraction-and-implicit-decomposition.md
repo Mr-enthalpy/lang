@@ -50,25 +50,22 @@ TopPattern(P)? = P
 x?? = (x?)?
 ```
 
-`TopPattern(P)? = P` is only display shorthand for the resident body. The
-exposed extraction view must retain a name-absent Pattern-layer boundary:
+`TopPattern(P)? = P` is display shorthand for the resident body. Peeling
+removes at most the top name and preserves every real structural boundary:
 
 ```text
-OptionalPeel(
-  PatternLayer(name = c, body = B, order = O)
-) =
-  PatternLayer(name = absent, body = B, order = O)
+OptionalPeel(PatternLayer(name=c, body=B))
+  = PatternLayer(name=absent, body=B)
+Order(result) = Order(B)
 ```
 
-If `TopPattern_c` had a fully named, order-insensitive body before the peel, the
-exposed view is therefore
-`PatternLayer(absent, Product(a, b), Unordered)`, not a naked Product. `absent`
-is a semantic name-absence marker; it is not source wildcard `_`, binder
-absence syntax, or an artificial child. The peel erases the top Pattern name
-while preserving its layer boundary and ordering.
-This does not make a naked Product unordered: `(a, b) != (b, a)`, and the
-fixed point `(a, b)? = (a, b)` gains no matching authority. A positional top
-Pattern body also remains positional after peeling.
+The layer's direct entries determine ordering: all named means unordered;
+any bare entry means the whole layer is ordered. No top name or special
+name-absent layer is required for an all-named Product to be unordered.
+`absent` is only absence of the peeled name, never wildcard padding.
+For bare local values a,b, `(a,b) != (b,a)`; their variable names are not
+member-name Patterns. A genuinely all-named Product remains unordered
+before and after peeling. The operation does not flatten nesting.
 
 If no top Pattern is peelable:
 
@@ -77,7 +74,7 @@ OptionalPeel(x) = x
 ```
 
 This is an ordinary fixed point, not matching failure and not a `none` result.
-The retained name-absent layer must also make peeling commute with
+Preserved structural boundaries make peeling commute with
 normalization:
 
 ```text
@@ -152,11 +149,9 @@ product P?    = P
 TopPattern(P)? = P
 ```
 
-For extraction, the last result is a name-absent
-`PatternLayer(absent, P, O)` whose
-ordering `O` is inherited from the peeled top Pattern. This is a retained
-structural boundary, not merely metadata attached to a naked Product and not a
-change to Product equality.
+For extraction, the last result preserves the body's real layer and its
+direct-entry order. A top name is independent of that order; no special
+name-absent carrier creates unordered semantics.
 
 If that view contains product elements, each element may itself be a new waist
 point, and `?` may be applied again. The result is not a one-shot AST expansion
@@ -349,7 +344,12 @@ let (r first, d second) = expr
 the active return frame has been selected. The explicit `Self` spelling changes
 only which output frame receives the value, not how that frame decomposes it.
 No special multi-return container, implicit `?`, or parallel assignment rule is
-introduced.
+introduced. `let (r first,d second)=expr` denotes delivery to the already
+selected ReturnPattern, not a fresh lexical binding. Its Pout demand reaches
+expr's root before maxima. No independent `let temp=expr; result=temp` Policy
+completion or observable LifeName is inserted. A user-written temp remains
+an actual ordinary binding boundary. See the [Policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md)
+for two-sided forwarding and call-local no-reopen.
 
 ## 4. Equality Examples
 
@@ -447,8 +447,10 @@ Writing an explicit one-layer view may reach the same top Pattern:
 let a a, b b = val copy?;
 ```
 
-Here the first `a` and `b` are field-pattern names, and the second `a` and `b`
-are local binders.
+The named extraction obtains the requested members. To produce a bare sequence,
+explicitly assemble the extracted values in the desired order, for example
+`(extracted_b, extracted_a)`. Neither `?` nor an internal map ordering supplies
+that sequence implicitly.
 
 ## 6. Summary Rule
 

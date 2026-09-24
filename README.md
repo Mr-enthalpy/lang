@@ -48,8 +48,9 @@ is independent of stable root history. Instance move effects and directed with
 cleanup feed the same lifecycle observations. Done is internal completion;
 residual escape separately consumes ordinary meta facts.
 
-Implementation-layer closure expressions produce complete types before ordinary
-let binding. Explicit structural contributions synthesize named types;
+Every legal completed closure expression produces full tau_C through ordinary
+struct. File implementation-layer let installs at the established package root;
+true lexical local let remains binding. Explicit structural contributions synthesize named types;
 OverloadGroup is the separate aggregation algebra. Naked operators select
 operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.

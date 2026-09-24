@@ -8,7 +8,7 @@ This document owns the complete chain:
 ```text
 source policy syntax
   -> contextual elaboration
-  -> PolicyPair
+  -> internal value/type observation facts
   -> binding resolution
   -> visibility/input evidence R_vis
   -> ordinary compile realization C_sigma where required
@@ -416,131 +416,49 @@ Value(true)    =  Value(if::bool)
 
 `true | false` is not a second Pattern space for `bool`.
 
-Policy uses three different operators:
+Policy uses ordinary Pattern material and registered operator relations.
+`+` combines legal orthogonal constraints. The public Policy algebra has no
+colon pair constructor/extractor and no dedicated stage/mode union language.
+Type annotations and callable-head colons retain their separate syntax.
+
+### 2.1 Policy material and two observations
 
 ```text
-||  choice within one policy dimension
-+   conjunction of different orthogonal dimensions
-:   value/Pattern pair separator
+ValuePolicyObservation(x,epsilon) = Pv(x,epsilon)
+PolicyObservation(TypeProjection(x,epsilon)) = Pp(x,epsilon)
 ```
 
-Precedence, from tightest to loosest, is:
+Both observations retain the same source edge epsilon. Directly composing
+`get_type` with Policy observation may expose Pp; first binding
+`let t = x |> get_type` creates a destination whose later Policy is not
+automatically the original x's Pp. Equal type content does not recover that edge.
+
+Whole-slot Mode, Safety and namespace visibility/export retain their independent
+owners; none is moved into Pv/Pp. The no-independent-Val1 consistency law of §1
+still applies. A hidden Val1 is not evidence of absent content.
+
+Concrete atoms, explicit holes, omission and value splice are distinct:
 
 ```text
-||  >  +  >  :
+runtime let ...  ~=  <> runtime let ...
+runtime let ...  !=  <runtime> runtime let ...
+<p> p ...       -- explicit HoleBinderId and ordinary extraction
+<> p$ let ...   -- observe an existing value and interpret it as Policy material
+<> p let ...    -- not implicitly the preceding splice
 ```
 
-Thus:
+The [general splice judgment](structured-path-algebra-and-pattern-splice.md)
+evaluates its operand once at a reached occurrence, requires Policy-admissible
+ready material, and preserves existing HoleBinderIds/scope. It introduces no
+hole, string parser, phase-copy side effect or fallback from unavailable value
+to same-spelled atom. Omission supplies no constraint; default completion is
+separate. The exact absent-value spelling remains open.
 
-```text
-const + runtime : compile
-```
-
-means:
-
-```text
-(const + runtime) : compile
-```
-
-### 2.1 Policy grammar
-
-```text
-PolicySpec
-  ::= PolicyConjunction
-   |  PolicyConjunction ":" PolicyConjunction
-
-PolicyConjunction
-  ::= PolicyChoice
-   |  PolicyConjunction "+" PolicyChoice
-
-PolicyChoice
-  ::= PolicyAtom
-   |  PolicyChoice "||" PolicyAtom
-
-PolicyAtom
-  ::= Name
-   |  "(" PolicyConjunction ")"
-   |  AbsentValuePattern
-```
-
-The parser is a strong-context parser. `meta`, `compile`, `seal`, `runtime`,
-`public`, `private`, and `export` remain ordinary names to the lexer. The token
-spelling for `AbsentValuePattern` remains Open. Implementation fixtures use
-`S`; that fixture spelling does not freeze the public surface.
-
-Elaboration assigns atoms to typed coordinates. `const`, `plain`, and `mut`
-are the three atoms of the whole-slot PolicyMode pattern; none is stored inside
-`Pv` or `Pp`. Bare let contributes no explicit override. Written plain constrains the plain
-point; an explicit HoleBinderId is a third, distinct case solved by ordinary
-Pattern extraction. Default completion is separate from written constraints. A written choice such as
-`const || plain`, `plain || mut`, or `const || mut` is not a legal whole-slot
-mode demand. In particular, `const || mut` is not a neutral whole-slot mode and
-does not elaborate through the general PolicyChoice syntax.
-
-For ordinary slot policies, surface elaboration factors that whole-slot
-coordinate before building the pair. P1 meta-instance policy is recognized by
-its position under §3.0 before applying this ordinary-slot factorization:
-
-```text
-PolicySurfaceElaboration(surface)
-  -> FactorWholeSlotMode(surface)
-  -> <ModePattern?, PairSurface?>
-  -> <ModePattern?, PairSpec = Pv:Pp | InferPair>
-
-ModeAtom
-  ::= const
-   |  plain
-   |  mut
-
-ModePattern
-  ::= ModeAtom
-   |  HoleRef(HoleBinderId)
-```
-
-Each solved ModePattern denotes one whole-slot point; holes may have several
-solutions before applicability and unique selection. There is no
-set-lifted PolicyMode demand and no second neutral element beside `plain`. It
-may not mix a stage, visibility, presence, or pair atom into that coordinate.
-`plain` therefore always factors as `ModePattern(plain)` when written; it can
-never remain as a residual `PolicyAtom` for `Pv` or `Pp`.
-
-In a result-demand context, omission records NoWrittenModeConstraint. Existing
-inherited/contextual constraints apply first; only a context requiring default
-completion with no such constraint may complete the mode to plain. Thus a written compile stage constraint need not spell a mode.
-
-`FactorWholeSlotMode` walks the complete `PolicySpec`, extracts one connected
-Mode Pattern once, and removes those atoms before either colon side is
-elaborated. The residual `PairSurface`, if present, contains only pair/view
-coordinates. The closed semantic well-formedness rules are:
-
-```text
-AtMostOneWholeSlotModePattern
-NoPolicyModeCoordinateInPv
-NoPolicyModeCoordinateInPp
-NoIndependentModePatternsAcrossColon
-NoMultiPointPolicyModeChoice
-
-no residual pair/view atom
-  => PairSpec = InferPair
-```
-
-Thus `const`, `plain`, and `mut` alone are singleton whole-slot Mode Patterns
-with inferred pair. `const + runtime : compile` parses as
-`(const + runtime):compile` and factors to mode `const` plus pair
-`runtime:compile`. A surface PolicyChoice containing more than one ModeAtom is
-preserved by Raw/Normalized syntax but rejected by typed Policy elaboration.
-
-How a written colon whose factorization leaves an empty residual side is handled
-is a separate surface decision, not a theorem of PolicyMode orthogonality. The
-current parser rule rejects `const:compile`, `runtime:const`, and `const:mut`;
-the Open surface question may instead
-define an unambiguous contextual shorthand while still satisfying the closed
-coordinate rules above. No semantic elaborator may place a mode atom in `Pv` or
-`Pp`, regardless of which surface completion is selected. Independently,
-`const || mut:compile` is invalid because its mode choice violates
-`NoMultiPointPolicyModeChoice`, not because of the current empty-side rule. This
-factorization does not require the frozen Raw/Normalized Policy AST carrier to
-change.
+A demand on both Pv and Pp uses ordinary Patterns/require on these two
+observations in the same candidate-local joint relation. Internal PolicyPair
+carriers and endpoint tuples may retain both facts, but public `Qv:Qp`
+Policy literals/extractors are retired. Current Raw/Norm pair/choice carriers
+are implementation debt, not authorization of that surface.
 
 ### 2.2 Algebra
 
@@ -556,27 +474,22 @@ evaluator; neither that fact nor execution readiness establishes a stage edge.
 The static-to-runtime edges require an admitted ordinary same-Type migration.
 No runtime-to-compile or seal-to-compile conversion follows.
 
-PolicyChoice remains syntax and ordinary Pattern material. It does not make
-`runtime || compile`, `meta || compile`, or `seal || compile` a resolved
-stage. A solver may retain several candidate valuations until unique selection;
-each solution still has one atom. Explicit stage holes and omission are distinct.
+An unresolved solver may retain several valuations, each with one stage atom.
+Genericity uses explicit holes, ordinary extraction, legal orthogonal `+`,
+value splice and require. It does not use a public resolved StageSet or
+`runtime||compile` / `const||mut` demand. Presence alternatives use their
+ordinary Pattern relation, not a stage union. Independently registered ordinary
+`||` outside this Policy sublanguage is unaffected.
 
-`+` combines orthogonal constraints, for example `const + runtime`.
-`const + mut`, `public + private`, cross-dimension choices and multi-point
-PolicyMode demands are invalid. Presence alternatives remain their own
-coordinate. The AST retains PolicyPair, PolicyConjunction, PolicyChoice,
-PolicyAtom and AbsentValuePattern; typed elaboration validates their meanings.
-
-`Pv:Pp` remains a pair. In particular `runtime:compile` and
-`runtime:seal` are valid; they do not denote unions of stages.
+Internal endpoint descriptions such as `runtime:compile` and `runtime:seal`
+retain distinct value/type facts; they are not source literals.
 
 ### 2.3 Deduction is ordinary operator Pattern extraction
 
-Policy + and || consume the corresponding registered operator relations under
-type. Their typed coordinate restrictions remain hard applicability rules.
+Policy + consumes its registered ordinary operator relation under type.
+Ordinary extraction, splice and require retain typed coordinate restrictions.
 
     R_+(h1,h2,p,rho)
-    R_||(h1,h2,p,rho)
     independent holes -> distinct HoleBinderId
     repeated hole -> shared identity/equality constraint
     require C -> {rho in Solutions | C(rho)}
@@ -797,8 +710,9 @@ with an explicit candidate-independent result demand:
 PolicyLetExpression ::= PolicySpec "let" PipeExpression
 ```
 
-`PolicySpec` is the existing typed Policy grammar, not an ordinary value
-expression. The operand covers the complete following pipe; parentheses close
+`PolicySpec` here denotes canonical typed Policy material (§2), including a
+legal explicit splice of an ordinary value. It does not reinstate the current
+parser's retired public pair/choice grammar. The operand covers the complete following pipe; parentheses close
 the boundary:
 
 ```lang
@@ -1017,11 +931,9 @@ Q let x = expr;
 It selects the value slice exposed by `Q`, then preserves the Pattern component
 associated with that selected value slice. It does not mean `Q:Q`.
 
-An explicit pair constrains both components:
-
-```lang
-Qv:Qp let x = expr;
-```
+Two ordinary observation constraints may jointly constrain both components,
+using the same source edge and candidate-local relation. The public surface
+does not construct or extract a `Qv:Qp` pair.
 
 Projection returns an identity-preserving restricted view. Given:
 
@@ -1060,7 +972,7 @@ DynamicLegality failure never reopens selection. These rules apply to the
 complete `PolicyResultEntry[]`, including collections that mix value-bearing
 and absent-Val1 entries.
 
-For pair query `Qv:Qp`, result-view satisfaction slices the Pattern-policy stage
+For the internal joint query <Qv,Qp>, result-view satisfaction slices the Pattern-policy stage
 capability before migration candidate enumeration:
 
 ```text
@@ -1072,7 +984,7 @@ projection, postfix `?`, extractor lookup, Pattern-root navigation, or a change
 of PatternRoot/PatternScope. It preserves PatternValue identity and structural
 Pattern shape.
 
-Unselected alternatives in a written query are never obligations to
+Unselected ordinary Pattern solutions in a query are never obligations to
 manufacture every branch. When the complete query projects nothing, only an
 authorized direct same-Type migration may satisfy the demand. There is no
 transitive search or compiler-owned conversion table; the implementation
@@ -1467,12 +1379,84 @@ These are deferred positive constraints, not claims that runtime lowering,
 cache identity, `[[global]]` seal scanning, or lifetime checking is currently
 implemented.
 
+### 3.9 Direct result delivery and two-sided forwarding
+
+#### 3.9.1 Select the return target before delivery
+
+Existing implicit, explicit and targeted-return rules select the target.
+Delivery does not redefine whether an in-place block introduces a return target.
+For the selected F:
+
+```text
+Pout_F = ElabOut(P1_F, Delta_out)
+BindResult(ReturnPattern_F, e)
+```
+
+The terminal e is interpreted under this result demand. The schematic let r=e
+names the existing result position and whole ReturnPattern; it does not create
+a lexical local. Product and borrow results retain their ordinary delivery
+rules.
+
+#### 3.9.2 No implicit semantic temporary
+
+Default return must not mean:
+
+```text
+let temp = e;       // independently infer/complete temp's Policy
+let result = temp;
+```
+
+The selected return position supplies immediate demand before e's root call
+forms its maxima. Registers, SSA temporaries and argument buffers may exist,
+but they introduce no extra language binding, default Policy boundary or
+observable LifeName.
+
+An explicit user-written let temp=e; temp; does create a binding boundary and
+need not be equivalent to directly returning e.
+
+#### 3.9.3 Both forwarding sides constrain the inner call
+
+For the terminal inner call G of transparent wrapper F:
+
+```text
+C_in(P2_F, P2_G) and C_out(P1_F, P1_G) and C_positions
+(P1_F, P2_F) => (P1_G, P2_G)
+```
+
+This is not the linear propagation P2_F -> P2_G -> P1_G -> P1_F.
+The constraints use ordinary admissibility, preference, satisfaction and
+migration; they do not require literal equality of every coordinate.
+
+While the selected F's body is interpreted, its established signature and
+valuation are G's known immediate context. An unselected outer candidate's
+formal demand is not such a context.
+
+#### 3.9.4 Selection remains sealed
+
+For schematic terminal H(G(...)), return demand first constrains H. It does
+not inject the parameter Policy of an unselected H into G. G closes under its
+own immediate context; H and F cannot reopen it afterward. Direct return
+removes an extra default temporary, not the local selection boundary.
+
+#### 3.9.5 Generic declarations avoid enumerating a Cartesian product
+
+Transparent coordinates inherit. Coordinates requiring extraction or
+correlation use explicit holes; one HoleBinderId constrains the corresponding
+positions to agree, and require constrains legal combinations. Omission is
+not an implicit generic variable over every dimension. Declarations need not
+enumerate const/plain/mut by compile/runtime cells.
+
+PolicyMode preference, capability realization, stage admissibility, Ready and
+DynamicLegality remain independent. Forwarding a Policy fact creates no write
+capability, reference, OpenHere evidence or additional migration candidate.
+
 ## 4. P2 evaluation horizon and result observations
 
 P2 specifies the callable's evaluation horizon, a concrete Stage. It is
 independent of the declaration's producer P1 and its output Pout.
 Position elaboration forms Pin from P2 and the written position constraints.
-Call-result observations still have the ordinary Pv:Pp pair:
+Call-result observations still have both internal Pv/Pp coordinates. The
+following table is a semantic endpoint description, not source Policy syntax:
 
 | Concrete value stage | Ordinary pair |
 |---|---|

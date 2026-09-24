@@ -41,8 +41,8 @@ Evaluation may retain/realize the coordinate:
 A retained coordinate may have a typed Place; that Place may still be
 Uninitialized. Only Initialized(v) contributes the ordinary Val2 entry v.
 The coordinate space is total for legal roots/selectors without eagerly
-allocating an infinite namespace or granting access. Raw strings do not
-construct arbitrary semantic coordinates. Stable coordinate identity must not
+allocating an infinite namespace or granting access. Strings may construct a single-name path_pattern node, never arbitrary resolved
+coordinates; external Read separately resolves/checks it under the Path owner. Stable coordinate identity must not
 be confused with a particular resident generation or saved borrow target.
 
 NameBinding is binding identity and its relation to a resident Place;
@@ -337,36 +337,40 @@ all coordinates or possible future realizations.
 
 ## 6. Positional synthesis and lexical let
 
-In the specified structural namespace implementation layer, evaluating a
-closure expression C produces the complete type tau_C. The let action binds
-that evaluated RHS by its ordinary rule; it does not wrap an already evaluated
-function value into a second type. Other materialization layers retain the
-ordinary function-object result.
+Every closure expression's legal completed result is tau_C through ordinary
+struct construction, regardless of file or local position. An ordinary lexical
+`let f=C` binds it without a wrapper; `let a=uint8` binds the RHS type itself.
 
-```text
-Eval_impl(C) = tau_C
-let f = C  => bind the evaluated tau_C
-let a = uint8 => ordinary binding of uint8
-```
+File implementation declarations have an established structural destination.
+Their source-to-actions handoff installs the evaluated RHS at that package/root
+member using ordinary formation, initialization and requested registration.
+They are not a file-local scope discarded at exit. A true nested local block
+still binds lexically. The source role is fixed before evaluation, never guessed
+from RHS type or recovered after failed execution.
 
-The first closure's result is fixed at its evaluation, independently of
-whether later material contributes to f. Contribution synthesis produces a
-complete type T_f, never an implicit OverloadGroup.
+Further same-name synthesis requires an explicit structural contribution role.
+Conservative repair preserves legal binding, shadowing, write and explicit
+group actions; it never retries failed execution. Neither a type-valued RHS
+nor a shared spelling automatically grants TypeAdd or either registration.
 
-Only an explicitly established structural contribution role admits subsequent
-same-name contribution. Conservative legality repair recognizes predetermined
-syntactic contribution shapes that cannot be ordinary legal statements. It
-preserves every legal binding, shadowing, mutation and explicit group action.
-It never runs an ordinary action, catches failure and retries as contribution;
-callable/type RHS shape and same-name spelling alone are insufficient.
+### 6.0 Open navigation and name buckets
 
-Typed structural name formation retains freshness and establishes no member
-registration by itself.
+The [Path owner](structured-path-algebra-and-pattern-splice.md) defines
+`Read(::host) = Product[v_i (s_i |> name)]` for the current finite observation.
+Each item keeps its member name Pattern, not a second bare tuple value.
+`s |> name` is an ordinary meta family with extractable string parameter.
+
+A local `let a=bool::` keeps bool's internal if/else layer; it adds no inner
+a wrapper. Observing an actual outer layer with a and b members instead yields
+a/b labels. Different roots can share labels without sharing NameCoords/Places.
+Same-name bucket membership permits only the corresponding contribution
+relation, never arbitrary value merge or construction authority. Generators
+are not enumerated over their infinite potential name domain.
 
 ### 6.1 First contribution forms the first resident directly
 
 For established contribution material, Delta_v carries its entry identity,
-policy, captures and dependencies. At the implementation-layer closure
+policy, captures and dependencies. At every legal completed closure
 position the evaluated RHS already supplies tau_C; ordinary binding retains
 that result without an additional wrapper. For joined explicit contribution
 material the existing formation relation applies:

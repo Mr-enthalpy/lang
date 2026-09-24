@@ -192,8 +192,8 @@ ordinary source/host work; their implementation does not create authority.
 
 ## Closure, control flow, and ownership
 
-- What carrier materializes a Closure AST as a callable object and lays out
-  explicit/automatic captures?
+- Which carrier realizes ordinary struct Material_C into full tau_C, its c_C,
+  A_C and () roles, and represents already determined dependency realizations?
 - How are in-place closure embedding reads resolved without inventing captures?
 - How should the NLL/control-flow graph be represented?
 - How are `return`, effect, and sync operations integrated into the shared
@@ -204,10 +204,12 @@ naked use selects operator[op], dot .op selects op::adl and explicit paths stay
 explicit. OG_s's ordinary string-to-type construction, spelling extraction,
 explicit Forget_s and current-slot selection are closed. Call, registered
 extraction and generative invocation use ordinary relations. Source wiring
-remains roadmap work; this does not close general structured Path algebra.
+remains roadmap work; structured Path and ordinary ADL are now closed by their
+topic owners.
 
-In the specified structural implementation layer a closure expression returns
-tau_C before ordinary let binding. Conservative contribution roles preserve
+Every legal completed closure expression returns full tau_C through ordinary
+struct. File implementation-layer let installs under the established package
+root, while true lexical local let remains binding. Conservative contribution roles preserve
 legal ordinary actions and never retry failed execution. These are closed laws,
 not a pending choice based on RHS type or declaration count.
 
@@ -221,13 +223,18 @@ not a pending choice based on RHS type or declaration count.
 - What finer-grained identity, if any, is needed for grouped inferred-require
   atoms?
 
-### First-class structured Path algebra
+### Structured Path representation and remaining surface scope
 
-The remaining foundational navigation question is how structured, typed,
-authority-compatible name/path material supports Reroot, Append, DependentSelect
-and composition. Arbitrary String -> SemanticPath injection is excluded. A
-possible .field -> field::adl presentation belongs to this reroot/dependent-path
-and surface question, not to whether a requested name coordinate can exist.
+[Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
+now defines internal composition, ordinary extractable linked nodes, endpoint
+shape, external Read, late textual roots, anchored value/reference roots,
+Path-specific # and general Pattern splice $. A string creates one name node;
+it does not parse source or resolve a target. Ordinary `.field -> field::adl`
+is closed. Concrete representations and source wiring remain pending.
+
+The exact public ordinal API and general quotation beyond the defined Path
+domain remain open. Neither gap permits implicit sorting of an unordered
+Product or opaque-only Path semantics.
 
 NameCoord exists independently of realization. Finite generative rules can
 match legal requested coordinates without enumerating an infinite Val2 or using
@@ -260,3 +267,16 @@ Concrete source definitions for literal construction, construction/migration
 families, capability entries, StructuralDefault providers, and lifecycle
 algebra remain future work. Ordinary selection and the canonical relations
 already determine their meaning.
+
+
+## Closure dependency lifetime refinement
+
+[The lifetime handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
+owns further integration of dependency region/generation persistence,
+move/copy/preserve, return/store/escape/promotion, bounded runtime state with
+stable descriptors, and possible restricted first-class in-place uses.
+FormationLegal, LifetimeLegal, Pre/Post, MoveEffect/Movable, EscapeLegal and
+owned-transfer/promotion checks remain required. This does not block closure
+formation semantics and grants neither global lifetime to tau_C nor a blanket
+ban on every local dependency. Already established non-meta type survival
+facts are retained in their domain.

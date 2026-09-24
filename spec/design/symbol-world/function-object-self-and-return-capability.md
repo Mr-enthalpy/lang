@@ -155,6 +155,15 @@ unit and no user-observable Done value.
 
 ### 5.2 Target completion
 
+The terminal payload is evaluated directly under the target's established
+ReturnPattern/Pout demand, before the payload root call seals its candidate
+maxima. Delivery does not first complete an unconstrained temporary and then
+rematch it. An explicitly written user binding still creates its own boundary.
+Both established outer P1 and P2 constrain the immediate inner call's P1/P2;
+the selected inner call cannot be reopened by later use. See
+[Policy demand](symbol-policy-and-compile-flow-projection.md).
+
+
 An internal target-qualified completion carries the ordinary return payload
 to the resolved enclosing frame. Intermediate boundaries propagate it without
 matching its payload as a fresh ordinary chain input. The matching frame

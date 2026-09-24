@@ -532,3 +532,16 @@ rechecks dependencies. It never grants permission to invoke meta under
 SealDom. A previously completed payload may be read there if ordinary rules
 admit the read. Fixed language consumers such as residual escape are defined
 by their topic owners, not by an unconstrained user trait dispatcher.
+
+
+## 8. Closure and dependency boundary
+
+Every legal completed closure expression produces its complete tau_C through
+ordinary struct formation; invoking an ordinary meta callable still directly
+produces its own tau_M. These are distinct operations. Optional generative
+heads, HoleRef selectors and general expression bodies use the ordinary
+[declaration relation](../patterns-overload/operator-patterns-and-generative-declarations.md).
+Input identity and cache reuse preserve the observations specified by the
+[general dependency owner](../symbol-world/dependency-observation-and-realization.md).
+Reuse never reinitializes or recaptures dependencies, and stable identity
+supplies no extra lifetime/escape capability.

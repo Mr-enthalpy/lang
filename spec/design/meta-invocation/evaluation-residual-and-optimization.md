@@ -158,3 +158,16 @@ cleanup and effects. Scheduler traces do not become identity. Saturation is a
 semantic fixed point for ready work, not a guarantee that infinite static work
 terminates. Representations and scheduling algorithms remain implementation
 frontiers.
+
+
+## 9. Dependency realization at formation
+
+[General dependencies](../symbol-world/dependency-observation-and-realization.md)
+separate required observations, semantic realization and representation.
+Snapshot versus live reference, readiness and one-time initializer effects are
+semantic facts, never scheduler/layout choices. Ready initializers run once
+per formation in ordinary effect order, with the specified common pre-capture
+name environment. Projecting type/call/Pattern or residualizing completed
+material does not recapture. Missing readiness cannot be justified by speculative
+execution of the body that consumes it. Closure dependency persistence passes
+through the [lifetime handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff).

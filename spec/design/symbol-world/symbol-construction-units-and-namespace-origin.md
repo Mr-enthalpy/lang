@@ -60,8 +60,9 @@ is not canonical. Close requires retained structural names being published to be
 initialized; it does not require all future generated coordinates to be realized.
 Ordinary lexical let remains unchanged.
 
-In the specified structural namespace implementation layer, a closure RHS
-returns tau_C and ordinary let binds it. Further contribution to the named
+Every legally completed closure RHS returns tau_C. At the file implementation
+layer, declarations install that result at the established structural root;
+local blocks retain ordinary lexical let. Further contribution to the named
 type's V_tau requires an established structural contribution role. Different sibling files
 can contribute to that named type. Distinct entry identity survives equal values.
 Ordinary lexical let and Pattern structural-child registration remain separate.
@@ -121,3 +122,99 @@ The current implementation uses sorted discovery and per-declaration commits.
 Common-snapshot overlays, unordered join and the new structural expression
 consumer remain pending. Source files never become semantic construction owners
 as an interim implementation shortcut.
+
+
+## 7. File declaration installation and local binding
+
+### 7.1 File implementation declarations have structural destinations
+
+At implementation root r, a top-level declaration:
+
+```text
+let a = e;
+```
+
+normalizes to ordinary actions that form and install Eval(e) at the corresponding
+name/member position under r. Merely binding a inside a file-local lexical
+block would leave the implemented package without its members.
+
+The structural role and destination are established at the source-to-actions
+handoff. This is not a retry after failed lexical let evaluation. True local
+blocks still use ordinary binding; nested lets are not all promoted to package
+members.
+
+### 7.2 Installation retains the ordinary action boundaries
+
+```text
+legal name coordinate and typed formation
+-> required explicit borrow / initialization
+-> ordinary member formation
+-> legal Pattern/V_tau registration when the material requires it
+-> extend/inject updates where applicable
+```
+
+This decomposition does not rewrite a complete lexical let into an illegal
+default-type declaration followed by assignment.
+
+```text
+ordinary Val2 installation != Pattern registration
+ordinary Val2 installation != V_tau registration
+structural destination != permission to aggregate every same-name declaration
+```
+
+let a=uint8 installs that RHS value, without a new type wrapping tau_uint8.
+Universal closure-to-type formation does not authorize automatic TypeAdd merely
+because an RHS is a type value.
+
+### 7.3 Two contexts for the bool example
+
+At file implementation root path:
+
+```text
+let a = bool::;
+```
+
+After the applicable structural formation has completed:
+
+```text
+Read(bool::a::path) = Read(bool::)
+```
+
+Here a is an actual installation layer. The two quoted Path structures remain
+different.
+
+In a true local block the same let instead establishes:
+
+```text
+Read(a) = Eval(bool::)
+```
+
+It adds no internal layer named a and does not itself authorize extra nesting
+such as bool::a. This absence of an implication does not reject a program that
+independently has the required same-named structure.
+
+### 7.4 Direct struct and incremental extend observations
+
+When final member values, Pattern/V_tau registrations, owners/homes,
+dependencies and all relevant identity observations agree:
+
+```text
+Norm(IncrementalConstruction) = Norm(DirectConstruction)
+```
+
+A later inject is not an extra component of final Pattern identity. This
+equality neither erases intermediate reads, writes, errors, OpenHere checks or
+lifecycle effects nor asserts that every construction history produces equal
+semantic identities. All equality premises remain necessary.
+
+### 7.5 Sibling files retain ordinary composition
+
+```text
+directory = unordered sibling blocks from a common snapshot
+file = sequential actions
+```
+
+Declarations install under the shared structural root. Ordinary contribution
+and conflict relations decide whether same-coordinate effects can join;
+filename order decides nothing. Later contributions do not retroactively
+change the observations of earlier actions within a file.

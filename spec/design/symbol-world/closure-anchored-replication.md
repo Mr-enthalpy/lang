@@ -33,9 +33,9 @@ For a genuinely different anchor:
 The original c remains unchanged. Replication constructs a new anchored instance
 of the same logic; it is neither mutation nor move nor aliasing.
 
-## 3. Captures and internal identities
+## 3. Realized dependencies and internal identities
 
-The new instance preserves the already determined capture semantic values,
+The new instance preserves the already determined semantic dependency material,
 using their ordinary copy/share/ref rules. It does not re-execute arbitrary
 surrounding code or re-resolve outer names. A captured reference keeps its
 referent; copying the closure does not duplicate that referent or extend its
@@ -106,8 +106,10 @@ a bounded result may retain valid input-derived opening sources. Neither cache
 identity nor result completion extends an expired local resident. struct,
 inject and closure anonymous construction share the same meta anchor rules.
 
-Non-meta pattern values have the existing global-survival semantics and opaque
-in-place navigation levels. Their stable identity cannot be retroactively
+Established non-meta type constructions retain their survival rules and opaque
+in-place navigation levels. Universal closure-to-tau formation does not extend
+those rules to all dependency-bearing closure results; their survival, move,
+return/store/escape/promotion and bounded state are handed to the lifetime owner. Their stable identity cannot be retroactively
 reparented. Replication makes a new instance under the requested anchor while
 retaining the old one. Neither case adds a new owner kind or window rule.
 
@@ -117,3 +119,9 @@ Which values beyond closure-expression-produced closures can demonstrate a
 valid location-parametric ReinstantiationWitness? The initial domain is fixed;
 generalization requires proof rather than assuming arbitrary values are
 replicable. Concrete witness/template representation is implementation work.
+
+
+Initial formation at a known authorized contribution site differs from rehosting
+an already formed value. The unified [construction relation](symbol-first-meta-construction-and-pattern-injection.md)
+does not remove this witness or rerun [] initializers. General [dependency](dependency-observation-and-realization.md)
+checks remain active throughout; deferred lifetime refinement grants no exemption.

@@ -142,7 +142,9 @@ declaration-extension site cares about the *place*. A borrow view is itself a
 value that carries a place coordinate. The three concerns must not be folded
 into one another.
 
-A structural path resolves to its binding and reads its named type; call projection uses V_tau. Explicit
+Path structure forms before external Read; quote can retain it without lookup.
+At external Read a textual root resolves in the use environment, while an explicit
+value/ref root preserves its identity. A resolved named type uses V_tau for calls. Explicit
 OverloadGroups aggregate type candidates through eta(T), without adding a
 second name container. Member projection follows the ordinary consumer rules. A selected tau
 is already self-contained; its Core, CallSpace and whole observations do not
@@ -2761,17 +2763,13 @@ places:
 T and uint8 may observe the same Core(τ) yet have different PlaceId.
 ```
 
-The same separation applies to normalized pattern layers. If the layer is the
-body of a Pattern and every direct element has a complete top-pattern
-navigation name, it is
-`Map<CanonicalFullNavigation, CanonicalPatternValue>`. A naked Product remains
-positional regardless of whether its elements are named. `NameBindingId` and
-`PlaceId` identify carriers/locations; they are neither map keys nor resident
-values. Extraction resolves a source name binding, reads its `PatternValue`, and
-looks up that value by complete navigation and normalized resident. A binding
-path may share the value's navigation spelling or differ from it without
-changing this sequence. Source/provenance classification does not participate
-in `PatternValue` identity.
+The same separation applies to Pattern layers. Every all-named direct-entry
+layer is unordered, independent of a top Pattern name; any bare entry makes the
+whole layer positional. BareProduct's pos_i equations above describe that
+positional subdomain, not every Product. See the [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#7-product-ordering-is-local-to-each-layer).
+NameBindingId and PlaceId are neither resident values nor ordinary content keys.
+Open navigation retains each observed member's name Pattern; carrier spelling
+does not rename that member or merge coordinates.
 
 Pass mode is **not** part of ordinary type-value observation. A construct such
 as `T move` does not
@@ -2850,8 +2848,9 @@ meaning.
 ## Instance lifetime and type transport
 
 Type value equality, stable root identity, local binding, Place and lifecycle
-instance remain separate. Non-meta type instances follow the existing global
-survival rule; meta-local type temporaries may have finite generations and a
+instance remain separate. Established non-meta type instances retain the existing global
+survival rule; its extension to dependency-bearing closure-generated tau is
+explicitly handed to lifetime refinement, not inferred from the new result category; meta-local type temporaries may have finite generations and a
 killing move. A stable meta root, an equal local copy and an equal globally
 retained resident do not thereby share lifetime or Killable facts.
 
@@ -2860,3 +2859,19 @@ defines Killable_K, predetermined MoveEffect and frontier Movable uniformly
 for type, meta, compile and runtime instances. OpenHere, Writable, Place
 residency and lifetime imply none of one another. A narrow Preserve proof is
 not an implicit clone and does not exempt the action from borrow/access Pre.
+
+
+## Direct type projection and closure formation boundary
+
+Policy observation after the same source-edge type projection exposes Pp;
+ordinary direct Policy observation exposes Pv. A fresh binding of that projected
+type has its own destination view and does not recover the original edge by
+Core equality. This preserves all same-entity and whole-snapshot distinctions.
+
+Every legal completed closure expression produces tau_C through ordinary struct
+formation. Its c_C, classifier A_C and terminal () leaf are distinct roles.
+First callable formation needs no arbitrary instance construction or deleted
+constructor; TypeRole remains the Q-local registration judgment above. General
+dependency state uses ordinary owned structure/reference identity. FormationLegal,
+LifetimeLegal, Pre/Post, MoveEffect/Movable, EscapeLegal and transfer/promotion
+checks remain required; tau, Core equality and layout establish none of them.

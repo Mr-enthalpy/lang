@@ -43,9 +43,10 @@ is not canonical. Close requires retained structural names being published to be
 initialized, not every future generated coordinate realized. Ordinary lexical
 let remains unchanged. See [name semantics](../symbol-world/names-and-overload-groups.md).
 
-Implementation-layer closure expressions return tau_C; let binds the evaluated
-RHS. Only established structural contribution roles join by ordinary
-type-contribution/effect algebra. Equal NameCoord or callable RHS alone does
+Every legal completed closure expression returns tau_C through ordinary struct.
+File implementation-layer let installs at the established package structural root;
+a true lexical local let binds the evaluated RHS. Only established structural
+contribution roles join by ordinary type-contribution/effect algebra. Equal NameCoord or callable RHS alone does
 not reclassify a legal binding/shadow/write. Entry has runtime P2; stable root
 ownership establishes no permanent active MetaDom.
 Conflicting writes are not repaired by file order. File ownership, one-type-slot

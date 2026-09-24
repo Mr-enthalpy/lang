@@ -42,8 +42,8 @@ by discovery; see [normalization](../design/build-package/build-system-design.md
 
 The semantic owner forest contains source-established namespace owners, callable owners,
 canonical meta-instance owners, and generated owners. Every callable,
-including an in-place closure, has a lexical/code owner. A standalone closure
-materialization also has an owner-derived anonymous function-object type:
+including an in-place closure, has a lexical/code owner. Ordinary closure-to-tau construction forms its callable material and classifier
+under the authorized home; the source callable owner remains distinct:
 
 ```text
 DefaultStandaloneReceiverType(C)
@@ -60,10 +60,12 @@ printable string is not identity and does not determine any receiver type.
 `__inner_namespace` and related synthetic path components have no canonical
 role.
 
-Allocating this owner is not closure-value materialization. A closure remains
-syntax/normalized callable material until an explicit binding or call context
-requires a value; the owner exists earlier only so `Self`, return targets,
-Pattern roots, and nested declarations have stable semantic containment.
+Allocating a lexical owner is not value construction. Every legal completed
+closure expression returns tau_C by ordinary struct formation, with c_C in
+V_tau_C, classifier A_C and terminal () implementation. Source carriers preserve
+syntax before this consumer. No future destination can retroactively choose an
+already evaluated RHS owner. Initial formation at an established contribution
+site and witnessed rehosting of an already formed value remain distinct.
 
 Every invocation has frame slot 0 for its caller object. This is independent of
 ordinary/in-place placement. When a closure writes any formal position, its
@@ -181,7 +183,10 @@ unqualified lookup. External navigation consumes the source-established export
 view and public/private reachability. Build configuration defines no additional
 visibility domain.
 
-Path/name resolution returns one terminal NameBinding, preserving the resolved
+Pure Path structure is distinct from this graph's identities. Unanchored textual
+roots resolve on the first external Read; explicit ValueRoot/RefRoot preserve
+ordinary value/reference dependencies. Quote performs no lookup. At external
+Read, Path/name resolution returns one terminal NameBinding, preserving the resolved
 host chain and exposure context. It does not return a candidate set:
 
     Resolve(path) -> terminal NameBinding
@@ -257,8 +262,8 @@ private let name = expr
 let () = callable_expr
 ```
 
-At a specified structural namespace implementation layer, a closure expression
-itself evaluates to tau_C; the ordinary let action binds that RHS. Other RHS
+Every legally completed closure expression evaluates to tau_C. File declarations
+install the RHS at their established structural root; local let binds lexically. Other RHS
 values retain ordinary binding, so let a=uint8 does not manufacture a wrapper.
 Further synthesis requires an explicit structural contribution role. Only
 predetermined syntactic repair shapes that cannot be legal ordinary statements

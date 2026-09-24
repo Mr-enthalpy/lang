@@ -105,6 +105,15 @@ provide one.
 
 ## 3. Joining effects
 
+File implementation-layer `let name = rhs` installs the evaluated material at
+the established package structural root. A true lexical local let remains an
+ordinary binding; filenames introduce no owner. Every legal completed closure
+expression yields full tau_C through ordinary struct. Direct and legal
+incremental construction use the same material algebra. The
+[source composition owner](../symbol-world/symbol-construction-units-and-namespace-origin.md)
+defines this installation boundary.
+
+
 Named-contribution positions synthesize the same named type's V_tau.
 Associative/commutative contributions from different files can join; physical
 provenance neither makes them exclusive nor merges distinct entries by value

@@ -25,7 +25,9 @@ their value/Pattern boundary. It is not HIR.
 
 ### Product
 
-An ordered structural value or Pattern form. A source Product participates in
+An ordinary structural value or Pattern carrier, distinct from OverloadGroup.
+All directly named entries make its layer unordered; any bare entry makes that
+layer ordered, independently of its top-level name and nested layers. A source Product participates in
 the language's call-composition model; it is not a conventional argument-list
 node.
 
@@ -187,8 +189,10 @@ extraction. Ordinary member access does not receive this family filter.
 
 ### PolicyPair
 
-The orthogonal value/Pattern policy pair `Pv:Pp`, containing stage and presence
-facts. It does not contain or determine whole-slot mode.
+An internal pair of independent value/Pattern observations, containing stage
+and presence facts. Public `Pv:Pp` syntax is retired. Direct source Policy and
+Policy of its direct type projection observe one evaluation edge; a separately
+bound type value has a new edge. Mode and safety remain independent.
 
 ### PolicyMode
 
@@ -221,7 +225,7 @@ paths stay explicit. OperatorNameValue reads without recursively dispatching.
 OG_s is an ordinary spelling-retaining type family with explicit Forget_s to
 OverloadGroup; selection reads the current environment slot. Ordinary call,
 registered extraction and generative projections retain their distinct roles. Extraction observes the same relation as construction,
-not a synthesized inverse. Policy +/|| deduction uses those registered
+not a synthesized inverse. Policy composition/deduction uses those registered
 relations, HoleBinderId, require and ordinary overload selection. Omission,
 explicit concrete mode and explicit hole remain distinct source constraints.
 
@@ -229,8 +233,8 @@ explicit concrete mode and explicit hole remain distinct source constraints.
 
 An occurrence forming a requested name/result relation may establish ordinary
 Val2 residency, but supplies no V_tau or Pattern registration evidence. This
-restriction does not permanently taint the value. Concrete name heads and _
-use ordinary specificity, not a separate generation priority.
+restriction does not permanently taint the value. Optional callable heads, Concrete/Wildcard/HoleRef name selectors and general
+expression bodies use ordinary specificity, not a separate generation priority.
 
 ### DynamicLegality
 
@@ -444,9 +448,28 @@ Target return has no fabricated local unit. CanEscape_Sigma(R,B) is a separate
 fixed consumer of current ordinary meta payload facts, not a universal
 empty-residual rule or a new trait ontology.
 
-### Implementation-layer closure formation
+### Closure formation
 
-At the specified structural namespace implementation layer Eval(C)=tau_C.
-Ordinary let binds the evaluated RHS. Additional synthesis requires explicit
-structural contribution roles; conservative repair cannot override legal
-binding, shadowing, mutation or group actions.
+Every legal completed closure expression returns full tau_C through ordinary
+struct Material_C. tau_C, its contributed callable c_C, A_C=Type(c_C) and
+the () entry are distinct. File implementation-layer let installs at the
+established package structural root; true lexical let remains a binding.
+Current in-place use is confined to direct invocation and legal candidate
+embedding, without a general first-class/lifetime theorem.
+
+### Structured Path and Pattern splice
+
+Path is ordinary extractable linked material (NameNode, ValueRoot/RefRoot,
+Link/End and endpoint shape), before external Read. Text roots resolve at use;
+explicit value/reference roots retain anchors and dependencies. Postfix # quotes
+Path structure. General $ injects ready ordinary material into a Pattern
+consumer, preserves Hole identities and performs no textual substitution.
+Open navigation yields a finite Product of individually named entries.
+
+### General dependency
+
+Needs describes required observations; semantic realization fixes snapshot or
+live reference; representation selects layout afterward. Explicit [] is one
+dependency source. Initialization occurs once per formation, with common
+pre-capture name scope and ordinary effect order; projections do not recapture.
+Persistence and escape use the lifetime owner's refinement handoff.

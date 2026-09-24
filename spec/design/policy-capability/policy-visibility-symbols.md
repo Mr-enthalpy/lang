@@ -10,27 +10,23 @@ PolicyPair = Pv:Pp
 PolicyMode = const | plain | mut
 ```
 
-`Pv:Pp` owns stage and value-presence shape. `PolicyMode` is a whole-slot
-coordinate orthogonal to both `Pv:Pp` and `Val1` shape; it is not stored inside
-`Pv`. Ordinary namespace visibility, export-root, and per-operation capability
-realization are further independent coordinates. Policy syntax preserves `||`
-choice, `+` cross-dimension conjunction, and `:` pair structure.
+Pv and Pp are internal observations of one source edge, not a public colon
+constructor/extractor. Direct Policy observation obtains Pv; Policy observation
+composed with the same source's type projection obtains Pp. Binding that type
+to a new name introduces a destination view, so later observation of that name
+does not automatically recover the source Pp.
 
-Semantic elaboration first factors one optional whole-slot `ModePattern` from
-the complete surface policy and only then elaborates the residual `PairSpec` as
-`Pv:Pp`. At most one connected mode Pattern is allowed; neither colon side may
-contain its own semantic mode coordinate. Concrete ModeAtom is const/plain/mut;
-an explicit Pattern hole supplies a HoleRef instead. A surface `PolicyChoice` containing more
-than one ModeAtom, including `const || mut`, is preserved by
-Raw/Normalized syntax but rejected by typed Policy elaboration. Resolved stages likewise contain one atom; multi-stage unions are invalid.
-Solver alternatives remain possible until they yield concrete solutions. The
-current rejection of `const:compile`, `runtime:const`, and `const:mut` is an
-empty-residual-side surface rule, not a consequence of
-orthogonality; a future contextual shorthand must still factor mode exactly
-once and leave no mode coordinate in `Pv` or `Pp`. This is not a new
-Raw/Normalized AST node. No written ModeAtom means no explicit override.
-Inherited/contextual constraints and a separately applicable default completion
-determine any concrete demand before maxima; omission is not explicit plain.
+Whole-slot Mode, Safety, visibility/export and capability remain orthogonal.
+Concrete atoms introduce no holes: `runtime let` corresponds to
+`<> runtime let`, not `<runtime> runtime let`. An explicit hole and omitted
+constraint remain distinct. `<> p$ let` reuses an evaluated Policy value via
+the general splice interface; it does not rebind its HoleIds or reparse strings.
+
+Public Policy has no pair literal, StageSet or dedicated stage/mode union
+sublanguage. Legal orthogonal +, ordinary extraction/holes/splice and require
+constrain both observations within one candidate-local relation. Current
+Raw/Norm colon/choice carriers are legacy implementation inventory (§5).
+Default completion applies separately after inherited/contextual constraints.
 
 Policy positions have contextual elaborators:
 
@@ -51,7 +47,8 @@ input relation and Ready the current execution condition. Resolved Stage is
 {meta,compile,seal,runtime}; the order contains only identity and the three
 static-to-runtime edges. Static atoms are mutually incomparable.
 
-Pv:Pp remains an observation pair: runtime:compile and runtime:seal are valid.
+Internal Pv/Pp facts may differ: (runtime,compile) and (runtime,seal) are valid
+endpoint descriptions, not source pair expressions.
 Omitted ordinary P1 stage defaults from runtime P2 to runtime, seal to seal,
 compile to compile; contextual meta qualification has its separate owner.
 Explicit P1 is never overwritten and bare let is not a late wildcard.
@@ -80,7 +77,7 @@ Phase = OpenStatic | SealStatic | Runtime
 | runtime | no | no | yes |
 
 For ordinary call evaluation, the current `Phase` is already known. When no
-explicit target pair/stage Policy is written, each candidate's evaluation P1
+explicit target observation/stage Policy is written, each candidate's evaluation P1
 stage view may use the applicable stage-only default completion in §2 and is then
 checked against this table. Therefore `compile`/`runtime` exposure does not
 require `PolicyLet`; that syntax remains an optional explicit result boundary.
@@ -244,9 +241,9 @@ scalar policy projection.
 ## 6. Guardrails
 
 - Policy words remain contextual names, not lexer keywords.
-- Pattern `|` is never policy choice; policy choice is `||`.
+- Pattern | retains its own relation; no dedicated public Policy union is added.
 - Runtime horizon uses runtime:compile for ordinary value/Pattern observation.
-- Explicit `runtime:seal` remains valid.
+- Internal (Pv=runtime,Pp=seal) observations remain valid; public colon pairs do not.
 - P1 projection crops an exposed slice.
 - A non-empty ordinary P1 projection never manufactures absent query
   alternatives and makes migration unreachable.
