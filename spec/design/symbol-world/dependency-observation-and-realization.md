@@ -47,6 +47,36 @@ and ordinary actions.
 A requirement grants no access, write, borrow or lifetime permission. Each
 operation still needs its ordinary candidate and legality evidence.
 
+### 2.1 Realization is fixed by the selected ordinary action
+
+The source occurrence selects its ordinary semantic operation through the
+existing resolution and candidate pipeline. Dependency realization consumes
+that selection; closure lowering does not choose an observation strategy:
+
+```text
+N = Needs(action, source, observation, Gamma, Sigma)
+Realize(N, SelectedOrdinaryAction) = D
+
+Realize(N, A) = D1 and Realize(N, A) = D2
+    => D1 observationally_equivalent D2
+```
+
+This is at most one semantic realization for the same requirement, selected
+action and semantic state, modulo observational equivalence; it does not
+promise that an illegal or unready action succeeds. If distinct ordinary
+candidates provide different behaviors, ordinary applicability/preference and
+unique selection decide, or ordinary ambiguity is reported. A selected failure
+does not reopen that choice. A retained continuation preserves the selected
+action and its unresolved obligations.
+
+For `let x = ...; let f = { x };`, whether the external occurrence retains a
+value snapshot or a live target follows its selected ordinary read/transfer or
+reference operation. Snapshot(x) and LiveLink(x) are not interchangeable merely
+because both fit an environment layout. A plain value read does not acquire a
+live reference through closure lowering; a reference read retains its actual
+target and generation through the ordinary reference semantics. The backend
+may change representation only while preserving the chosen observations.
+
 ## 3. Explicit dependency clauses
 
 ```text
@@ -86,9 +116,11 @@ DependencyMaterial_C:
 ```
 
 Both forms establish ordinary dependency requirements and realizations while
-forming the closure. An automatic realization may use owned material,
-ref/share, a stable link or another existing legal relation, with all of that
-relation's premises. No automatic borrow, copy or write permission follows
+forming the closure. The source occurrence's selected ordinary action fixes
+whether its realization uses owned material, ref/share, a stable link or
+another existing legal relation, with all of that relation's premises and the
+uniqueness law in §2.1. These are not implementation alternatives for one action.
+No automatic borrow, copy or write permission follows
 merely from needing a source.
 
 Both return complete tau and invoke using established dependencies. There is

@@ -96,7 +96,9 @@ alternate relation or identity.
   First initialization uses Place authority independently of DeclaredPolicy,
   including const; commit consumes it. Saved initial refs do not authorize
   replacement, and first write never reads nonexistent resident policy.
-  TypeRole(Q) is Q-local; complete tau consistency checks both registered
+  TypeRole(Q) iff Pure(Q) iff Val1?(Q)=absent; complete TypeValueRole(tau)
+  iff WellFormedTau(tau). HasRegisteredSelfConstruction defines only
+  SelfConstructible, not type identity. Complete tau consistency checks both registered
   closure roles' /tau homes separately.
 - Contextual meta qualification is limited to type/type ref, not a fourth
   PolicyMode. Initialized type names retain direct mut borrowing and explicit
@@ -129,7 +131,10 @@ alternate relation or identity.
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
 - Ordinary calls use x -> Type(x) -> associated Val2[()], with self=x.
-  Type calls use tau -> V_tau -> c -> Type(c) -> associated Val2[()], with self=c.
+  Type calls union the ordinary implementation entries for every c in V_tau before
+  one selection of (c, Impl, projection, frame), with self=c.
+  AssociatedNamespace(T)=MemberScope(Core(T)); AssociatedName(T,s) is its
+  NameCoord. This is distinct from TypeMemberScope(T)=/tau(T).
   V_tau registration, Val2 residency, Pattern registration and ConstructEdge
   remain independent; no self-construction witness proves type callability.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.
@@ -192,7 +197,10 @@ alternate relation or identity.
 - Terminal ReturnPattern/Pout demand precedes immediate root maxima; established
   outer P1/P2 jointly constrain inner positions, without an implicit semantic temp.
 - Dependencies separate requirements, semantic realization and layout. [] is one
-  source; initialization occurs once per formation and projections never recapture.
+  source. Realization follows the source occurrence's selected ordinary action,
+  uniquely up to observational equivalence; distinct candidates use ordinary
+  preference or ambiguity, never backend choice. Initialization is once per formation.
+  Projections never recapture.
   In-place syntax forms dependencies automatically and produces an ordinary
   first-class result. Invocation does not recapture; binding, transfer and outer
   writes use actual access/capability/lifetime, with no placement-based veto.

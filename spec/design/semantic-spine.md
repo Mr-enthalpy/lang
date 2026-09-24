@@ -75,9 +75,15 @@ results retain the lifetime refinement handoff.
 
 
 Ordinary calls enter through Type(x)'s associated Val2[()] with self=x.
-Type calls first select c from their own V_tau, then enter through Type(c)'s
-associated Val2[()] with self=c. V_tau, Val2 residency, Pattern registration
+Type calls expand all c in their own V_tau into Type(c)'s associated Val2[()]
+entries and perform one selection of (c, implementation, frame), with self=c.
+V_tau, Val2 residency, Pattern registration
 and ConstructEdge remain independent. In-place syntax forms dependencies
 automatically; its completed result supports ordinary value operations whose
 legality depends on actual dependencies, access, capabilities and lifecycle.
 Invocation does not recapture or resolve external names again by spelling.
+TypeRole(Q) iff Pure(Q); complete TypeValueRole(tau) iff WellFormedTau(tau).
+SelfConstructible alone consumes the registered self-construction witness.
+AssociatedNamespace(T) is MemberScope(Core(T)), distinct from /tau(T).
+Dependency realization is fixed by the source occurrence's selected ordinary
+action, uniquely up to observational equivalence, before layout is chosen.

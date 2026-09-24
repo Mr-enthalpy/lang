@@ -851,8 +851,8 @@ may yield an ordinary Val2 value but supplies none of these structural witnesses
 V_tau registration is also non-generative and does not require or grant named
 Val2 navigation to its callable value; classifier home is a separate condition.
 
-The namespace/type distinction of a core `Q` is a property of `Q`'s registered
-construction role, never of any later name binding sibling count. Formally:
+TypeRole(Q) iff Pure(Q) iff Val1?(Q) is absent, as defined by the type-value
+owner. Registered self-construction is an independent capability of Q:
 
 ```text
 HasRegisteredSelfConstruction(Q)
@@ -886,17 +886,15 @@ The witness `K` is an actual ordinary callable/interface member registered in
 
 `HasRegisteredSelfConstruction(Q)` is the existence of a structural
 construction role registered on `Q`'s Pattern, witnessed by an actual `Val2`
-member. It is the formal criterion for the type-value role:
+member. It is the formal criterion for self-construction, not type identity:
 
 ```text
-TypeRole(Q)
-  iff NamespaceRole(Q)
-  and HasRegisteredSelfConstruction(Q)
+SelfConstructible(Q) iff HasRegisteredSelfConstruction(Q)
 
-NamespaceOnly(Q)
+NamespaceWithoutSelfConstruction(Q)
   iff NamespaceRole(Q)
-  and not TypeRole(Q)
-      -- equivalently: NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
+  and not HasRegisteredSelfConstruction(Q)
+      -- Q still has TypeRole; only the construction witness is absent
 ```
 
 These are Q-local structural judgments. They have no hidden tau argument and
@@ -912,17 +910,18 @@ Therefore:
 
 ```text
 Pattern identity != callable availability
-TypeRole(Q)      <=> NamespaceRole(Q) and HasRegisteredSelfConstruction(Q)
-NamespaceOnly(Q) <=> NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
+TypeRole(Q) <=> Pure(Q) <=> NamespaceRole(Q)
+SelfConstructible(Q) <=> HasRegisteredSelfConstruction(Q)
 ```
 
 Copying or installing an ordinary callable does not grant it structural role.
 An implementation may replace a callable while preserving the Pattern role
 contract and therefore preserving Pattern identity. Ordinary slot
 replacement (`Write(slot, new_value)`) does not register `ConstructEdge`;
-therefore `TypeRole` is neither automatically preserved nor automatically
-broken by ordinary write — it must be independently re-derived from the
-result structure (see `type-values-places-and-borrow-views.md` §2.2).
+therefore SelfConstructible must be checked from the result structure. A
+Val2-only write preserves purity and TypeRole, but may invalidate a joint
+construction witness or complete-closure consistency. See
+`type-values-places-and-borrow-views.md` §2.2.
 
 ### 13.1 Real fields versus virtual observations
 
@@ -1066,10 +1065,12 @@ WellFormedTau(tau)
       -- structural, history-free; depends only on the current closure value
          (canonical definition: type-values-places-and-borrow-views.md §2.2)
 
-CompleteType(tau)  iff WellFormedTau(tau) and TypeRole(Q)   -- TypeValueRole
-NamespaceOnly(tau)  iff WellFormedTau(tau) and NamespaceOnly(Q)
-      -- NamespaceOnly(Q) formalized in §13 above: NamespaceRole(Q)
-         and not HasRegisteredSelfConstruction(Q)
+CompleteType(tau) iff WellFormedTau(tau)   -- TypeValueRole
+ConstructibleType(tau)
+  iff CompleteType(tau) and HasRegisteredSelfConstruction(Core(tau))
+NamespaceWithoutSelfConstruction(tau)
+  iff CompleteType(tau) and not HasRegisteredSelfConstruction(Core(tau))
+      -- a complete type even with no registered self-construction
 
 tau = bind alpha. <Q, V_τ[alpha]>
 ```

@@ -17,12 +17,14 @@ CallOrdinary(x)
 self = x
 
 tau = bind alpha.<Q, V_tau[alpha]>
-CallCandidates_type(tau) = CallCandidates(V_tau)
+CallCandidates_type(tau)
+    = disjoint_union over c in V_tau of CallCandidates_ordinary(c)
 CallType(tau)
-    -> select c in V_tau
-    -> CallOrdinary(c)
-    -> Type(c) -> AssociatedNamespace(Type(c)).Val2[()] -> selected Impl
-self = c
+    -> project every c in V_tau
+    -> project each AssociatedNamespace(Type(c)).Val2[()] with actual_self=c
+    -> one candidate family
+    -> one ordinary applicability/preference/unique-selection
+    -> sealed (c*, Impl*, projection*, frame), self=c*
 
 CallCandidates(G)
     = disjoint_union over tau in G of CallCandidates_type(tau)
@@ -30,9 +32,18 @@ Type(actual callee) = Type(first self)
 ```
 
 Entries denotes the implementation family offered to candidate preparation,
-not an additional selection stage. Type projection retains c and its associated implementation
-entries in the same candidate pipeline; it never executes speculative bodies
-or chooses a runner-up after selected failure.
+not an additional selection stage. Each entry retains its actual callable c
+and implementation Impl. All entries from all c compete together; there is no
+per-c winner or preliminary choice of c. The existing sealed candidate records
+this pair together with projection and frame, rather than adding a second
+selection. It never executes speculative bodies or chooses a runner-up after
+selected failure.
+
+AssociatedNamespace(T) = MemberScope(Core(T)); its Val2 is Core(T)'s Val2,
+not /tau(T), V_T or an independent companion. AssociatedName(T,s) is
+NameCoord(AssociatedNamespace(T),s). The
+[type-value owner](type-values-places-and-borrow-views.md#associated-namespace-is-the-core-member-scope)
+defines these coordinates and their Place boundary.
 
 `V_tau != Val2` is an operational distinction. An ordinary x enters through
 its type's associated Val2 call entry; it does not first project Type(x).V_tau.
@@ -43,8 +54,9 @@ name resolution.
 
 The [name/type algebra](names-and-overload-groups.md) owns type/group aggregation
 and their distinct update algebras. V_tau registration, Val2 residency, Pattern
-registration and ConstructEdge are independent judgments. ConstructEdge and
-TypeRole describe structural construction roles, not type-callee projection.
+registration and ConstructEdge are independent judgments. TypeRole follows
+absent Val1; ConstructEdge witnesses structural construction, not type identity
+or type-callee projection.
 
 Every closure expression's legal completed evaluation returns a complete tau_C,
 whether ordinary, in-place, generated, file-level or local. Formation is ordinary
@@ -68,8 +80,8 @@ tau_C -> V_tau_C -> c_C -> A_C -> Val2[()] -> Impl_C
 The first c_C is formed in that same construction, not by recursively creating
 another closure or later bootstrapping an arbitrary x:tau_C. TypeRole, named
 residency, callability and Pattern registration retain their distinct judgments.
-Call projection selects c_C and supplies its exact self; it does not replace
-all self types with type. User-defined x:T with direct () still receives x.
+One selection fixes c_C together with its implementation and exact self; it
+does not replace all self types with type. User-defined x:T with direct () still receives x.
 
 Ordinary let binds the completed tau without a wrapper. In-place syntax uses
 automatic dependency formation (§7.3). Its result supports ordinary value
@@ -84,7 +96,7 @@ owner, not inferred from tau, Core equality, ZST or placement.
       -> resolved value / named type / explicit candidate group
       -> ordinary call projection
       -> ordinary value: Type(x).associated Val2[()], self=x
-         type: V_tau supplies c, then Type(c).associated Val2[()], self=c
+         type: union of every c's Type(c).associated Val2[()] entries, self=c
       -> ordinary admissibility and preference
       -> unique sealed invocation
       -> DynamicLegality and execution
@@ -208,7 +220,8 @@ TypeValue(t) = tau = <Q, V_τ>
 Core(tau) = Q
 CallSpace(tau) = V_τ
 
-Candidates(args |> t) = CallSpace(TypeValue(t)) = V_τ
+Candidates(args |> t)
+  = disjoint_union over c in CallSpace(TypeValue(t)) of CallCandidates_ordinary(c)
 ```
 
 Copied/extracted type-as-callee lookup selects candidates from that immutable
@@ -537,10 +550,13 @@ Eval(InPlaceClosure_C) = tau_C
 ```
 
 Free external observations are handled at formation through ordinary resolution
-and dependency realization. The chosen realization may retain owned material,
-ref/share, a stable link or another existing legal dependency relation. Each
+and dependency realization fixed by the source occurrence's selected ordinary
+action. Owned material, ref/share and stable links are possible results of
+different legal actions, not interchangeable lowering choices. Each
 requires its own admissibility, access, capability, readiness and lifetime facts.
 Automatic formation alone creates none of those permissions.
+For one selected action the semantic realization is unique up to observational
+equivalence; distinct candidates use ordinary preference or report ambiguity.
 
 After formation, invocation consumes the established dependencies. It does not
 resolve external names again by spelling or create a separate embedding
@@ -574,7 +590,7 @@ is unchanged; it does not establish a binding, transfer or write prohibition.
 ```text
 shape explicit Product; retain implicit self in invocation frame
 resolve target once -> ordinary Val2[()] entrance / type V_tau projection / group
-retain actual callable x or c -> its type's associated Val2[()]
+expand all actual callable/implementation pairs -> one candidate family
 apply pre-C0 family filter -> enumerate C0
 R_vis(c,Omega,sigma) -> candidate plus visibility/input/projection evidence
 prepare ordinary C_sigma(c) where required
@@ -582,7 +598,7 @@ FullyAdmissible A including total output demand and require
 fallback suppression D
 Policy product maxima (including migration endpoints when applicable)
 Pattern specificity / first-order / in-place / named filters
-unique Selected=(c*,sigma*,frame)
+unique Selected=(candidate*,sigma*,frame), candidate* retains (c*,Impl*)
 DynamicLegality -> Ready execution or retained continuation
 ```
 

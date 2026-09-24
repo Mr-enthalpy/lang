@@ -15,9 +15,24 @@ distinction.
 ## Field Functions and Same-Name Overload Families
 
 Fields and member-like operations are function objects installed in a
-type-associated companion space. A field is the unary special case; a
+type-associated Core member scope. A field is the unary special case; a
 member-like operation may consume a receiver plus ordinary remaining
 arguments.
+
+The [type-value owner](type-values-places-and-borrow-views.md#associated-namespace-is-the-core-member-scope)
+fixes its existing structural coordinate:
+
+```text
+AssociatedNamespace(T) = MemberScope(Core(T))
+Val2(AssociatedNamespace(T)) = Val2(Core(T))
+AssociatedName(T, s) = NameCoord(AssociatedNamespace(T), s)
+```
+
+The companion is a view of this scope, not an independent namespace.
+TypeMemberScope(T) = /tau(T) instead locates registered implementation
+classifiers and anchors candidate-family identity. It is not MemberScope(Core(T)).
+An associated coordinate supplies no Place or permission by itself; actual
+navigation retains its resolved structural root and resident generation.
 
 The `struct` registration `Field(T, name, A)` generates the field's complete
 associated candidate family under `T`: one by-value accessor, plus for each
@@ -472,8 +487,8 @@ field value and then forming `A ref`.
 
 ## Type Values, Places, and Injection (summary)
 
-Field functions live in a type-associated companion *place*, which is distinct
-from the type *value* the bound symbol stores. The access-tree work in this
+Field functions are observed in Core's associated member scope; writing one
+requires an actual member Place, distinct from the type value. The access-tree work in this
 document therefore depends on three identities being kept separate:
 
 - a name (`NameBindingId`),

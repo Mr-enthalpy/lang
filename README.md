@@ -99,9 +99,13 @@ belong in `spec/planning/open-questions.md`.
 
 
 Ordinary calls enter through Type(x)'s associated Val2[()] with self=x.
-Type calls first select c from their own V_tau, then enter through Type(c)'s
-associated Val2[()] with self=c. V_tau, Val2 residency, Pattern registration
+Type calls expand all c in their own V_tau into Type(c)'s associated Val2[()]
+entries, then select one (c, implementation, frame), with self=c.
+V_tau, Val2 residency, Pattern registration
 and ConstructEdge remain independent. In-place syntax forms dependencies
 automatically; its completed result supports ordinary value operations whose
 legality depends on actual dependencies, access, capabilities and lifecycle.
 Invocation does not recapture or resolve external names again by spelling.
+Pure Core material has TypeRole independently of self-construction; every
+well-formed complete tau is a type. Dependency realization follows the selected
+ordinary source action, uniquely up to observational equivalence.

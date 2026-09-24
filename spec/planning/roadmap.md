@@ -216,8 +216,9 @@ engineering facilities after their inputs and effects obey the source model.
   test const/plain/mut first initialization, missing/expired authority, failed
   Pre without consumption, same-Place aliases and saved-ref rejection after
   initialization. Replacement alone observes old-resident compatibility.
-  Keep TypeRole(Q) Q-local and check both registered closure homes at complete
-  tau consistency; test equal Core with distinct homes, including a Pattern
+  Derive TypeRole(Q) from purity, independently of SelfConstructible, and check
+  both registered closure homes at complete tau consistency; test equal Core
+  with distinct homes, including a Pattern
   closure that has no V_tau registration.
 - Connect type +=/-= to V_tau updates with Writable, OpenHere and final closure
   membership; connect ordinary group updates to their distinct bucket algebra.
@@ -371,10 +372,12 @@ no-reopen, non-derivability, authority uniqueness and observable effects.
 ### PR106 review alignment
 
 Keep ordinary and type-callee entrances distinct: ordinary x uses its exact
-classifier's associated Val2[()], while type tau projects V_tau to c before
-using c's associated entry. Preserve x/c as actual self through the common
-selection pipeline. Neither ConstructEdge nor a self-construction witness
-supplies type-call projection.
+classifier's associated Val2[()], while type tau projects every c in V_tau
+and unions their associated implementation entries before one selection.
+Preserve the selected callable/implementation pair and x/c as actual self in
+the sealed frame. TypeRole follows purity; complete type identity requires
+WellFormedTau, not self-construction. AssociatedNamespace(T) is
+MemberScope(Core(T)), distinct from the /tau(T) classifier home.
 
 Replace deferred in-place embedding lookup and placement-based binding,
 transfer or outer-write prohibitions with automatic dependency formation.
@@ -382,6 +385,9 @@ Formation produces ordinary requirements/realizations; invocation consumes
 those without recapture. Concrete operation checks retain actual dependency,
 access, capability, region/generation and escape evidence. Existing source
 placement carriers do not implement this semantic handoff.
+Realize each requirement using its source occurrence's selected ordinary action,
+uniquely up to observational equivalence. Test ordinary preference/ambiguity and
+no-reopen; lowering cannot choose snapshot versus live-reference behavior.
 
 Path consumers must validate the inductive PathShaped domain, including finite
 chains, unique terminal explicit roots and endpoint compatibility. Wire the

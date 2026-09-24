@@ -230,12 +230,18 @@ no val::path selector; the anonymous classifier's /tau home is distinct from
 value navigation. Requested-name generative occurrences supply ordinary Val2
 only and cannot supply either registration. Members registered for type callability and satisfying
 `Home(TypeOf(v)) = TypeMemberScope(tau)` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Ordinary x calls through Type(x)'s associated Val2[()] with self=x.
-Copied/extracted type-as-callee uses its own V_tau to select c, then c's
-classifier-associated Val2[()] with self=c. These are separate entrances;
+Copied/extracted type-as-callee expands every c in its own V_tau into c's
+classifier-associated Val2[()] entries with self=c, then selects once across
+the whole family. These are separate entrances;
 ConstructEdge does not supply type-callability evidence. In particular,
 V_tau registration, Val2 residency, Pattern registration and ConstructEdge
 remain independent. For the type entrance, `CallSpace(tau)=V_τ`; there is no defining-name binding or
 recent-carrier recovery route.
+
+TypeRole(Q) follows Pure(Q), while TypeValueRole(tau) is WellFormedTau(tau).
+Registered self-construction determines only SelfConstructible. The associated
+namespace is MemberScope(Core(T)), with its ordinary NameCoords and Val2;
+TypeMemberScope(T)=/tau(T) is the separate classifier-home coordinate.
 
 The generic parser preserves the narrow postfix shape:
 

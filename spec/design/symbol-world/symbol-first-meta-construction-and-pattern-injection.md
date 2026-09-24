@@ -143,12 +143,14 @@ Here c_C in V_tau_C is a type-callee projection member; A_C's associated
 Val2[()] is the ordinary callable value's implementation entrance. V_tau is
 not Val2. V_tau registration, Val2 residency, Pattern registration and
 ConstructEdge remain independent. No self-construction witness proves type
-callability; ConstructEdge and TypeRole retain their structural roles.
+callability. TypeRole follows purity; ConstructEdge witnesses the separate
+self-construction capability. All c/implementation entries are projected before
+one ordinary selection; the arrows above trace that projection, not two overloads.
 
 The first callable material is formed and registered in this same action.
 No later ordinary construction of an arbitrary x:tau_C bootstraps it. Lack of
 such an instantiation entry does not require dummy/deleted constructors or
-change the Q-local TypeRole judgment. Named residency, Pattern registration
+change TypeRole(Q_C) iff Pure(Q_C). Named residency, Pattern registration
 and V_tau registration remain independent.
 
 The [call owner](function-object-call-model.md) defines projection and exact

@@ -94,6 +94,22 @@ only_val2 counts its actual snapshot, not every future generated result.
 type equality; `V_tau` is an immutable TypeMember callspace snapshot; the whole
 observation distinguishes snapshots.
 
+### TypeRole and self-construction
+
+TypeRole(Q) iff Pure(Q) iff Val1?(Q) is absent. A payload-bearing Object is
+an ordinary value. Complete TypeValueRole(tau) iff WellFormedTau(tau).
+SelfConstructible(Q) iff HasRegisteredSelfConstruction(Q) is independent:
+its joint Val2/ConstructEdge witness determines construction capability,
+not type identity. A well-formed type may be callable without self-construction.
+
+### Associated namespace
+
+AssociatedNamespace(T) = MemberScope(Core(T)), whose Val2 is Core(T)'s Val2.
+AssociatedName(T,s) = NameCoord(AssociatedNamespace(T),s). It is the existing
+Core structural member view, not a separate companion or the complete type's
+classifier implementation home TypeMemberScope(T)=/tau(T). Actual name and
+Place coordinates remain route-specific; value equality does not merge them.
+
 ### TypeValueId
 
 An opaque implementation lookup key for Core material. It is not whole `tau`,
@@ -244,8 +260,9 @@ overload resolution.
 
 ### CallableProjection
 
-A type callee projects its own V_tau to actual callable c, which enters through
-Type(c)'s associated Val2[()] with self=c. An ordinary x enters directly through
+A type callee projects every c in its own V_tau to Type(c)'s associated
+Val2[()] entries with self=c. One ordinary selection over their disjoint union
+seals the callable/implementation pair, projection and frame. An ordinary x enters directly through
 Type(x)'s associated Val2[()] with self=x. Explicit OverloadGroups aggregate
 type projections through singleton embedding. Name resolution occurs before this
 projection and is never retried because callability or applicability fails.
@@ -475,8 +492,10 @@ Product of individually named entries.
 
 ### General dependency
 
-Needs describes required observations; semantic realization fixes snapshot or
-live reference; representation selects layout afterward. Explicit [] is one
+Needs describes required observations; the source occurrence's selected ordinary
+action fixes semantic realization, uniquely up to observational equivalence.
+Distinct candidates use ordinary preference or ambiguity, never backend choice
+between snapshot and live reference. Representation selects layout afterward. Explicit [] is one
 dependency source. Initialization occurs once per formation, with common
 pre-capture name scope and ordinary effect order; projections do not recapture.
 Persistence and escape use the lifetime owner's refinement handoff.

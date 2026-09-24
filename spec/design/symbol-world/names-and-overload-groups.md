@@ -80,12 +80,13 @@ It embeds a type as a singleton:
 
     eta : type -> OverloadGroup
     eta(T) = {T}
-    CallCandidates_type(T) = CallCandidates(V_T)
+    CallCandidates_type(T) = disjoint_union over c in V_T of CallCandidates_ordinary(c)
     CallCandidates(G) = disjoint_union over T in G of CallCandidates_type(T)
 
 These equations apply to type callees. Ordinary x instead uses
-AssociatedNamespace(Type(x)).Val2[()] with self=x. Each c selected from V_T
-uses that same ordinary entrance with self=c, not self=T. V_T membership is
+AssociatedNamespace(Type(x)).Val2[()] with self=x. Each c projected from V_T
+supplies entries through that same entrance with self=c, not self=T. All entries
+compete in one ordinary selection; no c is selected in advance. V_T membership is
 independent of ordinary Val2 residency, Pattern registration and ConstructEdge.
 
 The reverse embedding is not automatic. Empty groups and types without call

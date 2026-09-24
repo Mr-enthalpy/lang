@@ -23,12 +23,15 @@ An initialized structural name declared :type denotes its complete named type T.
 restrict ordinary Val2 residents to types. Explicit group values use the
 singleton type embedding:
 
-    CallCandidates_type(tau) = CallCandidates(V_tau)
+    CallCandidates_type(tau) = disjoint_union over c in V_tau of CallCandidates_ordinary(c)
     CallCandidates(G) = disjoint_union over tau in G of CallCandidates_type(tau)
-    CallCandidates_ordinary(x) = entries of AssociatedNamespace(Type(x)).Val2[()]
+    CallCandidates_ordinary(x) = Entries(AssociatedNamespace(Type(x)).Val2[()], actual_self=x)
 
 Group bucket aggregation does not mutate candidate types. Type projection
-supplies c from V_tau, then enters c's ordinary Val2[()] route with self=c.
+expands every c from V_tau into its ordinary Val2[()] entries with self=c.
+The entire family participates in one applicability/preference/unique-selection;
+there is no preliminary c winner or per-c implementation winner. The selected
+candidate retains (c*, Impl*) with its projection and frame, including in residue.
 An ordinary x enters its type's associated Val2[()] directly with self=x,
 without projecting Type(x).V_tau. Both obey exact callee/first-self type equality. A source binding or Core registry index does
 not supply a later callspace snapshot. See

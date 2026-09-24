@@ -96,7 +96,7 @@ and graph rendering.
 ResolveName(path) = S
   -> read the callee
   -> ordinary x: Type(x).associated Val2[()], self=x
-     type tau: V_tau supplies c, then Type(c).associated Val2[()], self=c
+     type tau: union Type(c).associated Val2[()] entries for every c in V_tau, self=c
      explicit group: union of its type-callee projections
   -> R_vis visibility/input evidence and ordinary C_sigma preparation
   -> InvocationFrame
