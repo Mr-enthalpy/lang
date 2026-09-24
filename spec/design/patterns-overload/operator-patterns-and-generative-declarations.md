@@ -22,6 +22,30 @@ remain evaluator work. The callable-value form still exposes the ordinary
 callable-object self. This equality applies to the displayed meta declaration,
 not arbitrary lexical bindings of non-meta RHS values.
 
+The callable layer establishing this declaration accepts only an ordinary
+`=>` implementation and has no capture slot:
+
+```text
+MetaDecl(C) => Placement(C) = Ordinary
+MetaDecl(C) => CaptureClause(C) = absent
+NoMetaCaptureAxis:
+  MetaDecl(C) => no ExplicitClosureCapture(C)
+  MetaDecl(C) => no AutomaticClosureDependencyFromUnpassedOuterLocal(C)
+```
+
+A capture-bearing meta callable is invalid MetaDecl material; it is not first
+formed as a captured ordinary closure and then reinterpreted as meta. A
+no-`=>` body is not an in-place spelling of MetaDecl. The same rules apply to
+both surface projections, including generative names. They concern the current
+declaration's identity layer, not ordinary closures legally defined inside B.
+
+Unpassed caller/enclosing locals remain masked. Material that must affect an
+invocation enters its admitted In dependency closure; stable definition
+relations already fixed by the selected callable/parent owner and lawful
+meta-instance state remain available under the
+[meta owner's boundary](../meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity).
+MetaInstanceRootKey has no CapturedEnv coordinate.
+
 Ordinary P let lhs = rhs has extractive polarity: the known RHS is matched by
 R_Gamma(lhs,rhs,rho). Generative P let H => B has the direction:
 
@@ -54,6 +78,10 @@ E may be a general expression; a surrounding ordinary body uses the same direct
 result delivery without an extra Policy-defaulting temp. Requested-name
 extraction observes selector s, not the binder spelling a. Concrete heads beat
 unconstrained heads only by ordinary specificity.
+
+General expression bodies retain the required `=>`: `P let H { B }` is not a
+generative MetaDecl form. Omitted extraction heads do not create a capture slot
+or permit automatic acquisition of an unpassed enclosing local.
 
 ```text
 let <a> (self, object:t, ...args) a = expression

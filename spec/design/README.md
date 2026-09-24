@@ -61,6 +61,6 @@ tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
 
 [Semantic spine](semantic-spine.md) supplies the compact dependency map.
 [Conformance scenarios](../planning/canonical-semantic-conformance.md) record
-the 64 retained and 106 new revision cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
+the 64 retained and 114 new revision cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
 [open questions](../planning/open-questions.md) contains only remaining choices.
 Historical files are non-authoritative and are not rewritten for current rules.

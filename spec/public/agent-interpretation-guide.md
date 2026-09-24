@@ -182,6 +182,15 @@ fields, layout, or ABI.
 In-place syntax has no explicit capture clause; free external observations form
 automatic dependency requirements and ordinary realizations. Invocation does
 not recapture. Actual access/capability/lifetime checks decide outer writes.
+Ordinary => closures may also have automatic dependencies alongside explicit
+ones. Classify each occurrence, excluding outer observations replaced by a
+resolved capture binder. After formation neither source placement nor capture
+origin supplies overload applicability, specificity or preference evidence.
+MetaDecl is a separate boundary: require => and absent capture clause, mask
+unpassed enclosing locals, and admit no closure capture axis in invocation
+identity. Ordinary closures nested in a meta body may use only its legally
+available inputs, stable definitions and instance material. Generic syntax
+carriers do not prove MetaDecl validity.
 
 ## 6. Common Misreadings
 

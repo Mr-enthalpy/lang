@@ -19,6 +19,12 @@ NameCoord through f (or leaves the selector unconstrained through _). The
 owns this shared material; neither surface changes invocation identity, the
 direct CompleteType result boundary or construction authority.
 
+The callable establishing MetaDecl/MetaInvoke identity must use an ordinary
+`=>` implementation and no capture clause. It cannot be formed through a
+no-`=>` in-place body, explicit closure capture, or automatic closure dependency
+on an unpassed enclosing/caller local. This is the NoMetaCaptureAxis boundary,
+not a prohibition on ordinary closures defined inside the meta body.
+
 Every selected callable declares one result class:
 
 ```text
@@ -62,6 +68,34 @@ M = MetaInstanceRoot(MetaInstanceRootKey)
 n = InvokeName(M)
 BindingPlace(n) = q_M
 ```
+
+There is no CapturedEnv coordinate in MetaInstanceRootKey, directly or hidden
+inside a closure-capture extension to selected callable identity:
+
+```text
+equal parent SemanticOwner
+and equal selected callable identity
+and equal CanonicalizeInvocationInputs(In)
+    => same MetaInstanceRootKey
+    -- caller-local capture environments cannot distinguish this identity
+```
+
+The MetaDecl's external material is limited to admitted In and its dependency
+closure, the stable definition environment already determined by the selected
+callable/parent semantic owner, lawful meta-instance state/members, and other
+ordinary mechanisms explicitly admitted by this owner without a hidden
+captured-environment axis. A caller/enclosing local cannot become a stable
+definition merely because it is lexically visible at declaration formation.
+If that local must influence the invocation, pass it through In; otherwise it
+is masked/unavailable. Requested-name/head observations are invocation material,
+not an automatic capture of the caller's environment.
+
+Equal keys retain the same instance and current-state observation rules below;
+they do not claim immutable results across lawful member writes. Hidden local
+state cannot change the invocation's result or cache identity. An ordinary
+dependency-bearing value explicitly supplied in In instead contributes its
+required observations and admitted transitive dependencies to ordinary input
+normalization, without adding a MetaDecl capture channel.
 
 For ordinary meta, the constructed instance name denotes the instance type
 itself. It cannot be assigned an arbitrary direct result type:
@@ -181,6 +215,11 @@ original source frames; they do not reparent inputs, create windows, or expose
 unpassed outer names. Unadmitted outer material remains masked. An operation
 still rechecks the transported source's current authority, window, policy,
 capability, and lifetime; an input edge is not a write grant.
+
+This masking also applies while forming the MetaDecl: neither explicit capture
+nor the ordinary closure automatic-dependency mechanism may transport an
+unpassed local around this input boundary. Stable definition relations are
+already fixed by callee identity/owner; they are not caller-frame captures.
 
 For the instance's P1 `meta` policy, openness is the governing qualification:
 
@@ -478,6 +517,11 @@ type-forming versus borrow-forming distinction.
 | --- | --- |
 | Repeat one completed full invocation key | Same result binding and Place; read the current resident |
 | Same callable/input material under distinct parent owners | Distinct invocation identities |
+| Meta callable with an explicit capture clause | Invalid MetaDecl; no captured-closure reinterpretation |
+| Generative head with a no-`=>` body | Not a MetaDecl formation alternative |
+| MetaDecl reads an unpassed enclosing local | Masked/unavailable; no automatic capture |
+| Same parent/callee/In under different caller-local environments | Same key and instance; hidden caller locals cannot affect the invocation |
+| Meta body forms an ordinary closure from admitted input material | Ordinary dependency formation and lifetime checks apply; masked outer locals remain inaccessible |
 | Equal-Core inputs with distinct observed construction subjects | Distinct name-dependent keys; no shared window |
 | Copy an input preserving its observed subject | Same subject-dependent result name |
 | Update a subject without changing its identity | Preserve the name-dependent association; ordinary value-snapshot keys remain content-sensitive |
@@ -545,3 +589,7 @@ Input identity and cache reuse preserve the observations specified by the
 [general dependency owner](../symbol-world/dependency-observation-and-realization.md).
 Reuse never reinitializes or recaptures dependencies, and stable identity
 supplies no extra lifetime/escape capability.
+Ordinary closure dependencies are occurrence-based explicit plus automatic
+material; an in-place form has only automatic occurrences. The MetaDecl layer
+has neither closure capture channel. Nested ordinary closures may use only
+the material already legally available in the invocation.

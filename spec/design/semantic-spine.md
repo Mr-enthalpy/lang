@@ -87,3 +87,8 @@ SelfConstructible alone consumes the registered self-construction witness.
 AssociatedNamespace(T) is MemberScope(Core(T)), distinct from /tau(T).
 Dependency realization is fixed by the source occurrence's selected ordinary
 action, uniquely up to observational equivalence, before layout is chosen.
+Ordinary closure dependencies combine explicit and automatic occurrences;
+in-place syntax excludes explicit clauses. Source placement and dependency
+formation origin supply no post-formation overload evidence. MetaDecl instead
+requires => and no capture channel: unpassed locals are masked, and its fixed
+parent/callee/input key has no CapturedEnv axis.

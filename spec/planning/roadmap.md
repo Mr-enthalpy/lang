@@ -312,7 +312,7 @@ have been implemented.
 
 ## Canonical semantic revision implementation gates
 
-The [170-case conformance matrix](canonical-semantic-conformance.md) records
+The [178-case conformance matrix](canonical-semantic-conformance.md) records
 semantic obligations, not passing source tests. This revision changes owners
 and handoffs only. Existing Rust carrier tests still describe connected slices;
 they cannot authorize an alternate implementation of these rules.
@@ -347,7 +347,7 @@ remain open.
 ## PR106 consumer gates
 
 The semantic revision is docs-only. The 64 earlier cases are retained (N01/N03
-clarified), with 106 new cases and D01–D23 owner links. No new source behavior
+clarified), with 114 new cases and D01–D23 owner links. No new source behavior
 is claimed by a successful existing Rust test suite.
 
 | Gate | Current locating evidence | Required consumer / acceptance |
@@ -359,6 +359,7 @@ is claimed by a successful existing Rust test suite.
 | Direct result demand | `norm.rs` TailValue and `lang_build/src/control_flow_end.rs` preserve terminal shape | Immediate selected ReturnPattern/Pout before inner maxima; both outer positions constrain inner positions; no implicit temp/no reopen. 106-RP |
 | Ordinary ADL | `lang_syntax/src/norm.rs` still creates DotClosureLowering and an in-place helper | Emit ordinary field::adl entrance; generate the ordinary forwarder through Path/name relations. Existing goldens describe migration debt. 106-AD |
 | General dependency realization | NormCapture/BindingSlot preserve explicit formation; source callable carriers retain NormClosure | Needs -> semantic realization -> layout; common name environment, ordered effects, once-per-formation, no recapture or hidden semantic storage. 106-DP |
+| Meta declaration boundary | Generic closure carriers preserve captures/placement; full generative declaration consumers remain pending | Require ordinary => and absent capture clause at the MetaDecl layer. Mask unpassed locals; admit only input dependency closure and established stable definition/instance relations. No CapturedEnv key axis. 106-MD |
 | Universal closure and file installation | `lang_build/src/model.rs` SourceCallableObject and `semantic_world.rs` OrdinaryCallEntry retain closure carriers | struct Material_C -> tau_C/c_C/A_C/() with finite leaf and same-formation callable; retain homes/roles and automatic dependency formation with ordinary operation checks. File package-root installation distinct from lexical binding. 106-CL/NS |
 | Lifetime integration | Existing lifecycle substrate supplies continuation/Pre/Post primitives | Preserve actual dependencies and action obligations. Further region/escape/state refinement is handed off, not a PR106 blocker. 106-LF |
 
@@ -385,9 +386,20 @@ Formation produces ordinary requirements/realizations; invocation consumes
 those without recapture. Concrete operation checks retain actual dependency,
 access, capability, region/generation and escape evidence. Existing source
 placement carriers do not implement this semantic handoff.
+Placement also supplies no applicability, specificity or preference dimension.
+Keep Raw/Norm placement for syntax only; do not propagate it into candidate
+ordering. CallableOwnerPlacement and retained NormClosure are source carriers,
+not preference evidence. Ordinary closures may combine explicit and automatic
+dependency occurrences; automatic formation is not exclusive to in-place.
 Realize each requirement using its source occurrence's selected ordinary action,
 uniquely up to observational equivalence. Test ordinary preference/ambiguity and
 no-reopen; lowering cannot choose snapshot versus live-reference behavior.
+MetaDecl is excluded from both closure capture channels: reject capture clauses
+and no-=> declaration bodies at declaration formation, preserve weak-token and
+non-semantic normalization boundaries, and do not reinterpret an already
+captured ordinary closure as meta. Keep the invocation key limited to its
+existing parent/callee/canonical-input coordinates. Nested ordinary closures
+may use only material legally available inside the invocation.
 
 Path consumers must validate the inductive PathShaped domain, including finite
 chains, unique terminal explicit roots and endpoint compatibility. Wire the

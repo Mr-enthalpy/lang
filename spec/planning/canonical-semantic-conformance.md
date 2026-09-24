@@ -9,9 +9,9 @@ revision distinguishes ordinary/type calls and replaces in-place permission
 restrictions with automatic dependency formation; the existing CL/PT/AD/LF
 case IDs record the corrected relations. Type identity is independent of
 self-construction; type calls select once over all callable/implementation pairs,
-and dependency realization is fixed by the selected ordinary source action. The 106
-additional PR106 scenarios bring this index to 170 cases; these are semantic
-acceptance obligations, not 170 executed tests.
+and dependency realization is fixed by the selected ordinary source action.
+The 106 initial PR106 scenarios plus 8 review boundary cases bring this index
+to 178 cases; these are semantic acceptance obligations, not 178 executed tests.
 
 | Case group | Canonical owners | Implementation gate |
 |---|---|---|
@@ -259,6 +259,8 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-DP08 | A pure Path name node or ordinary string | Do not treat it as a resolved capture before external Read. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 | 106-DP09 | A realization retains owned values or references | Validate ordinary structure/referent identity; do not hide state in an extra-semantic side table. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 | 106-DP10 | Copy or reanchor a formed callable | Preserve dependencies without rerunning surrounding code, lookup or lifetime extension. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
+| 106-DP11 | Ordinary => closure legally observes external x without an explicit clause for x | Form an AutomaticDeps occurrence for x using the selected ordinary action; automatic dependency does not imply InPlace. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
+| 106-DP12 | Ordinary closure has explicit capture x and another free external y | Combine explicit x and automatic y occurrences. A body read resolved to capture x does not also automatically capture outer x; other distinct occurrences/binders are not deduplicated by spelling or value. Formation origin adds no post-formation operation dimension. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
 
 ### 106.10 Uniform closure formation and automatic dependencies
 
@@ -277,6 +279,7 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-CL10 | Contribute an already formed value to another target | Keep the original owner; use a legal replication witness where required. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL11 | In-place closure with free external observations | Form Needs and ordinary realizations at formation; bind the resulting tau ordinarily. Invocation does not recapture. A legal write-capable realization permits outer writes; absent capability still fails. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL12 | Wrap an in-place result in Product, group or tau and transfer it | Preserve actual dependencies and lifecycle obligations. No placement-based ban applies; wrapping cannot extend ValidRegion or erase escape checks. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL13 | Distinct ordinary and in-place declarations form equivalent material and have equal ordinary selection evidence | Neither placement nor dependency formation origin affects applicability, specificity or preference. Distinct candidate identities remain distinct; tied maxima report ordinary ambiguity, without placement priority or fallback after selected failure. | [CL owner](../design/symbol-world/function-object-call-model.md#73-in-place-syntax-uses-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
 
 ### 106.11 Lifetime refinement boundary
 
@@ -290,7 +293,17 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-LF05 | Bounded runtime state coexists with stable descriptions | Record lifetime implementation/refinement work, not a PR106 blocker. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 | 106-LF06 | Conformance versus implementation | Report semantic scenarios, pending consumers and executed tests separately; claim no new end-to-end support. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 
-The PR106 extension contains **106 cases**. Each acceptance or rejection depends
+### 106.12 Meta declaration capture boundary
+
+| ID | Scenario | Required result | Canonical owner | Consumer status |
+|---|---|---|---|---|
+| 106-MD01 | [cap] (...) :meta => B | Invalid MetaDecl: the declaration layer has no capture slot. Do not form a captured ordinary closure and reinterpret it as meta. | [declaration owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md#1-one-declaration-two-surface-projections) | Defined semantics; declaration consumer pending |
+| 106-MD02 | P let H { B } | Not an in-place spelling of generative MetaDecl; the implementation requires =>. Ordinary non-meta block syntax retains its own meaning. | [declaration owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md#11-general-heads-and-expression-bodies) | Defined semantics; declaration consumer pending |
+| 106-MD03 | MetaDecl body reads an unpassed enclosing local x | x is unavailable/masked. No automatic closure dependency may bypass input admission; explicitly passing x through In is the lawful route subject to ordinary checks. | [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity) | Defined semantics; source/evaluator consumer pending |
+| 106-MD04 | Equal parent, selected callable and canonical In under different caller-local environments | Same MetaInstanceRootKey and instance; no CapturedEnv coordinate or hidden capture in callee identity. Hidden caller locals cannot affect results; repeated acquisition preserves current lawful instance state without reinitialization. | [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity) | Defined semantics; source/evaluator consumer pending |
+| 106-MD05 | Meta body forms an ordinary closure from admitted inputs, or In carries a dependency-bearing ordinary closure | Permit ordinary explicit/automatic dependencies on legally available material, retaining input normalization, transitive dependency and lifetime checks. The nested closure cannot recover a masked enclosing local or add a MetaDecl capture axis. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md#41-meta-declarations-have-no-closure-capture-channel), [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md) | Defined semantics; source/evaluator consumer pending |
+
+The PR106 extension contains **114 cases**. Each acceptance or rejection depends
 on its owner's premises; schematic source is not an unconditional theorem.
 
 ## Decision-to-owner map
@@ -315,7 +328,7 @@ on its owner's premises; schematic source is not an unconditional theorem.
 | D16 | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-SP cases above |
 | D17 | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md), 106-RP cases above |
 | D18 | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-PT cases above |
-| D19 | [DP owner](../design/symbol-world/dependency-observation-and-realization.md), 106-DP cases above |
+| D19 | [DP owner](../design/symbol-world/dependency-observation-and-realization.md), 106-DP and 106-MD boundary cases above |
 | D20 | [CL owner](../design/symbol-world/function-object-call-model.md), 106-CL cases above |
 | D21 | [CL owner](../design/symbol-world/function-object-call-model.md), 106-CL cases above |
 | D22 | [CL owner](../design/symbol-world/function-object-call-model.md), 106-CL cases above |

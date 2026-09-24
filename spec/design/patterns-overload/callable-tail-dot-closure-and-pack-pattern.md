@@ -78,6 +78,32 @@ syntax has no explicit capture clause: `[x] { ... }` is rejected. Free external
 observations instead participate in automatic dependency formation. Invocation
 uses the formed dependencies, without an independent embedding environment or
 lookup by spelling. See the function-object and dependency owners.
+Placement is formation syntax only. After formation it supplies no overload
+applicability, specificity or preference evidence and cannot break a tie
+between otherwise equally preferred distinct candidates.
+
+### Meta declaration context
+
+The callable layer establishing MetaDecl/MetaInvoke identity has the narrower
+surface defined by the [meta declaration owner](operator-patterns-and-generative-declarations.md#1-one-declaration-two-surface-projections):
+
+```text
+MetaDecl(C) => Placement(C) = Ordinary
+MetaDecl(C) => CaptureClause(C) = absent
+MetaDecl implementation requires =>
+```
+
+`[cap] (...) :meta => B` is invalid MetaDecl material. `P let H { B }` is not
+an in-place form of a generative declaration. The declaration consumer rejects
+these shapes directly; it does not first form an ordinary captured closure
+and reinterpret it as meta. Generic Raw/Norm preservation is not acceptance of
+MetaDecl, and the lexer still treats meta as a contextual Name.
+
+MetaDecl also has no implicit/automatic capture of unpassed enclosing locals.
+Its inputs and stable definition environment obey the meta owner's masking
+and identity laws. Ordinary closures inside the body retain their own capture
+grammar and may use only material legally available there. The restriction
+does not propagate to those nested non-MetaDecl closure forms.
 
 ### 1.1 Strong-context boundary
 
@@ -223,7 +249,7 @@ defines Needs and requirement/realization/layout. Capture is one surface consume
 external values, types, host resources and actual late Path reads use the same
 framework. This section owns the existing [] syntax and binder scope.
 
-The capture surface is:
+The capture surface for an ordinary non-MetaDecl closure is:
 
 ```text
 CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
@@ -344,6 +370,12 @@ For an ordinary closure, a resolved free reference can impose a Needs
 requirement under its stable full/export namespace view. Eligible implicit
 realization and explicit [] remain distinct declarations even for the same
 source. Neither lookup nor requested Policy grants borrow/write authority.
+DependencyMaterial(C) is the union of explicit capture occurrences and eligible
+free observations not replaced by resolved explicit capture binders. An ordinary
+`=>` closure may have both; automatic dependencies do not imply in-place syntax.
+In-place syntax merely excludes an explicit clause. After formation, origin
+does not add a call, transfer or overload dimension. MetaDecl is excluded from
+this enclosing-local capture mechanism by the boundary above.
 Outer writes require an actually write-capable dependency realization and
 ordinary access/capability/lifetime checks. Explicit versus automatic formation
 does not independently grant or veto write authority.

@@ -476,6 +476,18 @@ established package structural root; true lexical let remains a binding.
 In-place syntax uses automatic dependency formation and produces an ordinary
 first-class result. Binding, transfer and outer writes depend on actual
 dependencies, access, capability and lifetime; invocation does not recapture.
+Placement supplies no applicability, specificity or preference evidence after
+formation. Ordinary => closures may combine explicit and automatic dependency
+occurrences; in-place forms have automatic occurrences only.
+
+### MetaDecl capture boundary
+
+The callable establishing MetaInvoke identity requires ordinary => and no
+capture clause. It cannot acquire automatic dependencies from unpassed enclosing
+locals. Invocation dependence uses In and its admitted dependency closure or
+established stable definition/instance relations. MetaInstanceRootKey has no
+CapturedEnv coordinate. Ordinary closures nested in the body may depend on
+material legally available there, without bypassing masked outer locals.
 
 ### Structured Path and Pattern splice
 
@@ -498,4 +510,8 @@ Distinct candidates use ordinary preference or ambiguity, never backend choice
 between snapshot and live reference. Representation selects layout afterward. Explicit [] is one
 dependency source. Initialization occurs once per formation, with common
 pre-capture name scope and ordinary effect order; projections do not recapture.
+ExplicitDeps and AutomaticDeps are classified by occurrence, not placement.
+Resolved explicit capture binders replace corresponding outer observations;
+other free observations may form automatic dependencies in ordinary closures.
+These rules exclude the identity-establishing MetaDecl layer's capture channel.
 Persistence and escape use the lifetime owner's refinement handoff.

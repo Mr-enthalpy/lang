@@ -122,6 +122,11 @@ alternate relation or identity.
   acquisition; plain let completes/closes it. P2 meta remains evaluation stage.
   Invocation caches retain instances/member Places and current state. A consumes
   these facilities; saved references recheck the original source at write Pre.
+  MetaDecl requires Ordinary placement, => and no capture clause. It admits no
+  automatic closure dependency on an unpassed enclosing local. Such locals are
+  masked; invocation dependence enters In or established stable meta-owner
+  relations. MetaInstanceRootKey has no CapturedEnv axis. Nested ordinary
+  closures may use only material legally available inside the invocation.
 - Stage is one atom; static stages are pairwise incomparable. P2 is horizon,
   P1/Pout producer visibility; InputAdmissible, migration and Ready are separate.
   Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
@@ -204,6 +209,12 @@ alternate relation or identity.
   In-place syntax forms dependencies automatically and produces an ordinary
   first-class result. Invocation does not recapture; binding, transfer and outer
   writes use actual access/capability/lifetime, with no placement-based veto.
+  Non-MetaDecl DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
+  per occurrence; resolved explicit capture binders replace corresponding outer
+  observations. Ordinary => closures may have both. InPlace excludes explicit
+  clauses, but automatic dependencies do not imply InPlace. Placement and
+  explicit/automatic origin supply no applicability, specificity or preference;
+  otherwise tied distinct candidates follow ordinary ambiguity.
   Lifetime persistence/escape refinement retains all ordinary checks; tau status
   grants no global lifetime and local dependency grants no universal prohibition.
 

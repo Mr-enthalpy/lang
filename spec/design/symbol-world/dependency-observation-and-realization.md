@@ -104,18 +104,32 @@ does not expand automatic borrowing, copying or writing.
 
 ## 4. Explicit and automatic dependency formation
 
-```text
-FreeExternalObservation(C, x)
-    => Needs(Form(C), x, observation, Gamma, Sigma)
-DependencyRequirement -> DependencyRealization
-ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial_C)
+For a non-MetaDecl closure, classify dependency occurrences, not the closure's
+placement. A single ordinary closure may contain both kinds:
 
-DependencyMaterial_C:
-    explicit clause -> ExplicitFormation(C)
-    in-place form   -> AutomaticFormation(C)
+```text
+DependencyMaterial(C) = ExplicitDeps(C) union AutomaticDeps(C)
+ExplicitCaptureOccurrence(C, d)
+    => d in ExplicitDeps(C)
+FreeExternalObservation(C, d) and not ReplacedByExplicitCapture(C, d)
+    => d in AutomaticDeps(C)
+    => Needs(Form(C), Source(d), observation, Gamma, Sigma)
+DependencyRequirement -> DependencyRealization
+ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial(C))
+
+InPlace(C) => ExplicitDeps(C) = empty
+AutomaticDeps(C) != empty does not imply InPlace(C)
 ```
 
-Both forms establish ordinary dependency requirements and realizations while
+The union preserves occurrence and binder identities; it is not value-based
+deduplication. ReplacedByExplicitCapture follows resolved binding, not a match
+of source spellings: a body occurrence resolved to an explicit capture binder
+does not also capture its outer source automatically. Other eligible free
+observations form automatic dependencies even in an ordinary `=>` closure
+with an explicit clause for different occurrences. Capture initializers retain
+their pre-capture environment and ordinary once-per-formation effects.
+
+Each occurrence establishes ordinary requirements and realizations while
 forming the closure. The source occurrence's selected ordinary action fixes
 whether its realization uses owned material, ref/share, a stable link or
 another existing legal relation, with all of that relation's premises and the
@@ -133,6 +147,37 @@ result. Their legality depends on actual dependencies and ordinary access,
 capability, lifecycle and destination checks, not the source placement tag.
 The same applies to outer writes: automatic formation alone grants no authority,
 but a legal write-capable realization is not vetoed by in-place provenance.
+After formation, explicit/automatic origin supplies no additional call,
+overload, move, return or other operation dimension. Actual dependency material,
+binder identities and ordinary evidence remain observable under their own rules.
+
+### 4.1 Meta declarations have no closure capture channel
+
+The callable that establishes MetaDecl/MetaInvoke identity is excluded from
+the ordinary closure capture rules above:
+
+```text
+MetaDecl(C) => Placement(C) = Ordinary
+MetaDecl(C) => CaptureClause(C) = absent
+MetaDecl(C) => no ExplicitClosureCapture(C)
+MetaDecl(C) => no AutomaticClosureDependencyFromUnpassedOuterLocal(C)
+```
+
+Its external material must come from admitted invocation inputs and their
+dependency closure, the stable definition environment already fixed by the
+selected callable/parent owner, lawful instance state/members, or another
+mechanism explicitly established by the meta owner with no hidden capture
+coordinate. Unpassed caller/enclosing locals remain masked; material that must
+affect the invocation must enter through In. CapturedEnv is not an extra input
+to MetaInstanceRootKey. See the
+[meta owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity).
+
+This restriction applies only to the declaration layer establishing that
+identity. Its body may form ordinary closures using material legally available
+inside the invocation; a nested closure cannot capture a masked outer local.
+An ordinary dependency-bearing closure explicitly passed through In retains its
+admitted transitive dependencies and ordinary identity/lifetime checks. That
+input is not a capture channel of the MetaDecl itself.
 
 ## 5. Projections of one dependency
 

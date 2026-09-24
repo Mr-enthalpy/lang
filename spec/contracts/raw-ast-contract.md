@@ -490,10 +490,24 @@ explicit shorthand for `[let x = x]` with no written mode override; it is not
 automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not
-`self` fields or layout decisions. In-place syntax supplies automatic dependency
-formation for free external
-observations. Invocation consumes the established realizations without
-recapture; outer writes use ordinary access/capability/lifetime judgments.
+`self` fields or layout decisions. Ordinary non-meta closures may combine
+explicit capture occurrences with automatic free observations not replaced by
+resolved explicit capture binders. In-place syntax excludes explicit clauses;
+it is not the exclusive source of automatic dependencies. Invocation consumes
+the established realizations without recapture; outer writes use ordinary
+access/capability/lifetime judgments.
+After formation, placement and capture origin supply no overload applicability,
+specificity or preference evidence. Distinct tied candidates remain ambiguous.
+
+At the MetaDecl consumer boundary, the identity-establishing callable must have
+an ordinary => implementation and no capture clause. Capture-bearing meta
+material and a no-=> generative body are invalid MetaDecl forms, not captured
+ordinary closures to reinterpret. Generic syntax preservation does not establish
+MetaDecl validity; the declaration consumer is pending. MetaDecl cannot
+automatically capture an unpassed enclosing local either. Its admitted inputs
+and established stable definition/instance relations are the only lawful
+channels; nested ordinary closures may use material legally available inside
+that invocation. No parser name resolution or semantic MetaDecl AST is added.
 
 Explicit-navigation/export checking and automatic capture remain resolved
 semantics, not Raw-to-Norm work. External navigation searches the export view

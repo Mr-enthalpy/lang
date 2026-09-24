@@ -109,3 +109,7 @@ Invocation does not recapture or resolve external names again by spelling.
 Pure Core material has TypeRole independently of self-construction; every
 well-formed complete tau is a type. Dependency realization follows the selected
 ordinary source action, uniquely up to observational equivalence.
+Ordinary closures may combine explicit and automatic dependency occurrences;
+in-place syntax excludes explicit clauses and supplies no overload preference.
+Meta declarations require => and no closure capture channel; unpassed locals
+remain masked and invocation identity has no hidden captured-environment axis.

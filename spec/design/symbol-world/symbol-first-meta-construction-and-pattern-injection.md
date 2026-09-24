@@ -1667,6 +1667,12 @@ mechanisms (combinators, continuations, local abstractions) that do not
 represent semantic ownership boundaries. The meta function call entry is the
 canonical ownership boundary; closures called within it are internal structure.
 
+This is an ambient-scope rule while forming construction material, not an
+overload preference on completed values. The formed result retains its resolved
+owner; invocation and candidate comparison do not inspect source placement to
+reroot it or break a tie. Equal formed material and ordinary candidate evidence
+remain equally preferred regardless of the source form.
+
 Therefore:
 
 ```lang

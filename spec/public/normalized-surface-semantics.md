@@ -950,11 +950,25 @@ General dependency requirements precede semantic realization and then layout.
 Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
 one source of dependencies; projections and invocation do not recapture.
 No mandatory public `self` field layout or hidden semantic side table follows.
-Explicit capture clauses and in-place automatic dependency formation feed the
-same ordinary dependency realization. Neither grants write authority by itself.
+Ordinary closures may combine explicit capture occurrences and automatic free
+observations not replaced by resolved capture binders. In-place syntax excludes
+explicit clauses; automatic dependencies do not imply in-place placement.
+All occurrences feed ordinary dependency realization. Neither grants write
+authority by itself.
 An actual write-capable realization may permit outer writes under ordinary
 access/capability/lifetime checks; source placement cannot veto them. Invocation
 uses formed dependencies without recapture.
+Placement and explicit/automatic origin supply no post-formation applicability,
+specificity or overload preference. Otherwise tied distinct candidates remain
+ambiguous under ordinary uniqueness.
+
+MetaDecl has a narrower semantic handoff: its identity-establishing callable
+requires ordinary => and no capture clause, and cannot automatically capture
+unpassed enclosing locals. Generic Raw/Norm preservation is not MetaDecl
+acceptance; declaration validation remains pending. The meta owner admits input
+dependencies and established stable definition/instance relations, without a
+CapturedEnv identity axis. Nested ordinary closures may use legally available
+invocation material under their own ordinary dependency rules.
 
 For example, an exported ordinary closure's source dependency is explicit:
 

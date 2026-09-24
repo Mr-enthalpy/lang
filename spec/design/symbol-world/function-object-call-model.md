@@ -537,17 +537,26 @@ blocks and headed bodies without => use this form; => selects ordinary syntax.
 The parser does not infer placement from head presence.
 
 ```text
-FreeExternalObservation(C, x)
-    => Needs(Form(C), x, observation, Gamma, Sigma)
+DependencyMaterial(C) = ExplicitDeps(C) union AutomaticDeps(C)
+ExplicitCaptureOccurrence(C, d) => d in ExplicitDeps(C)
+FreeExternalObservation(C, d) and not ReplacedByExplicitCapture(C, d)
+    => d in AutomaticDeps(C)
+    => Needs(Form(C), Source(d), observation, Gamma, Sigma)
 DependencyRequirement -> DependencyRealization
-ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial_C)
+ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial(C))
 
-DependencyMaterial_C:
-    explicit clause -> ExplicitFormation(C)
-    in-place form   -> AutomaticFormation(C)
+InPlace(C) => ExplicitDeps(C) = empty
+AutomaticDeps(C) != empty does not imply InPlace(C)
 
 Eval(InPlaceClosure_C) = tau_C
 ```
+
+These occurrence rules apply to ordinary non-MetaDecl closures. An ordinary
+`=>` closure may combine an explicit clause with automatic dependencies for
+other free observations. A resolved capture binder replaces its corresponding
+outer occurrence; source spelling alone does not deduplicate dependencies.
+MetaDecl has no explicit capture clause or unpassed-local automatic capture
+channel; its ordinary `=>` form follows the meta owner's input/definition scope.
 
 Free external observations are handled at formation through ordinary resolution
 and dependency realization fixed by the source occurrence's selected ordinary
@@ -582,8 +591,18 @@ cannot veto it again. There is no blanket empty outer WriteSet rule.
 
 Explicit capture syntax remains distinct from automatic dependency formation.
 The frontend preserves syntax and performs no semantic lookup or environment
-allocation. The existing independent overload preference for in-place candidates
-is unchanged; it does not establish a binding, transfer or write prohibition.
+allocation. After formation, placement and explicit/automatic dependency origin
+participate in neither applicability, specificity nor preference:
+
+```text
+Form(C1) equivalent_to Form(C2)
+and same ordinary applicability/preference evidence
+    => Placement(C1) != Placement(C2) supplies no ordering
+```
+
+Distinct declaration/candidate identities remain distinct. If their ordinary
+evidence ties, ordinary uniqueness reports ambiguity; source placement cannot
+break the tie. Raw/Norm placement remains only formation syntax information.
 
 ## 8. Call lookup pipeline
 
@@ -597,7 +616,7 @@ prepare ordinary C_sigma(c) where required
 FullyAdmissible A including total output demand and require
 fallback suppression D
 Policy product maxima (including migration endpoints when applicable)
-Pattern specificity / first-order / in-place / named filters
+Pattern specificity / first-order / named filters
 unique Selected=(candidate*,sigma*,frame), candidate* retains (c*,Impl*)
 DynamicLegality -> Ready execution or retained continuation
 ```

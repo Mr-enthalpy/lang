@@ -37,6 +37,13 @@ without projecting Type(x).V_tau. Both obey exact callee/first-self type equalit
 not supply a later callspace snapshot. See
 [name/type algebra](../symbol-world/names-and-overload-groups.md).
 
+Closure source placement and explicit/automatic dependency origin are not
+applicability, specificity or preference evidence. Equal formed material with
+equal ordinary evidence receives no ordering from different placement. Distinct
+candidate identities are not collapsed for that reason; tied maxima follow
+ordinary ambiguity. Later filters and named strategies cannot reintroduce a
+source-placement tie breaker.
+
 ### 2.1 Value navigation is broader than candidate projection
 
 Suppose an instance has ordinary Val2 members `data` (a non-callable value),

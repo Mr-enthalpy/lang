@@ -23,8 +23,9 @@ Pattern normalization and the candidate model that feeds invocation:
 - static pattern spaces and extraction chains
 - callable implementation tails, ordinary ADL selectors, and Pattern
   remainder packs
-- in-place closure candidate metadata and its independent preference position;
-  automatic dependency formation is owned by the function-object/dependency models
+- closure source placement and occurrence-based explicit/automatic dependency
+  formation, owned by the function-object/dependency models; placement supplies
+  no post-formation candidate preference
 
 The base Pattern relation, binderless Pattern semantics, direct structural
 incidence, annotation split, constructor/extractor family contracts, and the
@@ -74,7 +75,7 @@ candidate preparation, not runtime overload resolution.
   relations; it does not define the base Pattern relation.
 - `overload-resolution-design.md` — the complete overload-resolution model,
   including fully admissible set `A`, ordered preference filters
-  (including in-place over non-in-place), and must-select consistency.
+  and must-select consistency; source placement is not a preference dimension.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   residual, `Done`, and extraction-chain consumer semantics.
 - `callable-tail-dot-closure-and-pack-pattern.md` — the canonical connection
