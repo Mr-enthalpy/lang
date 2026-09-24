@@ -26,7 +26,8 @@ ordinary graph entries, not parser keywords.
 
 - Physical files supply provenance, not identity or construction authority.
 - Source actions create names and Objects under ordinary capability rules.
-- Implementation-layer closure expressions return tau_C; ordinary let binds it.
+- Every legally completed closure expression returns tau_C; file installation
+  and true lexical binding retain their distinct destinations.
 - Explicit structural contribution roles synthesize a named type's V_tau.
 - Sibling blocks use common-snapshot overlays and ordinary unordered join.
 - Name occupancy is independent of value content and visibility.
@@ -93,7 +94,10 @@ and graph rendering.
 
 ```text
 ResolveName(path) = S
-  -> CallCandidates(NamedType(S)), or the explicit group's candidate projection
+  -> read the callee
+  -> ordinary x: Type(x).associated Val2[()], self=x
+     type tau: V_tau supplies c, then Type(c).associated Val2[()], self=c
+     explicit group: union of its type-callee projections
   -> R_vis visibility/input evidence and ordinary C_sigma preparation
   -> InvocationFrame
   -> hard Pattern applicability and total output demand
@@ -105,7 +109,8 @@ ResolveName(path) = S
   -> InvocationResult
 ```
 
-The exact immutable `tau` captured at value formation supplies `V_tau`.
+A type callee's immutable tau supplies V_tau. An ordinary value does not
+project its classifier's V_tau; its associated Val2[()] supplies the entrance.
 Callability, applicability failure, selected failure, or result failure never
 causes name resolution to search an outer same-name name binding.
 

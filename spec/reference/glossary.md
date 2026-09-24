@@ -244,8 +244,10 @@ overload resolution.
 
 ### CallableProjection
 
-The ordinary call candidates of a named type's V_tau or of an explicit
-OverloadGroup through singleton type embedding. Name resolution occurs before this
+A type callee projects its own V_tau to actual callable c, which enters through
+Type(c)'s associated Val2[()] with self=c. An ordinary x enters directly through
+Type(x)'s associated Val2[()] with self=x. Explicit OverloadGroups aggregate
+type projections through singleton embedding. Name resolution occurs before this
 projection and is never retried because callability or applicability fails.
 
 ### Sealed selected invocation
@@ -454,8 +456,9 @@ Every legal completed closure expression returns full tau_C through ordinary
 struct Material_C. tau_C, its contributed callable c_C, A_C=Type(c_C) and
 the () entry are distinct. File implementation-layer let installs at the
 established package structural root; true lexical let remains a binding.
-Current in-place use is confined to direct invocation and legal candidate
-embedding, without a general first-class/lifetime theorem.
+In-place syntax uses automatic dependency formation and produces an ordinary
+first-class result. Binding, transfer and outer writes depend on actual
+dependencies, access, capability and lifetime; invocation does not recapture.
 
 ### Structured Path and Pattern splice
 
@@ -464,7 +467,11 @@ Link/End and endpoint shape), before external Read. Text roots resolve at use;
 explicit value/reference roots retain anchors and dependencies. Postfix # quotes
 Path structure. General $ injects ready ordinary material into a Pattern
 consumer, preserves Hole identities and performs no textual substitution.
-Open navigation yields a finite Product of individually named entries.
+PathShaped admits finite name chains with a textual/open root endpoint, or
+inward names followed by exactly one terminal explicit root. Endpoint shape
+and root position are semantic constraints. The name family's explicit string
+projection returns its stored name parameter. Open navigation yields a finite
+Product of individually named entries.
 
 ### General dependency
 

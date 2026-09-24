@@ -132,9 +132,18 @@ not expand to `struct { let () = the same closure expression }` recursively.
 tau_C             complete expression result
 c_C in V_tau_C    registered ordinary callable material
 A_C = Type(c_C)   complete classifier
-()                terminal implementation leaf
+AssociatedNamespace(A_C).Val2[()] = Impl_C
+Impl_C            terminal implementation leaf
+
+tau_C -> V_tau_C -> c_C -> A_C -> Val2[()] -> Impl_C
 Home(A_C) = TypeMemberScope(tau_C)
 ```
+
+Here c_C in V_tau_C is a type-callee projection member; A_C's associated
+Val2[()] is the ordinary callable value's implementation entrance. V_tau is
+not Val2. V_tau registration, Val2 residency, Pattern registration and
+ConstructEdge remain independent. No self-construction witness proves type
+callability; ConstructEdge and TypeRole retain their structural roles.
 
 The first callable material is formed and registered in this same action.
 No later ordinary construction of an arbitrary x:tau_C bootstraps it. Lack of
@@ -555,12 +564,14 @@ A call position performs the following conceptual flow:
 
 ```text
 resolve name binding
-  -> form CallCandidates(NamedType(S))
-  -> enumerate heterogeneous values
+  -> read callee: ordinary x / complete type tau / explicit group
+  -> ordinary x: retain x, use Type(x).associated Val2[()]
+     type tau: enumerate c in V_tau, use Type(c).associated Val2[()]
+     group: union of its type-callee projections
   -> R_vis(c,Omega,sigma): producer visibility and input/projection evidence
   -> form ordinary C_sigma(c) where required, without speculative execution
   -> obtain each value's type
-  -> resolve the type-associated `()` call entry
+  -> preserve the actual x or c as self of its associated Val2[()] entry
   -> discard non-callable or non-applicable entries
   -> form fully admissible set A using structure, Pattern/type/result checks,
      receiver/Pin compatibility, Pout and total output-demand

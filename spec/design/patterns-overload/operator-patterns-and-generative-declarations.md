@@ -268,7 +268,10 @@ a |> string = "field"
 (a |> string |> path_pattern)$::t =_Path field::t
 ```
 
-The default therefore performs the ordinary forwarding behavior.
+The [name-family projection](../symbol-world/structured-path-algebra-and-pattern-splice.md#52-ordinary-name-to-string-observation)
+owns the explicit string step. It returns the requested selector's stored name
+parameter, independently of binder spelling. The default therefore performs
+the ordinary forwarding behavior.
 
 ### 6.2 Canonical lowering
 

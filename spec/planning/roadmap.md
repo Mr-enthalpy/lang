@@ -358,7 +358,7 @@ is claimed by a successful existing Rust test suite.
 | Direct result demand | `norm.rs` TailValue and `lang_build/src/control_flow_end.rs` preserve terminal shape | Immediate selected ReturnPattern/Pout before inner maxima; both outer positions constrain inner positions; no implicit temp/no reopen. 106-RP |
 | Ordinary ADL | `lang_syntax/src/norm.rs` still creates DotClosureLowering and an in-place helper | Emit ordinary field::adl entrance; generate the ordinary forwarder through Path/name relations. Existing goldens describe migration debt. 106-AD |
 | General dependency realization | NormCapture/BindingSlot preserve explicit formation; source callable carriers retain NormClosure | Needs -> semantic realization -> layout; common name environment, ordered effects, once-per-formation, no recapture or hidden semantic storage. 106-DP |
-| Universal closure and file installation | `lang_build/src/model.rs` SourceCallableObject and `semantic_world.rs` OrdinaryCallEntry retain closure carriers | struct Material_C -> tau_C/c_C/A_C/() with finite leaf and same-formation callable; retain homes/roles and conservative in-place permission. File package-root installation distinct from lexical binding. 106-CL/NS |
+| Universal closure and file installation | `lang_build/src/model.rs` SourceCallableObject and `semantic_world.rs` OrdinaryCallEntry retain closure carriers | struct Material_C -> tau_C/c_C/A_C/() with finite leaf and same-formation callable; retain homes/roles and automatic dependency formation with ordinary operation checks. File package-root installation distinct from lexical binding. 106-CL/NS |
 | Lifetime integration | Existing lifecycle substrate supplies continuation/Pre/Post primitives | Preserve actual dependencies and action obligations. Further region/escape/state refinement is handed off, not a PR106 blocker. 106-LF |
 
 Paths in this table are relative to `crates/`. Full ordinary meta body
@@ -366,3 +366,23 @@ execution also remains unsupported/deferred in `lang_build/src/meta_body.rs`;
 new closures and general expression bodies must not silently use a substitute
 evaluator. Consumer tests must cover positive/negative cases, identity/equality,
 no-reopen, non-derivability, authority uniqueness and observable effects.
+
+
+### PR106 review alignment
+
+Keep ordinary and type-callee entrances distinct: ordinary x uses its exact
+classifier's associated Val2[()], while type tau projects V_tau to c before
+using c's associated entry. Preserve x/c as actual self through the common
+selection pipeline. Neither ConstructEdge nor a self-construction witness
+supplies type-call projection.
+
+Replace deferred in-place embedding lookup and placement-based binding,
+transfer or outer-write prohibitions with automatic dependency formation.
+Formation produces ordinary requirements/realizations; invocation consumes
+those without recapture. Concrete operation checks retain actual dependency,
+access, capability, region/generation and escape evidence. Existing source
+placement carriers do not implement this semantic handoff.
+
+Path consumers must validate the inductive PathShaped domain, including finite
+chains, unique terminal explicit roots and endpoint compatibility. Wire the
+ordinary name-family string projection before using it in ADL generation.

@@ -32,7 +32,7 @@ DependencyRequirement
 DependencyRealization
     the selected way to obtain or retain semantic material:
     ordinary value transfer, explicit reference, stable link,
-    or an established embedding read
+    or another existing legal dependency relation
 
 PhysicalRepresentation
     fields, addresses, embedded constants, static links,
@@ -72,17 +72,35 @@ Resolved external dependencies without an explicit clause use established
 ordinary reads and permitted dependency formation. Renaming this relationship
 does not expand automatic borrowing, copying or writing.
 
-## 4. Ordinary and in-place dependencies
+## 4. Explicit and automatic dependency formation
 
-An ordinary implementation uses its established dependency sources and semantic
-realizations. Later invocation does not recapture external names by spelling.
+```text
+FreeExternalObservation(C, x)
+    => Needs(Form(C), x, observation, Gamma, Sigma)
+DependencyRequirement -> DependencyRealization
+ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial_C)
 
-An in-place implementation uses the observation conditions of its established
-embedding position. The existence of a dependency does not give it an ordinary
-capture environment. These are different uses of one dependency framework,
-not separate invocation ontologies.
+DependencyMaterial_C:
+    explicit clause -> ExplicitFormation(C)
+    in-place form   -> AutomaticFormation(C)
+```
 
-Both obey the same no-reopen boundary after resolution and selection.
+Both forms establish ordinary dependency requirements and realizations while
+forming the closure. An automatic realization may use owned material,
+ref/share, a stable link or another existing legal relation, with all of that
+relation's premises. No automatic borrow, copy or write permission follows
+merely from needing a source.
+
+Both return complete tau and invoke using established dependencies. There is
+no separate embedding environment, delayed lookup by spelling at candidate use,
+or recapture during invocation. Formation that is not ready retains its
+formation obligations rather than claiming a completed dependency.
+
+Bind, Move, Copy, Return, Store and Pass are ordinary operations on either
+result. Their legality depends on actual dependencies and ordinary access,
+capability, lifecycle and destination checks, not the source placement tag.
+The same applies to outer writes: automatic formation alone grants no authority,
+but a legal write-capable realization is not vetoed by in-place provenance.
 
 ## 5. Projections of one dependency
 

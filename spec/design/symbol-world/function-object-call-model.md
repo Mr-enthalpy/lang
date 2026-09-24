@@ -4,19 +4,47 @@ Status: canonical call semantics. Consumer gaps are tracked in the roadmap.
 
 ## 1. Basic thesis
 
-A callable is an ordinary complete function object. An initialized structural name declared :type denotes a named type
-whose V_tau is synthesized by its named contributions. Explicit OverloadGroups
-aggregate type candidates using the singleton embedding eta(T).
+Ordinary value invocation and complete-type invocation have different projection
+entrances into the same overload and execution relations.
 
-    Type(callee) = Type(first self)
-    CallCandidates(T) = CallCandidates(V_tau(T))
-    CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
+```text
+Val1?(x) != absent
+T = Type(x)
+CallCandidates_ordinary(x)
+    = Entries(AssociatedNamespace(T).Val2[()], actual_self=x)
+CallOrdinary(x)
+    -> Type(x) -> AssociatedNamespace(Type(x)).Val2[()] -> selected Impl
+self = x
 
-The [name/type algebra](names-and-overload-groups.md) owns these projections
-and the distinct update algebras. There is one ordinary overload pipeline;
-neither a second binding facet nor a defining-name lookup supplements a
-complete type's immutable callspace. Non-callable members contribute no call
-candidates, and an empty projection never restarts name lookup.
+tau = bind alpha.<Q, V_tau[alpha]>
+CallCandidates_type(tau) = CallCandidates(V_tau)
+CallType(tau)
+    -> select c in V_tau
+    -> CallOrdinary(c)
+    -> Type(c) -> AssociatedNamespace(Type(c)).Val2[()] -> selected Impl
+self = c
+
+CallCandidates(G)
+    = disjoint_union over tau in G of CallCandidates_type(tau)
+Type(actual callee) = Type(first self)
+```
+
+Entries denotes the implementation family offered to candidate preparation,
+not an additional selection stage. Type projection retains c and its associated implementation
+entries in the same candidate pipeline; it never executes speculative bodies
+or chooses a runner-up after selected failure.
+
+`V_tau != Val2` is an operational distinction. An ordinary x enters through
+its type's associated Val2 call entry; it does not first project Type(x).V_tau.
+A type callee uses its own V_tau to supply actual callable values, then those
+values use the ordinary entrance. Neither entrance requires a defining-name
+lookup or a self-construction witness. An empty projection does not restart
+name resolution.
+
+The [name/type algebra](names-and-overload-groups.md) owns type/group aggregation
+and their distinct update algebras. V_tau registration, Val2 residency, Pattern
+registration and ConstructEdge are independent judgments. ConstructEdge and
+TypeRole describe structural construction roles, not type-callee projection.
 
 Every closure expression's legal completed evaluation returns a complete tau_C,
 whether ordinary, in-place, generated, file-level or local. Formation is ordinary
@@ -31,7 +59,10 @@ Eval(ClosureExpr_C) = tau_C
 c_C in V_tau_C
 A_C = Type(c_C)
 Home(A_C) = TypeMemberScope(tau_C)
-() = existing terminal implementation leaf
+AssociatedNamespace(A_C).Val2[()] = Impl_C
+Impl_C = existing terminal implementation leaf
+
+tau_C -> V_tau_C -> c_C -> A_C -> Val2[()] -> Impl_C
 ```
 
 The first c_C is formed in that same construction, not by recursively creating
@@ -40,8 +71,9 @@ residency, callability and Pattern registration retain their distinct judgments.
 Call projection selects c_C and supplies its exact self; it does not replace
 all self types with type. User-defined x:T with direct () still receives x.
 
-Ordinary let binds the completed tau without a wrapper. In-place operations are
-limited by §7.3; result category alone grants no binding/escape permission.
+Ordinary let binds the completed tau without a wrapper. In-place syntax uses
+automatic dependency formation (§7.3). Its result supports ordinary value
+operations, subject to actual dependency, capability and lifetime checks.
 General [dependencies](dependency-observation-and-realization.md) precede capture
 and layout. Closure lifetime propagation is explicitly handed to the lifetime
 owner, not inferred from tau, Core equality, ZST or placement.
@@ -51,7 +83,8 @@ owner, not inferred from tau, Core equality, ZST or placement.
     Product |> expression
       -> resolved value / named type / explicit candidate group
       -> ordinary call projection
-      -> exact captured type and associated ()
+      -> ordinary value: Type(x).associated Val2[()], self=x
+         type: V_tau supplies c, then Type(c).associated Val2[()], self=c
       -> ordinary admissibility and preference
       -> unique sealed invocation
       -> DynamicLegality and execution
@@ -261,8 +294,10 @@ terminates this formation rather than recursively allocating another closure.
 
 ## 5. User-defined callable objects
 
-For a value x of type T, invocation uses T's captured callspace and supplies x
-as first self. A ref/share decorated value has its own exact type and therefore
+For an ordinary value x of type T, invocation selects the applicable () entry
+in AssociatedNamespace(T).Val2 and supplies x as first self. It does not
+project V_T. T may provide an applicable () even when V_T is empty. A ref/share
+decorated value has its own exact type and therefore
 its own matching () entry. There is no coercion of T into T ref/share to repair
 a first-self mismatch, and those distinct callee types are not one receiver
 exception under T's call entry.
@@ -480,67 +515,66 @@ binder, view and source obligations. Copy/replication preserves formed
 dependencies without rerunning initializers, relookup or extending lifetimes.
 Runtime formation residue is retained when not ready.
 
-### 7.3 In-place closures are embedded callable candidates
+### 7.3 In-place syntax uses automatic dependency formation
 
-An in-place closure is distinguished by
-`NormClosure.placement = NormClosurePlacement::InPlace`. Generated provenance
-is carried independently by `NormClosure.origin`; it is never a placement
-variant. Its
-completed result is the same ordinary tau construction. Current conservative
-permission admits direct call and legal candidate embedding, not ordinary
-binding, return-as-value, store or argument transfer. This is an operational
-domain, not a theorem that in-place is untyped/non-value or forever immovable.
-Wrapping it in Product, group or tau does not bypass actual embedding
-conditions; no fourth-axis flag supplies that check. Future bounded first-class
-permissions belong to lifetime refinement.
-
-Head presence is independent of that placement. Bare `{ ... }`,
-`() -> r name { ... }`, and `() -> r [[strategy]] { ... }` are all in-place;
-the latter two merely preserve a head and optional strategy metadata. `=>`
-selects ordinary placement. The parser and normalizer must not infer
-placement from `head.is_some()`.
-
-An in-place closure has no capture clause and no capture environment. Reads of
-outer names do not require `[]`. Instead, unresolved outer reads are carried
-as lazy embedding lookups:
+`NormClosure.placement = InPlace` records a source formation form. It is not
+a non-transferable value category or a post-formation permission flag.
+Head presence and generated provenance remain separate syntax facts: bare
+blocks and headed bodies without => use this form; => selects ordinary syntax.
+The parser does not infer placement from head presence.
 
 ```text
-definition/materialization:
-  unresolved read name -> DeferredEmbeddingLookup(name)
+FreeExternalObservation(C, x)
+    => Needs(Form(C), x, observation, Gamma, Sigma)
+DependencyRequirement -> DependencyRealization
+ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial_C)
 
-candidate use at control-flow layer L:
-  DeferredEmbeddingLookup(name) -> Resolve(name, L)
-  missing at L -> diagnostic at that use
+DependencyMaterial_C:
+    explicit clause -> ExplicitFormation(C)
+    in-place form   -> AutomaticFormation(C)
+
+Eval(InPlaceClosure_C) = tau_C
 ```
 
-Failure to resolve the name at the syntactic closure site is therefore not yet
-an error. The lookup becomes final only at the layer where that in-place
-candidate is embedded and selected. This is lexical embedding, not textual
-macro substitution: local declarations still shadow normally, name-binding identity
-is used after resolution, and each use is checked in its own embedding
-environment.
+Free external observations are handled at formation through ordinary resolution
+and dependency realization. The chosen realization may retain owned material,
+ref/share, a stable link or another existing legal dependency relation. Each
+requires its own admissibility, access, capability, readiness and lifetime facts.
+Automatic formation alone creates none of those permissions.
 
-An in-place closure may not write any name binding/Place outside its closure-local
-scope:
+After formation, invocation consumes the established dependencies. It does not
+resolve external names again by spelling or create a separate embedding
+environment. Deferred formation retains its actual obligations; deferral is
+not permission to recapture at a later invocation site.
 
-```text
-WriteSet(C) intersect OuterBindings(C) = empty
-```
+Bind, Move, Copy, Return, Store and Pass are ordinary value operations on the
+result. Source placement alone neither forbids them nor grants their concrete
+legality. In particular, let f = { ... }; is not rejected merely because its
+initializer used in-place syntax. Wrapping the result in Product, group or tau
+preserves actual dependencies and lifecycle obligations, not a hidden source
+restriction.
 
-It may still mutate its own locals, call effectful functions, and use ordinary
-capabilities. The prohibition is specifically direct outer-place mutation.
-Because an in-place closure has neither a capture list nor an automatic capture
-set, there is no syntax or materialization step that can grant an exception.
-The resolved embedding check owns this rule. The Normalized AST only preserves
-`InPlace` and, for ordinary closures, elaborates the let-shaped capture
-syntax. Its free non-call-name inference is shape-directed; it performs no
-lookup, capture-environment layout, or capture admissibility analysis.
+For a result f retaining reference r, return checks Pre(Return,f),
+LifetimeLegal(Dependencies(f), destination), EscapeLegal(f,destination) and
+ValidRegion(r) as applicable. A dependency-free result is not unreturnable due
+to its syntax; it still obeys all otherwise applicable ordinary checks.
+
+Outer writes likewise depend on the selected dependency/access/capability and
+lifetime judgments. AutomaticDependencyFormation does not imply WriteAuthority.
+If the actual realization legally supplies write capability, an InPlace tag
+cannot veto it again. There is no blanket empty outer WriteSet rule.
+
+Explicit capture syntax remains distinct from automatic dependency formation.
+The frontend preserves syntax and performs no semantic lookup or environment
+allocation. The existing independent overload preference for in-place candidates
+is unchanged; it does not establish a binding, transfer or write prohibition.
 
 ## 8. Call lookup pipeline
 
 ```text
 shape explicit Product; retain implicit self in invocation frame
-resolve target once -> exact complete type / associated () / candidate group
+resolve target once -> ordinary Val2[()] entrance / type V_tau projection / group
+retain actual callable x or c -> its type's associated Val2[()]
 apply pre-C0 family filter -> enumerate C0
 R_vis(c,Omega,sigma) -> candidate plus visibility/input/projection evidence
 prepare ordinary C_sigma(c) where required
@@ -586,8 +620,8 @@ R_vis/C_sigma consumer.
 member. The full pipeline is:
 
 ```text
-target expression → target value → target type →
-  type-associated namespace → `()` call entry
+target expression -> ordinary x -> Type(x).associated Val2[()] -> Impl
+                  -> type tau -> V_tau -> c -> Type(c).associated Val2[()] -> Impl
 ```
 
 A NormClosure is non-semantic source material. Its connected evaluator must
@@ -628,9 +662,9 @@ Current source carriers do not implement this full consumer.
 - Ordinary closures distinguish explicit, explicit-inferred-binder, and
   implicit-eligible capture requirements; those requirements do not define
   `self` fields or physical layout.
-- In-place closures may be overload candidates, have no capture clause or
-  automatic capture set, defer unresolved outer reads to their embedding
-  layer, and are forbidden from writing outer name bindings/Places.
+- In-place syntax forms dependencies automatically and returns ordinary tau.
+  Invocation uses those dependencies without recapture. Binding, transfer and
+  outer writes depend on actual access/capability/lifetime, not source placement.
 - Ordinary and built-in privileged meta functions follow the same
   function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal

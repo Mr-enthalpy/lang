@@ -229,8 +229,12 @@ copying them for that reason. V_tau itself requires no named resident and grants
 no val::path selector; the anonymous classifier's /tau home is distinct from
 value navigation. Requested-name generative occurrences supply ordinary Val2
 only and cannot supply either registration. Members registered for type callability and satisfying
-`Home(TypeOf(v)) = TypeMemberScope(tau)` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
-type-as-callee uses `CallSpace(tau)=V_τ`; there is no defining-name binding or
+`Home(TypeOf(v)) = TypeMemberScope(tau)` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Ordinary x calls through Type(x)'s associated Val2[()] with self=x.
+Copied/extracted type-as-callee uses its own V_tau to select c, then c's
+classifier-associated Val2[()] with self=c. These are separate entrances;
+ConstructEdge does not supply type-callability evidence. In particular,
+V_tau registration, Val2 residency, Pattern registration and ConstructEdge
+remain independent. For the type entrance, `CallSpace(tau)=V_τ`; there is no defining-name binding or
 recent-carrier recovery route.
 
 The generic parser preserves the narrow postfix shape:

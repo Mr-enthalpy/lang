@@ -23,8 +23,8 @@ Pattern normalization and the candidate model that feeds invocation:
 - static pattern spaces and extraction chains
 - callable implementation tails, ordinary ADL selectors, and Pattern
   remainder packs
-- in-place closure candidate metadata and its fixed preference position; lazy
-  embedding lookup/capture boundaries are owned by the function-object model
+- in-place closure candidate metadata and its independent preference position;
+  automatic dependency formation is owned by the function-object/dependency models
 
 The base Pattern relation, binderless Pattern semantics, direct structural
 incidence, annotation split, constructor/extractor family contracts, and the

@@ -4,7 +4,10 @@ Status: canonical acceptance scenarios; evaluator/source consumers pending.
 These are semantic counterexamples and equalities, not claims that the current
 parser supports every displayed spelling or that executable tests already
 cover them. The topic owners define meaning; this matrix indexes their checks.
-The 64 PR105 IDs are retained, with N01/N03 clarified by PR106. The 106
+The 64 PR105 IDs are retained, with N01/N03 clarified by PR106. The review
+revision distinguishes ordinary/type calls and replaces in-place permission
+restrictions with automatic dependency formation; the existing CL/PT/AD/LF
+case IDs record the corrected relations. The 106
 additional PR106 scenarios bring this index to 170 cases; these are semantic
 acceptance obligations, not 170 executed tests.
 
@@ -137,8 +140,8 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-PT03 | Equivalent internal Path constructions | Quote observes normalized structure, not whitespace, parentheses or source positions. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT04 | Three legal internally composed Path segments | Preserve associativity and the language's name::path direction. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT05 | The endpoints of ::a and a:: | Retain the difference rather than erasing both to an undirected sequence. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT06 | Ordinary extraction of path_pattern | Expose nodes, links and endpoints; an opaque handle alone is insufficient. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT07 | Construct Path material from a string | Create one name node without lookup or access authority. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT06 | Ordinary extraction and validation of path_pattern | Expose nodes, links and endpoints. PathShaped rejects empty standalone/cyclic chains, multiple or nonterminal explicit roots, non-string names and incompatible endpoints; representation alone is insufficient. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT07 | Construct Path material from a string | Create Names([s]) with RelativeSingleName=(Select,OpenRoot), without lookup or access authority. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT08 | A string contains :: or parentheses | Do not automatically re-lex or parse it as more paths or arbitrary source. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT09 | Quote and reinject into a Path consumer | Recover equivalent internal structure within the legal domain. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT10 | An inner binding shadows the textual root of a pure Path | Resolve at that external read and use the applicable inner root. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
@@ -231,7 +234,7 @@ Existing carrier test success is not coverage of these new semantics.
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
 | 106-AD01 | Default .field entrance | Lower to field::adl; the normalizer does not privately create the forwarding body. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
-| 106-AD02 | Convert the requested name through string and path_pattern | Form relative single-name material; its splice under t matches the legal field::t Path. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
+| 106-AD02 | Project the requested name to string, then construct path_pattern | NameObservation(s) explicitly projects to s through the name family, independent of binder spelling; form relative single-name material for legal navigation under t. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-AD03 | Request a new field after closing adl rules | Realize an ordinary Val2 occurrence from frozen rules, without new structural registration. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-AD04 | The forwarded type t | An ADL request neither injects field into t nor grants new OpenHere. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-AD05 | The forwarder body's object parameter | Remain explicit; do not replace the callee's own self. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
@@ -255,7 +258,7 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-DP09 | A realization retains owned values or references | Validate ordinary structure/referent identity; do not hide state in an extra-semantic side table. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 | 106-DP10 | Copy or reanchor a formed callable | Preserve dependencies without rerunning surrounding code, lookup or lifetime extension. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 
-### 106.10 Uniform closure formation and in-place permissions
+### 106.10 Uniform closure formation and automatic dependencies
 
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
@@ -263,15 +266,15 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-CL01 | Legal completion of a closure expression at any level | Return full tau, without a local-object/file-type split. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL02 | Closure formation through struct | Head, body and dependencies use the existing formation relation; no new ClosureObject ontology. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL03 | The callable implementation endpoint | Stop at an established leaf, without recursively expanding the same closure expression. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL04 | tau_C, c_C, A_C and the () implementation | Keep their roles distinct instead of calling all of them the closure type. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL05 | Legal callspace members | Check home, callability registration, Pattern role and named residency independently. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL06 | Selecting the internal callable through tau_C | Self still matches the actual callee type; do not force self:type. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL07 | A custom x:T directly provides () | Use the same invocation mechanism with x's actual self, without an extra closure wrapper. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL04 | tau_C, c_C, A_C and Impl_C | c_C belongs to V_tau_C; A_C=Type(c_C); AssociatedNamespace(A_C).Val2[()]=Impl_C. Keep the roles distinct. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL05 | Registered structure and call entrances | V_tau registration, Val2 residency, Pattern registration and ConstructEdge are independent. Type projection requires no self-construction witness. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL06 | Call a completed closure type tau_C | Select c_C from V_tau_C, then use A_C's associated Val2[()]. Actual self is c_C, not tau_C. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL07 | An ordinary x:T has applicable associated Val2[()] but empty V_T | Call x through the associated entry with self=x; V_T membership is unnecessary. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL08 | The first callable material | Form it in the same structural operation; require no prior arbitrary x:tau_C instance. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL09 | No arbitrary repeat-instantiation capability exists | Do not invent a deleted constructor or alter TypeRole. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL10 | Contribute an already formed value to another target | Keep the original owner; use a legal replication witness where required. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL11 | Direct in-place invocation or legal candidate embedding | Use the same formation/call relations within the conservative permission domain. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL12 | Wrap an in-place result in Product, group or tau for transfer | Outer syntax cannot bypass currently unavailable operation permissions. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL11 | In-place closure with free external observations | Form Needs and ordinary realizations at formation; bind the resulting tau ordinarily. Invocation does not recapture. A legal write-capable realization permits outer writes; absent capability still fails. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL12 | Wrap an in-place result in Product, group or tau and transfer it | Preserve actual dependencies and lifecycle obligations. No placement-based ban applies; wrapping cannot extend ValidRegion or erase escape checks. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 
 ### 106.11 Lifetime refinement boundary
 
@@ -279,7 +282,7 @@ Existing carrier test success is not coverage of these new semantics.
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
 | 106-LF01 | Universal closure-to-tau formation | Do not mechanically infer ClosureTau => GlobalLifetime. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
-| 106-LF02 | A result contains local dependencies | Do not predeclare all return/escape cases uniformly legal or illegal. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
+| 106-LF02 | Return a closure with empty or reference-bearing dependencies | Neither source form is categorically rejected. Check ordinary Pre/LifetimeLegal/EscapeLegal; a retained reference outside ValidRegion fails, and an empty dependency set supplies no source-based veto. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 | 106-LF03 | Ordinary versus in-place classification | Neither classification replaces concrete MoveEffect/Movable or escape judgments. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 | 106-LF04 | Construction and anchored Paths need validity evidence | Preserve dependencies and check interfaces; the handoff does not waive checks. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 | 106-LF05 | Bounded runtime state coexists with stable descriptions | Record lifetime implementation/refinement work, not a PR106 blocker. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |

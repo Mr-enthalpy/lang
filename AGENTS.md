@@ -128,7 +128,10 @@ alternate relation or identity.
 - Name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
-- Calls use value -> exact tau -> associated `()` and one candidate space.
+- Ordinary calls use x -> Type(x) -> associated Val2[()], with self=x.
+  Type calls use tau -> V_tau -> c -> Type(c) -> associated Val2[()], with self=c.
+  V_tau registration, Val2 residency, Pattern registration and ConstructEdge
+  remain independent; no self-construction witness proves type callability.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.
 - Policy preference, CapabilityRealization, Writable, and DynamicLegality are
   independent judgments.
@@ -190,7 +193,9 @@ alternate relation or identity.
   outer P1/P2 jointly constrain inner positions, without an implicit semantic temp.
 - Dependencies separate requirements, semantic realization and layout. [] is one
   source; initialization occurs once per formation and projections never recapture.
-  Current in-place permission is direct invocation/legal candidate embedding.
+  In-place syntax forms dependencies automatically and produces an ordinary
+  first-class result. Invocation does not recapture; binding, transfer and outer
+  writes use actual access/capability/lifetime, with no placement-based veto.
   Lifetime persistence/escape refinement retains all ordinary checks; tau status
   grants no global lifetime and local dependency grants no universal prohibition.
 

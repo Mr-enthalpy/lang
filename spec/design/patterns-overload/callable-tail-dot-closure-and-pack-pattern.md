@@ -74,9 +74,10 @@ Placement, head presence, and implementation are independent dimensions:
 
 In particular, `[[strategy]]` disambiguates strategy metadata; it does not
 change in-place placement into ordinary placement. In-place
-closures never have a capture list or an independent capture environment.
-`[x] { ... }` is rejected. Their external reads instead use the lazy
-embedding-layer lookup defined by the function-object model.
+syntax has no explicit capture clause: `[x] { ... }` is rejected. Free external
+observations instead participate in automatic dependency formation. Invocation
+uses the formed dependencies, without an independent embedding environment or
+lookup by spelling. See the function-object and dependency owners.
 
 ### 1.1 Strong-context boundary
 
@@ -343,7 +344,9 @@ For an ordinary closure, a resolved free reference can impose a Needs
 requirement under its stable full/export namespace view. Eligible implicit
 realization and explicit [] remain distinct declarations even for the same
 source. Neither lookup nor requested Policy grants borrow/write authority.
-Outer writes still require a write-capable explicit dependency.
+Outer writes require an actually write-capable dependency realization and
+ordinary access/capability/lifetime checks. Explicit versus automatic formation
+does not independently grant or veto write authority.
 
 ### 2.4 Dependency realization precedes representation
 

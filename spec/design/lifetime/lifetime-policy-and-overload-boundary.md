@@ -889,7 +889,8 @@ actions and absence of recapture. Lifetime implementation and refinement own:
 - move/copy/preserve of tau_C and its members;
 - return, storage, escape and promotion;
 - persistence of bounded runtime state alongside stable descriptions;
-- possible restricted first-class uses of in-place results.
+- the concrete regions in which automatically formed dependencies and their
+  ordinary closure results may move, persist or escape.
 
 These refinements do not block the defined closure formation semantics.
 
@@ -916,9 +917,11 @@ None of the following implications is established:
 ClosureTau => GlobalLifetime
 LocalDependency => not Returnable
 OrdinaryClosure => Escapable
-InPlace => not Movable in every future context
+InPlace => not Bindable / Returnable / Movable
 ```
 
+In-place results are already ordinary first-class results. Explicit versus
+automatic dependency formation supplies no independent operation prohibition.
 TypeRole, ZST layout, Core equality, cache reuse and the absence of machine
 storage prove none of these capabilities.
 

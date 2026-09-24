@@ -490,9 +490,10 @@ explicit shorthand for `[let x = x]` with no written mode override; it is not
 automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not
-`self` fields or layout decisions. In-place closures create
-no capture set, may resolve outer reads at the embedding layer, and may not
-directly write an outer place.
+`self` fields or layout decisions. In-place syntax supplies automatic dependency
+formation for free external
+observations. Invocation consumes the established realizations without
+recapture; outer writes use ordinary access/capability/lifetime judgments.
 
 Explicit-navigation/export checking and automatic capture remain resolved
 semantics, not Raw-to-Norm work. External navigation searches the export view

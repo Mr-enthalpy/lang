@@ -194,7 +194,8 @@ ordinary source/host work; their implementation does not create authority.
 
 - Which carrier realizes ordinary struct Material_C into full tau_C, its c_C,
   A_C and () roles, and represents already determined dependency realizations?
-- How are in-place closure embedding reads resolved without inventing captures?
+- How are region/generation persistence, movement and escape checked for
+  automatically formed closure dependencies?
 - How should the NLL/control-flow graph be represented?
 - How are `return`, effect, and sync operations integrated into the shared
   semantic continuation?
@@ -274,7 +275,8 @@ already determine their meaning.
 [The lifetime handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
 owns further integration of dependency region/generation persistence,
 move/copy/preserve, return/store/escape/promotion, bounded runtime state with
-stable descriptors, and possible restricted first-class in-place uses.
+stable descriptors, including the concrete validity regions of automatically
+formed dependencies. In-place results are already ordinary first-class values.
 FormationLegal, LifetimeLegal, Pre/Post, MoveEffect/Movable, EscapeLegal and
 owned-transfer/promotion checks remain required. This does not block closure
 formation semantics and grants neither global lifetime to tau_C nor a blanket

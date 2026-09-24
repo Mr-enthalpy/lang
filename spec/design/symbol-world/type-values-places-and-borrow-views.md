@@ -758,8 +758,24 @@ extend, OpenHere and independent well-formedness rules. Each group's call
 consumer projects its entries; any selected pattern member supplies its own
 complete immutable callspace. Other entries do not supplement that snapshot.
 
-Ordinary Val2, V_tau membership, and Pattern-role registration are three
-separate facts. V_tau is the immutable snapshot of ordinary callable values
+V_tau registration, ordinary Val2 residency, Pattern registration and
+ConstructEdge are independent judgments. In particular:
+
+```text
+CallOrdinary(x) -> Type(x) -> AssociatedNamespace(Type(x)).Val2[()] -> Impl
+    self = x
+CallType(tau) -> V_tau -> c -> Type(c) -> AssociatedNamespace(Type(c)).Val2[()] -> Impl
+    self = c
+V_tau != Val2
+```
+
+These entrances use the same ordinary selection pipeline. Type-callee
+projection does not require a ConstructEdge self-construction witness, while
+TypeRole retains its independent Q-local construction meaning. An ordinary
+callable x does not require membership in V_(Type(x)).
+
+Ordinary Val2, V_tau membership, and Pattern-role registration remain separate
+facts. V_tau is the immutable snapshot of ordinary callable values
 registered for the type's own callability, with classifiers in /tau(tau) (the canonical
 `Home(TypeOf(F)) = TypeMemberScope(tau)` notation). Ordinary Val2 can have any type
 and need not satisfy that anchoring. Classifier eligibility alone does not

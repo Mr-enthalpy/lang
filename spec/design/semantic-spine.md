@@ -72,3 +72,12 @@ Policy value/type observations retain the same evaluation edge; public policy
 pair syntax is retired. Terminal demand reaches the immediate root call before
 maxima. General dependencies are realized once before layout; complete closure
 results retain the lifetime refinement handoff.
+
+
+Ordinary calls enter through Type(x)'s associated Val2[()] with self=x.
+Type calls first select c from their own V_tau, then enter through Type(c)'s
+associated Val2[()] with self=c. V_tau, Val2 residency, Pattern registration
+and ConstructEdge remain independent. In-place syntax forms dependencies
+automatically; its completed result supports ordinary value operations whose
+legality depends on actual dependencies, access, capabilities and lifecycle.
+Invocation does not recapture or resolve external names again by spelling.

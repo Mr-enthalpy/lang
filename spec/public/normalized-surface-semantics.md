@@ -335,7 +335,8 @@ Migration must preserve source/recovery and ordinary association; no provenance
 tag may absorb subsequent Products or bypass legality repair.
 Normalization creates syntax carriers only. Every legal semantic completion
 of a closure expression produces full tau_C; it is not restricted to binding
-or call positions. Current in-place operation permissions remain conservative.
+or call positions. In-place syntax uses automatic dependency formation;
+its completed result follows ordinary value-operation checks.
 
 ### Narrow structural member-view annotation
 
@@ -948,10 +949,12 @@ structural model but are omitted from default extraction.
 General dependency requirements precede semantic realization and then layout.
 Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
 one source of dependencies; projections and invocation do not recapture.
-No mandatory public `self` field layout or hidden semantic side table follows. An ordinary closure that writes an outer place must have
-an explicit capture able to project a `mut` view; automatic capture never grants
-mutability. An in-place closure has no capture list or capture set, resolves
-outer reads at its embedding layer, and may not directly write an outer place.
+No mandatory public `self` field layout or hidden semantic side table follows.
+Explicit capture clauses and in-place automatic dependency formation feed the
+same ordinary dependency realization. Neither grants write authority by itself.
+An actual write-capable realization may permit outer writes under ordinary
+access/capability/lifetime checks; source placement cannot veto them. Invocation
+uses formed dependencies without recapture.
 
 For example, an exported ordinary closure's source dependency is explicit:
 

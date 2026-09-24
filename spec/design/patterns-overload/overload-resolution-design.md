@@ -23,12 +23,14 @@ An initialized structural name declared :type denotes its complete named type T.
 restrict ordinary Val2 residents to types. Explicit group values use the
 singleton type embedding:
 
-    CallCandidates(T) = CallCandidates(V_tau(T))
-    CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
+    CallCandidates_type(tau) = CallCandidates(V_tau)
+    CallCandidates(G) = disjoint_union over tau in G of CallCandidates_type(tau)
+    CallCandidates_ordinary(x) = entries of AssociatedNamespace(Type(x)).Val2[()]
 
-Group bucket aggregation does not mutate the candidate types. Each value
-callee uses its exact captured complete type and associated (), with
-Type(callee) = Type(first self). A source binding or Core registry index does
+Group bucket aggregation does not mutate candidate types. Type projection
+supplies c from V_tau, then enters c's ordinary Val2[()] route with self=c.
+An ordinary x enters its type's associated Val2[()] directly with self=x,
+without projecting Type(x).V_tau. Both obey exact callee/first-self type equality. A source binding or Core registry index does
 not supply a later callspace snapshot. See
 [name/type algebra](../symbol-world/names-and-overload-groups.md).
 
@@ -44,7 +46,7 @@ instance's own V_tau.
 
 Thus ReadNamedType describes the named-type case, not an implicit conversion
 applied to every Val2 resident. Ordinary function values use their exact
-complete type and associated (). All these entrances share the pipeline below;
+complete type's associated Val2[()]. All these entrances share the pipeline below;
 none retries name resolution or constructs a wrapper to make a value callable.
 
 ## 3. Pipeline

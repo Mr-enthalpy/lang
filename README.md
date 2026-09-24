@@ -96,3 +96,12 @@ The lexer remains weak: contextual language words are ordinary `Name` tokens.
 The parser owns syntax shape, not semantic meaning. Closed canonical relations
 belong in their topic owners; genuinely unresolved representation questions
 belong in `spec/planning/open-questions.md`.
+
+
+Ordinary calls enter through Type(x)'s associated Val2[()] with self=x.
+Type calls first select c from their own V_tau, then enter through Type(c)'s
+associated Val2[()] with self=c. V_tau, Val2 residency, Pattern registration
+and ConstructEdge remain independent. In-place syntax forms dependencies
+automatically; its completed result supports ordinary value operations whose
+legality depends on actual dependencies, access, capabilities and lifecycle.
+Invocation does not recapture or resolve external names again by spelling.

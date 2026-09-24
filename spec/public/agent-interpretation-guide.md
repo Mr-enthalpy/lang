@@ -179,8 +179,9 @@ Source-written captures are explicit binding requirements. `[x]` is
 capture. Any implicit capture requirement needs later resolved free-reference
 and external-eligibility analysis. Capture requirements do not define `self`
 fields, layout, or ABI.
-In-place closures have no capture set: they may read through embedding-layer
-lookup but may not directly write an outer place.
+In-place syntax has no explicit capture clause; free external observations form
+automatic dependency requirements and ordinary realizations. Invocation does
+not recapture. Actual access/capability/lifetime checks decide outer writes.
 
 ## 6. Common Misreadings
 
@@ -310,7 +311,8 @@ General dependencies separate requirements, semantic realization and layout;
 snapshot/reference choice is semantic and projections never recapture.
 Closure formation uses ordinary struct with a finite implementation leaf and
 same-formation first callable. File implementation-layer let installs under the
-established package root; true lexical let remains binding. Current in-place
-permission permits direct invocation and legal candidate embedding, without
-Product/group/type wrappers bypassing it. Lifetime persistence and escape remain
+established package root; true lexical let remains binding. In-place syntax
+forms dependencies automatically. Its completed result supports
+ordinary binding and transfer subject to actual dependencies and ordinary
+checks; wrappers preserve those obligations without a source-origin veto. Lifetime persistence and escape remain
 checked through the explicit refinement handoff, not inferred from tau status.

@@ -809,6 +809,19 @@ The registered role contract records the actual structural route.
 
 ## 13. Structural role registration and ordinary callables
 
+V_tau registration, Val2 residency, Pattern registration and ConstructEdge
+are independent judgments. A construction witness is not a prerequisite for
+type-callee projection. The call owner distinguishes type invocation through
+V_tau from ordinary invocation through the classifier's associated Val2[()]:
+
+```text
+tau -> V_tau -> c -> Type(c).associated Val2[()] -> Impl, self=c
+x -> Type(x).associated Val2[()] -> Impl, self=x
+```
+
+No new ConstructEdge or change to TypeRole follows merely from either call.
+
+
 For a struct Pattern `P_T`, role registration may include:
 
 ```text

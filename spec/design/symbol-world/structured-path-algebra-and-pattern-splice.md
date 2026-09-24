@@ -154,7 +154,84 @@ empty-Path spelling or unit exists. The established meanings of ::a and a::
 remain distinct in the representation; storage notation creates no new
 endpoint semantics.
 
-### 2.3 A string constructs one node
+### 2.3 Minimal well-formedness domain
+
+PathShaped is a semantic judgment on ordinary observable structure, not a test
+for an opaque representation tag. The following inductive presentation fixes
+the legal domain; constructor and field spellings remain schematic.
+
+Chains run from the selected member toward the root, in name::path order:
+
+```text
+Names([]) = End
+Names(s :: rest) = Link(NameNode(s), Names(rest))     where s : string
+
+Anchored([], r) = Link(r, End)
+Anchored(s :: rest, r) = Link(NameNode(s), Anchored(rest, r))
+    where s : string and r is ValueRoot(v) or RefRoot(b)
+```
+
+Names and Anchored are finite inductively generated chains. A back-edge is not
+a finite Path chain. Immutable sharing is permitted when each observed chain
+has a finite unfolding. Names([]) is auxiliary termination material, not a
+public empty Path.
+
+The observable endpoint shape has two coordinates:
+
+```text
+member end: Select | Expand
+root end:   TextRoot | OpenRoot | AnchoredRoot
+
+PathShaped(Product(chain=Names(ss), endpoint_shape=(m, TextRoot)))
+    if ss is nonempty and m in {Select, Expand}
+
+PathShaped(Product(chain=Names(ss), endpoint_shape=(Select, OpenRoot)))
+    if ss is nonempty
+
+PathShaped(Product(chain=Anchored(ss, r), endpoint_shape=(m, AnchoredRoot)))
+    if m in {Select, Expand} and RootMaterial(r)
+```
+
+For TextRoot, the final NameNode is the textual root resolved at external Read;
+preceding NameNodes are inward selectors. OpenRoot leaves the root endpoint
+available for compatible composition or the established ambient-root reading.
+For AnchoredRoot, the final node supplies the explicit root. Expand observes
+the finite members of the reached host; Select observes the selected target.
+
+```text
+(field::root)#:
+    Names(["field","root"]), (Select, TextRoot)
+(::a)#:
+    Names(["a"]), (Expand, TextRoot)
+(a::)#:
+    Names(["a"]), (Select, OpenRoot)
+
+RelativeSingleName = (Select, OpenRoot)
+"field" |> path_pattern:
+    Product(chain=Names(["field"]), endpoint_shape=RelativeSingleName)
+```
+
+RootMaterial(ValueRoot(v)) requires legal ordinary root material of the relevant
+namespace/type interpretation; RootMaterial(RefRoot(b)) requires an explicitly
+formed reference carrying such a root interpretation and retaining its actual
+target/generation. This is not proof that a later read, borrow or write is
+authorized. Read rechecks current validity and access.
+
+Consequently explicit root material appears at most once and only at the final,
+outermost end. A representable Product with two roots, a root followed by a name,
+a cyclic chain, a non-string NameNode, mismatched endpoints or an empty standalone
+chain does not satisfy PathShaped. It is not repaired by guessing a root or
+discarding fields. Selector spelling and target existence are separately checked
+at Read; a string node is not itself a resolved selector.
+
+Compatible composition preserves this domain and the established direction:
+name chains compose before the terminal root; an explicit root cannot become
+an intermediate selector or be silently replaced by another root. The
+associativity law applies only when both grouped compositions are legal.
+This fixes structural validity without defining a new public empty-Path unit,
+universal quotation or access authority.
+
+### 2.4 A string constructs one node
 
 ```text
 ConstructNameSegment(s:string) => NameNode(s)
@@ -169,7 +246,7 @@ some structures can form yet fail external reading.
 Construction returns no resolved NameCoord, recovers no Place and grants no
 access.
 
-### 2.4 Quote observes algebraic structure
+### 2.5 Quote observes algebraic structure
 
 ```text
 p# = Quote_Path(p)
@@ -210,9 +287,10 @@ been found while p was defined.
 ### 3.2 The use environment follows ordinary callable rules
 
 The read position is the occurrence's established lexical/semantic environment,
-not an arbitrary dynamic caller's stack. An ordinary callable body uses its
-established dependencies and lexical rules. An admitted in-place embedding use
-follows the established embedding relation.
+not an arbitrary dynamic caller's stack. Both ordinary and in-place callable
+bodies use their established dependencies
+and lexical rules. In-place syntax forms those dependencies automatically;
+invocation does not resolve an outer name anew by spelling.
 
 Once that use resolves its target, projections, delayed execution, runtime
 residue and cache hits cannot look it up again by spelling:
@@ -331,7 +409,33 @@ It is not the two-bare-value tuple (val, ("name" name)), which would destroy
 the all-named layer. The result is Product, not OverloadGroup; constructing
 s |> name does not create a resolved Path or NameBinding.
 
-### 5.2 Names belong to the observed layer
+### 5.2 Ordinary name-to-string observation
+
+The name family owns the ordinary projection used by ADL:
+
+```text
+n = NameObservation(s)
+n : N_s
+N_s = s |> name
+
+R_Gamma(N_<h>, Content(n), rho) => rho(h) = s
+n |> string => s : string
+```
+
+The family-provided string projection returns the same parameter obtained by
+ordinary registered Pattern extraction. N_<h> is schematic notation for the
+name-family Pattern with an explicit hole. The result is the stored string
+parameter, not the source binder spelling and not a NameBindingId, NameCoord
+or resolved path. This is an ordinary explicit projection, subject to ordinary
+applicability and selection, not an implicit conversion or general reflection
+over arbitrary values.
+
+For the requested selector field, name-head extraction binds a to its name
+observation, so a |> string yields "field". Composing that projection with
+path_pattern constructs the relative single-name material of §2.4; subsequent
+splice/navigation performs its own ordinary Read checks.
+
+### 5.3 Names belong to the observed layer
 
 In a local block:
 
@@ -347,7 +451,7 @@ An outer layer actually containing a and b exposes entries labelled "a" and
 "b" when that outer layer is observed. Renaming a local holder does not rename
 the held value's internal members.
 
-### 5.3 Extraction and bucketing
+### 5.4 Extraction and bucketing
 
 ```text
 let x ("a" name) = observed_material;
@@ -367,7 +471,7 @@ SameNameBucket does not imply ArbitraryMerge
 SameNameBucket does not imply ConstructionAuthority
 ```
 
-### 5.4 Current observations are finite
+### 5.5 Current observations are finite
 
 A generator's ability to answer legal future names does not make ::a enumerate
 all possible requests. An open Product contains only the finite actual
