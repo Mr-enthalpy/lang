@@ -397,7 +397,7 @@ different Pattern child identity
 Internal Path formation and its default external Read are separate; see the
 [Path owner](../symbol-world/structured-path-algebra-and-pattern-splice.md).
 Inherited navigation is composition under existing Pattern-parent links, not
-an alternate lookup calculus. Pure quoted structure need not yet resolve.
+an alternate lookup calculus. Pure projected Path structure need not yet resolve.
 
 For a child `inner`, explicit/external and inherited formation routes complete
 to the same canonical entry `inner::bool` and the same child identity. Exact

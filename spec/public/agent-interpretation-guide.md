@@ -307,7 +307,8 @@ extraction followed by explicit ordered assembly is required for a bare sequence
 
 Read_name obtains full structural NameValue; value-expected use continues with
 Read_resident. e# is path_pattern projection, stopping at the first level for
-NameExpr. (n#)$ reconstructs structure; p[i] returns relative single-name
+NameExpr. The Path consumer interprets (n#)$ to reconstruct structure;
+p[i] returns relative single-name
 path_pattern. Textual roots resolve at resident use and explicit anchors retain
 dependencies. Default ADL uses ((a#)[0])$::t, not a string truncation.
 General $ consumes ready ordinary material in a Pattern context without textual

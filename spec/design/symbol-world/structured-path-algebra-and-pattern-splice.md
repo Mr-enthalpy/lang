@@ -40,13 +40,15 @@ NameBinding identity remains distinct from both observations.
 After the relevant file installation, the following may hold:
 
 ```text
-Read(bool::a::path) = Read(bool::)
-bool::a::path == bool::
+Eval_value(bool::a::path) = Eval_value(bool::)
+Read_resident(Read_name(bool::a::path))
+    = Read_resident(Read_name(bool::))
 ```
 
-The structures remain different:
+The first-level structures remain different:
 
 ```text
+Read_name(bool::a::path) != Read_name(bool::)
 (bool::a::path)# != (bool::)#
 ```
 
@@ -259,11 +261,20 @@ n# = n |> path_pattern = PathPattern(Read_name(n))       for legal NameExpr n
 e# equivalent_to e |> path_pattern                     where projection is defined
 e => v; e# = PathPatternProjection(v)                  for ordinary non-name e
 
-(n#)$ equivalent_to_Name/Path n
-(n#)$# = n#
-(n |> path_pattern)$ equivalent_to_Name/Path n
-(n |> path_pattern)$# = n#
+Gamma; Sigma |- (n#)$ =>_Path p
+p =_Path Read_name(n)
+PathPatternProjection(p) = n#
+
+Gamma; Sigma |- (n |> path_pattern)$ =>_Path p
+p =_Path Read_name(n)
+PathPatternProjection(p) = n |> path_pattern
 ```
+
+These round-trip laws are indexed by the Path consumer: Interpret_Path in
+the general splice judgment of §4 interprets the projected Pattern material.
+The surface shorthand (n#)$# = n# assumes this Path interpretation of the
+inner splice. It gives neither Policy nor other Pattern consumers an implicit
+Path decoder and adds no decoding step to the general definition of $.
 
 Both spellings use one projection. A NameExpr operand supplies Read_name(n),
 without entering Read_resident; a general expression supplies its ordinarily
@@ -277,7 +288,7 @@ without source reparsing or reconstruction from a resident value.
 This is value normalization, not source quotation: parentheses, whitespace,
 spans and equivalent construction histories add no identity. Equal residents
 do not imply equal projections. Actual value/ref anchors and their dependencies
-remain observable. Splice reconstructs structure; any subsequent resident read
+remain observable. The Path consumer reconstructs structure; any subsequent resident read
 belongs to its surrounding value-expected consumer, not to $ itself.
 
 ### 2.6 Segment observation and indexing

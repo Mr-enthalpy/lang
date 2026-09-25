@@ -205,7 +205,8 @@ alternate relation or identity.
   to bare sequence requires named extraction and explicit ordered assembly.
 - Read_name obtains full NameValue; value-expected use proceeds to Read_resident.
   e# is path_pattern projection, stopping at the first level for NameExpr.
-  (n#)$ reconstructs structure; p[i] yields relative single-name path_pattern.
+  (n#)$ reconstructs structure only under the Path consumer; p[i] yields
+  relative single-name path_pattern.
   General Slice_Omega remains open. Textual roots resolve at resident use;
   explicit roots retain anchors/dependencies. General $ inserts no implicit
   Path projection and preserves Hole identities. ADL uses ((a#)[0])$::t.

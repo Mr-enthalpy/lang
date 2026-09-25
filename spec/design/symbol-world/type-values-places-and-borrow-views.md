@@ -142,7 +142,8 @@ declaration-extension site cares about the *place*. A borrow view is itself a
 value that carries a place coordinate. The three concerns must not be folded
 into one another.
 
-Path structure forms before external Read; quote can retain it without lookup.
+Read_name supplies Path structure before Read_resident; # / path_pattern
+projection can retain it without resident lookup.
 At external Read a textual root resolves in the use environment, while an explicit
 value/ref root preserves its identity. A resolved named type uses V_tau for calls. Explicit
 OverloadGroups aggregate type candidates through eta(T), without adding a

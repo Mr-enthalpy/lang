@@ -1341,7 +1341,8 @@ uses Read_name to obtain full structural NameValue; ordinary value use then
 performs Read_resident. Postfix e# is the defined path_pattern projection,
 observing only the first level for NameExpr. General $ splices ready material
 without implicit Path conversion, retaining Hole identities. The round-trip
-(n#)$ reconstructs n's structure. Index p[i] yields relative single-name
+(n#)$ reconstructs n's structure under the Path consumer, not through a general
+splice decoding rule. Index p[i] yields relative single-name
 path_pattern; general slicing remains a bounded open question. Textual roots
 resolve at resident use, while explicit roots retain their dependencies.
 Current source consumers remain pending, including # and general splice.

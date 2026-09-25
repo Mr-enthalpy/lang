@@ -230,7 +230,8 @@ not a pending choice based on RHS type or declaration count.
 
 [Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
 defines Read_name/Read_resident, full NameValue structure, path_pattern/# value
-projection and round-trip through general $. Norm_path retains both its string
+projection and round-trip through the Path consumer of general $. Norm_path
+retains both its string
 segments and endpoint/root material in Omega. Indexing p[i] is a relative
 single-name path_pattern, never a string. Default ADL forwards through
 ((a#)[0])$::t. Concrete representations and source wiring remain pending.

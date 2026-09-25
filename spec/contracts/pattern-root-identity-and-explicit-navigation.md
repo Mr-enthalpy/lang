@@ -22,7 +22,7 @@ meta-instance root key. Destination binding paths, registry allocation order,
 and display names do not reroot a Pattern or complete type value.
 
 
-[Path quote and general splice](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
+[Path projection and general splice](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
 do not turn strings into resolved coordinates or access authority. Once resolved,
 projection, runtime residue and caches retain that same chain without relookup.
 Splicing a Pattern preserves its existing PatternRoot/HoleBinderId references;

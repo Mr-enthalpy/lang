@@ -406,6 +406,6 @@ may use only material legally available inside the invocation.
 
 Path consumers must validate the inductive PathShaped domain, including finite
 chains, unique terminal explicit roots and endpoint compatibility. Wire
-Read_name/Read_resident, unified #/path_pattern projection, round-trip and
+Read_name/Read_resident, unified #/path_pattern projection, Path-consumer round-trip and
 relative single-name indexing before ADL uses ((a#)[0])$::t. Keep ordinary
 name-to-string projection independent of Path truncation.

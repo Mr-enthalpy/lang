@@ -503,7 +503,8 @@ Path is ordinary extractable linked material (NameNode, ValueRoot/RefRoot,
 Link/End and endpoint shape). Read_name obtains full NameValue; value-expected
 use proceeds through Read_resident. Text roots resolve at resident use; explicit
 roots retain anchors and dependencies. e# is the defined path_pattern projection,
-stopping at the first level for NameExpr. (n#)$ reconstructs structure. Indexing
+stopping at the first level for NameExpr. The Path consumer interprets (n#)$
+to reconstruct structure; general $ supplies no implicit Path decoding. Indexing
 returns relative single-name path_pattern, not string; general Slice_Omega
 remains open. General $ splices ready Pattern material without implicit Path
 projection, preserves Hole identities and performs no textual substitution.

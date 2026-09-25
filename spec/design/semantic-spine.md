@@ -70,7 +70,8 @@ changes V_T only. Neither construction axis implies the other.
 
 Read_name obtains NameValue structure; value-expected use proceeds through
 Read_resident. # is path_pattern projection, observing the first level for
-NameExpr. (n#)$ reconstructs structure; indexing yields a relative single-name
+NameExpr. (n#)$ reconstructs structure under the Path consumer only;
+indexing yields a relative single-name
 path_pattern and general slicing remains open. Textual roots resolve at
 resident use; explicit roots retain dependencies. General $ splices ready
 Pattern material without implicit Path conversion.
