@@ -54,8 +54,10 @@ restrictions and package mounts provide no additional admission rules.
 
 ## 3. Resolution and visibility
 
-Resolve a name once, read its resident (a named type in the :type case), then apply
-the consumer projection.
+Read_name first supplies structural NameValue. For a value-expected consumer,
+Read_resident resolves once and reads the resident (a named type in the :type
+case), followed by that consumer's value projection. Path projection stops at
+the first level, as specified by the Path owner.
 An explicitly held OverloadGroup uses its own candidate projection.
 Every explicit navigation host retains its own ordinary view/visibility facts.
 Export and public/private policy remain source-defined language relations;

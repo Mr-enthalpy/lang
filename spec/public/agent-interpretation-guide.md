@@ -305,8 +305,11 @@ All directly named entries make a Product layer unordered; one bare entry makes
 that layer ordered. Nested layers decide independently of the top name. Named
 extraction followed by explicit ordered assembly is required for a bare sequence.
 
-Structured Path precedes external Read; textual roots resolve at actual use,
-explicit value/reference roots retain dependencies, and # quotes Path structure.
+Read_name obtains full structural NameValue; value-expected use continues with
+Read_resident. e# is path_pattern projection, stopping at the first level for
+NameExpr. (n#)$ reconstructs structure; p[i] returns relative single-name
+path_pattern. Textual roots resolve at resident use and explicit anchors retain
+dependencies. Default ADL uses ((a#)[0])$::t, not a string truncation.
 General $ consumes ready ordinary material in a Pattern context without textual
 substitution or rebinding Hole identities. Public Policy pair syntax is retired;
 direct source/type Policy projections observe the same edge, whereas a newly

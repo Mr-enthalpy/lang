@@ -1110,10 +1110,17 @@ HomeEligible_tau(F)                                -- classifier home only
   iff Anonymous(F)
   and Home(TypeOf(F)) = TypeMemberScope(tau)
 
+OrdinaryCallableValue(F)
+  implies Val1?(F) != absent
+  and ordinary implementation entries at AssociatedNamespace(Type(F)).Val2[()]
+
 TypeMember_τ(F)
-  iff F ∈ ClassifierDomain(V_τ)
+  iff OrdinaryCallableValue(F)
   and HomeEligible_τ(F)
-  and F has non-generative registration for this snapshot's type callability
+  and RegisteredCallability_τ(F)  -- non-generative V_τ registration
+
+F in V_τ => TypeMember_τ(F)
+CallCandidates_type(τ) = disjoint_union over F in V_τ of CallCandidates_ordinary(F)
 
 CreateClassifier_Gamma(
   F,
@@ -1126,6 +1133,19 @@ V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partit
 Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
+
+OrdinaryCallableValue is the ordinary associated () member judgment, not
+another registration. P let ()::path:t forms a typed structural member/Place;
+legal initialization of AssociatedNamespace(T).Val2[()] supplies x:T's ordinary
+call entrance without changing V_T. TypeAdd(T,v) adds only the eligible ordinary
+callable AnchorFor(v,T) to V_T, without installing T's associated ():
+
+    TypeAdd(T,v) does not imply AssociatedNamespace(T).Val2[()] = v
+    AssociatedNamespace(T).Val2[()] = k does not imply k in V_T
+
+Standalone closure tau_C is a type, not an OrdinaryCallableValue. An established
+same-name contribution consumes closure formation material to create c_C^T;
+it neither inserts tau_C into V_T nor imports all of V_tau_C.
 
 TypeMember registration does not require a named Val2 resident or grant a
 val::path selector for F. The anonymous classifier has its /tau home; navigation

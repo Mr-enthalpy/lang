@@ -112,7 +112,7 @@ function layer; consumer alignment is roadmap work.
 - What IR represents the already defined construction-window termination,
   meta completion, plain closure and registered-structure closure events?
 - What public spelling should the builtin associated-state callable A use?
-- Which values beyond closure-expression-produced closures can prove a
+- Which values beyond ordinary callable members from closure formation can prove a
   location-parametric ReinstantiationWitness? The initial domain is fixed;
   arbitrary owner-changing replication is not admitted.
 - What concrete witness/template and alpha-renaming representation implements
@@ -131,8 +131,10 @@ authority is independent of const/plain/mut and is consumed on the successful
 first commit; later replacement has separate capability and resident
 compatibility checks. Close requires
 initialized retained members being published, not realization of every coordinate.
-First named contribution uses one-shot formation
-and initialization; later contributions extend an existing resident.
+An established same-name closure bucket joins sibling callability materials
+against one common snapshot and initializes once; no first sibling is selected.
+Ordinary singleton let installs tau_C, while contributions form target-anchored
+ordinary callable members. Extension reads only an already initialized resident.
 Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
 requires OpenHere and final anchored closure membership, changing only V_tau;
@@ -227,15 +229,19 @@ not a pending choice based on RHS type or declaration count.
 ### Structured Path representation and remaining surface scope
 
 [Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
-now defines internal composition, ordinary extractable linked nodes, endpoint
-shape, external Read, late textual roots, anchored value/reference roots,
-Path-specific # and general Pattern splice $. A string creates one name node;
-it does not parse source or resolve a target. Ordinary `.field -> field::adl`
-is closed. Concrete representations and source wiring remain pending.
+defines Read_name/Read_resident, full NameValue structure, path_pattern/# value
+projection and round-trip through general $. Norm_path retains both its string
+segments and endpoint/root material in Omega. Indexing p[i] is a relative
+single-name path_pattern, never a string. Default ADL forwards through
+((a#)[0])$::t. Concrete representations and source wiring remain pending.
 
-The exact public ordinal API and general quotation beyond the defined Path
-domain remain open. Neither gap permits implicit sorting of an unordered
-Product or opaque-only Path semantics.
+General slicing p[i:j]:path_pattern is a small open question: define
+Slice_Omega endpoint/root retention, admissible boundaries and empty slices
+without copying stale endpoints or inventing an empty-Path unit. The singleton
+case p[i:i+1]=p[i] is fixed. The public Product ordinal API remains separately
+open; neither gap permits implicit sorting or opaque-only Path semantics.
+`#` is already defined for any expression with applicable path_pattern projection;
+arbitrary source quotation is not supplied by that law.
 
 NameCoord exists independently of realization. Finite generative rules can
 match legal requested coordinates without enumerating an infinite Val2 or using

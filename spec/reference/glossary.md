@@ -131,6 +131,9 @@ An ordinary outer candidate aggregation algebra, with eta(T) = {T}. It can be
 empty. Group += aggregates type/group candidates by its bucket relation without
 mutating the types; type += instead changes V_tau under OpenHere and final
 Home(TypeOf(v)) = TypeMemberScope(T), with independent residency and registration.
+TypeMember requires an ordinary callable value with present Val1. Its own
+classifier's Val2[()] supplies ordinary invocation. Formation of () as an
+ordinary terminal member changes no V_T; TypeAdd installs no () on T.
 Buckets compare complete bound type snapshots, never Core equality.
 
 ### SemanticOwner
@@ -400,8 +403,10 @@ global map primitive.
 
 ### Anchored replication
 
-A ReinstantiationWitness for an eligible closure permits a new instance under
-a target anchor. Captures keep their semantic values and ordinary borrow rules;
+A ReinstantiationWitness for an eligible ordinary callable member c permits a
+new member under a target anchor, not rehosting of the result type tau_C.
+Known-target initial formation directly creates c_C^T. Dependencies keep their
+semantic values and ordinary borrow rules;
 internal identities are consistently renamed. The original owner is unchanged.
 
 ### SafetyPolicy and unsafe admission
@@ -470,9 +475,12 @@ empty-residual rule or a new trait ontology.
 ### Closure formation
 
 Every legal completed closure expression returns full tau_C through ordinary
-struct Material_C. tau_C, its contributed callable c_C, A_C=Type(c_C) and
-the () entry are distinct. File implementation-layer let installs at the
-established package structural root; true lexical let remains a binding.
+struct ClosureMaterial(C). tau_C, its callable c_C, A_C=Type(c_C) and the ()
+entry are distinct. Ordinary singleton/file installation and lexical binding
+install tau_C:type. An established same-name bucket consumes the separate
+CallabilityContribution(T,C)=c_C^T projection, with one target-anchored member
+per declaration. Siblings form jointly; no first RHS, tau_C insertion or bulk
+V_tau import is implied. ClosureMaterial is metanotation, not a new Object.
 In-place syntax uses automatic dependency formation and produces an ordinary
 first-class result. Binding, transfer and outer writes depend on actual
 dependencies, access, capability and lifetime; invocation does not recapture.
@@ -492,10 +500,13 @@ material legally available there, without bypassing masked outer locals.
 ### Structured Path and Pattern splice
 
 Path is ordinary extractable linked material (NameNode, ValueRoot/RefRoot,
-Link/End and endpoint shape), before external Read. Text roots resolve at use;
-explicit value/reference roots retain anchors and dependencies. Postfix # quotes
-Path structure. General $ injects ready ordinary material into a Pattern
-consumer, preserves Hole identities and performs no textual substitution.
+Link/End and endpoint shape). Read_name obtains full NameValue; value-expected
+use proceeds through Read_resident. Text roots resolve at resident use; explicit
+roots retain anchors and dependencies. e# is the defined path_pattern projection,
+stopping at the first level for NameExpr. (n#)$ reconstructs structure. Indexing
+returns relative single-name path_pattern, not string; general Slice_Omega
+remains open. General $ splices ready Pattern material without implicit Path
+projection, preserves Hole identities and performs no textual substitution.
 PathShaped admits finite name chains with a textual/open root endpoint, or
 inward names followed by exactly one terminal explicit root. Endpoint shape
 and root position are semantic constraints. The name family's explicit string

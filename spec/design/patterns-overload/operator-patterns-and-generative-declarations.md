@@ -56,7 +56,7 @@ Inside H, (self,args) is still an ordinary extraction head:
     R_Gamma((self,args), call_material, rho)
     concrete name f adds Selector(requested_coord)=f
     generative name _ adds no concrete selector constraint
-    generative HoleRef(h) extracts the requested selector observation into rho(h)
+    generative HoleRef(h) extracts Read_name(requested_name) into rho(h)
 
 The requested coordinate must already be legally formed. Extractive _ remains
 a wildcard binding no named value. Concrete f is more specific than _ under
@@ -76,8 +76,12 @@ An explicit callable extraction head may be omitted. Omission adds no wildcard
 actual or empty Product and removes no implicit self from a real invocation.
 E may be a general expression; a surrounding ordinary body uses the same direct
 result delivery without an extra Policy-defaulting temp. Requested-name
-extraction observes selector s, not the binder spelling a. Concrete heads beat
-unconstrained heads only by ordinary specificity.
+extraction supplies the full NameValue, including name::path structure, not
+only selector s or the binder spelling a. Selector(requested_coord)=s remains
+the separate observation for concrete-head constraints and specificity.
+This request material enters the admitted invocation inputs In and their
+dependency closure; it is no hidden capture. Concrete heads beat unconstrained
+heads only by ordinary specificity.
 
 General expression bodies retain the required `=>`: `P let H { B }` is not a
 generative MetaDecl form. Omitted extraction heads do not create a capture slot
@@ -272,17 +276,17 @@ adl/
     let <a> a =>
         <t:type>(self, object:t, ...args) => {
             (object, args)
-                |> (a |> string |> path_pattern)$::t
+                |> ((a#)[0])$::t
         };
 ```
 
 Its interpretation uses the established relations:
 
 ```text
-requested selector
--> name-head extraction binds a
--> ordinary string observation
--> single-name path_pattern construction
+requested name field::adl
+-> name-head extraction binds its full NameValue as a
+-> a# projects its complete path_pattern
+-> [0] selects relative single-name path_pattern
 -> $ injects Path material
 -> navigation under the explicit t
 -> ordinary selected call
@@ -292,14 +296,16 @@ requested selector
 For a field request:
 
 ```text
-a |> string = "field"
-(a |> string |> path_pattern)$::t =_Path field::t
+a = NameValue(field::adl)
+a# = PathPattern(field::adl)
+(a#)[0] = PathPattern(field::)
+((a#)[0])$::t =_Path field::t
 ```
 
-The [name-family projection](../symbol-world/structured-path-algebra-and-pattern-splice.md#52-ordinary-name-to-string-observation)
-owns the explicit string step. It returns the requested selector's stored name
-parameter, independently of binder spelling. The default therefore performs
-the ordinary forwarding behavior.
+The [Path index](../symbol-world/structured-path-algebra-and-pattern-splice.md#26-segment-observation-and-indexing)
+owns the relative single-segment result. It discards the original adl endpoint
+rather than copying it onto field::. Ordinary name-to-string projection remains
+available for text observation, but is not this Path truncation operation.
 
 ### 6.2 Canonical lowering
 

@@ -224,9 +224,12 @@ engineering facilities after their inputs and effects obey the source model.
   membership; connect ordinary group updates to their distinct bucket algebra.
 - Connect witnessed anchored replication, preserving captures, internal
   alpha-renaming and the original closure identity. Do not feed the destination
-  anchor backward into parsing or RHS evaluation. Typed name creation does not contribute a closure. First named contribution
-  forms its full type through OneShotFormation and initializes the Place once;
-  subsequent contributions use extend/inject. Check /tau(T) home independently
+  anchor backward into parsing or RHS evaluation. Typed name creation does not
+  contribute a closure. An established sibling bucket joins callability material
+  against one common snapshot, forms its target-anchored ordinary callable
+  members and initializes once. Ordinary singleton let installs tau_C:type.
+  Never insert tau_C into V_T or import its whole callspace. Existing-resident
+  contributions use extend/inject. Check /tau(T) home independently
   of named Val2 residency and either role registration; V_tau membership needs
   no val::path resident. Group buckets use full bound
   type observations, not Core or TypeValueId. Add positive/negative cases for
@@ -312,7 +315,7 @@ have been implemented.
 
 ## Canonical semantic revision implementation gates
 
-The [178-case conformance matrix](canonical-semantic-conformance.md) records
+The [196-case conformance matrix](canonical-semantic-conformance.md) records
 semantic obligations, not passing source tests. This revision changes owners
 and handoffs only. Existing Rust carrier tests still describe connected slices;
 they cannot authorize an alternate implementation of these rules.
@@ -340,20 +343,20 @@ origin retention without a complete runtime backend. Do not make old carrier
 tests pass by relaxing the canonical acceptance scenarios. Full residual IR,
 ABI/layout, effect/error/sync interfaces and arbitrary Pattern algebra remain
 outside this revision. Structured Path semantics are defined; their source and
-evaluator consumers remain pending. Broader quotation and the exact ordinal API
-remain open.
+evaluator consumers remain pending. General Slice_Omega endpoint rules and
+the separate public Product ordinal API remain open.
 
 
 ## PR106 consumer gates
 
 The semantic revision is docs-only. The 64 earlier cases are retained (N01/N03
-clarified), with 114 new cases and D01–D23 owner links. No new source behavior
+clarified), with 132 new cases and D01–D23 owner links. No new source behavior
 is claimed by a successful existing Rust test suite.
 
 | Gate | Current locating evidence | Required consumer / acceptance |
 |---|---|---|
 | Product layers and named open observations | `lang_syntax/src/norm.rs` preserves Product/Pattern carriers | All-named layer unorderedness; explicit named extraction/ordered assembly; finite named open Product. 106-PD/NM |
-| Path, quote and splice | `lang_syntax/src/ast.rs` NavPath is restricted; `token.rs` has Dollar but no Hash consumer | Ordinary extractable linked structure, endpoint direction, late versus anchored roots, # and ready $ preserving holes. 106-PT/SP |
+| NameValue, Path projection and splice | `lang_syntax/src/ast.rs` NavPath is restricted; `token.rs` has Dollar but no Hash consumer | Two-level Read, unified #/path_pattern, relative indexing, endpoint/root material and ready $ preserving holes. 106-PT/SP |
 | Generative/intermediate extraction | Current declaration/Pattern carriers do not implement the new relation end to end | Optional callable head, Concrete/Wildcard/HoleRef selector, expression body, compatible intermediate R valuations and layer cardinality. 106-GN |
 | Public Policy observations | `lang_syntax/src/parser/policy.rs` retains colon/choice grammar; `lang_build/src/policy_pair.rs` retains internal pairs | Retire public pair syntax while preserving full internal observations, same-edge type projection, concrete/hole/splice/omission. 106-SP/RP |
 | Direct result demand | `norm.rs` TailValue and `lang_build/src/control_flow_end.rs` preserve terminal shape | Immediate selected ReturnPattern/Pout before inner maxima; both outer positions constrain inner positions; no implicit temp/no reopen. 106-RP |
@@ -402,5 +405,7 @@ existing parent/callee/canonical-input coordinates. Nested ordinary closures
 may use only material legally available inside the invocation.
 
 Path consumers must validate the inductive PathShaped domain, including finite
-chains, unique terminal explicit roots and endpoint compatibility. Wire the
-ordinary name-family string projection before using it in ADL generation.
+chains, unique terminal explicit roots and endpoint compatibility. Wire
+Read_name/Read_resident, unified #/path_pattern projection, round-trip and
+relative single-name indexing before ADL uses ((a#)[0])$::t. Keep ordinary
+name-to-string projection independent of Path truncation.

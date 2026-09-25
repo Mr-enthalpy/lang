@@ -2,32 +2,38 @@
 
 **Status: canonical semantic authority.**
 
-This owner defines internal Path composition, external Read, Path #, and the
+This owner defines NameValue/Path composition, two-level reading, # projection, and the
 common $ interface. The [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md)
 owns R_Gamma; the [Policy owner](symbol-policy-and-compile-flow-projection.md)
 owns Policy admissibility; the [call owner](function-object-call-model.md) owns
 invocation. All operations use the same E and ordinary Objects. Source consumers
 are pending; examples specify relations, not implemented parser coverage.
 
-## 1. Path structure precedes external reading
+## 1. Name structure and two-level reading
 
-### 1.1 Two interpretation judgments
+### 1.1 Name observation and resident observation
 
-These judgments distinguish domains without adding an Object universe or
-evaluation stage:
+A NameExpr first supplies its own structural NameValue. Only a value-expected
+consumer proceeds to the resident:
 
 ```text
-Gamma; Sigma |- e       =>_Path p
-Gamma; Sigma |- Read(p) => v
-
-Eval_ordinary(e) = Read_Gamma,Sigma(Eval_Path(e))
-    when e is interpreted as a Path expression
+Read_name(n:NameExpr) = NameValue(n)
+Eval_Path(n) = Read_name(n)
+Eval_value(n) = Read_resident(Read_name(n))
 ```
 
-Ordinary value use retains this automatic composition. The Path algebra may be
-small; external objects, lookup, overloads, Policy, name realization and
-authority belong to the ordinary semantics reached by Read. Neither removing
-default Read nor hiding both judgments inside one opaque lookup is valid.
+NameValue retains the complete name::path structure, including endpoints and
+explicit root material. It is ordinary structural material, not a NameBinding
+wrapper, a new Object universe, or a Place capability. Textual nodes need not
+already resolve to a binding. Path/Pattern projection deliberately consumes
+this first level; ordinary value use automatically performs the second.
+Read_resident resolves the structural target and observes its resident under
+ordinary lookup, access, Policy, readiness and no-reopen rules.
+
+In this owner Read(p) abbreviates Read_resident(p) on already formed name/path
+material; Read(source_path) abbreviates the corresponding two-level composition.
+It never means that the first-level structure and its resident are identical.
+NameBinding identity remains distinct from both observations.
 
 ### 1.2 Two equalities
 
@@ -246,28 +252,73 @@ some structures can form yet fail external reading.
 Construction returns no resolved NameCoord, recovers no Place and grants no
 access.
 
-### 2.5 Quote observes algebraic structure
+### 2.5 Path projection and round-trip
 
 ```text
-p# = Quote_Path(p)
-Quote(p::q) = Compose_PathPattern(Quote(p), Quote(q))
-Decode_Path(Quote(p)) =_Path p
-Quote(Decode_Path(v)) = Norm_PathPattern(v)
-    within the legal domain
+n# = n |> path_pattern = PathPattern(Read_name(n))       for legal NameExpr n
+e# equivalent_to e |> path_pattern                     where projection is defined
+e => v; e# = PathPatternProjection(v)                  for ordinary non-name e
+
+(n#)$ equivalent_to_Name/Path n
+(n#)$# = n#
+(n |> path_pattern)$ equivalent_to_Name/Path n
+(n |> path_pattern)$# = n#
 ```
 
-Quote obtains the current Path structure while suppressing default external
-Read. It does not read the final value and reconstruct a path from that value.
+Both spellings use one projection. A NameExpr operand supplies Read_name(n),
+without entering Read_resident; a general expression supplies its ordinarily
+evaluated value. A resolved Pattern binder holding a NameValue supplies that
+bound material, not a new node made from the binder's spelling; thus a# in the
+generative forwarder observes the requested field::adl, not the local label a.
+A value cannot be projected merely because its source once
+looked like a Path. Undefined projection fails through ordinary applicability,
+without source reparsing or reconstruction from a resident value.
 
-This is not source quotation. Parentheses, whitespace, source positions and
-equivalent construction histories do not automatically enter value identity.
-Equal internal normal forms may have equal quotes; equal external reads alone
-are insufficient. Quote cannot erase actual values/references retained by
-explicitly anchored material as if they were irrelevant metadata.
+This is value normalization, not source quotation: parentheses, whitespace,
+spans and equivalent construction histories add no identity. Equal residents
+do not imply equal projections. Actual value/ref anchors and their dependencies
+remain observable. Splice reconstructs structure; any subsequent resident read
+belongs to its surrounding value-expected consumer, not to $ itself.
+
+### 2.6 Segment observation and indexing
+
+The linked presentation has an equivalent ordinary normalized observation:
+
+```text
+Norm_path(p) = <ss, omega>
+ss : String*
+omega : Omega
+PathPattern ~= {<ss,omega> in String* x Omega | PathShaped(<ss,omega>)}
+```
+
+Omega retains Select/Expand, TextRoot/OpenRoot/AnchoredRoot, explicit root
+material and dependencies, and necessary endpoint information. This is a
+restricted legal domain, not an arbitrary pair or a string-only identity.
+Names run in name::path order. No anchor can be recovered from strings alone.
+
+For each existing segment position 0 <= i < length(ss):
+
+```text
+p[i] : path_pattern
+p[i] = PathPattern(Names([ss[i]]), (Select, OpenRoot))
+((field::adl)#)[0] = PathPattern(field::)
+p[i] equivalent_to p[i:i+1]
+```
+
+Indexing returns a relative single-name path_pattern, never a bare string. It
+does not copy the original root endpoint or anchor into the relative result.
+It reads no external resident and grants no authority. Its evaluation retains
+ordinary source/dependency checks; projection does not extend anchor lifetimes.
+
+General p[i:j]:path_pattern is reserved, with Slice_Omega(omega,i,j)=omega'
+recomputing endpoints to match the remaining structure. Only the singleton
+case above is fixed here. General slice boundaries, empty slices and retained
+root behavior remain a small [open question](../../planning/open-questions.md);
+there is no default of copying omega or inventing an empty-Path unit.
 
 ## 3. Late textual roots and explicit anchors
 
-### 3.1 Default quote retains unresolved structure
+### 3.1 First-level projection retains unresolved structure
 
 ```text
 let root = T1;
@@ -280,7 +331,7 @@ let p = (field::root)#;
 ```
 
 Assuming both T1 and T2 legally provide field, the inner ordinary value use of
-p$ interprets root at that external read and therefore uses T2. Quote does not
+p$ interprets root at its resident read and therefore uses T2. Projection does not
 silently retain the outer root's NameBindingId merely because root could have
 been found while p was defined.
 
@@ -316,7 +367,7 @@ NameNode("x") in pure Path structure is not an external read of x. Dependency
 discovery cannot create a capture from a string or uninterpreted name node alone.
 
 A dependency arises when an actual external observation requires it, or when
-the structure explicitly retains value/reference material. Quote need not scan
+the structure explicitly retains value/reference material. Projection need not scan
 the surrounding namespace, and later same-spelled declarations cannot revise
 an already completed read.
 
@@ -383,11 +434,16 @@ The last distinction concerns interpretation roles; it does not reject every
 otherwise legal program with the same spelling. It provides no implicit
 dereference repair.
 
-### 4.5 Quote remains Path-specific
+### 4.5 Projection is not implicit in splice
 
-Path # and general $ do not establish quotation for arbitrary Policy
-expressions, ordinary expressions or callable bodies. Broader Pattern
-quotation remains open and is not a prerequisite for ADL or Policy reuse.
+a$ splices a's current ordinary Pattern value directly into the current algebra.
+(a |> path_pattern)$ first performs path_pattern projection and then splices
+that result. They are not equivalent in general; $ never inserts that projection.
+
+The equation e# equivalent_to e |> path_pattern applies to any expression in
+the projection's domain. It does not quote arbitrary Policy syntax or callable
+source bodies. General $ retains its independent admissibility judgment and
+single evaluation, including existing HoleBinderId, scope and readiness rules.
 
 ## 5. Open navigation, name types and buckets
 
@@ -411,7 +467,7 @@ s |> name does not create a resolved Path or NameBinding.
 
 ### 5.2 Ordinary name-to-string observation
 
-The name family owns the ordinary projection used by ADL:
+The name family owns an ordinary explicit string projection:
 
 ```text
 n = NameObservation(s)
@@ -430,10 +486,11 @@ or resolved path. This is an ordinary explicit projection, subject to ordinary
 applicability and selection, not an implicit conversion or general reflection
 over arbitrary values.
 
-For the requested selector field, name-head extraction binds a to its name
-observation, so a |> string yields "field". Composing that projection with
-path_pattern constructs the relative single-name material of §2.4; subsequent
-splice/navigation performs its own ordinary Read checks.
+This observes a name-family string parameter, not a general Path truncation.
+A generative name head receives the full requested NameValue, for example
+field::adl. Default ADL forwarding uses (a#)[0] to obtain the relative field::
+PathPattern; it does not discard the root through a string conversion.
+A legal name-to-string projection remains available when text is requested.
 
 ### 5.3 Names belong to the observed layer
 

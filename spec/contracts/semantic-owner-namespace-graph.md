@@ -64,8 +64,10 @@ Allocating a lexical owner is not value construction. Every legal completed
 closure expression returns tau_C by ordinary struct formation, with c_C in
 V_tau_C, classifier A_C and terminal () implementation. Source carriers preserve
 syntax before this consumer. No future destination can retroactively choose an
-already evaluated RHS owner. Initial formation at an established contribution
-site and witnessed rehosting of an already formed value remain distinct.
+already evaluated RHS owner. An established same-name bucket consumes
+ClosureMaterial to form ordinary callable members directly at its authorized
+target, not standalone tau_C results. Witnessed rehosting applies only to
+already formed ordinary callable members; it is distinct from that formation.
 
 Every invocation has frame slot 0 for its caller object. This is independent of
 ordinary/in-place placement. When a closure writes any formal position, its
@@ -185,8 +187,10 @@ visibility domain.
 
 Pure Path structure is distinct from this graph's identities. Unanchored textual
 roots resolve on the first external Read; explicit ValueRoot/RefRoot preserve
-ordinary value/reference dependencies. Quote performs no lookup. At external
-Read, Path/name resolution returns one terminal NameBinding, preserving the resolved
+ordinary value/reference dependencies. Read_name supplies structural NameValue;
+`#` and path_pattern consume that first level without resident lookup. A
+value-expected consumer continues through Read_resident. At that second level,
+Path/name resolution returns one terminal NameBinding, preserving the resolved
 host chain and exposure context. It does not return a candidate set:
 
     Resolve(path) -> terminal NameBinding
@@ -279,9 +283,13 @@ Further synthesis requires an explicit structural contribution role. Only
 predetermined syntactic repair shapes that cannot be legal ordinary statements
 may receive that role; legal binding, shadowing, mutation and group actions
 are preserved. Failed execution never retries as contribution. Joined material
-uses ordinary one-shot formation and initialization; subsequent contributions
-use extend/inject/TypeAdd with complete /tau home, residency and registration
-checks. Anchored replication must be witnessed, never a blind V_tau copy.
+uses common-snapshot one-shot formation and initialization, without choosing
+a first sibling RHS. Ordinary singleton closure installation binds tau_C:type;
+a contribution consumes Delta_C,T^call to form one ordinary member c_C^T,
+never inserting tau_C or bulk-importing its V_tau. Updates to an existing
+resident use extend/inject/TypeAdd with complete /tau home and registration
+checks. Ordinary Delta_v^value follows Val2 installation instead. Rehosting
+an existing callable member requires its witness, never a blind V_tau copy.
 
 ```text
 named selector -> structural binding / Place

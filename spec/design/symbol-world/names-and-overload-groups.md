@@ -128,11 +128,29 @@ For a mutable type reference t:
     TypeAdd(T, v):
       bind alpha.<Core(T), V_T[alpha]>
         -> bind alpha.<Core(T), (V_T + v')[alpha]>
+      OrdinaryCallableValue(v)
       v' = AnchorFor(v, T)
+      OrdinaryCallableValue(v')
       Writable(t) and OpenHere(T) and Home(TypeOf(v')) = TypeMemberScope(T)
 
-Only eligible closure-like member values enter this operation. It changes
-V_T, never Core(T). Type subtraction likewise changes only V_T and
+Only ordinary callable member values enter this operation:
+
+    OrdinaryCallableValue(v) implies Val1?(v) != absent
+    CallCandidates_ordinary(v)
+      = Entries(AssociatedNamespace(Type(v)).Val2[()], actual_self=v)
+    TypeMember_T(v) iff OrdinaryCallableValue(v)
+      and Home(Type(v)) = TypeMemberScope(T)
+      and RegisteredCallability_T(v)
+
+RegisteredCallability_T is the existing non-generative V_T registration.
+OrdinaryCallableValue is a judgment on ordinary associated () member semantics,
+not a third registration mechanism. It offers implementation entries; actual
+argument applicability and unique selection are checked at invocation.
+
+    TypeAdd(T,v) does not imply AssociatedNamespace(T).Val2[()] = v
+    AssociatedNamespace(T).Val2[()] = k does not imply k in V_T
+
+TypeAdd changes V_T, never Core(T). Type subtraction likewise changes only V_T and
 requires Writable and OpenHere. Pattern-registered structural extension remains
 the work of extend/inject. Ordinary name initialization/replacement can also
 change the Val2 component of Core, without adding either role registration. Complete values remain immutable snapshots: a successful write
@@ -141,7 +159,7 @@ replaces the value at the target, without changing an earlier copy.
 TypeMemberScope(T) denotes /tau(T), the complete bound type's implementation
 hierarchy, not MemberScope(Core(T)). AnchorFor returns v when its classifier
 already has that home; otherwise it requires the
-closure's ReinstantiationWitness and creates a new anchored instance. It never
+ordinary callable member's ReinstantiationWitness and creates a new anchored instance. It never
 mutates v's owner. See [closure replication](closure-anchored-replication.md).
 
 Group += and type += share operator spelling, not one semantic operation.
@@ -185,6 +203,19 @@ named resident nor its independent Pattern registration.
     P let name::path      == P let name::path : type
     NameExpr != ValueExpr
 
+The terminal name is a selector s in Selector, including the special leaf
+selector (). Thus P let ()::path:t uses these same name/Place formation,
+borrow, initialization and replacement rules. It does not turn () into an
+operator or a navigable parent. After legal initialization at the associated
+namespace of T:
+
+    Val2(AssociatedNamespace(T))[()] = k
+    x:T -> Type(x) -> AssociatedNamespace(Type(x)).Val2[()] -> Impl
+
+This is ordinary-value callability: ordinary Val2 member semantics at ().
+It changes no V_T and supplies no Pattern registration. Readiness, admissible
+implementation material and ordinary invocation checks still apply.
+
 The first two are typed name declarations without an initializer. They share
 typed Place formation, explicit borrowing and ordinary initialization. Their
 destination differs: the unqualified form uses the ordinary fresh lexical
@@ -227,7 +258,8 @@ fresh-name value. Creation installs no readable resident and creates no
 callability or Pattern registration. The declared t may be any ordinary type.
 Omitting :t chooses PlaceType = type, not an already constructed type value.
 
-    NameExpr(n) in value context -> Read(q_n)
+    Read_name(NameExpr(n)) = NameValue(n)    -- complete name/path structure
+    NameExpr(n) in value context -> Read_resident(Read_name(n)) = Read(q_n)
       succeeds only when ResidentState(q_n) = Initialized(v)
     NameExpr(n) ref -> Borrow(q_n)
       uses PlaceType(q_n), without first reading a resident
@@ -348,8 +380,11 @@ struct construction, regardless of file or local position. An ordinary lexical
 `let f=C` binds it without a wrapper; `let a=uint8` binds the RHS type itself.
 
 File implementation declarations have an established structural destination.
-Their source-to-actions handoff installs the evaluated RHS at that package/root
-member using ordinary formation, initialization and requested registration.
+In the ordinary singleton/install case their source-to-actions handoff installs
+the evaluated RHS at that package/root member. For a closure C this resident
+is tau_C:type, without another function-object wrapper. An already established
+multiple-contribution bucket instead consumes closure formation material as
+specified below, not the standalone expression result.
 They are not a file-local scope discarded at exit. A true nested local block
 still binds lexically. The source role is fixed before evaluation, never guessed
 from RHS type or recovered after failed execution.
@@ -373,40 +408,76 @@ Same-name bucket membership permits only the corresponding contribution
 relation, never arbitrary value merge or construction authority. Generators
 are not enumerated over their infinite potential name domain.
 
-### 6.1 First contribution forms the first resident directly
+### 6.1 Common-snapshot closure contribution formation
 
-For established contribution material, Delta_v carries its entry identity,
-policy, captures and dependencies. At every legal completed closure
-position the evaluated RHS already supplies tau_C; ordinary binding retains
-that result without an additional wrapper. For joined explicit contribution
-material the existing formation relation applies:
-The target navigation is fixed by the typed name construction. The existing
-one-shot struct formation relation determines the complete first resident:
+ClosureMaterial(C) is formation metanotation, not a new Object. The consumer
+role is established by the source-to-actions handoff before formation:
 
-    v = Eval(e)
-    n_f = Realize(NameCoord(parent,f), P, type)
+    ordinary singleton/binding/install:
+      Eval(C) = OrdinaryClosureResult(C) = tau_C
+      Bind/Install(f, tau_C:type)
+
+    ContributionRole(root,f), established multiple-closure bucket:
+      Delta_i^call = CallabilityContributionMaterial(C_i)
+      T_f = OneShotFormation_f(join_i Delta_i^call)
+      c_i^f = CallabilityContribution(T_f,C_i)
+      OrdinaryCallableValue(c_i^f)
+      Val1?(c_i^f) != absent
+      Home(Type(c_i^f)) = TypeMemberScope(T_f)
+      V_T_f = {c_1^f, ..., c_n^f}
+
+The whole accepted bucket determines one common-snapshot formation. No sibling
+is designated the first RHS resident; no filename or discovery order chooses
+the initial closure type. The complete result is initialized once through the
+ordinary typed Place and explicit borrow/write relation:
+
+    n_f = Realize(NameCoord(root,f), P, type)
     q_f = BindingPlace(n_f), ResidentState(q_f) = Uninitialized
-    T_1 = OneShotFormation(Delta_v)
     r_f = explicit Borrow(q_f)
-    Initialize(q_f, T_1)               -- one ordinary write
+    Initialize(q_f, T_f)
 
-OneShotFormation is the existing struct/member formation at the resolved
-construction coordinate, not a new primitive. It forms Core, ordinary Val2,
-the complete /tau(T_1) implementation hierarchy and the explicitly requested
-registrations together. No empty type resident or initial inject is required.
-A failure before successful write leaves no readable first resident, subject
-to ordinary transaction rules; Close cannot publish that uninitialized name.
+OneShotFormation is existing struct/member formation at the authorized target,
+including the complete implementation home and requested non-generative
+registrations. It creates neither an empty resident nor an initial inject.
+Failure before commit leaves no readable resident, subject to ordinary
+transaction rules; Close cannot publish the uninitialized name.
 
-Contributions preserve classifier homes, actual construction authority and
-lifetime. Eligible anchored replication requires its ReinstantiationWitness;
-it never reparents an existing closure or blindly copies V_tau entries.
+Each declaration contributes its one target-formed ordinary callable member,
+not its standalone type result or that result's complete callspace:
 
-For subsequent explicitly established contributions, T_i = Read(q_f) exists. The existing
-[one-shot/extend equivalence](symbol-first-meta-construction-and-pattern-injection.md)
-determines Extend(T_i, Delta_v); inject is read + extend + write. TypeAdd is
-its callability contribution step with the complete-type home, residency and
-well-formedness checks of §4. Full formation contributes each entry once;
-there is no extra post-inject += and no replay of earlier RHS captures.
+    TypeAdd(T_f, tau_C_i)                       -- invalid type member
+    V_T_f += V_tau_C_i                         -- no implicit bulk import
+    SameSpelling does not imply ContributionRole
+    ClosureRHS does not imply ContributionRole
+
+Ordinary shadowing, duplicate errors and structural installation keep their
+established consumer. No failed evaluation is retried as contribution.
+
+Member roles distinguish Delta_v^value (evaluated RHS v installed at Val2[s])
+from Delta_C,T^call (closure callability material forming c_C^T in V_T).
+Value shape alone cannot choose either role. An already formed ordinary
+callable c explicitly contributed elsewhere uses AnchorFor(c,T) and, where
+needed, ReinstantiationWitness(c). Initial formation at a known authorized
+target directly creates c_C^T; it does not first create and rehost tau_C.
+
+The callability contribution step is TypeAdd(T_f,c_C^f), not
+TypeAdd(T_f,tau_C). In a joint initial formation it denotes the corresponding
+registration projection, not a requirement to execute incremental writes
+against a nonexistent resident.
+
+For an existing resident, legal incremental formation is an equivalent
+projection of the same material:
+
+    OneShot(Delta_1^call join Delta_2^call)
+      equivalent_to TypeAdd(TypeAdd(T_0,c_1^f),c_2^f)
+
+This equality is restricted to the legal formation/equivalence domain with
+the same base, target home, dependencies and entry identities. TypeAdd consumes
+the ordinary members formed from those materials, not the Delta notation as
+an Object. It grants no missing Writable/OpenHere or lifetime authority,
+requires no discovery order and replays no RHS/dependency effects. Extend
+returns the whole snapshot; inject reads, extends and writes an existing
+resident, with each requested contribution once and no extra implicit +=.
 
 ### 6.2 Unordered siblings share the coordinate before realization
 

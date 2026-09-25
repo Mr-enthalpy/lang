@@ -69,8 +69,12 @@ is intrinsic and immutable; copying, transporting, or adding another group
 entry does not amend it. Ordinary type equality/keying observes Core, while
 explicit whole-snapshot observations retain the bound closure.
 
-TypeMember_tau(F) requires registration for the type's own callability and
-Home(TypeOf(F)) = TypeMemberScope(T) for the complete closure in that snapshot. Ordinary Val2 may
+TypeMember_tau(F) iff OrdinaryCallableValue(F),
+Home(Type(F)) = TypeMemberScope(tau), and RegisteredCallability_tau(F).
+OrdinaryCallableValue(F) requires Val1?(F) != absent and ordinary implementation
+entries at AssociatedNamespace(Type(F)).Val2[()]. Registration here is only
+the existing non-generative V_tau relation, not a new ordinary-callable registry.
+Ordinary Val2 may
 hold arbitrary types without either callability or Pattern-role registration.
 The two registrations are independent; classifier eligibility alone adds neither. Construction actions must satisfy existing
 authority and OpenHere; membership is not inferred from file provenance,
@@ -116,11 +120,31 @@ Every closure expression C has one completed result:
 
 ```text
 Eval_Gamma(ClosureExpr_C) = tau_C
-ClosureExpr_C -> Struct(Material_C)
+ClosureExpr_C -> Struct(ClosureMaterial(C))
 ```
 
-Material_C denotes the head, body, dependencies and ordinary construction/call
-material, not a new public descriptor. The same material may enter Extend;
+ClosureMaterial(C) denotes head, body, dependencies and ordinary construction
+material. It is formation metanotation, not a new Object or public descriptor.
+Two established consumers project it:
+
+    OrdinaryClosureResult(C) = tau_C
+    CallabilityContribution(T,C) = c_C^T
+    OrdinaryCallableValue(c_C^T)
+    Val1?(c_C^T) != absent
+    Home(Type(c_C^T)) = TypeMemberScope(T)
+
+Ordinary evaluation, singleton installation and lexical let use the first:
+let f=C binds/installs tau_C:type without a function-object wrapper. An already
+established same-name contribution bucket uses the second, forming one callable
+member per declaration directly at its authorized target. It does not first
+evaluate standalone tau_C and pass that type to TypeAdd, nor import V_tau_C.
+These are consumer projections, not alternative ordinary expression results.
+SameSpelling and ClosureRHS imply no ContributionRole. Binding, shadowing,
+duplicate errors and structural installs retain their established consumers.
+
+Sibling materials join against a common snapshot before one-shot formation;
+no declaration is privileged as the first closure result.
+The same role-specific material may enter Extend;
 Inject additionally performs ordinary read + extend + write. Each operation
 retains its existing root, authority, OpenHere and well-formedness premises.
 A closure expression need not execute Inject.
@@ -159,9 +183,12 @@ retain ordinary semantic state and source identity. The [lifetime handoff](../li
 does not derive global survival from the result being tau.
 
 A known authorized construction site may form its contribution there initially.
-An already evaluated c or tau retains its original owner; relocation requires
-the existing ReinstantiationWitness and creates a new instance without rerunning
-outer initialization. Binding a completed RHS cannot change its earlier identity.
+An already formed ordinary callable member c retains its original owner;
+later explicit contribution elsewhere uses AnchorFor(c,T) and, where needed,
+ReinstantiationWitness(c). The witness does not relocate the result type tau_C.
+Known-target formation creates c_C^T directly, without a standalone tau_C or
+rehosting step. Replication creates a new member without rerunning outer
+initialization. Binding a completed RHS cannot change its earlier identity.
 
 The enclosing-reference and meta identity rules below are unchanged:
 
@@ -295,14 +322,14 @@ No equality implication is automatic between these identities.
 ### 2.4 Program text names bindings before values
 
 Except for literal syntax and other explicitly specified immediate values,
-program text does not directly name a value. A source Path first forms its
-internal structure; its external Read resolves a name binding, then reads a
-facet/value from that binding:
+program text does not directly name a resident value. Read_name first obtains
+the source name's full structural NameValue; only value-expected use proceeds
+through Read_resident to resolve a binding and observe its facet/value:
 
 ```text
 source path
-  -> internal Path structure
-  -> external Read: resolve name binding
+  -> Read_name: full NameValue / Path structure
+  -> value-expected Read_resident: resolve name binding once
   -> read value / PatternValue from that name binding
 ```
 
@@ -331,7 +358,7 @@ textual content happens to match, but they are not one semantic object.
 Pattern values have no comparable standalone literal syntax, which makes a
 same-spelled source path and pattern diagnostic projection especially easy to
 confuse. The external Read still resolves its source Path before observing the binding;
-Path quotation itself does not perform that external lookup.
+`#` and path_pattern observe the first level without that resident lookup.
 
 ### 2.5 General `let` value binding
 
@@ -543,7 +570,7 @@ registered relational extraction and generative invocation are projections of
 the same operator structure, as defined by the
 [operator owner](../patterns-overload/operator-patterns-and-generative-declarations.md).
 No selector result is a manipulable fresh-name value, and no operator-name
-exception creates write authority. Structured Path formation, quote, splice and external Read are defined by the
+exception creates write authority. NameValue formation, Path projection, splice and resident reading are defined by the
 [Path owner](structured-path-algebra-and-pattern-splice.md).
 
 ## 3. Value Members and Calls
@@ -1986,64 +2013,60 @@ or through `inject`). See §12.1 for the full privilege boundary.
 
 ### 7.6.1 Value-supplied members use the same formation relation
 
-The equivalence also applies to ordinary member construction material whose
-RHS has already evaluated to v. It is not limited to the field spelling in the
-example above. The construction position determines the member role (named
-contribution, structural field, or exact () entry); value shape does not choose
-a different role.
+The equivalence applies to member material with its consumer role already
+fixed. Ordinary evaluated RHS material and closure contribution material are
+distinct inputs to the same formation framework:
 
-Use the following mathematical notation for the existing formation relation:
+    Delta_v^value = ordinary structural member material with evaluated RHS v
+    Delta_C,T^call = closure callability contribution material at target T
+    S_a(B ; Delta) = one-shot struct formation of base B and that material
 
-    Delta_v = that ordinary member material, with evaluated RHS v
-    S_a(B ; Delta_v) = one-shot struct formation with base material B
-                      and that member present from the start at anchor a
+Delta is metanotation, not an Object or an inferred Pattern admitting Type(v).
+A value member installs Val2[s]=v, including s=() when that special leaf and
+its implementation material are legal. It adds no V_T registration. A closure
+callability contribution forms c_C^T from ClosureMaterial(C), with present Val1,
+Home(Type(c_C^T))=TypeMemberScope(T), and requested non-generative V_T
+registration. It installs no associated Val2[()] member on T merely by doing so.
 
-Delta_v is the same semantic input accepted at the corresponding struct
-position. It is not an inferred arbitrary Pattern admitting TypeOf(v), a new
-language value class, or a user-exposed AST. B describes the existing base
-construction; it does not authorize rerunning its effects or original source.
+The source-to-actions handoff fixes the role. It cannot infer contribution
+from a closure RHS or shared spelling, convert Delta_tau_C^value into a call
+contribution, pass tau_C to TypeAdd, or import the whole V_tau_C. Standalone
+closure evaluation still returns tau_C and ordinary let installs it directly.
 
-For the same base, member role, declared policy, resolved dependencies,
-captures and target anchor:
+For the same base, role, policy, realized dependencies, target and entry identity:
 
     T_B = formed base snapshot
-    T_1 = Extend_Gamma(T_B, Delta_v)
-    T_1 equivalent_to S_a(B ; Delta_v)
+    T_1 = Extend_Gamma(T_B, Delta)
+    T_1 equivalent_to S_a(B ; Delta)
 
-The equality observes the complete result, including Core, captured V_tau,
-ordinary generated partners, and internal identities under consistent bound
-alpha-renaming. It is not merely satisfaction equivalence or equality of Core
-lookup indices. No unrelated helper, field or larger admissible Core can be
-added by the incremental path: its result must be the one-shot formation
-result for that exact material.
+The equality observes the complete result, including Core, V_tau, generated
+partners and internal identities under consistent bound alpha-renaming. No
+unrelated field, helper or larger Core may be inserted by the incremental path.
 
-If v already has the required membership, member formation retains it.
-Otherwise, an eligible ReinstantiationWitness supplies the same anchored
-instance that the corresponding one-shot member construction forms. The
-resolved capture values and the anonymous identity graph are preserved under
-the existing replication rules. The target anchor is already fixed independently
-of the Core contents; it is not recovered from the LHS by RHS evaluation.
+Known-target closure material forms c_C^T there initially. If a previously
+formed ordinary callable c is explicitly supplied instead, AnchorFor(c,T)
+retains it when already eligible or requires its ReinstantiationWitness to
+create a new eligible member. It preserves realized dependencies and internal
+identity; it neither rehosts tau_C nor reruns initializers.
 
-This determines Core preparation by projection of the existing formation:
+Unordered sibling call materials are joined against one common snapshot:
 
-    Q_1 = Core(S_a(B ; Delta_v))
-    v_a = the member instance formed in that result
-    Home(TypeOf(v_a)) = TypeMemberScope(T_1)
-    named Val2 residency only if requested by that member material
-    non-generative role registration checked independently
+    T_f = OneShotFormation_f(join_i Delta_i^call)
+    V_T_f = {c_i^f | accepted declaration i}
 
-The local contribution step is TypeAdd after that Core preparation, together
-with the ordinary generated-member closure. Extend returns the whole completed
-snapshot; inject commits it through the ordinary reference. Thus an externally
-performed inject of Delta_v already includes v_a exactly once. Appending another
-TypeAdd afterward would be a second contribution, not this derivation.
+No sibling's standalone tau_C is an initial resident for the others. One-shot
+formation prepares the complete target home and each requested registration.
+Within the legal equivalence domain an incremental presentation uses TypeAdd
+for each formed ordinary callable member; Delta itself is not a TypeAdd value.
+Ordinary Delta_v^value follows Val2 member formation instead. Extend returns the
+whole snapshot and inject commits it through the ordinary reference, with no
+additional implicit +=.
 
-The comparison is a formation law, not replay of source code or equality of
-execution traces. Incremental formation retains its actual typed name creation/initialization,
-OpenHere, Writable, lifetime and Pre/commit/Post events. A hypothetical
-one-shot expression grants no missing incremental authority. If the ordinary
-one-shot member formation is undefined (including missing witness or illegal
-captures), this equivalence supplies no alternate successful construction.
+This is a formation law, not source replay or equality of execution traces.
+Incremental creation/initialization, OpenHere, Writable, lifetime and
+Pre/commit/Post remain required. A hypothetical one-shot expression supplies
+no missing authority. Undefined one-shot formation (including an absent
+required witness or illegal dependencies) gains no alternate successful route.
 
 ## 8. `extend` and `inject`
 
@@ -2444,7 +2467,7 @@ does not define a competing Pattern normal form.
 
 ### 11.1 External navigation reads a resolved target
 
-Pure Path formation and quote may precede any lookup. At the first external
+Read_name and Path projection may precede any resident lookup. At the first resident
 Read, text-root paths resolve in that use's lexical/semantic environment;
 explicit ValueRoot/RefRoot material retains its actual identity. Both inherited
 and explicit text-root Pattern navigation then use the same final two steps:

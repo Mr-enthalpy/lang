@@ -90,6 +90,30 @@ General [dependencies](dependency-observation-and-realization.md) precede captur
 and layout. Closure lifetime propagation is explicitly handed to the lifetime
 owner, not inferred from tau, Core equality, ZST or placement.
 
+### 1.1 Two orthogonal construction axes
+
+Ordinary-value callability is ordinary Val2 member semantics at the special
+terminal selector (). P let ()::path:t forms its typed Place; borrow,
+initialize and replace follow the ordinary name/Place rules. A legal
+AssociatedNamespace(T).Val2[()]=k supplies x:T's implementation entries.
+There is no additional ordinary-callable registration.
+
+TypeAdd(T,v) is the other axis: it adds only v'=AnchorFor(v,T) to V_T.
+TypeMember_T(v') requires OrdinaryCallableValue(v'), including present Val1,
+the complete-type classifier home and non-generative RegisteredCallability_T.
+
+    TypeAdd(T,v) does not imply AssociatedNamespace(T).Val2[()] = v
+    AssociatedNamespace(T).Val2[()] = k does not imply k in V_T
+
+The candidate union above therefore ranges over ordinary callable values,
+each entering through its own classifier's associated ().
+
+Ordinary let f=C installs tau_C:type. Only an already established same-name
+contribution role consumes CallabilityContribution(T_f,C)=c_C^f instead.
+Sibling materials jointly form T_f and all its members against a common
+snapshot; no first sibling supplies a standalone tau_C as the initial resident.
+Neither TypeAdd(T_f,tau_C) nor automatic bulk import of V_tau_C is that relation.
+
 ## 2. Pipeline call form
 
     Product |> expression

@@ -62,10 +62,18 @@ Naked operator use selects operator[op], dot .op selects op::adl; OG_s retains
 spelling and selects the current slot. Every legal completed closure expression
 produces tau_C through ordinary struct; file implementation-layer let installs
 under the established package root, while true lexical let remains a binding.
+Ordinary singleton let installs tau_C:type. Established same-name contribution
+instead consumes ClosureMaterial to form one ordinary c_C^T per declaration
+against a common snapshot, never inserting tau_C or importing its V_tau.
+Ordinary member formation at terminal () supplies Val2 callability; TypeAdd
+changes V_T only. Neither construction axis implies the other.
 
-Structured Path algebra precedes external Read: textual roots resolve at the
-actual use, explicit value/reference roots retain their dependencies. `#` quotes
-Path structure; `$` injects ready ordinary material into a Pattern consumer.
+Read_name obtains NameValue structure; value-expected use proceeds through
+Read_resident. # is path_pattern projection, observing the first level for
+NameExpr. (n#)$ reconstructs structure; indexing yields a relative single-name
+path_pattern and general slicing remains open. Textual roots resolve at
+resident use; explicit roots retain dependencies. General $ splices ready
+Pattern material without implicit Path conversion.
 All directly named Product entries form an unordered layer; a bare entry makes
 that layer ordered. Named extraction plus explicit assembly supplies sequence.
 Policy value/type observations retain the same evaluation edge; public policy

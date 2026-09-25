@@ -4,14 +4,15 @@ Status: canonical closure capability; source consumer pending.
 
 ## 1. Membership and immutable identity
 
-For T = bind alpha.<Core(T), V_T[alpha]>, a contributed closure v must satisfy
-Home(TypeOf(v)) = TypeMemberScope(T). A previously formed closure has its own anonymous type and
+For T = bind alpha.<Core(T), V_T[alpha]>, a contributed ordinary callable member v
+must satisfy Home(TypeOf(v)) = TypeMemberScope(T). A previously formed callable
+member has its own anonymous type and
 owner. Writing into another target cannot change that existing owner, rewrite
 its identity, move it under another parent, or reinterpret it as an alias.
 
-The canonical initial domain is closure-expression-produced closures with a
-location-parametric construction witness. This is not a capability of arbitrary
-values.
+The canonical initial domain is ordinary callable members produced from closure
+formation material with a location-parametric construction witness. This is not
+a capability of arbitrary values or of the standalone closure result type tau_C.
 
 ## 2. Reinstantiation witness
 
@@ -64,6 +65,7 @@ relation, not by reconstructing it from Core or hashing changing callspace data.
 TypeAdd requires Writable, OpenHere(T), and a well-formed resulting snapshot.
 For v' = AnchorFor(v,T), check separately:
 
+    OrdinaryCallableValue(v') and Val1?(v') != absent
     Home(TypeOf(v')) = TypeMemberScope(T)
     RegisteredCallability_T'(v')      -- authorized non-generative contribution
 
@@ -87,9 +89,11 @@ satisfy the selected write operation and PlaceType; creation does not supply
 a closure conversion or anchored replication. Structural let-with-assignment
 is not a canonical compound expression.
 
-In a named-contribution position, the first closure contribution instead uses
-the existing one-shot formation to produce that complete first type, then
-initializes once. After an initialized T exists, further member material uses
+In an established multiple-contribution bucket, accepted sibling closure
+materials jointly determine one complete type and its target-formed callable
+members, then initialize once. No sibling's standalone tau_C is the first
+resident. A singleton ordinary declaration simply installs tau_C:type.
+After an initialized T exists, further member material uses
 extend/inject and its complete-type anchoring relation. An explicit += can
 change callability registration when the home, non-generative registration and result consistency
 premises hold. Neither the first formation nor an inject is followed by an
@@ -115,13 +119,16 @@ retaining the old one. Neither case adds a new owner kind or window rule.
 
 ## 6. Local open question
 
-Which values beyond closure-expression-produced closures can demonstrate a
+Which values beyond ordinary callable members from closure formation can demonstrate a
 valid location-parametric ReinstantiationWitness? The initial domain is fixed;
 generalization requires proof rather than assuming arbitrary values are
 replicable. Concrete witness/template representation is implementation work.
 
 
 Initial formation at a known authorized contribution site differs from rehosting
-an already formed value. The unified [construction relation](symbol-first-meta-construction-and-pattern-injection.md)
+an already formed ordinary callable member c. A known target T directly forms
+c_C^T with Home(Type(c_C^T))=TypeMemberScope(T). Only later explicit contribution
+of an already formed c needs AnchorFor(c,T) and its replication witness.
+The unified [construction relation](symbol-first-meta-construction-and-pattern-injection.md)
 does not remove this witness or rerun [] initializers. General [dependency](dependency-observation-and-realization.md)
 checks remain active throughout; deferred lifetime refinement grants no exemption.

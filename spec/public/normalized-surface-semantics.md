@@ -1337,11 +1337,14 @@ Normalization neither inspects RHS semantic type nor retries failed execution.
 ### Structured Path and Product handoff
 
 [Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
-is ordinary extractable material before external Read. Postfix # quotes Path
-structure; general $ injects ready material into its Pattern consumer, retaining
-Hole identities. Pure textual roots resolve at the actual read use; explicit
-ValueRoot/RefRoot preserve their dependencies. Current source consumers are
-pending, including # and general splice contexts.
+uses Read_name to obtain full structural NameValue; ordinary value use then
+performs Read_resident. Postfix e# is the defined path_pattern projection,
+observing only the first level for NameExpr. General $ splices ready material
+without implicit Path conversion, retaining Hole identities. The round-trip
+(n#)$ reconstructs n's structure. Index p[i] yields relative single-name
+path_pattern; general slicing remains a bounded open question. Textual roots
+resolve at resident use, while explicit roots retain their dependencies.
+Current source consumers remain pending, including # and general splice.
 
 All directly named Product entries make that layer unordered; any bare entry
 makes the whole layer ordered. The top name does not decide ordering; nested

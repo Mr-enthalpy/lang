@@ -10,8 +10,9 @@ restrictions with automatic dependency formation; the existing CL/PT/AD/LF
 case IDs record the corrected relations. Type identity is independent of
 self-construction; type calls select once over all callable/implementation pairs,
 and dependency realization is fixed by the selected ordinary source action.
-The 106 initial PR106 scenarios plus 8 review boundary cases bring this index
-to 178 cases; these are semantic acceptance obligations, not 178 executed tests.
+The 132 PR106 scenarios bring this index to 196 cases, including independent
+callable construction axes, closure contribution consumers and two-level Path
+observations. These are semantic acceptance obligations, not 196 executed tests.
 
 | Case group | Canonical owners | Implementation gate |
 |---|---|---|
@@ -137,15 +138,15 @@ Existing carrier test success is not coverage of these new semantics.
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| 106-PT01 | bool::a::path and bool:: have equal external reads | Their ordinary values may agree while their quoted structures differ. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT02 | Quote a pure Path with no existing external target | Obtain legal structure without requiring final-target lookup. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT03 | Equivalent internal Path constructions | Quote observes normalized structure, not whitespace, parentheses or source positions. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT01 | bool::a::path and bool:: have equal external reads | Their ordinary values may agree while their first-level Path projections differ. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT02 | Project a pure NameValue with no existing external target | Obtain legal structure without requiring final-target lookup. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT03 | Equivalent internal Path constructions | Path projection observes normalized structure, not whitespace, parentheses or source positions. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT04 | Three legal internally composed Path segments | Preserve associativity and the language's name::path direction. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT05 | The endpoints of ::a and a:: | Retain the difference rather than erasing both to an undirected sequence. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT06 | Ordinary extraction and validation of path_pattern | Expose nodes, links and endpoints. PathShaped rejects empty standalone/cyclic chains, multiple or nonterminal explicit roots, non-string names and incompatible endpoints; representation alone is insufficient. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT07 | Construct Path material from a string | Create Names([s]) with RelativeSingleName=(Select,OpenRoot), without lookup or access authority. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT08 | A string contains :: or parentheses | Do not automatically re-lex or parse it as more paths or arbitrary source. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT09 | Quote and reinject into a Path consumer | Recover equivalent internal structure within the legal domain. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT09 | Project and reinject into a Path consumer | Recover equivalent internal structure within the legal domain. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT10 | An inner binding shadows the textual root of a pure Path | Resolve at that external read and use the applicable inner root. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT11 | A Path explicitly retains an ordinary value root | Preserve that material under ordinary value rules; a same-spelled name does not replace it. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT12 | A Path explicitly retains a reference root | Preserve target/generation without lifetime extension or automatic retargeting. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
@@ -202,7 +203,7 @@ Existing carrier test success is not coverage of these new semantics.
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
 | 106-GN01 | let _ => E without an explicit callable head | A legal generative head; invent neither a wildcard actual nor an implicit empty Product. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
-| 106-GN02 | let <a> a => E receives a field request | a observes the requested name, not the binder spelling a. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
+| 106-GN02 | let <a> a => E receives a field request | a retains the full requested NameValue (field::adl); selector constraints remain separate and binder spelling a adds no segment. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN03 | Concrete and general generators both apply | Use ordinary specificity, without a separate generator priority. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN04 | Incomparable maxima or failure after selection | Ordinary ambiguity/terminal failure; do not reopen generation. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN05 | Expression body versus an ordinary enclosing body | Use the same result delivery without inserting a semantic temporary for surface differences. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
@@ -236,7 +237,7 @@ Existing carrier test success is not coverage of these new semantics.
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
 | 106-AD01 | Default .field entrance | Lower to field::adl; the normalizer does not privately create the forwarding body. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
-| 106-AD02 | Project the requested name to string, then construct path_pattern | NameObservation(s) explicitly projects to s through the name family, independent of binder spelling; form relative single-name material for legal navigation under t. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
+| 106-AD02 | Project a full requested NameValue and index its first segment | a# preserves field::adl; (a#)[0] is relative field:: path_pattern, so ((a#)[0])$::t forms field::t without string truncation. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-AD03 | Request a new field after closing adl rules | Realize an ordinary Val2 occurrence from frozen rules, without new structural registration. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-AD04 | The forwarded type t | An ADL request neither injects field into t nor grants new OpenHere. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-AD05 | The forwarder body's object parameter | Remain explicit; do not replace the callee's own self. | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
@@ -303,7 +304,35 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-MD04 | Equal parent, selected callable and canonical In under different caller-local environments | Same MetaInstanceRootKey and instance; no CapturedEnv coordinate or hidden capture in callee identity. Hidden caller locals cannot affect results; repeated acquisition preserves current lawful instance state without reinitialization. | [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity) | Defined semantics; source/evaluator consumer pending |
 | 106-MD05 | Meta body forms an ordinary closure from admitted inputs, or In carries a dependency-bearing ordinary closure | Permit ordinary explicit/automatic dependencies on legally available material, retaining input normalization, transitive dependency and lifetime checks. The nested closure cannot recover a masked enclosing local or add a MetaDecl capture axis. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md#41-meta-declarations-have-no-closure-capture-channel), [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md) | Defined semantics; source/evaluator consumer pending |
 
-The PR106 extension contains **114 cases**. Each acceptance or rejection depends
+### 106.13 Callable construction and contribution consumers
+
+| ID | Scenario | Required result | Canonical owner | Consumer status |
+|---|---|---|---|---|
+| 106-CA01 | P let ()::path:t, then legal initialization | Establish ordinary Val2[()] without modifying V_T. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA02 | TypeAdd(T,v) with all premises | Only V_T gains AnchorFor(v,T); no associated Val2[()] on T is installed. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA03 | Ordinary singleton/local let f=C | Resident is tau_C:type, with no function-object wrapper. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA04 | Two declarations in an established same-name closure bucket | Jointly form c_1^f and c_2^f at T_f's home and register both in its V_T_f. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA05 | Attempt TypeAdd(T_f,tau_C_i) | Reject the type result with absent Val1 as a TypeMember. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA06 | Attempt automatic import of all V_tau_C_i | No bulk import: the declaration contributes only its own formation projection. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA07 | Permute discovery of unordered sibling contributions | Preserve the joined result and entry identities; no first sibling/resident, reordered effects or duplicated initialization authority. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA08 | Same-spelled ordinary lexical lets with closure RHS | Retain binding/shadowing/duplicate rules; spelling and RHS confer no ContributionRole or TypeAdd. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA09 | v in V_T | Require present Val1, ordinary callability, target classifier home and registration. Enter Type(v)'s associated Val2[()] in the single candidate union. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA10 | Known-target formation versus later contribution of existing c | Initially form c_C^T directly; later rehosting uses AnchorFor(c,T) and required witness on c, preserving old identity/dependencies. Never rehost tau_C or replay initializers. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+
+### 106.14 Two-level NameValue and Path observations
+
+| ID | Scenario | Required result | Canonical owner | Consumer status |
+|---|---|---|---|---|
+| 106-PT15 | NameExpr in Path and value-expected contexts | Read_name retains full NameValue; only value use performs Read_resident. Equal residents do not equate structures. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT16 | Compare e# and path_pattern projection | One defined projection: NameExpr stops at its first level; general values require applicable projection, with no source quotation fallback. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT17 | Round-trip legal n through (n#)$ | Reconstruct n up to Name/Path equivalence and obtain (n#)$#=n#; splice performs no resident read. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT18 | Compare direct a$ with projection followed by splice | Direct splice uses the current Pattern; projected splice first converts it. No implicit conversion or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT19 | Index ((field::adl)#)[0] | Return relative field:: path_pattern, not string or a path retaining the adl endpoint. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT20 | Equal segment strings with different endpoints or explicit roots | Retain Omega distinctions and actual root dependencies; strings cannot recover identity or authority. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT21 | Reconstruct a Path whose target became unavailable | Surrounding Read_resident checks current access/validity without reopening or deriving authority from projection. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT22 | General slice beyond the singleton case | p[i:i+1]=p[i] is fixed; general Slice_Omega remains open. Do not copy stale roots or infer an empty public Path. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+
+The PR106 extension contains **132 cases**. Each acceptance or rejection depends
 on its owner's premises; schematic source is not an unconditional theorem.
 
 ## Decision-to-owner map

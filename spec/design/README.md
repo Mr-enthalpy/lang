@@ -9,7 +9,7 @@ that the corresponding source semantics is implemented.
 
 | Topic | Owner |
 | --- | --- |
-| Structured Path, external Read, quote and general Pattern splice | [Path algebra](symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| NameValue, two-level Read, Path projection/indexing and Pattern splice | [Path algebra](symbol-world/structured-path-algebra-and-pattern-splice.md) |
 | General dependencies, semantic realization and one-time formation | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
 | Callable tails and Pack boundaries | [callable material](patterns-overload/callable-tail-dot-closure-and-pack-pattern.md) |
@@ -61,6 +61,6 @@ tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
 
 [Semantic spine](semantic-spine.md) supplies the compact dependency map.
 [Conformance scenarios](../planning/canonical-semantic-conformance.md) record
-the 64 retained and 114 new revision cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
+the 64 retained and 132 new revision cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
 [open questions](../planning/open-questions.md) contains only remaining choices.
 Historical files are non-authoritative and are not rewritten for current rules.

@@ -81,6 +81,16 @@ alternate relation or identity.
 - Pattern applicability and extraction come from `R_Gamma(P,c,rho)`.
 - `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
 - NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
+- Ordinary Val2 member formation accepts terminal selector (), supplying
+  ordinary-value callability without another registry. TypeAdd changes V_T only;
+  neither axis implies the other. TypeMember requires an ordinary callable with
+  present Val1, its target classifier home and non-generative V_T registration.
+  Ordinary let f=C binds/installs tau_C:type. Established same-name closure
+  buckets consume ClosureMaterial to form one c_C^T per declaration, against a
+  common snapshot, without a first sibling, tau_C insertion or bulk V_tau import.
+  Delta_v^value and Delta_C,T^call retain distinct consumer roles.
+  Replication witnesses apply to already formed ordinary callable members;
+  known-target initial formation directly creates c_C^T.
 - Same-name construction synthesizes a type's V_tau; ordinary lexical let does
   not aggregate. Structural P let name::path:t creates typed NameExpr and an
   Uninitialized Place, not a resident or ref; omitted :t means :type.
@@ -193,9 +203,12 @@ alternate relation or identity.
 - Product layers with all direct entries named are unordered; any bare entry
   makes that whole layer ordered. Nested layers decide independently. Unordered
   to bare sequence requires named extraction and explicit ordered assembly.
-- Structured Path precedes external Read. Textual roots resolve at actual use;
-  explicit value/reference roots retain anchors and dependencies. # quotes Path;
-  general $ consumes ready Pattern material while preserving Hole identities.
+- Read_name obtains full NameValue; value-expected use proceeds to Read_resident.
+  e# is path_pattern projection, stopping at the first level for NameExpr.
+  (n#)$ reconstructs structure; p[i] yields relative single-name path_pattern.
+  General Slice_Omega remains open. Textual roots resolve at resident use;
+  explicit roots retain anchors/dependencies. General $ inserts no implicit
+  Path projection and preserves Hole identities. ADL uses ((a#)[0])$::t.
 - Public Policy pair syntax is retired; internal value/type observations remain
   independent and share the source evaluation edge only for direct projections.
   Concrete atoms, omission, holes and splice remain distinct.

@@ -665,6 +665,7 @@ PatternClosureConsistent(tau) iff
   and WellFormedCore(Q)
   and ∀F ∈ ClassifierDomain(V_τ):
       F is registered for this type's own callability
+      and OrdinaryCallableValue(F) and Val1?(F) != absent
       and F is a complete internally well-formed callable and Home(TypeOf(F)) = TypeMemberScope(tau)
       and its () entry obeys Type(callee) = Type(first self)
   and ∀K registered as a Pattern construction/extraction closure in Q:
@@ -2757,14 +2758,47 @@ Close requires retained structural names being published to be initialized;
 open HasName facts may precede dom(Val2). Legal coordinates not yet retained are
 not uninitialized members and need not all be realized before Close. Later
 generated ordinary Val2 results do not reopen registered structure. See [name semantics](names-and-overload-groups.md)
-for the formation and closure rules and the first named-contribution trace.
-First contribution forms its complete type by one-shot formation and initializes
-once; only later contributions read an existing type for extend/inject.
+for formation, closure and the joined named-contribution trace.
+An established sibling contribution bucket joins all role-specific materials
+against a common snapshot, forms one complete type, and initializes once.
+No first closure RHS is its initial resident. Ordinary singleton let installs
+tau_C:type. Extension of an already initialized snapshot uses extend/inject.
 
 Creation/initialization registers neither callability nor Pattern roles.
 Inject still reads an existing resident, extends it and writes the result;
 it cannot initialize an unreadable target. Physical files grant no authority.
 A's instance/member references preserve their original targets and dependencies.
+
+### 7.1.3 Independent callable construction axes
+
+P let s::path:t accepts a terminal selector s in Selector, including the special
+leaf (). Its Place formation, borrow, initialization and replacement use the
+ordinary rules; () is neither an operator nor a navigation parent.
+Initializing AssociatedNamespace(T).Val2[()]=k supplies ordinary x:T's call
+entrance. This is ordinary Val2 semantics, with no third callability registry.
+
+    OrdinaryCallableValue(v) implies Val1?(v) != absent
+    CallCandidates_ordinary(v)
+      = Entries(AssociatedNamespace(Type(v)).Val2[()], actual_self=v)
+    TypeMember_T(v) iff OrdinaryCallableValue(v)
+      and Home(Type(v)) = TypeMemberScope(T)
+      and RegisteredCallability_T(v)
+
+RegisteredCallability_T is the existing non-generative registration in V_T;
+the anonymous classifier and complete-snapshot consistency checks still apply.
+TypeAdd(T,v) forms v'=AnchorFor(v,T) and changes only V_T to V_T + v':
+
+    TypeAdd(T,v) does not imply AssociatedNamespace(T).Val2[()] = v
+    AssociatedNamespace(T).Val2[()] = k does not imply k in V_T
+    CallCandidates_type(T)
+      = disjoint_union over v in V_T of CallCandidates_ordinary(v)
+
+This union undergoes one selection. Named residency of v in T is not required;
+the associated () on Type(v) is a different coordinate. A closure result tau_C
+has absent Val1 and cannot itself be a TypeMember. Ordinary binding installs
+tau_C:type; established same-name contribution consumes ClosureMaterial(C)
+to form one eligible c_C^T at the known target. It imports neither tau_C nor
+the whole V_tau_C. See the [formation consumers](symbol-first-meta-construction-and-pattern-injection.md#211-v_τ-closure-materialization-derived-semantics).
 
 ## 8. Type values in overload and pattern matching
 

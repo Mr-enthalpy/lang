@@ -60,11 +60,14 @@ is not canonical. Close requires retained structural names being published to be
 initialized; it does not require all future generated coordinates to be realized.
 Ordinary lexical let remains unchanged.
 
-Every legally completed closure RHS returns tau_C. At the file implementation
-layer, declarations install that result at the established structural root;
-local blocks retain ordinary lexical let. Further contribution to the named
-type's V_tau requires an established structural contribution role. Different sibling files
-can contribute to that named type. Distinct entry identity survives equal values.
+Every legally completed ordinary closure evaluation returns tau_C. Ordinary
+singleton file declarations install tau_C:type at the established root; local
+blocks bind it lexically. An established same-name contribution bucket instead
+consumes ClosureMaterial(C_i) to form one target-anchored ordinary callable
+c_i^f per declaration. Its joined materials jointly form T_f and V_T_f against
+a common snapshot, without choosing a first RHS or installing standalone
+tau_C_i in V_T_f. Different sibling files can contribute to that bucket.
+No whole V_tau_C_i import is implied. Distinct entry identity survives equal values.
 Ordinary lexical let and Pattern structural-child registration remain separate.
 
 Sibling actions established as contributions to f share NameCoord(root,f)
@@ -134,9 +137,11 @@ At implementation root r, a top-level declaration:
 let a = e;
 ```
 
-normalizes to ordinary actions that form and install Eval(e) at the corresponding
-name/member position under r. Merely binding a inside a file-local lexical
-block would leave the implemented package without its members.
+in the ordinary installation case hands off to actions that form and install
+Eval(e) at the corresponding name/member position under r. An established
+multiple-closure contribution role instead consumes formation material as in
+§3; it never evaluates tau_C for insertion into V_T. Merely binding a inside
+a file-local lexical block would leave the package without its members.
 
 The structural role and destination are established at the source-to-actions
 handoff. This is not a retry after failed lexical let evaluation. True local
@@ -180,7 +185,7 @@ After the applicable structural formation has completed:
 Read(bool::a::path) = Read(bool::)
 ```
 
-Here a is an actual installation layer. The two quoted Path structures remain
+Here a is an actual installation layer. The two first-level Path projections remain
 different.
 
 In a true local block the same let instead establishes:

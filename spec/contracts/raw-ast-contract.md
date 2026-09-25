@@ -612,7 +612,10 @@ Current colon/choice carriers are compatibility debt, not permission for a
 resolved stage/mode union. Concrete atoms, omission, declared holes and general
 Pattern splice are distinct. `runtime let` introduces no `runtime` hole.
 
-Structured Path nodes, postfix # and general $ consumer wiring are pending.
+Read_name/Read_resident, path_pattern projection (#), relative single-name
+indexing and general $ consumer wiring are pending. # observes values rather
+than source AST; general $ does not insert Path conversion. General slicing
+is reserved, not implemented merely by retaining a bracket carrier.
 The existing Dollar token alone implements neither splice readiness nor
 PatternRoot/HoleBinderId preservation. Optional generator heads, HoleRef
 requested-name selectors and expression bodies require ordinary source
