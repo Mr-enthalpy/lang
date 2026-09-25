@@ -238,9 +238,11 @@ single-name path_pattern, never a string. Default ADL forwards through
 
 General slicing p[i:j]:path_pattern is a small open question: define
 Slice_Omega endpoint/root retention, admissible boundaries and empty slices
-without copying stale endpoints or inventing an empty-Path unit. The singleton
-case p[i:i+1]=p[i] is fixed. The public Product ordinal API remains separately
-open; neither gap permits implicit sorting or opaque-only Path semantics.
+without copying stale endpoints or inventing an empty-Path unit. Indexing is
+fixed as relative single-name selection; whether singleton slicing agrees with
+indexing remains undecided, including when a slice touches a root endpoint.
+The public Product ordinal API remains separately open; neither gap permits
+implicit sorting or opaque-only Path semantics.
 `#` is already defined for any expression with applicable path_pattern projection;
 arbitrary source quotation is not supplied by that law.
 

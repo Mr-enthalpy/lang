@@ -321,8 +321,9 @@ without source reparsing or reconstruction from a resident value.
 
 This is value normalization, not source quotation: parentheses, whitespace,
 spans and equivalent construction histories add no identity. Equal residents
-do not imply equal projections. Actual value/ref anchors and their dependencies
-remain observable. The Path consumer reconstructs structure; any subsequent resident read
+do not imply equal projections. Actual value/ref anchors remain observable,
+and their ordinary dependency obligations remain in force. The Path consumer
+reconstructs structure; any subsequent resident read
 belongs to its surrounding value-expected consumer, not to $ itself.
 
 ### 2.6 Segment observation and indexing
@@ -336,10 +337,16 @@ omega : Omega
 PathPattern ~= {<ss,omega> in String* x Omega | PathShaped(<ss,omega>)}
 ```
 
-Omega retains Select/Expand, TextRoot/OpenRoot/AnchoredRoot, explicit root
-material and dependencies, and necessary endpoint information. This is a
-restricted legal domain, not an arbitrary pair or a string-only identity.
+Omega retains Select/Expand, TextRoot/OpenRoot/AnchoredRoot, explicit ordinary
+root material, and the endpoint information required to reconstruct the Path.
+This is a restricted legal domain, not an arbitrary pair or a string-only identity.
 Names run in name::path order. No anchor can be recovered from strings alone.
+
+ValueRoot(v) and RefRoot(r) retain actual ordinary material; r retains its
+target/generation under ordinary reference semantics. Any dependency/lifetime
+obligations induced by this material remain governed by the ordinary
+[dependency](dependency-observation-and-realization.md) and lifetime relations.
+They are not an extra Omega coordinate or a new owned dependency axis.
 
 For each existing segment position 0 <= i < length(ss):
 
@@ -347,7 +354,6 @@ For each existing segment position 0 <= i < length(ss):
 p[i] : path_pattern
 p[i] = PathPattern(Names([ss[i]]), (Select, OpenRoot))
 ((field::adl)#)[0] = PathPattern(field::)
-p[i] equivalent_to p[i:i+1]
 ```
 
 Indexing returns a relative single-name path_pattern, never a bare string. It
@@ -355,11 +361,13 @@ does not copy the original root endpoint or anchor into the relative result.
 It reads no external resident and grants no authority. Its evaluation retains
 ordinary source/dependency checks; projection does not extend anchor lifetimes.
 
-General p[i:j]:path_pattern is reserved, with Slice_Omega(omega,i,j)=omega'
-recomputing endpoints to match the remaining structure. Only the singleton
-case above is fixed here. General slice boundaries, empty slices and retained
-root behavior remain a small [open question](../../planning/open-questions.md);
-there is no default of copying omega or inventing an empty-Path unit.
+General p[i:j]:path_pattern is reserved. Slice_Omega, admissible boundaries,
+empty slices and root/endpoint retention remain a small
+[open question](../../planning/open-questions.md). Only indexing is fixed here;
+whether a singleton slice agrees with indexing is undecided. For field::root,
+index [1] yields relative root::, without deciding whether slice [1:2] retains
+the original TextRoot endpoint. No default copies omega or invents an
+empty-Path unit.
 
 ## 3. Late textual roots and explicit anchors
 
