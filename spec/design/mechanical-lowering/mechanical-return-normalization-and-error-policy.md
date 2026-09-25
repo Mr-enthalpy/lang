@@ -311,9 +311,10 @@ error-policy checker exists. The relevant dimensions are:
   handler call is admissible; P2 is its evaluation horizon;
 - the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material;
   there is no independent arbitrary complete return-policy `P3` or scalar
-  replacement for its `Pv:Pp` pair; instead `P_out` inherits P1's pair and
-  producer stage exactly, inherits omitted mode, and permits an explicit
-  mode-only overlay;
+  replacement for its independent internal value/type Policy observations.
+  Pout.stage=P1.stage; omitted mode inherits and an explicit mode overlay
+  remains a constraint. Public Policy pair syntax is retired; direct source/type
+  projections retain the same edge only before a new binding boundary;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 
@@ -399,3 +400,8 @@ The canonical owners below constrain this future return-normalization sketch.
   substrate: the false branch has no Error lookup or return-capability
   obligation, and the true branch alone checks the Error carrier branch and
   `return_owner..return(e Error)` capability.
+
+
+Terminal payload delivery still receives the selected ReturnPattern/Pout demand
+before the immediate root call's maxima. This future error-handling sketch
+cannot insert an unconstrained semantic temporary before that delivery.

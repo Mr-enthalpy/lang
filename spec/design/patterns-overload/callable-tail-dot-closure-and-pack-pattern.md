@@ -6,8 +6,7 @@ strategy-specific later work; their syntax and semantic boundaries are fixed
 here.
 
 This note connects four thin surface forms to the existing function-object,
-Pattern-normalization, and unique-overload-selection model. It does not change
-`Pv:Pp`, the three execution phases, or the requirement that ordinary overload
+Pattern-normalization, and unique-overload-selection model. It retains the internal value/type Policy observations, the three execution phases, or the requirement that ordinary overload
 resolution produce one result.
 
 ## 1. Callable implementation tail
@@ -74,10 +73,37 @@ Placement, head presence, and implementation are independent dimensions:
 | `() -> r => delete` | `Ordinary` | present | `Deleted` |
 
 In particular, `[[strategy]]` disambiguates strategy metadata; it does not
-change an in-place closure into an ordinary materializable closure. In-place
-closures never have a capture list or an independent capture environment.
-`[x] { ... }` is rejected. Their external reads instead use the lazy
-embedding-layer lookup defined by the function-object model.
+change in-place placement into ordinary placement. In-place
+syntax has no explicit capture clause: `[x] { ... }` is rejected. Free external
+observations instead participate in automatic dependency formation. Invocation
+uses the formed dependencies, without an independent embedding environment or
+lookup by spelling. See the function-object and dependency owners.
+Placement is formation syntax only. After formation it supplies no overload
+applicability, specificity or preference evidence and cannot break a tie
+between otherwise equally preferred distinct candidates.
+
+### Meta declaration context
+
+The callable layer establishing MetaDecl/MetaInvoke identity has the narrower
+surface defined by the [meta declaration owner](operator-patterns-and-generative-declarations.md#1-one-declaration-two-surface-projections):
+
+```text
+MetaDecl(C) => Placement(C) = Ordinary
+MetaDecl(C) => CaptureClause(C) = absent
+MetaDecl implementation requires =>
+```
+
+`[cap] (...) :meta => B` is invalid MetaDecl material. `P let H { B }` is not
+an in-place form of a generative declaration. The declaration consumer rejects
+these shapes directly; it does not first form an ordinary captured closure
+and reinterpret it as meta. Generic Raw/Norm preservation is not acceptance of
+MetaDecl, and the lexer still treats meta as a contextual Name.
+
+MetaDecl also has no implicit/automatic capture of unpassed enclosing locals.
+Its inputs and stable definition environment obey the meta owner's masking
+and identity laws. Ordinary closures inside the body retain their own capture
+grammar and may use only material legally available there. The restriction
+does not propagate to those nested non-MetaDecl closure forms.
 
 ### 1.1 Strong-context boundary
 
@@ -216,9 +242,14 @@ selection. The strategy named by source must denote a separately specified
 monotone comparison/organization rule; unknown or inapplicable strategies are
 diagnostic-bearing, not silently Ordinary.
 
-## 2. Capture clauses elaborate to let-shaped bindings
+## 2. Explicit dependency clauses elaborate to let-shaped bindings
 
-The capture surface is:
+The [dependency owner](../symbol-world/dependency-observation-and-realization.md)
+defines Needs and requirement/realization/layout. Capture is one surface consumer;
+external values, types, host resources and actual late Path reads use the same
+framework. This section owns the existing [] syntax and binder scope.
+
+The capture surface for an ordinary non-MetaDecl closure is:
 
 ```text
 CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
@@ -291,7 +322,7 @@ and other nested binding Patterns do not pollute an outer shorthand.
 This analysis requires no name resolution: it consumes only the normalized
 call spine, local binders, and bare name text.
 
-### 2.2 Initializer scope is simultaneous
+### 2.2 Initializers share a pre-capture name environment
 
 In `[let x = E]`, `E` is interpreted in the environment before the capture
 binding. For:
@@ -301,7 +332,10 @@ binding. For:
 ```
 
 both `E1` and `E2` see the same enclosing environment. The second initializer
-does not automatically see the first capture.
+does not automatically see the first capture. This does not mean simultaneous
+or unordered effects. Ordinary formation fixes evaluation/effect order, with one
+execution per reached formation occurrence; projections and body calls do not
+rerun initializers.
 
 The nested case is therefore recursive but unambiguous:
 
@@ -332,125 +366,29 @@ In particular `[x]` elaborates to the explicit empty-policy binding
 `[let x = x]`. Its omitted capture mode supplies no override; ordinary contextual
 inheritance/completion applies, with no automatic const conversion.
 
-For an ordinary non-in-place closure whose body contains an unresolved free
-outer value reference and no explicit capture binding replaces that reference,
-the resolved layer later forms:
+For an ordinary closure, a resolved free reference can impose a Needs
+requirement under its stable full/export namespace view. Eligible implicit
+realization and explicit [] remain distinct declarations even for the same
+source. Neither lookup nor requested Policy grants borrow/write authority.
+DependencyMaterial(C) is the union of explicit capture occurrences and eligible
+free observations not replaced by resolved explicit capture binders. An ordinary
+`=>` closure may have both; automatic dependencies do not imply in-place syntax.
+In-place syntax merely excludes an explicit clause. After formation, origin
+does not add a call, transfer or overload dimension. MetaDecl is excluded from
+this enclosing-local capture mechanism by the boundary above.
+Outer writes require an actually write-capable dependency realization and
+ordinary access/capability/lifetime checks. Explicit versus automatic formation
+does not independently grant or veto write authority.
 
-```text
-AutoCapture(C, s)
-  = capture local binder s from source name binding s
-    after authority-appropriate stable namespace lookup
-    carrying requested Policy and required access capability
-    with origin ImplicitEligible
-```
+### 2.4 Dependency realization precedes representation
 
-This automatic capture cannot run in Raw-to-Norm normalization. It requires
-name resolution, closure-local binder exclusion, resident value-view selection, and
-namespace visibility checking. Capability-specific capture legality remains a
-later ordinary consumer of the resolved requirement. A resolved semantic
-handoff therefore distinguishes:
-
-```text
-CaptureOrigin
-  = Explicit
-  | ExplicitInferredBinder
-  | ImplicitEligible
-```
-
-Outer writes require a write-capable explicit capture. `mut` is a preference
-mode, not a universal writability grant; automatic capture does not manufacture
-write capability.
-
-An externally navigated name is a common case: external authority searches the
-stable namespace export view. It does not filter that namespace view using this
-capture's requested capability.
-Internal explicit navigation instead searches the complete namespace-internal
-view and does not prove export membership:
-
-```text
-ResolveExplicitNavigation(path, ExternalAuthority) = exported name binding s
-  -> AutoCapture(C, s, requested policy, required access capability)
-
-ResolveExplicitNavigation(path, InternalAuthority)
-  -> search Σ_full; export membership is independent
-```
-
-External callable references may therefore enter an ordinary closure as
-automatic eligible dependencies rather than source-written capture bindings.
-Automatic capture and call resolution meet in the same problem domain because
-both reason about an external name binding's identity and stable external view. This
-observation imposes no pass ordering, data flow, shared intermediate object, or
-implementation dependency between them. Automatic capture does not itself
-choose an overload.
-
-An explicit capture and an automatic capture may resolve to the same source
-name binding, but they remain distinct dependency declarations. Explicit capture can
-rename the local binder, request a policy projection, use a complex
-initializer, request `mut`, or preserve source-level dependency and diagnostic
-provenance:
-
-```text
-[let local = external_name] != ImplicitEligible(external_name)
-```
-
-No capture is rejected or erased as “redundant” during parsing,
-normalization, or capture discovery. A future environment-layout pass may
-coalesce equivalent storage/link requirements only after preserving binder
-identity, requested policy, and provenance.
-
-### 2.4 Capture is an abstract dependency
-
-A resolved capture records a dependency, not object layout:
-
-```text
-ResolvedCaptureRequirement {
-  local_binder: BinderId,
-  source: ResolvedValueRef,
-  requested_policy: PolicySlice,
-  required_access_capability: AccessCapabilityRequirement,
-  origin: Explicit | ExplicitInferredBinder | ImplicitEligible
-}
-```
-
-The namespace resolver does not consume either request coordinate. A later
-ordinary capture-legality step applies the requested Policy demand and access
-capability after stable lookup has resolved a binding and the consumer has
-projected its resident.
-
-It does not state that the dependency is a `self` field, a copied value, a
-reference, a receiver mode, or an ABI slot. Representation selection may later
-choose an environment field, checked reference, stack environment, static
-resolved-value link, constant embedding, or zero-layout dependency edge.
-
-For example an exported closure that explicitly depends on an internal
-namespace name binding is written:
-
-```lang
-mut let internal_state = ...;
-
-export let exported_fn =
-    [internal_state]() => {
-        use internal_state;
-    };
-```
-
-The capture requirement may lower to an internal static link rather than an
-object field. It does not export `internal_state` or make it externally
-navigable:
-
-```text
-Export(function) does not imply Export(capture dependencies)
-```
-
-Before materialization, every resolved requirement must lower to a
-lifetime-checkable form naming the source place, requested access view,
-origin/region relation, and storage-or-link category. This is a handoff
-obligation only. Automatic mechanical move-vs-copy selection, concrete
-borrow/copy representation, Region IR construction, escape-check
-implementation, and ABI remain open; entry origin defaults, the exact
-move-origin/Region boundary, and the selected share/rebind-plus-clone
-realization lifecycle-post boundary are closed by the lifetime owner;
-`CopyConstruct` adds no default origin equation.
+Requirement, selected semantic realization and physical layout are three
+different judgments. A snapshot and a live-place reference are not arbitrary
+alternative layouts. Actual owned values enter ordinary structural identity;
+references retain target/generation; no unobserved side table changes behavior.
+Not every requirement needs a public self.Val2 field. Copying retains established
+sources; type projections do not recapture runtime values. Full rules and the
+lifetime refinement interface are in the dependency owner.
 
 ### 2.5 DeduceList scope construction and alpha normalization
 
@@ -565,75 +503,23 @@ future name-resolution pass.
 
 The anonymous `_` placeholder has no named binder identity.
 
-## 3. `.name` is a first-class field-function closure
-
-The semantic atom is the leading-dot expression itself:
-
-```lang
-.name
-```
-
-Raw AST preserves it as `DotClosure(name)`. It normalizes independently of any
-receiver to:
-
-```lang
-(self, val: T, ...args) {
-    (val, args) |> name::T
-}
-```
-
-Normalization produces an in-place `NormClosure` carrier. Its generated first
-formal is the caller-object self-position and is passed implicitly. For this
-standalone field-function closure, that caller is its function object. `T` is
-inferred from the following `val` formal—the first explicit call-site
-argument—only when an explicit call context consumes and materializes that
-carrier. It is not captured from a syntactic expression to the left of the dot.
-A binding context may also materialize the carrier; other expression contexts
-merely preserve or compose the closure expression.
-
-The compact suffix is defined through that same atom:
+## 3. Dot names use ordinary ADL
 
 ```text
-E.name
-  == E |> .name
+.name -> name::adl
+E.name -> the same entry through the ordinary Product/call spine
 ```
 
-It is not a second field-access semantic node. Raw AST may retain
-`MemberSugar(E, name)` for source fidelity, but normalization must use the same
-`DotClosure(name)` core.
+The [operator/declaration owner](operator-patterns-and-generative-declarations.md)
+defines requested-name extraction, ordinary forwarding construction and direct
+result delivery. There is no canonical normalizer-generated forwarding body.
+The existing DotClosureLowering/NormClosure remains a documented implementation
+carrier pending alignment, not semantic authority.
 
-After that one lowering, the generated closure is an ordinary `NormExpr`.
-No pipe/product rule may inspect `DotClosureLowering` provenance to decide how
-nearby material binds:
-
-```text
-let d = .name
-
-BindingShape(P1 |> .name P2)
-  == BindingShape(P1 |> d P2)
-```
-
-The equality is about the general pipe/product/call spine; the leaf retains
-its own name-reference identity and provenance. `.name` does not decide whether a
-following item becomes an argument, how many following items are absorbed,
-where a target expression ends, or whether first-product-only and legality
-repair apply. Those decisions belong exclusively to the existing expression,
-pipe, and product normalizer.
-
-Compact `MemberSugar(E, name)` mechanically lowers its compact core to
-`E |> .name` and then returns that result to the same ordinary suffix and
-space-binding environment. Thus `E.name P` is interpreted exactly as placing
-the ordinary result of `E |> .name` back before `P`; there is no second compact
-dot call algebra and no explicit-pipe DotClosure privilege.
-
-`..name(product)` remains a distinct direct member-call sugar. It models a
-receiver-position call directly and need not first expose and then materialize
-a `.name` closure carrier. Neither form removes the other:
-
-```text
-.name    first-class field-function closure
-..name   direct member-call sugar
-```
+Dot origin never changes pipe/Product association, suffix binding, first-product
+continuation or legality repair. Substituting a legally bound ordinary dot result
+retains the call-binding shape. The receiver remains an explicit object argument,
+not implicit self. `..name` retains its distinct direct-call surface.
 
 ## 4. `...` is a Pattern remainder matcher
 
@@ -692,6 +578,12 @@ not prove that the operand survives P normalization. Canonical sequence Pack
 nodes live in `NormPattern`; they are never hidden inside `NormSkeleton`.
 
 ### 4.2 Ordered and unordered levels
+
+Order is determined at every layer by its direct entries: all named is unordered,
+any bare entry orders the whole layer. A top name is unnecessary; nested layers
+are independent. Intermediate extraction uses the Pattern owner's same R_Gamma:
+one whole extraction at an unordered layer, multiple aligned extractions at an
+ordered layer. This does not relax any Pack rule below.
 
 At an order-insensitive named level, ordinary siblings match their distinct
 top modes first and the Pack receives the unmatched siblings. Those remaining

@@ -42,8 +42,8 @@ by discovery; see [normalization](../design/build-package/build-system-design.md
 
 The semantic owner forest contains source-established namespace owners, callable owners,
 canonical meta-instance owners, and generated owners. Every callable,
-including an in-place closure, has a lexical/code owner. A standalone closure
-materialization also has an owner-derived anonymous function-object type:
+including an in-place closure, has a lexical/code owner. Ordinary closure-to-tau construction forms its callable material and classifier
+under the authorized home; the source callable owner remains distinct:
 
 ```text
 DefaultStandaloneReceiverType(C)
@@ -60,10 +60,14 @@ printable string is not identity and does not determine any receiver type.
 `__inner_namespace` and related synthetic path components have no canonical
 role.
 
-Allocating this owner is not closure-value materialization. A closure remains
-syntax/normalized callable material until an explicit binding or call context
-requires a value; the owner exists earlier only so `Self`, return targets,
-Pattern roots, and nested declarations have stable semantic containment.
+Allocating a lexical owner is not value construction. Every legal completed
+closure expression returns tau_C by ordinary struct formation, with c_C in
+V_tau_C, classifier A_C and terminal () implementation. Source carriers preserve
+syntax before this consumer. No future destination can retroactively choose an
+already evaluated RHS owner. An established same-name bucket consumes
+ClosureMaterial to form ordinary callable members directly at its authorized
+target, not standalone tau_C results. Witnessed rehosting applies only to
+already formed ordinary callable members; it is distinct from that formation.
 
 Every invocation has frame slot 0 for its caller object. This is independent of
 ordinary/in-place placement. When a closure writes any formal position, its
@@ -181,6 +185,11 @@ unqualified lookup. External navigation consumes the source-established export
 view and public/private reachability. Build configuration defines no additional
 visibility domain.
 
+Pure Path structure is distinct from this graph's identities. Unanchored textual
+roots resolve on the first external Read; explicit ValueRoot/RefRoot preserve
+ordinary value/reference dependencies. Read_name supplies structural NameValue;
+`#` and path_pattern consume that first level without resident lookup. A
+value-expected consumer continues through Read_resident. At that second level,
 Path/name resolution returns one terminal NameBinding, preserving the resolved
 host chain and exposure context. It does not return a candidate set:
 
@@ -224,9 +233,19 @@ copying them for that reason. V_tau itself requires no named resident and grants
 no val::path selector; the anonymous classifier's /tau home is distinct from
 value navigation. Requested-name generative occurrences supply ordinary Val2
 only and cannot supply either registration. Members registered for type callability and satisfying
-`Home(TypeOf(v)) = TypeMemberScope(tau)` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Copied/extracted
-type-as-callee uses `CallSpace(tau)=V_τ`; there is no defining-name binding or
+`Home(TypeOf(v)) = TypeMemberScope(tau)` are part of `V_τ`, and the formed closure is `tau = <Q_struct,V_τ>`. Ordinary x calls through Type(x)'s associated Val2[()] with self=x.
+Copied/extracted type-as-callee expands every c in its own V_tau into c's
+classifier-associated Val2[()] entries with self=c, then selects once across
+the whole family. These are separate entrances;
+ConstructEdge does not supply type-callability evidence. In particular,
+V_tau registration, Val2 residency, Pattern registration and ConstructEdge
+remain independent. For the type entrance, `CallSpace(tau)=V_τ`; there is no defining-name binding or
 recent-carrier recovery route.
+
+TypeRole(Q) follows Pure(Q), while TypeValueRole(tau) is WellFormedTau(tau).
+Registered self-construction determines only SelfConstructible. The associated
+namespace is MemberScope(Core(T)), with its ordinary NameCoords and Val2;
+TypeMemberScope(T)=/tau(T) is the separate classifier-home coordinate.
 
 The generic parser preserves the narrow postfix shape:
 
@@ -257,16 +276,20 @@ private let name = expr
 let () = callable_expr
 ```
 
-At a specified structural namespace implementation layer, a closure expression
-itself evaluates to tau_C; the ordinary let action binds that RHS. Other RHS
+Every legally completed closure expression evaluates to tau_C. File declarations
+install the RHS at their established structural root; local let binds lexically. Other RHS
 values retain ordinary binding, so let a=uint8 does not manufacture a wrapper.
 Further synthesis requires an explicit structural contribution role. Only
 predetermined syntactic repair shapes that cannot be legal ordinary statements
 may receive that role; legal binding, shadowing, mutation and group actions
 are preserved. Failed execution never retries as contribution. Joined material
-uses ordinary one-shot formation and initialization; subsequent contributions
-use extend/inject/TypeAdd with complete /tau home, residency and registration
-checks. Anchored replication must be witnessed, never a blind V_tau copy.
+uses common-snapshot one-shot formation and initialization, without choosing
+a first sibling RHS. Ordinary singleton closure installation binds tau_C:type;
+a contribution consumes Delta_C,T^call to form one ordinary member c_C^T,
+never inserting tau_C or bulk-importing its V_tau. Updates to an existing
+resident use extend/inject/TypeAdd with complete /tau home and registration
+checks. Ordinary Delta_v^value follows Val2 installation instead. Rehosting
+an existing callable member requires its witness, never a blind V_tau copy.
 
 ```text
 named selector -> structural binding / Place

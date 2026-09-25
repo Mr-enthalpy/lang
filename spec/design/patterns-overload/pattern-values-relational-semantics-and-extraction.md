@@ -394,28 +394,42 @@ different Pattern child identity
 -> equal after deleting the child or its name
 ```
 
+Internal Path formation and its default external Read are separate; see the
+[Path owner](../symbol-world/structured-path-algebra-and-pattern-splice.md).
+Inherited navigation is composition under existing Pattern-parent links, not
+an alternate lookup calculus. Pure projected Path structure need not yet resolve.
+
 For a child `inner`, explicit/external and inherited formation routes complete
 to the same canonical entry `inner::bool` and the same child identity. Exact
 source spelling follows the current grammar; normalization preserves `inner`.
 
-## 7. Ordered bare Product is the unnamed-value calculus
+## 7. Product ordering is local to each layer
 
-Unnamed or bare values do not create another Pattern kind. They are represented
-by the existing ordered Product Object:
+Product is the ordinary carrier, distinct from parentheses Group and from
+OverloadGroup. For the direct entries of each layer L:
 
 ```text
-BareProduct(v_0, ..., v_n)
-Val2(BareProduct)[pos_i] = v_i
+Unordered(L) iff every direct entry of L is Named
+Ordered(L) iff some direct entry of L is Bare
+RootNamed(L) is independent of Order(L)
 ```
 
-Matching is positional and order-sensitive. Naked Product material, unnamed
-positional values, and a Pattern body containing a bare direct child all use
-this Product calculus.
+An all-named Product needs no top Pattern name, wildcard or special anonymous
+wrapper to be unordered. Adding one bare entry makes the entire layer ordered.
+Nested layers make their own decision; an ordered parent does not order an
+all-named child. In `(a,b)` where a and b are ordinary local values, their
+variable spellings do not confer structural names: this is a BareProduct.
 
-No separate Pattern kind is introduced for bare, naked, or unnamed positional
-material. Named Pattern structure may normalize by canonical navigation. Bare Product
-structure remains positional; the two rules do not create parallel Object
-domains.
+BareProduct retains positional selectors and order. An unordered Product has
+no implicit conversion to a bare ordered sequence by source order, serializer
+sorting or selector enumeration. Extract named entries with R_Gamma, then
+explicitly assemble `BareProduct(extracted_a,extracted_b)` in the wanted order.
+NamedSelector and OrdinalSelector are distinct; a public ordinal API is deferred.
+
+All-named permutations preserve normalized structure under ordinary conflict
+checks. True nested boundaries remain intact, and result order-insensitivity
+does not reorder construction effects. `?` may remove one top name without
+changing the direct-entry criterion or flattening a real layer.
 
 ## 8. Binder presence, holes, and binderless Patterns
 
@@ -612,6 +626,25 @@ statements (for example `RankTransparent(F) iff ∀n. F : U_n -> U_n`) is
 ordinary mathematical quantification and remains valid. Language genericity is
 Hole extraction and valuation, not a language-level `forall` ontology.
 
+### 8.2 Intermediate-layer extraction
+
+For `let <a> (c Pattern) a`, first reach the a layer, retaining the evidence
+and that layer's material u_a, then apply the same relation again:
+
+```text
+OuterExtract_Gamma(a,x,rho0,u_a)
+R_(Gamma,rho0)(P_c,u_a,rho1)
+rho = rho0 join rho1  -- compatible valuations required
+```
+
+The name observation, reached layer and its payload are different observations;
+they are not all rho(a). An unordered layer admits at most one unpositioned
+whole intermediate extraction; that whole Pattern may contain many named
+children. An ordered layer admits multiple extractions aligned in its order.
+This does not relax Pack cardinality or admit several arbitrary remainders.
+Generation reverses the direction of the declaration consumer, not this
+known-content extraction judgment.
+
 ## 9. Pure Pattern nodes and pipe branch shorthand
 
 A pure Pattern node needs no artificial wildcard/value padding layer. For example:
@@ -767,7 +800,7 @@ K_i : A_i -> C_i
 E_i : C_i -> A_i
 
 K_T : (C_1, ..., C_n) -> T
-E_T : T -> BareProduct(C_1, ..., C_n)
+E_T : T -> Product(C_1, ..., C_n)  -- preserve each child's structural name
 ```
 
 The formula `Field_i = E_i o pi_i o E_T` is not universal. A terminal leaf
@@ -775,6 +808,19 @@ view may cross two structural layers, while a higher extractor crosses one.
 The registered role contract records the actual structural route.
 
 ## 13. Structural role registration and ordinary callables
+
+V_tau registration, Val2 residency, Pattern registration and ConstructEdge
+are independent judgments. A construction witness is not a prerequisite for
+type-callee projection. The call owner distinguishes type invocation through
+V_tau from ordinary invocation through the classifier's associated Val2[()]:
+
+```text
+tau -> V_tau -> c -> Type(c).associated Val2[()] -> Impl, self=c
+x -> Type(x).associated Val2[()] -> Impl, self=x
+```
+
+No new ConstructEdge or change to TypeRole follows merely from either call.
+
 
 For a struct Pattern `P_T`, role registration may include:
 
@@ -805,8 +851,8 @@ may yield an ordinary Val2 value but supplies none of these structural witnesses
 V_tau registration is also non-generative and does not require or grant named
 Val2 navigation to its callable value; classifier home is a separate condition.
 
-The namespace/type distinction of a core `Q` is a property of `Q`'s registered
-construction role, never of any later name binding sibling count. Formally:
+TypeRole(Q) iff Pure(Q) iff Val1?(Q) is absent, as defined by the type-value
+owner. Registered self-construction is an independent capability of Q:
 
 ```text
 HasRegisteredSelfConstruction(Q)
@@ -840,17 +886,15 @@ The witness `K` is an actual ordinary callable/interface member registered in
 
 `HasRegisteredSelfConstruction(Q)` is the existence of a structural
 construction role registered on `Q`'s Pattern, witnessed by an actual `Val2`
-member. It is the formal criterion for the type-value role:
+member. It is the formal criterion for self-construction, not type identity:
 
 ```text
-TypeRole(Q)
-  iff NamespaceRole(Q)
-  and HasRegisteredSelfConstruction(Q)
+SelfConstructible(Q) iff HasRegisteredSelfConstruction(Q)
 
-NamespaceOnly(Q)
+NamespaceWithoutSelfConstruction(Q)
   iff NamespaceRole(Q)
-  and not TypeRole(Q)
-      -- equivalently: NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
+  and not HasRegisteredSelfConstruction(Q)
+      -- Q still has TypeRole; only the construction witness is absent
 ```
 
 These are Q-local structural judgments. They have no hidden tau argument and
@@ -866,17 +910,18 @@ Therefore:
 
 ```text
 Pattern identity != callable availability
-TypeRole(Q)      <=> NamespaceRole(Q) and HasRegisteredSelfConstruction(Q)
-NamespaceOnly(Q) <=> NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
+TypeRole(Q) <=> Pure(Q) <=> NamespaceRole(Q)
+SelfConstructible(Q) <=> HasRegisteredSelfConstruction(Q)
 ```
 
 Copying or installing an ordinary callable does not grant it structural role.
 An implementation may replace a callable while preserving the Pattern role
 contract and therefore preserving Pattern identity. Ordinary slot
 replacement (`Write(slot, new_value)`) does not register `ConstructEdge`;
-therefore `TypeRole` is neither automatically preserved nor automatically
-broken by ordinary write — it must be independently re-derived from the
-result structure (see `type-values-places-and-borrow-views.md` §2.2).
+therefore SelfConstructible must be checked from the result structure. A
+Val2-only write preserves purity and TypeRole, but may invalidate a joint
+construction witness or complete-closure consistency. See
+`type-values-places-and-borrow-views.md` §2.2.
 
 ### 13.1 Real fields versus virtual observations
 
@@ -1020,10 +1065,12 @@ WellFormedTau(tau)
       -- structural, history-free; depends only on the current closure value
          (canonical definition: type-values-places-and-borrow-views.md §2.2)
 
-CompleteType(tau)  iff WellFormedTau(tau) and TypeRole(Q)   -- TypeValueRole
-NamespaceOnly(tau)  iff WellFormedTau(tau) and NamespaceOnly(Q)
-      -- NamespaceOnly(Q) formalized in §13 above: NamespaceRole(Q)
-         and not HasRegisteredSelfConstruction(Q)
+CompleteType(tau) iff WellFormedTau(tau)   -- TypeValueRole
+ConstructibleType(tau)
+  iff CompleteType(tau) and HasRegisteredSelfConstruction(Core(tau))
+NamespaceWithoutSelfConstruction(tau)
+  iff CompleteType(tau) and not HasRegisteredSelfConstruction(Core(tau))
+      -- a complete type even with no registered self-construction
 
 tau = bind alpha. <Q, V_τ[alpha]>
 ```
@@ -1063,10 +1110,17 @@ HomeEligible_tau(F)                                -- classifier home only
   iff Anonymous(F)
   and Home(TypeOf(F)) = TypeMemberScope(tau)
 
+OrdinaryCallableValue(F)
+  implies Val1?(F) != absent
+  and ordinary implementation entries at AssociatedNamespace(Type(F)).Val2[()]
+
 TypeMember_τ(F)
-  iff F ∈ ClassifierDomain(V_τ)
+  iff OrdinaryCallableValue(F)
   and HomeEligible_τ(F)
-  and F has non-generative registration for this snapshot's type callability
+  and RegisteredCallability_τ(F)  -- non-generative V_τ registration
+
+F in V_τ => TypeMember_τ(F)
+CallCandidates_type(τ) = disjoint_union over F in V_τ of CallCandidates_ordinary(F)
 
 CreateClassifier_Gamma(
   F,
@@ -1079,6 +1133,19 @@ V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partit
 Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
+
+OrdinaryCallableValue is the ordinary associated () member judgment, not
+another registration. P let ()::path:t forms a typed structural member/Place;
+legal initialization of AssociatedNamespace(T).Val2[()] supplies x:T's ordinary
+call entrance without changing V_T. TypeAdd(T,v) adds only the eligible ordinary
+callable AnchorFor(v,T) to V_T, without installing T's associated ():
+
+    TypeAdd(T,v) does not imply AssociatedNamespace(T).Val2[()] = v
+    AssociatedNamespace(T).Val2[()] = k does not imply k in V_T
+
+Standalone closure tau_C is a type, not an OrdinaryCallableValue. An established
+same-name contribution consumes closure formation material to create c_C^T;
+it neither inserts tau_C into V_T nor imports all of V_tau_C.
 
 TypeMember registration does not require a named Val2 resident or grant a
 val::path selector for F. The anonymous classifier has its /tau home; navigation

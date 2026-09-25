@@ -142,7 +142,10 @@ declaration-extension site cares about the *place*. A borrow view is itself a
 value that carries a place coordinate. The three concerns must not be folded
 into one another.
 
-A structural path resolves to its binding and reads its named type; call projection uses V_tau. Explicit
+Read_name supplies Path structure before Read_resident; # / path_pattern
+projection can retain it without resident lookup.
+At external Read a textual root resolves in the use environment, while an explicit
+value/ref root preserves its identity. A resolved named type uses V_tau for calls. Explicit
 OverloadGroups aggregate type candidates through eta(T), without adding a
 second name container. Member projection follows the ordinary consumer rules. A selected tau
 is already self-contained; its Core, CallSpace and whole observations do not
@@ -264,43 +267,41 @@ namespace are judgments over this one Object domain, not facets or nominal
 Object subclasses:
 
 ```text
-Pure(x)          <=> Val1?(x) = null
+Pure(x)          <=> Val1?(x) = absent   -- null denotes this absence
+OrdinaryValue(x) <=> Val1?(x) != absent
 Navigable(V)     <=> V is a well-formed finite semantic-selector map
                      on which ProjectionSlot lookup is defined
 
 WellFormedObject(x) => Navigable(Val2(x))
 NamespaceRole(x)   <=> Pure(x)
-TypeRole(x)        =>  NamespaceRole(x)
+TypeRole(x)        <=> Pure(x)
 
-TypeRole subset NamespaceRole
-NamespaceRole not-subset TypeRole
+TypeRole = Pure = NamespaceRole
 ```
 
-`TypeRole(x)` is an imported relational judgment over the Pattern/Object
-relation. Its formal criterion is defined normatively in
-`../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
-§13 (`TypeRole(Q) iff NamespaceRole(Q) and HasRegisteredSelfConstruction(Q)`,
-witnessed by an actual `Val2(Q)[s] = K` member), consumed here via §2.2. This
-layer only consumes `TypeRole` as an opaque predicate.
+Type identity is determined by absent Val1, not by an available constructor.
+The separate `SelfConstructible(Q)` judgment consumes the registered joint
+Val2/ConstructEdge witness defined in the
+[Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#13-structural-role-registration-and-ordinary-callables).
+It establishes construction capability, never membership in the type domain.
 
 `Navigable(V)` means selector lookup yields the resident-specific
 `ProjectionSlot` defined in §7; a missing final selector still yields a slot
 whose contents are `None`, while continuation from `None` is invalid. Being a
 well-formed Object already supplies such a `Val2`, including the empty map.
 Consequently every pure Object has `NamespaceRole`; namespace capability is not
-an extra entity or witness. A pure Object for which `TypeRole` does not hold remains
-navigable but is not usable as a type. These are
+an extra entity or witness. Every pure Object has the type role, including one
+with no self-construction witness. These are
 predicates; no `NamespaceFacet`, hidden Q/type-role member, or parallel
 `NamespaceObject` ontology is introduced. Bare Product and the empty pure
 Pattern therefore have intrinsic structural namespace capability through their
 ordinary selectors; whether a tuple-like user-facing namespace API exposes
 that capability remains a narrow surface question.
 
-An Object carrying `Val1` may still be used where a type is expected when an
-ordinary value-side projection of the read resident under TypeRole(Q) applies
-(§5.6). Conversely, `Pure(x)` alone does not imply `TypeRole(x)`. Keeping these
-judgments separate prevents payload presence from becoming an implicit kind
-classifier.
+An Object carrying `Val1` is an ordinary value. An independently authorized
+ordinary type projection (§5.6) may produce a type from it; that operation does
+not make the original payload-bearing value a type. Core type role and complete
+type well-formedness remain distinct: a complete tau must satisfy §2.2.
 
 The canonical identity of an object is the recursive normal form over **all
 three** components. `Val1` normalization is indexed by the host Pattern because
@@ -665,6 +666,7 @@ PatternClosureConsistent(tau) iff
   and WellFormedCore(Q)
   and ∀F ∈ ClassifierDomain(V_τ):
       F is registered for this type's own callability
+      and OrdinaryCallableValue(F) and Val1?(F) != absent
       and F is a complete internally well-formed callable and Home(TypeOf(F)) = TypeMemberScope(tau)
       and its () entry obeys Type(callee) = Type(first self)
   and ∀K registered as a Pattern construction/extraction closure in Q:
@@ -719,25 +721,16 @@ the same semantic entity.
 ```text
 TypeValueRole(tau)
   iff WellFormedTau(tau)
-  and TypeRole(Q)
       -- the type-value role; equivalently CompleteType(tau)
 
-NamespaceClosure(tau)
-  iff WellFormedTau(tau)
-  and NamespaceRole(Core(tau))
-      -- any well-formed closure over a namespace-role core
+ConstructibleType(tau)
+  iff TypeValueRole(tau)
+  and HasRegisteredSelfConstruction(Core(tau))
 
-TypeClosure(tau)
-  iff WellFormedTau(tau)
-  and TypeRole(Core(tau))
-      -- a closure whose core has registered self-construction
-
-TypeClosure(tau) => NamespaceClosure(tau)
-      -- TypeClosure(tau) ⊂ NamespaceClosure(tau): the type closure is a
-         proper sub-judgment of the namespace closure
-
-NamespaceOnly(tau)  iff NamespaceClosure(tau) and not TypeClosure(tau)
-      -- equivalently: NamespaceRole(Q) and not TypeRole(Q)
+NamespaceWithoutSelfConstruction(tau)
+  iff TypeValueRole(tau)
+  and not HasRegisteredSelfConstruction(Core(tau))
+      -- still a complete type, with ordinary namespace observation
 
 CallSpace(tau) = V_τ
   // Intrinsic property of the closure: the TypeMember set captured in this
@@ -756,8 +749,27 @@ extend, OpenHere and independent well-formedness rules. Each group's call
 consumer projects its entries; any selected pattern member supplies its own
 complete immutable callspace. Other entries do not supplement that snapshot.
 
-Ordinary Val2, V_tau membership, and Pattern-role registration are three
-separate facts. V_tau is the immutable snapshot of ordinary callable values
+V_tau registration, ordinary Val2 residency, Pattern registration and
+ConstructEdge are independent judgments. In particular:
+
+```text
+CallOrdinary(x) -> Type(x) -> AssociatedNamespace(Type(x)).Val2[()] -> Impl
+    self = x
+CallCandidates_type(tau)
+    = disjoint_union over c in V_tau of CallCandidates_ordinary(c)
+CallCandidates_ordinary(c)
+    = Entries(AssociatedNamespace(Type(c)).Val2[()], actual_self=c)
+    -- one ordinary selection seals (c*, Impl*, projection*, frame)
+V_tau != Val2
+```
+
+These entrances use the same ordinary selection pipeline. Type-callee
+projection does not require a ConstructEdge self-construction witness, while
+TypeRole follows purity and SelfConstructible records construction capability.
+An ordinary callable x does not require membership in V_(Type(x)).
+
+Ordinary Val2, V_tau membership, and Pattern-role registration remain separate
+facts. V_tau is the immutable snapshot of ordinary callable values
 registered for the type's own callability, with classifiers in /tau(tau) (the canonical
 `Home(TypeOf(F)) = TypeMemberScope(tau)` notation). Ordinary Val2 can have any type
 and need not satisfy that anchoring. Classifier eligibility alone does not
@@ -778,54 +790,53 @@ Close freezes the registered structure and ends construction authority; it does
 not freeze the set of all future ordinary generated Val2 realizations. Those
 effects remain ordinary observable Core changes, never hidden cache facts.
 
-Whether `tau` has the type-value role or is namespace-only is decided by
-`Q`'s Pattern relations, never by the sibling count of a name binding space. The
-formal judgments are defined via registered self-construction in
-`pattern-values-relational-semantics-and-extraction.md` §13; the witness is a
-member actually registered in `Q`'s `Val2`:
+Every well-formed tau has the type-value role. Self-construction is a separate
+Q-local structural capability, never a condition on type identity or the
+sibling count of a name binding space:
 
 ```text
-TypeRole(Q)
-  iff NamespaceRole(Q)
-  and HasRegisteredSelfConstruction(Q)
+TypeRole(Q) iff Pure(Q) iff Val1?(Q) = absent
+SelfConstructible(Q) iff HasRegisteredSelfConstruction(Q)
       -- iff exists Pattern P of Q, exists s, exists C, exists K:
             Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
 
-NamespaceOnly(Q)
+NamespaceWithoutSelfConstruction(Q)
   iff NamespaceRole(Q)
   and not HasRegisteredSelfConstruction(Q)
 ```
 
-This is a Q-local structural witness: there is no implicit tau argument or
-classifier-home test in TypeRole(Q). CompleteType(tau) additionally requires
+The construction witness has no implicit tau argument or classifier-home test.
+CompleteType(tau) requires
 PatternClosureConsistent(tau), which checks /tau(tau) homes for both registered
 closure roles independently. Equal Core can establish the same TypeRole answer
 without establishing compatibility with two distinct complete-type homes.
 
-For example, if Q has the joint Val2/ConstructEdge witness K, TypeRole(Q) can
+For example, if Q has the joint Val2/ConstructEdge witness K, SelfConstructible(Q) can
 hold even when K is not in V_tau. If Home(TypeOf(K)) differs from /tau(tau),
 PatternClosureConsistent(tau) fails and tau is not a CompleteType. Removing K
 from the callability projection cannot conceal the failed Pattern-role home
 check. A matching home satisfies that premise but registers no new role.
 
-The distinction is a judgment over `Q`'s Pattern `P` (imported from the
-Pattern relational semantics), independent of group member count. The
-`NamespaceClosure`/`TypeClosure` split above follows the same core judgment.
+Conversely, a well-formed tau with nonempty V_tau and no self-construction
+witness is a complete type. It can offer applicable call candidates without
+supporting construction of ordinary instances of itself. Closure-generated
+tau_C requires no self-construction witness to be a type or to supply calls.
 
 A snapshot `tau' = <Q', V_τ>` written by an ordinary slot update is checked
 the same way as any closure: `WellFormedTau(tau')` is an independent structural
-judgment over `tau' = <Q', V_τ>` — `Q'` is a well-formed pure Object, and `V_τ`
-is unchanged. `TypeRole(Q')` / `TypeValueRole(tau')` must be independently
-re-derived from the result structure; ordinary write does not register
-`ConstructEdge`, so it neither automatically preserves nor automatically
-breaks `TypeRole`.
+judgment over `tau' = <Q', V_τ>` — `Q'` is a pure Object, and `V_τ`
+is unchanged. Changing only Val2 preserves Pure(Q') and hence TypeRole(Q').
+Complete well-formedness and SelfConstructible(Q') are independently checked;
+ordinary write registers no ConstructEdge and guarantees neither of them.
 
-**Counter-example.** Suppose the sole type-role witness is
+**Construction-capability counter-example.** Suppose the sole self-construction witness is
 `Val2(Q)[s] = K ∧ ConstructEdge_P(C, Q, K)`. An ordinary write
 `Write(ProjectionSlot(Q, s), K')` updates `Val2(Q')[s] = K'` but does not
 register `ConstructEdge_P(C, Q, K')`. The original joint witness disappears,
-so `TypeRole(Q)` may become `¬TypeRole(Q')`. There is no global theorem
-`ordinary write ⇒ TypeRole preserved`.
+so SelfConstructible(Q') may be false. TypeRole(Q') still holds because its
+Val1 remains absent. A stale Pattern registration may separately make the
+complete tau' ill-formed; type-role preservation is not a theorem that arbitrary
+registered-member replacement preserves WellFormedTau.
 
 Type +=/-= can produce a new V_tau with Core fixed under OpenHere and
 anchored closure membership. Structural extend/inject can change the Core.
@@ -1044,6 +1055,37 @@ Root(tau_old) = Root(tau_new)
 An old copy retains `V_old`. No
 `Root(tau) -> current mutable name binding -> current V` indirection participates in
 type identity or call lookup.
+
+#### Associated namespace is the Core member scope
+
+The associated namespace used by ordinary invocation and `name::T` is the
+existing structural member view of the complete type's Core:
+
+```text
+Q = Core(T)
+AssociatedNamespace(T) = MemberScope(Q)
+Val2(AssociatedNamespace(T)) = Val2(Q)
+AssociatedName(T, s) = NameCoord(AssociatedNamespace(T), s)
+
+TypeMemberScope(T) = /tau(T)
+TypeMemberScope(T) != AssociatedNamespace(T)
+```
+
+MemberScope(Q) denotes Q's structural namespace root and selector view, not a
+new Object, separate companion namespace, or a reverse defining-name lookup.
+The view observes the held snapshot. When navigation or a write addresses an
+actual structural name, it retains that route's resolved root/Place and resident
+generation; Core equality does not merge those coordinates or grant a Place.
+AssociatedName names a coordinate, not evidence of retention, initialization,
+access or writability. Reading its resident requires the ordinary checks.
+
+The `/tau(T)` scope is instead the complete bound implementation hierarchy
+used for registered callable classifiers. Home(Type(c)) = /tau(T) locates
+that classifier; ordinary invocation of c reads Val2(Core(Type(c)))[()].
+Neither coordinate is V_T. A graph carrier named type-associated companion
+represents the Core member view; its storage node introduces no independent
+semantic namespace. Field-family registration may separately use /tau(T) for
+stable family identity without changing the associated name's root.
 
 ### 2.3 Rank and typing naturality
 
@@ -2717,14 +2759,47 @@ Close requires retained structural names being published to be initialized;
 open HasName facts may precede dom(Val2). Legal coordinates not yet retained are
 not uninitialized members and need not all be realized before Close. Later
 generated ordinary Val2 results do not reopen registered structure. See [name semantics](names-and-overload-groups.md)
-for the formation and closure rules and the first named-contribution trace.
-First contribution forms its complete type by one-shot formation and initializes
-once; only later contributions read an existing type for extend/inject.
+for formation, closure and the joined named-contribution trace.
+An established sibling contribution bucket joins all role-specific materials
+against a common snapshot, forms one complete type, and initializes once.
+No first closure RHS is its initial resident. Ordinary singleton let installs
+tau_C:type. Extension of an already initialized snapshot uses extend/inject.
 
 Creation/initialization registers neither callability nor Pattern roles.
 Inject still reads an existing resident, extends it and writes the result;
 it cannot initialize an unreadable target. Physical files grant no authority.
 A's instance/member references preserve their original targets and dependencies.
+
+### 7.1.3 Independent callable construction axes
+
+P let s::path:t accepts a terminal selector s in Selector, including the special
+leaf (). Its Place formation, borrow, initialization and replacement use the
+ordinary rules; () is neither an operator nor a navigation parent.
+Initializing AssociatedNamespace(T).Val2[()]=k supplies ordinary x:T's call
+entrance. This is ordinary Val2 semantics, with no third callability registry.
+
+    OrdinaryCallableValue(v) implies Val1?(v) != absent
+    CallCandidates_ordinary(v)
+      = Entries(AssociatedNamespace(Type(v)).Val2[()], actual_self=v)
+    TypeMember_T(v) iff OrdinaryCallableValue(v)
+      and Home(Type(v)) = TypeMemberScope(T)
+      and RegisteredCallability_T(v)
+
+RegisteredCallability_T is the existing non-generative registration in V_T;
+the anonymous classifier and complete-snapshot consistency checks still apply.
+TypeAdd(T,v) forms v'=AnchorFor(v,T) and changes only V_T to V_T + v':
+
+    TypeAdd(T,v) does not imply AssociatedNamespace(T).Val2[()] = v
+    AssociatedNamespace(T).Val2[()] = k does not imply k in V_T
+    CallCandidates_type(T)
+      = disjoint_union over v in V_T of CallCandidates_ordinary(v)
+
+This union undergoes one selection. Named residency of v in T is not required;
+the associated () on Type(v) is a different coordinate. A closure result tau_C
+has absent Val1 and cannot itself be a TypeMember. Ordinary binding installs
+tau_C:type; established same-name contribution consumes ClosureMaterial(C)
+to form one eligible c_C^T at the known target. It imports neither tau_C nor
+the whole V_tau_C. See the [formation consumers](symbol-first-meta-construction-and-pattern-injection.md#211-v_τ-closure-materialization-derived-semantics).
 
 ## 8. Type values in overload and pattern matching
 
@@ -2761,17 +2836,13 @@ places:
 T and uint8 may observe the same Core(τ) yet have different PlaceId.
 ```
 
-The same separation applies to normalized pattern layers. If the layer is the
-body of a Pattern and every direct element has a complete top-pattern
-navigation name, it is
-`Map<CanonicalFullNavigation, CanonicalPatternValue>`. A naked Product remains
-positional regardless of whether its elements are named. `NameBindingId` and
-`PlaceId` identify carriers/locations; they are neither map keys nor resident
-values. Extraction resolves a source name binding, reads its `PatternValue`, and
-looks up that value by complete navigation and normalized resident. A binding
-path may share the value's navigation spelling or differ from it without
-changing this sequence. Source/provenance classification does not participate
-in `PatternValue` identity.
+The same separation applies to Pattern layers. Every all-named direct-entry
+layer is unordered, independent of a top Pattern name; any bare entry makes the
+whole layer positional. BareProduct's pos_i equations above describe that
+positional subdomain, not every Product. See the [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#7-product-ordering-is-local-to-each-layer).
+NameBindingId and PlaceId are neither resident values nor ordinary content keys.
+Open navigation retains each observed member's name Pattern; carrier spelling
+does not rename that member or merge coordinates.
 
 Pass mode is **not** part of ordinary type-value observation. A construct such
 as `T move` does not
@@ -2850,8 +2921,9 @@ meaning.
 ## Instance lifetime and type transport
 
 Type value equality, stable root identity, local binding, Place and lifecycle
-instance remain separate. Non-meta type instances follow the existing global
-survival rule; meta-local type temporaries may have finite generations and a
+instance remain separate. Established non-meta type instances retain the existing global
+survival rule; its extension to dependency-bearing closure-generated tau is
+explicitly handed to lifetime refinement, not inferred from the new result category; meta-local type temporaries may have finite generations and a
 killing move. A stable meta root, an equal local copy and an equal globally
 retained resident do not thereby share lifetime or Killable facts.
 
@@ -2860,3 +2932,19 @@ defines Killable_K, predetermined MoveEffect and frontier Movable uniformly
 for type, meta, compile and runtime instances. OpenHere, Writable, Place
 residency and lifetime imply none of one another. A narrow Preserve proof is
 not an implicit clone and does not exempt the action from borrow/access Pre.
+
+
+## Direct type projection and closure formation boundary
+
+Policy observation after the same source-edge type projection exposes Pp;
+ordinary direct Policy observation exposes Pv. A fresh binding of that projected
+type has its own destination view and does not recover the original edge by
+Core equality. This preserves all same-entity and whole-snapshot distinctions.
+
+Every legal completed closure expression produces tau_C through ordinary struct
+formation. Its c_C, classifier A_C and terminal () leaf are distinct roles.
+First callable formation needs no arbitrary instance construction or deleted
+constructor; TypeRole follows purity, independently of SelfConstructible. General
+dependency state uses ordinary owned structure/reference identity. FormationLegal,
+LifetimeLegal, Pre/Post, MoveEffect/Movable, EscapeLegal and transfer/promotion
+checks remain required; tau, Core equality and layout establish none of them.

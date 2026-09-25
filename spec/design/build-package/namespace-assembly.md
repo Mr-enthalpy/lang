@@ -43,9 +43,10 @@ is not canonical. Close requires retained structural names being published to be
 initialized, not every future generated coordinate realized. Ordinary lexical
 let remains unchanged. See [name semantics](../symbol-world/names-and-overload-groups.md).
 
-Implementation-layer closure expressions return tau_C; let binds the evaluated
-RHS. Only established structural contribution roles join by ordinary
-type-contribution/effect algebra. Equal NameCoord or callable RHS alone does
+Every legal completed closure expression returns tau_C through ordinary struct.
+File implementation-layer let installs at the established package structural root;
+a true lexical local let binds the evaluated RHS. Only established structural
+contribution roles join by ordinary type-contribution/effect algebra. Equal NameCoord or callable RHS alone does
 not reclassify a legal binding/shadow/write. Entry has runtime P2; stable root
 ownership establishes no permanent active MetaDom.
 Conflicting writes are not repaired by file order. File ownership, one-type-slot
@@ -53,8 +54,10 @@ restrictions and package mounts provide no additional admission rules.
 
 ## 3. Resolution and visibility
 
-Resolve a name once, read its resident (a named type in the :type case), then apply
-the consumer projection.
+Read_name first supplies structural NameValue. For a value-expected consumer,
+Read_resident resolves once and reads the resident (a named type in the :type
+case), followed by that consumer's value projection. Path projection stops at
+the first level, as specified by the Path owner.
 An explicitly held OverloadGroup uses its own candidate projection.
 Every explicit navigation host retains its own ordinary view/visibility facts.
 Export and public/private policy remain source-defined language relations;

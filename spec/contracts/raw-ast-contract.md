@@ -279,7 +279,8 @@ Zero or multiple candidates produce a retained normalized inference error.
 Nested binders do not leak into this calculation.
 
 All initializers in one capture clause see the enclosing environment before
-the clause; captures are simultaneous, not a sequential let block.
+the clause. This is common name scope, not simultaneous/unordered effects;
+initializers execute once per reached formation in ordinary effect order.
 
 ### 4.3 Expression PolicyLet
 
@@ -326,29 +327,16 @@ AtomKind::DotClosure { selector }
 
 for independent `.name`.
 
-Normalization alone defines:
+Canonical `.name` denotes ordinary `name::adl`, and compact `E.name`
+means `E |> name::adl`. The current normalizer still emits its generated
+in-place forwarding carrier with `DotClosureLowering` provenance. That
+implementation is pending migration; it does not define canonical ADL behavior.
+No pipe, Product or repair rule may use provenance to change ordinary binding.
+Direct `E..name(product)` remains separate member-call sugar.
 
-```text
-.name
-  -> (self, val: T, ...args) {
-       (val, args) |> name::T
-     }
-```
-
-The generated first formal is the helper closure's explicit self Pattern and
-is supplied implicitly by invocation. `val` is the first formal supplied from
-the explicit call-site Product.
-
-After this one lowering, the result is an ordinary expression. No pipe,
-product, or legality-repair rule may inspect `DotClosureLowering` provenance to
-change binding.
-
-The normalized result is a closure carrier, not an already materialized
-callable value. Only a later explicit binding or call consumer may materialize
-it; normalization and arbitrary expression composition do not.
-
-Compact `E.name` mechanically lowers through `E |> .name`. Direct
-`E..name(product)` remains a separate member-call sugar.
+Normalization produces syntax carriers only. Every legal semantic completion
+of a closure expression returns full tau_C through ordinary struct; semantic
+completion is not restricted to explicit binding/call consumers.
 
 ## 6. Pattern remainder
 
@@ -502,9 +490,24 @@ explicit shorthand for `[let x = x]` with no written mode override; it is not
 automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not
-`self` fields or layout decisions. In-place closures create
-no capture set, may resolve outer reads at the embedding layer, and may not
-directly write an outer place.
+`self` fields or layout decisions. Ordinary non-meta closures may combine
+explicit capture occurrences with automatic free observations not replaced by
+resolved explicit capture binders. In-place syntax excludes explicit clauses;
+it is not the exclusive source of automatic dependencies. Invocation consumes
+the established realizations without recapture; outer writes use ordinary
+access/capability/lifetime judgments.
+After formation, placement and capture origin supply no overload applicability,
+specificity or preference evidence. Distinct tied candidates remain ambiguous.
+
+At the MetaDecl consumer boundary, the identity-establishing callable must have
+an ordinary => implementation and no capture clause. Capture-bearing meta
+material and a no-=> generative body are invalid MetaDecl forms, not captured
+ordinary closures to reinterpret. Generic syntax preservation does not establish
+MetaDecl validity; the declaration consumer is pending. MetaDecl cannot
+automatically capture an unpassed enclosing local either. Its admitted inputs
+and established stable definition/instance relations are the only lawful
+channels; nested ordinary closures may use material legally available inside
+that invocation. No parser name resolution or semantic MetaDecl AST is added.
 
 Explicit-navigation/export checking and automatic capture remain resolved
 semantics, not Raw-to-Norm work. External navigation searches the export view
@@ -595,8 +598,25 @@ choosing a stage or treating omission as _. A resolved stage is a single atom;
 Raw PolicyChoice syntax does not authorize stage unions. Pin's stage extraction
 and Pout's inherited stage are contextual elaboration.
 
-Structural implementation-layer closure evaluation and conservative contribution
-roles remain semantic work. Normalization must preserve ordinary legal
+Universal closure-to-tau_C formation, file structural installation versus true
+lexical binding, and conservative contribution roles remain semantic work. Normalization must preserve ordinary legal
 binding/shadowing/write interpretations; it never executes a failing statement
 and reparses it as contribution. New source wiring requires span/recovery and
 golden coverage, and may not feed semantic facts back into parsing.
+
+
+## PR106 source consumer frontier
+
+Public Policy pair literal/extraction is retired; internal Pv/Pp remain distinct.
+Current colon/choice carriers are compatibility debt, not permission for a
+resolved stage/mode union. Concrete atoms, omission, declared holes and general
+Pattern splice are distinct. `runtime let` introduces no `runtime` hole.
+
+Read_name/Read_resident, path_pattern projection (#), relative single-name
+indexing and general $ consumer wiring are pending. # observes values rather
+than source AST; general $ does not insert Path conversion. General slicing
+is reserved, not implemented merely by retaining a bracket carrier.
+The existing Dollar token alone implements neither splice readiness nor
+PatternRoot/HoleBinderId preservation. Optional generator heads, HoleRef
+requested-name selectors and expression bodies require ordinary source
+span/recovery coverage when wired. Semantic rules never feed back into parsing.

@@ -131,6 +131,15 @@ preserve source structure rather than execute this semantic boundary.
 
 ### 5.1 Result delivery is ordinary Pattern binding
 
+The terminal payload is evaluated directly under the target's established
+ReturnPattern/Pout demand, before the payload root call seals its candidate
+maxima. Delivery does not first complete an unconstrained temporary and then
+rematch it. An explicitly written user binding still creates its own boundary.
+Both established outer P1 and P2 constrain the immediate inner call's P1/P2;
+the selected inner call cannot be reopened by later use. See
+[Policy demand](../symbol-world/symbol-policy-and-compile-flow-projection.md#39-direct-result-delivery-and-two-sided-forwarding).
+
+
 For a callable declared with an extraction result:
 
 ```lang

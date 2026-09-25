@@ -59,6 +59,45 @@ Split/D preserves residual material, while Done is internal boundary completion.
 Residual escape consumes current ordinary meta payload facts.
 
 Naked operator use selects operator[op], dot .op selects op::adl; OG_s retains
-spelling and selects the current slot. Implementation-layer closure expressions
-produce tau_C; ordinary let binds them and conservative structural contributions
-preserve existing legal bindings.
+spelling and selects the current slot. Every legal completed closure expression
+produces tau_C through ordinary struct; file implementation-layer let installs
+under the established package root, while true lexical let remains a binding.
+Ordinary singleton let installs tau_C:type. Established same-name contribution
+instead consumes ClosureMaterial to form one ordinary c_C^T per declaration
+against a common snapshot, never inserting tau_C or importing its V_tau.
+Ordinary member formation at terminal () supplies Val2 callability; TypeAdd
+changes V_T only. Neither construction axis implies the other.
+
+Read_name obtains NameValue structure; value-expected use proceeds through
+Read_resident. # is path_pattern projection, observing the first level for
+NameExpr. (n#)$ reconstructs structure under the Path consumer only;
+indexing yields a relative single-name
+path_pattern and general slicing remains open. Textual roots resolve at
+resident use; explicit roots retain dependencies. General $ splices ready
+Pattern material without implicit Path conversion.
+All directly named Product entries form an unordered layer; a bare entry makes
+that layer ordered. Named extraction plus explicit assembly supplies sequence.
+Policy value/type observations retain the same evaluation edge; public policy
+pair syntax is retired. Terminal demand reaches the immediate root call before
+maxima. General dependencies are realized once before layout; complete closure
+results retain the lifetime refinement handoff.
+
+
+Ordinary calls enter through Type(x)'s associated Val2[()] with self=x.
+Type calls expand all c in their own V_tau into Type(c)'s associated Val2[()]
+entries and perform one selection of (c, implementation, frame), with self=c.
+V_tau, Val2 residency, Pattern registration
+and ConstructEdge remain independent. In-place syntax forms dependencies
+automatically; its completed result supports ordinary value operations whose
+legality depends on actual dependencies, access, capabilities and lifecycle.
+Invocation does not recapture or resolve external names again by spelling.
+TypeRole(Q) iff Pure(Q); complete TypeValueRole(tau) iff WellFormedTau(tau).
+SelfConstructible alone consumes the registered self-construction witness.
+AssociatedNamespace(T) is MemberScope(Core(T)), distinct from /tau(T).
+Dependency realization is fixed by the source occurrence's selected ordinary
+action, uniquely up to observational equivalence, before layout is chosen.
+Ordinary closure dependencies combine explicit and automatic occurrences;
+in-place syntax excludes explicit clauses. Source placement and dependency
+formation origin supply no post-formation overload evidence. MetaDecl instead
+requires => and no capture channel: unpassed locals are masked, and its fixed
+parent/callee/input key has no CapturedEnv axis.

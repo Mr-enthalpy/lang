@@ -23,14 +23,26 @@ An initialized structural name declared :type denotes its complete named type T.
 restrict ordinary Val2 residents to types. Explicit group values use the
 singleton type embedding:
 
-    CallCandidates(T) = CallCandidates(V_tau(T))
-    CallCandidates(G) = disjoint_union over T in G of CallCandidates(T)
+    CallCandidates_type(tau) = disjoint_union over c in V_tau of CallCandidates_ordinary(c)
+    CallCandidates(G) = disjoint_union over tau in G of CallCandidates_type(tau)
+    CallCandidates_ordinary(x) = Entries(AssociatedNamespace(Type(x)).Val2[()], actual_self=x)
 
-Group bucket aggregation does not mutate the candidate types. Each value
-callee uses its exact captured complete type and associated (), with
-Type(callee) = Type(first self). A source binding or Core registry index does
+Group bucket aggregation does not mutate candidate types. Type projection
+expands every c from V_tau into its ordinary Val2[()] entries with self=c.
+The entire family participates in one applicability/preference/unique-selection;
+there is no preliminary c winner or per-c implementation winner. The selected
+candidate retains (c*, Impl*) with its projection and frame, including in residue.
+An ordinary x enters its type's associated Val2[()] directly with self=x,
+without projecting Type(x).V_tau. Both obey exact callee/first-self type equality. A source binding or Core registry index does
 not supply a later callspace snapshot. See
 [name/type algebra](../symbol-world/names-and-overload-groups.md).
+
+Closure source placement and explicit/automatic dependency origin are not
+applicability, specificity or preference evidence. Equal formed material with
+equal ordinary evidence receives no ordering from different placement. Distinct
+candidate identities are not collapsed for that reason; tied maxima follow
+ordinary ambiguity. Later filters and named strategies cannot reintroduce a
+source-placement tie breaker.
 
 ### 2.1 Value navigation is broader than candidate projection
 
@@ -44,7 +56,7 @@ instance's own V_tau.
 
 Thus ReadNamedType describes the named-type case, not an implicit conversion
 applied to every Val2 resident. Ordinary function values use their exact
-complete type and associated (). All these entrances share the pipeline below;
+complete type's associated Val2[()]. All these entrances share the pipeline below;
 none retries name resolution or constructs a wrapper to make a value callable.
 
 ## 3. Pipeline
@@ -124,3 +136,15 @@ The order and no-reopen rule are closed. The complete set of later-B filters and
 their future source controls remain open. A new filter must register at the
 appropriate stage and may not bypass resolve-once, hard A, unique selection, or
 DynamicLegality.
+
+
+## 7. Immediate call-boundary demand
+
+Established outer P1 and P2 jointly constrain the immediate inner call's P1
+and P2. A terminal root call receives the selected ReturnPattern/Pout demand
+before maxima; no semantic temporary is inserted. When H calls G, H cannot
+deduce its demand by running G's unresolved formal or its body. Ready dependency
+initializers execute once in the ordinary formation order; speculative body
+execution cannot justify a dependency or Policy hole. Explicit user temporaries
+remain real boundaries, and selection failure never reopens a sealed inner call.
+See the [Policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md).

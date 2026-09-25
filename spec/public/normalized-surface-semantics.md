@@ -320,44 +320,23 @@ implicitly supplied helper object; `val` consumes the first explicit source
 argument.
 ```
 
-### First-class dot closure and compact member sugar
+### Ordinary ADL and compact member sugar
 
-```text
-Conceptual rule: dot-closure lowering
-Dump label:      DotClosureLowering
-```
+Canonical `.field` means `field::adl`; `obj.field` means
+`obj |> field::adl`. The ordinary default ADL generator supplies a closure
+that forwards under the selected receiver Pattern and immediate result demand.
+Its own self and explicit receiver remain distinct. Binding the selector and
+using it later follows the same pipe/Product rules.
 
-```text
-.field
-=> generated closure:
-   <T: type>(self, val: T, ...args) { (val, args) |> field::T }
-
-obj.field
-=> obj |> .field
-
-let d = .field
-BindingShape(P1 |> .field P2)
-== BindingShape(P1 |> d P2)
-```
-
-`.field` is independently usable and does not capture a left-hand receiver.
-Raw `MemberSugar(obj, field)` may preserve the compact source shape, but its
-normalized target is the same generated in-place `NormClosure` carrier.
-`MemberLowering` records that compact wrapper; it does not define a second
-member semantic system.
-The generated first formal denotes the helper closure's own self-position and
-is passed implicitly. `val`, not `self`, receives the first explicit call-site
-argument and determines `T`.
-After atom lowering, `.field` is an ordinary `NormExpr`. Its generated origin
-cannot change pipe/product association, absorb following items, bypass
-first-product-only, or replace legality repair. Compact `obj.field`
-mechanically produces `obj |> .field`, then returns that ordinary expression
-to the existing suffix and space-binding environment.
-
-“First-class expression” does not mean “eagerly materialized value.”
-Normalization creates only the carrier above. A later explicit binding or call
-context may materialize it; another expression context preserves/composes the
-carrier without allocating a function object or capture environment.
+Current Raw `DotClosure` / `MemberSugar` and normalized
+`Generated(DotClosureLowering)` preserve the older generated in-place helper
+carrier. This is implementation debt, not canonical forwarding authority.
+Migration must preserve source/recovery and ordinary association; no provenance
+tag may absorb subsequent Products or bypass legality repair.
+Normalization creates syntax carriers only. Every legal semantic completion
+of a closure expression produces full tau_C; it is not restricted to binding
+or call positions. In-place syntax uses automatic dependency formation;
+its completed result follows ordinary value-operation checks.
 
 ### Narrow structural member-view annotation
 
@@ -411,7 +390,7 @@ Explicit `()` inside brackets is a user-written Unit product: obj[()] => (obj, (
 
 ### Shared boundary
 
-In the generated closures, `T`, `val`, and dot-closure `args` are local
+In the current legacy generated carriers, `T`, `val`, and dot-closure `args` are local
 generated binders, and the receiver becomes the call's source product (a
 `ProductLift`). `...args` is a Pattern remainder binding, not a pack type.
 
@@ -432,7 +411,8 @@ P let a |> f
        origin = Generated(PolicyLetPreserve))
 ```
 
-`P` is the existing complete `PolicySpec` grammar. The operand is the complete
+The current carrier uses `PolicySpec`; the canonical public material excludes
+its legacy pair/choice forms and admits the defined general Pattern splice. The operand is the complete
 following pipe expression. Parentheses close the boundary:
 
 ```text
@@ -814,7 +794,7 @@ There is no type checking, kind checking, Pattern-head resolution, or general
 matching at normalization. `Option::std` / `Pair::std` are not resolved, and
 whether `T Option::std` is a legal type pattern is not decided.
 
-### Policy pair preservation
+### Existing Policy carriers and migration
 
 Binding prefixes and callable-head P2 positions normalize to:
 
@@ -828,14 +808,18 @@ NormPolicyConjunction { choices: Vec<NormPolicyChoice> }
 NormPolicyChoice { atoms: Vec<NormPolicyAtom> }
 ```
 
-The single-component and `value:Pattern` pair shapes are preserved. `||`
-choice and `+` conjunction remain different normalized nodes; Pattern `|` is
-not lowered into either. The explicit absent-value atom reserves
-pure-type/value-optional elaboration but has no frozen source token.
-Normalization does not decide whether a single
-component is P1 value-dominant projection or P2 shorthand, validate pair stage
-rules, or interpret const/mut/namespace atoms. Those are semantic policy
-elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
+These are current carrier shapes, not the canonical public Policy algebra.
+Public `Pv:Pp` pair literal/extraction and stage/mode unions are retired.
+Internal Pv/Pp observations remain independent: direct Policy of a source and
+Policy of its direct type projection observe the same evaluation edge.
+Binding the projected type to a new name introduces a new destination view.
+Mode, safety, visibility and complete migration endpoints remain independent.
+
+Concrete `runtime let` is equivalent in deduction scope to
+`<> runtime let`, not `<runtime> runtime let`. Omission, concrete material,
+declared HoleRef and general `<> p$ let` splice remain distinct.
+The parser/normalizer consumer migration is pending; current `PolicyChoice`
+or colon carriers grant no semantic authority.
 
 The P1 form `meta let f = expression` uses this existing policy-prefixed
 binding shape. Its `meta` atom remains a Name. Contextual meta qualification is
@@ -883,8 +867,9 @@ duplicate occurrences of the same text count once:
 
 Nested closure parameters, local lets, Patterns, and capture binders do not
 pollute the outer inference set. All initializers in one capture clause are
-interpreted in the enclosing pre-capture environment, so capture bindings are
-simultaneous rather than a sequential let block.
+resolved in the common enclosing pre-capture name environment. This scope rule
+does not make initializer effects simultaneous or unordered; effects follow
+ordinary formation order and execute once per reached formation occurrence.
 
 After normalization every capture has one shape:
 
@@ -941,8 +926,10 @@ while preserving binder identity, policy, and provenance.
 The build handoff derives long-lived identity from a parent-linked
 `SemanticOwner`, not a file, span, or printable path. Every callable, including
 an in-place closure, has a `CallableOwner` and callable-local `Self` space.
-Standalone function-object materialization derives an anonymous callable type
-from that owner. An associated `()` implementation may instead bind the type
+Every legal completed closure expression yields full tau_C through ordinary
+struct Material_C. Its contributed callable c_C, A_C=Type(c_C) and () entry
+remain distinct, with finite implementation leaves and same-formation initial
+callable material. An associated `()` implementation may instead bind the type
 facet of its local `Self` and invocation slot 0 to a named receiver type.
 `CallableOwner` and receiver type are independent semantic facts.
 
@@ -959,12 +946,29 @@ relations select the external view; physical package boundaries and configured
 mounts have no semantic authority. Private structural members remain in the full
 structural model but are omitted from default extraction.
 
-Resolved capture requirements are abstract dependencies, not a declaration of
-`self` fields, capture-by-value/reference representation, field order, ZST
-status, or ABI layout. An ordinary closure that writes an outer place must have
-an explicit capture able to project a `mut` view; automatic capture never grants
-mutability. An in-place closure has no capture list or capture set, resolves
-outer reads at its embedding layer, and may not directly write an outer place.
+General dependency requirements precede semantic realization and then layout.
+Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
+one source of dependencies; projections and invocation do not recapture.
+No mandatory public `self` field layout or hidden semantic side table follows.
+Ordinary closures may combine explicit capture occurrences and automatic free
+observations not replaced by resolved capture binders. In-place syntax excludes
+explicit clauses; automatic dependencies do not imply in-place placement.
+All occurrences feed ordinary dependency realization. Neither grants write
+authority by itself.
+An actual write-capable realization may permit outer writes under ordinary
+access/capability/lifetime checks; source placement cannot veto them. Invocation
+uses formed dependencies without recapture.
+Placement and explicit/automatic origin supply no post-formation applicability,
+specificity or overload preference. Otherwise tied distinct candidates remain
+ambiguous under ordinary uniqueness.
+
+MetaDecl has a narrower semantic handoff: its identity-establishing callable
+requires ordinary => and no capture clause, and cannot automatically capture
+unpassed enclosing locals. Generic Raw/Norm preservation is not MetaDecl
+acceptance; declaration validation remains pending. The meta owner admits input
+dependencies and established stable definition/instance relations, without a
+CapturedEnv identity axis. Nested ordinary closures may use legally available
+invocation material under their own ordinary dependency rules.
 
 For example, an exported ordinary closure's source dependency is explicit:
 
@@ -980,8 +984,8 @@ export let exported_fn =
 The dependency does not export `internal_state` and does not by itself require
 an environment field. Before a callable is materialized, every resolved
 capture requirement must lower to a lifetime-checkable source/access/storage
-form. Concrete lifetime, borrow/move/copy, escape, layout, and ABI rules remain
-future work.
+form. Existing lifetime and transfer checks continue to apply; closure dependency
+persistence/escape refinement remains an explicit lifetime handoff.
 
 ### Callable implementation tail
 
@@ -1323,7 +1327,29 @@ placement: omitted means default NLL, empty means lexical cleanup, and
 x with{a} adds x's actual touches to a's placement requirements. It does not
 create borrow/access edges or a second lifetime interpreter.
 
-In the specified structural namespace implementation layer a closure expression
-evaluates to tau_C before ordinary binding. Conservative contribution repair
+Every legal completed closure expression evaluates to full tau_C. File
+implementation-layer let installs at the established package structural root;
+true lexical local let remains an ordinary binding. Conservative contribution repair
 preserves every legal ordinary let, shadow, mutation and explicit group action.
 Normalization neither inspects RHS semantic type nor retries failed execution.
+
+
+### Structured Path and Product handoff
+
+[Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
+uses Read_name to obtain full structural NameValue; ordinary value use then
+performs Read_resident. Postfix e# is the defined path_pattern projection,
+observing only the first level for NameExpr. General $ splices ready material
+without implicit Path conversion, retaining Hole identities. The round-trip
+(n#)$ reconstructs n's structure under the Path consumer, not through a general
+splice decoding rule. Index p[i] yields relative single-name
+path_pattern; general slicing remains a bounded open question. Textual roots
+resolve at resident use, while explicit roots retain their dependencies.
+Current source consumers remain pending, including # and general splice.
+
+All directly named Product entries make that layer unordered; any bare entry
+makes the whole layer ordered. The top name does not decide ordering; nested
+layers decide independently. Open navigation preserves each entry's name
+Pattern. Turning an unordered result into a bare sequence requires named
+extraction followed by explicit ordered assembly. Intermediate extraction uses
+the same R_Gamma after reaching the selected layer; it does not relax Pack.

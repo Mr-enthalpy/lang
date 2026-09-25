@@ -22,6 +22,30 @@ remain evaluator work. The callable-value form still exposes the ordinary
 callable-object self. This equality applies to the displayed meta declaration,
 not arbitrary lexical bindings of non-meta RHS values.
 
+The callable layer establishing this declaration accepts only an ordinary
+`=>` implementation and has no capture slot:
+
+```text
+MetaDecl(C) => Placement(C) = Ordinary
+MetaDecl(C) => CaptureClause(C) = absent
+NoMetaCaptureAxis:
+  MetaDecl(C) => no ExplicitClosureCapture(C)
+  MetaDecl(C) => no AutomaticClosureDependencyFromUnpassedOuterLocal(C)
+```
+
+A capture-bearing meta callable is invalid MetaDecl material; it is not first
+formed as a captured ordinary closure and then reinterpreted as meta. A
+no-`=>` body is not an in-place spelling of MetaDecl. The same rules apply to
+both surface projections, including generative names. They concern the current
+declaration's identity layer, not ordinary closures legally defined inside B.
+
+Unpassed caller/enclosing locals remain masked. Material that must affect an
+invocation enters its admitted In dependency closure; stable definition
+relations already fixed by the selected callable/parent owner and lawful
+meta-instance state remain available under the
+[meta owner's boundary](../meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity).
+MetaInstanceRootKey has no CapturedEnv coordinate.
+
 Ordinary P let lhs = rhs has extractive polarity: the known RHS is matched by
 R_Gamma(lhs,rhs,rho). Generative P let H => B has the direction:
 
@@ -32,12 +56,54 @@ Inside H, (self,args) is still an ordinary extraction head:
     R_Gamma((self,args), call_material, rho)
     concrete name f adds Selector(requested_coord)=f
     generative name _ adds no concrete selector constraint
+    generative HoleRef(h) extracts Read_name(requested_name) into rho(h)
 
 The requested coordinate must already be legally formed. Extractive _ remains
 a wildcard binding no named value. Concrete f is more specific than _ under
 ordinary Pattern specificity, after applicability. There is no generator or
 fallback-name priority. Multiple incomparable maxima remain ambiguous; selected
 failure never reopens another generator.
+
+### 1.1 General heads and expression bodies
+
+```text
+NameHead = Concrete(s) | Wildcard | HoleRef(h)
+let _ => E
+let <a> a => E
+```
+
+An explicit callable extraction head may be omitted. Omission adds no wildcard
+actual or empty Product and removes no implicit self from a real invocation.
+E may be a general expression; a surrounding ordinary body uses the same direct
+result delivery without an extra Policy-defaulting temp. Requested-name
+extraction supplies the full NameValue, including name::path structure, not
+only selector s or the binder spelling a. Selector(requested_coord)=s remains
+the separate observation for concrete-head constraints and specificity.
+This request material enters the admitted invocation inputs In and their
+dependency closure; it is no hidden capture. Concrete heads beat unconstrained
+heads only by ordinary specificity.
+
+General expression bodies retain the required `=>`: `P let H { B }` is not a
+generative MetaDecl form. Omitted extraction heads do not create a capture slot
+or permit automatic acquisition of an unpassed enclosing local.
+
+```text
+let <a> (self, object:t, ...args) a = expression
+let <a> (self, object:t, ...args) a => { body }
+let a = expression
+let _ = expression
+```
+
+These share head material, not polarity: = extracts from a known RHS; => forms
+a result under a legal request. Intermediate `let <a> (c Pattern) a` applies
+the [same R_Gamma again at the reached layer](pattern-values-relational-semantics-and-extraction.md#82-intermediate-layer-extraction):
+one whole unpositioned extraction on an unordered layer, multiple aligned
+extractions on an ordered layer. Name observation, layer and payload remain
+distinct. Pack restrictions remain intact.
+
+An ordinary meta implementation still directly returns its own instance tau_M.
+Expression-body freedom does not permit arbitrary foreign direct result types;
+ordinary payloads and closure material enter through legal instance formation.
 
 ## 2. Grammar facts and ordinary operator dispatch
 
@@ -104,8 +170,8 @@ and operator-name binding remain distinct syntax roles.
 
 Same-slot ordinary combination retains OG_s and its spelling. It does not
 implicitly combine different spellings, infer a selector from an arbitrary
-group, or create String-to-Path conversion. General first-class .field/path
-algebra remains open; the dot-operator rule above does not close that topic.
+group, or recover semantic coordinates from String. The [Path owner](../symbol-world/structured-path-algebra-and-pattern-splice.md)
+separately permits single-name structural construction and defines external Read.
 
 ## 3. Three projections of one application structure
 
@@ -186,7 +252,7 @@ Optimizer queries cannot decide later whether a Pattern was unordered.
 O may rewrite only after Facts_E proves equivalence, with affected projections
 revalidated under the [ordinary E/O boundary](../meta-invocation/evaluation-residual-and-optimization.md).
 
-Policy + and || deduction is a consumer of these same registered relations,
+Policy + and ordinary Pattern deduction consume these same registered relations,
 HoleBinderId and require constraints. The [policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md)
 owns coordinate legality, omission/inheritance and the joint invocation relation.
 
@@ -195,3 +261,102 @@ instance/member Place protocol. Customization requires current OpenHere and
 Writable; consumers observe the current committed payload, not a copied
 outer binding or an optimizer-private fact. Later writes do not change a
 previous committed semantic decision.
+
+
+## 6. Ordinary dot-name generation and forwarding
+
+### 6.1 Default generator skeleton
+
+The following name/call skeleton belongs in the adl namespace. Shared Policy
+holes must use the existing legal head forms; omission below is not a wildcard
+over every coordinate.
+
+```text
+adl/
+    let <a> a =>
+        <t:type>(self, object:t, ...args) => {
+            (object, args)
+                |> ((a#)[0])$::t
+        };
+```
+
+Its interpretation uses the established relations:
+
+```text
+requested name field::adl
+-> name-head extraction binds its full NameValue as a
+-> a# projects its complete path_pattern
+-> [0] selects relative single-name path_pattern
+-> $ injects Path material
+-> navigation under the explicit t
+-> ordinary selected call
+-> direct terminal result delivery
+```
+
+For a field request:
+
+```text
+a = NameValue(field::adl)
+a# = PathPattern(field::adl)
+Interpret_Path(a#) =_Path a
+PathPatternProjection(Interpret_Path(a#)) = a#
+(a#)[0] = PathPattern(field::)
+((a#)[0])$::t =_Path field::t
+```
+
+The [Path index](../symbol-world/structured-path-algebra-and-pattern-splice.md#26-segment-observation-and-indexing)
+owns the relative single-segment result. It discards the original adl endpoint
+rather than copying it onto field::. Ordinary name-to-string projection remains
+available for text observation, but is not this Path truncation operation.
+
+### 6.2 Canonical lowering
+
+```text
+.field  -> field::adl
+E.field -> E |> field::adl
+```
+
+The normalizer preserves the dot/name/path source role; it does not own the
+semantic authority to generate the actual forwarding implementation.
+
+OperatorUse, OperatorNameValue, dot selectors and explicit paths retain their
+distinct entrances. OG_s preserves spelling through selector results; only
+explicit Forget removes it. Path support does not erase OG_s to ordinary OG.
+
+### 6.3 Requests do not mutate the forwarded type
+
+field::adl forms a permitted ordinary result/member occurrence. Its body reads
+field::t; it does not inject field into t. Frozen generative rules can answer
+later legal requests without infinite predeclaration or reopening Pattern/V_tau
+registration in either adl or t.
+
+When a meta instance supports generation, its direct result and ordinary
+payloads obey the existing instance model. ADL does not broaden the direct
+meta result class.
+
+### 6.4 Transparent Policy and self
+
+The established P1/P2 of the outer ADL forwarder jointly constrain the inner
+field call. The terminal expression receives the return demand directly, with
+no additional temporary. Ordinary forwarding therefore need not enumerate
+every mode/stage combination or add an explicit P let merely to repair return
+demand.
+
+The actual field callable has its own self; object remains an explicit
+argument. Forwarding does not place object in slot 0, implicitly form ref/share,
+or add coercions when a candidate is absent.
+
+### 6.5 Ordinary member calls do not redefine structural extraction
+
+Real Pattern structure still requires DirectPatternChild, FieldView and
+ExtractEdge registration. Atomic extraction retains its established family
+filters, including StructuralDefault.
+
+Custom field::adl behavior can change an ordinary field call without changing
+the host Pattern's construction/extraction relation:
+
+```text
+OrdinaryADLCall != RegisteredStructuralExtraction
+```
+
+Replacing compiler-private closure sugar preserves this semantic boundary.

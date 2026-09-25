@@ -28,3 +28,12 @@ realization data; they do not decide the migration relation.
 Every request carries explicit `PolicyView` and `ResultPolicyDemand` values.
 `PolicyPair`, whole-slot `PolicyMode`, capability realization, and dynamic
 legality remain independent coordinates.
+
+
+The endpoint pairs above are internal notation, not source Policy literals.
+Public demand uses ordinary constraints on the value and direct type projections
+of the same observation edge. Removing colon syntax removes no endpoint checks:
+presence, both Policy observations, same Type and capability coherence remain
+mandatory. Already available views win before the one admitted direct family;
+no-reopen and selected-failure rules are unchanged. Policy splice obeys readiness
+and never runs a candidate body to obtain its own applicability Pattern.

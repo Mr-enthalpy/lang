@@ -22,7 +22,7 @@ It does **not** implement or specify:
 - D-reduction / `Done_Return` (not implemented).
 - Early-return execution (not implemented).
 - Control-flow propagation (not implemented).
-- Result-slot injection (not implemented).
+- Whole-Pattern result delivery (not implemented).
 - Full lexical self-capability target resolution. The current binder records
   stable callable-owner identities for active frames; the source resolver that
   supplies an explicit target identity is not connected.
@@ -316,7 +316,7 @@ Later result/completion semantics:
 
 The parser and normalizer do not resolve `Self`. The build binder consumes a
 stable callable-owner identity supplied by a semantic resolver and does not
-perform result-slot injection.
+perform whole-Pattern result delivery.
 
 ### 7.3 Deferred Semantics
 
@@ -336,7 +336,7 @@ this contract:
 - Done_Return
 - Early-return execution
 - Control-flow propagation
-- Result-slot injection
+- Whole-Pattern result delivery
 ```
 
 The existing binder selects its most recent active frame for implicit returns;
@@ -349,3 +349,14 @@ elaboration, and stores the complete `NormBindingSlot` in `ReturnSlotRef`.
 The Raw/Norm tag ImplicitNearest is a current carrier spelling. It does not
 authorize nearest-frame semantics. No syntax change or parser name resolution
 is implied by the outermost rule.
+
+
+## 8. Direct terminal demand
+
+The terminal payload is evaluated directly under the target's established
+ReturnPattern/Pout demand, before the payload root call seals its candidate
+maxima. Delivery does not first complete an unconstrained temporary and then
+rematch it. An explicitly written user binding still creates its own boundary.
+Both established outer P1 and P2 constrain the immediate inner call's P1/P2;
+the selected inner call cannot be reopened by later use. See
+[Policy demand](../design/symbol-world/symbol-policy-and-compile-flow-projection.md).

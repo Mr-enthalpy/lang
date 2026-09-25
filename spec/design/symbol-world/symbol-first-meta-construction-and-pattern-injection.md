@@ -19,8 +19,8 @@ P let name:t = rhs retains its explicit type constraint. Neither decomposes
 into a default-type name declaration followed by source assignment.
 Initializer-free P let name:t and P let name::path:t both create typed NameExpr,
 using lexical and structural creation authority respectively.
-In a structural namespace implementation layer, a closure expression itself
-produces tau_C and ordinary let binds it. Further synthesis requires an
+Every closure expression's legal completion produces tau_C by ordinary
+struct construction; ordinary let binds that result. Further synthesis requires an
 explicit structural contribution role under the conservative rules in the
 name owner; callable/type RHS shape or same-name spelling is insufficient. Explicit P let name::path:t creates
 NameExpr for a fresh typed, uninitialized Place. Explicit ref borrows that Place;
@@ -69,8 +69,12 @@ is intrinsic and immutable; copying, transporting, or adding another group
 entry does not amend it. Ordinary type equality/keying observes Core, while
 explicit whole-snapshot observations retain the bound closure.
 
-TypeMember_tau(F) requires registration for the type's own callability and
-Home(TypeOf(F)) = TypeMemberScope(T) for the complete closure in that snapshot. Ordinary Val2 may
+TypeMember_tau(F) iff OrdinaryCallableValue(F),
+Home(Type(F)) = TypeMemberScope(tau), and RegisteredCallability_tau(F).
+OrdinaryCallableValue(F) requires Val1?(F) != absent and ordinary implementation
+entries at AssociatedNamespace(Type(F)).Val2[()]. Registration here is only
+the existing non-generative V_tau relation, not a new ordinary-callable registry.
+Ordinary Val2 may
 hold arbitrary types without either callability or Pattern-role registration.
 The two registrations are independent; classifier eligibility alone adds neither. Construction actions must satisfy existing
 authority and OpenHere; membership is not inferred from file provenance,
@@ -112,28 +116,79 @@ separately from ordinary group membership.
 
 ### 2.1.1 V_τ closure materialization: derived semantics
 
-At an ordinary materialization position a closure has an anonymous complete function-object type
-and its associated () leaf. Its own first self has that exact type. The
-anonymous implementation layer remains under /tau. The same structural
-formation semantics apply whether the function object is expressed as a
-closure or constructed through ordinary anonymous structure.
+Every closure expression C has one completed result:
 
-    OrdinaryMaterializeClosure(C)
-      = anonymous complete type A with associated () + callable object of A
-    Eval_impl(C) = tau_C
-      -- specified structural namespace implementation layer
+```text
+Eval_Gamma(ClosureExpr_C) = tau_C
+ClosureExpr_C -> Struct(ClosureMaterial(C))
+```
 
-The latter result is fixed when the expression is evaluated. Binding it does
-not create a second wrapper and later contributions cannot retroactively change
-what the first RHS returned.
+ClosureMaterial(C) denotes head, body, dependencies and ordinary construction
+material. It is formation metanotation, not a new Object or public descriptor.
+Two established consumers project it:
 
-An eligible contribution preserves the original function object's owner,
-captures and type snapshot. Anchored replication, when needed, constructs a
-new instance satisfying Home(TypeOf(F)) = TypeMemberScope(T); it does not reparent the
-original. The destination does not gain ownership of
-external dependencies merely by storing the function object. Owned promotion
-and escape traversal continue to distinguish owned children, bound references,
-and horizontal borrows.
+    OrdinaryClosureResult(C) = tau_C
+    CallabilityContribution(T,C) = c_C^T
+    OrdinaryCallableValue(c_C^T)
+    Val1?(c_C^T) != absent
+    Home(Type(c_C^T)) = TypeMemberScope(T)
+
+Ordinary evaluation, singleton installation and lexical let use the first:
+let f=C binds/installs tau_C:type without a function-object wrapper. An already
+established same-name contribution bucket uses the second, forming one callable
+member per declaration directly at its authorized target. It does not first
+evaluate standalone tau_C and pass that type to TypeAdd, nor import V_tau_C.
+These are consumer projections, not alternative ordinary expression results.
+SameSpelling and ClosureRHS imply no ContributionRole. Binding, shadowing,
+duplicate errors and structural installs retain their established consumers.
+
+Sibling materials join against a common snapshot before one-shot formation;
+no declaration is privileged as the first closure result.
+The same role-specific material may enter Extend;
+Inject additionally performs ordinary read + extend + write. Each operation
+retains its existing root, authority, OpenHere and well-formedness premises.
+A closure expression need not execute Inject.
+
+The formation terminates at the existing callable implementation leaf. It does
+not expand to `struct { let () = the same closure expression }` recursively.
+
+```text
+tau_C             complete expression result
+c_C in V_tau_C    registered ordinary callable material
+A_C = Type(c_C)   complete classifier
+AssociatedNamespace(A_C).Val2[()] = Impl_C
+Impl_C            terminal implementation leaf
+
+tau_C -> V_tau_C -> c_C -> A_C -> Val2[()] -> Impl_C
+Home(A_C) = TypeMemberScope(tau_C)
+```
+
+Here c_C in V_tau_C is a type-callee projection member; A_C's associated
+Val2[()] is the ordinary callable value's implementation entrance. V_tau is
+not Val2. V_tau registration, Val2 residency, Pattern registration and
+ConstructEdge remain independent. No self-construction witness proves type
+callability. TypeRole follows purity; ConstructEdge witnesses the separate
+self-construction capability. All c/implementation entries are projected before
+one ordinary selection; the arrows above trace that projection, not two overloads.
+
+The first callable material is formed and registered in this same action.
+No later ordinary construction of an arbitrary x:tau_C bootstraps it. Lack of
+such an instantiation entry does not require dummy/deleted constructors or
+change TypeRole(Q_C) iff Pure(Q_C). Named residency, Pattern registration
+and V_tau registration remain independent.
+
+The [call owner](function-object-call-model.md) defines projection and exact
+callee/self equality. [Dependencies](dependency-observation-and-realization.md)
+retain ordinary semantic state and source identity. The [lifetime handoff](../lifetime/lifetime-policy-and-overload-boundary.md)
+does not derive global survival from the result being tau.
+
+A known authorized construction site may form its contribution there initially.
+An already formed ordinary callable member c retains its original owner;
+later explicit contribution elsewhere uses AnchorFor(c,T) and, where needed,
+ReinstantiationWitness(c). The witness does not relocate the result type tau_C.
+Known-target formation creates c_C^T directly, without a standalone tau_C or
+rehosting step. Replication creates a new member without rerunning outer
+initialization. Binding a completed RHS cannot change its earlier identity.
 
 The enclosing-reference and meta identity rules below are unchanged:
 
@@ -211,8 +266,7 @@ ambient meta environment before any return-local construction handle is
 consulted. A source spelling or implementation shortcut may sequence closure
 construction immediately before injection, but it must not use `r:type` as the
 owner anchor, recover a defining binding from type equality, or merge the two
-semantic operations. Nested
-an unavailable in-place closure-anchoring consumer cannot recover the eventual
+semantic operations. An unavailable in-place closure-anchoring consumer cannot recover the eventual
 result binding as a substitute owner anchor.
 
 ### 2.2 Context projections coexist
@@ -268,12 +322,14 @@ No equality implication is automatic between these identities.
 ### 2.4 Program text names bindings before values
 
 Except for literal syntax and other explicitly specified immediate values,
-program text does not directly name a value. A source path first names a
-name binding, and value use then reads a facet/value from that name binding:
+program text does not directly name a resident value. Read_name first obtains
+the source name's full structural NameValue; only value-expected use proceeds
+through Read_resident to resolve a binding and observe its facet/value:
 
 ```text
 source path
-  -> resolve name binding
+  -> Read_name: full NameValue / Path structure
+  -> value-expected Read_resident: resolve name binding once
   -> read value / PatternValue from that name binding
 ```
 
@@ -301,7 +357,8 @@ The left `a` is a binding name. The right `'a'` is a character literal. Their
 textual content happens to match, but they are not one semantic object.
 Pattern values have no comparable standalone literal syntax, which makes a
 same-spelled source path and pattern diagnostic projection especially easy to
-confuse. The language still resolves the source path as a name binding first.
+confuse. The external Read still resolves its source Path before observing the binding;
+`#` and path_pattern observe the first level without that resident lookup.
 
 ### 2.5 General `let` value binding
 
@@ -322,8 +379,8 @@ Gamma |- P1 let r = expr
 ```
 
 A single P1 `Q` selects RHS value entries visible under Q and follows each
-selected value's associated pattern/type component. A pair P1 `Qv:Qp` filters
-both components. Single P1 is not `Q:Q`. There is no general
+selected value's associated pattern/type component. Ordinary constraints on the value and direct type observations may jointly
+filter both components; the internal pair notation is not public Policy syntax. Single P1 is not `Q:Q`. There is no general
 `binding_policy != runtime` condition, so a normal runtime binding is legal:
 
 ```lang
@@ -477,8 +534,8 @@ PatternValue's canonical navigation name matches the name binding carrying it, t
 matching spelling does not establish identity.
 
 A normalized fully named body of a named Pattern contains
-complete-navigation to PatternValue entries, not name-graph bindings. A naked Product
-remains positional even when all of its children are named. Extraction
+complete-navigation to PatternValue entries, not name-graph bindings. An all-named Product is unordered independently of a top name; any bare
+direct child makes the whole current layer positional. Extraction
 resolves a source name binding, reads its PatternValue, and looks up its canonical
 navigation/value entry in the normalized map.
 
@@ -513,8 +570,8 @@ registered relational extraction and generative invocation are projections of
 the same operator structure, as defined by the
 [operator owner](../patterns-overload/operator-patterns-and-generative-declarations.md).
 No selector result is a manipulable fresh-name value, and no operator-name
-exception creates write authority. First-class structured Path composition is
-the remaining navigation algebra question.
+exception creates write authority. NameValue formation, Path projection, splice and resident reading are defined by the
+[Path owner](structured-path-algebra-and-pattern-splice.md).
 
 ## 3. Value Members and Calls
 
@@ -536,12 +593,14 @@ A call position performs the following conceptual flow:
 
 ```text
 resolve name binding
-  -> form CallCandidates(NamedType(S))
-  -> enumerate heterogeneous values
+  -> read callee: ordinary x / complete type tau / explicit group
+  -> ordinary x: retain x, use Type(x).associated Val2[()]
+     type tau: enumerate c in V_tau, use Type(c).associated Val2[()]
+     group: union of its type-callee projections
   -> R_vis(c,Omega,sigma): producer visibility and input/projection evidence
   -> form ordinary C_sigma(c) where required, without speculative execution
   -> obtain each value's type
-  -> resolve the type-associated `()` call entry
+  -> preserve the actual x or c as self of its associated Val2[()] entry
   -> discard non-callable or non-applicable entries
   -> form fully admissible set A using structure, Pattern/type/result checks,
      receiver/Pin compatibility, Pout and total output-demand
@@ -1635,6 +1694,12 @@ mechanisms (combinators, continuations, local abstractions) that do not
 represent semantic ownership boundaries. The meta function call entry is the
 canonical ownership boundary; closures called within it are internal structure.
 
+This is an ambient-scope rule while forming construction material, not an
+overload preference on completed values. The formed result retains its resolved
+owner; invocation and candidate comparison do not inspect source placement to
+reroot it or break a tie. Equal formed material and ordinary candidate evidence
+remain equally preferred regardless of the source form.
+
 Therefore:
 
 ```lang
@@ -1948,64 +2013,60 @@ or through `inject`). See §12.1 for the full privilege boundary.
 
 ### 7.6.1 Value-supplied members use the same formation relation
 
-The equivalence also applies to ordinary member construction material whose
-RHS has already evaluated to v. It is not limited to the field spelling in the
-example above. The construction position determines the member role (named
-contribution, structural field, or exact () entry); value shape does not choose
-a different role.
+The equivalence applies to member material with its consumer role already
+fixed. Ordinary evaluated RHS material and closure contribution material are
+distinct inputs to the same formation framework:
 
-Use the following mathematical notation for the existing formation relation:
+    Delta_v^value = ordinary structural member material with evaluated RHS v
+    Delta_C,T^call = closure callability contribution material at target T
+    S_a(B ; Delta) = one-shot struct formation of base B and that material
 
-    Delta_v = that ordinary member material, with evaluated RHS v
-    S_a(B ; Delta_v) = one-shot struct formation with base material B
-                      and that member present from the start at anchor a
+Delta is metanotation, not an Object or an inferred Pattern admitting Type(v).
+A value member installs Val2[s]=v, including s=() when that special leaf and
+its implementation material are legal. It adds no V_T registration. A closure
+callability contribution forms c_C^T from ClosureMaterial(C), with present Val1,
+Home(Type(c_C^T))=TypeMemberScope(T), and requested non-generative V_T
+registration. It installs no associated Val2[()] member on T merely by doing so.
 
-Delta_v is the same semantic input accepted at the corresponding struct
-position. It is not an inferred arbitrary Pattern admitting TypeOf(v), a new
-language value class, or a user-exposed AST. B describes the existing base
-construction; it does not authorize rerunning its effects or original source.
+The source-to-actions handoff fixes the role. It cannot infer contribution
+from a closure RHS or shared spelling, convert Delta_tau_C^value into a call
+contribution, pass tau_C to TypeAdd, or import the whole V_tau_C. Standalone
+closure evaluation still returns tau_C and ordinary let installs it directly.
 
-For the same base, member role, declared policy, resolved dependencies,
-captures and target anchor:
+For the same base, role, policy, realized dependencies, target and entry identity:
 
     T_B = formed base snapshot
-    T_1 = Extend_Gamma(T_B, Delta_v)
-    T_1 equivalent_to S_a(B ; Delta_v)
+    T_1 = Extend_Gamma(T_B, Delta)
+    T_1 equivalent_to S_a(B ; Delta)
 
-The equality observes the complete result, including Core, captured V_tau,
-ordinary generated partners, and internal identities under consistent bound
-alpha-renaming. It is not merely satisfaction equivalence or equality of Core
-lookup indices. No unrelated helper, field or larger admissible Core can be
-added by the incremental path: its result must be the one-shot formation
-result for that exact material.
+The equality observes the complete result, including Core, V_tau, generated
+partners and internal identities under consistent bound alpha-renaming. No
+unrelated field, helper or larger Core may be inserted by the incremental path.
 
-If v already has the required membership, member formation retains it.
-Otherwise, an eligible ReinstantiationWitness supplies the same anchored
-instance that the corresponding one-shot member construction forms. The
-resolved capture values and the anonymous identity graph are preserved under
-the existing replication rules. The target anchor is already fixed independently
-of the Core contents; it is not recovered from the LHS by RHS evaluation.
+Known-target closure material forms c_C^T there initially. If a previously
+formed ordinary callable c is explicitly supplied instead, AnchorFor(c,T)
+retains it when already eligible or requires its ReinstantiationWitness to
+create a new eligible member. It preserves realized dependencies and internal
+identity; it neither rehosts tau_C nor reruns initializers.
 
-This determines Core preparation by projection of the existing formation:
+Unordered sibling call materials are joined against one common snapshot:
 
-    Q_1 = Core(S_a(B ; Delta_v))
-    v_a = the member instance formed in that result
-    Home(TypeOf(v_a)) = TypeMemberScope(T_1)
-    named Val2 residency only if requested by that member material
-    non-generative role registration checked independently
+    T_f = OneShotFormation_f(join_i Delta_i^call)
+    V_T_f = {c_i^f | accepted declaration i}
 
-The local contribution step is TypeAdd after that Core preparation, together
-with the ordinary generated-member closure. Extend returns the whole completed
-snapshot; inject commits it through the ordinary reference. Thus an externally
-performed inject of Delta_v already includes v_a exactly once. Appending another
-TypeAdd afterward would be a second contribution, not this derivation.
+No sibling's standalone tau_C is an initial resident for the others. One-shot
+formation prepares the complete target home and each requested registration.
+Within the legal equivalence domain an incremental presentation uses TypeAdd
+for each formed ordinary callable member; Delta itself is not a TypeAdd value.
+Ordinary Delta_v^value follows Val2 member formation instead. Extend returns the
+whole snapshot and inject commits it through the ordinary reference, with no
+additional implicit +=.
 
-The comparison is a formation law, not replay of source code or equality of
-execution traces. Incremental formation retains its actual typed name creation/initialization,
-OpenHere, Writable, lifetime and Pre/commit/Post events. A hypothetical
-one-shot expression grants no missing incremental authority. If the ordinary
-one-shot member formation is undefined (including missing witness or illegal
-captures), this equivalence supplies no alternate successful construction.
+This is a formation law, not source replay or equality of execution traces.
+Incremental creation/initialization, OpenHere, Writable, lifetime and
+Pre/commit/Post remain required. A hypothetical one-shot expression supplies
+no missing authority. Undefined one-shot formation (including an absent
+required witness or illegal dependencies) gains no alternate successful route.
 
 ## 8. `extend` and `inject`
 
@@ -2302,246 +2363,47 @@ partial write.
 
 ## 9. Pattern-Layer Ordering
 
-This section applies the canonical named-versus-positional and structural-child
-rules from
-`../patterns-overload/pattern-values-relational-semantics-and-extraction.md` to
-name binding construction. It is not an independent definition of Pattern identity
-or relational equivalence.
+The [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#7-product-ordering-is-local-to-each-layer)
+owns the direct-entry criterion: all named is unordered; any bare entry orders
+the entire layer. A top Pattern name is irrelevant. Nested layers decide
+independently, preserving true nesting and ordinary conflict rules.
 
-Let the direct children of one pattern layer be:
+### 9.1 Fully named layers
 
-```text
-p1, p2, ..., pn
-```
+Completed structural names and normalized resident material participate in
+ordinary named-layer identity. A map may represent an all-named layer; its
+serializer order is not a bare-value order. Equal formation routes erase only
+provenance, never distinct child identities or existing effects.
 
-The ordering rule is decided at the level as a whole. Order-insensitivity
-requires both:
+Open navigation preserves the names of the observed members via `s |> name`,
+as specified by the [Path owner](structured-path-algebra-and-pattern-splice.md).
+For members a and b holding equal bool values, observing that outer member layer
+still produces a and b labels. A local holder of bool does not add a wrapper
+named after itself. Labels neither merge different NameCoords nor authorize
+TypeAdd or arbitrary value aggregation.
 
-```text
-the sibling level is wrapped by a Pattern;
-every direct child has a top-pattern navigation layer.
-```
+### 9.2 Layers containing a bare value
 
-A naked Product never satisfies the first condition. Therefore:
+Bare local values `(a,b)` remain positional even if a and b are named variables.
+Adding one bare child to named children makes the whole layer ordered; there
+is no locally unordered subsection. To turn an unordered named Product into
+a bare sequence, extract by name and explicitly reassemble in the desired order.
 
-```text
-(a, b)c == (b, a)c
-(a, b)  != (b, a)
-```
+### 9.3 Construction history and equality
 
-Naming both Product elements does not by itself erase their positions.
-
-The normalizer must therefore preserve two distinct node kinds until this
-decision has been made:
-
-```text
-ProductNode(children)
-PatternLayerNode(name, body)
-```
-
-It must not flatten both into one undifferentiated children list and then infer
-the node kind from whether every child has a complete navigation. Complete
-navigation is necessary for an unordered Pattern body, but it is not
-sufficient.
-
-### 9.1 Fully named body of a Pattern
-
-If a sibling layer is the body of a Pattern and every direct child has a
-top-pattern navigation layer:
-
-```text
-normalize layer
-  -> Map<CanonicalFullNavigation, CanonicalPatternValue>
-```
-
-For example:
-
-```text
-{
-    bool::,
-    t1::t,
-    t2::t
-}
-```
-
-Every entry contains an already completed Pattern navigation and its normalized
-resident value. Neither coordinate is a source `name binding`, source path, or binding
-reference. The complete navigation is the canonical map key; the resident is
-the canonical value at that navigation.
-
-Consequences:
-
-```text
-the whole layer is order-insensitive;
-layer equality is canonical map equality;
-different-name extensions commute;
-same-navigation/different-value conflicts are rejected before map formation.
-```
-
-For example:
-
-```lang
-t1::r
-|> extend(t first)
-|> extend(u second)
-```
-
-and:
-
-```lang
-t1::r
-|> extend(u second)
-|> extend(t first)
-```
-
-produce the same pattern value because both direct children have top-pattern
-names.
-
-Once normalized, the map does not classify elements as “internal patterns” or
-“external patterns.” Parent-scope inheritance, explicit `::`, ordinary binding
-binding, and `extend` explain how a `PatternValue` was resolved or produced
-before normalization. After its navigation name is fully qualified, source
-category and construction route do not participate in `PatternValue` identity,
-map equality, or extraction semantics.
-
-An implementation may retain source binding, inherited/explicit navigation,
-binding origin, or injection origin as provenance for diagnostics and replay.
-That provenance must not affect `PatternValue` equality.
-
-Insertion of an equal `(complete navigation, normalized resident)` entry is
-idempotent. Distinct source bindings may remain distinct extraction entry paths
-while contributing only one canonical map entry:
-
-```lang
-mut let a_ref = (let a::t:type) ref;
-a_ref = bool;
-mut let b_ref = (let b::t:type) ref;
-b_ref = bool;
-```
-
-```text
-Read(Place(resolve(a::t))) = bool::
-Read(Place(resolve(b::t))) = bool::
-
-{
-  FullNav(bool::) -> Norm(bool)
-}
-```
-
-Each sequence creates a typed uninitialized name, explicitly borrows its Place,
-and writes the complete bool type. The following equalities and normalization
-describe the state after both initializations succeed. Both paths may then be used as source navigation paths. After binding
-resolution and value read, both look up the single `bool::` entry. The layer
-is neither a multiset nor a relation keyed by the carrier name binding's source name.
-It is keyed by canonical complete Pattern navigation.
-
-name binding paths and `PatternValue` navigation names may coincide or differ. For
-example, the same spelling may describe:
-
-```text
-binding navigation path:                 t1::t
-PatternValue navigation carried there:  t1::t
-```
-
-The `t1::t` key in a normalized map is still canonical Pattern navigation; its
-spelling does not turn it into a name binding reference. Conversely:
-
-```lang
-mut let t3_ref = (let t3::t:type) ref;
-t3_ref = bool;
-```
-
-after fresh formation and successful ordinary assignment establishes:
-
-```text
-binding navigation path:                 t3::t
-PatternValue navigation carried there:  bool::
-```
-
-The binding path and value path are then visibly different. Both cases use the
-same name-resolution/value-read semantics.
-
-### 9.2 Naked Product or Pattern body containing a bare value
-
-The layer is order-sensitive if either:
-
-```text
-it is a naked Product; or
-it is a Pattern body with at least one bare direct child.
-```
-
-In either case:
-
-```text
-the entire current layer is order-sensitive;
-positions participate in identity;
-the layer cannot be replaced by a name map.
-```
-
-The rule is not “only the bare child is ordered.” The presence of one bare
-value makes the complete sibling layer positional.
-
-### 9.3 Representation guidance
-
-An implementation may distinguish:
-
-```text
-Fully named body of a Pattern:
-  representation =
-    Map<CanonicalFullNavigation, CanonicalPatternValue>
-  membership/equality use the complete navigation and normalized resident
-  order-insensitive
-
-OrderedPatternLayer:
-  position-preserving, order-sensitive
-  used for every naked Product
-  also used for a Pattern body containing any bare direct child
-```
-
-A canonical serializer may sort a fully named map by canonical complete
-navigation encoding. Sorting is only a stable representation of map semantics;
-it must not be presented as preserved source-order meaning. An ordered layer
-must preserve positions.
+Direct struct and incremental extend have the same final observation only
+when member values, both registrations, homes, dependencies and all relevant
+identities coincide. This removes irrelevant formation provenance, not actual
+intermediate reads, writes, failures, lifetime effects or OpenHere checks.
 
 ### 9.4 Navigation, ordering, and optional peeling are orthogonal
 
-These mechanisms answer different questions:
-
-```text
-navigation completeness:
-  determined by OwnNavigation and Pattern-parent anchor traversal
-
-ordering:
-  determined by ProductNode versus PatternLayerNode
-
-optional top peel:
-  erases one top Pattern identity while retaining an anonymous
-  PatternLayerNode boundary and that layer's ordering
-```
-
-The future default `?` operation must therefore use:
-
-```text
-PatternLayer(c, B, O)
-  ?-> PatternLayer(NameAbsent, B, O)
-```
-
-not:
-
-```text
-PatternLayer(c, B, O)
-  ?-> Product(B)
-```
-
-If no top Pattern is peelable, `OptionalPeel(x) = x`; this is a fixed point,
-not failure and not `none`. The retained layer boundary must guarantee:
-
-```text
-PeelView(Norm(x)) = Norm(PeelView(x))
-```
-
-This is a recorded future extraction invariant. It does not claim that the
-current evaluator implements `?`.
+Path formation is independent of external Read. Pattern-parent inheritance is
+ordinary composition under its established interpretation context. `?` removes
+one top name at most, retaining actual nesting and the direct-entry ordering.
+No special name-absent carrier is needed to make all-named material unordered.
+`PeelView(Norm(x)) = Norm(PeelView(x))`; a non-peelable value remains a fixed
+point. Consumers are pending, not a second semantics.
 
 ## 10. Child Uniqueness and Replay
 
@@ -2603,9 +2465,12 @@ rules from
 symbol-first lookup. Formation provenance may be retained for diagnostics but
 does not define a competing Pattern normal form.
 
-### 11.1 Navigation always reaches a name binding before a value
+### 11.1 External navigation reads a resolved target
 
-Both inherited and explicit pattern navigation use the same final two steps:
+Read_name and Path projection may precede any resident lookup. At the first resident
+Read, text-root paths resolve in that use's lexical/semantic environment;
+explicit ValueRoot/RefRoot material retains its actual identity. Both inherited
+and explicit text-root Pattern navigation then use the same final two steps:
 
 ```text
 binding resolution
@@ -2704,7 +2569,8 @@ let bool = ((if | else) bool) |> struct;
 The structural identity NameBindingId(bool) differs from the Pattern head of
 the complete type read through that binding. NameBinding is not another Object.
 
-With t an existing authorized mut type ref:
+With t a legal type-valued name expression or explicit identity-preserving
+borrow path (parent mut borrowing is not a formation premise):
 
 ```lang
 mut let t1_ref = (let t1::t:type) ref;
@@ -2904,8 +2770,7 @@ real-field family before ordinary overload enumeration.
 Explicit P let name::path:t requires freshness and creates a typed NameExpr
 with an uninitialized Place. Explicit ref borrows that Place without reading;
 ordinary write initializes it. Omitted :t defaults to :type without a resident.
-At the specified implementation layer a closure RHS evaluates to tau_C before
-ordinary binding. Further named-type synthesis requires established structural
+At every layer a closure RHS legally completes to tau_C before ordinary binding. Further named-type synthesis requires established structural
 contribution material; legal ordinary lets, shadowing, mutation and groups are
 preserved. Failed execution never retries as contribution.
 
@@ -3203,9 +3068,13 @@ ordinary Core equality unchanged.
   sources. Untransferred local residents expire; stable identity/cache retention
   never extends an expired local or reopens a closed window.
 
-- **NonMetaGenerated.** A value produced in an ordinary (non-meta) construction
-  context is born globally survivable with a live open window:
-  `GlobalSurvivable(v) ∧ WindowLive_Σ(v)` hold from creation. Its open window
+- **NonMetaGenerated.** For the established ordinary non-meta type-construction
+  domain, a value is born globally survivable with a live open window:
+  `GlobalSurvivable(v) ∧ WindowLive_Σ(v)` hold from creation. This must not be
+  mechanically generalized to closure-generated tau with general dependencies;
+  that survival/propagation domain is handed to lifetime refinement. Formation
+  retains all dependency and action checks, without blanket allow/deny rules.
+  Its open window
   is a linear evaluation flow, not a flat event list. The disposition of an
   action on `v` is one of three outcomes:
 

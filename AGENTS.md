@@ -81,6 +81,16 @@ alternate relation or identity.
 - Pattern applicability and extraction come from `R_Gamma(P,c,rho)`.
 - `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
 - NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
+- Ordinary Val2 member formation accepts terminal selector (), supplying
+  ordinary-value callability without another registry. TypeAdd changes V_T only;
+  neither axis implies the other. TypeMember requires an ordinary callable with
+  present Val1, its target classifier home and non-generative V_T registration.
+  Ordinary let f=C binds/installs tau_C:type. Established same-name closure
+  buckets consume ClosureMaterial to form one c_C^T per declaration, against a
+  common snapshot, without a first sibling, tau_C insertion or bulk V_tau import.
+  Delta_v^value and Delta_C,T^call retain distinct consumer roles.
+  Replication witnesses apply to already formed ordinary callable members;
+  known-target initial formation directly creates c_C^T.
 - Same-name construction synthesizes a type's V_tau; ordinary lexical let does
   not aggregate. Structural P let name::path:t creates typed NameExpr and an
   Uninitialized Place, not a resident or ref; omitted :t means :type.
@@ -96,7 +106,9 @@ alternate relation or identity.
   First initialization uses Place authority independently of DeclaredPolicy,
   including const; commit consumes it. Saved initial refs do not authorize
   replacement, and first write never reads nonexistent resident policy.
-  TypeRole(Q) is Q-local; complete tau consistency checks both registered
+  TypeRole(Q) iff Pure(Q) iff Val1?(Q)=absent; complete TypeValueRole(tau)
+  iff WellFormedTau(tau). HasRegisteredSelfConstruction defines only
+  SelfConstructible, not type identity. Complete tau consistency checks both registered
   closure roles' /tau homes separately.
 - Contextual meta qualification is limited to type/type ref, not a fourth
   PolicyMode. Initialized type names retain direct mut borrowing and explicit
@@ -120,6 +132,11 @@ alternate relation or identity.
   acquisition; plain let completes/closes it. P2 meta remains evaluation stage.
   Invocation caches retain instances/member Places and current state. A consumes
   these facilities; saved references recheck the original source at write Pre.
+  MetaDecl requires Ordinary placement, => and no capture clause. It admits no
+  automatic closure dependency on an unpassed enclosing local. Such locals are
+  masked; invocation dependence enters In or established stable meta-owner
+  relations. MetaInstanceRootKey has no CapturedEnv axis. Nested ordinary
+  closures may use only material legally available inside the invocation.
 - Stage is one atom; static stages are pairwise incomparable. P2 is horizon,
   P1/Pout producer visibility; InputAdmissible, migration and Ready are separate.
   Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
@@ -128,7 +145,13 @@ alternate relation or identity.
 - Name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
-- Calls use value -> exact tau -> associated `()` and one candidate space.
+- Ordinary calls use x -> Type(x) -> associated Val2[()], with self=x.
+  Type calls union the ordinary implementation entries for every c in V_tau before
+  one selection of (c, Impl, projection, frame), with self=c.
+  AssociatedNamespace(T)=MemberScope(Core(T)); AssociatedName(T,s) is its
+  NameCoord. This is distinct from TypeMemberScope(T)=/tau(T).
+  V_tau registration, Val2 residency, Pattern registration and ConstructEdge
+  remain independent; no self-construction witness proves type callability.
 - `PolicyMode = {const, plain, mut}`; plain is a primitive point.
 - Policy preference, CapabilityRealization, Writable, and DynamicLegality are
   independent judgments.
@@ -159,8 +182,10 @@ alternate relation or identity.
 - Done is internal chain/target completion, never an Object or Pattern.
   Split/D is restricted; residual escape separately reads ordinary meta facts.
   Return has no synthetic local unit contribution.
-- Implementation-layer closure expressions return tau_C before ordinary let
-  binding. Contribution repair preserves all legal binding/shadow/write/group
+- Every legal completed closure expression returns full tau_C through ordinary
+  struct, with tau_C/c_C/A_C/() distinct and a finite implementation leaf.
+  File implementation-layer let installs at the established package root;
+  true lexical local let remains binding. Contribution repair preserves all legal binding/shadow/write/group
   actions and never retries failed execution as contribution.
 - NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
   Ordinary name writes may change Val2(Core) without either registration.
@@ -174,6 +199,38 @@ alternate relation or identity.
 - Close freezes non-generative registered structure, not future ordinary generated
   Val2 realization. Such results reopen no construction view and do not alter old
   snapshots. Current Norm/only_val2 observations remain continuation-relative.
+
+- Product layers with all direct entries named are unordered; any bare entry
+  makes that whole layer ordered. Nested layers decide independently. Unordered
+  to bare sequence requires named extraction and explicit ordered assembly.
+- Read_name obtains full NameValue; value-expected use proceeds to Read_resident.
+  e# is path_pattern projection, stopping at the first level for NameExpr.
+  (n#)$ reconstructs structure only under the Path consumer; p[i] yields
+  relative single-name path_pattern.
+  General Slice_Omega remains open. Textual roots resolve at resident use;
+  explicit roots retain anchors/dependencies. General $ inserts no implicit
+  Path projection and preserves Hole identities. ADL uses ((a#)[0])$::t.
+- Public Policy pair syntax is retired; internal value/type observations remain
+  independent and share the source evaluation edge only for direct projections.
+  Concrete atoms, omission, holes and splice remain distinct.
+- Terminal ReturnPattern/Pout demand precedes immediate root maxima; established
+  outer P1/P2 jointly constrain inner positions, without an implicit semantic temp.
+- Dependencies separate requirements, semantic realization and layout. [] is one
+  source. Realization follows the source occurrence's selected ordinary action,
+  uniquely up to observational equivalence; distinct candidates use ordinary
+  preference or ambiguity, never backend choice. Initialization is once per formation.
+  Projections never recapture.
+  In-place syntax forms dependencies automatically and produces an ordinary
+  first-class result. Invocation does not recapture; binding, transfer and outer
+  writes use actual access/capability/lifetime, with no placement-based veto.
+  Non-MetaDecl DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
+  per occurrence; resolved explicit capture binders replace corresponding outer
+  observations. Ordinary => closures may have both. InPlace excludes explicit
+  clauses, but automatic dependencies do not imply InPlace. Placement and
+  explicit/automatic origin supply no applicability, specificity or preference;
+  otherwise tied distinct candidates follow ordinary ambiguity.
+  Lifetime persistence/escape refinement retains all ordinary checks; tau status
+  grants no global lifetime and local dependency grants no universal prohibition.
 
 ## Scope and Open questions
 

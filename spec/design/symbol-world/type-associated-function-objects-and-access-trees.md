@@ -15,9 +15,24 @@ distinction.
 ## Field Functions and Same-Name Overload Families
 
 Fields and member-like operations are function objects installed in a
-type-associated companion space. A field is the unary special case; a
+type-associated Core member scope. A field is the unary special case; a
 member-like operation may consume a receiver plus ordinary remaining
 arguments.
+
+The [type-value owner](type-values-places-and-borrow-views.md#associated-namespace-is-the-core-member-scope)
+fixes its existing structural coordinate:
+
+```text
+AssociatedNamespace(T) = MemberScope(Core(T))
+Val2(AssociatedNamespace(T)) = Val2(Core(T))
+AssociatedName(T, s) = NameCoord(AssociatedNamespace(T), s)
+```
+
+The companion is a view of this scope, not an independent namespace.
+TypeMemberScope(T) = /tau(T) instead locates registered implementation
+classifiers and anchors candidate-family identity. It is not MemberScope(Core(T)).
+An associated coordinate supplies no Place or permission by itself; actual
+navigation retains its resolved structural root and resident generation.
 
 The `struct` registration `Field(T, name, A)` generates the field's complete
 associated candidate family under `T`: one by-value accessor, plus for each
@@ -246,31 +261,15 @@ The first-class surface constructor is:
 .field
 ```
 
-and normalizes to a function object shaped as:
-
-```lang
-(self, val: T, ...args) { (val, args) |> field::T }
-```
-
-Thus `E.field` mechanically lowers to `E |> .field`; `.field` itself is
-independently storable/transportable. After that one lowering, `.field` is an
-ordinary expression: `E |> .field P` and `E |> d P` (where `d` is bound to
-`.field`) must use exactly the same general pipe/product binding path. No rule
-may inspect `DotClosureLowering` provenance to absorb `P`, end a target, or
-override the ordinary continuation and legality-repair rules. Compact
-`E.field P` likewise lowers `E.field` first and then resumes the general
-expression rules. `...args` is a Pattern remainder matcher only. Existing
-product normalization forwards the bound remainder; no pack type or unpack
-operator is introduced. The generated `self` formal binds the implicitly
-injected field-function object; `val` remains the first explicit receiver
-argument.
-`E..field(product)` remains the direct member-call sugar. Candidate selection
-uses the actual receiver Pattern (`T`, `T ref`, or `T share`) in the ordinary
-overload family; it does not navigate through a `ref` or `share` child namespace.
-For a borrowed receiver the ordinary family reached is the derived type's own
-forwarding member (`Derived-Type Associated Forwarding` below), which performs a
-fresh ordinary invocation of the base family; the dot lowering itself never
-inspects the external receiver's type context.
+and denotes ordinary `field::adl`. Thus `E.field` means
+`E |> field::adl`; a stored selector uses the same ordinary call relations.
+The default ADL generator contributes an ordinary closure, whose receiver
+Pattern selects the associated family. It directly forwards under established
+P1/P2 and ReturnPattern/Pout demand before inner maxima. It introduces no
+normalizer-owned forwarding body, receiver coercion or private dispatch rule.
+`E..field(product)` remains direct member-call sugar. Derived forwarding and
+borrowed projection below remain separate ordinary operations. See
+[operator and ADL owner](../patterns-overload/operator-patterns-and-generative-declarations.md).
 
 An ordinary let-shaped declaration consumed by `struct` contributes its
 initializer as Val2 material under the current Pattern owner:
@@ -443,19 +442,19 @@ forwards. This prevents write capability from leaking from `T ref` to
 share-admissible subset of inherited associated names, never the
 ref-only write family.
 
-The `.field` lowering (above) resolves the generated hole `T` and, for a
-borrowed receiver `r : X ref`, lands on `r |> inner::(X ref)`. The connection
+The ordinary `inner::adl` generated closure resolves its receiver type and, for a
+borrowed receiver `r : X ref`, forwards to `r |> inner::(X ref)`. The connection
 
 ```text
 inner::(X ref) -> inner::X
 ```
 
-is what the specification must provide: nothing in the independent dot lowering
+is what the specification must provide: nothing in the surface spelling
 can by itself reach the `inner : X ref -> A ref` candidate inside `inner::X`.
 The full chain therefore has four layers that must not be merged:
 
 ```text
-surface / dot lowering
+surface / ordinary ADL
     r.inner
       ↓
     r |> inner::(X ref)
@@ -488,8 +487,8 @@ field value and then forming `A ref`.
 
 ## Type Values, Places, and Injection (summary)
 
-Field functions live in a type-associated companion *place*, which is distinct
-from the type *value* the bound symbol stores. The access-tree work in this
+Field functions are observed in Core's associated member scope; writing one
+requires an actual member Place, distinct from the type value. The access-tree work in this
 document therefore depends on three identities being kept separate:
 
 - a name (`NameBindingId`),

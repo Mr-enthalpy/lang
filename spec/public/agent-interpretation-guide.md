@@ -27,7 +27,7 @@ Do not interpret `a b` as traditional function application.
 Do not interpret `(a, b)` as an argument list.
 Do not interpret `obj.field` as field lookup.
 Do not interpret `obj..f(args)` as method dispatch.
-Do interpret `.field` as an independently generated field-function closure.
+Do interpret `.field` as ordinary `field::adl`; the default generator forms an ordinary closure.
 Do not interpret `...args` as a value spread or pack type.
 Do not interpret annotation patterns as runtime expressions.
 Do not resolve pattern-side names through ordinary function lookup.
@@ -68,8 +68,8 @@ See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
 - Ordinary capture clauses are lists of let-shaped bindings. Explicit
   `[let x = E]` and `[x = E]` share `BindingSlot` normalization; shorthand
   `[E]` elaborates to `let n = E` only when normalized `E` has exactly one
-  distinct free non-call bare name. Capture initializers are simultaneous and
-  see the pre-capture environment.
+  distinct free non-call bare name. Capture initializers share the pre-capture name environment;
+  their effects follow ordinary formation order and run once.
 - Only the complete `[[Name]] {` shape bypasses an available capture slot.
   Deduce alone leaves that slot open; malformed `[[` strategy recovery is
   reserved for a head independently established by a later component.
@@ -123,8 +123,8 @@ See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
   outer navigation component must be grouped in full:
   `child::(int Vec::std)`.
 - Every callable, including in-place, has a semantic owner and callable-local
-  `Self` space. Standalone closure materialization defaults to an owner-derived
-  anonymous receiver type; an associated `()` entry may use a named receiver
+  `Self` space. Every legal completed closure expression forms full tau_C through struct;
+  its c_C, A_C=Type(c_C), and () entry are distinct; an associated `()` entry may use a named receiver
   type instead. Independent let Patterns/callable heads create Pattern roots;
   duplicate holes fail only within one root.
 - Construction and extraction may be isomorphic; call and extraction are not.
@@ -169,17 +169,28 @@ generation. It must not implement pattern-space construction, `Done`
 insertion/elimination, `operator+` meta-reduction, exhaustiveness checking, or
 `match` closing.
 
-In particular, normalizing a closure literal or `.name` produces a Raw/Norm
-closure carrier, not a callable value. Only a later explicit binding or call
-consumer may materialize that carrier.
+Normalization produces syntax carriers, not semantic values. Every legal
+completed closure expression yields full tau_C. The current `.name` generated
+helper carrier is pending replacement by ordinary `name::adl`; its provenance
+grants no dispatch or binding privilege.
 
 Source-written captures are explicit binding requirements. `[x]` is
 `[let x = x]` with no written mode override, not automatic const
 capture. Any implicit capture requirement needs later resolved free-reference
 and external-eligibility analysis. Capture requirements do not define `self`
 fields, layout, or ABI.
-In-place closures have no capture set: they may read through embedding-layer
-lookup but may not directly write an outer place.
+In-place syntax has no explicit capture clause; free external observations form
+automatic dependency requirements and ordinary realizations. Invocation does
+not recapture. Actual access/capability/lifetime checks decide outer writes.
+Ordinary => closures may also have automatic dependencies alongside explicit
+ones. Classify each occurrence, excluding outer observations replaced by a
+resolved capture binder. After formation neither source placement nor capture
+origin supplies overload applicability, specificity or preference evidence.
+MetaDecl is a separate boundary: require => and absent capture clause, mask
+unpassed enclosing locals, and admit no closure capture axis in invocation
+identity. Ordinary closures nested in a meta body may use only its legally
+available inputs, stable definitions and instance material. Generic syntax
+carriers do not prove MetaDecl validity.
 
 ## 6. Common Misreadings
 
@@ -187,7 +198,7 @@ lookup but may not directly write an outer place.
 - "`(args)` after a name is the argument list" — no; it is the source-product
   continuation when an incoming source product exists.
 - "`obj.field` looks up a field" — no; it calls the same first-class `.field`
-  closure whose body contains unresolved `field::T` navigation; lookup is future.
+  selector, canonically `field::adl`; source/evaluator wiring remains pending.
 - "annotation `T Option::std` is an expression" — no; it is annotation-pattern
   material.
 - "`P let e` is `e |> P` or a hidden `let`" — no; `PolicyLet` preserves a
@@ -286,3 +297,35 @@ and optimizer structures cannot introduce program facts.
 The [conformance matrix](../planning/canonical-semantic-conformance.md) lists
 the acceptance cases. Current carriers and their passing tests are not proof
 that these pending consumers are implemented.
+
+
+## PR106 interpretation boundaries
+
+All directly named entries make a Product layer unordered; one bare entry makes
+that layer ordered. Nested layers decide independently of the top name. Named
+extraction followed by explicit ordered assembly is required for a bare sequence.
+
+Read_name obtains full structural NameValue; value-expected use continues with
+Read_resident. e# is path_pattern projection, stopping at the first level for
+NameExpr. The Path consumer interprets (n#)$ to reconstruct structure;
+p[i] returns relative single-name
+path_pattern. Textual roots resolve at resident use and explicit anchors retain
+dependencies. Default ADL uses ((a#)[0])$::t, not a string truncation.
+General $ consumes ready ordinary material in a Pattern context without textual
+substitution or rebinding Hole identities. Public Policy pair syntax is retired;
+direct source/type Policy projections observe the same edge, whereas a newly
+bound type has its own view. Concrete atoms do not implicitly declare holes.
+
+Terminal delivery supplies selected ReturnPattern/Pout demand before immediate
+root-call maxima, with both outer P1/P2 constraining both inner positions. No
+implicit semantic temp intervenes; explicit user bindings remain boundaries.
+
+General dependencies separate requirements, semantic realization and layout;
+snapshot/reference choice is semantic and projections never recapture.
+Closure formation uses ordinary struct with a finite implementation leaf and
+same-formation first callable. File implementation-layer let installs under the
+established package root; true lexical let remains binding. In-place syntax
+forms dependencies automatically. Its completed result supports
+ordinary binding and transfer subject to actual dependencies and ordinary
+checks; wrappers preserve those obligations without a source-origin veto. Lifetime persistence and escape remain
+checked through the explicit refinement handoff, not inferred from tau status.

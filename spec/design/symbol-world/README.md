@@ -7,6 +7,8 @@ This block separates structural name existence from ordinary value algebra.
     type += closure: callspace contribution with OpenHere and anchoring
     group += type/group: candidate aggregation with group writability
 
+- [Structured Path and Pattern splice](structured-path-algebra-and-pattern-splice.md)
+- [General dependency realization](dependency-observation-and-realization.md)
 - [Name/type/group algebra and structural let](names-and-overload-groups.md)
 - [Complete pattern values and Places](type-values-places-and-borrow-views.md)
 - [Construction, meta identity and OpenHere](symbol-first-meta-construction-and-pattern-injection.md)

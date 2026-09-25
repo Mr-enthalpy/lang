@@ -25,7 +25,9 @@ their value/Pattern boundary. It is not HIR.
 
 ### Product
 
-An ordered structural value or Pattern form. A source Product participates in
+An ordinary structural value or Pattern carrier, distinct from OverloadGroup.
+All directly named entries make its layer unordered; any bare entry makes that
+layer ordered, independently of its top-level name and nested layers. A source Product participates in
 the language's call-composition model; it is not a conventional argument-list
 node.
 
@@ -92,6 +94,22 @@ only_val2 counts its actual snapshot, not every future generated result.
 type equality; `V_tau` is an immutable TypeMember callspace snapshot; the whole
 observation distinguishes snapshots.
 
+### TypeRole and self-construction
+
+TypeRole(Q) iff Pure(Q) iff Val1?(Q) is absent. A payload-bearing Object is
+an ordinary value. Complete TypeValueRole(tau) iff WellFormedTau(tau).
+SelfConstructible(Q) iff HasRegisteredSelfConstruction(Q) is independent:
+its joint Val2/ConstructEdge witness determines construction capability,
+not type identity. A well-formed type may be callable without self-construction.
+
+### Associated namespace
+
+AssociatedNamespace(T) = MemberScope(Core(T)), whose Val2 is Core(T)'s Val2.
+AssociatedName(T,s) = NameCoord(AssociatedNamespace(T),s). It is the existing
+Core structural member view, not a separate companion or the complete type's
+classifier implementation home TypeMemberScope(T)=/tau(T). Actual name and
+Place coordinates remain route-specific; value equality does not merge them.
+
 ### TypeValueId
 
 An opaque implementation lookup key for Core material. It is not whole `tau`,
@@ -113,6 +131,9 @@ An ordinary outer candidate aggregation algebra, with eta(T) = {T}. It can be
 empty. Group += aggregates type/group candidates by its bucket relation without
 mutating the types; type += instead changes V_tau under OpenHere and final
 Home(TypeOf(v)) = TypeMemberScope(T), with independent residency and registration.
+TypeMember requires an ordinary callable value with present Val1. Its own
+classifier's Val2[()] supplies ordinary invocation. Formation of () as an
+ordinary terminal member changes no V_T; TypeAdd installs no () on T.
 Buckets compare complete bound type snapshots, never Core equality.
 
 ### SemanticOwner
@@ -187,8 +208,10 @@ extraction. Ordinary member access does not receive this family filter.
 
 ### PolicyPair
 
-The orthogonal value/Pattern policy pair `Pv:Pp`, containing stage and presence
-facts. It does not contain or determine whole-slot mode.
+An internal pair of independent value/Pattern observations, containing stage
+and presence facts. Public `Pv:Pp` syntax is retired. Direct source Policy and
+Policy of its direct type projection observe one evaluation edge; a separately
+bound type value has a new edge. Mode and safety remain independent.
 
 ### PolicyMode
 
@@ -221,7 +244,7 @@ paths stay explicit. OperatorNameValue reads without recursively dispatching.
 OG_s is an ordinary spelling-retaining type family with explicit Forget_s to
 OverloadGroup; selection reads the current environment slot. Ordinary call,
 registered extraction and generative projections retain their distinct roles. Extraction observes the same relation as construction,
-not a synthesized inverse. Policy +/|| deduction uses those registered
+not a synthesized inverse. Policy composition/deduction uses those registered
 relations, HoleBinderId, require and ordinary overload selection. Omission,
 explicit concrete mode and explicit hole remain distinct source constraints.
 
@@ -229,8 +252,8 @@ explicit concrete mode and explicit hole remain distinct source constraints.
 
 An occurrence forming a requested name/result relation may establish ordinary
 Val2 residency, but supplies no V_tau or Pattern registration evidence. This
-restriction does not permanently taint the value. Concrete name heads and _
-use ordinary specificity, not a separate generation priority.
+restriction does not permanently taint the value. Optional callable heads, Concrete/Wildcard/HoleRef name selectors and general
+expression bodies use ordinary specificity, not a separate generation priority.
 
 ### DynamicLegality
 
@@ -240,8 +263,11 @@ overload resolution.
 
 ### CallableProjection
 
-The ordinary call candidates of a named type's V_tau or of an explicit
-OverloadGroup through singleton type embedding. Name resolution occurs before this
+A type callee projects every c in its own V_tau to Type(c)'s associated
+Val2[()] entries with self=c. One ordinary selection over their disjoint union
+seals the callable/implementation pair, projection and frame. An ordinary x enters directly through
+Type(x)'s associated Val2[()] with self=x. Explicit OverloadGroups aggregate
+type projections through singleton embedding. Name resolution occurs before this
 projection and is never retried because callability or applicability fails.
 
 ### Sealed selected invocation
@@ -377,8 +403,10 @@ global map primitive.
 
 ### Anchored replication
 
-A ReinstantiationWitness for an eligible closure permits a new instance under
-a target anchor. Captures keep their semantic values and ordinary borrow rules;
+A ReinstantiationWitness for an eligible ordinary callable member c permits a
+new member under a target anchor, not rehosting of the result type tau_C.
+Known-target initial formation directly creates c_C^T. Dependencies keep their
+semantic values and ordinary borrow rules;
 internal identities are consistently renamed. The original owner is unchanged.
 
 ### SafetyPolicy and unsafe admission
@@ -444,9 +472,58 @@ Target return has no fabricated local unit. CanEscape_Sigma(R,B) is a separate
 fixed consumer of current ordinary meta payload facts, not a universal
 empty-residual rule or a new trait ontology.
 
-### Implementation-layer closure formation
+### Closure formation
 
-At the specified structural namespace implementation layer Eval(C)=tau_C.
-Ordinary let binds the evaluated RHS. Additional synthesis requires explicit
-structural contribution roles; conservative repair cannot override legal
-binding, shadowing, mutation or group actions.
+Every legal completed closure expression returns full tau_C through ordinary
+struct ClosureMaterial(C). tau_C, its callable c_C, A_C=Type(c_C) and the ()
+entry are distinct. Ordinary singleton/file installation and lexical binding
+install tau_C:type. An established same-name bucket consumes the separate
+CallabilityContribution(T,C)=c_C^T projection, with one target-anchored member
+per declaration. Siblings form jointly; no first RHS, tau_C insertion or bulk
+V_tau import is implied. ClosureMaterial is metanotation, not a new Object.
+In-place syntax uses automatic dependency formation and produces an ordinary
+first-class result. Binding, transfer and outer writes depend on actual
+dependencies, access, capability and lifetime; invocation does not recapture.
+Placement supplies no applicability, specificity or preference evidence after
+formation. Ordinary => closures may combine explicit and automatic dependency
+occurrences; in-place forms have automatic occurrences only.
+
+### MetaDecl capture boundary
+
+The callable establishing MetaInvoke identity requires ordinary => and no
+capture clause. It cannot acquire automatic dependencies from unpassed enclosing
+locals. Invocation dependence uses In and its admitted dependency closure or
+established stable definition/instance relations. MetaInstanceRootKey has no
+CapturedEnv coordinate. Ordinary closures nested in the body may depend on
+material legally available there, without bypassing masked outer locals.
+
+### Structured Path and Pattern splice
+
+Path is ordinary extractable linked material (NameNode, ValueRoot/RefRoot,
+Link/End and endpoint shape). Read_name obtains full NameValue; value-expected
+use proceeds through Read_resident. Text roots resolve at resident use; explicit
+roots retain anchors and dependencies. e# is the defined path_pattern projection,
+stopping at the first level for NameExpr. The Path consumer interprets (n#)$
+to reconstruct structure; general $ supplies no implicit Path decoding. Indexing
+returns relative single-name path_pattern, not string; general Slice_Omega
+remains open. General $ splices ready Pattern material without implicit Path
+projection, preserves Hole identities and performs no textual substitution.
+PathShaped admits finite name chains with a textual/open root endpoint, or
+inward names followed by exactly one terminal explicit root. Endpoint shape
+and root position are semantic constraints. The name family's explicit string
+projection returns its stored name parameter. Open navigation yields a finite
+Product of individually named entries.
+
+### General dependency
+
+Needs describes required observations; the source occurrence's selected ordinary
+action fixes semantic realization, uniquely up to observational equivalence.
+Distinct candidates use ordinary preference or ambiguity, never backend choice
+between snapshot and live reference. Representation selects layout afterward. Explicit [] is one
+dependency source. Initialization occurs once per formation, with common
+pre-capture name scope and ordinary effect order; projections do not recapture.
+ExplicitDeps and AutomaticDeps are classified by occurrence, not placement.
+Resolved explicit capture binders replace corresponding outer observations;
+other free observations may form automatic dependencies in ordinary closures.
+These rules exclude the identity-establishing MetaDecl layer's capture channel.
+Persistence and escape use the lifetime owner's refinement handoff.

@@ -112,7 +112,7 @@ function layer; consumer alignment is roadmap work.
 - What IR represents the already defined construction-window termination,
   meta completion, plain closure and registered-structure closure events?
 - What public spelling should the builtin associated-state callable A use?
-- Which values beyond closure-expression-produced closures can prove a
+- Which values beyond ordinary callable members from closure formation can prove a
   location-parametric ReinstantiationWitness? The initial domain is fixed;
   arbitrary owner-changing replication is not admitted.
 - What concrete witness/template and alpha-renaming representation implements
@@ -131,8 +131,10 @@ authority is independent of const/plain/mut and is consumed on the successful
 first commit; later replacement has separate capability and resident
 compatibility checks. Close requires
 initialized retained members being published, not realization of every coordinate.
-First named contribution uses one-shot formation
-and initialization; later contributions extend an existing resident.
+An established same-name closure bucket joins sibling callability materials
+against one common snapshot and initializes once; no first sibling is selected.
+Ordinary singleton let installs tau_C, while contributions form target-anchored
+ordinary callable members. Extension reads only an already initialized resident.
 Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
 requires OpenHere and final anchored closure membership, changing only V_tau;
@@ -192,9 +194,10 @@ ordinary source/host work; their implementation does not create authority.
 
 ## Closure, control flow, and ownership
 
-- What carrier materializes a Closure AST as a callable object and lays out
-  explicit/automatic captures?
-- How are in-place closure embedding reads resolved without inventing captures?
+- Which carrier realizes ordinary struct Material_C into full tau_C, its c_C,
+  A_C and () roles, and represents already determined dependency realizations?
+- How are region/generation persistence, movement and escape checked for
+  automatically formed closure dependencies?
 - How should the NLL/control-flow graph be represented?
 - How are `return`, effect, and sync operations integrated into the shared
   semantic continuation?
@@ -204,10 +207,12 @@ naked use selects operator[op], dot .op selects op::adl and explicit paths stay
 explicit. OG_s's ordinary string-to-type construction, spelling extraction,
 explicit Forget_s and current-slot selection are closed. Call, registered
 extraction and generative invocation use ordinary relations. Source wiring
-remains roadmap work; this does not close general structured Path algebra.
+remains roadmap work; structured Path and ordinary ADL are now closed by their
+topic owners.
 
-In the specified structural implementation layer a closure expression returns
-tau_C before ordinary let binding. Conservative contribution roles preserve
+Every legal completed closure expression returns full tau_C through ordinary
+struct. File implementation-layer let installs under the established package
+root, while true lexical local let remains binding. Conservative contribution roles preserve
 legal ordinary actions and never retry failed execution. These are closed laws,
 not a pending choice based on RHS type or declaration count.
 
@@ -221,13 +226,25 @@ not a pending choice based on RHS type or declaration count.
 - What finer-grained identity, if any, is needed for grouped inferred-require
   atoms?
 
-### First-class structured Path algebra
+### Structured Path representation and remaining surface scope
 
-The remaining foundational navigation question is how structured, typed,
-authority-compatible name/path material supports Reroot, Append, DependentSelect
-and composition. Arbitrary String -> SemanticPath injection is excluded. A
-possible .field -> field::adl presentation belongs to this reroot/dependent-path
-and surface question, not to whether a requested name coordinate can exist.
+[Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
+defines Read_name/Read_resident, full NameValue structure, path_pattern/# value
+projection and round-trip through the Path consumer of general $. Norm_path
+retains both its string
+segments and endpoint/root material in Omega. Indexing p[i] is a relative
+single-name path_pattern, never a string. Default ADL forwards through
+((a#)[0])$::t. Concrete representations and source wiring remain pending.
+
+General slicing p[i:j]:path_pattern is a small open question: define
+Slice_Omega endpoint/root retention, admissible boundaries and empty slices
+without copying stale endpoints or inventing an empty-Path unit. Indexing is
+fixed as relative single-name selection; whether singleton slicing agrees with
+indexing remains undecided, including when a slice touches a root endpoint.
+The public Product ordinal API remains separately open; neither gap permits
+implicit sorting or opaque-only Path semantics.
+`#` is already defined for any expression with applicable path_pattern projection;
+arbitrary source quotation is not supplied by that law.
 
 NameCoord exists independently of realization. Finite generative rules can
 match legal requested coordinates without enumerating an infinite Val2 or using
@@ -260,3 +277,17 @@ Concrete source definitions for literal construction, construction/migration
 families, capability entries, StructuralDefault providers, and lifecycle
 algebra remain future work. Ordinary selection and the canonical relations
 already determine their meaning.
+
+
+## Closure dependency lifetime refinement
+
+[The lifetime handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
+owns further integration of dependency region/generation persistence,
+move/copy/preserve, return/store/escape/promotion, bounded runtime state with
+stable descriptors, including the concrete validity regions of automatically
+formed dependencies. In-place results are already ordinary first-class values.
+FormationLegal, LifetimeLegal, Pre/Post, MoveEffect/Movable, EscapeLegal and
+owned-transfer/promotion checks remain required. This does not block closure
+formation semantics and grants neither global lifetime to tau_C nor a blanket
+ban on every local dependency. Already established non-meta type survival
+facts are retained in their domain.

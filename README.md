@@ -48,8 +48,9 @@ is independent of stable root history. Instance move effects and directed with
 cleanup feed the same lifecycle observations. Done is internal completion;
 residual escape separately consumes ordinary meta facts.
 
-Implementation-layer closure expressions produce complete types before ordinary
-let binding. Explicit structural contributions synthesize named types;
+Every legal completed closure expression produces full tau_C through ordinary
+struct. File implementation-layer let installs at the established package root;
+true lexical local let remains binding. Explicit structural contributions synthesize named types;
 OverloadGroup is the separate aggregation algebra. Naked operators select
 operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
@@ -95,3 +96,20 @@ The lexer remains weak: contextual language words are ordinary `Name` tokens.
 The parser owns syntax shape, not semantic meaning. Closed canonical relations
 belong in their topic owners; genuinely unresolved representation questions
 belong in `spec/planning/open-questions.md`.
+
+
+Ordinary calls enter through Type(x)'s associated Val2[()] with self=x.
+Type calls expand all c in their own V_tau into Type(c)'s associated Val2[()]
+entries, then select one (c, implementation, frame), with self=c.
+V_tau, Val2 residency, Pattern registration
+and ConstructEdge remain independent. In-place syntax forms dependencies
+automatically; its completed result supports ordinary value operations whose
+legality depends on actual dependencies, access, capabilities and lifecycle.
+Invocation does not recapture or resolve external names again by spelling.
+Pure Core material has TypeRole independently of self-construction; every
+well-formed complete tau is a type. Dependency realization follows the selected
+ordinary source action, uniquely up to observational equivalence.
+Ordinary closures may combine explicit and automatic dependency occurrences;
+in-place syntax excludes explicit clauses and supplies no overload preference.
+Meta declarations require => and no closure capture channel; unpassed locals
+remain masked and invocation identity has no hidden captured-environment axis.

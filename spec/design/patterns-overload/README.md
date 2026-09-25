@@ -21,10 +21,11 @@ Pattern normalization and the candidate model that feeds invocation:
 - first-order type-value candidate adaptation, applicability, specificity
 - the full overload-resolution vision
 - static pattern spaces and extraction chains
-- callable implementation tails, first-class dot closures, and Pattern
+- callable implementation tails, ordinary ADL selectors, and Pattern
   remainder packs
-- in-place closure candidate metadata and its fixed preference position; lazy
-  embedding lookup/capture boundaries are owned by the function-object model
+- closure source placement and occurrence-based explicit/automatic dependency
+  formation, owned by the function-object/dependency models; placement supplies
+  no post-formation candidate preference
 
 The base Pattern relation, binderless Pattern semantics, direct structural
 incidence, annotation split, constructor/extractor family contracts, and the
@@ -33,7 +34,7 @@ named-versus-positional normalization boundary are owned by
 `struct` forming complete type values, pure `extend`, and place-level `inject` are owned by
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` and
 must satisfy that Pattern authority.
-Canonical policy pairs, seal visibility, PolicyMode product order, compile-flow
+Internal Policy observations, seal visibility, PolicyMode product order, compile-flow
 projection, derived compile companions, must-select semantics, match staging,
 and automatic require are owned by
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`.
@@ -61,7 +62,7 @@ NormProduct -> ProductObject -> FlattenedProductObject -> ArgProductShape -> Raw
 ```
 
 The bridge flattens exposed Product nodes, does not cross Expression nodes,
-preserves order, preserves `Unit`, and preserves provenance. This is an input to
+preserves each layer's named/ordered relation, preserves `Unit`, and preserves provenance. This is an input to
 candidate preparation, not runtime overload resolution.
 
 ## Documents
@@ -74,7 +75,7 @@ candidate preparation, not runtime overload resolution.
   relations; it does not define the base Pattern relation.
 - `overload-resolution-design.md` — the complete overload-resolution model,
   including fully admissible set `A`, ordered preference filters
-  (including in-place over non-in-place), and must-select consistency.
+  and must-select consistency; source placement is not a preference dimension.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   residual, `Done`, and extraction-chain consumer semantics.
 - `callable-tail-dot-closure-and-pack-pattern.md` — the canonical connection
