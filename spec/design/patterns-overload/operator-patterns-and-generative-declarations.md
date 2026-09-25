@@ -298,6 +298,8 @@ For a field request:
 ```text
 a = NameValue(field::adl)
 a# = PathPattern(field::adl)
+Interpret_Path(a#) =_Path a
+PathPatternProjection(Interpret_Path(a#)) = a#
 (a#)[0] = PathPattern(field::)
 ((a#)[0])$::t =_Path field::t
 ```

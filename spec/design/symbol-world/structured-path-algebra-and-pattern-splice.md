@@ -256,6 +256,28 @@ access.
 
 ### 2.5 Path projection and round-trip
 
+The round-trip domain is legally Path-projectable values, including already
+bound NameValues; it is not restricted to source NameExpr. For such a value v
+and its normalized projected Pattern p:
+
+```text
+PathPatternProjection(v) = p
+    implies Interpret_Path(p) =_Path v
+
+PathPatternProjection(Interpret_Path(p)) = p
+    for normalized p in the legal PathPattern domain
+```
+
+Here =_Path observes v's Path structure, never resident equality or equality
+of arbitrary value representations. For example, a string's defined projection
+observes its relative single-name structure (§2.4); it does not parse source.
+The two operations are inverse on this legal structural domain, modulo Path
+equivalence and Pattern normalization. Endpoints and explicit root material
+remain part of that observation. Projection grants no resident-read authority.
+
+NameExpr is an entrance to this value law through Read_name, not its final
+domain restriction. The source spellings specialize it as follows:
+
 ```text
 n# = n |> path_pattern = PathPattern(Read_name(n))       for legal NameExpr n
 e# equivalent_to e |> path_pattern                     where projection is defined
@@ -268,19 +290,31 @@ PathPatternProjection(p) = n#
 Gamma; Sigma |- (n |> path_pattern)$ =>_Path p
 p =_Path Read_name(n)
 PathPatternProjection(p) = n |> path_pattern
+
+a = v                                      -- already bound Path-projectable value
+a# = a |> path_pattern = PathPatternProjection(v)
+Gamma; Sigma |- (a#)$ =>_Path q
+Gamma; Sigma |- (a |> path_pattern)$ =>_Path q
+q =_Path v
+PathPatternProjection(q) = a#
 ```
 
 These round-trip laws are indexed by the Path consumer: Interpret_Path in
 the general splice judgment of §4 interprets the projected Pattern material.
-The surface shorthand (n#)$# = n# assumes this Path interpretation of the
-inner splice. It gives neither Policy nor other Pattern consumers an implicit
-Path decoder and adds no decoding step to the general definition of $.
+Thus (a#)$ =_Path a and (a |> path_pattern)$ =_Path a compare structural
+observations. The surface shorthands (n#)$# = n# and
+((a |> path_pattern)$)# = a# assume this Path interpretation of the inner
+splice. They give neither Policy nor other Pattern consumers an implicit
+Path decoder and add no decoding step to the general definition of $.
 
 Both spellings use one projection. A NameExpr operand supplies Read_name(n),
 without entering Read_resident; a general expression supplies its ordinarily
 evaluated value. A resolved Pattern binder holding a NameValue supplies that
 bound material, not a new node made from the binder's spelling; thus a# in the
 generative forwarder observes the requested field::adl, not the local label a.
+Projection/reinjection of this bound value does not repeat NameExpr lookup or
+reconstruct a Path from the binder spelling. General splice still evaluates
+its operand once and checks its consumer's ordinary readiness/admissibility.
 A value cannot be projected merely because its source once
 looked like a Path. Undefined projection fails through ordinary applicability,
 without source reparsing or reconstruction from a resident value.
