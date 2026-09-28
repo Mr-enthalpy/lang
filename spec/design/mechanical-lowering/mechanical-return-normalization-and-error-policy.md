@@ -12,7 +12,14 @@ meta invocation — not through a built-in exception channel.
 It is a future design note. It is not current public language behavior, not an
 implemented pass, not a parser or normalizer rule, and not a current type or
 effect checker. Canonical stage, instance lifetime and internal completion laws constrain this
-future sketch; it supplies no competing rule for those topics.
+future sketch; it supplies no competing rule for those topics. In particular,
+serial unit fallthrough, non-tail UnitDiscard, implicit ReturnEvent and omitted
+ReturnTarget remain distinct under the targeted-return owner. No error-policy
+sketch defines another evaluator or changes those closed consumers.
+
+The compact predicate notation T |> has(Error) below is semantic metanotation
+for a selected Error-carrier query, not source grammar for a callee-first call.
+Any eventual source definition must keep P |> E == P E.
 
 ## 1. Purpose
 
@@ -249,7 +256,7 @@ An equivalent local binding makes the Error carrier branch construct an
 ordinary value, for example:
 
 ```text
-Result::Err(e)
+e |> Err::Result
 ```
 
 A `noerror` function can therefore still handle values that contain `Error`, as
@@ -384,7 +391,8 @@ The canonical owners below constrain this future return-normalization sketch.
   counterpart of this return-slot normalization; both are mechanical source-level
   lowering actions.
 - `../symbol-world/symbol-policy-and-compile-flow-projection.md` — canonical
-  `Pv:Pp`, contextual P1/P2 elaboration, and stage views that gate Error branch
+  internal value/type Policy observations, contextual P1/P2 elaboration, and
+  stage views that gate Error branch
   lookup and execution.
 - `../policy-capability/policy-visibility-symbols.md` — mapping from current
   policy metadata to that final boundary and future orthogonal error policy.

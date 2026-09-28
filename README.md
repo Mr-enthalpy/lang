@@ -92,6 +92,12 @@ cargo fmt --all
 cargo test
 ```
 
+Source calls keep pipeline direction: P |> E == P E, never E P. Dot calls
+use ordinary ADL. Construction/extraction commit complete identities; terminal
+argument transport is Move, while copying is an ordinary clone-derived path.
+Canonical owners separate unit fallthrough from return, and fix cleanup points
+and same-point reverse-declaration order before lifecycle observation.
+
 The lexer remains weak: contextual language words are ordinary `Name` tokens.
 The parser owns syntax shape, not semantic meaning. Closed canonical relations
 belong in their topic owners; genuinely unresolved representation questions

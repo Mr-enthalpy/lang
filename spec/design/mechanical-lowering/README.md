@@ -3,7 +3,7 @@
 **Status: Mixed. `CanonicalMechanicalPassCore` in
 `mechanical-argument-passing-and-move-fixed-point.md` is canonical target
 semantics, along with instance move effects and cleanup/with placement.
-Selection algorithms, return/call-mode design, normalizer/checker/IR
+Consumer algorithms, return/call-mode design, normalizer/checker/IR
 integration, ABI, optimizer, and runtime behavior remain non-normative and
 unimplemented. This block is not a machine-ABI design.**
 
@@ -11,14 +11,15 @@ unimplemented. This block is not a machine-ABI design.**
 
 The compiler-inserted mechanical action frameworks at call sites:
 
-- automatic argument passing and the `move` fixed point (`T move == T`)
+- terminal Pass=Move and its fixed point; copy-derived share/rebind -> clone -> Move
 - automatic return normalization and `Error` / `noerror` policy
 - `normal` / `tco` / `loop` call modes, with no loop core (repetition is
   recursion) and tail-position lowering on the first-order AST
 
-A recurring invariant across this block: **default strategies (`in`, default
-error propagation, automatic call-mode selection) exist only before lowering /
-meta invocation. The final IR receives only fully decided actions.**
+The final IR receives fully decided actions. Argument passing has no unresolved
+move/copy choice: every producer path ends in Move. Separate error-policy and
+call-mode questions do not reopen this closed pass ontology. Cleanup points
+are fixed before same-point reverse-declaration linearization and @ observation.
 
 ## Bool-protected guard rule
 
@@ -55,7 +56,7 @@ format.
 ## Documents
 
 - `mechanical-argument-passing-and-move-fixed-point.md` — canonical pass-action
-  core plus future pass selection/insertion and the `move` fixed point.
+  core, ordinary producer realizations, terminal Move and fixed cleanup ordering.
 - `mechanical-return-normalization-and-error-policy.md` — return normalization,
   `Error` handler lookup, and `noerror`.
 - `call-modes-recursion-and-tail-lowering.md` — `normal` / `tco` / `loop`.

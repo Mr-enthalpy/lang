@@ -30,6 +30,22 @@ this first level; ordinary value use automatically performs the second.
 Read_resident resolves the structural target and observes its resident under
 ordinary lookup, access, Policy, readiness and no-reopen rules.
 
+Read_name includes the **complete computation** of the NameExpr in the ordinary
+E relation; it is not a syntax snapshot or a suspension of operand evaluation:
+
+```text
+Gamma; Sigma |- name_express => NameValue(p)    -- ordinary E, first-level consumer
+Gamma; Sigma |- name_express# => PathPatternProjection(NameValue(p))
+value-expected continuation only: NameValue(p) -> Read_resident(NameValue(p))
+```
+
+For example, express$::express$ may evaluate both operands. The computation
+may contain ordinary calls, meta calls, compile computation and non-name
+intermediate values. Its final result must supply the legal NameValue (or the
+ordinary projection domain of §2.5). # suppresses only the final resident read;
+it neither stops these computations nor repeats them. A simple written
+name::path is one entrance, not the limit of this rule.
+
 In this owner Read(p) abbreviates Read_resident(p) on already formed name/path
 material; Read(source_path) abbreviates the corresponding two-level composition.
 It never means that the first-level structure and its resident are identical.
@@ -78,6 +94,12 @@ Once an operand has been read externally, it cannot be treated as the same
 internal Path without an applicable conversion. Open endpoints such as ::a
 and a:: remain part of the structure; a string array with no endpoint
 information is insufficient.
+
+:: first composes Pattern/path material. The same structure has construction
+and extraction interpretations at RHS and LHS relation positions, in the same
+name::path direction. This construction/extraction isomorphism fixes the
+direction; it is not an arbitrary namespace-selector convention. Reversing it
+to path::name would require additional reversals in those existing relations.
 
 ### 1.4 Composition grants no authority
 
@@ -489,14 +511,46 @@ dereference repair.
 
 ### 4.5 Projection is not implicit in splice
 
-a$ splices a's current ordinary Pattern value directly into the current algebra.
-(a |> path_pattern)$ first performs path_pattern projection and then splices
+name_express$ splices its current ordinary Pattern value directly into the current algebra.
+(name_express |> path_pattern)$ first performs path_pattern projection and then splices
 that result. They are not equivalent in general; $ never inserts that projection.
+
+name_express may be a complex computed name expression, not merely a single
+name. In general, (name_express |> path_pattern)$ != name_express$ as operations.
 
 The equation e# equivalent_to e |> path_pattern applies to any expression in
 the projection's domain. It does not quote arbitrary Policy syntax or callable
 source bodies. General $ retains its independent admissibility judgment and
 single evaluation, including existing HoleBinderId, scope and readiness rules.
+
+### 4.6 Construction and extraction interpret bare material differently
+
+The following judgments use existing Path composition and R_Gamma, not another
+evaluator. In their common legal non-extraction domain, with the same ordinary
+operand evaluation and material:
+
+```text
+Gamma; Sigma |- name::a =>_Path p
+Gamma; Sigma |- name::(a$) =>_Path p
+    hence name::a =_Path name::(a$) in non-extraction use
+```
+
+This is not an unconditional source rewrite. In extraction position:
+
+```text
+R_Gamma(name::a, c, rho)
+    interprets bare a as Pattern/path material with navigation-chain inheritance
+
+Gamma; Sigma |- a => v
+Admissible_Pattern(v)
+R_Gamma(name::Interpret_Pattern(v), c, rho)
+    interprets name::(a$) using explicitly evaluated and reinjected material
+```
+
+Explicit reinjection cuts the bare Pattern's inherited navigation-chain
+interpretation. Thus name::a != name::(a$) as general extraction judgments;
+particular equal results do not establish a rewrite theorem. Evaluation,
+admissibility, readiness and Hole identities still obey §4.1–§4.3.
 
 ## 5. Open navigation, name types and buckets
 

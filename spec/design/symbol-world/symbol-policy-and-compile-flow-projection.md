@@ -373,7 +373,7 @@ global const / mut
   = explicit ordinary reconstruction operations
 
 plain materialization
-  = normally a plain destination plus ordinary move/copy mechanical passing
+  = normally a plain destination plus terminal Move after the selected ordinary producer path
 ```
 
 There is no language requirement for a global `val plain` dispatcher. This is
@@ -627,7 +627,7 @@ OrdinaryBindingElaboration(prefix, expr, destination):
   mu_produced := ResultPolicyMode(SelectedCandidate(R))  // frozen
   PairView(destination) := ElabP1(demand.pair_query, R)
   mu_destination := CompleteDestinationMode(written, inherited_context, R)
-  mechanical_pass := SelectMechanicalPass(PairView(destination), destination)
+  mechanical_pass := Move  // terminal transport; preserve selected producer actions
   TransferToDestination(
     source = PairView(destination), produced_mode = mu_produced,
     destination, destination_mode = mu_destination, mechanical_pass)
@@ -637,11 +637,13 @@ A completed destination has one concrete mode. Completion uses ordinary
 inheritance/context and, where needed and otherwise unconstrained, the default
 plain point. Written plain is an explicit source constraint; omitted mode is
 not. Producer and destination remain separate: transfer never rewrites the
-selected producer's mode. Pair-view projection and mechanical move/copy retain
-their existing rules, with no implicit ref or policy cast.
+selected producer's mode. Pair-view projection and terminal Move retain their
+ordinary rules, with no implicit ref or policy cast.
 
-SelectMechanicalPass preserves an explicit pass or uses the separately specified
-automatic move/copy consumer of CanonicalMechanicalPassCore. A const producer
+CanonicalMechanicalPassCore preserves the selected ordinary producer path and
+terminates in Move. Copy-derived share/rebind plus clone is an ordinary
+realization before that terminal transport, not an automatic second pass kind.
+A const producer
 may win under an explicit plain output preference without becoming plain itself;
 ordinary transfer installs its result in the independently completed destination.
 For an existing source that must be preserved, the explicit copy trace remains:
@@ -696,7 +698,8 @@ coordinate; no constraint contributes no invented preference. Supplied hard
 result constraints participate in applicability. Completion cannot defer a
 known consumer constraint until after root-call selection.
 
-In schematic g(f()), f closes under its own immediate context. If that context
+In the semantic metanotation g(f()) (not source call syntax), f closes under
+its own immediate context. If that context
 requires otherwise-unconstrained completion, it uses plain through
 DefaultModeCompletion. Then g consumes the frozen mu_f and its independently
 formed demand; it cannot change f's solution.
@@ -850,17 +853,21 @@ m_plain := Unique(PolicyOverload(C, PolicyMigrationDemand(S, T)))
 
 PolicyProjection(m_plain, r, sigma_plain) = rho_plain
 ValueRealization(m_plain, r, sigma_plain)
-  = TransferToExpressionResult(r, sigma_plain, move | copy)
+  = TransferToExpressionResult(SelectedOrdinaryRealization(m_plain, r), sigma_plain, Move)
 
-CoherentPolicyMigrationResult(m_plain, rho_plain, move | copy)
+CoherentPolicyMigrationResult(m_plain, rho_plain, ValueRealization(m_plain, r, sigma_plain))
   uses CanonicalMechanicalPassCore
   preserves ProducedMode(r) = mu_r
   exposes the transferred result through sigma_plain
 ```
 
-A fresh consumable producer result may use terminal `Move`. A source that must
-be preserved requires the ordinary `CopyConstruct` plus terminal `Move`
-realization. The selected migration candidate gives both the plain Policy
+SelectedOrdinaryRealization above abbreviates the already selected candidate's
+ordinary producer actions; it is not a new primitive, search pass or evaluator.
+Every transport ends in Move with its fixed Kill or Preserve effect. A selected
+clone-derived realization first produces a fresh complete result through
+share/rebind plus clone, then moves it. Requiring source survival alone does
+not imply cloning: legal Preserve Move is distinct and invokes no clone.
+The selected migration candidate gives both the plain Policy
 projection and this value realization. If no such candidate is uniquely
 selected, outward completion fails after the producer is frozen; that failure
 does not erase `sigma`, expose the producer's wrong mode, or reopen producer
@@ -1252,7 +1259,8 @@ Demand kinds restrict which direct candidates are admitted; they do not own
 different selectors. The runtime-stage case admits the one authorized atomic
 runtime-migration family described in §3.5. A PolicyLet result-slot mode
 transfer admits the corresponding identity or canonical mechanical
-move/copy-backed migration. Ordinary binding consumes the same candidate
+realization ending in Move, with any selected clone-derived producer path
+made explicit. Ordinary binding consumes the same candidate
 algebra. No demand kind may reinterpret an arbitrary ordinary value call as a
 Policy transition merely because its return value has a useful shape.
 

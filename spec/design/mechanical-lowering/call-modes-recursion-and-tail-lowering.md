@@ -170,7 +170,7 @@ Manual `tco` requires, at least, the following future checks:
 call site is tail position
 current continuation can be replaced
 argument transport order is well-defined
-move/copy/ref/share actions are already determined
+ordinary producer actions and terminal Move are already determined
 cleanup/drop actions can run before the tail transfer
 callee entry permits tco
 ```
@@ -183,7 +183,7 @@ not silently fall back to `normal`.
 A call mode depends on already-normalized argument passing.
 
 `tco` does not transport raw source arguments. It transports the parameter
-objects that result from argument-passing normalization:
+objects that result from argument-passing normalization (semantic metanotation):
 
 ```text
 copy(x)  -> tmp = CopyConstruct(x); move(tmp)
@@ -196,7 +196,9 @@ move(x)  -> move(x)
 
 `CopyConstruct` is the selected ordinary copy-family realization, not a new
 opaque primitive. These internal share/rebind expansions do not authorize
-automatic pass adaptation to choose `share` or `ref`.
+automatic pass adaptation to choose `share` or `ref`. Pass=Move; Preserve Move
+uses no clone and is not the copy-derived path shown above. Cleanup points and
+same-point reverse-declaration order are fixed before lifecycle observation.
 
 `tco` transports the final objects that enter the parameter slots. `loop`
 additionally requires that those objects can be interpreted in the existing slots

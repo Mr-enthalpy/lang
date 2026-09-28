@@ -49,6 +49,21 @@ mode, migration and selection. [Evaluation](../meta-invocation/evaluation-residu
 places all of these on the same continuation; [lifecycle](../lifetime/lifetime-policy-and-overload-boundary.md)
 and [safety admission](../lifetime/unsafe-semantic-admission.md) govern its observations.
 
+### 1.1 Complete identity at construction commit
+
+The [Pattern owner's atomic identity rule](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#32-atomic-object-identity-commits)
+applies to struct and ordinary construction: material may form incrementally,
+but Pre -> ConstructCommit establishes a complete Object identity. There is
+no partially constructed resident. Uninitialized Place state contains no
+Object; installing a resident and later legal namespace updates remain
+ordinary complete actions. extend produces a complete new snapshot; inject
+retains its read/extend/write boundaries.
+
+Consuming extraction commits complete children and ends the decomposed parent
+identity atomically. Read-only R_Gamma evidence and borrow views do not imply
+that commit. Destructor execution is the ordinary continuation over those
+complete children, governed by the same lifetime owner.
+
 ## 2. Name-first resolution and member projections
 
 ### 2.1 Named types and ordinary candidate groups
@@ -391,7 +406,8 @@ Bare let records no written mode override. Inherited/contextual constraints
 and any applicable default completion form the demand before RHS maxima.
 After selection the producer's concrete ResultPolicyMode is frozen. Ordinary
 pair projection and destination mode completion do not rewrite that producer;
-move/copy transfer keeps the two slot facts separate. See the canonical binding judgment in
+Terminal Move, including after a selected ordinary clone realization, keeps
+the two slot facts separate. See the canonical binding judgment in
 `symbol-policy-and-compile-flow-projection.md` §3.1. Omission does not itself demand plain or make runtime the only way to obtain
 a runtime binding.
 
@@ -1088,7 +1104,7 @@ events that never collapse:
 
 - `target = expr;` writes to an existing target; a write is not append, and a
   construction model that only supports appending cannot express
-  `let x = first; x = second; return x` by treating both operations as
+  `let x = first; x = second; x return;` by treating both operations as
   contributions.
 - A return event delivers its value to the selected enclosing layer. It is not
   a member contribution and does not give the return-slot spelling special
@@ -1098,10 +1114,12 @@ Source wiring for expression-level write and general construction effects is
 pending. An unavailable source operation does not acquire a spelling-directed
 substitute.
 
-The terminal family follows the general control-flow end model: `expr;`
-delivers to the directly enclosing layer, `expr return;` returns to the
-outermost function layer, and `expr (T return);` returns to the layer selected
-by the function-object type `T`.
+The serial/terminal family follows the targeted-return owner: non-tail expr;
+requires unit through UnitDiscard. A true path-tail expr; falls through for
+unit, otherwise synthesizes ReturnEvent and infers its omitted target.
+expr return; already has an event and selects the outermost function layer;
+expr (T return); selects the explicit active target. Unit fallthrough is not
+return unit. None of these rules derives tailness from AST-list position.
 
 Add-fresh-member and write-to-existing-target are two distinct construction
 effects. They must not be collapsed into one injection event, and neither is a
@@ -1334,7 +1352,8 @@ satisfy every ordinary type, capability, lifetime, normal-form, and boundary
 invariant.
 
 An explicit typed name creation followed by borrowing and initialization
-remains distinct from the return event; it does not change the `r;` terminal semantics.
+remains distinct from the return event; r; uses the same path-tail unit/
+non-unit consumer and omitted-target rule, with no special return-slot spelling.
 
 A successful construction returns the semantic entity declared by the selected
 callable's result class. Ordinary meta supplies its result name before value observation; an outer

@@ -46,6 +46,11 @@ The normalizer only builds the unresolved normalized structure.
 
 ## 3. Source Product and Target Expression
 
+The source skeleton is P |> E P2 or P |> E. Omitting |> only deletes the
+pipe: P |> E == P E, never E P. Thus ()f;, x f; and (x,y) f; are call
+shapes; traditional f() and f(x) are not source calls. Functional notation in
+semantic equations is metanotation, not another source grammar.
+
 Notation:
 
 ```text
@@ -1054,9 +1059,10 @@ NormClosure.placement = InPlace | Ordinary
 NormClosure.origin    = Source | Generated(rule) | Derived(rule)
 ```
 
-Generated provenance never replaces placement. In particular the closure
-generated for `.name` has `placement=InPlace` and
-`origin=Generated(DotClosureLowering)`.
+Generated provenance never replaces placement. The **legacy current** helper
+for .name has placement=InPlace and origin=Generated(DotClosureLowering).
+This is migration debt: canonical .name is ordinary name::adl, not a mandate
+for normalization to generate a forwarding implementation.
 
 ## 10. Alias Preservation
 
@@ -1208,9 +1214,17 @@ The last expression form in each body block is normalized as:
 NormForm::TailValue(NormExpr)
 ```
 
-This is a block result / tail value. It is not early return. It
-represents the implicit control-flow end of a body block when no
-explicit return event is present.
+This is the current structural carrier, not a definition of semantic tail
+position or return-event inference. Canonical tail depends on each
+SemanticContinuation/control-flow path, including branch paths.
+
+The [return owner](../design/control-flow/targeted-return-and-d-reduction.md#11-two-distinct-implicit-operations)
+separates implicit ReturnEvent from omitted ReturnTarget. Non-tail expression
+completion goes through UnitDiscard (evaluate once, require unit, discard,
+continue). True path-tail unit falls through; non-unit tail synthesizes a
+ReturnEvent and then infers its target. Explicit unit_value return; still
+produces ReturnEvent. These consumers are pending; they do not rewrite source
+to lexical bindings or infer semantics in normalization.
 
 ### ReturnEvent
 
@@ -1264,7 +1278,7 @@ surface and must not be assumed:
 - Return outside returnable context checking
 - D-reduction / Done_Return
 - Control-flow propagation
-- Result-slot injection
+- Whole-Pattern result delivery
 
 
 ## Canonical construction and consumer alignment
@@ -1337,9 +1351,15 @@ Normalization neither inspects RHS semantic type nor retries failed execution.
 ### Structured Path and Product handoff
 
 [Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
-uses Read_name to obtain full structural NameValue; ordinary value use then
+uses Read_name to complete the whole name expression, including computed
+operands and ordinary/meta/compile subexpressions, to structural NameValue;
+ordinary value use then
 performs Read_resident. Postfix e# is the defined path_pattern projection,
-observing only the first level for NameExpr. General $ splices ready material
+observing only the first level for NameExpr after that full computation.
+It does not capture AST or stop operand evaluation. name::path keeps the same
+construction/extraction direction; :: is Pattern/path composition. Bare a
+inherits navigation in extraction, while evaluated a$ reinjects material;
+non-extraction name::a == name::(a$) is not an unconditional Pattern rewrite. General $ splices ready material
 without implicit Path conversion, retaining Hole identities. The round-trip
 (n#)$ reconstructs n's structure under the Path consumer, not through a general
 splice decoding rule. Index p[i] yields relative single-name

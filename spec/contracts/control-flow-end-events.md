@@ -29,7 +29,8 @@ It does **not** implement or specify:
 
 ## 2. Implemented Event Categories
 
-Control-flow end events partition into two categories:
+The current normalized carrier distinguishes two structural categories.
+These are not the full canonical completion algebra:
 
 ```
 Control-flow end event :=
@@ -39,12 +40,17 @@ Control-flow end event :=
 
 | Event | Meaning | Norm form |
 |---|---|---|
-| `TailValue(E)` | Block result / tail value delivered to the directly enclosing layer. Not early return. | `NormForm::TailValue(NormExpr)` |
+| `TailValue(E)` | Current final-expression carrier; semantic path-tail and unit/non-unit consumer still required. | `NormForm::TailValue(NormExpr)` |
 | `ReturnEvent(E, ImplicitNearest)` | Early return whose target is unresolved. Semantic binding selects the outermost enclosing function layer. | `NormForm::ReturnEvent(NormReturnEvent { target: ImplicitNearest })` |
 | `ReturnEvent(E, Explicit(T))` | Early return to the layer selected by the function-object type target `T`. Target unresolved. | `NormForm::ReturnEvent(NormReturnEvent { target: Explicit(NormExpr) })` |
 
-TailValue is the implicit control-flow end for the final expression in
-a body block when no explicit return event is present.
+TailValue is currently assigned from list position. It is implementation
+debt, not proof of semantic tail position. The canonical consumer is defined
+by the [return owner](../design/control-flow/targeted-return-and-d-reduction.md#11-two-distinct-implicit-operations):
+non-tail expressions require unit via UnitDiscard; true path-tail unit falls
+through; path-tail non-unit synthesizes ReturnEvent and then infers its target.
+An explicit E return already supplies an event, even for unit, and omits only
+the target. These two implicit operations must not be merged.
 
 ## 3. Parser Contract
 
@@ -149,9 +155,9 @@ let y = (x return);
 let y = x |> (T return);
 let y = x (T return);
 
-g((x return));
-g(x |> (T return));
-g(x (T return));
+(x return) |> g;
+(x |> (T return)) |> g;
+(x (T return)) |> g;
 
 (x return) + y;
 let y: (x return) = z;
@@ -160,7 +166,7 @@ let y: (x return) = z;
 But this is legal as a whole terminal form:
 
 ```lang
-f(x return);
+f (x return);
 ```
 
 It means:
@@ -173,7 +179,9 @@ It is **not** a call with `x return` as an argument.
 
 ### 3.5 Terminal Block Rule
 
-Once a terminal block form appears, no later form may occur before
+The current parser applies the following restriction (including to plain
+expressions); this is migration debt for serial UnitDiscard, not a canonical
+ban on non-tail unit expressions. Once it marks a terminal form, no later form may occur before
 `}`. Terminal forms are:
 
 ```text
@@ -197,7 +205,8 @@ The last expression form in each body block is normalized as:
 NormForm::TailValue(NormExpr)
 ```
 
-The normalizer distinguishes the block result structurally.
+The normalizer records list position structurally. It cannot determine
+continuation-path tailness, result type, fallthrough or synthesized return.
 
 ### 4.2 ReturnEvent
 
@@ -263,7 +272,7 @@ Future semantics must not treat return events as expressions,
 call targets, or ordinary value producers without explicit
 control-flow lowering.
 
-## 6. Terminality Contract
+## 6. Current terminality carrier restriction
 
 ```text
 No later form may appear after a terminal block form before `}`.
@@ -277,18 +286,22 @@ forms are diagnosed.
 
 ### 7.1 Explicit Control-Flow End Reports
 
-Future semantic consumers must **not** rediscover block ending by
-scanning for "last expression." They must consume explicit
-control-flow-end reports:
+Semantic consumers preserve explicit ReturnEvent reports, but must derive
+plain-expression completion from the established SemanticContinuation path.
+A final AST-list position is insufficient; each branch path has its own tail.
+The current TailValue carrier must feed this consumer, not replace it.
 
 ```text
-Semantic consumers should treat block ending as
-explicit control-flow data:
-  - TailValue (block result)
-  - ReturnEvent (targeted return)
-  - malformed-after-terminal diagnostics
-not as an accidental final NormForm::Expr.
+plain expression completion -> serial/block consumer
+  -> UnitDiscard if non-tail
+  -> fallthrough if tail and unit
+  -> synthesize ReturnEvent if tail and non-unit
+     -> infer omitted ReturnTarget
 ```
+
+UnitDiscard is an internal consumer of ordinary E, not a lexical rewrite,
+new primitive or second evaluator. The current parser restriction and carrier
+tags do not implement this relation.
 
 ### 7.2 Unresolved Target Syntax
 
@@ -346,7 +359,8 @@ a returnable frame, preserves nested unmaterialized closure returns for later
 elaboration, and stores the complete `NormBindingSlot` in `ReturnSlotRef`.
 
 
-The Raw/Norm tag ImplicitNearest is a current carrier spelling. It does not
+The Raw/Norm tag ImplicitNearest is a current carrier spelling for an omitted
+target on an already explicit event; it does not describe implicit event inference. It does not
 authorize nearest-frame semantics. No syntax change or parser name resolution
 is implied by the outermost rule.
 

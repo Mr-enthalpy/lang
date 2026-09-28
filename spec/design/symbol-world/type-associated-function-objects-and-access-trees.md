@@ -34,7 +34,8 @@ classifiers and anchors candidate-family identity. It is not MemberScope(Core(T)
 An associated coordinate supplies no Place or permission by itself; actual
 navigation retains its resolved structural root and resident generation.
 
-The `struct` registration `Field(T, name, A)` generates the field's complete
+The following candidate schemas use semantic signature notation, not source
+callee-first declarations or calls. The `struct` registration `Field(T, name, A)` generates the field's complete
 associated candidate family under `T`: one by-value accessor, plus for each
 borrow observation `ρ ∈ {ref, share}` a triple of policy cells:
 
@@ -291,7 +292,20 @@ slot-0 caller by position. A mismatch between the invoked object type and this
 first formal is an ordinary invocation type error, not a separate declaration
 rule.
 
-The value receiver candidate has value semantics (`T == T move`). Borrowed field access must begin
+The value receiver candidate field : T -> F is an affine value accessor:
+```text
+x.field -> x |> field::adl -> x |> field::T
+  -> select T -> F candidate -> ordinary movement/lifecycle -> complete F
+affine use != identity death
+```
+
+Its receiver use does not imply Kill. MoveEffect is independently Kill or
+Preserve, checked at Pre. No step removes one field and leaves a partial
+aggregate. Consuming structural decomposition, when actually selected, uses
+the Pattern owner's atomic identity commit. Dot syntax itself is an ordinary
+call, neither NameExpr nor Place.
+
+The value receiver obeys T == T move. Borrowed field access must begin
 from an explicit borrow form, for example:
 
 ```text
@@ -300,8 +314,10 @@ val share.field1.field2
 ```
 
 This document does not separately define evaluation or lowering for those
-forms; their semantics is given by the canonical `ProjectionSlot` borrow-lifting
-law (`type-values-places-and-borrow-views.md` §2.3).
+forms. After the explicit ref/share receiver has been formed, ordinary ADL and
+associated candidate selection precede the selected accessor's ProjectionSlot
+result formation, under the canonical borrow-lifting law
+(`type-values-places-and-borrow-views.md` §2.3).
 
 Explicit `ref` / `share` constructs a borrow object before candidate adaptation;
 argument passing only moves that already formed borrow handle. Moving a borrow

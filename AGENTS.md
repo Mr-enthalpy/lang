@@ -59,12 +59,13 @@ alternate relation or identity.
 - The parser owns syntax shape, not semantic meaning.
 - Parse left to right without semantic backtracking.
 - Traditional `f(args)` call syntax does not exist.
+- Calls preserve P |> E == P E, never E P; ()f, x f and (x,y) f keep pipeline direction.
 - Products participate in the documented expression/call-binding skeleton.
 - `{ ... }` in atom position is an in-place closure with no head.
 - A headed closure without `=>` is in-place; `=>` forms an ordinary closure.
 - `<...>` is a DeduceList only in documented strong binding contexts.
 - `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
-- `|> P { ... }` uses the binderless headed in-place closure shape.
+- `|> P { ... }` preserves the callable head (self, <> P); the current self-less carrier requires migration.
 - Value-side expressions and Pattern-side material remain distinct.
 - `let binder === EntityRef` is syntax preservation only until its local
   lexical resolver consumer is connected; it creates no semantic entity.
@@ -79,6 +80,9 @@ alternate relation or identity.
 
 - `Object = <Val1?, Pattern, Val2>`; ordinary normalization observes all three.
 - Pattern applicability and extraction come from `R_Gamma(P,c,rho)`.
+- Construction and consuming extraction commit complete Object identities atomically
+  after Pre. Incremental material and Uninitialized Places are not partial Objects.
+  Destructors continue over complete extracted children with ordinary lifecycle rules.
 - `tau = bind alpha.<Core(tau), V_tau[alpha]>`; `V_tau` is immutable.
 - NameBinding, named type, OverloadGroup, Place, and TypeValueId are distinct.
 - Ordinary Val2 member formation accepts terminal selector (), supplying
@@ -163,7 +167,12 @@ alternate relation or identity.
 - `InvocationResult` is the single semantic result envelope; `struct` returns
   complete tau.
 - Lifecycle facts are relative to one SemanticContinuation. Killable is instance-local, MoveEffect is fixed, Movable is frontier legality.
-  Cleanup/with placement is fixed before observation; killing move adds no
+  Move does not imply Kill; Preserve Move is not copy and invokes no clone.
+  Pass=Move; copy-derived paths are share/rebind -> selected clone -> Move(fresh result).
+  CopyConstruct abbreviates that ordinary realization, never another primitive/pass kind.
+  Cleanup points are fixed under all constraints, then remaining unordered same-point
+  events use reverse declaration order; the full sequence precedes observation.
+  Killing move adds no
   old-generation destructor; Pre precedes mutation; Post describes committed success.
 - Color vocabulary is extensible and relation rows are explicit and directed.
 - SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
@@ -178,7 +187,10 @@ alternate relation or identity.
   over P2; Pout.stage=P1.stage. Bare let writes no override;
   written plain is explicit, and a formal-local hole is ordinary Pattern deduction.
   Default completion is separate. Inner-call selection seals before outer use.
-  Implicit return targets the outermost enclosing function layer.
+  Omitted ReturnTarget selects the outermost enclosing function layer after an event
+  exists. Implicit ReturnEvent is separate: non-tail expressions require unit via
+  UnitDiscard; continuation-path tail unit falls through, non-unit synthesizes return.
+  Explicit unit return still returns; AST-list position is not semantic tailness.
 - Done is internal chain/target completion, never an Object or Pattern.
   Split/D is restricted; residual escape separately reads ordinary meta facts.
   Return has no synthetic local unit contribution.
@@ -196,6 +208,10 @@ alternate relation or identity.
   dispatch. OG_s retains spelling and selects the current slot. Ordinary
   call/extract/generative relations apply;
   generated occurrences supply no Pattern or V_tau registration evidence.
+  x.field == x |> .field == x |> field::adl is an ordinary call, not NameExpr
+  or a private Place projection. A finite generator answers an unbounded name family
+  without infinite predeclaration/reopening. A T -> F accessor is affine value access;
+  it does not imply parent death or leave a partial aggregate.
 - Close freezes non-generative registered structure, not future ordinary generated
   Val2 realization. Such results reopen no construction view and do not alter old
   snapshots. Current Norm/only_val2 observations remain continuation-relative.
@@ -203,8 +219,12 @@ alternate relation or identity.
 - Product layers with all direct entries named are unordered; any bare entry
   makes that whole layer ordered. Nested layers decide independently. Unordered
   to bare sequence requires named extraction and explicit ordered assembly.
-- Read_name obtains full NameValue; value-expected use proceeds to Read_resident.
-  e# is path_pattern projection, stopping at the first level for NameExpr.
+- Read_name completes full NameExpr computation to NameValue, including ordinary,
+  meta and compile subexpressions. e# projects that result and blocks only resident
+  reading; it is neither quotation nor an evaluation stop. name::path preserves
+  Pattern/path construction/extraction direction. Bare a inherits navigation in
+  extraction; evaluated a$ reinjects material, so the non-extraction equality
+  name::a == name::(a$) is not an unconditional extraction rewrite.
   (n#)$ reconstructs structure only under the Path consumer; p[i] yields
   relative single-name path_pattern.
   General Slice_Omega remains open. Textual roots resolve at resident use;

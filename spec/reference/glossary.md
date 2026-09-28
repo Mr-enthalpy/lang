@@ -54,8 +54,12 @@ selection, and completes the outward view without reopening it.
 
 ### ReturnEvent / TailValue
 
-Normalized control-flow end events. `TailValue` delivers the final block value;
-`ReturnEvent` preserves an early-return value and unresolved target syntax.
+Current normalized carriers: TailValue marks a list-final expression;
+ReturnEvent retains explicit return payload/target syntax. Canonically,
+implicit ReturnEvent and omitted ReturnTarget are separate. The serial consumer
+requires non-tail unit (UnitDiscard); true continuation-path tail unit falls
+through, non-unit synthesizes return and then infers its target. Explicit unit
+return is not fallthrough. See the targeted-return owner §1.1.
 
 ## Semantic entities and identity
 
@@ -63,7 +67,11 @@ Normalized control-flow end events. `TailValue` delivers the final block value;
 
 The owned semantic ontology `Object = <Val1?, Pattern, Val2>`. Ordinary
 normalization observes all three components. Place, Policy, lifetime,
-capability, and name-binding identity are not Object axes.
+capability, and name-binding identity are not Object axes. Construction and
+consuming extraction establish complete identities atomically under Pre;
+incremental material and Uninitialized Places are not partial Objects.
+A destructor continues over complete children after parent decomposition,
+using ordinary lifecycle relations (Pattern owner §3.2).
 
 ### Val1
 
@@ -455,14 +463,26 @@ Stable owner history does not establish active dominance. Main has runtime P2.
 
 Killable_K(n) describes an instance; MoveEffect_K(n,m) is predetermined Kill or
 Preserve; Movable_K(n,m) checks current Pre. Nonkillability is neither movement
-nor copy permission. Type equality, stage and ZST layout do not collapse them.
+nor copy permission. Movable does not imply Kill; Move does not mean death.
+Preserve is a legal Move effect without clone. Type equality, stage and ZST
+layout do not collapse them.
+
+### Terminal pass and copy-derived realization
+
+Pass = Move. Ordinary copy-derived use is share -> selected clone -> fresh
+complete result -> Move; ref/share uses rebind -> selected clone -> Move.
+CopyConstruct abbreviates this ordinary realization, never an opaque primitive
+or second pass kind. Copyable means that clone realization is available.
+Preserve Move is not copy; selected clone alone determines its origin post.
 
 ### With placement
 
 x with{a} adds x's actual Use/Consume/Destroy touches to a's placement uses.
 Existing destructors order x before a; a's uses do not extend x. Empty with
 anchors lexical cleanup; omission uses NLL. Killing move adds no old-generation
-destructor. Placement precedes lifetime observation and grants no access edge.
+destructor. After points are fixed, remaining unordered same-point events
+use reverse declaration order without shifting points or overriding constraints.
+The complete sequence precedes lifetime observation and grants no access edge.
 
 ### Split / internal completion / residual escape
 
@@ -503,7 +523,10 @@ Path is ordinary extractable linked material (NameNode, ValueRoot/RefRoot,
 Link/End and endpoint shape). Read_name obtains full NameValue; value-expected
 use proceeds through Read_resident. Text roots resolve at resident use; explicit
 roots retain anchors and dependencies. e# is the defined path_pattern projection,
-stopping at the first level for NameExpr. The Path consumer interprets (n#)$
+stopping before resident reading after **complete** NameExpr computation,
+including computed operands and calls. name::path is fixed by construction/
+extraction isomorphism. In extraction, bare navigation inheritance differs
+from evaluated reinjection a$; the non-extraction equality is not a rewrite. The Path consumer interprets (n#)$
 to reconstruct structure; general $ supplies no implicit Path decoding. Indexing
 returns relative single-name path_pattern, not string; general Slice_Omega
 remains open. General $ splices ready Pattern material without implicit Path

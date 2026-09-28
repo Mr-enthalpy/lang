@@ -92,8 +92,10 @@ selected origin are closed. Concrete witness/cache representation is open.
 
 Runtime continuation may not re-resolve a name, namespace path, candidate
 family, or sealed invocation. E saturation, projection synchronization and
-rewrite revalidation are fixed. Implicit return selects the outermost enclosing
-function layer; consumer alignment is roadmap work.
+rewrite revalidation are fixed. Omitted ReturnTarget selects the outermost
+enclosing function layer after an event exists. Non-tail UnitDiscard, tail-unit
+fallthrough and tail-nonunit ReturnEvent synthesis are separate closed laws;
+continuation-path consumer alignment is roadmap work.
 
 ## Place, construction, and write algebra
 
@@ -166,7 +168,12 @@ Cleanup is fixed before observation; Pre precedes mutation; Post describes only
 committed success. Killable is instance-local, MoveEffect is fixed, and Movable
 is frontier legality. A killing move ends and starts generations at one cut;
 preserving moves require the narrow proof. Directed with placement, default NLL,
-lexical empty-with, no duplicate destructor and same-K @ observations are closed;
+lexical empty-with, no duplicate destructor and same-K @ observations are closed.
+After cleanup points are fixed, remaining unordered same-point events use reverse
+declaration order; alternative-order observational equivalence is not open.
+Terminal Pass=Move, copy-derived share/rebind -> clone -> Move, and Preserve
+Move != copy are closed. No automatic move-versus-copy choice remains to design.
+Atomic construction/decomposition admits no partial Object or destruction state;
 Color relations are explicit directed rows and Color inheritance is monotone.
 
 ## Owner, namespace, and infrastructure persistence
@@ -283,7 +290,8 @@ already determine their meaning.
 
 [The lifetime handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
 owns further integration of dependency region/generation persistence,
-move/copy/preserve, return/store/escape/promotion, bounded runtime state with
+Move with Kill/Preserve, clone-derived transport, return/store/escape/promotion,
+bounded runtime state with
 stable descriptors, including the concrete validity regions of automatically
 formed dependencies. In-place results are already ordinary first-class values.
 FormationLegal, LifetimeLegal, Pre/Post, MoveEffect/Movable, EscapeLegal and

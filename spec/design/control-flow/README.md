@@ -1,7 +1,7 @@
 # Control-Flow Design Block
 
-Forward-looking design material for targeted return, D-reduction,
-Done_Return, and control-flow lowering.
+Canonical targeted return, serial completion and D-reduction semantics,
+with implementation consumers still pending.
 
 The current implemented slice is intentionally narrow: normalized
 `ReturnEvent` material can be bound to an active return target frame by the
@@ -13,10 +13,12 @@ future work.
 
 | Document | Purpose |
 |---|---|
-| `targeted-return-and-d-reduction.md` | Current return-target binding substrate plus future targeted return completion, D-reduction, Done_Return, and local unit contribution |
+| `targeted-return-and-d-reduction.md` | Separate ReturnEvent/ReturnTarget inference, UnitDiscard, path-tail unit fallthrough, direct result delivery and internal completion with no local return contribution |
 
 ## Status
 
 Return target binding is partially implemented after normalized AST.
-Everything beyond binding the target frame remains design-only in this
-directory.
+Completion consumers remain unconnected. The canonical laws are settled:
+non-tail expressions require unit, tail unit falls through, tail non-unit
+synthesizes return and then infers its target. Current final-node TailValue
+and nearest-frame binding are migration debt, not alternative semantics.

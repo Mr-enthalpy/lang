@@ -116,6 +116,31 @@ Neither TypeAdd(T_f,tau_C) nor automatic bulk import of V_tau_C is that relation
 
 ## 2. Pipeline call form
 
+The source skeleton is P |> E P2 or P |> E. Omitting the pipe deletes only
+that token; it never exchanges argument and callee:
+
+```text
+P |> E == P E
+P E != E P
+```
+
+```lang
+()f;
+x f;
+(x, y) f;
+```
+
+Traditional callee-first f() / f(x) are not source call spellings.
+Call(...), Invoke(...), Entries(...) and nested H(G(...)) in semantic
+equations are metanotation, not exceptions to this direction.
+
+A name-headed callable shorthand preserves (self, <> name) as its semantic
+head. It must not lose slot zero by expanding to (<> name) alone; see the
+Pattern owner §9. This retains the selected ordinary x or type-projected c
+all the way into the actual invocation.
+
+
+
     Product |> expression
       -> resolved value / named type / explicit candidate group
       -> ordinary call projection
@@ -353,8 +378,11 @@ same distinction and needs no special open-world contribution mechanism.
 
 ### 5.1 Ordinary ADL field forwarding
 
-`.name` denotes `name::adl`; `E.name` uses that same entry through the
-ordinary Product/call binding spine. The [generative declaration owner](../patterns-overload/operator-patterns-and-generative-declarations.md)
+`.name` denotes `name::adl`; `E.name == E |> .name == E |> name::adl`.
+This is an ordinary expression call, not NameExpr, direct field lookup or an
+atomic Place operation. `move x.field` cannot be read as removing a subfield
+and leaving a partial aggregate. Structural extraction has its own registered
+Pattern relation. The [generative declaration owner](../patterns-overload/operator-patterns-and-generative-declarations.md)
 defines its ordinary requested-name forwarder. The receiver object remains an
 explicit argument after the selected callable's own self.
 

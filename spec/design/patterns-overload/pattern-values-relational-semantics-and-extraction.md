@@ -262,6 +262,42 @@ side. A caller that needs the generated/default member may explicitly use
 comes from the evaluation direction (extraction reads known structure;
 construction builds from an expression), not from a language exception.
 
+### 3.2 Atomic Object identity commits
+
+Construction material may form incrementally; Object identity does not.
+
+```text
+ConstructionMaterial -> Pre -> atomic ConstructCommit -> complete Object identity
+
+complete parent Object -> Pre -> atomic ExtractCommit
+  -> parent identity ends
+  -> complete child Object identities become established
+```
+
+ConstructCommit and ExtractCommit name boundaries of existing ordinary
+construction/consuming-decomposition actions under Pre/action/Post. They are
+not new primitives, IR kinds or evaluators. Before construction commit there
+is material, not a partially constructed Object. Consuming extraction exposes
+no partly extracted parent with some fields dead and others still owned.
+Failure at Pre establishes neither a partial object nor a partial mutation.
+
+R_Gamma proofs, applicability and non-consuming borrow/field observations do
+not themselves commit destructive decomposition. The word atomic in §3.1
+also identifies a single registered observation edge; it does not equate
+every such observation with parent death. A selected consuming decomposition
+commits its complete result atomically; an affine value accessor follows its
+independently selected MoveEffect, not an implicit field-removal rule.
+
+A destructor starts after atomic parent decomposition and receives complete
+child objects. Its body is an ordinary continuation: those children obey the
+same NLL, with, use, move and drop relations. There is no partially destroyed
+parent, field-death bitmap or separate destructor evaluator. The lifetime
+owner determines generation effects, cleanup and subsequent observations.
+
+An Uninitialized Place has no resident Object; it is not a partially
+constructed Object. Legal later namespace/member realization and immutable
+extend likewise remain complete semantic actions at their existing boundaries.
+
 ## 4. Presence, constraint, structure, and navigation are distinct
 
 For selector `s` and child Object `y`, direct structural incidence implies
@@ -563,7 +599,7 @@ bind HoleIds
 Function parameters are let-shaped binding positions. A call
 
 ```text
-F(a1, ..., an)
+(a1, ..., an) |> F
 ```
 
 is applicable exactly when the extraction succeeds:
@@ -672,12 +708,16 @@ The current atomic pipe-branch shorthand is:
 and is semantically equivalent to:
 
 ```lang
-|> (<> P) { B }
+|> (self, <> P) { B }
 ```
 
-or the equivalent binderless-headed `InPlace` closure structure. It is not
-equivalent to `|> (_ P) { B }`; that explicit Product contains a real wildcard
-position.
+The no-=> form retains InPlace formation syntax. The callable head has the
+selected function object's self in position zero and binderless <> P in the
+explicit argument position. self is a schematic fresh binder here; its
+spelling is unrestricted. Neither (<> P) alone nor wildcard padding preserves
+that invocation frame. Ordinary calls supply x as self; type projection
+supplies the selected c, never the type tau itself. Existing self-less
+Raw/Norm shorthand carriers require migration; their shape is not this law.
 
 Current parser coverage admits one non-composite atomic `P` in the shorthand.
 That is a surface boundary, not a restriction on binderless Pattern semantics.
@@ -1225,7 +1265,7 @@ operation.
 - Formation provenance does not enter Pattern identity.
 - Bare positional material uses the ordinary Product calculus.
 - `_` is a real wildcard position; binder absence is represented explicitly.
-- Pipe branch expansion uses binderless `<>`, not wildcard padding.
+- Pipe branch expansion retains callable self and binderless `<> P`, not a self-less head or wildcard padding.
 - A complete type value contains Core and immutable callspace observations.
 - Complete types retain their own callspaces without defining-binding recovery.
 - TypeMember home is explicit and is not implied by descendant classification.

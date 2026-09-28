@@ -312,8 +312,9 @@ already formed reference preserves its target under ordinary reference rules;
 it is different from copying the containing type snapshot. Cache reacquisition
 observes writes to the instance/member Places, not arbitrary writes to copies.
 
-This derivation does not choose automatic copy versus move: the existing
-mechanical pass relation owns that choice. Observing the type result is not
+Terminal transport is Move. Any clone-derived material comes from the selected
+ordinary share/rebind-plus-clone realization; there is no automatic choice
+between two pass kinds. A legal Preserve Move does not call clone. Observing the type result is not
 an implicit Move of the stored instance resident out of q_M. Explicit moves
 and payload invalidations keep their ordinary checked effects.
 
