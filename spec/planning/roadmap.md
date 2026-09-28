@@ -97,7 +97,7 @@ relations under the alignment gates below:
 2. operation-driven capability, Writable, authority, and lifecycle premises;
 3. source `ref` / `share` / `rebind` and invalidation actions;
 4. source use/move/drop/`@` events on the world-owned continuation;
-5. cleanup placement before lifecycle observation;
+5. fixed cleanup points, same-point reverse-declaration linearization, then lifecycle observation;
 6. Residual and Diagnostic transport through the unified invocation boundary;
 7. derived associated forwarding that captures the base complete-type
    snapshot and creates anchored forwarding instances;
@@ -145,7 +145,7 @@ Current families:
 | StructuralDefault providers | `SourceDefinitionPending` | `R_Gamma` |
 | associated state A | `SourceDefinitionPending` | ordinary meta instance type + Val2 group/place algebra |
 | singleton-Val2 compile extraction | `SourceDefinitionPending` (builtin bootstrap permitted) | closed type + exactly one ordinary Val2 entry + ordinary value read |
-| lifecycle move/copy/drop algebra | `SourceDefinitionPending` | lifecycle Pre/commit/Post relations |
+| lifecycle Move, ordinary clone-derived transport and drop | `SourceDefinitionPending` | lifecycle Pre/commit/Post relations |
 | interning, graph allocation, continuation-position observation | `IntrinsicObservation` | canonical relations consuming those observations |
 
 No current family is classified as `SemanticPrimitive`.
@@ -292,9 +292,12 @@ engineering facilities after their inputs and effects obey the source model.
   and only_val2 counts after effects while preserving prior copied snapshots;
   cached facts must remain snapshot/continuation-relative. A's state references
   still fail their own opening-source check after Close.
-- Align implicit return selection to the outermost enclosing function layer.
-  The current return_target binder selects its most recent frame; current
-  one-frame tests do not prove nested-frame correctness.
+- Separate implicit ReturnEvent from omitted ReturnTarget. Wire UnitDiscard
+  for non-tail expressions and path-sensitive tail unit fallthrough/non-unit
+  return synthesis. TailValue list position is insufficient. Align omitted
+  target selection to the outermost enclosing function layer; the current
+  return_target binder selects the most recent frame. One-frame tests prove
+  neither this nested-target law nor serial completion semantics.
 - Connect name-preserving @ and ordinary value/borrowed lifecycle fields,
   independent SafetyPolicy, and compatible post-commit external admissions.
 - Connect link's compilation-wide E-owned LinkRegistry using canonical
@@ -346,6 +349,29 @@ outside this revision. Structured Path semantics are defined; their source and
 evaluator consumers remain pending. General Slice_Omega endpoint rules and
 the separate public Product ordinal API remain open.
 
+
+## Documentation alignment before implementation migration
+
+The current revision changes documents only. Canonical meaning is fixed by
+the existing owners; no Rust, parser, normalizer, tests or lowering are changed.
+
+- Preserve P |> E == P E without exchanging operands. Label mathematical call
+  notation explicitly; keep ordinary dot ADL separate from structural extraction.
+- Keep name::path and complete computed NameValue evaluation before # blocks
+  resident reading. Bare Pattern navigation and evaluated $ reinjection differ.
+- Migrate name-headed shorthand to preserve (self, <> name); current self-less
+  carriers cannot establish the canonical invocation frame.
+- Connect serial UnitDiscard and the separate event/target inference rules,
+  retaining direct result demand and one evaluator.
+- Preserve atomic complete-Object construction/decomposition. Destructors run
+  ordinary continuations over complete children, never partial parents.
+- Use terminal Move only; copy-derived paths are selected share/rebind + clone.
+  Preserve Move does not clone. No default move/copy selector remains to design.
+- Fix cleanup points under all constraints, then linearize remaining same-point
+  events in reverse declaration order, before lifecycle/@ observation.
+
+The ALIGN conformance cases record acceptance obligations for those consumers;
+passing current carrier tests does not claim that migration has happened.
 
 ## PR106 consumer gates
 

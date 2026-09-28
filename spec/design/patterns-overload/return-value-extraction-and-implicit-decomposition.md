@@ -27,10 +27,10 @@ The distinction is semantic, not an implementation-language distinction between
 "single return" and "multiple return":
 
 ```text
-return e
+e return;
   -> value normal form is e
 
-return P
+P return;
   -> value normal form is P
 ```
 
@@ -312,7 +312,7 @@ The same rule applies in binding, parameter, and other extraction contexts:
 
 ```text
 (a, b) == e      // no implicit `?`
-f(e)             // parameter matching reads e's Pattern directly
+e |> f           // parameter matching reads e's Pattern directly
 ```
 
 Therefore:
@@ -333,8 +333,11 @@ extraction:
 -> (r first, d second)
 ```
 
-Explicit writes in the body address `r` and `d` separately. A bare terminal
-expression instead supplies one result object under the expectation:
+Explicit writes in the body address `r` and `d` separately. A non-unit true
+path-tail expression synthesizes a ReturnEvent and supplies one result object
+under the expectation below. A unit tail instead falls through; explicit unit
+return remains a return. Event inference and target inference are distinct,
+as defined by the targeted-return owner.
 
 ```text
 let (r first, d second) = expr
@@ -405,13 +408,15 @@ Given:
 ```lang
 let t = (uint8 a, uint8 b)struct;
 
-let val = () |> (t uninit);
-val ref. a = 1uint8;
-val ref. b = 1uint8;
-let val = val as t;
+let val = complete_t_value;
 ```
 
-`val` is a non-product value point `e` of constructed type `t`.
+Here complete_t_value is an already completely constructed ordinary value of
+type t, with a and b supplied by its selected construction. Material may form
+incrementally, but Pre -> atomic ConstructCommit establishes the complete
+identity; there is no uninitialized aggregate Object to patch field by field.
+An Uninitialized Place is a separate non-Object state. `val` is a non-product
+value point e of constructed type t.
 
 Its exposed extraction view is the field-labeled product:
 

@@ -21,7 +21,9 @@ or adjacent design only; the model here stands on its own and is the canonical
 authority for the value / place / binding / borrow-view distinction.
 
 There is no ordinary symbol-alias or place-forwarding declaration form in this
-language. `let a = b;` copies a value into a fresh binding with a fresh place.
+language. `let a = b;` binds the ordinary RHS result in a fresh destination
+Place under the selected ordinary realization and terminal Move. It does not
+by itself mandate clone or equate Move with source death.
 Sharing an observation of another object is expressed by the borrow operators
 defined in §5, never by a declaration that makes two bindings name one place.
 
@@ -60,6 +62,14 @@ Three phrasings are explicitly rejected throughout. `let T: type = uint8` is
 **not** fresh nominal type generation. A borrow view is **not** textual
 substitution and **not** a second name for a name binding. And value equality is
 **not** place equality.
+
+Object identity is complete at construction and consuming-extraction commit,
+as defined by the [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#32-atomic-object-identity-commits).
+Incremental construction material and Uninitialized Places are not partial
+Objects. Ordinary dot ADL is a call, not a private Place projection; only the
+selected registered borrow accessor uses the existing ProjectionSlot law.
+An affine T -> F value accessor obeys ordinary MoveEffect/Movable and does not
+establish a partially consumed aggregate.
 
 ## 2. Semantic identities
 

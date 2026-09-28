@@ -54,7 +54,12 @@ stage explicitly; Pout.stage=P1.stage. InputAdmissible, migration and Ready
 are separate. Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
 
 Instance Killable, fixed MoveEffect and frontier Movable remain independent.
-Mechanical with placement precedes @; killing move adds no old-generation drop.
+Pass=Move; copy-derived share/rebind -> clone -> Move creates a fresh result,
+while Preserve Move invokes no clone. Cleanup points are fixed first; remaining
+unordered same-point events use reverse declaration order before @ observation.
+Killing move adds no old-generation drop. Construction and consuming extraction
+commit complete identities atomically; destructor continuations use ordinary
+complete children, never partial parents.
 Split/D preserves residual material, while Done is internal boundary completion.
 Residual escape consumes current ordinary meta payload facts.
 
@@ -68,9 +73,11 @@ against a common snapshot, never inserting tau_C or importing its V_tau.
 Ordinary member formation at terminal () supplies Val2 callability; TypeAdd
 changes V_T only. Neither construction axis implies the other.
 
-Read_name obtains NameValue structure; value-expected use proceeds through
-Read_resident. # is path_pattern projection, observing the first level for
-NameExpr. (n#)$ reconstructs structure under the Path consumer only;
+Read_name fully computes NameValue, including ordinary/meta/compile subexpressions;
+value-expected use proceeds through Read_resident. # projects the completed first
+level and blocks only resident reading. name::path preserves construction/
+extraction direction; bare inherited Pattern navigation differs from evaluated
+$ reinjection in extraction. (n#)$ reconstructs structure under the Path consumer only;
 indexing yields a relative single-name
 path_pattern and general slicing remains open. Textual roots resolve at
 resident use; explicit roots retain dependencies. General $ splices ready
@@ -83,7 +90,12 @@ maxima. General dependencies are realized once before layout; complete closure
 results retain the lifetime refinement handoff.
 
 
-Ordinary calls enter through Type(x)'s associated Val2[()] with self=x.
+Source calls obey P |> E == P E, never E P. Dot is ordinary ADL, not Place
+projection; name-headed callables preserve (self, <> name). Ordinary calls
+enter through Type(x)'s associated Val2[()] with self=x.
+Implicit ReturnEvent differs from omitted ReturnTarget: non-tail requires unit;
+true path-tail unit falls through, non-unit synthesizes return before target
+inference. Direct return demand still precedes maxima without a hidden temp.
 Type calls expand all c in their own V_tau into Type(c)'s associated Val2[()]
 entries and perform one selection of (c, implementation, frame), with self=c.
 V_tau, Val2 residency, Pattern registration

@@ -60,6 +60,50 @@ The implicit return spelling `E return;` selects the outermost enclosing
 function layer. The current active-frame binder still selects its most recent
 frame; alignment to this rule is consumer work, not an alternate semantics.
 
+### 1.1 Two distinct implicit operations
+
+```text
+E return;             -- explicit ReturnEvent, omitted ReturnTarget
+E (T return);         -- explicit ReturnEvent and explicit target
+E;                    -- ordinary expression completion, consumer decides below
+
+ImplicitReturnEvent != ImplicitReturnTarget
+```
+
+The first form already requests return. Target inference supplies Self₀; it
+does not decide whether the event exists. A plain expression instead enters
+the serial/block consumer on its SemanticContinuation path:
+
+```text
+non-tail e:
+  UnitDiscard(e): evaluate e once; require Type(result)=unit; discard; continue
+
+true path-tail e:
+  Type(result)=unit  -> ordinary fallthrough
+  Type(result)!=unit -> synthesize ReturnEvent -> infer omitted ReturnTarget
+
+explicit unit_value return; -> ReturnEvent, never ordinary fallthrough
+```
+
+UnitDiscard names this existing E consumer judgment, not a new primitive,
+lexical binding, hidden temporary or evaluator. The explanatory actions
+`let _:t = express; (t == unit) assert;` are not a source rewrite: introducing
+bindings would change lexical/contextual observations.
+
+Tail is determined on each continuation/control-flow path, including branch
+paths, not by the last node of an AST list. ReturnEvent completes its path;
+unit fallthrough continues the ordinary enclosing control relation. It neither
+manufactures a return event nor a result-slot write.
+
+For a path that delivers a return payload, the established ReturnPattern/Pout
+demand applies before its root call seals maxima (§5.1). These judgments do not
+evaluate an unconstrained temporary to discover a type, execute candidate
+bodies speculatively, re-evaluate e, or reopen selection. Type/result evidence
+and the consumer belong to the same ordinary E relation.
+
+The current TailValue tag and nearest-frame binding code are implementation
+debt. Neither defines tail position or combines these two implicit operations.
+
 ## 2. Return Capability Completion
 
 Canonical return completion is mediated by the callable frame's return
@@ -148,8 +192,8 @@ For a callable declared with an extraction result:
 
 there is no extra anonymous aggregate output slot that can be written as a
 shortcut. Explicit body writes address the bound outputs `r` and `d`
-separately. Alternatively, a bare terminal expression delivers one result
-object and is checked exactly as the ordinary binding judgment:
+separately. Alternatively, a non-unit path-tail expression synthesizes a return
+event whose one result object is checked by the ordinary binding judgment:
 
 ```text
 Deliver(expr, frame)
@@ -169,8 +213,9 @@ named active Self frame. Their result matching rule is identical. Only the
 return-target layer differs. A nested explicit target therefore does not
 introduce a second tuple-assignment, decomposition, or return-value algebra.
 
-Bare tail delivery and `Done_Return` delivery both read the declared result
-Pattern directly. They do not insert `?`; they do not broadcast one expression
+Synthesized non-unit tail returns and explicit `Done_Return` delivery both
+read the declared result Pattern directly. A unit tail instead falls through.
+Return deliveries do not insert `?`; they do not broadcast one expression
 to each output binder; and they do not synthesize positional outputs outside
 the normal Pattern matcher.
 
@@ -202,7 +247,8 @@ completions or perform D-reduction.
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
 | Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full callable-frame self capability |
-| Implicit return | Outermost enclosing function layer; binder alignment pending | Lowered/completed through enclosing self capability |
+| Omitted ReturnTarget | Binder alignment pending | Outermost enclosing function layer, after a ReturnEvent exists |
+| Implicit ReturnEvent / serial consumer | Path-tail and UnitDiscard consumer pending | Non-tail requires unit; tail unit falls through; tail non-unit synthesizes ReturnEvent |
 | Explicit self target | Attempts active self-frame match; does not silently fall back to nearest | Full self capability object |
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |
 | Return binding slot | Complete normalized slot/Pattern retained on the target frame | Used as `let ResultPattern = expr` expectation |

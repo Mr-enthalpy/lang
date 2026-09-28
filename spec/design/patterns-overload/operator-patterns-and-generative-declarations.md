@@ -175,6 +175,9 @@ separately permits single-name structural construction and defines external Read
 
 ## 3. Three projections of one application structure
 
+Call(...), RelationalExtract(...) and GenerativeInvocation(...) below are
+semantic metanotation, not callee-first source syntax.
+
     ordinary RHS:       Call(op,a,b)
     Pattern Pa op Pb:   RelationalExtract(op,Pa,Pb)
     generative head:    GenerativeInvocation(op,Pa,Pb)
@@ -313,7 +316,7 @@ available for text observation, but is not this Path truncation operation.
 
 ```text
 .field  -> field::adl
-E.field -> E |> field::adl
+E.field -> E |> .field -> E |> field::adl
 ```
 
 The normalizer preserves the dot/name/path source role; it does not own the
@@ -327,8 +330,17 @@ explicit Forget removes it. Path support does not erase OG_s to ordinary OG.
 
 field::adl forms a permitted ordinary result/member occurrence. Its body reads
 field::t; it does not inject field into t. Frozen generative rules can answer
-later legal requests without infinite predeclaration or reopening Pattern/V_tau
-registration in either adl or t.
+later legal requests without reopening adl or t, modifying Pattern registration
+or V_tau, or pre-enumerating names:
+
+```text
+finite generative rule -> potentially unbounded legal Name family
+not: Val2(adl) pre-materializes infinitely many names
+```
+
+Each request still obeys ordinary name, input, selection and lifetime rules.
+A current namespace observation remains finite; frozen generative rules can
+answer later requests without revising a retained snapshot.
 
 When a meta instance supports generation, its direct result and ordinary
 payloads obey the existing instance model. ADL does not broaden the direct
@@ -360,3 +372,5 @@ OrdinaryADLCall != RegisteredStructuralExtraction
 ```
 
 Replacing compiler-private closure sugar preserves this semantic boundary.
+.field is neither a NameExpr nor a private field Place projection. Its selected
+ordinary callable may have structural-role evidence, but dot syntax supplies none.

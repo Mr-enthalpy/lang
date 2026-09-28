@@ -225,21 +225,23 @@ let <> P
 `let <> _` contains a real wildcard Pattern with no outer binder. Binder
 absence and wildcard presence are different facts.
 
-For one non-composite atomic Pattern `P`, the parser contract is:
+For one non-composite atomic Pattern P, the canonical semantic head is:
 
 ```text
 |> P { body }
-  == |> (<> P) { body }
-  -> headed InPlace closure
+  -> |> (self, <> P) { body }
+  -> headed InPlace formation, preserving selected callable self
 ```
 
-The shorthand and explicit spelling produce the same structural Raw AST apart
-from source spans/provenance. They do not produce `Product(_, P)`, an ordinary
-closure, or `Binder(P)`. Explicit `(_ P)` remains the pre-existing Product plus
-body shape and is not a spelling of the shorthand.
+self is a schematic fresh binder for invocation slot zero, followed by the
+binderless explicit argument Pattern. It is not user-supplied actual material.
+The current parser's self-less (<> P) carrier requires migration; structural
+goldens of that carrier do not establish semantic equivalence. Explicit
+wildcard (_ P) is also different. The Pattern owner §9 owns the corrected
+head; parser/normalizer migration must remain syntax-directed.
 
 In-place closures cannot have capture lists. Invalid capture/tail forms become
-`ErrorAst`; an error cannot be represented as a valid empty Block.
+ErrorAst; an error cannot be represented as a valid empty Block.
 
 ### 4.2 Capture items are let-shaped
 

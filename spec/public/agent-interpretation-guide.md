@@ -36,6 +36,11 @@ Do not turn Normalized AST into HIR.
 Do not add name resolution, type checking, operator lookup, or pattern-head resolution to normalization.
 ```
 
+The hard source-direction rule is P |> E P2 and P |> E == P E, never
+P E == E P. Legal call shapes include ()f;, x f; and (x,y) f;. Do not write
+traditional f() or f(x) as source calls. Invoke(...), Call(...) and similar
+equations are semantic metanotation only.
+
 ## 3. Call Binding Rules to Preserve
 
 See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
@@ -48,18 +53,18 @@ See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
 - `f Product g` is the **second legality repair** (`f |> (Product |> g)`; dump
   label `SecondLegalityRepair`), not a positive local call sugar, and it never
   overrides source-product continuation.
-- `P |> e` with no following Product is the **first legality repair** (dump label
-  `PipeFallback`), not the main skeleton.
+- `P |> e` is a canonical call form. The current normalizer labels its
+  no-following-Product case `PipeFallback`; this implementation label does not
+  weaken the source skeleton or reverse its direction.
 - `expr |> Product` is never the intended normalized result.
 - Operator / dot-closure / member / double-dot / bracket sugar lower into the same
   product-call skeleton with preserved provenance; they are not resolved.
-- `.name` lowers independently to
-  `(self, val: T, ...args) { (val, args) |> name::T }`; the generated `self`
-  formal is implicitly supplied, while `val` is the first explicit argument;
-  `E.name` mechanically uses that same closure. After lowering, `.name` is an
-  ordinary expression: replacing it with `let d = .name` must preserve the
-  general pipe/product binding spine. Never inspect `DotClosureLowering`
-  provenance to absorb nearby material. `..name` remains direct call sugar.
+- .name denotes name::adl; E.name == E |> .name == E |> name::adl.
+  It is an ordinary expression call, neither NameExpr nor direct field Place.
+  The finite ADL generator answers a potentially unbounded family of legal
+  names without reopening types or changing Pattern/V_tau registration.
+  Current DotClosureLowering helper generation is migration debt. Never use
+  its provenance to absorb nearby material; ..name retains its separate sugar.
 - Callable tails preserve ordinary/named user bodies, `default`, and optional-
   message `delete`; strategy metadata is not overload selection at normalization.
 - Closure placement is independent of head presence. No-`=>` headed bodies,
@@ -81,6 +86,38 @@ Incoming source Product (`P |>`) with a following Product?  -> continuation (Pro
 No incoming source Product, naked Product in target position, expr follows?  -> second legality repair (SecondLegalityRepair).
 Incoming source Product, no following Product?  -> first legality repair (PipeFallback).
 ```
+
+### Semantic migration guardrails
+
+- name::path follows Pattern/path construction/extraction isomorphism. :: is
+  composition, not a reason to reverse the syntax to path::name.
+- name_express# completes the whole ordinary name computation to NameValue,
+  then blocks only resident reading. Computed operands, calls, meta and
+  compile work still run. # is projection, not AST capture or evaluation stop.
+- General name_express$ inserts existing Pattern material; it does not insert
+  path_pattern projection. Non-extraction name::a == name::(a$) on their
+  legal common domain is not a Pattern rewrite: extraction of bare a inherits
+  navigation, whereas evaluated a$ explicitly reinjects material.
+- A name-headed callable has (self, <> name), preserving actual selected self.
+  The old self-less shorthand carrier is implementation debt.
+- Implicit ReturnEvent and omitted ReturnTarget are separate. Non-tail
+  expressions require unit through the semantic UnitDiscard consumer. True
+  continuation-path tail unit falls through; non-unit tail synthesizes a
+  return event, then infers its target. Explicit unit return still returns.
+  Neither the last AST node nor ImplicitNearest defines these rules.
+- Construction and consuming extraction commit complete Object identities
+  atomically under Pre. Material and an Uninitialized Place are not partial
+  Objects. Destructors continue over complete children after decomposition.
+- field : T -> F is affine value access. Affine use does not prove death.
+  Movable, Killable and MoveEffect are independent; Preserve Move is not copy.
+- Terminal Pass = Move. Copy-derived use is ordinary share/rebind -> clone ->
+  Move(fresh result). CopyConstruct abbreviates that realization, not a primitive.
+- First fix cleanup points under all established constraints; only same-point
+  otherwise-unordered events use reverse declaration order. Fix the full
+  sequence before lifecycle/@ observation. Never move points for that tie-break.
+
+Canonical details remain in the existing Path, Pattern, call, targeted-return,
+mechanical-passing and lifetime owners; these guardrails add no evaluator.
 
 ## 4. Value/Pattern Boundary Rules to Preserve
 

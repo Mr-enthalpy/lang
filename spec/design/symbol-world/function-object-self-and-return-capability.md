@@ -79,6 +79,10 @@ type. T, T ref and T share therefore use matching entries of their respective
 complete types. A candidate expecting T ref does not repair a T callee by
 coercion. The receiver spelling is ordinary; its self role is positional.
 
+A name-headed callable's semantic head is (self, <> name), never the
+self-less (<> name). Ordinary call projection supplies x; type projection
+supplies the selected c. Both preserve Type(actual callee)=Type(first self).
+
 An ordinary field function instead has its own anonymous function-object self,
 with the operated object in a later explicit argument position. Forwarding that
 argument does not create an implementation-injection exception.
@@ -146,7 +150,11 @@ escape hatch.
 
 ## 5. `self..return(d)` — semantics
 
-A call to `self..return(d)` has three semantic effects:
+A call to `self..return(d)` has three semantic effects. Event synthesis for a
+plain serial tail and omitted-target inference are separate consumers owned by
+[targeted return](../control-flow/targeted-return-and-d-reduction.md#11-two-distinct-implicit-operations).
+Tail unit falls through; explicit unit return invokes this return capability.
+Neither rule creates a second evaluator.
 
 ### 5.1 Local branch completion
 
@@ -192,7 +200,7 @@ does not grant a missing self capability or absorb arbitrary result Patterns.
 
 ## 7. Relation to `Error.handle`
 
-`Error.handle(e, self)` may call `self..return(error)` as its default
+The ordinary handler call `(e, self) |> handle::Error` may call `self..return(error)` as its default
 behavior. This is not an exception mechanism. It is an ordinary call through
 the callable frame's return capability, subject to the same lifetime
 postcondition: after the error handler invokes `self..return(error)`, the

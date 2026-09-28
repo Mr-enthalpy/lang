@@ -12,7 +12,8 @@ self-construction; type calls select once over all callable/implementation pairs
 and dependency realization is fixed by the selected ordinary source action.
 The 132 PR106 scenarios bring this index to 196 cases, including independent
 callable construction axes, closure contribution consumers and two-level Path
-observations. These are semantic acceptance obligations, not 196 executed tests.
+observations. The 30 pre-implementation ALIGN cases below bring the total to
+226 semantic acceptance obligations, not 226 executed tests.
 
 | Case group | Canonical owners | Implementation gate |
 |---|---|---|
@@ -326,7 +327,7 @@ Existing carrier test success is not coverage of these new semantics.
 | 106-PT15 | NameExpr in Path and value-expected contexts | Read_name retains full NameValue; only value use performs Read_resident. Equal residents do not equate structures. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT16 | Compare e# and path_pattern projection | One defined projection: NameExpr stops at its first level; general values require applicable projection, with no source quotation fallback. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT17 | Round-trip a NameExpr n and an already bound NameValue a in the Path consumer | For n, first obtain Read_name(n), then project/reinject. For a=NameValue(field::adl), Interpret_Path(PathPatternProjection(a)) =_Path a and reprojection yields a#. Preserve the bound structure without repeating NameExpr lookup or making a node from binder spelling a. General splice supplies no Path decoder and performs no resident read. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT18 | Compare direct a$ with projection followed by splice | Direct splice uses the current Pattern; projected splice first converts it. No implicit conversion or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT18 | Compare direct name_express$ with projection followed by splice | Direct splice uses the current Pattern; projected splice first converts it. No implicit conversion or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT19 | Index ((field::adl)#)[0] | Return relative field:: path_pattern, not string or a path retaining the adl endpoint. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT20 | Equal segment strings with different endpoints or explicit roots | Omega retains endpoint distinctions and actual root material, not an extra dependency coordinate. Ordinary dependency/lifetime obligations remain in force; strings cannot recover identity or authority. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT21 | Reconstruct a Path whose target became unavailable | Surrounding Read_resident checks current access/validity without reopening or deriving authority from projection. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
@@ -334,6 +335,44 @@ Existing carrier test success is not coverage of these new semantics.
 
 The PR106 extension contains **132 cases**. Each acceptance or rejection depends
 on its owner's premises; schematic source is not an unconditional theorem.
+
+## Pre-implementation alignment acceptance cases
+
+These 30 cases fix documentation-level obligations; source consumers remain pending.
+They add no executable tests or new semantic ontology.
+
+| ID | Scenario | Required result | Canonical owner |
+|---|---|---|---|
+| ALIGN-01 | P \|> E, P E, ()f, x f, (x,y) f | Delete only the pipe. Never exchange operands or accept traditional callee-first calls as this source grammar. | [Owner](../design/symbol-world/function-object-call-model.md) |
+| ALIGN-02 | x.field or movement of its ordinary result | Use x.field == x \|> .field == x \|> field::adl through ordinary invocation. No NameExpr/Place shortcut or partial-parent field move. | [Owner](../design/symbol-world/function-object-call-model.md) |
+| ALIGN-03 | A new legal name::adl request after Close | Frozen finite generative rule answers it without reopening adl/t, enumerating infinite Val2 or changing Pattern/V_tau registrations. | [Owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) |
+| ALIGN-04 | Default field::adl forwarder | Bind a=NameValue(field::adl); ((a#)[0])$::t reconstructs field::t. Preserve callable self and ordinary selected call. | [Owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) |
+| ALIGN-05 | The same name::path material in construction and extraction positions | Keep direction and structural isomorphism; no path::name reversal or second namespace algebra. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| ALIGN-06 | name::a and name::(a$) in their legal common non-extraction domain | Same Path result with the established ordinary evaluation; no unconditional source rewrite. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| ALIGN-07 | The same two shapes in extraction position | Bare a inherits navigation; a$ evaluates then reinjects material. Do not equate their judgments by the non-extraction law. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| ALIGN-08 | A complex name_express with calls, meta/compile work and express$::express$ operands, followed by # | Complete ordinary computation once to NameValue, then project without resident read. No AST capture, skipped effect or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| ALIGN-09 | name_express$ versus (name_express \|> path_pattern)$ | Direct splice inserts current Pattern material; the latter first projects. Missing projection applicability cannot be repaired by source quotation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| ALIGN-10 | NameExpr and already bound NameValue Path round-trips | Path consumer preserves structural equality and anchors, not arbitrary Object identity or binder spelling. Resident authority is rechecked only by its own consumer. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| ALIGN-11 | Name-headed in-place callable in ordinary and type calls | Formal head retains (self, <> name). Selected ordinary x or projected c reaches slot zero; the explicit actual never supplies self. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| ALIGN-12 | E return versus plain E at a path tail | The former already has ReturnEvent and infers only target; the latter first uses the serial consumer. Do not merge these operations in ImplicitNearest. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
+| ALIGN-13 | A non-tail serial expression yields non-unit | UnitDiscard rejects; it does not silently discard the result, synthesize a lexical temp or turn it into return. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
+| ALIGN-14 | Tail unit versus explicit unit_value return | Tail unit falls through; explicit unit produces ReturnEvent. Neither fabricates a local return contribution. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
+| ALIGN-15 | Each branch has a true non-unit tail, or a following continuation | Determine tailness per control-flow path, not AST list position. Synthesize return only at the true tail, then infer the outermost function target. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
+| ALIGN-16 | A non-unit tail's root overload and established ReturnPattern/Pout | Apply immediate demand before sealed maxima, retain both outer P1/P2 constraints; no speculative body, hidden temp, second evaluation or reopen. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
+| ALIGN-17 | Construction material is incomplete, or construction Pre fails | No partial Object identity exists. Successful atomic ConstructCommit establishes one complete result; failure publishes none. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| ALIGN-18 | A selected consuming parent decomposition | Atomic ExtractCommit ends parent identity and establishes complete children. No observable partly extracted parent or field-death bitmap. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| ALIGN-19 | Applicability proof or non-consuming registered borrowed observation | R_Gamma/FieldView evidence alone performs no destructive commit and grants no missing authority. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| ALIGN-20 | A destructor begins | It receives complete extracted children and runs ordinary NLL/with/use/move/drop, never a second destructor evaluator or partially destroyed parent. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
+| ALIGN-21 | Selected affine field : T -> F candidate | Complete F follows ordinary movement/lifecycle. Affine use alone proves neither Kill nor a partial aggregate; custom ADL cannot redefine structural extraction. | [Owner](../design/symbol-world/type-associated-function-objects-and-access-trees.md) |
+| ALIGN-22 | A legal Preserve Move and a separately available observable clone | Do not invoke clone for Preserve. Movable, Killable and fixed MoveEffect remain distinct; failed Pre does not switch effects. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
+| ALIGN-23 | Stable non-meta type, meta type outside OpenHere, or accessible closed/global resident | Apply existing instance survival and frontier checks. Local observation transport cannot kill the stable subject; equality does not merge lifecycle instances. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
+| ALIGN-24 | A Kill would invalidate an established admitted observation | Reject at Pre before mutation. Alive/dead status alone adds no new observable branch when all admitted observations are unaffected. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
+| ALIGN-25 | Ordinary value copy-derived route, or ref/share copy-derived route | Select share+clone or rebind+clone respectively, form fresh complete result and terminal Move; never pre-move source or add Copy as terminal pass. | [Owner](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
+| ALIGN-26 | Selected clone supplies a lawful non-source origin post | Use that post; no universal origin(result)=source. Copyable implies neither default copy nor movement permission; failure never reopens selection. | [Owner](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
+| ALIGN-27 | An explicit ref/share handle is passed | Move the already formed handle with its exact type and origin. No implicit borrow pass or increasing borrow depth. | [Owner](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
+| ALIGN-28 | Three otherwise unordered cleanups share point p with a declared before b before c | At fixed p execute c,b,a. No alternative-order equivalence question remains. | [Owner](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
+| ALIGN-29 | NLL/with/last-use/move/explicit-drop/return facts order events or place them at different points | Apply them first. Declaration-order tie-break cannot override precedence, shift a point or add old-generation cleanup after killing Move. | [Owner](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
+| ALIGN-30 | @ observes a destructor/cleanup continuation | Observe the fully fixed sequence and committed lifecycle facts. Do not solve cleanup again or discover failed Pre after mutation. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
 
 ## Decision-to-owner map
 

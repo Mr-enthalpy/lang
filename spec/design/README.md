@@ -31,7 +31,7 @@ that the corresponding source semantics is implemented.
 | Host IO and target-machine Objects | [host capabilities](meta-invocation/host-capabilities-and-machine-objects.md) |
 | Instance Killable/MoveEffect/Movable, same-K @, Region and Color | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
-| Outermost return and internal target completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
+| Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
 | Level/main.lang anchor and PhysicalTree normalization | [physical source](build-package/build-system-design.md) |
 
 Satellite documents consume these relations rather than redefine them. Existing
@@ -61,6 +61,6 @@ tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
 
 [Semantic spine](semantic-spine.md) supplies the compact dependency map.
 [Conformance scenarios](../planning/canonical-semantic-conformance.md) record
-the 64 retained and 132 new revision cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
+64 retained PR105 cases, 132 PR106 cases and 30 pre-implementation alignment cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
 [open questions](../planning/open-questions.md) contains only remaining choices.
 Historical files are non-authoritative and are not rewritten for current rules.

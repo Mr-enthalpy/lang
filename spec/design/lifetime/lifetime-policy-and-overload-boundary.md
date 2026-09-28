@@ -288,7 +288,7 @@ LifetimeValue participates in the ordinary value formation machinery:
   storage in an ordinary value slot
   argument passing
   return
-  move/copy when admitted by its ordinary Type/callspace
+  Move or a clone-derived route when admitted by its ordinary Type/callspace
 ```
 
 Each use remains subject to the same Type, Policy, capability, lifecycle, and
@@ -323,7 +323,7 @@ This is the general `RuntimeMaterializable(T)` rule owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §4.1. Applying `@` is still not an automatic mechanical pass. Once `@` has
 produced a `LifetimeValue`, ordinary transport of that result uses the same
-admitted move/copy machinery as another value.
+admitted Move and ordinary clone realization as another value.
 
 #### 2.1.1 One semantic continuation
 
@@ -537,7 +537,9 @@ Movable_K(n,m)                 -- legality at this action's frontier
 These are independent judgments. Killable is not a Type trait; equal type
 values, ZST layout, compile knowledge and meta provenance do not decide it.
 Movable requires the ordinary selected action's access, borrow, capability,
-origin and lifetime Pre. Nonkillability proves neither Movable nor Copyable.
+origin and lifetime Pre. Movable_K(n,m) != Killable_K(n); Movable does not
+imply Kill, and Move does not definitionally mean death. Nonkillability proves
+neither Movable nor Copyable.
 
 The effect is fixed before lifecycle observation. Kill ends the old generation
 and begins the transferred generation at the same continuation cut, preserving
@@ -545,7 +547,15 @@ its deeper origin (§2.1.3). No separate destructor/drop is inserted for the
 consumed old generation. Preserve requires the narrow proof that the subject
 cannot legally die or that preserving it is observationally equivalent under
 all admitted observations, including @, borrow/access capabilities, origin and
-destructor effects. It is not a silent choice of a clone candidate.
+destructor effects. It is a legal Move effect, not clone, copy fallback, failed movement or
+special non-owning syntax. Preserve does not invoke clone; a copy-derived
+share/rebind -> clone -> Move(fresh result) path creates a fresh complete
+object and is a different ordinary operation.
+
+Alive/dead status alone introduces no observable branch. Death with no effect
+under any admitted observation adds no observable semantics. If killing would
+invalidate an established legal language fact, that Kill continuation is
+illegal and must be rejected at Pre, before any mutation.
 
 The ordinary realization is killing; Preserve is confined to that proved
 exception. A stable meta root or global Val2 resident cannot be killed merely
@@ -558,6 +568,12 @@ An ordinary non-meta type instance in the established domain follows its existin
 a meta-local type temporary can end. A stable meta result root, a local copy,
 and a globally retained equal resident remain different lifecycle subjects.
 Construction OpenHere neither extends a lifetime nor makes a subject killable.
+The existing stable-instance rules include non-meta stable type values, meta
+type values outside the current OpenHere domain, still-accessible Val2
+residents of closed type structures and other stable/global residents.
+Their local transport cannot kill those stable subjects; legal movement uses
+Preserve while still checking Movable. These are instance/frontier facts,
+not a type-wide Copyable or Killable trait.
 
 Every expression occurrence, including a temporary without a Place, has its
 continuation-relative LifeName. Lifecycle Pre/Post applies even when no source
@@ -571,10 +587,34 @@ CleanupPlacementBeforeLifetimeObservation
 ```
 
 Ordinary control-flow, ownership, and end-event semantics place cleanup/drop
-events first. Lifetime observation then describes that fixed continuation. The NLL/lexical defaults and directed with constraints are defined in
+events first, fix their points, and linearize remaining unordered events
+at each same point in reverse declaration order. This last tie-break never
+moves a point or overrides NLL/with/other precedence. Lifetime observation
+then describes that fully fixed continuation. The NLL/lexical defaults and directed with constraints are defined in
 [mechanical cleanup](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md#15-cleanup-placement-and-with).
 It does not move cleanup to satisfy a constraint and does not participate in a
 cleanup/lifetime fixed point.
+
+#### 2.1.4.1 Atomic decomposition and destructor continuation
+
+Construction and consuming extraction use the Pattern owner's atomic identity
+boundary. A destructor receives complete children after parent decomposition:
+
+```text
+Pre(drop/extract)
+  -> atomic ExtractCommit of the complete parent
+  -> parent generation ends where the selected action so requires
+  -> complete child identities become established
+  -> ordinary destructor continuation
+  -> children's ordinary NLL / with / use / move / drop
+  -> Post / subsequent lifecycle observation
+```
+
+There is no partially destroyed parent, live-field bitmap or separate
+destructor evaluator. Matching proofs and non-consuming views are not
+ExtractCommit. An affine accessor likewise does not prove parent death.
+Cleanup placement and same-point ordering are settled before @ observes this
+continuation, and neither destructors nor @ re-solve placement.
 
 #### 2.1.5 Pre-check and post-commit
 
@@ -846,9 +886,9 @@ changing the relations defined above:
 - concrete Color carrier, the contribution/registration API for the extensible
   global vocabulary, and any future source syntax;
 - diagnostics and caching identity for lifetime validation;
-- automatic mechanical move-vs-copy pass selection, concrete borrow/copy
-  representation, closure ABI, and environment layout, which remain the
-  mechanical-lowering design's territory. The entry origin defaults, exact
+- concrete representation of borrow and selected clone realizations, closure
+  ABI and environment layout. Terminal Pass=Move and copy-derived
+  share/rebind -> clone -> Move are closed, not default-pass selection questions. The entry origin defaults, exact
   move-origin/Region boundary, and selected share/rebind-plus-clone realization
   lifecycle-post boundary above are fixed lifetime semantics.
 
@@ -886,7 +926,7 @@ Closure formation fixes D's sources, Pattern/Policy observations, formation
 actions and absence of recapture. Lifetime implementation and refinement own:
 
 - the regions/generations in which D may persist;
-- move/copy/preserve of tau_C and its members;
+- Move with Kill/Preserve and ordinary clone-derived transport of tau_C and its members;
 - return, storage, escape and promotion;
 - persistence of bounded runtime state alongside stable descriptions;
 - the concrete regions in which automatically formed dependencies and their
