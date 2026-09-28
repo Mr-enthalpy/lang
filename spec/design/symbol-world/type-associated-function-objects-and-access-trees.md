@@ -314,9 +314,10 @@ val share.field1.field2
 ```
 
 This document does not separately define evaluation or lowering for those
-forms. Ordinary ADL and associated candidate selection occur first; only the
-selected registered borrow accessor's result uses the canonical ProjectionSlot
-borrow-lifting law (`type-values-places-and-borrow-views.md` §2.3).
+forms. After the explicit ref/share receiver has been formed, ordinary ADL and
+associated candidate selection precede the selected accessor's ProjectionSlot
+result formation, under the canonical borrow-lifting law
+(`type-values-places-and-borrow-views.md` §2.3).
 
 Explicit `ref` / `share` constructs a borrow object before candidate adaptation;
 argument passing only moves that already formed borrow handle. Moving a borrow
