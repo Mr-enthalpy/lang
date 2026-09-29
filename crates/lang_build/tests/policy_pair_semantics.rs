@@ -116,49 +116,33 @@ fn policy_pair_and_whole_slot_mode_are_orthogonal_facts() {
 }
 
 #[test]
-fn policy_parser_keeps_choice_conjunction_and_pair_precedence_distinct() {
+fn public_policy_constraints_preserve_conjunction_and_reject_pair_choice() {
     let view = normalize_p2_policy(
-        &policy_spec("const + runtime || compile : compile"),
-        Provenance::new("precedence"),
+        &policy_spec("const + runtime"),
+        Provenance::new("conjunction"),
     )
-    .expect("`||` binds tighter than `+`, which binds tighter than `:`");
-    assert_eq!(
-        view.pair.value.stages,
-        stages(&[PolicyStage::Compile, PolicyStage::Runtime])
-    );
-    assert_eq!(view.pair.pattern.stages, stages(&[PolicyStage::Compile]));
+    .unwrap();
     assert_eq!(view.mode, PolicyMode::Const);
-
     for source in [
         "runtime:compile",
         "runtime:seal",
-        "(runtime || compile):compile",
-        "(runtime || seal):seal",
-        "mut + (runtime || compile):compile",
-        "runtime || S : compile",
+        "runtime || compile",
+        "const || mut",
+        "S : compile",
     ] {
-        normalize_p2_policy(&policy_spec(source), Provenance::new(source))
-            .unwrap_or_else(|diagnostic| panic!("`{source}` must parse: {diagnostic:?}"));
+        let parsed = lang_syntax::parse(&format!("{source} let x = value;"));
+        assert!(!parsed.diagnostics.is_empty(), "{source}");
     }
-
-    let parsed = lang_syntax::parse("runtime | compile let x = value;");
     assert!(
-        !parsed.diagnostics.is_empty(),
-        "single `|` must not become policy choice"
+        lang_syntax::parse("let bool = ((if | else) bool) |> struct;")
+            .diagnostics
+            .is_empty()
     );
-    let pattern = lang_syntax::parse("let bool = ((if | else) bool) |> struct;");
-    assert!(pattern.diagnostics.is_empty(), "Pattern `|` remains valid");
 }
 
 #[test]
-fn policy_algebra_rejects_cross_dimension_choice_and_same_dimension_conjunction() {
-    for source in [
-        "runtime || const",
-        "compile || public",
-        "mut || export",
-        "const + mut",
-        "public + private",
-    ] {
+fn policy_algebra_rejects_same_dimension_conjunction() {
+    for source in ["const + mut", "public + private"] {
         assert!(
             normalize_p2_policy(&policy_spec(source), Provenance::new(source)).is_err(),
             "`{source}` must be rejected"
@@ -168,38 +152,7 @@ fn policy_algebra_rejects_cross_dimension_choice_and_same_dimension_conjunction(
 
 #[test]
 fn absent_value_component_cannot_carry_stage_or_policy_mode_subdimensions() {
-    let absent = normalize_p2_policy(
-        &policy_spec("S : compile"),
-        Provenance::new("valid absent P2"),
-    )
-    .expect("a structurally empty absent Pv with compile Pp remains valid");
-    assert_eq!(absent.pair.value.presence, ValuePresence::Absent);
-    assert!(absent.pair.value.stages.is_empty());
-
-    for (source, mode) in [
-        ("const + S : compile", PolicyMode::Const),
-        ("mut + S : compile", PolicyMode::Mut),
-    ] {
-        let policy = policy_spec(source);
-        let view = normalize_p2_policy(&policy, Provenance::new(format!("P2 {source}")))
-            .expect("whole-slot mode is independent of absent Pv");
-        assert_eq!(view.pair.value.presence, ValuePresence::Absent);
-        assert_eq!(view.mode, mode);
-    }
-
-    for (source, mode) in [
-        ("export + const + S : compile", PolicyMode::Const),
-        ("export + mut + S : compile", PolicyMode::Mut),
-    ] {
-        let declaration = elaborate_namespace_declaration_policy(
-            Some(&policy_spec(source)),
-            NamespaceDeclarationPosition::DirectTopLevel,
-            Provenance::new(source),
-        )
-        .expect("whole-slot mode remains valid on a pure-P export");
-        assert_eq!(declaration.mode, mode);
-    }
-
+    // Value/type observations remain independently testable through the internal API.
     for (label, value_stages) in [("absent with stage", stages(&[PolicyStage::Runtime]))] {
         let invalid = ResolvedCandidatePolicy {
             pair: PolicyPair {
@@ -237,16 +190,6 @@ fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
             vec![PolicyStage::Runtime],
             vec![PolicyStage::Compile],
         ),
-        (
-            "runtime || compile",
-            vec![PolicyStage::Compile, PolicyStage::Runtime],
-            vec![PolicyStage::Compile],
-        ),
-        (
-            "runtime || seal",
-            vec![PolicyStage::Seal, PolicyStage::Runtime],
-            vec![PolicyStage::Seal],
-        ),
     ];
 
     for (source, value_stages, pattern_stages) in cases {
@@ -254,32 +197,6 @@ fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
             normalize_p2_policy(&policy_spec(source), Provenance::new(source)).expect("valid P2");
         assert_eq!(view.pair.value.stages, stages(&value_stages));
         assert_eq!(view.pair.pattern.stages, stages(&pattern_stages));
-    }
-}
-
-#[test]
-fn p2_explicit_pairs_validate_component_boundaries() {
-    for source in [
-        "runtime:compile",
-        "runtime:seal",
-        "(runtime || compile):compile",
-        "(runtime || seal):seal",
-        "const + (compile || runtime):compile",
-    ] {
-        normalize_p2_policy(&policy_spec(source), Provenance::new(source))
-            .expect("valid explicit P2 pair");
-    }
-
-    for source in [
-        "runtime:runtime",
-        "compile:seal",
-        "meta:compile",
-        "export:compile",
-    ] {
-        assert!(
-            normalize_p2_policy(&policy_spec(source), Provenance::new(source)).is_err(),
-            "`{source}` must be rejected as P2"
-        );
     }
 }
 
@@ -324,7 +241,7 @@ fn p1_value_dominant_projection_restricts_the_actual_slice() {
 #[test]
 fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     let inherited_p2 = normalize_p2_policy(
-        &policy_spec("runtime:compile"),
+        &policy_spec("runtime"),
         Provenance::new("formal inherited P2"),
     )
     .expect("valid inherited P2");
@@ -381,7 +298,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     }
 
     let const_only_p2 = normalize_p2_policy(
-        &policy_spec("const + runtime:compile"),
+        &policy_spec("const + runtime"),
         Provenance::new("const-only inherited P2"),
     )
     .expect("valid const-only P2");
@@ -432,16 +349,6 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         Some(P1Projection::ValueDominant { .. })
     ));
 
-    assert!(
-        elaborate_namespace_declaration_policy(
-            Some(&policy_spec("export + (const || mut) + runtime")),
-            NamespaceDeclarationPosition::DirectTopLevel,
-            Provenance::new("broad internal export"),
-        )
-        .is_err(),
-        "const || mut is not the primitive plain mode"
-    );
-
     let mut_only_export = elaborate_namespace_declaration_policy(
         Some(&policy_spec("export + mut + runtime")),
         NamespaceDeclarationPosition::DirectTopLevel,
@@ -452,18 +359,6 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     assert!(matches!(
         mut_only_export.external_projection,
         Some(P1Projection::ValueDominant { .. })
-    ));
-
-    let type_only = elaborate_namespace_declaration_policy(
-        Some(&policy_spec("export + S : compile")),
-        NamespaceDeclarationPosition::DirectTopLevel,
-        Provenance::new("type-only export"),
-    )
-    .expect("a pure Pattern/type export has no value-policy_mode obligation");
-    assert!(matches!(
-        type_only.external_projection,
-        Some(P1Projection::Pair(ref pair))
-            if pair.value.presence == ValuePresence::Absent
     ));
 
     assert!(elaborate_namespace_declaration_policy(
@@ -477,7 +372,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
 #[test]
 fn position_policy_inherits_stage_and_overlays_only_mode() {
     let inherited_p2 = normalize_p2_policy(
-        &policy_spec("mut + runtime:compile"),
+        &policy_spec("mut + runtime"),
         Provenance::new("position inherited P2"),
     )
     .expect("valid inherited P2");
@@ -851,11 +746,18 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
 
 #[test]
 fn function_object_p1_lifts_only_p2_stage_dimensions() {
-    let result = normalize_p2_policy(
-        &policy_spec("const + runtime:seal"),
-        Provenance::new("runtime result"),
-    )
-    .expect("valid result policy");
+    let result = PolicyView {
+        pair: PolicyPair {
+            value: ValueComponentPolicy {
+                stages: stages(&[PolicyStage::Runtime]),
+                presence: ValuePresence::Present,
+            },
+            pattern: PatternComponentPolicy {
+                stages: stages(&[PolicyStage::Seal]),
+            },
+        },
+        mode: PolicyMode::Const,
+    };
     let object = derive_function_object_p1(
         &result,
         &FunctionObjectDeclarationPolicy {
@@ -869,11 +771,8 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
     assert_eq!(object.pair.pattern.stages, stages(&[PolicyStage::Seal]));
     assert_eq!(object.mode, PolicyMode::Const);
 
-    let compile = normalize_p2_policy(
-        &policy_spec("runtime:compile"),
-        Provenance::new("compile result"),
-    )
-    .expect("valid result policy");
+    let compile = normalize_p2_policy(&policy_spec("runtime"), Provenance::new("compile result"))
+        .expect("valid result policy");
     let object = derive_function_object_p1(&compile, &FunctionObjectDeclarationPolicy::default());
     assert_eq!(
         object.pair.value.stages,
@@ -1193,7 +1092,7 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
 #[test]
 fn formal_p2_policy_mode_slice_is_exported_to_the_overload_product_order() {
     let inherited_p2 = normalize_p2_policy(
-        &policy_spec("runtime:compile"),
+        &policy_spec("runtime"),
         Provenance::new("overload formal P2"),
     )
     .expect("valid inherited P2");

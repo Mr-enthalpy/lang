@@ -28,18 +28,6 @@ const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
 
 const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
     (
-        "verify_runtime_shadow",
-        verify_runtime_shadow_with_migration_fixture,
-    ),
-    (
-        "policy_aware_early_meta",
-        policy_aware_early_meta_with_migration_fixture,
-    ),
-    (
-        "user_runtime_values",
-        user_runtime_values_with_migration_fixture,
-    ),
-    (
         "dependency_mount_no_import",
         dependency_mount_no_import_fixture,
     ),
@@ -63,16 +51,22 @@ fn runtime_literal_verification_fixture(workspace: &str) -> BuildWorkspace {
     }
 }
 
-fn verify_runtime_shadow_with_migration_fixture() -> BuildWorkspace {
-    runtime_literal_verification_fixture("verify_runtime_shadow")
-}
-
-fn policy_aware_early_meta_with_migration_fixture() -> BuildWorkspace {
-    runtime_literal_verification_fixture("policy_aware_early_meta")
-}
-
-fn user_runtime_values_with_migration_fixture() -> BuildWorkspace {
-    runtime_literal_verification_fixture("user_runtime_values")
+#[test]
+fn source_transport_without_execution_cannot_materialize_runtime_values() {
+    for workspace in [
+        "verify_runtime_shadow",
+        "policy_aware_early_meta",
+        "user_runtime_values",
+    ] {
+        let mut session = BuildSession::new();
+        let error = session
+            .build_workspace(&runtime_literal_verification_fixture(workspace))
+            .expect_err("unconnected single-stage transport cannot produce a migrated value");
+        assert!(
+            format!("{error:?}").contains("NoFullyAdmissibleCandidate"),
+            "{workspace}: {error:?}"
+        );
+    }
 }
 
 // Temporary runner metadata, not semantic verification: these fixtures fail

@@ -3,7 +3,7 @@ use crate::{
     BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode, EntityRefAst, ExprAst, ExprKind,
     FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst, PolicyAtomAst,
     PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProgramAst, SegmentAst,
-    SegmentElementAst, Symbol, Token, TokenKind, TriviaKind, ValuePolicyPatternAst, WithClauseKind,
+    SegmentElementAst, Symbol, Token, TokenKind, TriviaKind, WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -67,8 +67,8 @@ fn dump_form(output: &mut String, form: &FormAst, indent: usize) {
             dump_expr(output, &return_ev.value, indent + 2);
             line(output, indent + 1, "target");
             match &return_ev.target {
-                crate::ReturnTargetAst::ImplicitNearest { .. } => {
-                    line(output, indent + 2, "ImplicitNearest");
+                crate::ReturnTargetAst::Omitted { .. } => {
+                    line(output, indent + 2, "Omitted");
                 }
                 crate::ReturnTargetAst::Explicit { target, .. } => {
                     line(output, indent + 2, "Explicit");
@@ -210,6 +210,7 @@ fn dump_entity_ref(output: &mut String, entity_ref: &EntityRefAst, indent: usize
 fn dump_binder_name(output: &mut String, name: &BinderNameAst, indent: usize) {
     match name {
         BinderNameAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
+        BinderNameAst::GeneratedSelf { .. } => line(output, indent, "GeneratedSelf"),
         BinderNameAst::Operator(name) => {
             line(output, indent, &format!("OperatorName {}", name.spelling))
         }
@@ -562,8 +563,8 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
                 dump_nav_component(output, component, indent + 2);
             }
         }
-        AtomKind::DotClosure { selector } => {
-            line(output, indent, "DotClosure");
+        AtomKind::DotName { selector } => {
+            line(output, indent, "DotName");
             dump_selector(output, selector, indent + 1);
         }
         AtomKind::MemberSugar { object, selector } => {
@@ -798,43 +799,26 @@ fn dump_return_clause(output: &mut String, clause: &crate::ReturnClauseAst, inde
 
 fn dump_policy_spec(output: &mut String, policy: &PolicySpecAst, indent: usize) {
     line(output, indent, "PolicySpec");
-    line(output, indent + 1, "value_policy:");
-    match &policy.value_policy {
-        ValuePolicyPatternAst::Conjunction(conjunction) => {
-            dump_policy_conjunction(output, conjunction, indent + 2)
-        }
-        ValuePolicyPatternAst::Absent { .. } => line(output, indent + 2, "Absent"),
-    }
-    line(output, indent + 1, "pattern_policy:");
-    match &policy.pattern_policy {
-        Some(pattern_policy) => dump_policy_conjunction(output, pattern_policy, indent + 2),
-        None => line(output, indent + 2, "None"),
-    }
+    dump_policy_conjunction(output, &policy.constraint, indent + 1);
 }
 
 fn dump_policy_conjunction(output: &mut String, conjunction: &PolicyConjunctionAst, indent: usize) {
     line(output, indent, "PolicyConjunction");
-    for choice in &conjunction.choices {
-        line(output, indent + 1, "PolicyChoice");
-        for atom in &choice.atoms {
-            match atom {
-                PolicyAtomAst::Name(name) => {
-                    line(
-                        output,
-                        indent + 2,
-                        &format!("PolicyAtom Name \"{}\"", name.text),
-                    );
-                }
-                PolicyAtomAst::Group { conjunction, .. } => {
-                    line(output, indent + 2, "PolicyAtom Group");
-                    dump_policy_conjunction(output, conjunction, indent + 3);
-                }
-                PolicyAtomAst::AbsentValuePattern { .. } => {
-                    line(output, indent + 2, "AbsentValuePattern");
-                }
-                PolicyAtomAst::Error(error) => {
-                    line(output, indent + 2, &format!("Error \"{}\"", error.message));
-                }
+    for atom in &conjunction.atoms {
+        match atom {
+            PolicyAtomAst::Name(name) => {
+                line(
+                    output,
+                    indent + 2,
+                    &format!("PolicyAtom Name \"{}\"", name.text),
+                );
+            }
+            PolicyAtomAst::Group { conjunction, .. } => {
+                line(output, indent + 2, "PolicyAtom Group");
+                dump_policy_conjunction(output, conjunction, indent + 3);
+            }
+            PolicyAtomAst::Error(error) => {
+                line(output, indent + 2, &format!("Error \"{}\"", error.message));
             }
         }
     }

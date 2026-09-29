@@ -29,9 +29,7 @@
 
 use std::collections::BTreeMap;
 
-use lang_syntax::{
-    NormClosureBody, NormForm, NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicySpec,
-};
+use lang_syntax::{NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicySpec};
 
 use crate::{
     body_entry_allows_execution,
@@ -1355,7 +1353,7 @@ pub(crate) fn invoke_target_values(
                     });
                 }
             };
-            if let Err(failure) = apply_written_self_structure(
+            if let Err(failure) = apply_self_formal_structure(
                 &mut source_shape,
                 &entry,
                 &target,
@@ -2013,18 +2011,14 @@ pub(crate) fn invoke_target_values(
             pack_bindings: source_shape.pack_bindings.clone(),
         };
         if !selected.is_delete() {
-            if let Some(value) = forwarded_semantic_body_value(&selected) {
-                SelectedBodyOutput::OrdinaryValue(value)
-            } else {
-                match evaluate_selected_source_body(
-                    &SemanticTypeEnv::new(&*semantic_world),
-                    resolver_context,
-                    &selected_body_input,
-                ) {
-                    Ok(value) => SelectedBodyOutput::Material(value),
-                    Err(failure) => {
-                        return Err(OrdinaryInvocationFailure::SelectedBody { failure, trace });
-                    }
+            match evaluate_selected_source_body(
+                &SemanticTypeEnv::new(&*semantic_world),
+                resolver_context,
+                &selected_body_input,
+            ) {
+                Ok(value) => SelectedBodyOutput::Material(value),
+                Err(failure) => {
+                    return Err(OrdinaryInvocationFailure::SelectedBody { failure, trace });
                 }
             }
         } else {
@@ -2226,53 +2220,6 @@ pub(crate) fn invoke_target_values(
     ))
 }
 
-fn forwarded_semantic_body_value(selected: &PreparedCallCandidate) -> Option<SemanticValueId> {
-    let closure = &selected.source_shape.as_ref()?.source_callable.closure;
-    let Some(head) = &closure.head else {
-        return None;
-    };
-    let frame = head.formal_frame();
-    let tail_name = match &closure.body {
-        NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
-            match program.forms.as_slice() {
-                [NormForm::TailValue(lang_syntax::NormExpr::Name { text, .. })] => text,
-                _ => return None,
-            }
-        }
-        NormClosureBody::Defaulted { .. } | NormClosureBody::Delete(_) => return None,
-    };
-
-    if let Some(written_self) = frame.written_self {
-        let self_name = match written_self {
-            NormPatternElem::BindingSlot(slot) => match &slot.value_pattern {
-                NormPattern::Binder { name, .. } => Some(name.clone()),
-                _ => None,
-            },
-            NormPatternElem::Pattern(NormPattern::Binder { name, .. }) => Some(name.clone()),
-            _ => None,
-        };
-        if self_name.as_ref().is_some_and(|name| name == tail_name) {
-            return Some(selected.target_value);
-        }
-    }
-
-    frame
-        .explicit_parameters
-        .iter()
-        .zip(&selected.frame.explicit_arg_product.raw_args)
-        .find_map(|(formal, actual)| {
-            let NormPatternElem::BindingSlot(slot) = formal else {
-                return None;
-            };
-            match &slot.value_pattern {
-                NormPattern::Binder { name, .. } if name == tail_name => {
-                    actual.known_semantic_value
-                }
-                _ => None,
-            }
-        })
-}
-
 fn classify_semantic_value_arguments(
     shape: &mut ArgProductShape,
     semantic_world: &SemanticWorld,
@@ -2353,8 +2300,8 @@ fn formal_policy_frame(
             ))
         })?;
     let frame = head.formal_frame();
-    let self_mode = match frame.written_self {
-        // The written-self slot policy is explicit P1 material: stage /
+    let self_mode = match frame.self_formal {
+        // The self-slot policy is explicit P1 material: stage /
         // presence / Pattern atoms are legal there and are
         // reconciled by `canonical_function_object_p1` at registration.
         // The Bₚ' Policy-mode frame only consumes the PolicyMode coordinate.
@@ -2391,7 +2338,7 @@ fn formal_policy_frame(
     })
 }
 
-fn apply_written_self_structure(
+fn apply_self_formal_structure(
     candidate: &mut ApplicableCandidate,
     entry: &OrdinaryCallEntry,
     actual: &crate::semantic_world::SemanticValueObject,
@@ -2411,13 +2358,13 @@ fn apply_written_self_structure(
             ),
         ));
     };
-    let Some(written_self) = head.formal_frame().written_self else {
+    let Some(self_formal) = head.formal_frame().self_formal else {
         return Ok(());
     };
-    let NormPatternElem::BindingSlot(slot) = written_self else {
+    let NormPatternElem::BindingSlot(slot) = self_formal else {
         return Err(CandidateApplicabilityFailure::Unsupported(
             Diagnostic::hard_error(
-                "ordinary written self Pattern is not a binding slot",
+                "ordinary self Pattern is not a binding slot",
                 Some(provenance),
             ),
         ));
@@ -2442,9 +2389,9 @@ fn apply_written_self_structure(
         _ => {
             return Err(CandidateApplicabilityFailure::Unsupported(
                 Diagnostic::hard_error(
-                    "ordinary written self structural Pattern is not yet supported by the Pattern relation consumer",
+                    "ordinary self structural Pattern is not yet supported by the Pattern relation consumer",
                     Some(Provenance::from_norm_origin(
-                        "ordinary written self Pattern",
+                        "ordinary self Pattern",
                         &slot.origin,
                     )),
                 ),
@@ -2464,7 +2411,7 @@ fn apply_written_self_structure(
             return Err(CandidateApplicabilityFailure::Inapplicable(
                 Diagnostic::hard_error(
                     format!(
-                        "ordinary written self type applicability failed: expected {:?}, got {:?}",
+                        "ordinary self type applicability failed: expected {:?}, got {:?}",
                         expected, actual.type_value
                     ),
                     Some(provenance),
@@ -2493,7 +2440,7 @@ fn resolve_type_annotation_value(
         NormPattern::Name { name, .. } => name,
         _ => {
             return Err(Diagnostic::hard_error(
-                "ordinary written self type annotation requires a resolved type-name Pattern",
+                "ordinary self type annotation requires a resolved type-name Pattern",
                 Some(provenance),
             ));
         }
@@ -2503,7 +2450,7 @@ fn resolve_type_annotation_value(
         .map(|resolution| resolution.represented_type)
         .ok_or_else(|| {
             Diagnostic::hard_error(
-                format!("ordinary written self annotation `{name}` is not a resolved type value"),
+                format!("ordinary self annotation `{name}` is not a resolved type value"),
                 Some(provenance.clone()),
             )
         })

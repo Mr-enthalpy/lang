@@ -1,1 +1,1 @@
-x |> (<> name) { y; }
+x |> (self, <> name) { y; }

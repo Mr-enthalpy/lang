@@ -29,7 +29,7 @@ pub struct ReturnEventAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ReturnTargetAst {
-    ImplicitNearest { span: Span },
+    Omitted { span: Span },
     Explicit { target: Box<ExprAst>, span: Span },
 }
 
@@ -70,32 +70,13 @@ pub struct BindingSlotAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicySpecAst {
-    pub value_policy: ValuePolicyPatternAst,
-    pub pattern_policy: Option<PolicyConjunctionAst>,
+    pub constraint: PolicyConjunctionAst,
     pub span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ValuePolicyPatternAst {
-    Conjunction(PolicyConjunctionAst),
-    // Reserved semantic shape for a missing value component. No source token
-    // spelling is frozen for this variant.
-    Absent { span: Span },
-}
-
-/// Conjunction across orthogonal policy dimensions. Each item is a
-/// same-dimension choice; the AST intentionally keeps `+` distinct from `||`.
+/// Syntax-only conjunction of ordinary Policy constraints.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyConjunctionAst {
-    pub choices: Vec<PolicyChoiceAst>,
-    pub span: Span,
-}
-
-/// Alternatives within one policy dimension. `runtime || S` is the one
-/// special value-presence form that combines a stage alternative with the
-/// absent-value pattern whose public spelling remains Open.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PolicyChoiceAst {
     pub atoms: Vec<PolicyAtomAst>,
     pub span: Span,
 }
@@ -105,11 +86,6 @@ pub enum PolicyAtomAst {
     Name(NameAst),
     Group {
         conjunction: Box<PolicyConjunctionAst>,
-        span: Span,
-    },
-    /// Current strong-parser spelling `S` for the absent-value pattern. The
-    /// canonical public spelling remains Open.
-    AbsentValuePattern {
         span: Span,
     },
     Error(ErrorAst),
@@ -134,6 +110,11 @@ pub enum BindingPatternAst {
 pub enum BinderNameAst {
     Text(NameAst),
     Operator(OperatorNameAst),
+    /// Syntax-generated slot-zero binder with no source-visible spelling.
+    /// Normalization anchors its identity to the enclosing callable owner.
+    GeneratedSelf {
+        span: Span,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -362,10 +343,9 @@ pub enum AtomKind {
         components: Vec<NavComponentAst>,
         explicit_terminated: bool,
     },
-    /// First-class field-function closure. Unlike `MemberSugar`, this node
-    /// does not capture a receiver; its first explicit call-site argument
-    /// determines `T` after invocation injects the generated self formal.
-    DotClosure {
+    /// `.name` is surface syntax for ordinary `name::adl`.
+    /// It carries no receiver and creates no forwarding closure.
+    DotName {
         selector: SelectorAst,
     },
     MemberSugar {

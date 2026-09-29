@@ -22,12 +22,8 @@ Program
             PolicyLet
               policy:
                 PolicySpec
-                  value_policy:
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "a"
-                  pattern_policy:
-                    None
+                  PolicyConjunction
+                      PolicyAtom Name "a"
               operand:
                 Expr
                   Pipe

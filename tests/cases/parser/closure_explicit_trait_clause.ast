@@ -25,12 +25,8 @@ Program
                               None
                   call_policy:
                     PolicySpec
-                      value_policy:
-                        PolicyConjunction
-                          PolicyChoice
-                            PolicyAtom Name "runtime"
-                      pattern_policy:
-                        None
+                      PolicyConjunction
+                          PolicyAtom Name "runtime"
                 BodyBlock
                   forms:
                     ExprForm

@@ -294,10 +294,9 @@ engineering facilities after their inputs and effects obey the source model.
   still fail their own opening-source check after Close.
 - Separate implicit ReturnEvent from omitted ReturnTarget. Wire UnitDiscard
   for non-tail expressions and path-sensitive tail unit fallthrough/non-unit
-  return synthesis. TailValue list position is insufficient. Align omitted
-  target selection to the outermost enclosing function layer; the current
-  return_target binder selects the most recent frame. One-frame tests prove
-  neither this nested-target law nor serial completion semantics.
+  return synthesis. Raw/Norm keeps every plain expression as Expr. Omitted
+  target binding queries the outermost active function and has multi-frame
+  regression coverage; this does not implement serial completion.
 - Connect name-preserving @ and ordinary value/borrowed lifecycle fields,
   independent SafetyPolicy, and compatible post-commit external admissions.
 - Connect link's compilation-wide E-owned LinkRegistry using canonical
@@ -359,8 +358,8 @@ the existing owners; no Rust, parser, normalizer, tests or lowering are changed.
   notation explicitly; keep ordinary dot ADL separate from structural extraction.
 - Keep name::path and complete computed NameValue evaluation before # blocks
   resident reading. Bare Pattern navigation and evaluated $ reinjection differ.
-- Migrate name-headed shorthand to preserve (self, <> name); current self-less
-  carriers cannot establish the canonical invocation frame.
+- Name-headed shorthand now preserves (self, <> name) in Raw/Norm. Connect
+  its semantic invocation through the ordinary callable consumer.
 - Connect serial UnitDiscard and the separate event/target inference rules,
   retaining direct result demand and one evaluator.
 - Preserve atomic complete-Object construction/decomposition. Destructors run
@@ -371,7 +370,7 @@ the existing owners; no Rust, parser, normalizer, tests or lowering are changed.
   events in reverse declaration order, before lifecycle/@ observation.
 
 The ALIGN conformance cases record acceptance obligations for those consumers;
-passing current carrier tests does not claim that migration has happened.
+passing syntax and target-binding tests does not claim semantic consumer completion.
 
 ## PR106 consumer gates
 
@@ -384,9 +383,9 @@ is claimed by a successful existing Rust test suite.
 | Product layers and named open observations | `lang_syntax/src/norm.rs` preserves Product/Pattern carriers | All-named layer unorderedness; explicit named extraction/ordered assembly; finite named open Product. 106-PD/NM |
 | NameValue, Path projection and splice | `lang_syntax/src/ast.rs` NavPath is restricted; `token.rs` has Dollar but no Hash consumer | Two-level Read, unified #/path_pattern, relative indexing, endpoint/root material and ready $ preserving holes. 106-PT/SP |
 | Generative/intermediate extraction | Current declaration/Pattern carriers do not implement the new relation end to end | Optional callable head, Concrete/Wildcard/HoleRef selector, expression body, compatible intermediate R valuations and layer cardinality. 106-GN |
-| Public Policy observations | `lang_syntax/src/parser/policy.rs` retains colon/choice grammar; `lang_build/src/policy_pair.rs` retains internal pairs | Retire public pair syntax while preserving full internal observations, same-edge type projection, concrete/hole/splice/omission. 106-SP/RP |
-| Direct result demand | `norm.rs` TailValue and `lang_build/src/control_flow_end.rs` preserve terminal shape | Immediate selected ReturnPattern/Pout before inner maxima; both outer positions constrain inner positions; no implicit temp/no reopen. 106-RP |
-| Ordinary ADL | `lang_syntax/src/norm.rs` still creates DotClosureLowering and an in-place helper | Emit ordinary field::adl entrance; generate the ordinary forwarder through Path/name relations. Existing goldens describe migration debt. 106-AD |
+| Public Policy observations | Raw/Norm retains only Policy constraint atoms/conjunction; `lang_build/src/policy_pair.rs` retains internal observations | Wire full internal observations, same-edge type projection, concrete/hole/splice/omission. 106-SP/RP |
+| Direct result demand | Plain expressions stay Expr; explicit ReturnEvent alone is structurally terminal | Immediate selected ReturnPattern/Pout before inner maxima; both outer positions constrain inner positions; no implicit temp/no reopen. 106-RP |
+| Ordinary ADL | Raw DotName normalizes to ordinary name::adl navigation | Connect the ordinary forwarder through generative Path/name relations; no normalizer helper. 106-AD |
 | General dependency realization | NormCapture/BindingSlot preserve explicit formation; source callable carriers retain NormClosure | Needs -> semantic realization -> layout; common name environment, ordered effects, once-per-formation, no recapture or hidden semantic storage. 106-DP |
 | Meta declaration boundary | Generic closure carriers preserve captures/placement; full generative declaration consumers remain pending | Require ordinary => and absent capture clause at the MetaDecl layer. Mask unpassed locals; admit only input dependency closure and established stable definition/instance relations. No CapturedEnv key axis. 106-MD |
 | Universal closure and file installation | `lang_build/src/model.rs` SourceCallableObject and `semantic_world.rs` OrdinaryCallEntry retain closure carriers | struct Material_C -> tau_C/c_C/A_C/() with finite leaf and same-formation callable; retain homes/roles and automatic dependency formation with ordinary operation checks. File package-root installation distinct from lexical binding. 106-CL/NS |
@@ -435,3 +434,18 @@ chains, unique terminal explicit roots and endpoint compatibility. Wire
 Read_name/Read_resident, unified #/path_pattern projection, Path-consumer round-trip and
 relative single-name indexing before ADL uses ((a#)[0])$::t. Keep ordinary
 name-to-string projection independent of Path truncation.
+
+## Semantic asset retirement sequence
+
+The frontend cleanup removes public Policy pair/choice carriers, normalizer
+completion inference and dot forwarding bodies. Omitted targets query the
+outermost active function; name-headed shorthand retains self. Source body
+completion has an explicit unavailable frontier until the common continuation
+consumer is connected. Stage-union/source-forwarding execution fixtures do not
+prove that consumer.
+
+The next independent cleanup cuts are: remove cluster candidate sources while
+preserving selection; replace resolved stage unions and phase execution
+partitions; expose lifecycle Pre/common commit/Post with fixed MoveEffect; and
+separate callable source records and general meta-instance identity from body
+execution. These are implementation retirement tasks, not new semantic choices.

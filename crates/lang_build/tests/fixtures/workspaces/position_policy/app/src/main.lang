@@ -1,5 +1,5 @@
 const let f =
-  (self, let x: uint8): mut + runtime:compile
+  (self, let x: uint8): mut + runtime
     -> mut let r: uint8 =>
 {
   x;

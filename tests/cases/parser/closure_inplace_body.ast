@@ -15,4 +15,10 @@ Program
                             OperatorExpr
                               Atom
                                 Name x
-                    Error "statement after terminal block form"
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name y

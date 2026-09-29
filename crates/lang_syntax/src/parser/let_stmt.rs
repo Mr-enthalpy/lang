@@ -1083,6 +1083,7 @@ fn binder_name_span(name: &BinderNameAst) -> Span {
     match name {
         BinderNameAst::Text(name) => name.span,
         BinderNameAst::Operator(name) => name.span,
+        BinderNameAst::GeneratedSelf { span } => *span,
     }
 }
 

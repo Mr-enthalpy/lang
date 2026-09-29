@@ -1,4 +1,4 @@
-# Capture Binding, Callable Tail, Dot Closure, and Pack Pattern
+# Capture Binding, Callable Tail, Dot Name, and Pack Pattern
 
 **Status: canonical semantic design with typed parser/normalizer substrate.**
 Named-strategy execution and compiler-provided default-body generation remain
@@ -490,7 +490,7 @@ input.
 Compiler-generated receiver holes do not enter the source-name redeclaration
 table. Before alpha conversion, a generated declaration and its Pattern/policy
 references share a generated-syntax-local hygienic key; display spelling such
-as `T` is diagnostic provenance only. Thus a generated `.name`, `..name`, or
+as `T` is diagnostic provenance only. Thus a generated `..name` or
 prefix-negative helper inside a user `<T>` scope receives a fresh binder and
 cannot capture or redeclare the user's `T`.
 
@@ -498,7 +498,7 @@ This Norm pass does not alpha-bind ordinary value-side `NormExpr::Name` or
 ungrouped `NormNavComponent::Name`. Callable-wide scope means that the hole
 environment reaches the whole callable, while exact binding is currently
 performed only for Pattern/policy occurrences. Value-side names, including
-the generated `T` component in `field::T`, remain unresolved input to the
+the generated `T` component in `method::T`, remain unresolved input to the
 future name-resolution pass.
 
 The anonymous `_` placeholder has no named binder identity.
@@ -513,8 +513,8 @@ E.name -> the same entry through the ordinary Product/call spine
 The [operator/declaration owner](operator-patterns-and-generative-declarations.md)
 defines requested-name extraction, ordinary forwarding construction and direct
 result delivery. There is no canonical normalizer-generated forwarding body.
-The existing DotClosureLowering/NormClosure remains a documented implementation
-carrier pending alignment, not semantic authority.
+Raw DotName now normalizes to ordinary name::adl navigation. The generative
+forwarding consumer remains semantic work, separate from normalization.
 
 Dot origin never changes pipe/Product association, suffix binding, first-product
 continuation or legality repair. Substituting a legally bound ordinary dot result

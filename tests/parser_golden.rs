@@ -36,7 +36,7 @@ fn assert_parser_case(name: &str, expect_diagnostics: bool) {
     }
 }
 
-fn assert_parser_cases_same_ast(left: &str, right: &str) {
+fn assert_parser_cases_same_head_shape(left: &str, right: &str) {
     let left_source =
         fs::read_to_string(case_path(left, "lang")).expect("read left source fixture");
     let right_source =
@@ -47,9 +47,9 @@ fn assert_parser_cases_same_ast(left: &str, right: &str) {
     assert!(left_output.diagnostics.is_empty());
     assert!(right_output.diagnostics.is_empty());
     assert_eq!(
-        lang_syntax::dump_ast(&left_output.program),
+        lang_syntax::dump_ast(&left_output.program).replace("GeneratedSelf", "TextName self"),
         lang_syntax::dump_ast(&right_output.program),
-        "`{left}` and `{right}` must lower to one Raw AST"
+        "`{left}` and `{right}` share head structure modulo the fresh versus textual self binder"
     );
 }
 
@@ -183,7 +183,7 @@ fn pipe_branch_name_shorthand() {
 #[test]
 fn pipe_branch_name_binderless_explicit() {
     assert_parser_case("pipe_branch_name_binderless_explicit", false);
-    assert_parser_cases_same_ast(
+    assert_parser_cases_same_head_shape(
         "pipe_branch_name_shorthand",
         "pipe_branch_name_binderless_explicit",
     );
@@ -192,7 +192,7 @@ fn pipe_branch_name_binderless_explicit() {
 #[test]
 fn pipe_branch_underscore_binderless_explicit() {
     assert_parser_case("pipe_branch_underscore_binderless_explicit", false);
-    assert_parser_cases_same_ast(
+    assert_parser_cases_same_head_shape(
         "pipe_branch_underscore_shorthand",
         "pipe_branch_underscore_binderless_explicit",
     );
@@ -721,7 +721,7 @@ fn closure_inplace_empty() {
 
 #[test]
 fn closure_inplace_body() {
-    assert_parser_case("closure_inplace_body", true);
+    assert_parser_case("closure_inplace_body", false);
 }
 
 #[test]
@@ -840,8 +840,18 @@ fn policy_let_nested_expression_contexts() {
 }
 
 #[test]
-fn policy_pair() {
-    assert_parser_case("policy_pair", false);
+fn policy_constraint() {
+    assert_parser_case("policy_conjunction", false);
+}
+
+#[test]
+fn invalid_policy_pair_surface() {
+    assert_parser_case("invalid_policy_pair_surface", true);
+}
+
+#[test]
+fn invalid_policy_choice_surface() {
+    assert_parser_case("invalid_policy_choice_surface", true);
 }
 
 #[test]
@@ -1021,7 +1031,7 @@ fn head_clause_names_outside_head() {
 
 #[test]
 fn closure_body_multi_form() {
-    assert_parser_case("closure_body_multi_form", true);
+    assert_parser_case("closure_body_multi_form", false);
 }
 
 #[test]
@@ -1031,7 +1041,7 @@ fn closure_body_newline_single_form() {
 
 #[test]
 fn closure_body_semicolon_two_forms() {
-    assert_parser_case("closure_body_semicolon_two_forms", true);
+    assert_parser_case("closure_body_semicolon_two_forms", false);
 }
 
 #[test]

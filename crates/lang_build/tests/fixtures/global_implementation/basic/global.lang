@@ -1,4 +1,4 @@
-public + (meta || runtime) let global_identity =
+public + meta let global_identity =
   (self, t: type): meta -> let r: type =>
 {
   t;

@@ -235,10 +235,14 @@ For one non-composite atomic Pattern P, the canonical semantic head is:
 
 self is a schematic fresh binder for invocation slot zero, followed by the
 binderless explicit argument Pattern. It is not user-supplied actual material.
-The current parser's self-less (<> P) carrier requires migration; structural
-goldens of that carrier do not establish semantic equivalence. Explicit
-wildcard (_ P) is also different. The Pattern owner §9 owns the corrected
-head; parser/normalizer migration must remain syntax-directed.
+The parser preserves both positions. Its GeneratedSelf marker has no textual
+name and exists only in Raw syntax. Normalization produces an ordinary Binder
+with an identity within its callable/Pattern root and optional display spelling;
+written binders use that same representation. Source `self`
+in the body remains a free name unless explicitly bound by source. Goldens
+compare head structure modulo this generated versus textual binding distinction;
+they do not equate the two Raw ASTs. Explicit wildcard (_ P) is different. The Pattern
+owner §9 owns the head; parser/normalizer expansion is syntax-directed.
 
 In-place closures cannot have capture lists. Invalid capture/tail forms become
 ErrorAst; an error cannot be represented as a valid empty Block.
@@ -324,15 +328,15 @@ missing operand and receives `ExpectedPolicyLetOperand`.
 The Raw AST contains:
 
 ```text
-AtomKind::DotClosure { selector }
+AtomKind::DotName { selector }
 ```
 
 for independent `.name`.
 
 Canonical `.name` denotes ordinary `name::adl`, and compact `E.name`
-means `E |> name::adl`. The current normalizer still emits its generated
-in-place forwarding carrier with `DotClosureLowering` provenance. That
-implementation is pending migration; it does not define canonical ADL behavior.
+means `E |> name::adl`. Normalization emits ordinary navigation with
+`DotNameLowering` provenance and uses the existing pipe skeleton for E.
+The semantic generator, not normalization, supplies forwarding behavior.
 No pipe, Product or repair rule may use provenance to change ordinary binding.
 Direct `E..name(product)` remains separate member-call sugar.
 
@@ -416,8 +420,9 @@ Generated provenance is stored only in:
 NormOrigin::Generated { rule, span }
 ```
 
-It never replaces placement. Generated dot/member/prefix helper closures retain
+It never replaces placement. Generated double-dot/prefix helper closures retain
 their in-place placement while separately reporting their lowering rule.
+Dot names instead normalize to ordinary navigation.
 
 ## 8. Pattern-validated normalized handoff
 
@@ -597,7 +602,7 @@ interpretation. See the mechanical/lifetime owners.
 
 Policy syntax preserves omitted, concrete and explicit-hole material without
 choosing a stage or treating omission as _. A resolved stage is a single atom;
-Raw PolicyChoice syntax does not authorize stage unions. Pin's stage extraction
+Raw Policy constraints preserve atoms and orthogonal conjunction, not stage unions. Pin's stage extraction
 and Pout's inherited stage are contextual elaboration.
 
 Universal closure-to-tau_C formation, file structural installation versus true
@@ -610,8 +615,7 @@ golden coverage, and may not feed semantic facts back into parsing.
 ## PR106 source consumer frontier
 
 Public Policy pair literal/extraction is retired; internal Pv/Pp remain distinct.
-Current colon/choice carriers are compatibility debt, not permission for a
-resolved stage/mode union. Concrete atoms, omission, declared holes and general
+Raw/Norm Policy constraints have no colon-pair or choice carrier. Concrete atoms, omission, declared holes and general
 Pattern splice are distinct. `runtime let` introduces no `runtime` hole.
 
 Read_name/Read_resident, path_pattern projection (#), relative single-name

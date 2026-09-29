@@ -3,9 +3,8 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
     CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
-    PatternComponentPolicy, PolicyMigrationRequest, PolicyMode, PolicyPair, PolicyStage,
-    Provenance, ResolveExpectation, SemanticOwnerKind, SemanticValuePayload, StageSet,
-    SymbolPayload, ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence, WritableContext,
+    PolicyMode, Provenance, SemanticOwnerKind, SemanticValuePayload, SymbolPayload,
+    ToolchainGlobalSourceRoot, WritableContext,
 };
 
 use support::{
@@ -27,30 +26,6 @@ fn build_transport_world() -> CompilationWorld {
         .global_implementation_roots
         .push(transport_bundle());
     CompilationWorld::from_manifest(&manifest).expect("transport bundle builds")
-}
-
-fn stages(items: &[PolicyStage]) -> StageSet {
-    let mut s = StageSet::new();
-    for stage in items {
-        s.insert(*stage);
-    }
-    s
-}
-
-fn pair(
-    value_stages: &[PolicyStage],
-    pattern_stages: &[PolicyStage],
-    _mode: &[PolicyMode],
-) -> PolicyPair {
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: stages(value_stages),
-            presence: ValuePresence::Present,
-        },
-        pattern: PatternComponentPolicy {
-            stages: stages(pattern_stages),
-        },
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -235,108 +210,6 @@ fn struct_binding_carries_exact_tau_independently_of_core_projection() {
         world.semantic_world().type_for_pattern(member.pattern),
         Some(complete.lookup_key()),
         "the Core lookup projection agrees with tau without defining its whole identity"
-    );
-}
-
-#[test]
-fn i9_slot0_is_selected_callable_function_object() {
-    // I9 — slot 0 in a transport invocation is the selected transport function
-    // object (a cluster sibling val), NOT the migration source.  The migration
-    // source is passed as slot 1 (the first explicit argument / Source formal).
-    // This is verified by performing an actual migration invocation and
-    // checking that the invocation frame's c0_target_values are the cluster
-    // sibling vals, while the source appears in the explicit argument product.
-    let mut world = build_transport_world();
-    let uint8 = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8 with transports");
-    let siblings = uint8.sibling_vals.clone();
-    assert_eq!(
-        siblings.len(),
-        5,
-        "I9: transport cluster has 5 sibling candidates for c0 enumeration"
-    );
-
-    // Verify that every sibling is a FunctionObject — these are the c0
-    // target values (slot 0 candidates), not the migration source.
-    for v in &siblings {
-        let obj = world.semantic_world().value(*v).unwrap();
-        assert!(
-            matches!(obj.payload, SemanticValuePayload::FunctionObject { .. }),
-            "I9: slot-0 candidate (sibling) is a FunctionObject"
-        );
-    }
-
-    let source_policy = pair(
-        &[PolicyStage::Compile],
-        &[PolicyStage::Compile],
-        &[PolicyMode::Const],
-    );
-    let target_policy = pair(
-        &[PolicyStage::Runtime],
-        &[PolicyStage::Compile],
-        &[PolicyMode::Mut],
-    );
-    let uint8_type = match &world
-        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
-        .expect("core uint8 type")
-        .payload
-    {
-        SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
-        _ => panic!("uint8 resolves as a CompleteType projection"),
-    };
-    let source = world
-        .install_semantic_value(
-            uint8_type,
-            source_policy.clone(),
-            Provenance::new("I9 compile uint8 fixture value"),
-        )
-        .expect("installed source value");
-    let request = PolicyMigrationRequest::new(
-        lang_build::PolicyView {
-            pair: source_policy,
-            mode: PolicyMode::Const,
-        },
-        lang_build::ResultPolicyDemand {
-            pair_query: lang_build::P1Projection::Pair(target_policy),
-            mode: PolicyMode::Mut,
-        },
-        uint8_type,
-        source,
-        Provenance::new("I9 const compile -> mut runtime demand"),
-    )
-    .expect("legal migration request");
-
-    let migration = world
-        .invoke_policy_migration(&request)
-        .expect("I9: migration invocation succeeds");
-
-    // c0_target_values must be the cluster sibling vals (slot-0 candidates),
-    // NOT the migration source.  The source appears in the explicit argument
-    // product (slot 1).
-    assert_eq!(
-        migration.invocation.trace.c0_target_values.len(),
-        siblings.len(),
-        "I9: c0_target_values are cluster siblings (slot-0 candidates)"
-    );
-    assert!(
-        !migration
-            .invocation
-            .trace
-            .c0_target_values
-            .contains(&source),
-        "I9: migration source is NOT in c0_target_values (it is slot 1, not slot 0)"
-    );
-    assert_eq!(
-        migration
-            .invocation
-            .selected
-            .frame
-            .explicit_arg_product
-            .arity,
-        1,
-        "I9: migration source is in explicit_arg_product (slot 1)"
     );
 }
 

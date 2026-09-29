@@ -78,7 +78,7 @@ fn is_int_literal(expr: &NormExpr, expected: &str) -> bool {
 }
 
 #[test]
-fn implicit_return_binds_to_nearest_active_return_frame() {
+fn omitted_return_binds_to_only_active_return_frame() {
     let report = bind_closure(
         r#"
 let f = (self, x: int): runtime -> r: int => {
@@ -110,8 +110,33 @@ let f = (self, x: int): runtime -> r: int => {
     );
     assert_eq!(
         report.bound_events[0].unresolved_target,
-        lang_build::UnresolvedReturnTargetForm::ImplicitNearest
+        lang_build::UnresolvedReturnTargetForm::Omitted
     );
+}
+
+#[test]
+fn generated_self_retains_owner_identity_without_a_display_name() {
+    let normalized = normalize_source("value |> Widget { self return; };");
+    let [NormForm::Expr(NormExpr::Call { target, .. })] = normalized.forms.as_slice() else {
+        panic!("pipe call");
+    };
+    let NormExpr::Closure(closure) = target.as_ref() else {
+        panic!("closure")
+    };
+    let report =
+        elaborate_return_targets_in_returnable_closure(closure, ReturnFrameOwner::AnonymousClosure);
+    assert!(report.diagnostics.is_empty());
+    let identity = report.frames[0]
+        .self_identity
+        .as_ref()
+        .expect("callable self identity");
+    assert_eq!(identity.callable_owner, closure.semantic_owner.unwrap().id);
+    assert_eq!(identity.display_name, None);
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
+    assert!(matches!(&report.bound_events[0].value, NormExpr::Name { text, .. } if text == "self"));
 }
 
 #[test]
@@ -374,7 +399,7 @@ let f = (self): runtime -> r: int => {
 fn resolved_callable_owner_not_target_spelling_selects_the_frame() {
     let report = bind_closure_with_own_self_identity(
         r#"
-let f = (written_self): runtime -> r: int => {
+let f = (self_formal): runtime -> r: int => {
     1 |> (completely_different_text return);
 };
 "#,

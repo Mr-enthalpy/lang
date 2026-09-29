@@ -9,12 +9,8 @@ NormProgram origin=Source@1:1[0..48]
                 PolicyLet origin=Generated(PolicyLetPreserve)@1:2[1..17]
                   policy:
                     PolicySpec
-                      value_policy:
-                        PolicyConjunction
-                          PolicyChoice
-                            PolicyAtom Name "const"
-                      pattern_policy:
-                        None
+                      PolicyConjunction
+                          PolicyAtom Name "const"
                   operand:
                     Call origin=Derived(PipeFallback; no following source product)@1:17[16..17]
                       source:
@@ -41,11 +37,7 @@ NormProgram origin=Source@1:1[0..48]
             PolicyLet origin=Generated(PolicyLetPreserve)@2:9[33..46]
               policy:
                 PolicySpec
-                  value_policy:
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "mut"
-                  pattern_policy:
-                    None
+                  PolicyConjunction
+                      PolicyAtom Name "mut"
               operand:
                 Name "value" origin=Source@2:17[41..46]

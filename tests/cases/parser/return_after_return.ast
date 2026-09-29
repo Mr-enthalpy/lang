@@ -17,5 +17,5 @@ Program
                                 Atom
                                   Name x
                       target
-                        ImplicitNearest
+                        Omitted
                     Error "statement after terminal block form"

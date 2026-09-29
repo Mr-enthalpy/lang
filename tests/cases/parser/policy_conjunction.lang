@@ -1,0 +1,4 @@
+const + runtime let runtime_value = value;
+mut + seal let seal_value = value;
+(compile) let compile_value = value;
+let callable = (self, x): runtime -> _ => { x return; };

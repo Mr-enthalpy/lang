@@ -17,9 +17,9 @@ use crate::{
     DeduceListAst, EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
     HeadClauseAst, LetAliasAst, LetAst, MemberVisibilityAst, NavComponentAst, OperatorExprAst,
     OperatorExprKind, OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst,
-    PolicyChoiceAst, PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst,
-    ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst,
-    SegmentElementAst, SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
+    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
+    ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
+    SelectorAst, Span, WithClauseAst, WithClauseKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,7 +60,6 @@ pub enum NormForm {
     Let(NormDecl),
     Alias(NormDecl),
     Expr(NormExpr),
-    TailValue(NormExpr),
     ReturnEvent(NormReturnEvent),
     Error(NormError),
 }
@@ -74,7 +73,7 @@ pub struct NormReturnEvent {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormReturnTargetSyntax {
-    ImplicitNearest,
+    Omitted,
     Explicit(NormExpr),
 }
 
@@ -149,7 +148,10 @@ pub enum NormProductElem {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormPattern {
     Binder {
-        name: String,
+        /// Syntax-local identity, assigned independently of display spelling.
+        /// None is the pre-alpha construction state; normalization assigns every Binder.
+        identity: Option<NormBinderId>,
+        name: Option<String>,
         origin: NormOrigin,
     },
     OperatorBinder {
@@ -359,7 +361,7 @@ fn collect_program_pack_errors(program: &NormProgram, errors: &mut Vec<PatternVa
             NormForm::Let(decl) | NormForm::Alias(decl) => {
                 collect_decl_pack_errors(decl, errors);
             }
-            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+            NormForm::Expr(expr) => {
                 collect_expr_pack_errors(expr, errors);
             }
             NormForm::ReturnEvent(event) => {
@@ -653,25 +655,12 @@ pub struct NormBindingSlot {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormPolicySpec {
-    pub value_policy: NormValuePolicyPattern,
-    pub pattern_policy: Option<NormPolicyConjunction>,
+    pub constraint: NormPolicyConjunction,
     pub origin: NormOrigin,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum NormValuePolicyPattern {
-    Conjunction(NormPolicyConjunction),
-    Absent { origin: NormOrigin },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormPolicyConjunction {
-    pub choices: Vec<NormPolicyChoice>,
-    pub origin: NormOrigin,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NormPolicyChoice {
     pub atoms: Vec<NormPolicyAtom>,
     pub origin: NormOrigin,
 }
@@ -689,9 +678,6 @@ pub enum NormPolicyAtom {
     },
     Group {
         conjunction: Box<NormPolicyConjunction>,
-        origin: NormOrigin,
-    },
-    AbsentValuePattern {
         origin: NormOrigin,
     },
     Error(NormError),
@@ -731,6 +717,14 @@ pub struct NormSemanticOwnerId {
 pub struct PatternRootId {
     pub owner: NormSemanticOwnerId,
     pub local_root: u32,
+}
+
+/// An ordinary value binder within an existing Pattern root.
+/// Normalization assigns this key to written and generated binders alike.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NormBinderId {
+    pub root: PatternRootId,
+    pub local_binder: u32,
 }
 
 /// Alpha-normalized lexical identity of a DeduceList binder.
@@ -904,9 +898,9 @@ pub enum NormClosurePlacement {
 pub struct NormClosureHead {
     pub deduce: Vec<NormHoleDecl>,
     pub captures: Vec<NormCapture>,
-    /// Source-order formal positions.
+    /// Normalized formal positions, preserving written and generated provenance.
     ///
-    /// The first written position, when present, denotes the callable
+    /// Slot zero, when present, denotes the callable
     /// caller's self-position. Invocation supplies that position implicitly;
     /// only the remaining positions consume the call-site Product. Consumers
     /// must use `formal_frame()` instead of independently slicing this vector.
@@ -919,10 +913,10 @@ pub struct NormClosureHead {
 
 #[derive(Clone, Copy, Debug)]
 pub struct NormCallableFormalFrame<'a> {
-    /// The explicitly written Pattern for the implicitly supplied caller
-    /// object. `None` means the source wrote no formal position; the semantic
+    /// The slot-zero Pattern for the implicitly supplied caller object,
+    /// either written or generated. `None` means no formal position; the semantic
     /// invocation frame still has an unbound self-position.
-    pub written_self: Option<&'a NormPatternElem>,
+    pub self_formal: Option<&'a NormPatternElem>,
     /// Formals supplied from the explicit call-site Product.
     pub explicit_parameters: &'a [NormPatternElem],
 }
@@ -930,12 +924,12 @@ pub struct NormCallableFormalFrame<'a> {
 impl NormClosureHead {
     pub fn formal_frame(&self) -> NormCallableFormalFrame<'_> {
         match self.params.split_first() {
-            Some((written_self, explicit_parameters)) => NormCallableFormalFrame {
-                written_self: Some(written_self),
+            Some((self_formal, explicit_parameters)) => NormCallableFormalFrame {
+                self_formal: Some(self_formal),
                 explicit_parameters,
             },
             None => NormCallableFormalFrame {
-                written_self: None,
+                self_formal: None,
                 explicit_parameters: &[],
             },
         }
@@ -1087,7 +1081,7 @@ pub enum NormRule {
     SecondLegalityRepair,
     OperatorLowering,
     PrefixNegativeLowering,
-    DotClosureLowering,
+    DotNameLowering,
     MemberLowering,
     DoubleDotLowering,
     BracketCallLowering,
@@ -1110,6 +1104,7 @@ struct HoleAlphaNormalizer {
     next_owner: u32,
     next_root_by_owner: BTreeMap<NormSemanticOwnerId, u32>,
     next_binder_by_root: BTreeMap<PatternRootId, u32>,
+    next_value_binder_by_root: BTreeMap<PatternRootId, u32>,
 }
 
 static NEXT_ALPHA_OWNER: AtomicU64 = AtomicU64::new(1);
@@ -1121,6 +1116,7 @@ impl Default for HoleAlphaNormalizer {
             next_owner: 1,
             next_root_by_owner: BTreeMap::new(),
             next_binder_by_root: BTreeMap::new(),
+            next_value_binder_by_root: BTreeMap::new(),
         }
     }
 }
@@ -1192,7 +1188,7 @@ impl HoleAlphaNormalizer {
             NormForm::Alias(decl) => {
                 self.normalize_alias_decl(decl, holes, owner);
             }
-            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+            NormForm::Expr(expr) => {
                 self.normalize_expr(expr, holes, owner);
             }
             NormForm::ReturnEvent(event) => {
@@ -1427,6 +1423,16 @@ impl HoleAlphaNormalizer {
         declared: &mut BTreeMap<String, HoleBinderId>,
     ) {
         match pattern {
+            NormPattern::Binder { identity, .. } => {
+                let ordinal = self.next_value_binder_by_root.entry(root).or_insert(0);
+                *identity = Some(NormBinderId {
+                    root,
+                    local_binder: *ordinal,
+                });
+                *ordinal = ordinal
+                    .checked_add(1)
+                    .expect("too many value binders in Pattern root");
+            }
             NormPattern::Product { elements, .. } => {
                 for element in elements {
                     self.normalize_pattern_element(element, holes, root, declared);
@@ -1472,8 +1478,7 @@ impl HoleAlphaNormalizer {
             NormPattern::BindingSlot { slot, .. } => {
                 self.normalize_slot(slot, holes, root, declared);
             }
-            NormPattern::Binder { .. }
-            | NormPattern::OperatorBinder { .. }
+            NormPattern::OperatorBinder { .. }
             | NormPattern::Unit { .. }
             | NormPattern::AnonymousHole { .. }
             | NormPattern::Literal { .. }
@@ -1553,12 +1558,7 @@ impl HoleAlphaNormalizer {
     }
 
     fn normalize_policy_spec(&mut self, policy: &mut NormPolicySpec, holes: &[VisibleHole]) {
-        if let NormValuePolicyPattern::Conjunction(conjunction) = &mut policy.value_policy {
-            self.normalize_policy_conjunction(conjunction, holes);
-        }
-        if let Some(conjunction) = &mut policy.pattern_policy {
-            self.normalize_policy_conjunction(conjunction, holes);
-        }
+        self.normalize_policy_conjunction(&mut policy.constraint, holes);
     }
 
     fn normalize_policy_conjunction(
@@ -1566,41 +1566,37 @@ impl HoleAlphaNormalizer {
         conjunction: &mut NormPolicyConjunction,
         holes: &[VisibleHole],
     ) {
-        for choice in &mut conjunction.choices {
-            for atom in &mut choice.atoms {
-                match atom {
-                    NormPolicyAtom::Name { text, origin } => {
-                        if let Some(hole) = find_visible_source_hole(holes, text) {
-                            *atom = NormPolicyAtom::HoleRef {
-                                target: hole.id,
-                                text: text.clone(),
-                                origin: origin.clone(),
-                            };
-                        }
+        for atom in &mut conjunction.atoms {
+            match atom {
+                NormPolicyAtom::Name { text, origin } => {
+                    if let Some(hole) = find_visible_source_hole(holes, text) {
+                        *atom = NormPolicyAtom::HoleRef {
+                            target: hole.id,
+                            text: text.clone(),
+                            origin: origin.clone(),
+                        };
                     }
-                    NormPolicyAtom::HoleRef {
-                        target,
-                        text,
-                        origin,
-                    } => {
-                        if let Some(hole) = find_visible_hole_ref(holes, *target, text) {
-                            *target = hole.id;
-                        } else if (*target).generated_key().is_some() {
-                            panic!(
-                                "generated policy hole reference has no hygienic binder in scope"
-                            );
-                        } else {
-                            *atom = NormPolicyAtom::Name {
-                                text: text.clone(),
-                                origin: origin.clone(),
-                            };
-                        }
-                    }
-                    NormPolicyAtom::Group { conjunction, .. } => {
-                        self.normalize_policy_conjunction(conjunction, holes);
-                    }
-                    NormPolicyAtom::AbsentValuePattern { .. } | NormPolicyAtom::Error(_) => {}
                 }
+                NormPolicyAtom::HoleRef {
+                    target,
+                    text,
+                    origin,
+                } => {
+                    if let Some(hole) = find_visible_hole_ref(holes, *target, text) {
+                        *target = hole.id;
+                    } else if (*target).generated_key().is_some() {
+                        panic!("generated policy hole reference has no hygienic binder in scope");
+                    } else {
+                        *atom = NormPolicyAtom::Name {
+                            text: text.clone(),
+                            origin: origin.clone(),
+                        };
+                    }
+                }
+                NormPolicyAtom::Group { conjunction, .. } => {
+                    self.normalize_policy_conjunction(conjunction, holes);
+                }
+                NormPolicyAtom::Error(_) => {}
             }
         }
     }
@@ -1664,9 +1660,7 @@ fn normalize_form(form: &FormAst) -> NormForm {
         FormAst::ReturnEvent(return_ev) => {
             let value = normalize_expr(&return_ev.value);
             let target = match &return_ev.target {
-                crate::ReturnTargetAst::ImplicitNearest { .. } => {
-                    NormReturnTargetSyntax::ImplicitNearest
-                }
+                crate::ReturnTargetAst::Omitted { .. } => NormReturnTargetSyntax::Omitted,
                 crate::ReturnTargetAst::Explicit { target, .. } => {
                     NormReturnTargetSyntax::Explicit(normalize_expr(target))
                 }
@@ -1714,39 +1708,20 @@ fn normalize_alias_decl(alias: &LetAliasAst) -> NormDecl {
 }
 
 fn normalize_policy_spec(policy: &PolicySpecAst) -> NormPolicySpec {
-    let value_policy = match &policy.value_policy {
-        ValuePolicyPatternAst::Conjunction(conjunction) => {
-            NormValuePolicyPattern::Conjunction(normalize_policy_conjunction(conjunction))
-        }
-        ValuePolicyPatternAst::Absent { span } => NormValuePolicyPattern::Absent {
-            origin: NormOrigin::Source(*span),
-        },
-    };
     NormPolicySpec {
-        value_policy,
-        pattern_policy: policy
-            .pattern_policy
-            .as_ref()
-            .map(normalize_policy_conjunction),
+        constraint: normalize_policy_conjunction(&policy.constraint),
         origin: NormOrigin::Source(policy.span),
     }
 }
 
 fn normalize_policy_conjunction(conjunction: &PolicyConjunctionAst) -> NormPolicyConjunction {
     NormPolicyConjunction {
-        choices: conjunction
-            .choices
+        atoms: conjunction
+            .atoms
             .iter()
-            .map(normalize_policy_choice)
+            .map(normalize_policy_atom)
             .collect(),
         origin: NormOrigin::Source(conjunction.span),
-    }
-}
-
-fn normalize_policy_choice(choice: &PolicyChoiceAst) -> NormPolicyChoice {
-    NormPolicyChoice {
-        atoms: choice.atoms.iter().map(normalize_policy_atom).collect(),
-        origin: NormOrigin::Source(choice.span),
     }
 }
 
@@ -1758,9 +1733,6 @@ fn normalize_policy_atom(atom: &PolicyAtomAst) -> NormPolicyAtom {
         },
         PolicyAtomAst::Group { conjunction, span } => NormPolicyAtom::Group {
             conjunction: Box::new(normalize_policy_conjunction(conjunction)),
-            origin: NormOrigin::Source(*span),
-        },
-        PolicyAtomAst::AbsentValuePattern { span } => NormPolicyAtom::AbsentValuePattern {
             origin: NormOrigin::Source(*span),
         },
         PolicyAtomAst::Error(error) => NormPolicyAtom::Error(normalize_error(error)),
@@ -2133,7 +2105,7 @@ fn normalize_atom(atom: &AtomAst) -> NormExpr {
             explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(atom.span),
         },
-        AtomKind::DotClosure { selector } => normalize_dot_closure(selector, atom.span),
+        AtomKind::DotName { selector } => normalize_dot_name(selector, atom.span),
         AtomKind::MemberSugar { object, selector } => {
             normalize_member_sugar(normalize_atom(object), selector, atom.span)
         }
@@ -2249,7 +2221,7 @@ fn normalize_operator_sugar(
 fn normalize_member_sugar(object: NormExpr, selector: &SelectorAst, span: Span) -> NormExpr {
     make_call(
         source_product_from_expr(object, span),
-        normalize_dot_closure(selector, span),
+        normalize_dot_name(selector, span),
         NormOrigin::Generated {
             rule: NormRule::MemberLowering,
             span,
@@ -2257,21 +2229,12 @@ fn normalize_member_sugar(object: NormExpr, selector: &SelectorAst, span: Span) 
     )
 }
 
-fn normalize_dot_closure(selector: &SelectorAst, span: Span) -> NormExpr {
-    let rule = NormRule::DotClosureLowering;
-    let selector_name = selector_name(selector);
-    let body = make_call(
-        NormProduct {
-            elements: vec![
-                NormProductElem::Expr(generated_name("val", span, rule)),
-                NormProductElem::Expr(generated_name("args", span, rule)),
-            ],
-            origin: NormOrigin::Generated { rule, span },
-        },
-        generated_nav(&[selector_name.as_str(), "T"], span, rule),
-        NormOrigin::Generated { rule, span },
-    );
-    NormExpr::Closure(generated_field_function_closure(span, body))
+fn normalize_dot_name(selector: &SelectorAst, span: Span) -> NormExpr {
+    generated_nav(
+        &[selector_name(selector).as_str(), "adl"],
+        span,
+        NormRule::DotNameLowering,
+    )
 }
 
 fn normalize_double_dot_sugar(
@@ -2457,24 +2420,8 @@ fn normalize_closure(closure: &ClosureAst) -> NormClosure {
 }
 
 fn normalize_body_block(body: &BodyBlockAst) -> NormProgram {
-    let len = body.forms.len();
-    let forms: Vec<NormForm> = body
-        .forms
-        .iter()
-        .enumerate()
-        .map(|(i, form)| {
-            if i == len - 1 {
-                match form {
-                    FormAst::Expr(expr) => NormForm::TailValue(normalize_expr(expr)),
-                    _ => normalize_form(form),
-                }
-            } else {
-                normalize_form(form)
-            }
-        })
-        .collect();
     NormProgram {
-        forms,
+        forms: body.forms.iter().map(normalize_form).collect(),
         origin: NormOrigin::Source(body.span),
     }
 }
@@ -2539,7 +2486,8 @@ fn normalize_capture_item(item: &CaptureItemAst, holes: &[VisibleHole]) -> NormC
             let names = infer_capture_binding_names(&initializer);
             let value_pattern = if names.len() == 1 {
                 NormPattern::Binder {
-                    name: names.iter().next().expect("one inferred name").clone(),
+                    identity: None,
+                    name: Some(names.iter().next().expect("one inferred name").clone()),
                     origin: NormOrigin::Derived {
                         rule: NormRule::CaptureNameInference,
                         span: *span,
@@ -2703,7 +2651,7 @@ fn collect_free_non_call_names_program(
                     bound.insert(name.clone());
                 }
             }
-            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+            NormForm::Expr(expr) => {
                 collect_free_non_call_names_expr(expr, bound, false, names);
             }
             NormForm::ReturnEvent(event) => {
@@ -2731,9 +2679,12 @@ fn collect_pattern_element_binder_names(element: &NormPatternElem, bound: &mut B
 
 fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<String>) {
     match pattern {
-        NormPattern::Binder { name, .. } => {
+        NormPattern::Binder {
+            name: Some(name), ..
+        } => {
             bound.insert(name.clone());
         }
+        NormPattern::Binder { name: None, .. } => {}
         NormPattern::Product { elements, .. } => {
             for element in elements {
                 collect_pattern_element_binder_names(element, bound);
@@ -2905,8 +2856,17 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole])
     // NormPattern family and is not treated as value-side call target material.
     match pattern {
         BindingPatternAst::Binder(BinderNameAst::Text(name)) => NormPattern::Binder {
-            name: name.text.clone(),
+            identity: None,
+            name: Some(name.text.clone()),
             origin: NormOrigin::Source(name.span),
+        },
+        BindingPatternAst::Binder(BinderNameAst::GeneratedSelf { span }) => NormPattern::Binder {
+            identity: None,
+            name: None,
+            origin: NormOrigin::Generated {
+                rule: NormRule::ClosureNormalize,
+                span: *span,
+            },
         },
         BindingPatternAst::Binder(BinderNameAst::Operator(operator)) => {
             NormPattern::OperatorBinder {
@@ -3002,7 +2962,8 @@ fn normalize_canonical_pack_operand(
             if find_visible_source_hole(holes, &name.text).is_none() =>
         {
             NormPattern::Binder {
-                name: name.text.clone(),
+                identity: None,
+                name: Some(name.text.clone()),
                 origin: NormOrigin::Source(name.span),
             }
         }
@@ -3453,7 +3414,8 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                     has_let: false,
                     deduce: Vec::new(),
                     value_pattern: NormPattern::Binder {
-                        name: "self".to_string(),
+                        identity: None,
+                        name: Some("self".to_string()),
                         origin: NormOrigin::Generated { rule, span },
                     },
                     annotation: None,
@@ -3466,7 +3428,8 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                     has_let: false,
                     deduce: Vec::new(),
                     value_pattern: NormPattern::Binder {
-                        name: "val".to_string(),
+                        identity: None,
+                        name: Some("val".to_string()),
                         origin: NormOrigin::Generated { rule, span },
                     },
                     annotation: Some(NormAnnotation {
@@ -3488,38 +3451,11 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
             origin: NormOrigin::Generated { rule, span },
         }),
         body: NormClosureBody::Block(NormProgram {
-            forms: vec![NormForm::TailValue(body_expr)],
+            forms: vec![NormForm::Expr(body_expr)],
             origin: NormOrigin::Generated { rule, span },
         }),
         origin: NormOrigin::Generated { rule, span },
     }
-}
-
-fn generated_field_function_closure(span: Span, body_expr: NormExpr) -> NormClosure {
-    let rule = NormRule::DotClosureLowering;
-    let mut closure = generated_receiver_closure(rule, span, body_expr);
-    let head = closure
-        .head
-        .as_mut()
-        .expect("generated receiver closure always has a head");
-    head.params
-        .push(NormPatternElem::BindingSlot(NormBindingSlot {
-            policy: None,
-            has_let: false,
-            deduce: Vec::new(),
-            value_pattern: NormPattern::Pack {
-                inner: Box::new(NormPattern::Binder {
-                    name: "args".to_string(),
-                    origin: NormOrigin::Generated { rule, span },
-                }),
-                origin: NormOrigin::Generated { rule, span },
-            },
-            annotation: None,
-            with_clause: None,
-            initializer: None,
-            origin: NormOrigin::Generated { rule, span },
-        }));
-    closure
 }
 
 fn generated_name(name: &str, span: Span, rule: NormRule) -> NormExpr {
@@ -3635,18 +3571,14 @@ fn dump_norm_form(output: &mut String, form: &NormForm, indent: usize) {
             line(output, indent, "Form Expr");
             dump_norm_expr(output, expr, indent + 1);
         }
-        NormForm::TailValue(expr) => {
-            line(output, indent, "Form TailValue");
-            dump_norm_expr(output, expr, indent + 1);
-        }
         NormForm::ReturnEvent(return_ev) => {
             line(output, indent, "Form ReturnEvent");
             line(output, indent + 1, "value");
             dump_norm_expr(output, &return_ev.value, indent + 2);
             line(output, indent + 1, "target");
             match &return_ev.target {
-                NormReturnTargetSyntax::ImplicitNearest => {
-                    line(output, indent + 2, "ImplicitNearest");
+                NormReturnTargetSyntax::Omitted => {
+                    line(output, indent + 2, "Omitted");
                 }
                 NormReturnTargetSyntax::Explicit(target) => {
                     line(output, indent + 2, "Explicit");
@@ -3826,18 +3758,7 @@ fn dump_product(output: &mut String, product: &NormProduct, indent: usize) {
 
 fn dump_norm_policy_spec(output: &mut String, policy: &NormPolicySpec, indent: usize) {
     line(output, indent, "PolicySpec");
-    line(output, indent + 1, "value_policy:");
-    match &policy.value_policy {
-        NormValuePolicyPattern::Conjunction(conjunction) => {
-            dump_norm_policy_conjunction(output, conjunction, indent + 2)
-        }
-        NormValuePolicyPattern::Absent { .. } => line(output, indent + 2, "Absent"),
-    }
-    line(output, indent + 1, "pattern_policy:");
-    match &policy.pattern_policy {
-        Some(pattern_policy) => dump_norm_policy_conjunction(output, pattern_policy, indent + 2),
-        None => line(output, indent + 2, "None"),
-    }
+    dump_norm_policy_conjunction(output, &policy.constraint, indent + 1);
 }
 
 fn dump_norm_policy_conjunction(
@@ -3846,29 +3767,23 @@ fn dump_norm_policy_conjunction(
     indent: usize,
 ) {
     line(output, indent, "PolicyConjunction");
-    for choice in &conjunction.choices {
-        line(output, indent + 1, "PolicyChoice");
-        for atom in &choice.atoms {
-            match atom {
-                NormPolicyAtom::Name { text, .. } => {
-                    line(output, indent + 2, &format!("PolicyAtom Name \"{text}\""));
-                }
-                NormPolicyAtom::HoleRef { text, .. } => {
-                    line(
-                        output,
-                        indent + 2,
-                        &format!("PolicyAtom HoleRef \"{text}\""),
-                    );
-                }
-                NormPolicyAtom::Group { conjunction, .. } => {
-                    line(output, indent + 2, "PolicyAtom Group");
-                    dump_norm_policy_conjunction(output, conjunction, indent + 3);
-                }
-                NormPolicyAtom::AbsentValuePattern { .. } => {
-                    line(output, indent + 2, "AbsentValuePattern");
-                }
-                NormPolicyAtom::Error(error) => dump_norm_error(output, error, indent + 2),
+    for atom in &conjunction.atoms {
+        match atom {
+            NormPolicyAtom::Name { text, .. } => {
+                line(output, indent + 2, &format!("PolicyAtom Name \"{text}\""));
             }
+            NormPolicyAtom::HoleRef { text, .. } => {
+                line(
+                    output,
+                    indent + 2,
+                    &format!("PolicyAtom HoleRef \"{text}\""),
+                );
+            }
+            NormPolicyAtom::Group { conjunction, .. } => {
+                line(output, indent + 2, "PolicyAtom Group");
+                dump_norm_policy_conjunction(output, conjunction, indent + 3);
+            }
+            NormPolicyAtom::Error(error) => dump_norm_error(output, error, indent + 2),
         }
     }
 }
@@ -3942,10 +3857,16 @@ fn dump_annotation(output: &mut String, annotation: &NormAnnotation, indent: usi
 
 fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
     match pattern {
-        NormPattern::Binder { name, origin } => line(
+        NormPattern::Binder { name, origin, .. } => line(
             output,
             indent,
-            &format!("Binder \"{}\" {}", escape_text(name), origin_inline(origin)),
+            &format!(
+                "Binder {} {}",
+                name.as_ref()
+                    .map(|name| format!("\"{}\"", escape_text(name)))
+                    .unwrap_or_else(|| "<unnamed>".into()),
+                origin_inline(origin)
+            ),
         ),
         NormPattern::OperatorBinder { spelling, origin } => line(
             output,
@@ -4471,7 +4392,7 @@ fn rule_label(rule: NormRule) -> &'static str {
         NormRule::SecondLegalityRepair => "SecondLegalityRepair",
         NormRule::OperatorLowering => "OperatorLowering",
         NormRule::PrefixNegativeLowering => "PrefixNegativeLowering",
-        NormRule::DotClosureLowering => "DotClosureLowering",
+        NormRule::DotNameLowering => "DotNameLowering",
         NormRule::MemberLowering => "MemberLowering",
         NormRule::DoubleDotLowering => "DoubleDotLowering",
         NormRule::BracketCallLowering => "BracketCallLowering",

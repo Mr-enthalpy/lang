@@ -1,0 +1,2 @@
+const + compile let x = value;
+let f = (self, a): runtime -> _ => { a return; };

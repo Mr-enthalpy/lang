@@ -996,7 +996,7 @@ impl CompilationWorld {
             match form {
                 NormForm::Let(decl) => staged.harvest_let(namespace, decl, file)?,
                 NormForm::Alias(decl) => staged.harvest_alias(namespace, decl, file)?,
-                NormForm::Expr(_) | NormForm::TailValue(_) => {}
+                NormForm::Expr(_) => {}
                 NormForm::ReturnEvent(return_ev) => {
                     return Err(BuildError::single(Diagnostic::hard_error(
                         "source contribution error: unbound return event reached declaration harvesting after return target binding",
@@ -1091,7 +1091,9 @@ impl CompilationWorld {
         }
 
         let binder_name = match &slot.value_pattern {
-            NormPattern::Binder { name, .. } => name.clone(),
+            NormPattern::Binder {
+                name: Some(name), ..
+            } => name.clone(),
             NormPattern::OperatorBinder { spelling, .. } => spelling.clone(),
             NormPattern::Nav { .. }
             | NormPattern::Sequence { .. }

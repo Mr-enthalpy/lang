@@ -8,5 +8,5 @@ Program
               Name obj
           OperatorExpr
             Atom
-              DotClosure
+              DotName
                 TextName field

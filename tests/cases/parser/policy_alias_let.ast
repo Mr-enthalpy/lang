@@ -2,12 +2,8 @@ Program
   LetAlias
     policy:
       PolicySpec
-        value_policy:
-          PolicyConjunction
-            PolicyChoice
-              PolicyAtom Name "policy"
-        pattern_policy:
-          None
+        PolicyConjunction
+            PolicyAtom Name "policy"
     binder:
       Name x
     target:

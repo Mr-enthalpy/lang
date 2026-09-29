@@ -19,11 +19,10 @@ pub use ast::{
     ClosureBodyAst, ClosurePlacementAst, DeduceListAst, DeleteBodyAst, EntityRefAst, ErrorAst,
     ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst, LetAliasAst, LetAst,
     MemberVisibilityAst, NameAst, NavComponentAst, OperatorExprAst, OperatorExprKind,
-    OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
+    OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst,
     PolicyConjunctionAst, PolicyLetAst, PolicySpecAst, ProductElementAst, ProductExprAst,
     ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, ReturnEventAst,
-    ReturnTargetAst, SegmentAst, SegmentElementAst, SelectorAst, ValuePolicyPatternAst,
-    WithClauseAst, WithClauseKind,
+    ReturnTargetAst, SegmentAst, SegmentElementAst, SelectorAst, WithClauseAst, WithClauseKind,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};
@@ -32,16 +31,15 @@ pub use norm::{
     dump_norm_program, normalize_and_validate_patterns, normalize_program,
     validate_normalized_pattern_layers, validate_normalized_patterns,
     validate_pack_pattern_element_level, validate_pack_pattern_layers, AlphaOwnerId,
-    GeneratedHoleKey, HoleBinderId, NormAliasBinder, NormAnnotation, NormBindingSlot,
+    GeneratedHoleKey, HoleBinderId, NormAliasBinder, NormAnnotation, NormBinderId, NormBindingSlot,
     NormCallableFormalFrame, NormCallableOwner, NormCanonicalNameRole, NormCapture, NormClosure,
     NormClosureBody, NormClosureHead, NormClosurePlacement, NormDecl, NormDeleteBody,
     NormEntityRef, NormError, NormExpr, NormForm, NormHeadClause, NormHoleDecl, NormLiteralKind,
     NormNavComponent, NormOperatorFixity, NormOrigin, NormOverloadStrategy, NormPattern,
-    NormPatternElem, NormPolicyAtom, NormPolicyChoice, NormPolicyConjunction, NormPolicySpec,
-    NormProduct, NormProductElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax, NormRule,
-    NormSemanticOwnerId, NormSkeleton, NormSkeletonElem, NormValuePolicyPattern, NormWithClause,
-    PackPatternLayerError, PatternInvalidNormProgram, PatternRootId, PatternValidatedNormProgram,
-    PatternValidationError,
+    NormPatternElem, NormPolicyAtom, NormPolicyConjunction, NormPolicySpec, NormProduct,
+    NormProductElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax, NormRule,
+    NormSemanticOwnerId, NormSkeleton, NormSkeletonElem, NormWithClause, PackPatternLayerError,
+    PatternInvalidNormProgram, PatternRootId, PatternValidatedNormProgram, PatternValidationError,
 };
 pub use parser::{parse, ParseOutput};
 pub use source::normalize_source_text;

@@ -30,7 +30,7 @@ pub fn evaluate_source_verifications(
     let mut diagnostics = Vec::new();
     for form in &program.forms {
         let expr = match form {
-            NormForm::Expr(expr) | NormForm::TailValue(expr) => expr,
+            NormForm::Expr(expr) => expr,
             _ => continue,
         };
         let Some(invocation) = VerificationInvocation::from_expr(world, context, expr) else {

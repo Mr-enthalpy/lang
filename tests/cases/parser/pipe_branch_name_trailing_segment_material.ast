@@ -17,6 +17,18 @@ Program
                         elements:
                           BindingSlot let=false
                             deduce:
+                              None
+                            pattern:
+                              Binder
+                                GeneratedSelf
+                            annotation:
+                              None
+                            with_clause:
+                              None
+                            initializer:
+                              None
+                          BindingSlot let=false
+                            deduce:
                               DeduceList
                                 binders:
                             pattern:

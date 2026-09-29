@@ -72,12 +72,8 @@ Program
                                   BindingSlot let=true
                                     policy:
                                       PolicySpec
-                                        value_policy:
-                                          PolicyConjunction
-                                            PolicyChoice
-                                              PolicyAtom Name "runtime"
-                                        pattern_policy:
-                                          None
+                                        PolicyConjunction
+                                            PolicyAtom Name "runtime"
                                     deduce:
                                       DeduceList
                                         binders:

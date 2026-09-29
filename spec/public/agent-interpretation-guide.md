@@ -57,14 +57,14 @@ See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
   no-following-Product case `PipeFallback`; this implementation label does not
   weaken the source skeleton or reverse its direction.
 - `expr |> Product` is never the intended normalized result.
-- Operator / dot-closure / member / double-dot / bracket sugar lower into the same
+- Operator / dot-name / member / double-dot / bracket sugar lower into the same
   product-call skeleton with preserved provenance; they are not resolved.
 - .name denotes name::adl; E.name == E |> .name == E |> name::adl.
   It is an ordinary expression call, neither NameExpr nor direct field Place.
   The finite ADL generator answers a potentially unbounded family of legal
   names without reopening types or changing Pattern/V_tau registration.
-  Current DotClosureLowering helper generation is migration debt. Never use
-  its provenance to absorb nearby material; ..name retains its separate sugar.
+  DotName normalizes to ordinary name::adl navigation. Its provenance cannot
+  absorb nearby material; ..name retains its separate sugar.
 - Callable tails preserve ordinary/named user bodies, `default`, and optional-
   message `delete`; strategy metadata is not overload selection at normalization.
 - Closure placement is independent of head presence. No-`=>` headed bodies,
@@ -99,12 +99,12 @@ Incoming source Product, no following Product?  -> first legality repair (PipeFa
   legal common domain is not a Pattern rewrite: extraction of bare a inherits
   navigation, whereas evaluated a$ explicitly reinjects material.
 - A name-headed callable has (self, <> name), preserving actual selected self.
-  The old self-less shorthand carrier is implementation debt.
+  The syntax carrier retains both positions.
 - Implicit ReturnEvent and omitted ReturnTarget are separate. Non-tail
   expressions require unit through the semantic UnitDiscard consumer. True
   continuation-path tail unit falls through; non-unit tail synthesizes a
   return event, then infers its target. Explicit unit return still returns.
-  Neither the last AST node nor ImplicitNearest defines these rules.
+  Plain Expr and Omitted target syntax do not infer semantic tailness.
 - Construction and consuming extraction commit complete Object identities
   atomically under Pre. Material and an Uninitialized Place are not partial
   Objects. Destructors continue over complete children after decomposition.
@@ -207,9 +207,8 @@ insertion/elimination, `operator+` meta-reduction, exhaustiveness checking, or
 `match` closing.
 
 Normalization produces syntax carriers, not semantic values. Every legal
-completed closure expression yields full tau_C. The current `.name` generated
-helper carrier is pending replacement by ordinary `name::adl`; its provenance
-grants no dispatch or binding privilege.
+completed closure expression yields full tau_C. DotName normalizes to ordinary
+`name::adl` navigation; its provenance grants no dispatch or binding privilege.
 
 Source-written captures are explicit binding requirements. `[x]` is
 `[let x = x]` with no written mode override, not automatic const
@@ -301,7 +300,7 @@ creates a new closure identity and preserves capture obligations; it never
 reparents the RHS. Pin elaborates P2 with explicit stage/mode constraints or holes; Pout inherits
 P1's stage and may refine mode. Bare let writes no override. Explicit
 plain is a concrete constraint, distinct from contextual default completion. Implicit return targets the outermost enclosing
-function layer; a current nearest-frame carrier is not semantic authority.
+function layer; the active-frame binder implements that target query.
 
 Follow the [semantic spine](../design/semantic-spine.md) for A, lifecycle/unsafe,
 host capabilities, source normalization and E. Representation, cache, scheduler

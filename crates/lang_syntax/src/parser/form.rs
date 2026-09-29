@@ -100,7 +100,7 @@ impl<'tokens> Parser<'tokens> {
             if self.cursor.at_name("let") {
                 self.error(
                     DiagnosticCode::UnexpectedToken,
-                    "invalid policy prefix; policy choice uses `||`, conjunction uses `+`, and pair separation uses `:`",
+                    "invalid policy prefix; expected ordinary policy atoms joined by `+`",
                     expr.span,
                 );
                 return parse_let_form(self, None);
@@ -128,7 +128,7 @@ impl<'tokens> Parser<'tokens> {
             self.cursor.consume_form_boundary();
             return FormAst::ReturnEvent(ReturnEventAst {
                 value: Box::new(expr),
-                target: ReturnTargetAst::ImplicitNearest { span: return_span },
+                target: ReturnTargetAst::Omitted { span: return_span },
                 span,
             });
         }
@@ -361,7 +361,7 @@ fn extract_return_target_from_operator(
         ))
     } else {
         Some((
-            ReturnTargetAst::ImplicitNearest {
+            ReturnTargetAst::Omitted {
                 span: element_span(last_elem),
             },
             atom.span,

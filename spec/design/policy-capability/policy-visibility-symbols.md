@@ -24,8 +24,8 @@ the general splice interface; it does not rebind its HoleIds or reparse strings.
 
 Public Policy has no pair literal, StageSet or dedicated stage/mode union
 sublanguage. Legal orthogonal +, ordinary extraction/holes/splice and require
-constrain both observations within one candidate-local relation. Current
-Raw/Norm colon/choice carriers are legacy implementation inventory (§5).
+constrain both observations within one candidate-local relation. Raw/Norm
+constraint carriers preserve ordinary atoms and orthogonal conjunction (§5).
 Default completion applies separately after inherited/contextual constraints.
 
 Policy positions have contextual elaborators:
@@ -201,7 +201,7 @@ deduction and the joint Pin/Pout solution relation remain pending consumers.
 
 The typed substrate currently provides:
 
-- dedicated `PolicyConjunctionAst`, `PolicyChoiceAst`, and `PolicyAtomAst`;
+- `PolicySpecAst { constraint }`, `PolicyConjunctionAst { atoms }`, and `PolicyAtomAst`;
 - `PolicyPair` with typed dimensions and `Phase` with exactly three variants;
 - separate binding/formal/namespace elaborators;
 - formal elaboration that receives inherited P2 explicitly and preserves all

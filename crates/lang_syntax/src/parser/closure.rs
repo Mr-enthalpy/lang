@@ -1,8 +1,9 @@
 use crate::{
-    AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
-    ClosurePlacementAst, DeleteBodyAst, DiagnosticCode, ExprAst, FnHeadPrefixAst, FormAst,
-    HeadClauseAst, NameAst, ParamClauseAst, ProductExtractAst, ProductExtractElementAst,
-    ReturnClauseAst, Span, Symbol, TokenKind,
+    AtomAst, AtomKind, BinderNameAst, BindingPatternAst, BindingSlotAst, BodyBlockAst,
+    CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst, ClosurePlacementAst,
+    DeleteBodyAst, DiagnosticCode, ExprAst, FnHeadPrefixAst, FormAst, HeadClauseAst, NameAst,
+    ParamClauseAst, ProductExtractAst, ProductExtractElementAst, ReturnClauseAst, Span, Symbol,
+    TokenKind,
 };
 
 use super::{
@@ -50,7 +51,7 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
             continue;
         }
         let form = parser.parse_form();
-        if matches!(&form, FormAst::ReturnEvent(_) | FormAst::Expr(_)) {
+        if matches!(&form, FormAst::ReturnEvent(_)) {
             seen_terminal = true;
         }
         forms.push(form);
@@ -343,17 +344,30 @@ fn closure_atom(
 }
 
 /// Parse the one atomic Pattern and body of `|> P { ... }` as the same
-/// binderless parameter slot produced by an explicit `(<> P) { ... }` head.
+/// `(self, <> P) { ... }` head, retaining the callable's invocation slot zero.
 /// A head without `=>` remains an in-place closure.
 pub(super) fn parse_binderless_pipe_branch_closure(parser: &mut Parser<'_>) -> AtomAst {
     let slot = parse_synthesized_empty_deduce_binding_slot(parser, BindingSlotContext::Param);
     let head_span = slot.span;
+    let self_slot = BindingSlotAst {
+        policy: None,
+        has_let: false,
+        deduce: None,
+        pattern: BindingPatternAst::Binder(BinderNameAst::GeneratedSelf { span: head_span }),
+        annotation: None,
+        with_clause: None,
+        initializer: None,
+        span: head_span,
+    };
     let head = FnHeadPrefixAst {
         deduce: None,
         captures: None,
         params: Some(ParamClauseAst {
             extract: ProductExtractAst {
-                elements: vec![ProductExtractElementAst::Slot(slot)],
+                elements: vec![
+                    ProductExtractElementAst::Slot(self_slot),
+                    ProductExtractElementAst::Slot(slot),
+                ],
                 span: head_span,
             },
             span: head_span,

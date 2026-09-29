@@ -52,6 +52,54 @@ fn typed_value(
 }
 
 #[test]
+fn unnamed_binder_binds_by_identity_without_becoming_a_wildcard() {
+    let closure = normalized_closure("let f = (receiver, value) => { value; };");
+    let context = PatternRelationContext::for_source_callable(&closure, callable_owner(), None)
+        .expect("qualified Pattern root");
+    let mut params = closure
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters
+        .to_vec();
+    let argument = typed_value(
+        support::type_lookup_fixture("relational-pattern/unnamed"),
+        PatternValueId(10),
+        CanonicalValueAddr(100),
+    );
+    let named = solve_parameter_product_relation(&params, &[argument.clone()], &context).unwrap();
+    let lang_syntax::NormPatternElem::BindingSlot(slot) = &mut params[0] else {
+        panic!("slot")
+    };
+    let lang_syntax::NormPattern::Binder { name, identity, .. } = &mut slot.value_pattern else {
+        panic!("ordinary binder")
+    };
+    assert!(identity.is_some());
+    *name = None;
+    let unnamed = solve_parameter_product_relation(&params, &[argument.clone()], &context).unwrap();
+    assert_eq!(unnamed.solutions[0].local_bindings.len(), 1);
+    assert_eq!(named.specificity, unnamed.specificity);
+    assert!(unnamed.named_bindings().is_empty());
+    assert_eq!(
+        named.solutions[0].local_bindings.keys().collect::<Vec<_>>(),
+        unnamed.solutions[0]
+            .local_bindings
+            .keys()
+            .collect::<Vec<_>>()
+    );
+    let lang_syntax::NormPatternElem::BindingSlot(slot) = &mut params[0] else {
+        unreachable!()
+    };
+    let lang_syntax::NormPattern::Binder { name, .. } = &mut slot.value_pattern else {
+        unreachable!()
+    };
+    *name = Some("_".into());
+    let wildcard = solve_parameter_product_relation(&params, &[argument], &context).unwrap();
+    assert!(wildcard.solutions[0].local_bindings.is_empty());
+}
+
+#[test]
 fn shared_deduce_hole_requires_one_relational_valuation() {
     let closure = normalized_closure("let f = <T: type>(self, x: T, y: T) -> r => { r };");
     let params = closure

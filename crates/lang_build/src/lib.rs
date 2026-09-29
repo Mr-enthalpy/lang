@@ -107,7 +107,7 @@ pub use meta_candidate::{
     ParameterArgRequirement, ParameterShape, PreparedCallableCandidate,
 };
 pub(crate) use meta_invocation::{
-    IdentityTypeMaterial, MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution,
+    MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution,
 };
 pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterialId};
 pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};

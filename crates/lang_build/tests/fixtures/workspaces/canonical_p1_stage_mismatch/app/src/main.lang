@@ -1,5 +1,5 @@
 meta let bad =
-  (compile let self, _ uint8: type): (meta || compile):(meta || compile)
+  (compile let self, _ uint8: type): compile
     -> let result: uint8 =>
 {
   result;

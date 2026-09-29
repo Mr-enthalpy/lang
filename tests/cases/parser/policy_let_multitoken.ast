@@ -4,14 +4,9 @@ Program
       BindingSlot let=true
         policy:
           PolicySpec
-            value_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "public"
-                PolicyChoice
-                  PolicyAtom Name "compile"
-            pattern_policy:
-              None
+            PolicyConjunction
+                PolicyAtom Name "public"
+                PolicyAtom Name "compile"
         deduce:
           None
         pattern:

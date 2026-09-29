@@ -176,7 +176,7 @@ pub(super) fn token_index_starts_member_visibility_annotation(
 }
 
 fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
-    // `.name` is a first-class field-function closure. It is parsed before
+    // `.name` is surface syntax for ordinary `name::adl`. It is parsed before
     // ordinary atom lookahead so it can start a pipe segment (`E |> .name P`)
     // as well as participate in compact `E.name` sugar.
     if parser.cursor.at_symbol(Symbol::Dot) {
@@ -184,7 +184,7 @@ fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
         if let Some(selector) = parse_member_selector(parser) {
             let span = dot.span.join(selector_span(&selector));
             return Some(AtomAst {
-                kind: AtomKind::DotClosure { selector },
+                kind: AtomKind::DotName { selector },
                 span,
             });
         }

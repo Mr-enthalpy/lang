@@ -457,8 +457,8 @@ separate. The exact absent-value spelling remains open.
 A demand on both Pv and Pp uses ordinary Patterns/require on these two
 observations in the same candidate-local joint relation. Internal PolicyPair
 carriers and endpoint tuples may retain both facts, but public `Qv:Qp`
-Policy literals/extractors are retired. Current Raw/Norm pair/choice carriers
-are implementation debt, not authorization of that surface.
+Policy literals/extractors are retired. Raw/Norm Policy constraints preserve
+ordinary atoms and orthogonal conjunction; they provide no pair/choice carrier.
 
 ### 2.2 Algebra
 
@@ -714,8 +714,8 @@ PolicyLetExpression ::= PolicySpec "let" PipeExpression
 ```
 
 `PolicySpec` here denotes canonical typed Policy material (§2), including a
-legal explicit splice of an ordinary value. It does not reinstate the current
-parser's retired public pair/choice grammar. The operand covers the complete following pipe; parentheses close
+legal explicit splice of an ordinary value. It does not reinstate a
+public pair/choice grammar. The operand covers the complete following pipe; parentheses close
 the boundary:
 
 ```lang

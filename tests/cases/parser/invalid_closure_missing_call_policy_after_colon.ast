@@ -25,12 +25,8 @@ Program
                               None
                   call_policy:
                     PolicySpec
-                      value_policy:
-                        PolicyConjunction
-                          PolicyChoice
-                            Error "expected policy atom"
-                      pattern_policy:
-                        None
+                      PolicyConjunction
+                          Error "expected policy atom"
                 BodyBlock
                   forms:
                     ExprForm

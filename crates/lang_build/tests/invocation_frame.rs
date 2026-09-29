@@ -32,7 +32,7 @@ fn unit_arg_product_shape() -> ArgProductShape {
 fn self_slot_exists_for_zero_user_argument_callable() {
     let frame_shape = CallableFrameShape::from_written_formals(
         0,
-        ReturnTargetShape::ImplicitNearest,
+        ReturnTargetShape::Omitted,
         Provenance::new("head with no written formal"),
     );
 
@@ -50,7 +50,7 @@ fn first_written_formal_is_self_and_only_later_formals_are_explicit_arguments() 
     let frame_shape = CallableFrameShape::from_written_formals_with_self_kind(
         3,
         SelfSlotKind::AssociatedCallReceiver,
-        ReturnTargetShape::ImplicitNearest,
+        ReturnTargetShape::Omitted,
         Provenance::new("self plus two explicit parameters"),
     );
 

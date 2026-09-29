@@ -859,10 +859,10 @@ pub(crate) enum OrdinaryIntrinsicBody {
     FailSelected,
 }
 
-/// Reconcile the outer function-object P1 with the written-self P1 from the
+/// Reconcile the outer function-object P1 with the self-slot P1 from the
 /// closure head into a single canonical function-object P1.
 ///
-/// P1(function object) = P1(outer let()) = P1(written self = slot0).
+/// P1(function object) = P1(outer let()) = P1(self formal = slot0).
 ///
 /// The canonical P1 is the COMPLETE `Pv:Pp` coordinate:
 /// value stage / value mutability / value presence / Pattern stage. Each
@@ -884,18 +884,18 @@ pub fn canonical_function_object_view(
     closure: Option<&NormClosure>,
     provenance: &Provenance,
 ) -> Result<crate::PolicyView, crate::Diagnostic> {
-    // Extract the raw written-self policy spec from the closure head, if any.
-    let written_self_spec: Option<&NormPolicySpec> = closure
+    // Extract the raw self-slot policy spec from the closure head, if any.
+    let self_formal_spec: Option<&NormPolicySpec> = closure
         .and_then(|c| c.head.as_ref())
-        .and_then(|head| head.formal_frame().written_self)
+        .and_then(|head| head.formal_frame().self_formal)
         .and_then(|element| match element {
             NormPatternElem::BindingSlot(slot) => slot.policy.as_ref(),
             _ => None,
         });
 
-    // Elaborate the written-self policy spec against P2 if present.
+    // Elaborate the self-slot policy spec against P2 if present.
     // Propagate elaboration failures — do NOT swallow them.
-    let self_explicit: Option<ExplicitP1Selection> = match written_self_spec {
+    let self_explicit: Option<ExplicitP1Selection> = match self_formal_spec {
         Some(spec) => crate::policy_pair::elaborate_explicit_p1(
             Some(spec),
             &p2.pair,
@@ -923,9 +923,9 @@ pub fn canonical_function_object_view(
     }
 
     let canonical = match (outer_explicit, self_explicit.as_ref()) {
-        (Some(outer), Some(written_self)) => {
+        (Some(outer), Some(self_formal)) => {
             let complete_outer = complete(outer, outer_derived);
-            let complete_self = complete(written_self, outer_derived);
+            let complete_self = complete(self_formal, outer_derived);
             if complete_outer != complete_self {
                 return Err(crate::Diagnostic::hard_error(
                     format!(
@@ -938,7 +938,7 @@ pub fn canonical_function_object_view(
             complete_outer
         }
         (Some(outer), None) => complete(outer, outer_derived),
-        (None, Some(written_self)) => complete(written_self, outer_derived),
+        (None, Some(self_formal)) => complete(self_formal, outer_derived),
         (None, None) => outer_derived.clone(),
     };
     // Cross-site dimension fallback must not assemble an inconsistent
@@ -4856,7 +4856,7 @@ impl SemanticWorld {
         })?;
 
         // Canonical P1 normalization: reconcile the outer
-        // let() P1 with the written-self P1 from the closure head. The
+        // let() P1 with the self-slot P1 from the closure head. The
         // canonical P1 is the single authority — SemanticValueObject.policy,
         // OrdinaryCallEntry.callable_value_policy, and member_views.value_policy
         // all read the same canonical_p1. Mismatch between explicit outer
@@ -6542,7 +6542,7 @@ impl SemanticWorld {
         };
 
         // Canonical P1 normalization — the injected member's
-        // binding P1 and its written-self P1 reconcile into one canonical
+        // binding P1 and its self-slot P1 reconcile into one canonical
         // P1, exactly like a namespace-level function object declaration.
         // Computed before the replay check so the replay comparison covers
         // the complete declaration material.

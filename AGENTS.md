@@ -65,7 +65,7 @@ alternate relation or identity.
 - A headed closure without `=>` is in-place; `=>` forms an ordinary closure.
 - `<...>` is a DeduceList only in documented strong binding contexts.
 - `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
-- `|> P { ... }` preserves the callable head (self, <> P); the current self-less carrier requires migration.
+- `|> P { ... }` preserves the callable head (self, <> P).
 - Value-side expressions and Pattern-side material remain distinct.
 - `let binder === EntityRef` is syntax preservation only until its local
   lexical resolver consumer is connected; it creates no semantic entity.

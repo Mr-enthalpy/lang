@@ -16,12 +16,8 @@ Program
             PolicyLet
               policy:
                 PolicySpec
-                  value_policy:
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "mut"
-                  pattern_policy:
-                    None
+                  PolicyConjunction
+                      PolicyAtom Name "mut"
               operand:
                 Expr
                   Pipe
@@ -41,12 +37,8 @@ Program
             PolicyLet
               policy:
                 PolicySpec
-                  value_policy:
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "plain"
-                  pattern_policy:
-                    None
+                  PolicyConjunction
+                      PolicyAtom Name "plain"
               operand:
                 Expr
                   Pipe
@@ -58,12 +50,8 @@ Program
             PolicyLet
               policy:
                 PolicySpec
-                  value_policy:
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "const"
-                  pattern_policy:
-                    None
+                  PolicyConjunction
+                      PolicyAtom Name "const"
               operand:
                 Expr
                   Pipe
@@ -94,12 +82,8 @@ Program
                         PolicyLet
                           policy:
                             PolicySpec
-                              value_policy:
-                                PolicyConjunction
-                                  PolicyChoice
-                                    PolicyAtom Name "plain"
-                              pattern_policy:
-                                None
+                              PolicyConjunction
+                                  PolicyAtom Name "plain"
                           operand:
                             Expr
                               Pipe

@@ -3,13 +3,7 @@ let U: type = T;
 let Direct: type = (uint8 field) struct;
 let Rebound: type = Direct;
 
-compile let pattern_identity =
-  (self, _ uint8: type): compile -> let result: type =>
-{
-  uint8;
-};
-
-let PatternResult: type = T pattern_identity;
+let PatternResult: type = T IdentityType::core;
 
 verify kind T type;
 verify kind U type;
