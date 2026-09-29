@@ -210,6 +210,7 @@ fn dump_entity_ref(output: &mut String, entity_ref: &EntityRefAst, indent: usize
 fn dump_binder_name(output: &mut String, name: &BinderNameAst, indent: usize) {
     match name {
         BinderNameAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
+        BinderNameAst::GeneratedSelf { .. } => line(output, indent, "GeneratedSelf"),
         BinderNameAst::Operator(name) => {
             line(output, indent, &format!("OperatorName {}", name.spelling))
         }

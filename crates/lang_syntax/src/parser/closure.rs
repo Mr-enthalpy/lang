@@ -353,10 +353,7 @@ pub(super) fn parse_binderless_pipe_branch_closure(parser: &mut Parser<'_>) -> A
         policy: None,
         has_let: false,
         deduce: None,
-        pattern: BindingPatternAst::Binder(BinderNameAst::Text(NameAst {
-            text: "self".to_string(),
-            span: head_span,
-        })),
+        pattern: BindingPatternAst::Binder(BinderNameAst::GeneratedSelf { span: head_span }),
         annotation: None,
         with_clause: None,
         initializer: None,

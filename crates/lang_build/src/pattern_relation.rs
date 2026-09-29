@@ -806,7 +806,8 @@ fn param_provenance(element: &NormPatternElem) -> Option<Provenance> {
 
 fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
     match pattern {
-        NormPattern::Binder { origin, .. }
+        NormPattern::GeneratedSelf { origin, .. }
+        | NormPattern::Binder { origin, .. }
         | NormPattern::OperatorBinder { origin, .. }
         | NormPattern::Product { origin, .. }
         | NormPattern::Pack { origin, .. }

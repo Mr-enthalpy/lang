@@ -235,8 +235,11 @@ For one non-composite atomic Pattern P, the canonical semantic head is:
 
 self is a schematic fresh binder for invocation slot zero, followed by the
 binderless explicit argument Pattern. It is not user-supplied actual material.
-The parser preserves both positions, and goldens compare shorthand with
-explicit (self, <> P). Explicit wildcard (_ P) is different. The Pattern
+The parser preserves both positions. Its GeneratedSelf binder has no textual
+name; normalization keys it by the enclosing callable owner. Source `self`
+in the body remains a free name unless explicitly bound by source. Goldens
+compare head structure modulo this generated versus textual binding distinction;
+they do not equate the two Raw ASTs. Explicit wildcard (_ P) is different. The Pattern
 owner §9 owns the head; parser/normalizer expansion is syntax-directed.
 
 In-place closures cannot have capture lists. Invalid capture/tail forms become

@@ -110,6 +110,11 @@ pub enum BindingPatternAst {
 pub enum BinderNameAst {
     Text(NameAst),
     Operator(OperatorNameAst),
+    /// Syntax-generated slot-zero binder with no source-visible spelling.
+    /// Normalization anchors its identity to the enclosing callable owner.
+    GeneratedSelf {
+        span: Span,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -338,9 +343,8 @@ pub enum AtomKind {
         components: Vec<NavComponentAst>,
         explicit_terminated: bool,
     },
-    /// First-class field-function closure. Unlike `MemberSugar`, this node
-    /// does not capture a receiver; its first explicit call-site argument
-    /// determines `T` after invocation injects the generated self formal.
+    /// `.name` is surface syntax for ordinary `name::adl`.
+    /// It carries no receiver and creates no forwarding closure.
     DotName {
         selector: SelectorAst,
     },

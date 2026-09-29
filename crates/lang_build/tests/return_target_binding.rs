@@ -115,6 +115,31 @@ let f = (self, x: int): runtime -> r: int => {
 }
 
 #[test]
+fn generated_self_retains_owner_identity_without_a_display_name() {
+    let normalized = normalize_source("value |> Widget { self return; };");
+    let [NormForm::Expr(NormExpr::Call { target, .. })] = normalized.forms.as_slice() else {
+        panic!("pipe call");
+    };
+    let NormExpr::Closure(closure) = target.as_ref() else {
+        panic!("closure")
+    };
+    let report =
+        elaborate_return_targets_in_returnable_closure(closure, ReturnFrameOwner::AnonymousClosure);
+    assert!(report.diagnostics.is_empty());
+    let identity = report.frames[0]
+        .self_identity
+        .as_ref()
+        .expect("callable self identity");
+    assert_eq!(identity.callable_owner, closure.semantic_owner.unwrap().id);
+    assert_eq!(identity.display_name, None);
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
+    assert!(matches!(&report.bound_events[0].value, NormExpr::Name { text, .. } if text == "self"));
+}
+
+#[test]
 fn extraction_return_frame_preserves_the_complete_result_pattern() {
     let report = bind_closure(
         r#"

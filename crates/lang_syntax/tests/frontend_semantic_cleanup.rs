@@ -52,10 +52,34 @@ fn atomic_name_head_keeps_self_separate_from_binderless_argument() {
     };
     let frame = closure.head.as_ref().unwrap().formal_frame();
     assert!(
-        matches!(frame.written_self, Some(NormPatternElem::BindingSlot(slot)) if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self"))
+        matches!(frame.written_self, Some(NormPatternElem::BindingSlot(slot)) if matches!(&slot.value_pattern, NormPattern::GeneratedSelf { owner: Some(owner), .. } if *owner == closure.semantic_owner.unwrap().id))
     );
     assert!(
         matches!(frame.explicit_parameters, [NormPatternElem::BindingSlot(slot)] if !matches!(slot.value_pattern, NormPattern::Binder { .. }))
+    );
+}
+
+#[test]
+fn generated_self_is_fresh_and_does_not_bind_source_self() {
+    let parsed = parse("value |> Widget { self; }; value |> Widget { self; };");
+    assert!(parsed.diagnostics.is_empty());
+    let program = normalize_program(&parsed.program);
+    let owners = program.forms.iter().map(|form| {
+        let NormForm::Expr(NormExpr::Call { target, .. }) = form else { panic!("call") };
+        let NormExpr::Closure(closure) = target.as_ref() else { panic!("closure") };
+        let Some(NormPatternElem::BindingSlot(slot)) = closure.head.as_ref().unwrap().formal_frame().written_self else { panic!("self slot") };
+        let NormPattern::GeneratedSelf { owner: Some(owner), .. } = slot.value_pattern else { panic!("fresh owner identity") };
+        assert_eq!(owner, closure.semantic_owner.unwrap().id);
+        assert!(matches!(closure.body.user_body().unwrap().forms.as_slice(), [NormForm::Expr(NormExpr::Name { text, .. })] if text == "self"));
+        owner
+    }).collect::<Vec<_>>();
+    assert_ne!(owners[0], owners[1]);
+
+    // Capture inference must still see the free body name through the shorthand.
+    let closure = closure("let f = [() |> Widget { self; }]() => { value; };");
+    assert!(
+        matches!(&closure.head.as_ref().unwrap().captures[0].slot.value_pattern,
+        NormPattern::Binder { name, .. } if name == "self")
     );
 }
 
@@ -95,19 +119,23 @@ fn incomplete_policy_constraints_report_diagnostics() {
 }
 #[test]
 fn explicit_callable_self_position_is_not_spelling_restricted() {
-    let parsed = parse("value |> (receiver, <> Widget) { receiver; };");
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let program = normalize_program(&parsed.program);
-    let [NormForm::Expr(NormExpr::Call { target, .. })] = program.forms.as_slice() else {
-        panic!("call")
-    };
-    let NormExpr::Closure(closure) = target.as_ref() else {
-        panic!("closure")
-    };
-    let frame = closure.head.as_ref().unwrap().formal_frame();
-    assert!(
-        matches!(frame.written_self, Some(NormPatternElem::BindingSlot(slot))
-        if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "receiver"))
-    );
-    assert_eq!(frame.explicit_parameters.len(), 1);
+    for spelling in ["receiver", "callable", "x"] {
+        let parsed = parse(&format!(
+            "value |> ({spelling}, <> Widget) {{ {spelling}; }};"
+        ));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let program = normalize_program(&parsed.program);
+        let [NormForm::Expr(NormExpr::Call { target, .. })] = program.forms.as_slice() else {
+            panic!("call")
+        };
+        let NormExpr::Closure(closure) = target.as_ref() else {
+            panic!("closure")
+        };
+        let frame = closure.head.as_ref().unwrap().formal_frame();
+        assert!(
+            matches!(frame.written_self, Some(NormPatternElem::BindingSlot(slot))
+        if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == spelling))
+        );
+        assert_eq!(frame.explicit_parameters.len(), 1);
+    }
 }

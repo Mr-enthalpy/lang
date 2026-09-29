@@ -147,6 +147,12 @@ pub enum NormProductElem {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormPattern {
+    /// Fresh slot-zero binding, keyed by its enclosing callable owner.
+    /// None occurs only before owner assignment; no textual name is introduced.
+    GeneratedSelf {
+        owner: Option<NormSemanticOwnerId>,
+        origin: NormOrigin,
+    },
     Binder {
         name: String,
         origin: NormOrigin,
@@ -296,7 +302,8 @@ pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPat
             }
             Ok(())
         }
-        NormPattern::Binder { .. }
+        NormPattern::GeneratedSelf { .. }
+        | NormPattern::Binder { .. }
         | NormPattern::OperatorBinder { .. }
         | NormPattern::Unit { .. }
         | NormPattern::HoleRef { .. }
@@ -450,7 +457,8 @@ fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PatternVa
         NormPattern::Skeleton { skeleton, .. } => {
             collect_skeleton_pack_errors(skeleton, errors);
         }
-        NormPattern::Binder { .. }
+        NormPattern::GeneratedSelf { .. }
+        | NormPattern::Binder { .. }
         | NormPattern::OperatorBinder { .. }
         | NormPattern::Unit { .. }
         | NormPattern::HoleRef { .. }
@@ -1410,6 +1418,7 @@ impl HoleAlphaNormalizer {
         declared: &mut BTreeMap<String, HoleBinderId>,
     ) {
         match pattern {
+            NormPattern::GeneratedSelf { owner, .. } => *owner = Some(root.owner),
             NormPattern::Product { elements, .. } => {
                 for element in elements {
                     self.normalize_pattern_element(element, holes, root, declared);
@@ -2656,6 +2665,7 @@ fn collect_pattern_element_binder_names(element: &NormPatternElem, bound: &mut B
 
 fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<String>) {
     match pattern {
+        NormPattern::GeneratedSelf { .. } => {}
         NormPattern::Binder { name, .. } => {
             bound.insert(name.clone());
         }
@@ -2833,6 +2843,15 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole])
             name: name.text.clone(),
             origin: NormOrigin::Source(name.span),
         },
+        BindingPatternAst::Binder(BinderNameAst::GeneratedSelf { span }) => {
+            NormPattern::GeneratedSelf {
+                owner: None,
+                origin: NormOrigin::Generated {
+                    rule: NormRule::ClosureNormalize,
+                    span: *span,
+                },
+            }
+        }
         BindingPatternAst::Binder(BinderNameAst::Operator(operator)) => {
             NormPattern::OperatorBinder {
                 spelling: operator.spelling.clone(),
@@ -3819,6 +3838,11 @@ fn dump_annotation(output: &mut String, annotation: &NormAnnotation, indent: usi
 
 fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
     match pattern {
+        NormPattern::GeneratedSelf { origin, .. } => line(
+            output,
+            indent,
+            &format!("GeneratedSelf {}", origin_inline(origin)),
+        ),
         NormPattern::Binder { name, origin } => line(
             output,
             indent,

@@ -3352,7 +3352,8 @@ fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
 
 fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
     match pattern {
-        NormPattern::Binder { origin, .. }
+        NormPattern::GeneratedSelf { origin, .. }
+        | NormPattern::Binder { origin, .. }
         | NormPattern::OperatorBinder { origin, .. }
         | NormPattern::Product { origin, .. }
         | NormPattern::Pack { origin, .. }

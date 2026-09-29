@@ -36,7 +36,7 @@ fn assert_parser_case(name: &str, expect_diagnostics: bool) {
     }
 }
 
-fn assert_parser_cases_same_ast(left: &str, right: &str) {
+fn assert_parser_cases_same_head_shape(left: &str, right: &str) {
     let left_source =
         fs::read_to_string(case_path(left, "lang")).expect("read left source fixture");
     let right_source =
@@ -47,9 +47,9 @@ fn assert_parser_cases_same_ast(left: &str, right: &str) {
     assert!(left_output.diagnostics.is_empty());
     assert!(right_output.diagnostics.is_empty());
     assert_eq!(
-        lang_syntax::dump_ast(&left_output.program),
+        lang_syntax::dump_ast(&left_output.program).replace("GeneratedSelf", "TextName self"),
         lang_syntax::dump_ast(&right_output.program),
-        "`{left}` and `{right}` must lower to one Raw AST"
+        "`{left}` and `{right}` share head structure modulo the fresh versus textual self binder"
     );
 }
 
@@ -183,7 +183,7 @@ fn pipe_branch_name_shorthand() {
 #[test]
 fn pipe_branch_name_binderless_explicit() {
     assert_parser_case("pipe_branch_name_binderless_explicit", false);
-    assert_parser_cases_same_ast(
+    assert_parser_cases_same_head_shape(
         "pipe_branch_name_shorthand",
         "pipe_branch_name_binderless_explicit",
     );
@@ -192,7 +192,7 @@ fn pipe_branch_name_binderless_explicit() {
 #[test]
 fn pipe_branch_underscore_binderless_explicit() {
     assert_parser_case("pipe_branch_underscore_binderless_explicit", false);
-    assert_parser_cases_same_ast(
+    assert_parser_cases_same_head_shape(
         "pipe_branch_underscore_shorthand",
         "pipe_branch_underscore_binderless_explicit",
     );

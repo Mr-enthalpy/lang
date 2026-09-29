@@ -695,6 +695,13 @@ call-entry may supply another receiver object. The spelling `self` is
 conventional and may be replaced. A head with no written position still has a
 semantic self-position but no source binder for it.
 
+Name-headed shorthand synthesizes a GeneratedSelf slot-zero binding without
+a textual name. Normalization anchors it to the enclosing callable owner;
+independent callable formations get distinct identities. The schematic `self`
+in the expansion does not declare source spelling `self` or capture a free
+body name. Explicit `(receiver, <> P)` and other written binder names retain
+their ordinary source binding behavior.
+
 ### Extraction skeletons and product extraction
 
 Binding patterns may be product extraction or canonical skeletons; both remain

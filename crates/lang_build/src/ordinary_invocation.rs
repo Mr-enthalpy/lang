@@ -2371,7 +2371,7 @@ fn apply_written_self_structure(
     };
 
     let mut self_specificity = match &slot.value_pattern {
-        NormPattern::Binder { .. } => SpecificityTuple {
+        NormPattern::Binder { .. } | NormPattern::GeneratedSelf { .. } => SpecificityTuple {
             max_depth: 1,
             sum_depth: 1,
             non_discard_explicit_node_count: 1,

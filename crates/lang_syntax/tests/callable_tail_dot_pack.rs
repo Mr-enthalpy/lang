@@ -781,7 +781,8 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
             NormPattern::BindingSlot { slot, .. } => {
                 norm_pattern_targets(&slot.value_pattern, expected)
             }
-            NormPattern::Binder { .. }
+            NormPattern::GeneratedSelf { .. }
+            | NormPattern::Binder { .. }
             | NormPattern::OperatorBinder { .. }
             | NormPattern::Unit { .. }
             | NormPattern::AnonymousHole { .. }
