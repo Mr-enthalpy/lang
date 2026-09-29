@@ -498,7 +498,7 @@ fn self_identity_from_closure(closure: &NormClosure) -> Option<ReturnSelfIdentit
     let written = closure
         .head
         .as_ref()
-        .and_then(|head| head.formal_frame().written_self);
+        .and_then(|head| head.formal_frame().self_formal);
     let display_name = written.and_then(|written| match written {
         NormPatternElem::BindingSlot(slot) => binding_slot_name(slot),
         NormPatternElem::Pattern(pattern) => pattern_display_name(pattern),
@@ -513,7 +513,7 @@ fn self_identity_from_closure(closure: &NormClosure) -> Option<ReturnSelfIdentit
 
 fn pattern_display_name(pattern: &NormPattern) -> Option<String> {
     match pattern {
-        NormPattern::Binder { name, .. } => Some(name.clone()),
+        NormPattern::Binder { name, .. } => name.clone(),
         NormPattern::OperatorBinder { spelling, .. } => Some(spelling.clone()),
         _ => None,
     }
@@ -521,7 +521,7 @@ fn pattern_display_name(pattern: &NormPattern) -> Option<String> {
 
 fn binding_slot_name(slot: &NormBindingSlot) -> Option<String> {
     match &slot.value_pattern {
-        NormPattern::Binder { name, .. } => Some(name.clone()),
+        NormPattern::Binder { name, .. } => name.clone(),
         NormPattern::OperatorBinder { spelling, .. } => Some(spelling.clone()),
         _ => None,
     }

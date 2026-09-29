@@ -115,7 +115,7 @@ fn double_bracket_strategy_preserves_the_return_extraction_pattern() {
     ));
     assert!(matches!(
         escaped.head.as_ref().unwrap().returns.as_ref().unwrap().value_pattern,
-        NormPattern::Binder { ref name, .. } if name == "r"
+        NormPattern::Binder { ref name, .. } if name.as_deref() == Some("r")
     ));
 
     let in_place = normalized_closure("let f = () -> r name { r };");
@@ -210,7 +210,7 @@ fn capture_items_normalize_to_let_shaped_bindings() {
         assert!(capture.slot.has_let, "{fixture}");
         assert!(capture.slot.initializer.is_none(), "{fixture}");
         assert!(
-            matches!(&capture.slot.value_pattern, NormPattern::Binder { name, .. } if name == expected),
+            matches!(&capture.slot.value_pattern, NormPattern::Binder { name, .. } if name.as_deref() == Some(expected)),
             "{fixture}: {:#?}",
             capture.slot.value_pattern
         );
@@ -241,7 +241,7 @@ fn capture_items_normalize_to_let_shaped_bindings() {
         let capture = &closure.head.as_ref().unwrap().captures[0];
         assert!(matches!(
             &capture.slot.value_pattern,
-            NormPattern::Binder { name, .. } if name == "out"
+            NormPattern::Binder { name, .. } if name.as_deref() == Some("out")
         ));
         assert!(capture.slot.policy.is_none());
     }
@@ -251,7 +251,7 @@ fn capture_items_normalize_to_let_shaped_bindings() {
     assert!(capture.slot.policy.is_some());
     assert!(matches!(
         &capture.slot.value_pattern,
-        NormPattern::Binder { name, .. } if name == "out"
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("out")
     ));
 
     let closure = normalized_closure("let f = [runtime let <T> out: T with {} = x]() => { out };");
@@ -278,7 +278,7 @@ fn capture_inference_ignores_locally_bound_names_and_binds_simultaneously() {
         &closure.head.as_ref().unwrap().captures[0]
             .slot
             .value_pattern,
-        NormPattern::Binder { name, .. } if name == "outer"
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("outer")
     ));
 
     let closure = normalized_closure("let f = [let x = outer, let y = outer]() => { value };");
@@ -305,7 +305,7 @@ fn deduce_keeps_capture_slot_open_unless_complete_strategy_tail_is_present() {
         };
         assert!(matches!(
             &capture.slot.value_pattern,
-            NormPattern::Binder { name, .. } if name == "cap"
+            NormPattern::Binder { name, .. } if name.as_deref() == Some("cap")
         ));
         assert!(matches!(captured.body, NormClosureBody::Block(_)));
     }
@@ -335,7 +335,7 @@ fn canonical_sequence_accepts_pack_as_a_direct_pattern_child() {
             NormPattern::Skeleton { .. },
             NormPattern::Pack { inner, .. },
             NormPattern::HoleRef { name, .. }
-        ] if matches!(inner.as_ref(), NormPattern::Binder { name, .. } if name == "rest")
+        ] if matches!(inner.as_ref(), NormPattern::Binder { name, .. } if name.as_deref() == Some("rest"))
             && name == "T"
     ));
 
@@ -781,8 +781,7 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
             NormPattern::BindingSlot { slot, .. } => {
                 norm_pattern_targets(&slot.value_pattern, expected)
             }
-            NormPattern::GeneratedSelf { .. }
-            | NormPattern::Binder { .. }
+            NormPattern::Binder { .. }
             | NormPattern::OperatorBinder { .. }
             | NormPattern::Unit { .. }
             | NormPattern::AnonymousHole { .. }
@@ -986,7 +985,7 @@ fn callable_return_annotation_uses_the_binding_slot_suffix() {
     let return_slot = head.returns.as_ref().expect("return slot");
     assert!(matches!(
         &return_slot.value_pattern,
-        NormPattern::Binder { name, .. } if name == "r"
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("r")
     ));
     assert_eq!(
         annotation_hole_target(
@@ -1067,9 +1066,9 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
         );
         let formal_frame = head.formal_frame();
         assert!(matches!(
-            formal_frame.written_self,
+            formal_frame.self_formal,
             Some(NormPatternElem::BindingSlot(slot))
-                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self")
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name.as_deref() == Some("self"))
         ));
         let NormPatternElem::BindingSlot(receiver) = &formal_frame.explicit_parameters[0] else {
             panic!("expected generated receiver slot");
@@ -1107,22 +1106,22 @@ fn first_written_formal_is_self_for_ordinary_and_in_place_closures() {
             .expect("headed closure")
             .formal_frame();
         assert!(matches!(
-            frame.written_self,
+            frame.self_formal,
             Some(NormPatternElem::BindingSlot(slot))
                 if matches!(&slot.value_pattern, NormPattern::Binder { name, .. }
-                    if name == "receiver")
+                    if name.as_deref() == Some("receiver"))
         ));
         assert!(matches!(
             frame.explicit_parameters,
             [NormPatternElem::BindingSlot(slot)]
                 if matches!(&slot.value_pattern, NormPattern::Binder { name, .. }
-                    if name == "value")
+                    if name.as_deref() == Some("value"))
         ));
     }
 
     let zero = normalized_closure("let f = () => { value };");
     let zero_frame = zero.head.as_ref().expect("headed closure").formal_frame();
-    assert!(zero_frame.written_self.is_none());
+    assert!(zero_frame.self_formal.is_none());
     assert!(zero_frame.explicit_parameters.is_empty());
 }
 
@@ -1675,7 +1674,8 @@ fn global_pack_validation_visits_every_binding_slot_context() {
     let origin = NormOrigin::Source(Span::new(0, 1, 1, 1));
     let pack = |name: &str| NormPattern::Pack {
         inner: Box::new(NormPattern::Binder {
-            name: name.to_string(),
+            identity: None,
+            name: Some(name.to_string()),
             origin: origin.clone(),
         }),
         origin: origin.clone(),
@@ -1694,7 +1694,8 @@ fn global_pack_validation_visits_every_binding_slot_context() {
                 has_let: true,
                 deduce: Vec::new(),
                 value_pattern: NormPattern::Binder {
-                    name: "value".to_string(),
+                    identity: None,
+                    name: Some("value".to_string()),
                     origin: origin.clone(),
                 },
                 annotation: Some(annotation),

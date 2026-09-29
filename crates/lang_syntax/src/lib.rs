@@ -31,7 +31,7 @@ pub use norm::{
     dump_norm_program, normalize_and_validate_patterns, normalize_program,
     validate_normalized_pattern_layers, validate_normalized_patterns,
     validate_pack_pattern_element_level, validate_pack_pattern_layers, AlphaOwnerId,
-    GeneratedHoleKey, HoleBinderId, NormAliasBinder, NormAnnotation, NormBindingSlot,
+    GeneratedHoleKey, HoleBinderId, NormAliasBinder, NormAnnotation, NormBinderId, NormBindingSlot,
     NormCallableFormalFrame, NormCallableOwner, NormCanonicalNameRole, NormCapture, NormClosure,
     NormClosureBody, NormClosureHead, NormClosurePlacement, NormDecl, NormDeleteBody,
     NormEntityRef, NormError, NormExpr, NormForm, NormHeadClause, NormHoleDecl, NormLiteralKind,

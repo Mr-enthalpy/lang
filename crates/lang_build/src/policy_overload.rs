@@ -31,7 +31,7 @@ pub struct PolicyActualFrame {
 
 impl<I> PolicyOverloadCandidate<I> {
     /// Build the externally comparable candidate policy from source-order
-    /// elaborated formals. The first written formal is the explicitly declared
+    /// elaborated formals. Slot zero is the written or generated
     /// Pattern for the implicitly passed self-position; only later formals
     /// consume the call-site Product.
     pub fn from_formal_patterns(

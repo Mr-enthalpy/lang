@@ -272,7 +272,7 @@ The notation is normalized, not raw source: `(x)` here is a normalized source
 Product, and a nested `(a, b)` is a preserved product element, not a flattened
 list.
 
-## 7. Operator / Dot Closure / Member / Double-Dot / Bracket Sugar
+## 7. Operator / Dot Name / Member / Double-Dot / Bracket Sugar
 
 All of these are normalization-level lowering into the same product-call
 skeleton. None of them perform lookup, dispatch, or resolution.
@@ -687,7 +687,7 @@ Closure placement=Ordinary
 `type` and `T` here are not runtime expressions.
 
 Formal positions are interpreted uniformly for ordinary and in-place
-closures: the first written position is the explicit Pattern/binder for the
+closures: slot zero is the written or generated Pattern/binder for the
 caller object's self-position, whose actual is supplied implicitly by the
 invocation frame. Only later positions consume the explicit call-site Product.
 For a standalone function this caller is the function object; an associated
@@ -695,9 +695,11 @@ call-entry may supply another receiver object. The spelling `self` is
 conventional and may be replaced. A head with no written position still has a
 semantic self-position but no source binder for it.
 
-Name-headed shorthand synthesizes a GeneratedSelf slot-zero binding without
-a textual name. Normalization anchors it to the enclosing callable owner;
-independent callable formations get distinct identities. The schematic `self`
+Name-headed shorthand normalizes to an ordinary Binder in slot zero without
+a textual name. Written and generated binders both receive a syntax-local
+identity within the existing callable/Pattern-root coordinates, independently
+of optional display spelling. Independent bindings get distinct identities.
+GeneratedSelf exists only in Raw syntax, not as a normalized Pattern kind. The schematic `self`
 in the expansion does not declare source spelling `self` or capture a free
 body name. Explicit `(receiver, <> P)` and other written binder names retain
 their ordinary source binding behavior.

@@ -166,7 +166,7 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_rem
     if let NormPatternElem::BindingSlot(slot) = &head.params[0] {
         assert!(matches!(
             &slot.value_pattern,
-            NormPattern::Binder { name, .. } if name == "self"
+            NormPattern::Binder { name, .. } if name.as_deref() == Some("self")
         ));
         assert!(slot.annotation.is_none());
     } else {
@@ -179,7 +179,7 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_rem
     if let NormPatternElem::BindingSlot(slot) = &head.params[1] {
         assert!(matches!(
             &slot.value_pattern,
-            NormPattern::Binder { name, .. } if name == "val"
+            NormPattern::Binder { name, .. } if name.as_deref() == Some("val")
         ));
         assert!(matches!(
             slot.annotation.as_ref().map(|annotation| &annotation.pattern),
@@ -198,7 +198,7 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_rem
             NormPatternElem::BindingSlot(slot)
                 if matches!(&slot.value_pattern, NormPattern::Pack { inner, .. }
                     if matches!(inner.as_ref(), NormPattern::Binder { name, .. }
-                        if name == "args"))
+                        if name.as_deref() == Some("args")))
         ));
     }
 }
@@ -406,7 +406,7 @@ fn annotation_patterns_are_structural_pattern_material() {
 
     assert!(matches!(
         &slot.value_pattern,
-        NormPattern::Binder { name, .. } if name == "x"
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("x")
     ));
     assert!(matches!(
         &annotation.pattern,

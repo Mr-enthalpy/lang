@@ -28,7 +28,8 @@ fn slot(pattern: NormPattern) -> NormPatternElem {
 fn pack(name: &str) -> NormPatternElem {
     slot(NormPattern::Pack {
         inner: Box::new(NormPattern::Binder {
-            name: name.to_string(),
+            identity: None,
+            name: Some(name.to_string()),
             origin: origin(),
         }),
         origin: origin(),
@@ -112,7 +113,8 @@ fn normalized_pack_validation_is_per_structural_level() {
     let same_level_nesting = NormPattern::Pack {
         inner: Box::new(NormPattern::Pack {
             inner: Box::new(NormPattern::Binder {
-                name: "args".to_string(),
+                identity: None,
+                name: Some("args".to_string()),
                 origin: origin(),
             }),
             origin: origin(),

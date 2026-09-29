@@ -52,7 +52,7 @@ fn atomic_name_head_keeps_self_separate_from_binderless_argument() {
     };
     let frame = closure.head.as_ref().unwrap().formal_frame();
     assert!(
-        matches!(frame.written_self, Some(NormPatternElem::BindingSlot(slot)) if matches!(&slot.value_pattern, NormPattern::GeneratedSelf { owner: Some(owner), .. } if *owner == closure.semantic_owner.unwrap().id))
+        matches!(frame.self_formal, Some(NormPatternElem::BindingSlot(slot)) if matches!(&slot.value_pattern, NormPattern::Binder { identity: Some(identity), name: None, .. } if identity.root.owner == closure.semantic_owner.unwrap().id))
     );
     assert!(
         matches!(frame.explicit_parameters, [NormPatternElem::BindingSlot(slot)] if !matches!(slot.value_pattern, NormPattern::Binder { .. }))
@@ -67,11 +67,11 @@ fn generated_self_is_fresh_and_does_not_bind_source_self() {
     let owners = program.forms.iter().map(|form| {
         let NormForm::Expr(NormExpr::Call { target, .. }) = form else { panic!("call") };
         let NormExpr::Closure(closure) = target.as_ref() else { panic!("closure") };
-        let Some(NormPatternElem::BindingSlot(slot)) = closure.head.as_ref().unwrap().formal_frame().written_self else { panic!("self slot") };
-        let NormPattern::GeneratedSelf { owner: Some(owner), .. } = slot.value_pattern else { panic!("fresh owner identity") };
-        assert_eq!(owner, closure.semantic_owner.unwrap().id);
+        let Some(NormPatternElem::BindingSlot(slot)) = closure.head.as_ref().unwrap().formal_frame().self_formal else { panic!("self slot") };
+        let NormPattern::Binder { identity: Some(identity), name: None, .. } = slot.value_pattern else { panic!("fresh binder identity") };
+        assert_eq!(identity.root.owner, closure.semantic_owner.unwrap().id);
         assert!(matches!(closure.body.user_body().unwrap().forms.as_slice(), [NormForm::Expr(NormExpr::Name { text, .. })] if text == "self"));
-        owner
+        identity
     }).collect::<Vec<_>>();
     assert_ne!(owners[0], owners[1]);
 
@@ -79,8 +79,42 @@ fn generated_self_is_fresh_and_does_not_bind_source_self() {
     let closure = closure("let f = [() |> Widget { self; }]() => { value; };");
     assert!(
         matches!(&closure.head.as_ref().unwrap().captures[0].slot.value_pattern,
-        NormPattern::Binder { name, .. } if name == "self")
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("self"))
     );
+}
+
+#[test]
+fn ordinary_binder_identity_is_independent_of_display_spelling() {
+    let closure = closure("let f = (receiver, value) => { value; };");
+    let params = &closure.head.as_ref().unwrap().params;
+    let identities = params
+        .iter()
+        .map(|param| {
+            let NormPatternElem::BindingSlot(slot) = param else {
+                panic!("binding slot")
+            };
+            let NormPattern::Binder {
+                identity: Some(identity),
+                name: Some(_),
+                ..
+            } = &slot.value_pattern
+            else {
+                panic!("ordinary named binder")
+            };
+            *identity
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(identities[0].root, identities[1].root);
+    assert_ne!(identities[0], identities[1]);
+    let mut renamed = params[0].clone();
+    let NormPatternElem::BindingSlot(slot) = &mut renamed else {
+        unreachable!()
+    };
+    let NormPattern::Binder { identity, name, .. } = &mut slot.value_pattern else {
+        unreachable!()
+    };
+    *name = None;
+    assert_eq!(*identity, Some(identities[0]));
 }
 
 #[test]
@@ -133,8 +167,8 @@ fn explicit_callable_self_position_is_not_spelling_restricted() {
         };
         let frame = closure.head.as_ref().unwrap().formal_frame();
         assert!(
-            matches!(frame.written_self, Some(NormPatternElem::BindingSlot(slot))
-        if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == spelling))
+            matches!(frame.self_formal, Some(NormPatternElem::BindingSlot(slot))
+        if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name.as_deref() == Some(spelling)))
         );
         assert_eq!(frame.explicit_parameters.len(), 1);
     }

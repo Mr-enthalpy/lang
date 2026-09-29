@@ -1,4 +1,4 @@
-# Capture Binding, Callable Tail, Dot Closure, and Pack Pattern
+# Capture Binding, Callable Tail, Dot Name, and Pack Pattern
 
 **Status: canonical semantic design with typed parser/normalizer substrate.**
 Named-strategy execution and compiler-provided default-body generation remain

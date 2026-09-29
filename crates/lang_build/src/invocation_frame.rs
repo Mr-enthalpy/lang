@@ -8,8 +8,8 @@
 //!
 //! `self` is injected by the invocation frame and occupies callable formal slot
 //! 0. Zero-user-argument callables still have a self slot.
-//! When a closure writes any formal position, the first written formal is the
-//! explicit Pattern for this slot regardless of binder spelling. Only later
+//! When a closure has formals, slot zero is the written or generated
+//! Pattern for self regardless of optional binder spelling. Only later
 //! formals consume the explicit user product.
 //! The injected caller is commonly a standalone function object, but an
 //! associated `()` implementation receives the object on whose type that call

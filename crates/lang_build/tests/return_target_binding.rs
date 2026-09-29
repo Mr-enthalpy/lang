@@ -399,7 +399,7 @@ let f = (self): runtime -> r: int => {
 fn resolved_callable_owner_not_target_spelling_selects_the_frame() {
     let report = bind_closure_with_own_self_identity(
         r#"
-let f = (written_self): runtime -> r: int => {
+let f = (self_formal): runtime -> r: int => {
     1 |> (completely_different_text return);
 };
 "#,

@@ -235,8 +235,10 @@ For one non-composite atomic Pattern P, the canonical semantic head is:
 
 self is a schematic fresh binder for invocation slot zero, followed by the
 binderless explicit argument Pattern. It is not user-supplied actual material.
-The parser preserves both positions. Its GeneratedSelf binder has no textual
-name; normalization keys it by the enclosing callable owner. Source `self`
+The parser preserves both positions. Its GeneratedSelf marker has no textual
+name and exists only in Raw syntax. Normalization produces an ordinary Binder
+with an identity within its callable/Pattern root and optional display spelling;
+written binders use that same representation. Source `self`
 in the body remains a free name unless explicitly bound by source. Goldens
 compare head structure modulo this generated versus textual binding distinction;
 they do not equate the two Raw ASTs. Explicit wildcard (_ P) is different. The Pattern

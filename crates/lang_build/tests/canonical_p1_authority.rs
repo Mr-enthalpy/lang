@@ -531,7 +531,7 @@ fn pattern_stage_dimension_mismatch_is_hard_error() {
         ..ExplicitP1Selection::default()
     };
     let initializer = initializer_from_source("let f = (compile let self): compile => { (); };");
-    let lang_syntax::NormExpr::Closure(written_self) = initializer else {
+    let lang_syntax::NormExpr::Closure(self_formal) = initializer else {
         panic!("closure")
     };
     let derived = exposure_window(
@@ -543,7 +543,7 @@ fn pattern_stage_dimension_mismatch_is_hard_error() {
         Some(&outer),
         &derived,
         &derived,
-        Some(&written_self),
+        Some(&self_formal),
         &Provenance::new("internal Pattern observation mismatch"),
     )
     .expect_err("different internal observations do not merge");

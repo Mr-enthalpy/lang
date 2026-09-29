@@ -131,7 +131,9 @@ pub fn decode_struct_associated_val2_let(
         CallEntry,
     }
     let target = match &slot.value_pattern {
-        NormPattern::Binder { name, .. } => Target::Named(name.clone()),
+        NormPattern::Binder {
+            name: Some(name), ..
+        } => Target::Named(name.clone()),
         NormPattern::Product { elements, .. } if elements.is_empty() => Target::CallEntry,
         _ => {
             return Err(Diagnostic::new(

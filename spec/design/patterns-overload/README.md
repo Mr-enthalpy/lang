@@ -78,7 +78,7 @@ candidate preparation, not runtime overload resolution.
   and must-select consistency; source placement is not a preference dimension.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   residual, `Done`, and extraction-chain consumer semantics.
-- `callable-tail-dot-closure-and-pack-pattern.md` — the canonical connection
+- `callable-tail-dot-name-and-pack-pattern.md` — the canonical connection
   between callable implementation/strategy tails, `.name`, and `...args`.
 
 ## Reading order

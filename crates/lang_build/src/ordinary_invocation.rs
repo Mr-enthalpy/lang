@@ -1353,7 +1353,7 @@ pub(crate) fn invoke_target_values(
                     });
                 }
             };
-            if let Err(failure) = apply_written_self_structure(
+            if let Err(failure) = apply_self_formal_structure(
                 &mut source_shape,
                 &entry,
                 &target,
@@ -2300,8 +2300,8 @@ fn formal_policy_frame(
             ))
         })?;
     let frame = head.formal_frame();
-    let self_mode = match frame.written_self {
-        // The written-self slot policy is explicit P1 material: stage /
+    let self_mode = match frame.self_formal {
+        // The self-slot policy is explicit P1 material: stage /
         // presence / Pattern atoms are legal there and are
         // reconciled by `canonical_function_object_p1` at registration.
         // The Bₚ' Policy-mode frame only consumes the PolicyMode coordinate.
@@ -2338,7 +2338,7 @@ fn formal_policy_frame(
     })
 }
 
-fn apply_written_self_structure(
+fn apply_self_formal_structure(
     candidate: &mut ApplicableCandidate,
     entry: &OrdinaryCallEntry,
     actual: &crate::semantic_world::SemanticValueObject,
@@ -2358,20 +2358,20 @@ fn apply_written_self_structure(
             ),
         ));
     };
-    let Some(written_self) = head.formal_frame().written_self else {
+    let Some(self_formal) = head.formal_frame().self_formal else {
         return Ok(());
     };
-    let NormPatternElem::BindingSlot(slot) = written_self else {
+    let NormPatternElem::BindingSlot(slot) = self_formal else {
         return Err(CandidateApplicabilityFailure::Unsupported(
             Diagnostic::hard_error(
-                "ordinary written self Pattern is not a binding slot",
+                "ordinary self Pattern is not a binding slot",
                 Some(provenance),
             ),
         ));
     };
 
     let mut self_specificity = match &slot.value_pattern {
-        NormPattern::Binder { .. } | NormPattern::GeneratedSelf { .. } => SpecificityTuple {
+        NormPattern::Binder { .. } => SpecificityTuple {
             max_depth: 1,
             sum_depth: 1,
             non_discard_explicit_node_count: 1,
@@ -2389,9 +2389,9 @@ fn apply_written_self_structure(
         _ => {
             return Err(CandidateApplicabilityFailure::Unsupported(
                 Diagnostic::hard_error(
-                    "ordinary written self structural Pattern is not yet supported by the Pattern relation consumer",
+                    "ordinary self structural Pattern is not yet supported by the Pattern relation consumer",
                     Some(Provenance::from_norm_origin(
-                        "ordinary written self Pattern",
+                        "ordinary self Pattern",
                         &slot.origin,
                     )),
                 ),
@@ -2411,7 +2411,7 @@ fn apply_written_self_structure(
             return Err(CandidateApplicabilityFailure::Inapplicable(
                 Diagnostic::hard_error(
                     format!(
-                        "ordinary written self type applicability failed: expected {:?}, got {:?}",
+                        "ordinary self type applicability failed: expected {:?}, got {:?}",
                         expected, actual.type_value
                     ),
                     Some(provenance),
@@ -2440,7 +2440,7 @@ fn resolve_type_annotation_value(
         NormPattern::Name { name, .. } => name,
         _ => {
             return Err(Diagnostic::hard_error(
-                "ordinary written self type annotation requires a resolved type-name Pattern",
+                "ordinary self type annotation requires a resolved type-name Pattern",
                 Some(provenance),
             ));
         }
@@ -2450,7 +2450,7 @@ fn resolve_type_annotation_value(
         .map(|resolution| resolution.represented_type)
         .ok_or_else(|| {
             Diagnostic::hard_error(
-                format!("ordinary written self annotation `{name}` is not a resolved type value"),
+                format!("ordinary self annotation `{name}` is not a resolved type value"),
                 Some(provenance.clone()),
             )
         })

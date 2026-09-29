@@ -1091,7 +1091,9 @@ impl CompilationWorld {
         }
 
         let binder_name = match &slot.value_pattern {
-            NormPattern::Binder { name, .. } => name.clone(),
+            NormPattern::Binder {
+                name: Some(name), ..
+            } => name.clone(),
             NormPattern::OperatorBinder { spelling, .. } => spelling.clone(),
             NormPattern::Nav { .. }
             | NormPattern::Sequence { .. }
@@ -3352,8 +3354,7 @@ fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
 
 fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
     match pattern {
-        NormPattern::GeneratedSelf { origin, .. }
-        | NormPattern::Binder { origin, .. }
+        NormPattern::Binder { origin, .. }
         | NormPattern::OperatorBinder { origin, .. }
         | NormPattern::Product { origin, .. }
         | NormPattern::Pack { origin, .. }

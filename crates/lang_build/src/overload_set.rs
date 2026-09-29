@@ -495,7 +495,7 @@ fn selected_body_failure(
 
 fn binding_slot_name(slot: &lang_syntax::NormBindingSlot) -> Option<String> {
     match &slot.value_pattern {
-        NormPattern::Binder { name, .. } => Some(name.clone()),
+        NormPattern::Binder { name, .. } => name.clone(),
         _ => None,
     }
 }

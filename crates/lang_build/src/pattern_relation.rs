@@ -111,13 +111,13 @@ impl ExtractedTypeObservation {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternLocalBinding {
-    pub display_name: String,
+    pub display_name: Option<String>,
     pub argument: OverloadArgShape,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternPackBinding {
-    pub display_name: String,
+    pub display_name: Option<String>,
     pub arguments: Vec<OverloadArgShape>,
 }
 
@@ -181,7 +181,12 @@ impl PatternApplicabilityProof {
             .first()
             .into_iter()
             .flat_map(|solution| solution.local_bindings.values())
-            .map(|binding| (binding.display_name.clone(), binding.argument.clone()))
+            .filter_map(|binding| {
+                binding
+                    .display_name
+                    .clone()
+                    .map(|name| (name, binding.argument.clone()))
+            })
             .collect()
     }
 
@@ -190,7 +195,12 @@ impl PatternApplicabilityProof {
             .first()
             .into_iter()
             .flat_map(|solution| solution.pack_bindings.values())
-            .map(|binding| (binding.display_name.clone(), binding.arguments.clone()))
+            .filter_map(|binding| {
+                binding
+                    .display_name
+                    .clone()
+                    .map(|name| (name, binding.arguments.clone()))
+            })
             .collect()
     }
 }
@@ -372,7 +382,7 @@ fn solve_value_pattern(
     context: &PatternRelationContext<'_>,
 ) -> Result<Vec<PatternRelationDerivation>, PatternRelationFailure> {
     match pattern {
-        NormPattern::Binder { name, .. } if name != "_" => {
+        NormPattern::Binder { name, .. } if name.as_deref() != Some("_") => {
             let mut derivation = PatternRelationDerivation::default();
             derivation.local_bindings.insert(
                 binder,
@@ -479,7 +489,7 @@ fn solve_pack(
         ));
     };
     let specificity = match inner.as_ref() {
-        NormPattern::Binder { name, .. } if name != "_" => {
+        NormPattern::Binder { name, .. } if name.as_deref() != Some("_") => {
             let mut derivation = PatternRelationDerivation::default();
             derivation.pack_bindings.insert(
                 binder,
@@ -646,7 +656,9 @@ fn collect_relational_terms<'a>(pattern: &'a NormPattern, out: &mut Vec<Relation
         NormPattern::HoleRef { target, origin, .. } => {
             out.push(RelationalTerm::Hole(*target, origin))
         }
-        NormPattern::Binder { name, .. } if name == "_" => out.push(RelationalTerm::Wildcard),
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("_") => {
+            out.push(RelationalTerm::Wildcard)
+        }
         NormPattern::Skeleton { skeleton, .. } => collect_skeleton_terms(skeleton, out),
         NormPattern::Sequence { elements, .. } => {
             for element in elements {
@@ -738,7 +750,7 @@ fn first_root_in_skeleton(skeleton: &NormSkeleton) -> Option<lang_syntax::Patter
 
 fn specificity_for_pattern(pattern: &NormPattern) -> SpecificityTuple {
     match pattern {
-        NormPattern::Binder { name, .. } if name != "_" => SpecificityTuple {
+        NormPattern::Binder { name, .. } if name.as_deref() != Some("_") => SpecificityTuple {
             max_depth: 1,
             sum_depth: 1,
             non_discard_explicit_node_count: 1,
@@ -806,8 +818,7 @@ fn param_provenance(element: &NormPatternElem) -> Option<Provenance> {
 
 fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
     match pattern {
-        NormPattern::GeneratedSelf { origin, .. }
-        | NormPattern::Binder { origin, .. }
+        NormPattern::Binder { origin, .. }
         | NormPattern::OperatorBinder { origin, .. }
         | NormPattern::Product { origin, .. }
         | NormPattern::Pack { origin, .. }

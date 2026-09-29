@@ -934,7 +934,7 @@ pub fn elaborate_return_policy_pattern(
 /// Where an explicit P1 spelling appears.  The outer binding prefix
 /// (`compile let f = ...`) doubles as declaration policy, so namespace
 /// visibility/export atoms are ignored there (they are validated against
-/// the derived symbol policy separately); the written-self slot policy is
+/// the derived symbol policy separately); the self-slot policy is
 /// pure P1 material and rejects them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExplicitP1Position {
@@ -943,7 +943,7 @@ pub enum ExplicitP1Position {
 }
 
 /// The per-dimension explicit P1 selection extracted from one spelling
-/// site (outer binding prefix or written-self slot policy).
+/// site (outer binding prefix or self-slot policy).
 ///
 /// The explicit selection keeps the complete `Pv:Pp` coordinates and its
 /// orthogonal whole-slot mode separate. Value stage, value presence, Pattern
@@ -1003,11 +1003,7 @@ pub fn elaborate_explicit_p1(
         // declaration attributes, separate from the function-object P1.
         ExplicitP1Position::OuterBinding => {}
         ExplicitP1Position::WrittenSelf => {
-            reject_namespace_attributes(
-                &value_atoms,
-                "written-self explicit P1",
-                provenance.clone(),
-            )?;
+            reject_namespace_attributes(&value_atoms, "self-slot explicit P1", provenance.clone())?;
         }
     }
     if !value_atoms.stages.is_empty() {
