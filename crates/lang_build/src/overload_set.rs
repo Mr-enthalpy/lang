@@ -362,72 +362,14 @@ fn evaluate_body_local_let(
     Ok(())
 }
 
-/// Reject a non-name terminal expression of an ordinary body with the most
-/// specific diagnostic. `===` is legal only in the lexical-alias declaration
-/// form and never as an expression operator.
-fn evaluate_contribution_expr(
-    selected: &SelectedSourceBody,
-    expr: &NormExpr,
-) -> SourceBodyEvaluationFailure {
-    if lexical_alias_operator_shape(expr) {
-        return bare_alias_spelling_failure(selected);
-    }
-    unsupported_body(
-        selected,
-        ResolverCode::UnsupportedSelectedSourceBody,
-        "selected source-body form is not supported by execution",
-    )
-}
-
-/// Evaluate a direct-delivery terminal name to an identity-type result.
-fn evaluate_contribution_rhs_name(
-    type_env: &dyn TypeResolutionEnv,
-    resolver_context: &ResolverContext,
-    selected: &SelectedSourceBody,
-    local_names: &BTreeSet<String>,
-    rhs_name: &str,
-) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
-    if local_names.contains(rhs_name) {
-        return Err(selected_body_failure(
-            selected,
-            ResolverCode::UnsupportedSelectedSourceBodyLocalBinding,
-            "selected source-body local bindings are not connected to execution",
-        ));
-    }
-    if let Some(bound) = selected.bindings.get(rhs_name) {
-        return identity_type_material(selected, bound.value_type, bound.complete_type_observation);
-    }
-    if selected.pack_bindings.contains_key(rhs_name) {
-        return Err(unsupported_body(
-            selected,
-            ResolverCode::UnsupportedSelectedSourceBody,
-            "selected source body pack delivery requires product-result execution support",
-        ));
-    }
-    match type_env.resolve_type_name(rhs_name, resolver_context) {
-        Some(resolution) => identity_type_material(
-            selected,
-            Some(resolution.represented_type),
-            resolution.complete_type_observation,
-        ),
-        None => Err(unsupported_body(
-            selected,
-            ResolverCode::UnsupportedSelectedSourceBody,
-            "selected source-body form is not supported by execution",
-        )),
-    }
-}
-
 fn evaluate_block_body(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
     program: &lang_syntax::NormProgram,
 ) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
-    // Single-value body evaluation for ordinary (non-meta-construction)
-    // callables: exactly one terminal contribution.  Shares the per-form
-    // helpers with the clustered contributions evaluator so both read the
-    // same body-shape rules.
+    // Validate connected local forms without inventing expression completion.
+    // Shared continuation execution must supply UnitDiscard and tail inference.
     let mut local_names = BTreeSet::new();
 
     for form in &program.forms {
@@ -438,7 +380,7 @@ fn evaluate_block_body(
                     local_names.insert(name);
                 }
             }
-            NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
+            NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
                 if lexical_alias_operator_shape(expr) {
                     return Err(bare_alias_spelling_failure(selected));
@@ -446,7 +388,7 @@ fn evaluate_block_body(
                 return Err(unsupported_body(
                     selected,
                     ResolverCode::UnsupportedSelectedSourceBody,
-                    "selected source body contains an ordinary expression form; expected an explicit TailValue terminal",
+                    "serial expression completion requires the shared continuation consumer; UnitDiscard and implicit ReturnEvent are not yet executable",
                 ));
             }
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
@@ -476,46 +418,16 @@ fn evaluate_block_body(
         ));
     }
 
-    let expr = match report.terminal {
-        Some(crate::control_flow_end::ControlFlowTerminal::TailValue(expr)) => expr,
-        Some(crate::control_flow_end::ControlFlowTerminal::ReturnEvent(event)) => {
-            return Err(unsupported_body(
-                selected,
-                ResolverCode::UnsupportedSelectedSourceBody,
-                return_event_execution_gap_message(&event),
-            ));
-        }
-        None => {
-            return Err(unsupported_body(
-                selected,
-                ResolverCode::UnsupportedSelectedSourceBody,
-                "selected source body has no terminal form",
-            ));
-        }
-    };
-
-    // `X;` — the direct delivery terminal: the named value is delivered to
-    // the direct outer layer.  This is the ordinary `expr;` terminal form,
-    // not a member event.
-    if let NormExpr::Name { text, .. } = &expr {
-        let terminal_name = text.clone();
-        if local_names.contains(&terminal_name) {
-            return Err(selected_body_failure(
-                selected,
-                ResolverCode::UnsupportedSelectedSourceBodyLocalBinding,
-                "selected source-body local bindings are not connected to execution",
-            ));
-        }
-        return evaluate_contribution_rhs_name(
-            type_env,
-            resolver_context,
-            selected,
-            &local_names,
-            &terminal_name,
-        );
-    }
-
-    Err(evaluate_contribution_expr(selected, &expr))
+    Err(unsupported_body(
+        selected,
+        ResolverCode::UnsupportedSelectedSourceBody,
+        match report.terminal {
+            Some(crate::control_flow_end::ControlFlowTerminal::ReturnEvent(event)) => {
+                return_event_execution_gap_message(&event)
+            }
+            None => "serial block completion is not yet executable",
+        },
+    ))
 }
 
 /// Shape test for an illegal expression use of the lexical-alias delimiter.
@@ -546,29 +458,6 @@ fn unsupported_lexical_alias_failure(selected: &SelectedSourceBody) -> SourceBod
     )
 }
 
-fn identity_type_material(
-    selected: &SelectedSourceBody,
-    represented_type: Option<crate::TypeValueId>,
-    complete_type_observation: Option<crate::CanonicalValueAddr>,
-) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
-    let (Some(represented_type), Some(complete_type_observation)) =
-        (represented_type, complete_type_observation)
-    else {
-        return Err(unsupported_body(
-            selected,
-            ResolverCode::UnsupportedSelectedSourceBody,
-            "selected identity-type body requires a world-connected canonical type observation",
-        ));
-    };
-    Ok(MetaExecutionMaterial::IdentityType(
-        crate::IdentityTypeMaterial {
-            type_value: represented_type,
-            type_observation: crate::CanonicalTypeObservation::Observed(complete_type_observation),
-            provenance: selected.source_callable.provenance.clone(),
-        },
-    ))
-}
-
 fn unsupported_body(
     selected: &SelectedSourceBody,
     code: ResolverCode,
@@ -577,28 +466,14 @@ fn unsupported_body(
     selected_body_failure(selected, code, message)
 }
 
-/// Execution-gap record for the three control-flow end events. The
-/// syntax/normalizer contract distinguishes them
-/// (`spec/contracts/control-flow-end-events.md`):
-///
-/// ```text
-/// expr;              deliver to the directly enclosing layer
-/// expr return;       return to the outermost function layer
-/// expr (T return);   return to the layer selected by function-object type T
-/// ```
-///
-/// Source-body execution currently supports only the first form (the
-/// `expr;` tail delivery).  Both return-event forms are contract-complete
-/// but not yet executable; each is reported under its own documented
-/// semantics rather than one blanket message, so the gap is an explicit
-/// per-form record instead of a silent collapse.
+/// Return target binding is available; shared completion execution is not.
 fn return_event_execution_gap_message(event: &lang_syntax::NormReturnEvent) -> &'static str {
     match event.target {
-        lang_syntax::NormReturnTargetSyntax::ImplicitNearest => {
-            "control-flow end `expr return;` (return to the outermost function layer) is not yet executable; only the `expr;` delivery to the directly enclosing layer executes"
+        lang_syntax::NormReturnTargetSyntax::Omitted => {
+            "return to the outermost enclosing function layer is not yet executable"
         }
         lang_syntax::NormReturnTargetSyntax::Explicit(_) => {
-            "control-flow end `expr (T return);` (return to the layer selected by the function-object type) is not yet executable; only the `expr;` delivery to the directly enclosing layer executes"
+            "return to the explicitly selected active frame is not yet executable"
         }
     }
 }

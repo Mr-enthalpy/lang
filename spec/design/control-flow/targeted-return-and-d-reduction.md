@@ -9,7 +9,7 @@ syntax and D-reduction. The current implementation deliberately stops
 at return target binding.
 
 The current implementation provides the structural syntax and normalized
-AST (`ReturnEvent`, `TailValue`, and unresolved return target syntax) plus
+AST (`Expr`, explicit `ReturnEvent`, and Omitted/Explicit target syntax) plus
 a minimal semantic return-target binding pass. D-reduction, completion
 propagation, and execution/lowering consumers remain unconnected.
 
@@ -57,8 +57,8 @@ implicit return, obtained from the active return-target context. It does not
 mean the most recently entered callable frame.
 
 The implicit return spelling `E return;` selects the outermost enclosing
-function layer. The current active-frame binder still selects its most recent
-frame; alignment to this rule is consumer work, not an alternate semantics.
+function layer. The active-frame binder implements this query without inferring
+whether a plain expression produces an event.
 
 ### 1.1 Two distinct implicit operations
 
@@ -101,8 +101,8 @@ evaluate an unconstrained temporary to discover a type, execute candidate
 bodies speculatively, re-evaluate e, or reopen selection. Type/result evidence
 and the consumer belong to the same ordinary E relation.
 
-The current TailValue tag and nearest-frame binding code are implementation
-debt. Neither defines tail position or combines these two implicit operations.
+Plain expressions remain Expr in Raw/Norm. The Omitted target tag records only
+missing target syntax on an explicit event. Serial completion remains pending.
 
 ## 2. Return Capability Completion
 
@@ -247,7 +247,7 @@ completions or perform D-reduction.
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
 | Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full callable-frame self capability |
-| Omitted ReturnTarget | Binder alignment pending | Outermost enclosing function layer, after a ReturnEvent exists |
+| Omitted ReturnTarget | Outermost active function frame query | Outermost enclosing function layer, after a ReturnEvent exists |
 | Implicit ReturnEvent / serial consumer | Path-tail and UnitDiscard consumer pending | Non-tail requires unit; tail unit falls through; tail non-unit synthesizes ReturnEvent |
 | Explicit self target | Attempts active self-frame match; does not silently fall back to nearest | Full self capability object |
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |

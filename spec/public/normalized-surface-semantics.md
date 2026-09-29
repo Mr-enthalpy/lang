@@ -333,11 +333,11 @@ that forwards under the selected receiver Pattern and immediate result demand.
 Its own self and explicit receiver remain distinct. Binding the selector and
 using it later follows the same pipe/Product rules.
 
-Current Raw `DotClosure` / `MemberSugar` and normalized
-`Generated(DotClosureLowering)` preserve the older generated in-place helper
-carrier. This is implementation debt, not canonical forwarding authority.
-Migration must preserve source/recovery and ordinary association; no provenance
-tag may absorb subsequent Products or bypass legality repair.
+Raw `DotName` / `MemberSugar` normalize to ordinary `name::adl`
+navigation, with `Generated(DotNameLowering)` provenance. Compact member
+syntax supplies the receiver through the existing pipe skeleton.
+The normalizer creates no forwarding body and performs no name resolution.
+No provenance tag may absorb subsequent Products or bypass legality repair.
 Normalization creates syntax carriers only. Every legal semantic completion
 of a closure expression produces full tau_C; it is not restricted to binding
 or call positions. In-place syntax uses automatic dependency formation;
@@ -395,7 +395,7 @@ Explicit `()` inside brackets is a user-written Unit product: obj[()] => (obj, (
 
 ### Shared boundary
 
-In the current legacy generated carriers, `T`, `val`, and dot-closure `args` are local
+In the double-dot and prefix-negative helpers, `T` and `val` are local
 generated binders, and the receiver becomes the call's source product (a
 `ProductLift`). `...args` is a Pattern remainder binding, not a pack type.
 
@@ -799,32 +799,25 @@ There is no type checking, kind checking, Pattern-head resolution, or general
 matching at normalization. `Option::std` / `Pair::std` are not resolved, and
 whether `T Option::std` is a legal type pattern is not decided.
 
-### Existing Policy carriers and migration
+### Policy constraint carriers
 
 Binding prefixes and callable-head P2 positions normalize to:
 
 ```text
-NormPolicySpec {
-  value_policy: NormValuePolicyPattern,
-  pattern_policy: Option<NormPolicyConjunction>
-}
-
-NormPolicyConjunction { choices: Vec<NormPolicyChoice> }
-NormPolicyChoice { atoms: Vec<NormPolicyAtom> }
+NormPolicySpec { constraint: NormPolicyConjunction, origin }
+NormPolicyConjunction { atoms: Vec<NormPolicyAtom>, origin }
 ```
 
-These are current carrier shapes, not the canonical public Policy algebra.
-Public `Pv:Pp` pair literal/extraction and stage/mode unions are retired.
-Internal Pv/Pp observations remain independent: direct Policy of a source and
-Policy of its direct type projection observe the same evaluation edge.
-Binding the projected type to a new name introduces a new destination view.
-Mode, safety, visibility and complete migration endpoints remain independent.
+The syntax preserves ordinary atoms, parenthesized conjunctions and orthogonal
++. Public pair and choice forms are diagnosed in Policy contexts; expression
+operators and type/call annotations retain their separate grammar.
+Internal value/type Policy observations remain independent. Direct projections
+observe the same source evaluation edge; a new binding has its own destination.
+Mode, safety, visibility and migration endpoints remain independent.
 
-Concrete `runtime let` is equivalent in deduction scope to
-`<> runtime let`, not `<runtime> runtime let`. Omission, concrete material,
+Concrete `runtime let` introduces no hole. Omission, concrete material,
 declared HoleRef and general `<> p$ let` splice remain distinct.
-The parser/normalizer consumer migration is pending; current `PolicyChoice`
-or colon carriers grant no semantic authority.
+General Policy splice and complete source observation consumers remain pending.
 
 The P1 form `meta let f = expression` uses this existing policy-prefixed
 binding shape. Its `meta` atom remains a Name. Contextual meta qualification is
@@ -1059,10 +1052,8 @@ NormClosure.placement = InPlace | Ordinary
 NormClosure.origin    = Source | Generated(rule) | Derived(rule)
 ```
 
-Generated provenance never replaces placement. The **legacy current** helper
-for .name has placement=InPlace and origin=Generated(DotClosureLowering).
-This is migration debt: canonical .name is ordinary name::adl, not a mandate
-for normalization to generate a forwarding implementation.
+Generated provenance never replaces placement. Dot names normalize to
+ordinary navigation; they do not create a closure or a placement flag.
 
 ## 10. Alias Preservation
 
@@ -1146,7 +1137,7 @@ Generated:
   ProductLift
   OperatorLowering
   PrefixNegativeLowering
-  DotClosureLowering
+  DotNameLowering
   MemberLowering
   DoubleDotLowering
   BracketCallLowering
@@ -1206,17 +1197,11 @@ implemented.
 The normalized surface reports control-flow end events structurally.
 These are not ordinary expressions or calls.
 
-### TailValue
+### Plain expressions
 
-The last expression form in each body block is normalized as:
-
-```text
-NormForm::TailValue(NormExpr)
-```
-
-This is the current structural carrier, not a definition of semantic tail
-position or return-event inference. Canonical tail depends on each
-SemanticContinuation/control-flow path, including branch paths.
+Every plain expression in a body remains `NormForm::Expr(NormExpr)`.
+The normalizer assigns no completion from list position. Semantic tailness
+depends on each continuation/control-flow path, including branch paths.
 
 The [return owner](../design/control-flow/targeted-return-and-d-reduction.md#11-two-distinct-implicit-operations)
 separates implicit ReturnEvent from omitted ReturnTarget. Non-tail expression
@@ -1240,15 +1225,15 @@ NormReturnEvent {
 }
 
 NormReturnTargetSyntax ::=
-    ImplicitNearest
+    Omitted
   | Explicit(NormExpr)
 ```
 
 | Source | Normalized Form |
 |---|---|
-| `E return;` | `ReturnEvent(value = E, target = ImplicitNearest)` |
-| `E \|> (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
-| `E (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E return;` | `ReturnEvent(value = E, target = Omitted)` |
+| `E \|> (return);` | `ReturnEvent(value = E, target = Omitted)` |
+| `E (return);` | `ReturnEvent(value = E, target = Omitted)` |
 | `E \|> (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
 | `E (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
 
@@ -1325,9 +1310,9 @@ must keep syntax-directed positional distinctions without resolving targets.
 semantics; [closure replication](../design/symbol-world/closure-anchored-replication.md)
 removes any need to pass the LHS anchor backward into RHS normalization.
 
-The current ImplicitNearest return tag is structural spelling only. Implicit
-E return selects the outermost enclosing function layer. The build binder is
-pending alignment; neither parser nor normalizer resolves that target.
+The Omitted return tag records only missing target syntax on an explicit event.
+The build binder selects the outermost active function frame; neither parser
+nor normalizer resolves that target. Serial completion remains unconnected.
 
 ### Semantic consumer alignment
 

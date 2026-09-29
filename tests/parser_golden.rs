@@ -721,7 +721,7 @@ fn closure_inplace_empty() {
 
 #[test]
 fn closure_inplace_body() {
-    assert_parser_case("closure_inplace_body", true);
+    assert_parser_case("closure_inplace_body", false);
 }
 
 #[test]
@@ -840,8 +840,18 @@ fn policy_let_nested_expression_contexts() {
 }
 
 #[test]
-fn policy_pair() {
-    assert_parser_case("policy_pair", false);
+fn policy_constraint() {
+    assert_parser_case("policy_conjunction", false);
+}
+
+#[test]
+fn invalid_policy_pair_surface() {
+    assert_parser_case("invalid_policy_pair_surface", true);
+}
+
+#[test]
+fn invalid_policy_choice_surface() {
+    assert_parser_case("invalid_policy_choice_surface", true);
 }
 
 #[test]
@@ -1021,7 +1031,7 @@ fn head_clause_names_outside_head() {
 
 #[test]
 fn closure_body_multi_form() {
-    assert_parser_case("closure_body_multi_form", true);
+    assert_parser_case("closure_body_multi_form", false);
 }
 
 #[test]
@@ -1031,7 +1041,7 @@ fn closure_body_newline_single_form() {
 
 #[test]
 fn closure_body_semicolon_two_forms() {
-    assert_parser_case("closure_body_semicolon_two_forms", true);
+    assert_parser_case("closure_body_semicolon_two_forms", false);
 }
 
 #[test]

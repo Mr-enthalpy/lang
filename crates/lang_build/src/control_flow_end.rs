@@ -5,9 +5,33 @@ pub struct ControlFlowEndReport {
     pub diagnostics: Vec<ControlFlowEndDiagnostic>,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ordinary_expressions_do_not_terminate_but_explicit_unit_return_does() {
+        for source in ["(); value;", "value; ();", "(); let x = value;"] {
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let report =
+                compute_control_flow_end_report(&lang_syntax::normalize_program(&parsed.program));
+            assert!(report.terminal.is_none());
+            assert!(report.diagnostics.is_empty());
+        }
+        let parsed = lang_syntax::parse("() return; value;");
+        let report =
+            compute_control_flow_end_report(&lang_syntax::normalize_program(&parsed.program));
+        assert!(matches!(
+            report.terminal,
+            Some(ControlFlowTerminal::ReturnEvent(_))
+        ));
+        assert_eq!(report.diagnostics.len(), 1);
+    }
+}
+
 #[derive(Debug)]
 pub enum ControlFlowTerminal {
-    TailValue(lang_syntax::NormExpr),
     ReturnEvent(NormReturnEvent),
 }
 
@@ -30,10 +54,6 @@ pub fn compute_control_flow_end_report(program: &NormProgram) -> ControlFlowEndR
         }
 
         match form {
-            NormForm::TailValue(expr) => {
-                terminal = Some(ControlFlowTerminal::TailValue(expr.clone()));
-                seen_terminal = true;
-            }
             NormForm::ReturnEvent(return_ev) => {
                 terminal = Some(ControlFlowTerminal::ReturnEvent(return_ev.clone()));
                 seen_terminal = true;
@@ -55,7 +75,6 @@ fn form_origin(form: &NormForm) -> NormOrigin {
             | lang_syntax::NormDecl::Alias { origin, .. } => origin.clone(),
             lang_syntax::NormDecl::Error(error) => error.origin.clone(),
         },
-        NormForm::TailValue(expr) => expr_origin(expr),
         NormForm::ReturnEvent(return_ev) => return_ev.origin.clone(),
         NormForm::Expr(expr) => expr_origin(expr),
         NormForm::Error(error) => error.origin.clone(),

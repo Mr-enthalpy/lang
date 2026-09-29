@@ -19,11 +19,10 @@ pub use ast::{
     ClosureBodyAst, ClosurePlacementAst, DeduceListAst, DeleteBodyAst, EntityRefAst, ErrorAst,
     ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst, LetAliasAst, LetAst,
     MemberVisibilityAst, NameAst, NavComponentAst, OperatorExprAst, OperatorExprKind,
-    OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
+    OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst,
     PolicyConjunctionAst, PolicyLetAst, PolicySpecAst, ProductElementAst, ProductExprAst,
     ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, ReturnEventAst,
-    ReturnTargetAst, SegmentAst, SegmentElementAst, SelectorAst, ValuePolicyPatternAst,
-    WithClauseAst, WithClauseKind,
+    ReturnTargetAst, SegmentAst, SegmentElementAst, SelectorAst, WithClauseAst, WithClauseKind,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};
@@ -37,11 +36,10 @@ pub use norm::{
     NormClosureBody, NormClosureHead, NormClosurePlacement, NormDecl, NormDeleteBody,
     NormEntityRef, NormError, NormExpr, NormForm, NormHeadClause, NormHoleDecl, NormLiteralKind,
     NormNavComponent, NormOperatorFixity, NormOrigin, NormOverloadStrategy, NormPattern,
-    NormPatternElem, NormPolicyAtom, NormPolicyChoice, NormPolicyConjunction, NormPolicySpec,
-    NormProduct, NormProductElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax, NormRule,
-    NormSemanticOwnerId, NormSkeleton, NormSkeletonElem, NormValuePolicyPattern, NormWithClause,
-    PackPatternLayerError, PatternInvalidNormProgram, PatternRootId, PatternValidatedNormProgram,
-    PatternValidationError,
+    NormPatternElem, NormPolicyAtom, NormPolicyConjunction, NormPolicySpec, NormProduct,
+    NormProductElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax, NormRule,
+    NormSemanticOwnerId, NormSkeleton, NormSkeletonElem, NormWithClause, PackPatternLayerError,
+    PatternInvalidNormProgram, PatternRootId, PatternValidatedNormProgram, PatternValidationError,
 };
 pub use parser::{parse, ParseOutput};
 pub use source::normalize_source_text;

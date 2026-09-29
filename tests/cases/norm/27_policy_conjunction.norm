@@ -1,0 +1,87 @@
+NormProgram origin=Source@1:1[0..81]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..29]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:21[20..29]
+          policy:
+            PolicySpec
+              PolicyConjunction
+                  PolicyAtom Name "const"
+                  PolicyAtom Name "compile"
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@1:21[20..21]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@1:25[24..29]
+    Form Let
+      Decl Let origin=Source@2:1[31..79]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[35..79]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@2:5[35..36]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@2:9[39..79]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@2:9[39..65]
+                  deduce:
+                    None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@2:10[40..44]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "self" origin=Source@2:10[40..44]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@2:16[46..47]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "a" origin=Source@2:16[46..47]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                  call_policy:
+                    PolicySpec
+                      PolicyConjunction
+                          PolicyAtom Name "runtime"
+                  returns:
+                    BindingSlot let=false origin=Generated(PatternNormalize)@2:31[61..62]
+                      deduce:
+                        None
+                      value_pattern:
+                        PatternSkeleton origin=Generated(PatternNormalize)@2:31[61..62]
+                          SkeletonWildcard origin=Source@2:31[61..62]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+              body:
+                NormBody origin=Source@2:36[66..79]
+                  forms:
+                    Form ReturnEvent
+                      value
+                        Name "a" origin=Source@2:38[68..69]
+                      target
+                        Omitted

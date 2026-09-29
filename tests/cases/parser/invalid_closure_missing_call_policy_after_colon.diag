@@ -1,1 +1,2 @@
 error InvalidClosureHead "expected call-result policy after `:`" @ 1:6 [5..7]
+error UnexpectedToken "expected policy atom" @ 1:6 [5..7]

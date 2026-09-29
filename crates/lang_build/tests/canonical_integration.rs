@@ -12,10 +12,8 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CompilationWorld, ExecutionEnv, InvocationOutcome,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
-    PatternClusterOwner, PatternComponentPolicy, Phase, PolicyEnv, PolicyMigrationRequest,
-    PolicyMode, PolicyPair, PolicyStage, Provenance, ResolveExpectation, ResolverCode,
-    SemanticOwnerKind, SemanticValuePayload, StageSet, SymbolPayload, ToolchainGlobalSourceRoot,
-    ValueComponentPolicy, ValuePresence,
+    PatternClusterOwner, Phase, PolicyEnv, PolicyMode, Provenance, ResolverCode, SemanticOwnerKind,
+    SemanticValuePayload, ToolchainGlobalSourceRoot,
 };
 
 use support::{
@@ -435,101 +433,6 @@ fn privileged_struct_uses_the_normal_overload_path() {
 // `let T: type = (uint8 a) struct;` and `let R: type = uint8 make_one;`
 // install fresh destination cluster Symbols.
 // ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ⑨ Runtime migration full chain — exercise the complete
-// `install_semantic_value` → `invoke_policy_migration` chain
-// (source value → transport member selection → migrated demanded view).
-// ---------------------------------------------------------------------------
-
-#[test]
-fn runtime_migration_full_chain_through_source_backed_transport() {
-    let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
-    manifest
-        .global_implementation_roots
-        .push(ToolchainGlobalSourceRoot::under(
-            fixture_root()
-                .join("global_implementation")
-                .join("uint8_transport"),
-            vec!["core".to_string(), "uint8".to_string()],
-        ));
-    let mut world = CompilationWorld::from_manifest(&manifest)
-        .expect("source-backed transport bundle mounts without conflict");
-
-    let uint8 = world
-        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
-        .expect("core uint8 type");
-    let SymbolPayload::CompleteTypeProjection(uint8_type) = uint8.payload else {
-        panic!("uint8 resolves as a CompleteType projection");
-    };
-    let type_value = uint8_type.represented_type;
-
-    let stage_set = |items: &[PolicyStage]| {
-        let mut set = StageSet::new();
-        for stage in items {
-            set.insert(*stage);
-        }
-        set
-    };
-    let policy = |value_stages: &[PolicyStage], _mode: PolicyMode| PolicyPair {
-        value: ValueComponentPolicy {
-            stages: stage_set(value_stages),
-            presence: ValuePresence::Present,
-        },
-        pattern: PatternComponentPolicy {
-            stages: stage_set(&[PolicyStage::Compile]),
-        },
-    };
-    let source_policy = policy(&[PolicyStage::Compile], PolicyMode::Const);
-    let target_policy = policy(&[PolicyStage::Runtime], PolicyMode::Mut);
-
-    let source = world
-        .install_semantic_value(
-            type_value,
-            source_policy.clone(),
-            Provenance::new("compile uint8 migration source"),
-        )
-        .expect("installed value reuses the uint8 PatternValue");
-    let request = PolicyMigrationRequest::new(
-        lang_build::PolicyView {
-            pair: source_policy,
-            mode: PolicyMode::Const,
-        },
-        lang_build::ResultPolicyDemand {
-            pair_query: lang_build::P1Projection::Pair(target_policy.clone()),
-            mode: PolicyMode::Mut,
-        },
-        type_value,
-        source,
-        Provenance::new("const compile -> mut runtime demand"),
-    )
-    .expect("legal migration request");
-
-    let migration = world
-        .invoke_policy_migration(&request)
-        .expect("source-backed transport member is selected and invoked");
-    assert!(
-        migration
-            .invocation
-            .selected
-            .migration_output_endpoint
-            .is_some(),
-        "selected transport carries the single migration output authority"
-    );
-    assert_eq!(migration.demanded_view.len(), 1);
-    assert_eq!(
-        migration.demanded_view[0].view.pair.value,
-        target_policy.value
-    );
-    assert_eq!(
-        migration.demanded_view[0]
-            .value
-            .expect("migrated demanded view carries a runtime value")
-            .id,
-        source,
-        "a forwarding transport keeps the identity of the existing source value"
-    );
-}
 
 // ---------------------------------------------------------------------------
 // ⑩ A flat symbol-level Policy aggregate cannot reproduce the canonical

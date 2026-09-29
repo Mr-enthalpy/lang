@@ -716,8 +716,8 @@ selected function object's self in position zero and binderless <> P in the
 explicit argument position. self is a schematic fresh binder here; its
 spelling is unrestricted. Neither (<> P) alone nor wildcard padding preserves
 that invocation frame. Ordinary calls supply x as self; type projection
-supplies the selected c, never the type tau itself. Existing self-less
-Raw/Norm shorthand carriers require migration; their shape is not this law.
+supplies the selected c, never the type tau itself. Raw/Norm shorthand
+expansion retains both self and the binderless explicit Pattern.
 
 Current parser coverage admits one non-composite atomic `P` in the shorthand.
 That is a surface boundary, not a restriction on binderless Pattern semantics.

@@ -59,12 +59,8 @@ Program
                               elements:
                         call_policy:
                           PolicySpec
-                            value_policy:
-                              PolicyConjunction
-                                PolicyChoice
-                                  PolicyAtom Name "compile"
-                            pattern_policy:
-                              None
+                            PolicyConjunction
+                                PolicyAtom Name "compile"
                       OverloadStrategy s
                       BodyBlock
                         forms:

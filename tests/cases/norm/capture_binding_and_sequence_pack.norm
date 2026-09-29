@@ -60,7 +60,7 @@ NormProgram origin=Source@1:1[0..231]
               body:
                 NormBody origin=Source@1:56[55..60]
                   forms:
-                    Form TailValue
+                    Form Expr
                       Name "x" origin=Source@1:58[57..58]
     Form Let
       Decl Let origin=Source@2:1[62..106]
@@ -131,7 +131,7 @@ NormProgram origin=Source@1:1[0..231]
               body:
                 NormBody origin=Source@2:40[101..106]
                   forms:
-                    Form TailValue
+                    Form Expr
                       Name "x" origin=Source@2:42[103..104]
     Form Let
       Decl Let origin=Source@3:1[108..148]
@@ -181,7 +181,7 @@ NormProgram origin=Source@1:1[0..231]
               body:
                 NormBody origin=Source@3:36[143..148]
                   forms:
-                    Form TailValue
+                    Form Expr
                       Name "z" origin=Source@3:38[145..146]
     Form Let
       Decl Let origin=Source@4:1[150..197]
@@ -241,14 +241,14 @@ NormProgram origin=Source@1:1[0..231]
                           body:
                             NormBody origin=Source@4:24[173..180]
                               forms:
-                                Form TailValue
+                                Form Expr
                                   Name "cap" origin=Source@4:26[175..178]
                   params:
                     None
               body:
                 NormBody origin=Source@4:39[188..197]
                   forms:
-                    Form TailValue
+                    Form Expr
                       Name "value" origin=Source@4:41[190..195]
     Form Let
       Decl Let origin=Source@5:1[199..229]

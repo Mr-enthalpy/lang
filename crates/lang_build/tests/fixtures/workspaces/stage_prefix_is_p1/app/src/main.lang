@@ -1,7 +1,7 @@
 let int: type = uint16;
 
 compile let narrow =
-  (self, t: type): (meta || compile):(meta || compile)
+  (self, t: type): compile
     -> let r: type =>
 {
   t;

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use lang_syntax::norm::{
     NormBindingSlot, NormClosure, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr,
     NormForm, NormNavComponent, NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem,
-    NormPolicyAtom, NormProduct, NormProductElem, NormProgram, NormRule, NormValuePolicyPattern,
+    NormPolicyAtom, NormProduct, NormProductElem, NormProgram, NormRule,
 };
 
 fn case_path(name: &str, extension: &str) -> PathBuf {
@@ -211,8 +211,8 @@ fn expect_generated_body_call(closure: &NormClosure) -> (&NormProduct, &NormExpr
         NormClosureBody::Delete(_) => panic!("expected block body, got delete"),
     };
     match prog.forms.as_slice() {
-        [NormForm::TailValue(expr)] => expect_call(expr),
-        other => panic!("expected generated closure body TailValue, got {other:#?}"),
+        [NormForm::Expr(expr)] => expect_call(expr),
+        other => panic!("expected generated closure body expression, got {other:#?}"),
     }
 }
 
@@ -282,8 +282,8 @@ fn annotation_pattern() {
 }
 
 #[test]
-fn policy_pair_preservation() {
-    assert_norm_case("27_policy_pair", false);
+fn policy_constraint_preservation() {
+    assert_norm_case("27_policy_conjunction", false);
 }
 
 #[test]
@@ -300,14 +300,9 @@ fn policy_let_policy_uses_inherited_hole_environment() {
     let Some(NormExpr::PolicyLet { policy, .. }) = slot.initializer.as_deref() else {
         panic!("expected preserved PolicyLet initializer");
     };
-    let NormValuePolicyPattern::Conjunction(conjunction) = &policy.value_policy else {
-        panic!("expected policy conjunction");
-    };
-    let [choice] = conjunction.choices.as_slice() else {
-        panic!("expected one policy choice");
-    };
+    let conjunction = &policy.constraint;
     assert!(matches!(
-        choice.atoms.as_slice(),
+        conjunction.atoms.as_slice(),
         [NormPolicyAtom::HoleRef { target, text, .. }]
             if *target == hole.id && text == "P"
     ));
@@ -549,25 +544,12 @@ fn prefix_negative_generated_closure_has_expected_shape() {
 }
 
 #[test]
-fn member_sugar_generated_closure_has_unresolved_nav_target() {
+fn member_sugar_has_unresolved_adl_target() {
     let expr = single_expr_from_source("obj.field");
-    let (source, _, origin) = expect_call(&expr);
+    let (source, target, origin) = expect_call(&expr);
     expect_generated(origin, NormRule::MemberLowering);
     expect_product_elem_name(source, 0, "obj");
-
-    let (_, target, _) = expect_call(&expr);
-    let NormExpr::Closure(closure) = target else {
-        panic!("expected dot-closure target, got {target:#?}");
-    };
-    assert_eq!(closure.placement, NormClosurePlacement::InPlace);
-    expect_generated(&closure.origin, NormRule::DotClosureLowering);
-    expect_generated_receiver_head(closure, NormRule::DotClosureLowering, true);
-    let (body_source, body_target, body_origin) = expect_generated_body_call(closure);
-    expect_generated(body_origin, NormRule::DotClosureLowering);
-    assert_eq!(body_source.elements.len(), 2);
-    expect_product_elem_name(body_source, 0, "val");
-    expect_product_elem_name(body_source, 1, "args");
-    expect_nav_names(body_target, &["field", "T"]);
+    expect_nav_names(target, &["field", "adl"]);
 }
 
 #[test]

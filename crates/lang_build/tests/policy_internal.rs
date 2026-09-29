@@ -47,9 +47,27 @@ fn policy_view_stage_controls_execution_without_changing_mode() {
 
 #[test]
 fn phase_projection_does_not_define_symbol_existence() {
-    let world = build_single_fixture_world_with_uint8_transport("user_runtime_values", "app");
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+    let mut delta = world.namespace_projection().empty_delta();
+    let mut symbol = SymbolObject::new(
+        delta.allocate_symbol_id(),
+        "x",
+        SymbolKind::Object,
+        SourceCategory::DeclaredSymbol,
+        Some(world.package_root_node()),
+        Provenance::new("runtime observation fixture"),
+    );
+    symbol.policy_view = Some(declared_policy_view(
+        &[PolicyStage::Runtime],
+        PolicyMode::Plain,
+    ));
+    delta.insert_symbol(world.package_root_node(), symbol);
+    let snapshot = world
+        .namespace_projection()
+        .install_delta(delta)
+        .expect("install fixture");
     let context = world.package_context();
-    let capability = world.namespace_projection().capability();
+    let capability = snapshot.capability();
 
     let symbol = capability
         .resolve(&["x".to_string()], &context)

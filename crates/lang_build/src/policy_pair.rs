@@ -1,8 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use lang_syntax::{
-    NormPolicyAtom, NormPolicyChoice, NormPolicyConjunction, NormPolicySpec, NormValuePolicyPattern,
-};
+use lang_syntax::{NormPolicyAtom, NormPolicyConjunction, NormPolicySpec};
 
 use crate::{Diagnostic, Provenance};
 
@@ -788,7 +786,6 @@ struct ComponentAtoms {
     mode_atoms: BTreeSet<PolicyMode>,
     namespace: BTreeSet<NamespaceVisibility>,
     export_root: bool,
-    absent_value: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -797,7 +794,6 @@ enum PolicyDimension {
     Mode,
     NamespaceVisibility,
     ExportRoot,
-    ValuePresence,
 }
 
 impl ComponentAtoms {
@@ -815,18 +811,7 @@ impl ComponentAtoms {
         if self.export_root {
             result.insert(PolicyDimension::ExportRoot);
         }
-        if self.absent_value {
-            result.insert(PolicyDimension::ValuePresence);
-        }
         result
-    }
-
-    fn presence(&self) -> ValuePresence {
-        match (self.absent_value, self.stages.is_empty()) {
-            (true, true) => ValuePresence::Absent,
-            (true, false) => ValuePresence::Optional,
-            (false, _) => ValuePresence::Present,
-        }
     }
 }
 
@@ -834,78 +819,35 @@ pub fn normalize_p2_policy(
     policy: &NormPolicySpec,
     provenance: Provenance,
 ) -> Result<PolicyView, Diagnostic> {
-    match (&policy.value_policy, &policy.pattern_policy) {
-        (NormValuePolicyPattern::Conjunction(value), None) => {
-            let atoms = parse_component(value, true, provenance.clone())?;
-            reject_namespace_attributes(&atoms, "P2", provenance.clone())?;
-            let mode = concrete_mode_atom(&atoms, "P2", provenance.clone())?;
-            let presence = atoms.presence();
-            let static_stages = atoms.stages.static_stages();
-            let pattern_stages = if static_stages.is_empty() {
-                if !atoms.stages.contains(PolicyStage::Runtime) {
-                    return Err(policy_error(
-                        "P2 single-policy form requires a stage",
-                        provenance,
-                    ));
-                }
-                StageSet::from([PolicyStage::Compile])
-            } else {
-                static_stages
-            };
-            let pair = validate_p2_pair(
-                PolicyPair {
-                    value: ValueComponentPolicy {
-                        stages: atoms.stages,
-                        presence,
-                    },
-                    pattern: PatternComponentPolicy {
-                        stages: pattern_stages,
-                    },
-                },
+    let atoms = parse_component(&policy.constraint, provenance.clone())?;
+    reject_namespace_attributes(&atoms, "P2", provenance.clone())?;
+    let mode = concrete_mode_atom(&atoms, "P2", provenance.clone())?;
+    let presence = ValuePresence::Present;
+    let static_stages = atoms.stages.static_stages();
+    let pattern_stages = if static_stages.is_empty() {
+        if !atoms.stages.contains(PolicyStage::Runtime) {
+            return Err(policy_error(
+                "P2 single-policy form requires a stage",
                 provenance,
-            )?;
-            Ok(PolicyView { pair, mode })
+            ));
         }
-        (value_pattern, Some(pattern)) => {
-            let value_atoms = match value_pattern {
-                NormValuePolicyPattern::Conjunction(value) => {
-                    parse_component(value, true, provenance.clone())?
-                }
-                NormValuePolicyPattern::Absent { .. } => ComponentAtoms {
-                    absent_value: true,
-                    ..ComponentAtoms::default()
-                },
-            };
-            let pattern_atoms = parse_component(pattern, false, provenance.clone())?;
-            reject_namespace_attributes(&value_atoms, "P2", provenance.clone())?;
-            reject_namespace_attributes(&pattern_atoms, "P2", provenance.clone())?;
-            let value_presence = value_atoms.presence();
-            if !pattern_atoms.mode_atoms.is_empty() {
-                return Err(policy_error(
-                    "PolicyMode is a whole-slot coordinate and may not appear in Pp",
-                    provenance,
-                ));
-            }
-            let mode = concrete_mode_atom(&value_atoms, "P2", provenance.clone())?;
-            let pair = validate_p2_pair(
-                PolicyPair {
-                    value: ValueComponentPolicy {
-                        stages: value_atoms.stages,
-                        presence: value_presence,
-                    },
-                    pattern: PatternComponentPolicy {
-                        stages: pattern_atoms.stages,
-                    },
-                },
-                provenance,
-            )?;
-            Ok(PolicyView { pair, mode })
-        }
-        (NormValuePolicyPattern::Absent { .. }, None) => Err(policy_error(
-            "an absent P2 value component requires an explicit Pattern component",
-            provenance,
-        )),
-    }
+        StageSet::from([PolicyStage::Compile])
+    } else {
+        static_stages
+    };
+    let pair = validate_p2_pair(
+        PolicyPair {
+            value: ValueComponentPolicy {
+                stages: atoms.stages,
+                presence,
+            },
+            pattern: PatternComponentPolicy {
+                stages: pattern_stages,
+            },
+        },
+        provenance,
+    )?;
+    Ok(PolicyView { pair, mode })
 }
 
 pub fn elaborate_binding_result_demand(
@@ -942,25 +884,9 @@ pub fn elaborate_formal_policy_pattern(
             mode: inherited_p2.mode,
         });
     };
-    if policy.pattern_policy.is_some() {
-        return Err(policy_error(
-            "formal parameter policy uses a value policy pattern, not a P1 pair projection",
-            provenance,
-        ));
-    }
-    let atoms = match &policy.value_policy {
-        NormValuePolicyPattern::Conjunction(value) => {
-            parse_component(value, false, provenance.clone())?
-        }
-        NormValuePolicyPattern::Absent { .. } => {
-            return Err(policy_error(
-                "formal parameter policy cannot use an absent value pattern",
-                provenance,
-            ));
-        }
-    };
+    let atoms = parse_component(&policy.constraint, provenance.clone())?;
     reject_namespace_attributes(&atoms, "formal parameter", provenance.clone())?;
-    if !atoms.stages.is_empty() || atoms.absent_value {
+    if !atoms.stages.is_empty() {
         return Err(policy_error(
             "formal parameter policy may restrict only the const/mut axis inherited from P2",
             provenance,
@@ -988,25 +914,9 @@ pub fn elaborate_return_policy_pattern(
             effective_view: inherited_p1.clone(),
         });
     };
-    if policy.pattern_policy.is_some() {
-        return Err(policy_error(
-            "return position policy may override only its whole-slot PolicyMode",
-            provenance,
-        ));
-    }
-    let atoms = match &policy.value_policy {
-        NormValuePolicyPattern::Conjunction(value) => {
-            parse_component(value, false, provenance.clone())?
-        }
-        NormValuePolicyPattern::Absent { .. } => {
-            return Err(policy_error(
-                "return position policy cannot rewrite inherited value presence",
-                provenance,
-            ));
-        }
-    };
+    let atoms = parse_component(&policy.constraint, provenance.clone())?;
     reject_namespace_attributes(&atoms, "return position", provenance.clone())?;
-    if !atoms.stages.is_empty() || atoms.absent_value {
+    if !atoms.stages.is_empty() {
         return Err(policy_error(
             "return position policy inherits evaluation stages and may override only PolicyMode",
             provenance,
@@ -1087,44 +997,7 @@ pub fn elaborate_explicit_p1(
     };
     let mut selection = ExplicitP1Selection::default();
 
-    // Pattern component of an explicit `Pv:Pp` pair projection.
-    if let Some(pattern) = &policy.pattern_policy {
-        let pattern_atoms = parse_component(pattern, false, provenance.clone())?;
-        reject_namespace_attributes(
-            &pattern_atoms,
-            "explicit P1 Pattern component",
-            provenance.clone(),
-        )?;
-        if !pattern_atoms.mode_atoms.is_empty() {
-            return Err(policy_error(
-                "PolicyMode is a whole-slot coordinate and may not appear in Pp",
-                provenance,
-            ));
-        }
-        if pattern_atoms.stages.is_empty() {
-            return Err(policy_error(
-                "an explicit P1 Pattern component requires at least one stage",
-                provenance,
-            ));
-        }
-        selection.pattern_stages = Some(pattern_atoms.stages);
-    }
-
-    let value_atoms = match &policy.value_policy {
-        NormValuePolicyPattern::Conjunction(value) => {
-            parse_component(value, true, provenance.clone())?
-        }
-        NormValuePolicyPattern::Absent { .. } => {
-            if policy.pattern_policy.is_none() {
-                return Err(policy_error(
-                    "an absent explicit P1 value pattern requires an explicit Pattern component",
-                    provenance,
-                ));
-            }
-            selection.presence = Some(ValuePresence::Absent);
-            return Ok(Some(selection));
-        }
-    };
+    let value_atoms = parse_component(&policy.constraint, provenance.clone())?;
     match position {
         // Visibility/export atoms in the outer prefix are namespace
         // declaration attributes, separate from the function-object P1.
@@ -1139,9 +1012,6 @@ pub fn elaborate_explicit_p1(
     }
     if !value_atoms.stages.is_empty() {
         selection.value_stages = Some(value_atoms.stages.clone());
-    }
-    if value_atoms.absent_value {
-        selection.presence = Some(value_atoms.presence());
     }
     if !value_atoms.mode_atoms.is_empty() {
         selection.mode = Some(explicit_mode_atom(&value_atoms, "explicit P1", provenance)?);
@@ -1227,69 +1097,15 @@ fn elaborate_p1_components(
     ),
     Diagnostic,
 > {
-    match (&policy.value_policy, &policy.pattern_policy) {
-        (NormValuePolicyPattern::Conjunction(value), None) => {
-            let atoms = parse_component(value, true, provenance.clone())?;
-            let mode = concrete_mode_atom(&atoms, "P1", provenance.clone())?;
-            let value = ValueComponentPolicy {
-                stages: atoms.stages.clone(),
-                presence: atoms.presence(),
-            };
-            validate_value_component_invariant(&value, "P1 value component", provenance)?;
-            let projection = P1Projection::ValueDominant { value };
-            Ok((projection, mode, atoms.namespace, atoms.export_root))
-        }
-        (value_pattern, Some(pattern)) => {
-            let value_atoms = match value_pattern {
-                NormValuePolicyPattern::Conjunction(value) => {
-                    parse_component(value, true, provenance.clone())?
-                }
-                NormValuePolicyPattern::Absent { .. } => ComponentAtoms {
-                    absent_value: true,
-                    ..ComponentAtoms::default()
-                },
-            };
-            let pattern_atoms = parse_component(pattern, false, provenance.clone())?;
-            if !pattern_atoms.mode_atoms.is_empty() {
-                return Err(policy_error(
-                    "PolicyMode is a whole-slot coordinate and may not appear in Pp",
-                    provenance,
-                ));
-            }
-            if pattern_atoms.stages.contains(PolicyStage::Runtime) {
-                return Err(policy_error(
-                    "the P1 Pattern component cannot contain runtime",
-                    provenance,
-                ));
-            }
-            let mut namespace = value_atoms.namespace.clone();
-            namespace.extend(pattern_atoms.namespace.iter().copied());
-            let export_root = value_atoms.export_root || pattern_atoms.export_root;
-            let mode = concrete_mode_atom(&value_atoms, "P1", provenance.clone())?;
-            one_namespace(&namespace, provenance.clone())?;
-            let value_presence = value_atoms.presence();
-            let value = ValueComponentPolicy {
-                stages: value_atoms.stages,
-                presence: value_presence,
-            };
-            validate_value_component_invariant(&value, "P1 value component", provenance.clone())?;
-            Ok((
-                P1Projection::Pair(PolicyPair {
-                    value,
-                    pattern: PatternComponentPolicy {
-                        stages: pattern_atoms.stages,
-                    },
-                }),
-                mode,
-                namespace,
-                export_root,
-            ))
-        }
-        (NormValuePolicyPattern::Absent { .. }, None) => Err(policy_error(
-            "an absent P1 value pattern requires an explicit Pattern component",
-            provenance,
-        )),
-    }
+    let atoms = parse_component(&policy.constraint, provenance.clone())?;
+    let mode = concrete_mode_atom(&atoms, "P1", provenance.clone())?;
+    let value = ValueComponentPolicy {
+        stages: atoms.stages.clone(),
+        presence: ValuePresence::Present,
+    };
+    validate_value_component_invariant(&value, "P1 value component", provenance)?;
+    let projection = P1Projection::ValueDominant { value };
+    Ok((projection, mode, atoms.namespace, atoms.export_root))
 }
 
 pub fn function_object_declaration_policy(
@@ -1477,80 +1293,17 @@ fn one_namespace(
 
 fn parse_component(
     conjunction: &NormPolicyConjunction,
-    allow_absent: bool,
     provenance: Provenance,
 ) -> Result<ComponentAtoms, Diagnostic> {
     let mut result = ComponentAtoms::default();
-    for choice in &conjunction.choices {
-        let next = parse_choice(choice, allow_absent, provenance.clone())?;
+    for atom in &conjunction.atoms {
+        let next = parse_atom(atom, provenance.clone())?;
         merge_conjunction(&mut result, next, provenance.clone())?;
     }
     Ok(result)
 }
 
-fn parse_choice(
-    choice: &NormPolicyChoice,
-    allow_absent: bool,
-    provenance: Provenance,
-) -> Result<ComponentAtoms, Diagnostic> {
-    let mut alternatives = Vec::new();
-    for atom in &choice.atoms {
-        alternatives.push(parse_atom(atom, allow_absent, provenance.clone())?);
-    }
-    if alternatives.len() == 1 {
-        return Ok(alternatives.pop().expect("one alternative"));
-    }
-
-    let dimensions = alternatives
-        .iter()
-        .map(ComponentAtoms::dimensions)
-        .collect::<Vec<_>>();
-    let same_single_dimension = dimensions
-        .first()
-        .and_then(|first| (first.len() == 1).then(|| first.iter().next().copied().unwrap()))
-        .filter(|dimension| {
-            dimensions
-                .iter()
-                .all(|current| current.len() == 1 && current.contains(dimension))
-        });
-
-    if let Some(dimension) = same_single_dimension {
-        let mut result = ComponentAtoms::default();
-        for alternative in alternatives {
-            merge_same_dimension(&mut result, alternative, dimension);
-        }
-        return Ok(result);
-    }
-
-    let stage_or_absent = dimensions.iter().all(|current| {
-        !current.is_empty()
-            && current.iter().all(|dimension| {
-                matches!(
-                    dimension,
-                    PolicyDimension::Stage | PolicyDimension::ValuePresence
-                )
-            })
-    });
-    if stage_or_absent {
-        let mut result = ComponentAtoms::default();
-        for alternative in alternatives {
-            result.stages = result.stages.union(&alternative.stages);
-            result.absent_value |= alternative.absent_value;
-        }
-        return Ok(result);
-    }
-
-    Err(policy_error(
-        "policy `||` may choose alternatives only within one dimension; clause-level disjunction is not supported",
-        provenance,
-    ))
-}
-
-fn parse_atom(
-    atom: &NormPolicyAtom,
-    allow_absent: bool,
-    provenance: Provenance,
-) -> Result<ComponentAtoms, Diagnostic> {
+fn parse_atom(atom: &NormPolicyAtom, provenance: Provenance) -> Result<ComponentAtoms, Diagnostic> {
     let mut atoms = ComponentAtoms::default();
     match atom {
         NormPolicyAtom::Name { text, .. } => match text.as_str() {
@@ -1588,16 +1341,7 @@ fn parse_atom(
             ));
         }
         NormPolicyAtom::Group { conjunction, .. } => {
-            return parse_component(conjunction, allow_absent, provenance);
-        }
-        NormPolicyAtom::AbsentValuePattern { .. } => {
-            if !allow_absent {
-                return Err(policy_error(
-                    "absent-value pattern is valid only in the value component",
-                    provenance,
-                ));
-            }
-            atoms.absent_value = true;
+            return parse_component(conjunction, provenance);
         }
         NormPolicyAtom::Error(_) => {
             return Err(policy_error("invalid policy AST", provenance));
@@ -1622,34 +1366,11 @@ fn merge_conjunction(
             provenance,
         ));
     }
-    if (result.absent_value && !next.stages.is_empty())
-        || (next.absent_value && !result.stages.is_empty())
-    {
-        return Err(policy_error(
-            "value absence is an alternative (`||`), not a stage conjunction (`+`)",
-            provenance,
-        ));
-    }
     result.stages = result.stages.union(&next.stages);
     result.mode_atoms.extend(next.mode_atoms);
     result.namespace.extend(next.namespace);
     result.export_root |= next.export_root;
-    result.absent_value |= next.absent_value;
     Ok(())
-}
-
-fn merge_same_dimension(
-    result: &mut ComponentAtoms,
-    next: ComponentAtoms,
-    dimension: PolicyDimension,
-) {
-    match dimension {
-        PolicyDimension::Stage => result.stages = result.stages.union(&next.stages),
-        PolicyDimension::Mode => result.mode_atoms.extend(next.mode_atoms),
-        PolicyDimension::NamespaceVisibility => result.namespace.extend(next.namespace),
-        PolicyDimension::ExportRoot => result.export_root |= next.export_root,
-        PolicyDimension::ValuePresence => result.absent_value |= next.absent_value,
-    }
 }
 
 fn concrete_mode_atom(

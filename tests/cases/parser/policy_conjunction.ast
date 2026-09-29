@@ -4,19 +4,14 @@ Program
       BindingSlot let=true
         policy:
           PolicySpec
-            value_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "runtime"
-            pattern_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "compile"
+            PolicyConjunction
+                PolicyAtom Name "const"
+                PolicyAtom Name "runtime"
         deduce:
           None
         pattern:
           Binder
-            TextName runtime_compile
+            TextName runtime_value
         annotation:
           None
         with_clause:
@@ -33,19 +28,14 @@ Program
       BindingSlot let=true
         policy:
           PolicySpec
-            value_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "runtime"
-            pattern_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "seal"
+            PolicyConjunction
+                PolicyAtom Name "mut"
+                PolicyAtom Name "seal"
         deduce:
           None
         pattern:
           Binder
-            TextName runtime_seal
+            TextName seal_value
         annotation:
           None
         with_clause:
@@ -62,91 +52,15 @@ Program
       BindingSlot let=true
         policy:
           PolicySpec
-            value_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Group
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "runtime"
-                        PolicyAtom Name "compile"
-            pattern_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "compile"
+            PolicyConjunction
+                PolicyAtom Group
+                  PolicyConjunction
+                      PolicyAtom Name "compile"
         deduce:
           None
         pattern:
           Binder
-            TextName runtime_compile_union
-        annotation:
-          None
-        with_clause:
-          None
-        initializer:
-          Expr
-            Pipe
-              Segment has_incoming=false
-                OperatorExpr
-                  Atom
-                    Name value
-  Let
-    slot:
-      BindingSlot let=true
-        policy:
-          PolicySpec
-            value_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Group
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "runtime"
-                        PolicyAtom Name "seal"
-            pattern_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "seal"
-        deduce:
-          None
-        pattern:
-          Binder
-            TextName runtime_seal_union
-        annotation:
-          None
-        with_clause:
-          None
-        initializer:
-          Expr
-            Pipe
-              Segment has_incoming=false
-                OperatorExpr
-                  Atom
-                    Name value
-  Let
-    slot:
-      BindingSlot let=true
-        policy:
-          PolicySpec
-            value_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "const"
-                PolicyChoice
-                  PolicyAtom Group
-                    PolicyConjunction
-                      PolicyChoice
-                        PolicyAtom Name "compile"
-                        PolicyAtom Name "runtime"
-            pattern_policy:
-              PolicyConjunction
-                PolicyChoice
-                  PolicyAtom Name "compile"
-        deduce:
-          None
-        pattern:
-          Binder
-            TextName mixed
+            TextName compile_value
         annotation:
           None
         with_clause:
@@ -187,6 +101,18 @@ Program
                                     None
                                   pattern:
                                     Binder
+                                      TextName self
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
                                       TextName x
                                   annotation:
                                     None
@@ -196,14 +122,8 @@ Program
                                     None
                         call_policy:
                           PolicySpec
-                            value_policy:
-                              PolicyConjunction
-                                PolicyChoice
-                                  PolicyAtom Name "runtime"
-                            pattern_policy:
-                              PolicyConjunction
-                                PolicyChoice
-                                  PolicyAtom Name "seal"
+                            PolicyConjunction
+                                PolicyAtom Name "runtime"
                         returns:
                           ReturnClause
                             slot:
@@ -230,4 +150,4 @@ Program
                                       Atom
                                         Name x
                             target
-                              ImplicitNearest
+                              Omitted

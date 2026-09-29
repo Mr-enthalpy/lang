@@ -387,8 +387,8 @@ defines its ordinary requested-name forwarder. The receiver object remains an
 explicit argument after the selected callable's own self.
 
 The normalizer preserves the dot/name/path source role; it has no semantic
-authority to manufacture the forwarding implementation. Its current
-DotClosureLowering carrier is pending replacement. Generated provenance never
+authority to manufacture the forwarding implementation. Raw DotName now
+normalizes to ordinary name::adl navigation. Generated provenance never
 changes suffix/pipe/Product association or first-product-only binding.
 `..name` retains its distinct direct-call surface.
 

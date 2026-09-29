@@ -19,15 +19,12 @@ mod support;
 
 use lang_build::{
     canonical_function_object_view, extract_single_call_site, BuildManifest, CompilationWorld,
-    ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext, P1Projection,
-    PatternComponentPolicy, PatternValueId, PolicyMigrationRequest, PolicyMode, PolicyPair,
-    PolicyResultEntry, PolicyStage, PolicyView, Provenance, ResolveExpectation, ResultPolicyDemand,
-    SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet, SymbolPayload,
-    ToolchainGlobalSourceRoot, ValueComponentPolicy, ValuePresence,
+    ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext,
+    PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair, PolicyResultEntry, PolicyStage,
+    PolicyView, Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet,
+    ValueComponentPolicy, ValuePresence,
 };
-use support::{
-    build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
-};
+use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
 
 /// Outer explicit const + self explicit mut(ish) must produce a
 /// hard canonical-P1-mismatch diagnostic, not be silently swallowed.
@@ -461,79 +458,6 @@ fn expose_keeps_pure_p_entries_with_clipped_value_stages() {
     );
 }
 
-/// B3 — the exposure window is computed on a REAL invocation result that
-/// travelled the full ordinary spine, not only on hand-built entries: the
-/// transport callables declare an explicit outer mode (`const let uint8` /
-/// `mut let uint8`) while the complete result carries its own concrete mode;
-/// the pair exposure is cropped to the selected callable's canonical P1
-/// without deriving either mode from the other.
-#[test]
-fn exposure_crops_a_real_invocation_result_under_the_canonical_p1() {
-    let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
-    manifest
-        .global_implementation_roots
-        .push(ToolchainGlobalSourceRoot::under(
-            fixture_root()
-                .join("global_implementation")
-                .join("uint8_transport"),
-            vec!["core".to_string(), "uint8".to_string()],
-        ));
-    let mut world = CompilationWorld::from_manifest(&manifest).expect("transport bundle builds");
-
-    let uint8_type = match &world
-        .resolve_with_expectation("uint8", ResolveExpectation::CoreTypeProjection)
-        .expect("core uint8 type")
-        .payload
-    {
-        SymbolPayload::CompleteTypeProjection(t) => t.represented_type,
-        _ => panic!("uint8 resolves as a CompleteType projection"),
-    };
-    let source_policy = exposure_window(
-        &[PolicyStage::Compile],
-        PolicyMode::Const,
-        &[PolicyStage::Compile],
-    );
-    let target_policy = exposure_window(
-        &[PolicyStage::Runtime],
-        PolicyMode::Mut,
-        &[PolicyStage::Compile],
-    );
-    let source = world
-        .install_semantic_value(
-            uint8_type,
-            source_policy.pair.clone(),
-            Provenance::new("B3 compile uint8 source value"),
-        )
-        .expect("installed source value");
-    let request = PolicyMigrationRequest::new(
-        source_policy,
-        ResultPolicyDemand {
-            pair_query: P1Projection::Pair(target_policy.pair),
-            mode: target_policy.mode,
-        },
-        uint8_type,
-        source,
-        Provenance::new("B3 const compile -> mut runtime demand"),
-    )
-    .expect("legal migration request");
-    let migration = world
-        .invoke_policy_migration(&request)
-        .expect("migration invocation succeeds");
-    let invocation = &migration.invocation;
-
-    let raw = &invocation.complete_result[0];
-    assert_eq!(raw.view.mode, invocation.selected.complete_result_view.mode);
-    let canonical_mode = invocation.selected.function_object_view.mode;
-
-    let exposed = invocation.exposed();
-    assert_eq!(exposed.material.len(), 1);
-    assert_eq!(
-        exposed.material[0].view.mode, raw.view.mode,
-        "stage exposure preserves the complete result's orthogonal mode"
-    );
-    assert_eq!(canonical_mode, PolicyMode::Mut);
-}
-
 /// Boundary fact — a stage-only outer declaration prefix
 /// (`compile let narrow = ...`) IS an explicit canonical P1 value-stage
 /// selection: complete `Pv:Pp` elaboration keeps a stage-only policy as an
@@ -564,18 +488,12 @@ fn stage_only_outer_prefix_is_an_explicit_canonical_p1() {
     );
 }
 
-/// B3 positive control — a binding P1 inside the exposure window still
-/// succeeds through the same gated path.
 #[test]
-fn binding_inside_the_exposure_window_succeeds() {
-    let world = build_single_fixture_world("exposure_window_pass", "app");
-    assert!(
-        world
-            .semantic_world()
-            .symbol_in_namespace(world.package_root_node(), "X")
-            .is_some(),
-        "`X` binds through the exposure window"
-    );
+fn selected_serial_body_requires_completion_consumer() {
+    let error = build_fixture_error("exposure_window_pass", "app");
+    assert!(error.diagnostics.iter().any(|d| d
+        .message
+        .contains("serial expression completion requires the shared continuation consumer")));
 }
 
 // ---------------------------------------------------------------------------
@@ -605,25 +523,31 @@ fn value_stage_dimension_mismatch_is_hard_error() {
     );
 }
 
-/// Outer explicit `compile:meta` vs self explicit
-/// `compile:compile let self` agree on the value component but disagree on
-/// the Pattern-stage dimension: hard error at elaboration.
+/// Independent internal observations still participate in canonical P1 identity.
 #[test]
 fn pattern_stage_dimension_mismatch_is_hard_error() {
-    let error = build_fixture_error("canonical_p1_pattern_mismatch", "app");
-    let found = error.diagnostics.iter().any(|d| {
-        d.message
-            .contains("canonical P1 mismatch: completed outer P1")
-    });
-    assert!(
-        found,
-        "expected a Pattern-stage-dimension canonical P1 mismatch, got: {:?}",
-        error
-            .diagnostics
-            .iter()
-            .map(|d| &d.message)
-            .collect::<Vec<_>>()
+    let outer = ExplicitP1Selection {
+        pattern_stages: Some(stage_set(&[PolicyStage::Meta])),
+        ..ExplicitP1Selection::default()
+    };
+    let initializer = initializer_from_source("let f = (compile let self): compile => { (); };");
+    let lang_syntax::NormExpr::Closure(written_self) = initializer else {
+        panic!("closure")
+    };
+    let derived = exposure_window(
+        &[PolicyStage::Compile],
+        PolicyMode::Plain,
+        &[PolicyStage::Compile],
     );
+    let error = canonical_function_object_view(
+        Some(&outer),
+        &derived,
+        &derived,
+        Some(&written_self),
+        &Provenance::new("internal Pattern observation mismatch"),
+    )
+    .expect_err("different internal observations do not merge");
+    assert!(error.message.contains("canonical P1 mismatch"));
 }
 
 /// The presence dimension participates in the merge on its own:

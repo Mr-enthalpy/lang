@@ -59,10 +59,7 @@
 //! type `SymbolId` through the existing field classification path. That
 //! classification still only handles simple `Name` and `Nav` type paths.
 
-use lang_syntax::{
-    NormDecl, NormExpr, NormPattern, NormPolicyAtom, NormProduct, NormProductElem,
-    NormValuePolicyPattern,
-};
+use lang_syntax::{NormDecl, NormExpr, NormPattern, NormPolicyAtom, NormProduct, NormProductElem};
 
 use crate::{
     model::{Diagnostic, DiagnosticSeverity, Provenance},
@@ -176,31 +173,27 @@ fn struct_namespace_let_visibility(
     let Some(policy) = policy else {
         return Ok(None);
     };
-    let NormValuePolicyPattern::Conjunction(conjunction) = &policy.value_policy else {
-        return Ok(None);
-    };
+    let conjunction = &policy.constraint;
     let mut visibility = None;
-    for choice in &conjunction.choices {
-        for atom in &choice.atoms {
-            let next = match atom {
-                NormPolicyAtom::Name { text, .. } if text == "public" => {
-                    Some(NamespaceVisibility::Public)
-                }
-                NormPolicyAtom::Name { text, .. } if text == "private" => {
-                    Some(NamespaceVisibility::Private)
-                }
-                _ => None,
-            };
-            if let Some(next) = next {
-                if visibility.is_some_and(|current| current != next) {
-                    return Err(Diagnostic::new(
-                        DiagnosticSeverity::Error,
-                        "struct associated Val2 let cannot be both `public` and `private`",
-                        Some(provenance.clone()),
-                    ));
-                }
-                visibility = Some(next);
+    for atom in &conjunction.atoms {
+        let next = match atom {
+            NormPolicyAtom::Name { text, .. } if text == "public" => {
+                Some(NamespaceVisibility::Public)
             }
+            NormPolicyAtom::Name { text, .. } if text == "private" => {
+                Some(NamespaceVisibility::Private)
+            }
+            _ => None,
+        };
+        if let Some(next) = next {
+            if visibility.is_some_and(|current| current != next) {
+                return Err(Diagnostic::new(
+                    DiagnosticSeverity::Error,
+                    "struct associated Val2 let cannot be both `public` and `private`",
+                    Some(provenance.clone()),
+                ));
+            }
+            visibility = Some(next);
         }
     }
     Ok(visibility)

@@ -1,0 +1,47 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName self
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                        call_policy:
+                          PolicySpec
+                            PolicyConjunction
+                                Error "invalid policy constraint"
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Product
+                                elements:

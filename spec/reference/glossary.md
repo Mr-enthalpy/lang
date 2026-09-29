@@ -52,10 +52,10 @@ An expression boundary `P let e` that forms a complete result demand before
 the root call of `e` reaches maxima, resolves the operand once, seals that
 selection, and completes the outward view without reopening it.
 
-### ReturnEvent / TailValue
+### Plain expression / ReturnEvent
 
-Current normalized carriers: TailValue marks a list-final expression;
-ReturnEvent retains explicit return payload/target syntax. Canonically,
+Normalized Expr retains plain expression syntax without inferred completion;
+ReturnEvent retains explicit return payload and Omitted/Explicit target syntax. Canonically,
 implicit ReturnEvent and omitted ReturnTarget are separate. The serial consumer
 requires non-tail unit (UnitDiscard); true continuation-path tail unit falls
 through, non-unit synthesizes return and then infers its target. Explicit unit

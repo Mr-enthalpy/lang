@@ -184,7 +184,7 @@ fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
         if let Some(selector) = parse_member_selector(parser) {
             let span = dot.span.join(selector_span(&selector));
             return Some(AtomAst {
-                kind: AtomKind::DotClosure { selector },
+                kind: AtomKind::DotName { selector },
                 span,
             });
         }

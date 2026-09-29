@@ -105,7 +105,7 @@ pub struct ExplicitParameterShape {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReturnTargetShape {
-    ImplicitNearest,
+    Omitted,
     ExplicitTargetSyntax,
     Unsupported,
 }

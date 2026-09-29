@@ -3,8 +3,7 @@ use lang_syntax::{
     BindingPatternAst, CanonicalSkeletonAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode,
     ExprKind, FormAst, NormAnnotation, NormBindingSlot, NormClosureBody, NormClosurePlacement,
     NormDecl, NormExpr, NormForm, NormNavComponent, NormOrigin, NormPattern, NormPatternElem,
-    NormPolicyAtom, NormProductElem, NormRule, NormValuePolicyPattern, OperatorExprKind,
-    SegmentElementAst, Span,
+    NormPolicyAtom, NormProductElem, NormRule, OperatorExprKind, SegmentElementAst, Span,
 };
 
 fn parsed(source: &str) -> lang_syntax::ParseOutput {
@@ -355,7 +354,7 @@ fn canonical_sequence_accepts_pack_as_a_direct_pattern_child() {
 }
 
 #[test]
-fn dot_name_is_a_first_class_field_function_closure() {
+fn dot_name_is_an_unresolved_adl_path() {
     let output = parsed(".push;");
     let [FormAst::Expr(expr)] = output.program.forms.as_slice() else {
         panic!("expected one expression form");
@@ -369,54 +368,41 @@ fn dot_name_is_a_first_class_field_function_closure() {
     assert!(matches!(
         operator.kind,
         OperatorExprKind::Atom(lang_syntax::AtomAst {
-            kind: lang_syntax::AtomKind::DotClosure { .. },
+            kind: lang_syntax::AtomKind::DotName { .. },
             ..
         })
     ));
 
     let program = normalize_program(&output.program);
-    let [NormForm::Expr(NormExpr::Closure(closure))] = program.forms.as_slice() else {
-        panic!("standalone .push must normalize to a closure");
+    let [NormForm::Expr(expr)] = program.forms.as_slice() else {
+        panic!("expected one dot-name expression");
     };
-    assert_eq!(closure.placement, NormClosurePlacement::InPlace);
-    assert!(matches!(
-        closure.origin,
-        NormOrigin::Generated {
-            rule: NormRule::DotClosureLowering,
-            ..
-        }
-    ));
-    let head = closure.head.as_ref().unwrap();
-    assert_eq!(head.params.len(), 3);
-    assert!(matches!(
-        head.formal_frame().written_self,
-        Some(NormPatternElem::BindingSlot(slot))
-            if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self")
-    ));
-    assert!(matches!(
-        &head.formal_frame().explicit_parameters[0],
-        NormPatternElem::BindingSlot(slot)
-            if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "val")
-    ));
-    assert!(matches!(
-        &head.formal_frame().explicit_parameters[1],
-        NormPatternElem::BindingSlot(slot)
-            if matches!(&slot.value_pattern, NormPattern::Pack { inner, .. }
-                if matches!(inner.as_ref(), NormPattern::Binder { name, .. } if name == "args"))
-    ));
+    assert_adl_path(expr, "push");
+}
+
+fn assert_adl_path(expr: &NormExpr, selector: &str) {
+    let NormExpr::Nav {
+        components,
+        explicit_terminated,
+        ..
+    } = expr
+    else {
+        panic!("expected ordinary navigation, got {expr:?}");
+    };
+    assert!(!explicit_terminated);
+    assert!(matches!(components.as_slice(),
+        [lang_syntax::NormNavComponent::Name { name, .. },
+         lang_syntax::NormNavComponent::Name { name: root, .. }]
+        if name == selector && root == "adl"));
 }
 
 #[test]
-fn compact_member_sugar_calls_the_same_dot_closure_and_double_dot_survives() {
+fn compact_member_sugar_calls_the_same_adl_path_and_double_dot_survives() {
     let member = normalized_initializer("let x = object.push;");
     let NormExpr::Call { target, .. } = member else {
         panic!("object.push must normalize as a call");
     };
-    assert!(matches!(
-        target.as_ref(),
-        NormExpr::Closure(closure)
-            if is_generated_closure(closure, NormRule::DotClosureLowering)
-    ));
+    assert_adl_path(target.as_ref(), "push");
 
     let direct_member = normalized_initializer("let x = object..push(value);");
     let NormExpr::Call { target, .. } = direct_member else {
@@ -430,7 +416,7 @@ fn compact_member_sugar_calls_the_same_dot_closure_and_double_dot_survives() {
 }
 
 #[test]
-fn dot_closure_has_no_pipe_or_product_binding_privilege() {
+fn dot_name_has_no_pipe_or_product_binding_privilege() {
     for (dot_source, bound_source) in [
         (
             "let x = items |> .push value;",
@@ -470,11 +456,7 @@ fn compact_member_then_space_argument_remains_an_outer_call() {
         panic!("outer call source must be the already-lowered `items.push`");
     };
     assert_eq!(member_source.elements.len(), 1);
-    assert!(matches!(
-        member_target.as_ref(),
-        NormExpr::Closure(closure)
-            if is_generated_closure(closure, NormRule::DotClosureLowering)
-    ));
+    assert_adl_path(member_target.as_ref(), "push");
 }
 
 #[test]
@@ -1062,14 +1044,13 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
     let body = outer.body.user_body().expect("outer body");
 
     for (index, rule) in [
-        NormRule::DotClosureLowering,
         NormRule::PrefixNegativeLowering,
         NormRule::DoubleDotLowering,
     ]
     .into_iter()
     .enumerate()
     {
-        let initializer = binding_slot_at(&body.forms[index])
+        let initializer = binding_slot_at(&body.forms[index + 1])
             .initializer
             .as_deref()
             .expect("generated helper initializer");
@@ -1149,16 +1130,13 @@ fn binding_slot_policy_precedes_its_local_deduce_scope() {
     let output = parsed("Inner let <Inner> x = value;");
     let normalized = normalize_program(&output.program);
     let slot = binding_slot_at(&normalized.forms[0]);
-    let NormValuePolicyPattern::Conjunction(policy) = &slot
+    let policy = &slot
         .policy
         .as_ref()
         .expect("leading slot policy")
-        .value_policy
-    else {
-        panic!("expected value policy conjunction");
-    };
+        .constraint;
     assert!(matches!(
-        policy.choices[0].atoms.as_slice(),
+        policy.atoms.as_slice(),
         [NormPolicyAtom::Name { text, .. }] if text == "Inner"
     ));
     assert_eq!(slot.deduce.len(), 1);
@@ -1173,16 +1151,13 @@ fn binding_slot_policy_precedes_its_local_deduce_scope() {
     let [NormPatternElem::BindingSlot(inner)] = elements.as_slice() else {
         panic!("expected nested binding slot");
     };
-    let NormValuePolicyPattern::Conjunction(policy) = &inner
+    let policy = &inner
         .policy
         .as_ref()
         .expect("nested leading policy")
-        .value_policy
-    else {
-        panic!("expected value policy conjunction");
-    };
+        .constraint;
     assert!(matches!(
-        policy.choices[0].atoms.as_slice(),
+        policy.atoms.as_slice(),
         [NormPolicyAtom::HoleRef { target, text, .. }]
             if *target == outer_id && text == "Outer"
     ));
@@ -1238,11 +1213,9 @@ fn callable_deduce_scope_covers_capture_params_policy_return_body_and_nested_cal
     let Some(call_policy) = &outer_head.call_policy else {
         panic!("expected call policy");
     };
-    let NormValuePolicyPattern::Conjunction(call_policy) = &call_policy.value_policy else {
-        panic!("expected conjunction call policy");
-    };
+    let call_policy = &call_policy.constraint;
     assert!(matches!(
-        call_policy.choices[0].atoms.as_slice(),
+        call_policy.atoms.as_slice(),
         [NormPolicyAtom::HoleRef { target, text, .. }]
             if *target == outer_a && text == "A"
     ));
@@ -1589,9 +1562,7 @@ fn member_visibility_annotation_is_narrow_shape_and_does_not_steal_capture_brack
                 .user_body()
                 .map(|body| {
                     body.forms.iter().any(|form| match form {
-                        NormForm::Expr(expr) | NormForm::TailValue(expr) => {
-                            contains_member_view_rule(expr)
-                        }
+                        NormForm::Expr(expr) => contains_member_view_rule(expr),
                         _ => false,
                     })
                 })
@@ -1792,11 +1763,14 @@ fn expression_binding_shape(expr: &NormExpr) -> String {
                 .collect::<Vec<_>>()
                 .join(",")
         ),
-        NormExpr::Closure(closure)
-            if is_generated_closure(closure, NormRule::DotClosureLowering) =>
-        {
-            "$field".to_string()
-        }
+        NormExpr::Nav {
+            origin:
+                NormOrigin::Generated {
+                    rule: NormRule::DotNameLowering,
+                    ..
+                },
+            ..
+        } => "$field".to_string(),
         NormExpr::Name { text, .. } if text == "d" => "$field".to_string(),
         NormExpr::Name { text, .. } => format!("name({text})"),
         NormExpr::Literal { text, .. } => format!("literal({text})"),

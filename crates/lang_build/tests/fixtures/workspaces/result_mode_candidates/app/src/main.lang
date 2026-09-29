@@ -1,0 +1,4 @@
+mut let choose =
+  (self, t: type): const + compile -> let r: type => { t; };
+const let choose =
+  (self, t: type): mut + compile -> let r: type => { t; };

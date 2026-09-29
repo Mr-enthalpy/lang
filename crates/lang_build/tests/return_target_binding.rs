@@ -78,7 +78,7 @@ fn is_int_literal(expr: &NormExpr, expected: &str) -> bool {
 }
 
 #[test]
-fn implicit_return_binds_to_nearest_active_return_frame() {
+fn omitted_return_binds_to_only_active_return_frame() {
     let report = bind_closure(
         r#"
 let f = (self, x: int): runtime -> r: int => {
@@ -110,7 +110,7 @@ let f = (self, x: int): runtime -> r: int => {
     );
     assert_eq!(
         report.bound_events[0].unresolved_target,
-        lang_build::UnresolvedReturnTargetForm::ImplicitNearest
+        lang_build::UnresolvedReturnTargetForm::Omitted
     );
 }
 

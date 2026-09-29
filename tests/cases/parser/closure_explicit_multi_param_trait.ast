@@ -43,12 +43,8 @@ Program
                               None
                   call_policy:
                     PolicySpec
-                      value_policy:
-                        PolicyConjunction
-                          PolicyChoice
-                            PolicyAtom Name "meta"
-                      pattern_policy:
-                        None
+                      PolicyConjunction
+                          PolicyAtom Name "meta"
                   returns:
                     ReturnClause
                       slot:

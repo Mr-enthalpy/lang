@@ -216,11 +216,22 @@ fn try_parse_incoming_product_branch(parser: &mut Parser<'_>) -> Option<Vec<Segm
         return None;
     }
 
-    // `(<> P) { ... }` is a normal headed in-place closure. Let the closure
+    // Binderless heads, including `(self, <> P)`, are ordinary headed closures. Let the closure
     // parser consume it so the branch shorthand and its explicit expansion
     // share one BindingSlot/Pattern construction. Other parenthesized heads,
     // including `(_ P)`, remain on the established Product + body path.
-    let (less_index, less) = parser.cursor.peek_at_skip_trivia(start_index + 1);
+    let (first_index, first) = parser.cursor.peek_at_skip_trivia(start_index + 1);
+    let head_index = if matches!(first.kind, TokenKind::Name) {
+        let (comma_index, comma) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+        if matches!(comma.kind, TokenKind::Symbol(Symbol::Comma)) {
+            comma_index + 1
+        } else {
+            first_index
+        }
+    } else {
+        first_index
+    };
+    let (less_index, less) = parser.cursor.peek_at_skip_trivia(head_index);
     if matches!(less.kind, TokenKind::Symbol(Symbol::Less)) {
         let (_, greater) = parser.cursor.peek_at_skip_trivia(less_index + 1);
         if matches!(greater.kind, TokenKind::Symbol(Symbol::Greater)) {

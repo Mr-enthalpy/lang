@@ -29,9 +29,7 @@
 
 use std::collections::BTreeMap;
 
-use lang_syntax::{
-    NormClosureBody, NormForm, NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicySpec,
-};
+use lang_syntax::{NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicySpec};
 
 use crate::{
     body_entry_allows_execution,
@@ -2013,18 +2011,14 @@ pub(crate) fn invoke_target_values(
             pack_bindings: source_shape.pack_bindings.clone(),
         };
         if !selected.is_delete() {
-            if let Some(value) = forwarded_semantic_body_value(&selected) {
-                SelectedBodyOutput::OrdinaryValue(value)
-            } else {
-                match evaluate_selected_source_body(
-                    &SemanticTypeEnv::new(&*semantic_world),
-                    resolver_context,
-                    &selected_body_input,
-                ) {
-                    Ok(value) => SelectedBodyOutput::Material(value),
-                    Err(failure) => {
-                        return Err(OrdinaryInvocationFailure::SelectedBody { failure, trace });
-                    }
+            match evaluate_selected_source_body(
+                &SemanticTypeEnv::new(&*semantic_world),
+                resolver_context,
+                &selected_body_input,
+            ) {
+                Ok(value) => SelectedBodyOutput::Material(value),
+                Err(failure) => {
+                    return Err(OrdinaryInvocationFailure::SelectedBody { failure, trace });
                 }
             }
         } else {
@@ -2224,53 +2218,6 @@ pub(crate) fn invoke_target_values(
             trace,
         }),
     ))
-}
-
-fn forwarded_semantic_body_value(selected: &PreparedCallCandidate) -> Option<SemanticValueId> {
-    let closure = &selected.source_shape.as_ref()?.source_callable.closure;
-    let Some(head) = &closure.head else {
-        return None;
-    };
-    let frame = head.formal_frame();
-    let tail_name = match &closure.body {
-        NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
-            match program.forms.as_slice() {
-                [NormForm::TailValue(lang_syntax::NormExpr::Name { text, .. })] => text,
-                _ => return None,
-            }
-        }
-        NormClosureBody::Defaulted { .. } | NormClosureBody::Delete(_) => return None,
-    };
-
-    if let Some(written_self) = frame.written_self {
-        let self_name = match written_self {
-            NormPatternElem::BindingSlot(slot) => match &slot.value_pattern {
-                NormPattern::Binder { name, .. } => Some(name.clone()),
-                _ => None,
-            },
-            NormPatternElem::Pattern(NormPattern::Binder { name, .. }) => Some(name.clone()),
-            _ => None,
-        };
-        if self_name.as_ref().is_some_and(|name| name == tail_name) {
-            return Some(selected.target_value);
-        }
-    }
-
-    frame
-        .explicit_parameters
-        .iter()
-        .zip(&selected.frame.explicit_arg_product.raw_args)
-        .find_map(|(formal, actual)| {
-            let NormPatternElem::BindingSlot(slot) = formal else {
-                return None;
-            };
-            match &slot.value_pattern {
-                NormPattern::Binder { name, .. } if name == tail_name => {
-                    actual.known_semantic_value
-                }
-                _ => None,
-            }
-        })
 }
 
 fn classify_semantic_value_arguments(

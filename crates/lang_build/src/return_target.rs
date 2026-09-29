@@ -109,8 +109,8 @@ impl ReturnTargetStack {
         self.frames.pop()
     }
 
-    pub fn nearest(&self) -> Option<&ReturnTargetFrame> {
-        self.frames.last()
+    pub fn outermost_enclosing_function_target(&self) -> Option<&ReturnTargetFrame> {
+        self.frames.first()
     }
 
     pub fn find_self_identity(
@@ -155,7 +155,7 @@ where
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UnresolvedReturnTargetForm {
-    ImplicitNearest,
+    Omitted,
     Explicit(NormExpr),
 }
 
@@ -287,7 +287,7 @@ impl<'resolver> ReturnTargetBinder<'resolver> {
         match form {
             NormForm::ReturnEvent(return_event) => self.bind_return_event(return_event),
             NormForm::Let(decl) | NormForm::Alias(decl) => self.visit_decl(decl),
-            NormForm::Expr(expr) | NormForm::TailValue(expr) => self.visit_expr(expr),
+            NormForm::Expr(expr) => self.visit_expr(expr),
             NormForm::Error(_) => {}
         }
     }
@@ -381,8 +381,8 @@ fn resolve_return_target(
     explicit_resolver: Option<&dyn ExplicitReturnTargetResolver>,
 ) -> Result<Option<ResolvedReturnTarget>, Diagnostic> {
     match &return_event.target {
-        NormReturnTargetSyntax::ImplicitNearest => stack
-            .nearest()
+        NormReturnTargetSyntax::Omitted => stack
+            .outermost_enclosing_function_target()
             .map(|frame| Some(ResolvedReturnTarget::ActiveFrame(frame.frame_id)))
             .ok_or_else(|| {
                 return_diagnostic(
@@ -531,7 +531,7 @@ fn unbound_event(return_event: &NormReturnEvent) -> UnboundReturnEvent {
     UnboundReturnEvent {
         value: return_event.value.clone(),
         target: match &return_event.target {
-            NormReturnTargetSyntax::ImplicitNearest => UnresolvedReturnTargetForm::ImplicitNearest,
+            NormReturnTargetSyntax::Omitted => UnresolvedReturnTargetForm::Omitted,
             NormReturnTargetSyntax::Explicit(target) => {
                 UnresolvedReturnTargetForm::Explicit(target.clone())
             }
@@ -553,7 +553,7 @@ fn collect_return_events_in_program(program: &NormProgram, events: &mut Vec<Unbo
             NormForm::Let(decl) | NormForm::Alias(decl) => {
                 collect_return_events_in_decl(decl, events);
             }
-            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+            NormForm::Expr(expr) => {
                 collect_return_events_in_expr(expr, events);
             }
             NormForm::Error(_) => {}
@@ -597,5 +597,54 @@ fn collect_return_events_in_expr(expr: &NormExpr, events: &mut Vec<UnboundReturn
         | NormExpr::OperatorTarget { .. }
         | NormExpr::Error(_)
         | NormExpr::Unsupported { .. } => {}
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn omitted_target_uses_outermost_active_function_and_tracks_pops() {
+        let parsed = lang_syntax::parse("value return;");
+        assert!(parsed.diagnostics.is_empty());
+        let program = lang_syntax::normalize_program(&parsed.program);
+        let NormForm::ReturnEvent(event) = &program.forms[0] else {
+            panic!("return event")
+        };
+        let mut stack = ReturnTargetStack::new();
+        let mut push = |name: &str| {
+            stack.push_frame(
+                ReturnFrameOwner::SourceCallable {
+                    symbol_id: None,
+                    name: Some(name.to_string()),
+                },
+                ReturnSlotRef {
+                    identity: None,
+                    binding_slot: None,
+                    name: None,
+                    origin: event.origin.clone(),
+                },
+                None,
+                None,
+                event.origin.clone(),
+            )
+        };
+        let outer = push("outer");
+        let inner = push("inner");
+        assert_ne!(outer.frame_id, inner.frame_id);
+        assert_eq!(
+            resolve_return_target(&stack, event, None).unwrap(),
+            Some(ResolvedReturnTarget::ActiveFrame(outer.frame_id))
+        );
+        assert_eq!(stack.pop_frame().unwrap().frame_id, inner.frame_id);
+        assert_eq!(
+            resolve_return_target(&stack, event, None).unwrap(),
+            Some(ResolvedReturnTarget::ActiveFrame(outer.frame_id))
+        );
+        stack.pop_frame();
+        assert_eq!(
+            resolve_return_target(&stack, event, None).unwrap_err().code,
+            Some(ResolverCode::ReturnOutsideReturnableContext)
+        );
     }
 }

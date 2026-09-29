@@ -1,26 +1,26 @@
 const let type =
-  (self, const let object: type): (compile || runtime):compile
+  (self, const let object: type): runtime
     -> let result: type =>
 {
   object;
 };
 
 const let type =
-  (self, mut let object: type): (compile || runtime):compile
+  (self, mut let object: type): runtime
     -> let result: type =>
 {
   object;
 };
 
 mut let type =
-  (self, const let object: type): (compile || runtime):compile
+  (self, const let object: type): runtime
     -> let result: type =>
 {
   object;
 };
 
 mut let type =
-  (self, mut let object: type): (compile || runtime):compile
+  (self, mut let object: type): runtime
     -> let result: type =>
 {
   object;
