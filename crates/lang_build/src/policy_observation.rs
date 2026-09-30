@@ -1,31 +1,9 @@
+//! Facet observations of already resolved material. Name resolution belongs to
+//! the name resolver and does not depend on the observation horizon.
+
 use crate::policy_pair::{
     ObservationHorizon, PatternComponentPolicy, PolicyMode, PolicyResultEntry, ValueComponentPolicy,
 };
-
-/// A symbol is resolved by identity/path before any horizon visibility is
-/// considered. A successful result can consequently expose no readable facet
-/// in the current horizon without becoming an "unresolved symbol".
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SymbolEntry<I, V, P> {
-    pub identity: I,
-    pub path: String,
-    pub entries: Vec<PolicyResultEntry<V, P>>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SymbolResolutionError {
-    Unresolved,
-}
-
-pub fn resolve_explicit_path<'a, I, V, P>(
-    symbols: &'a [SymbolEntry<I, V, P>],
-    path: &str,
-) -> Result<&'a SymbolEntry<I, V, P>, SymbolResolutionError> {
-    symbols
-        .iter()
-        .find(|symbol| symbol.path == path)
-        .ok_or(SymbolResolutionError::Unresolved)
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FacetView<T> {

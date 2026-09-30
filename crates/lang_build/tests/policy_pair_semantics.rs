@@ -6,14 +6,13 @@ use lang_build::{
     elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
     elaborate_return_policy_pattern, expose_policy_slice, externally_visible,
     function_object_declaration_policy, normalize_p2_policy, project_export_overload_sets,
-    project_p1, publicly_reachable, read_pattern, read_value, resolve_explicit_path,
-    select_by_policy_product, CapabilityRealization, CapabilityRealizationCell, ExportAdmission,
+    project_p1, publicly_reachable, read_pattern, read_value, select_by_policy_product,
+    CapabilityRealization, CapabilityRealizationCell, ExportAdmission,
     FunctionObjectDeclarationPolicy, NamespaceDeclarationPosition, NamespaceExportNode,
     NamespaceVisibility, ObjectPlaceId, ObservationHorizon, OutputModeDemand, P1Projection,
     PatternComponentPolicy, PolicyActualFrame, PolicyFormalFrame, PolicyMode,
     PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyView,
-    Provenance, ResolvedCandidatePolicy, Stage, SymbolEntry, ValueComponentPolicy, WpreRoots,
-    WritableContext,
+    Provenance, ResolvedCandidatePolicy, Stage, ValueComponentPolicy, WpreRoots, WritableContext,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -779,7 +778,7 @@ fn namespace_attributes_never_change_the_canonical_function_object_pair() {
 }
 
 #[test]
-fn phase_visibility_uses_visibility_domains_not_atom_intersection() {
+fn horizon_visibility_uses_visibility_domains_not_atom_intersection() {
     assert!(Stage::Meta.visible_at(ObservationHorizon::OpenStatic));
     assert!(!Stage::Meta.visible_at(ObservationHorizon::SealStatic));
     assert!(Stage::Compile.visible_at(ObservationHorizon::OpenStatic));
@@ -791,24 +790,18 @@ fn phase_visibility_uses_visibility_domains_not_atom_intersection() {
 }
 
 #[test]
-fn runtime_value_symbol_resolves_while_only_static_pattern_is_exposed() {
-    let symbols = vec![SymbolEntry {
-        identity: 7_u32,
-        path: "pkg::runtime_value".to_string(),
-        entries: vec![result_entry(
-            Some("runtime computation"),
-            &[Stage::Runtime],
-            "compile Pattern",
-            &[Stage::Compile],
-        )],
-    }];
-    let symbol = resolve_explicit_path(&symbols, "pkg::runtime_value").expect("symbol resolves");
-    let exposed = expose_policy_slice(&symbol.entries[0], ObservationHorizon::OpenStatic);
-    assert_eq!(symbol.identity, 7);
+fn fixed_runtime_value_observation_exposes_only_static_pattern() {
+    let entry = result_entry(
+        Some("runtime computation"),
+        &[Stage::Runtime],
+        "compile Pattern",
+        &[Stage::Compile],
+    );
+    let exposed = expose_policy_slice(&entry, ObservationHorizon::OpenStatic);
     assert!(read_value(&exposed).is_none());
     assert_eq!(read_pattern(&exposed), Some(&"compile Pattern"));
     assert_eq!(
-        symbol.entries[0].view.pair.value.stage(),
+        entry.view.pair.value.stage(),
         Some(stages(&[Stage::Runtime])),
         "static projection must not consume the runtime computation"
     );

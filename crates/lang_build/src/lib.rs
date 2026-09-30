@@ -152,8 +152,8 @@ pub use policy_migration::{
     PolicyPartialOrdering, PureTypeP1Elaboration, SemanticValueRef,
 };
 pub use policy_observation::{
-    enumerate_value_facet, expose_policy_slice, read_pattern, read_value, resolve_explicit_path,
-    ExposedPolicyEntry, FacetView, SymbolEntry, SymbolResolutionError,
+    enumerate_value_facet, expose_policy_slice, read_pattern, read_value, ExposedPolicyEntry,
+    FacetView,
 };
 pub use policy_overload::{
     select_by_policy_product, PolicyActualFrame, PolicyFormalFrame, PolicyOverloadCandidate,

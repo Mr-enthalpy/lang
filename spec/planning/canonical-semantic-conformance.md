@@ -39,6 +39,12 @@ mismatches have terminal no-candidate coverage at both initializer boundaries.
 Actual hidden observations are reported by invocation itself, never inferred
 from generic failure or an absent diagnostic. Mixed body observations retain
 ordinary visible-candidate ambiguity and terminal selected failure.
+Resolved argument bindings whose Val1 is hidden stop before applicability,
+preference and selection at the common-continuation frontier. They never fall
+back to unknown-expression Plain, even with a readable Pattern or a supplied
+argument mode. Readable binding observations retain their mode; genuinely
+unknown expressions remain a separate case. Stage and horizon carriers expose
+no enum-order preference, and facet observation defines no alternate resolver.
 Candidate errors and selected-body failures remain diagnostics, with no second
 meta evaluator mode or function/world stage partition. Ordinary
 deduction, R_vis/C_sigma and E readiness/saturation still require consumer

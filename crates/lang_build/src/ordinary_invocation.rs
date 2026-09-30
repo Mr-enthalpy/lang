@@ -1170,12 +1170,14 @@ pub(crate) fn invoke_target_values(
     c3.dedup();
     trace.c3_call_entries = c3.iter().map(|(entry, _)| *entry).collect();
 
-    classify_semantic_value_arguments(
+    if let Err(residual) = classify_semantic_value_arguments(
         &mut arg_shape,
         semantic_world,
         resolver_context,
         context.horizon,
-    );
+    ) {
+        return Err(OrdinaryInvocationFailure::Residual { residual, trace });
+    }
     let classified = classify_type_arguments_env_with_report(
         &arg_shape,
         &SemanticTypeEnv::new(semantic_world),
@@ -1981,7 +1983,7 @@ fn classify_semantic_value_arguments(
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     horizon: ObservationHorizon,
-) {
+) -> Result<(), InvocationResidual> {
     for raw_arg in &mut shape.raw_args {
         if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
             continue;
@@ -2004,6 +2006,7 @@ fn classify_semantic_value_arguments(
             continue;
         };
 
+        let mut hidden_value_observation = false;
         let mut readable = symbol
             .member_views
             .iter()
@@ -2017,13 +2020,12 @@ fn classify_semantic_value_arguments(
                 if matches!(
                     object.payload,
                     SemanticValuePayload::CoreTypeProjection { .. }
-                ) || !view
-                    .view
-                    .pair
-                    .value
-                    .stage()
-                    .is_some_and(|stage| stage.visible_at(horizon))
-                {
+                ) {
+                    return None;
+                }
+                let stage = view.view.pair.value.stage()?;
+                if !stage.visible_at(horizon) {
+                    hidden_value_observation = true;
                     return None;
                 }
                 Some((value, object.type_value, view.view.mode))
@@ -2031,6 +2033,16 @@ fn classify_semantic_value_arguments(
             .collect::<Vec<_>>();
         readable.sort_by_key(|(value, _, _)| *value);
         readable.dedup_by_key(|(value, _, _)| *value);
+        if readable.is_empty() && hidden_value_observation {
+            // The binding has been resolved. Hidden Val1 is not an unknown
+            // expression, and neither a visible Pattern nor a caller-supplied
+            // mode makes it readable. The common continuation consumer must
+            // preserve this observation before applicability or preference.
+            return Err(InvocationResidual {
+                class: "hidden-argument-value-observation".to_string(),
+                provenance: raw_arg.provenance.clone(),
+            });
+        }
         let [(value, type_value, mode)] = readable.as_slice() else {
             continue;
         };
@@ -2038,6 +2050,7 @@ fn classify_semantic_value_arguments(
             .clone()
             .as_resolved_semantic_value(*value, *type_value, *mode);
     }
+    Ok(())
 }
 
 fn formal_policy_frame(

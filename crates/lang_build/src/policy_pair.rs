@@ -4,7 +4,7 @@ use lang_syntax::{NormPolicyAtom, NormPolicyConjunction, NormPolicySpec};
 
 use crate::{Diagnostic, Provenance};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Stage {
     Meta,
     Compile,
@@ -12,7 +12,7 @@ pub enum Stage {
     Runtime,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 /// Visibility domain for an observation. This is neither an evaluator phase,
 /// a readiness proof, nor a scheduling queue.
 pub enum ObservationHorizon {
