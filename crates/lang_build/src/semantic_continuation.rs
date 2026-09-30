@@ -68,7 +68,7 @@ pub struct CleanupPlacement {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ContinuationFailure {
-    CleanupScheduleAlreadyFrozen,
+    CleanupPrefixAlreadyFixed,
     DuplicateCleanup(LifeName),
     UnknownCleanup(LifeName),
     DuplicateDeclarationOrder,
@@ -92,7 +92,8 @@ pub struct SemanticContinuation {
     next_action: u64,
     cleanup: Vec<CleanupPlacement>,
     cleanup_precedence: BTreeSet<(LifeName, LifeName)>,
-    cleanup_frozen: bool,
+    cleanup_fixed_through: Option<SemanticPosition>,
+    cleanup_fixed_len: usize,
 }
 
 impl Default for SemanticContinuation {
@@ -103,7 +104,8 @@ impl Default for SemanticContinuation {
             next_action: 0,
             cleanup: Vec::new(),
             cleanup_precedence: BTreeSet::new(),
-            cleanup_frozen: false,
+            cleanup_fixed_through: None,
+            cleanup_fixed_len: 0,
         }
     }
 }
@@ -171,8 +173,11 @@ impl SemanticContinuation {
         &mut self,
         placement: CleanupPlacement,
     ) -> Result<(), ContinuationFailure> {
-        if self.cleanup_frozen {
-            return Err(ContinuationFailure::CleanupScheduleAlreadyFrozen);
+        if self.cleanup_is_fixed_through(placement.at) {
+            return Err(ContinuationFailure::CleanupPrefixAlreadyFixed);
+        }
+        if self.next_action != 0 && placement.at <= self.position {
+            return Err(ContinuationFailure::PositionBeforeFrontier);
         }
         if self
             .cleanup
@@ -190,18 +195,30 @@ impl SemanticContinuation {
         before: LifeName,
         after: LifeName,
     ) -> Result<(), ContinuationFailure> {
-        if self.cleanup_frozen {
-            return Err(ContinuationFailure::CleanupScheduleAlreadyFrozen);
+        if self.cleanup[..self.cleanup_fixed_len]
+            .iter()
+            .any(|entry| entry.name == after)
+        {
+            return Err(ContinuationFailure::CleanupPrefixAlreadyFixed);
         }
         self.cleanup_precedence.insert((before, after));
         Ok(())
     }
 
-    /// Respect all supplied precedence, then prefer reverse declaration order
-    /// among available same-point events. No point is moved to make this work.
-    pub fn freeze_cleanup_schedule(&mut self) -> Result<(), ContinuationFailure> {
-        if self.cleanup_frozen {
-            return Err(ContinuationFailure::CleanupScheduleAlreadyFrozen);
+    /// Fix the complete cleanup prefix through this cut, including empty cuts.
+    /// Later generations may acquire placements beyond the fixed prefix.
+    /// Respect precedence before reverse declaration order; never move a point
+    /// or reorder the already fixed prefix. The full snapshot versions Pre.
+    pub fn freeze_cleanup_through(
+        &mut self,
+        through: SemanticPosition,
+    ) -> Result<(), ContinuationFailure> {
+        if through < self.position
+            || self
+                .cleanup_fixed_through
+                .is_some_and(|fixed| through < fixed)
+        {
+            return Err(ContinuationFailure::PositionBeforeFrontier);
         }
         let by_name = self
             .cleanup
@@ -220,10 +237,13 @@ impl SemanticContinuation {
             }
         }
         let mut points = BTreeMap::<SemanticPosition, Vec<&CleanupPlacement>>::new();
-        for entry in &self.cleanup {
+        for entry in &self.cleanup[self.cleanup_fixed_len..] {
+            if entry.at > through {
+                continue;
+            }
             points.entry(entry.at).or_default().push(entry);
         }
-        let mut ordered = Vec::new();
+        let mut ordered = self.cleanup[..self.cleanup_fixed_len].to_vec();
         for entries in points.values() {
             let mut remaining = entries
                 .iter()
@@ -251,17 +271,32 @@ impl SemanticContinuation {
                 remaining.remove(&selected.name);
             }
         }
+        let fixed_len = ordered.len();
+        ordered.extend(
+            self.cleanup[self.cleanup_fixed_len..]
+                .iter()
+                .filter(|entry| entry.at > through)
+                .cloned(),
+        );
         self.cleanup = ordered;
-        self.cleanup_frozen = true;
+        self.cleanup_fixed_len = fixed_len;
+        self.cleanup_fixed_through = Some(through);
         Ok(())
     }
 
-    pub fn cleanup_is_frozen(&self) -> bool {
-        self.cleanup_frozen
+    pub fn cleanup_is_fixed_through(&self, at: SemanticPosition) -> bool {
+        self.cleanup_fixed_through
+            .is_some_and(|through| at <= through)
     }
 
+    /// The finalized prefix only, in its fixed execution order.
     pub fn cleanup(&self) -> &[CleanupPlacement] {
-        &self.cleanup
+        &self.cleanup[..self.cleanup_fixed_len]
+    }
+
+    /// Future material is not a finalized cleanup sequence.
+    pub fn pending_cleanup(&self) -> &[CleanupPlacement] {
+        &self.cleanup[self.cleanup_fixed_len..]
     }
 }
 
@@ -278,6 +313,60 @@ mod tests {
     }
 
     #[test]
+    fn fixed_prefix_preserves_order_while_future_cleanup_remains_extendable() {
+        let mut k = SemanticContinuation::default();
+        k.place_cleanup(placement(1, 2, 1)).unwrap();
+        k.place_cleanup(placement(2, 9, 2)).unwrap();
+        k.freeze_cleanup_through(SemanticPosition(2)).unwrap();
+        assert_eq!(k.cleanup(), &[placement(1, 2, 1)]);
+        assert_eq!(k.pending_cleanup(), &[placement(2, 9, 2)]);
+        assert!(!k.cleanup_is_fixed_through(SemanticPosition(3)));
+        let prefix = k.cleanup().to_vec();
+        k.place_cleanup(placement(3, 9, 3)).unwrap();
+        k.order_cleanup_before(LifeName(1), LifeName(2)).unwrap();
+        k.order_cleanup_before(LifeName(2), LifeName(3)).unwrap();
+        let before = k.clone();
+        assert_eq!(
+            k.place_cleanup(placement(4, 2, 4)),
+            Err(ContinuationFailure::CleanupPrefixAlreadyFixed)
+        );
+        assert_eq!(
+            k.order_cleanup_before(LifeName(3), LifeName(1)),
+            Err(ContinuationFailure::CleanupPrefixAlreadyFixed)
+        );
+        assert_eq!(
+            k.freeze_cleanup_through(SemanticPosition(1)),
+            Err(ContinuationFailure::PositionBeforeFrontier)
+        );
+        assert_eq!(k, before);
+        k.freeze_cleanup_through(SemanticPosition(9)).unwrap();
+        assert_eq!(&k.cleanup()[..prefix.len()], prefix);
+        assert_eq!(
+            k.cleanup(),
+            &[placement(1, 2, 1), placement(2, 9, 2), placement(3, 9, 3)]
+        );
+        assert!(k.pending_cleanup().is_empty());
+    }
+
+    #[test]
+    fn future_prefix_failure_cannot_modify_an_already_fixed_prefix() {
+        let mut k = SemanticContinuation::default();
+        k.place_cleanup(placement(1, 1, 1)).unwrap();
+        k.freeze_cleanup_through(SemanticPosition(1)).unwrap();
+        k.place_cleanup(placement(2, 2, 2)).unwrap();
+        k.place_cleanup(placement(3, 2, 3)).unwrap();
+        k.order_cleanup_before(LifeName(2), LifeName(3)).unwrap();
+        k.order_cleanup_before(LifeName(3), LifeName(2)).unwrap();
+        let before = k.clone();
+        assert_eq!(
+            k.freeze_cleanup_through(SemanticPosition(2)),
+            Err(ContinuationFailure::CleanupPrecedenceCycle)
+        );
+        assert_eq!(k, before);
+        assert_eq!(k.cleanup(), &[placement(1, 1, 1)]);
+    }
+
+    #[test]
     fn cleanup_order_uses_explicit_precedence_before_reverse_declaration_priority() {
         let mut k = SemanticContinuation::default();
         for entry in [placement(2, 9, 2), placement(3, 9, 3), placement(1, 9, 1)] {
@@ -285,7 +374,7 @@ mod tests {
         }
         // a must precede c; unrelated b is the first available reverse-order event.
         k.order_cleanup_before(LifeName(1), LifeName(3)).unwrap();
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         assert_eq!(
             k.cleanup()
                 .iter()
@@ -299,11 +388,11 @@ mod tests {
             .all(|entry| entry.at == SemanticPosition(9)));
         assert_eq!(
             k.place_cleanup(placement(4, 9, 4)),
-            Err(ContinuationFailure::CleanupScheduleAlreadyFrozen)
+            Err(ContinuationFailure::CleanupPrefixAlreadyFixed)
         );
         assert_eq!(
             k.order_cleanup_before(LifeName(3), LifeName(2)),
-            Err(ContinuationFailure::CleanupScheduleAlreadyFrozen)
+            Err(ContinuationFailure::CleanupPrefixAlreadyFixed)
         );
     }
 
@@ -312,7 +401,7 @@ mod tests {
         let mut k = SemanticContinuation::default();
         k.place_cleanup(placement(1, 2, 1)).unwrap();
         k.place_cleanup(placement(2, 1, 2)).unwrap();
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         assert_eq!(k.cleanup(), &[placement(2, 1, 2), placement(1, 2, 1)]);
 
         let mut invalid = SemanticContinuation::default();
@@ -323,7 +412,7 @@ mod tests {
             .unwrap();
         let before = invalid.clone();
         assert_eq!(
-            invalid.freeze_cleanup_schedule(),
+            invalid.freeze_cleanup_through(SemanticPosition(100)),
             Err(ContinuationFailure::CleanupPrecedenceContradictsPoints)
         );
         assert_eq!(
@@ -345,7 +434,7 @@ mod tests {
         k.order_cleanup_before(LifeName(2), LifeName(1)).unwrap();
         let before = k.clone();
         assert_eq!(
-            k.freeze_cleanup_schedule(),
+            k.freeze_cleanup_through(SemanticPosition(100)),
             Err(ContinuationFailure::CleanupPrecedenceCycle)
         );
         assert_eq!(k, before);
@@ -356,14 +445,14 @@ mod tests {
             .order_cleanup_before(LifeName(1), LifeName(3))
             .unwrap();
         assert_eq!(
-            unknown.freeze_cleanup_schedule(),
+            unknown.freeze_cleanup_through(SemanticPosition(100)),
             Err(ContinuationFailure::UnknownCleanup(LifeName(3)))
         );
         let mut ambiguous = SemanticContinuation::default();
         ambiguous.place_cleanup(placement(1, 2, 1)).unwrap();
         ambiguous.place_cleanup(placement(2, 2, 1)).unwrap();
         assert_eq!(
-            ambiguous.freeze_cleanup_schedule(),
+            ambiguous.freeze_cleanup_through(SemanticPosition(100)),
             Err(ContinuationFailure::DuplicateDeclarationOrder)
         );
     }

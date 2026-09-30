@@ -66,8 +66,9 @@ evidence. Stale, foreign or mismatched evidence cannot publish a projection or
 advance the continuation. The generic transaction's scratch storage does not
 constitute another evaluator or a semantic retry. Full E/source integration
 and external effect publication remain consumer gates.
-The evidence includes the frozen cleanup sequence; a different continuation
-snapshot cannot reuse it merely because identity and action ordinal agree.
+The evidence includes the fixed cleanup prefix and pending suffix; extending
+either changes the continuation snapshot. A different snapshot cannot reuse
+evidence merely because identity and action ordinal agree.
 
 Move carries its source, destination and already fixed `MoveEffect`.
 Supplied Movable, instance Killable and the narrow Preserve proof are distinct
@@ -77,19 +78,34 @@ generation at one cut, retaining deeper origin and Color. Preserve retains the
 surviving subject and does not construct a copy.
 
 Cleanup points arrive already fixed by all ordinary constraints. The schedule
-retains declaration order and precedence; freezing linearizes same-point
-events without shifting any point. At the scheduled cut cleanup submits Drop,
+retains declaration order and precedence. `freeze_cleanup_through(k)` fixes
+the complete prefix through k, including empty cuts, without shifting any point.
+It linearizes same-point events while preserving all previously fixed order.
+New generations may receive placements strictly beyond that prefix and the
+committed frontier. Future material remains a separate, unfinalized suffix;
+`cleanup()` exposes only the fixed sequence. Every lifecycle Pre requires its
+requested cut to be covered by the fixed prefix.
+At the scheduled cut cleanup submits Drop,
 not a separate lifecycle event. A committed Kill/Drop discharges the generation's
 obligation. Every lifecycle action's Pre rejects crossing any earlier fixed
 cleanup point whose obligation remains outstanding, even for another subject.
 Failure leaves the fixed Drop executable at its original cut; neither the cut
-nor the ordinal advances. Preserve discharges no cleanup obligation.
+nor the ordinal advances. At its own fixed endpoint, Use/Preserve fail; Drop
+and a Kill replacing that Drop must follow the fixed sequence. Kill before
+its future scheduled Drop still discharges that obligation without borrowing
+the future cut's ordering. An ending action cannot close a half-open Region
+at a cut already containing Use/Preserve of that subject, even without a
+scheduled Drop. Action ordinals do not enlarge Region membership.
+Preserve discharges no cleanup obligation.
 
 Roster discovery establishes only the stable value-to-LifeName map. It supplies
 neither Alive nor a Region nor an origin proposition. Formation consumes an
 explicit formation cut; missing/default origin producer material remains
 `LifecycleOrigin::Pending`, distinct from `ExplicitNone` and `Name(n)`.
 Finite Color queries cannot truncate pending ancestry as if it terminated.
+The `admit_committed_*_fact` interfaces import producer-established facts;
+they are not lifecycle action commits. CompilationWorld exposes lifecycle
+state read-only; source fact producers remain unconnected.
 
 ReifyLife must describe the fully fixed generation continuation. A frozen
 cleanup table alone proves neither its full endpoint nor the absence of other

@@ -513,7 +513,7 @@ consumer connections are implementation work, not open language-design questions
 Lifecycle interface cleanup removes the independently committing action machine
 and the separate Cleanup event. `LifecycleState::check_pre` is read-only;
 its opaque evidence binds the selected action, expected projection/continuation
-state (including the frozen cleanup sequence) and common cut.
+state (including the fixed cleanup prefix and pending suffix) and common cut.
 `semantic_continuation.rs` owns a generic joint transaction: all affected Pre
 checks precede publication of all Post projections at one action identity and
 position. Stale/foreign evidence publishes neither partial state nor a cut.
@@ -527,19 +527,26 @@ Color, and discharges the old scheduled Drop. Preserve transports the surviving
 subject without clone or a manufactured fresh object/generation.
 
 Cleanup placements retain established declaration order and fixed points.
+Freezing fixes a complete prefix through an explicit cut. Later generations
+may acquire cleanup in the still-unfixed suffix; neither a committed cut nor
+the fixed prefix can be reopened. Pre requires its action cut covered, and
+prefix/suffix changes invalidate earlier evidence.
 Freezing respects all supplied precedence and applies reverse declaration
 priority only among still-unordered available events at the same point.
 Contradictions diagnose without moving points. Scheduled cleanup commits Drop;
 already discharged obligations add no second destructor. Lifetime reification
 requires the fully fixed generation continuation, not merely the cleanup-table
-frozen flag. The operational active Region is never published as a complete
+fixed prefix. The operational active Region is never published as a complete
 LifetimeValue; the full continuation projection is unavailable. Lifecycle Pre
 cannot cross an earlier outstanding cleanup, including for unrelated subjects.
 Rejecting that action preserves the ability to Drop at the original point.
+Use/Preserve cannot occupy their own half-open endpoint. Scheduled Drop and
+same-cut Kill discharge in fixed order. An unscheduled ending cannot close
+a Region at a cut already containing that subject's Use/Preserve either.
 
 SemanticWorld roster synchronization discovers names only; missing formation
 and origin facts do not establish Alive, a formation cut or origin=None.
-`establish_formation` takes the actual supplied cut, including a cut earlier
+`admit_committed_formation_fact` takes the actual supplied cut, including a cut earlier
 than discovery. Pending origin producers remain explicit pending material.
 Origin completion is one-shot, and finite Color queries cannot silently stop
 at missing ancestry. Full ReifyLife remains an explicit consumer frontier,

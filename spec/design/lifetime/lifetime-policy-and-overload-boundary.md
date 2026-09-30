@@ -5,6 +5,9 @@ lifetime/ordinary-overload boundary. `LifecycleState` stores LifeName, Region,
 Color and lifecycle observations; it checks Pre and consumes the shared
 `SemanticContinuation` transaction's committed-action witness for Post.
 Linearization and Pre boundaries of already fixed cleanup points are implemented.
+The substrate fixes continuation-relative cleanup prefixes, leaving future
+generations' suffix placements available. Same-cut Use/Preserve cannot occupy
+their own half-open endpoint; scheduled Drop and boundary Kill follow fixed order.
 Roster discovery supplies stable names, not formation/origin facts. Full
 generation-continuation reification, source operations, cleanup point derivation,
 access-tree construction and the complete E consumer remain pending.

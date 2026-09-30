@@ -327,10 +327,6 @@ impl CompilationWorld {
         &self.lifecycle
     }
 
-    pub fn lifecycle_mut(&mut self) -> &mut crate::LifecycleState {
-        &mut self.lifecycle
-    }
-
     /// Roster discovery supplies names only; formation/origin producers are
     /// not connected by discovering a SemanticWorld value.
     fn sync_lifecycle_names(&mut self) {

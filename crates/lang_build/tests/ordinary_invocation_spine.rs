@@ -730,7 +730,7 @@ fn production_world_owns_one_lifecycle_name_map_across_invocations() {
         "roster discovery does not establish Alive"
     );
     let mut k = world.continuation().clone();
-    k.freeze_cleanup_schedule().unwrap();
+    k.freeze_cleanup_through(k.position()).unwrap();
     assert_eq!(
         world.lifecycle().reify_value(&k, target),
         Err(lang_build::LifecycleFailure::FormationPending(first_name)),

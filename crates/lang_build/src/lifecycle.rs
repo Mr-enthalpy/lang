@@ -246,7 +246,7 @@ pub struct LifecyclePost {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LifecycleFailure {
-    CleanupScheduleNotFrozen,
+    CleanupPrefixNotFixed,
     ForeignContinuation,
     UnknownValue(SemanticValueId),
     ValueAlreadyRegistered(SemanticValueId),
@@ -263,6 +263,7 @@ pub enum LifecycleFailure {
     CleanupPointMismatch,
     CleanupPrecedencePending,
     CleanupBoundaryPending(LifeName),
+    NonEndingEventAtBoundary(LifeName),
     IdentityExhausted,
     StaleOrForeignProof,
     PreRejected(String),
@@ -325,9 +326,10 @@ impl LifecycleState {
         Ok(())
     }
 
-    /// Consume supplied formation facts, preserving a previously discovered
-    /// name. First bookkeeping observation never supplies the formation cut.
-    pub fn establish_formation(
+    /// Admit formation already committed by its ordinary producer, preserving
+    /// a discovered name. This imports facts; it does not execute formation.
+    /// First bookkeeping observation never supplies the formation cut.
+    pub fn admit_committed_formation_fact(
         &mut self,
         continuation: &SemanticContinuation,
         value: SemanticValueId,
@@ -382,9 +384,9 @@ impl LifecycleState {
         }
     }
 
-    /// One explicit origin fact from its ordinary formation/default producer.
+    /// Admit one origin fact already committed by its formation/default producer.
     /// None here is intentionally written termination, never an omission.
-    pub fn establish_origin(
+    pub fn admit_committed_origin_fact(
         &mut self,
         continuation: &SemanticContinuation,
         name: LifeName,
@@ -422,7 +424,8 @@ impl LifecycleState {
         &self.events
     }
 
-    pub fn assign_color(&mut self, name: LifeName, color: ColorId) {
+    /// Import a committed Color fact; this is not a lifecycle action entry point.
+    pub fn admit_committed_color_fact(&mut self, name: LifeName, color: ColorId) {
         self.colors.entry(name).or_default().insert(color);
     }
 
@@ -453,8 +456,8 @@ impl LifecycleState {
         value: SemanticValueId,
     ) -> Result<LifetimeValue, LifecycleFailure> {
         self.require_continuation(continuation)?;
-        if !continuation.cleanup_is_frozen() {
-            return Err(LifecycleFailure::CleanupScheduleNotFrozen);
+        if !continuation.cleanup_is_fixed_through(continuation.position()) {
+            return Err(LifecycleFailure::CleanupPrefixNotFixed);
         }
         let name = self
             .values
@@ -492,8 +495,8 @@ impl LifecycleState {
         provenance: &Provenance,
     ) -> Result<LifecyclePreProof, LifecycleFailure> {
         self.require_continuation(continuation)?;
-        if !continuation.cleanup_is_frozen() {
-            return Err(LifecycleFailure::CleanupScheduleNotFrozen);
+        if !continuation.cleanup_is_fixed_through(at) {
+            return Err(LifecycleFailure::CleanupPrefixNotFixed);
         }
         if let Some(placement) = continuation
             .cleanup()
@@ -517,6 +520,54 @@ impl LifecycleState {
             .get(&name)
             .ok_or(LifecycleFailure::DeadName(name))?;
         self.resolved_origin(name)?;
+        let ending = matches!(
+            action,
+            LifecycleAction::Drop(_)
+                | LifecycleAction::Move {
+                    effect: MoveEffect::Kill,
+                    ..
+                }
+        );
+        if let Some(index) = continuation
+            .cleanup()
+            .iter()
+            .position(|entry| entry.name == name)
+        {
+            let placement = &continuation.cleanup()[index];
+            if matches!(action, LifecycleAction::Drop(_)) && placement.at != at {
+                return Err(LifecycleFailure::CleanupPointMismatch);
+            }
+            if placement.at == at {
+                if !ending {
+                    return Err(LifecycleFailure::CleanupBoundaryPending(name));
+                }
+                if continuation.cleanup()[..index]
+                    .iter()
+                    .any(|entry| !self.cleanup_obligation_discharged(entry.name))
+                {
+                    return Err(LifecycleFailure::CleanupPrecedencePending);
+                }
+            }
+        }
+        // A scalar half-open Region cannot later end at a cut that already
+        // contains a Use or Preserve of that generation. Action ordinal does
+        // not change Region membership, even for an unscheduled ending action.
+        if ending
+            && self.events.iter().any(|event| {
+                event.name == name
+                    && event.at == at
+                    && matches!(
+                        event.kind,
+                        LifecycleEventKind::Use
+                            | LifecycleEventKind::Move {
+                                effect: MoveEffect::Preserve,
+                                ..
+                            }
+                    )
+            })
+        {
+            return Err(LifecycleFailure::NonEndingEventAtBoundary(name));
+        }
         match *action {
             LifecycleAction::Move {
                 source,
@@ -555,20 +606,12 @@ impl LifecycleState {
                 }
             }
             LifecycleAction::Drop(name) => {
-                if let Some(index) = continuation
-                    .cleanup()
+                if continuation
+                    .pending_cleanup()
                     .iter()
-                    .position(|entry| entry.name == name)
+                    .any(|entry| entry.name == name)
                 {
-                    if continuation.cleanup()[index].at != at {
-                        return Err(LifecycleFailure::CleanupPointMismatch);
-                    }
-                    if continuation.cleanup()[..index]
-                        .iter()
-                        .any(|entry| !self.cleanup_obligation_discharged(entry.name))
-                    {
-                        return Err(LifecycleFailure::CleanupPrecedencePending);
-                    }
+                    return Err(LifecycleFailure::CleanupPointMismatch);
                 }
                 if !validation.snapshot.killable.contains(&name) {
                     return Err(LifecycleFailure::KillNotAuthorized(name));
@@ -717,14 +760,16 @@ mod tests {
         let mut continuation = SemanticContinuation::default();
         let mut state = LifecycleState::new(&continuation);
         let name = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &continuation,
                 SemanticValueId(7),
                 SemanticPosition(0),
                 LifecycleOrigin::ExplicitNone,
             )
             .unwrap();
-        continuation.freeze_cleanup_schedule().unwrap();
+        continuation
+            .freeze_cleanup_through(SemanticPosition(100))
+            .unwrap();
         (continuation, state, name)
     }
 
@@ -785,7 +830,7 @@ mod tests {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
         let name = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(1),
                 SemanticPosition(0),
@@ -798,7 +843,7 @@ mod tests {
             declaration_order: 1,
         })
         .unwrap();
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         let before = state.clone();
         assert_eq!(
             state.reify_value(&k, SemanticValueId(1)),
@@ -811,11 +856,307 @@ mod tests {
     }
 
     #[test]
+    fn killing_move_destination_can_acquire_its_own_future_cleanup() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let source = state
+            .admit_committed_formation_fact(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        k.place_cleanup(crate::CleanupPlacement {
+            name: source,
+            at: SemanticPosition(1),
+            declaration_order: 1,
+        })
+        .unwrap();
+        k.freeze_cleanup_through(SemanticPosition(1)).unwrap();
+        let destination = commit(
+            &mut k,
+            &mut state,
+            1,
+            LifecycleAction::Move {
+                source,
+                destination: SemanticValueId(2),
+                effect: MoveEffect::Kill,
+            },
+        )
+        .unwrap()
+        .destination
+        .unwrap();
+        assert!(state.cleanup_obligation_discharged(source));
+        assert!(!state.cleanup_obligation_discharged(destination));
+        k.place_cleanup(crate::CleanupPlacement {
+            name: destination,
+            at: SemanticPosition(5),
+            declaration_order: 2,
+        })
+        .unwrap();
+        let before = (state.clone(), k.clone());
+        assert_eq!(
+            commit(&mut k, &mut state, 2, LifecycleAction::Use(destination)),
+            Err(crate::SemanticCommitFailure::Pre(
+                LifecycleFailure::CleanupPrefixNotFixed
+            ))
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+        k.freeze_cleanup_through(SemanticPosition(2)).unwrap();
+        assert_eq!(
+            commit(&mut k, &mut state, 2, LifecycleAction::Drop(destination)),
+            Err(crate::SemanticCommitFailure::Pre(
+                LifecycleFailure::CleanupPointMismatch
+            ))
+        );
+        commit(&mut k, &mut state, 2, LifecycleAction::Use(destination)).unwrap();
+        k.freeze_cleanup_through(SemanticPosition(5)).unwrap();
+        let post = commit(&mut k, &mut state, 5, LifecycleAction::Drop(destination)).unwrap();
+        assert_eq!(
+            post.closed_region.unwrap().region.end,
+            Some(SemanticPosition(5))
+        );
+        assert!(state.cleanup_obligation_discharged(destination));
+        assert_eq!(
+            state
+                .events
+                .iter()
+                .filter(
+                    |event| event.name == source && matches!(event.kind, LifecycleEventKind::Drop)
+                )
+                .count(),
+            0
+        );
+    }
+
+    #[test]
+    fn late_formation_has_a_future_cleanup_without_reopening_the_prefix() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        k.freeze_cleanup_through(SemanticPosition(4)).unwrap();
+        k.commit_action(
+            SemanticPosition(4),
+            &mut (),
+            (),
+            |_, _, _, _| Ok::<_, ()>(()),
+            |_, _, _| Ok::<_, ()>(()),
+        )
+        .unwrap();
+        let value = SemanticValueId(1);
+        let name = state.discover_value(&k, value).unwrap();
+        state
+            .admit_committed_formation_fact(
+                &k,
+                value,
+                SemanticPosition(1),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        k.place_cleanup(crate::CleanupPlacement {
+            name,
+            at: SemanticPosition(6),
+            declaration_order: 1,
+        })
+        .unwrap();
+        k.freeze_cleanup_through(SemanticPosition(6)).unwrap();
+        let post = commit(&mut k, &mut state, 6, LifecycleAction::Drop(name)).unwrap();
+        let region = post.closed_region.unwrap().region;
+        assert_eq!(region.start, SemanticPosition(1));
+        assert_eq!(region.end, Some(SemanticPosition(6)));
+    }
+
+    #[test]
+    fn use_and_preserve_cannot_occupy_their_scheduled_half_open_endpoint() {
+        for effect in [None, Some(MoveEffect::Preserve)] {
+            let mut k = SemanticContinuation::default();
+            let mut state = LifecycleState::new(&k);
+            let name = state
+                .admit_committed_formation_fact(
+                    &k,
+                    SemanticValueId(1),
+                    SemanticPosition(0),
+                    LifecycleOrigin::ExplicitNone,
+                )
+                .unwrap();
+            k.place_cleanup(crate::CleanupPlacement {
+                name,
+                at: SemanticPosition(5),
+                declaration_order: 1,
+            })
+            .unwrap();
+            k.freeze_cleanup_through(SemanticPosition(5)).unwrap();
+            let action = match effect {
+                None => LifecycleAction::Use(name),
+                Some(effect) => LifecycleAction::Move {
+                    source: name,
+                    destination: SemanticValueId(2),
+                    effect,
+                },
+            };
+            let before = (state.clone(), k.clone());
+            assert_eq!(
+                commit(&mut k, &mut state, 5, action),
+                Err(crate::SemanticCommitFailure::Pre(
+                    LifecycleFailure::CleanupBoundaryPending(name)
+                ))
+            );
+            assert_eq!((state.clone(), k.clone()), before);
+            let post = commit(&mut k, &mut state, 5, LifecycleAction::Drop(name)).unwrap();
+            assert_eq!(
+                post.closed_region.unwrap().region.end,
+                Some(SemanticPosition(5))
+            );
+        }
+    }
+
+    #[test]
+    fn boundary_kill_obeys_the_same_fixed_order_as_scheduled_drop() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let a = state
+            .admit_committed_formation_fact(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        let b = state
+            .admit_committed_formation_fact(
+                &k,
+                SemanticValueId(2),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        for (name, declaration_order) in [(a, 1), (b, 2)] {
+            k.place_cleanup(crate::CleanupPlacement {
+                name,
+                at: SemanticPosition(5),
+                declaration_order,
+            })
+            .unwrap();
+        }
+        k.freeze_cleanup_through(SemanticPosition(5)).unwrap();
+        let action = LifecycleAction::Move {
+            source: a,
+            destination: SemanticValueId(3),
+            effect: MoveEffect::Kill,
+        };
+        let before = (state.clone(), k.clone());
+        assert_eq!(
+            commit(&mut k, &mut state, 5, action.clone()),
+            Err(crate::SemanticCommitFailure::Pre(
+                LifecycleFailure::CleanupPrecedencePending
+            ))
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+        commit(&mut k, &mut state, 5, LifecycleAction::Drop(b)).unwrap();
+        let destination = commit(&mut k, &mut state, 5, action)
+            .unwrap()
+            .destination
+            .unwrap();
+        assert!(state.cleanup_obligation_discharged(a));
+        // The endpoint is specific to the old subject, not a ban on the cut.
+        commit(&mut k, &mut state, 5, LifecycleAction::Use(destination)).unwrap();
+    }
+
+    #[test]
+    fn unscheduled_ending_cannot_put_an_existing_event_outside_its_region() {
+        for nonending in [false, true] {
+            for kill in [false, true] {
+                let (mut k, mut state, name) = fixture();
+                let action = if nonending {
+                    LifecycleAction::Move {
+                        source: name,
+                        destination: SemanticValueId(8),
+                        effect: MoveEffect::Preserve,
+                    }
+                } else {
+                    LifecycleAction::Use(name)
+                };
+                commit(&mut k, &mut state, 3, action).unwrap();
+                let ending = if kill {
+                    LifecycleAction::Move {
+                        source: name,
+                        destination: SemanticValueId(9),
+                        effect: MoveEffect::Kill,
+                    }
+                } else {
+                    LifecycleAction::Drop(name)
+                };
+                let before = (state.clone(), k.clone());
+                assert_eq!(
+                    commit(&mut k, &mut state, 3, ending),
+                    Err(crate::SemanticCommitFailure::Pre(
+                        LifecycleFailure::NonEndingEventAtBoundary(name)
+                    ))
+                );
+                assert_eq!((state.clone(), k.clone()), before);
+                commit(&mut k, &mut state, 4, LifecycleAction::Drop(name)).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn prefix_or_suffix_changes_invalidate_old_pre_evidence() {
+        for extend_prefix in [false, true] {
+            let mut k = SemanticContinuation::default();
+            let mut state = LifecycleState::new(&k);
+            let name = state
+                .admit_committed_formation_fact(
+                    &k,
+                    SemanticValueId(1),
+                    SemanticPosition(0),
+                    LifecycleOrigin::ExplicitNone,
+                )
+                .unwrap();
+            k.freeze_cleanup_through(SemanticPosition(1)).unwrap();
+            let action = LifecycleAction::Use(name);
+            let proof = state
+                .check_pre(
+                    &k,
+                    SemanticPosition(1),
+                    &action,
+                    &validation(&state, &action),
+                    &Provenance::new("fixed cut"),
+                )
+                .unwrap();
+            if extend_prefix {
+                k.freeze_cleanup_through(SemanticPosition(2)).unwrap();
+            } else {
+                k.place_cleanup(crate::CleanupPlacement {
+                    name,
+                    at: SemanticPosition(5),
+                    declaration_order: 1,
+                })
+                .unwrap();
+            }
+            let before = (state.clone(), k.clone());
+            let result = k.commit_action(
+                SemanticPosition(1),
+                &mut state,
+                action,
+                |_, _, _, _| Ok::<_, LifecycleFailure>(proof),
+                |state, committed, proof| state.apply_post(committed, proof),
+            );
+            assert_eq!(
+                result,
+                Err(crate::SemanticCommitFailure::Projection(
+                    LifecycleFailure::StaleOrForeignProof
+                ))
+            );
+            assert_eq!((state.clone(), k.clone()), before);
+        }
+    }
+
+    #[test]
     fn use_and_both_move_effects_cannot_cross_an_outstanding_fixed_cleanup() {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
         let source = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(1),
                 SemanticPosition(0),
@@ -823,7 +1164,7 @@ mod tests {
             )
             .unwrap();
         let other = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(2),
                 SemanticPosition(0),
@@ -836,7 +1177,7 @@ mod tests {
             declaration_order: 1,
         })
         .unwrap();
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         let before_state = state.clone();
         let before_k = k.clone();
         for action in [
@@ -878,7 +1219,7 @@ mod tests {
             let mut k = SemanticContinuation::default();
             let mut state = LifecycleState::new(&k);
             let source = state
-                .establish_formation(
+                .admit_committed_formation_fact(
                     &k,
                     SemanticValueId(1),
                     SemanticPosition(0),
@@ -891,7 +1232,7 @@ mod tests {
                 declaration_order: 1,
             })
             .unwrap();
-            k.freeze_cleanup_schedule().unwrap();
+            k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
             let post = commit(
                 &mut k,
                 &mut state,
@@ -930,7 +1271,7 @@ mod tests {
     #[test]
     fn late_discovery_cannot_supply_formation_or_default_origin_facts() {
         let mut k = SemanticContinuation::default();
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         let mut state = LifecycleState::new(&k);
         k.commit_action(
             SemanticPosition(4),
@@ -960,7 +1301,12 @@ mod tests {
         assert_eq!(k, before_k);
         assert_eq!(
             state
-                .establish_formation(&k, value, SemanticPosition(1), LifecycleOrigin::Pending)
+                .admit_committed_formation_fact(
+                    &k,
+                    value,
+                    SemanticPosition(1),
+                    LifecycleOrigin::Pending
+                )
                 .unwrap(),
             name
         );
@@ -977,7 +1323,7 @@ mod tests {
             state.observed_colors(name),
             Err(LifecycleFailure::OriginPending(name))
         );
-        state.establish_origin(&k, name, None).unwrap();
+        state.admit_committed_origin_fact(&k, name, None).unwrap();
         assert_eq!(state.origins[&name], LifecycleOrigin::ExplicitNone);
         assert_eq!(state.observed_colors(name), Ok(BTreeSet::new()));
         assert_eq!(
@@ -985,7 +1331,7 @@ mod tests {
             Err(LifecycleFailure::LifecycleContinuationPending)
         );
         assert_eq!(
-            state.establish_origin(&k, name, Some(name)),
+            state.admit_committed_origin_fact(&k, name, Some(name)),
             Err(LifecycleFailure::OriginAlreadyEstablished(name))
         );
     }
@@ -995,7 +1341,7 @@ mod tests {
         let (mut k, mut state, _) = fixture();
         let ancestor = state.discover_value(&k, SemanticValueId(8)).unwrap();
         let source = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(9),
                 SemanticPosition(0),
@@ -1031,7 +1377,7 @@ mod tests {
         let (k, mut state, _) = fixture();
         let before = state.clone();
         assert_eq!(
-            state.establish_formation(
+            state.admit_committed_formation_fact(
                 &k,
                 SemanticValueId(8),
                 SemanticPosition(1),
@@ -1045,7 +1391,7 @@ mod tests {
             state.name_of(SemanticValueId(7)).unwrap()
         );
         assert_eq!(
-            state.establish_formation(
+            state.admit_committed_formation_fact(
                 &k,
                 SemanticValueId(7),
                 SemanticPosition(0),
@@ -1062,7 +1408,7 @@ mod tests {
         let mut state = LifecycleState::new(&k);
         let source_value = SemanticValueId(7);
         let source = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 source_value,
                 SemanticPosition(0),
@@ -1071,9 +1417,9 @@ mod tests {
             .unwrap();
         assert_eq!(
             state.reify_value(&k, source_value),
-            Err(LifecycleFailure::CleanupScheduleNotFrozen)
+            Err(LifecycleFailure::CleanupPrefixNotFixed)
         );
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         assert_eq!(
             state.reify_value(&k, source_value),
             Err(LifecycleFailure::LifecycleContinuationPending)
@@ -1129,7 +1475,7 @@ mod tests {
         let before_name_count = state.next_name;
         let region = state.active[&source];
         let color = ColorId("stable-subject".into());
-        state.assign_color(source, color.clone());
+        state.admit_committed_color_fact(source, color.clone());
         let destination = SemanticValueId(8);
         let post = commit(
             &mut k,
@@ -1226,7 +1572,7 @@ mod tests {
     fn killing_move_preserves_direct_and_inherited_colors_and_deeper_origin() {
         let (mut k, mut state, ancestor) = fixture();
         let source = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(71),
                 SemanticPosition(0),
@@ -1235,8 +1581,8 @@ mod tests {
             .unwrap();
         let ancestor_color = ColorId("ancestor".into());
         let direct_color = ColorId("direct".into());
-        state.assign_color(ancestor, ancestor_color.clone());
-        state.assign_color(source, direct_color.clone());
+        state.admit_committed_color_fact(ancestor, ancestor_color.clone());
+        state.admit_committed_color_fact(source, direct_color.clone());
         let before = state.observed_colors(source);
         let post = commit(
             &mut k,
@@ -1352,7 +1698,9 @@ mod tests {
         ));
         assert_eq!(state, before);
         let mut foreign_k = SemanticContinuation::default();
-        foreign_k.freeze_cleanup_schedule().unwrap();
+        foreign_k
+            .freeze_cleanup_through(SemanticPosition(100))
+            .unwrap();
         assert!(matches!(
             state.check_pre(
                 &foreign_k,
@@ -1392,7 +1740,7 @@ mod tests {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
         let a = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(1),
                 SemanticPosition(0),
@@ -1400,7 +1748,7 @@ mod tests {
             )
             .unwrap();
         let b = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(2),
                 SemanticPosition(0),
@@ -1421,7 +1769,9 @@ mod tests {
                     })
                     .unwrap();
             }
-            continuation.freeze_cleanup_schedule().unwrap();
+            continuation
+                .freeze_cleanup_through(SemanticPosition(100))
+                .unwrap();
         }
         let action = LifecycleAction::Drop(b);
         let facts = validation(&state, &action);
@@ -1485,7 +1835,7 @@ mod tests {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
         let a = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(1),
                 SemanticPosition(0),
@@ -1493,7 +1843,7 @@ mod tests {
             )
             .unwrap();
         let b = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(2),
                 SemanticPosition(0),
@@ -1501,7 +1851,7 @@ mod tests {
             )
             .unwrap();
         let c = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(3),
                 SemanticPosition(0),
@@ -1516,7 +1866,7 @@ mod tests {
             })
             .unwrap();
         }
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         assert_eq!(
             k.cleanup()
                 .iter()
@@ -1554,7 +1904,7 @@ mod tests {
     fn equal_material_registration_does_not_merge_subjects_and_foreign_observation_fails() {
         let (k, mut state, first) = fixture();
         let second = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(8),
                 SemanticPosition(0),
@@ -1564,7 +1914,7 @@ mod tests {
         assert_ne!(first, second);
         assert_eq!(state.discover_value(&k, SemanticValueId(7)).unwrap(), first);
         assert_eq!(
-            state.establish_formation(
+            state.admit_committed_formation_fact(
                 &k,
                 SemanticValueId(7),
                 SemanticPosition(0),
@@ -1584,7 +1934,7 @@ mod tests {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
         let source = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(1),
                 SemanticPosition(0),
@@ -1592,7 +1942,7 @@ mod tests {
             )
             .unwrap();
         let other = state
-            .establish_formation(
+            .admit_committed_formation_fact(
                 &k,
                 SemanticValueId(2),
                 SemanticPosition(0),
@@ -1607,7 +1957,7 @@ mod tests {
             })
             .unwrap();
         }
-        k.freeze_cleanup_schedule().unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
         commit(
             &mut k,
             &mut state,
@@ -1660,7 +2010,7 @@ mod tests {
                 &Provenance::new("at two"),
             )
             .unwrap();
-        state.assign_color(name, ColorId("new-fact".into()));
+        state.admit_committed_color_fact(name, ColorId("new-fact".into()));
         let before = state.clone();
         let failed = k.commit_action(
             SemanticPosition(2),

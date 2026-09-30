@@ -101,6 +101,10 @@ precedence/linearization of fixed cleanup points, and no duplicate Drop after Ki
 Additional substrate regressions reject crossing outstanding cleanup boundaries
 without advancing K, distinguish discovery from formation/origin facts, and
 keep full ReifyLife unavailable instead of returning an incomplete Region.
+Prefix regressions cover future cleanup of Kill destinations and late admitted
+formation, immutable fixed prefixes, stale evidence after prefix/suffix changes,
+same-cut Use/Preserve rejection, and fixed-order boundary Kill. Scalar half-open
+Regions also reject later endings at an existing Use/Preserve cut.
 The production world retains one K and lifecycle name map; source lifecycle
 actions, complete generation-continuation observation, NLL/with cleanup-point
 derivation and complete E remain consumer gates.
