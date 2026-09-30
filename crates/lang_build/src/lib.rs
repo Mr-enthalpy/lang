@@ -73,8 +73,7 @@ pub use identity::{
     MetaCallableIdentity, PlaceId, SemanticValueId, TypeLookupIndexAllocator, TypeValueId,
 };
 pub use initializer_eval::{
-    binding_assertion_annotation_context, residual_diagnostic, AnnotationContext, EvalMode,
-    ResidualReason,
+    binding_assertion_annotation_context, residual_diagnostic, AnnotationContext, ResidualReason,
 };
 pub use invocation_frame::{
     CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationFrame,
@@ -97,8 +96,8 @@ pub use literal_semantics::{
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
 pub use meta_body::{
-    check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
-    selected_meta_delete_diagnostic, SelectedMetaBodyEvaluation,
+    evaluate_selected_meta_closure_body, selected_meta_delete_diagnostic,
+    SelectedMetaBodyEvaluation,
 };
 pub use meta_candidate::{
     prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
@@ -157,8 +156,8 @@ pub use policy_observation::{
     ExposedPolicyEntry, FacetView, SymbolEntry, SymbolResolutionError,
 };
 pub use policy_overload::{
-    select_by_policy_product, select_policy_overload, HorizonOverloadCandidate, PolicyActualFrame,
-    PolicyFormalFrame, PolicyOverloadCandidate, PolicyOverloadSelection,
+    select_by_policy_product, PolicyActualFrame, PolicyFormalFrame, PolicyOverloadCandidate,
+    PolicyOverloadSelection,
 };
 pub use policy_pair::{
     body_entry_visible_at, compute_export_retention_closure, compute_wpre, declared_policy_view,
@@ -166,17 +165,14 @@ pub use policy_pair::{
     elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
     elaborate_return_policy_pattern, externally_visible, function_object_declaration_policy,
     normalize_p2_policy, project_export_overload_sets, project_export_root_preview, project_p1,
-    project_resolved_export_view, publicly_reachable, BuiltinPrivilegedSealFunction,
-    CallablePrivilege, CapabilityRealization, CapabilityRealizationCell, DeclarationVisibility,
-    ExplicitP1Position, ExplicitP1Selection, ExportAdmission, ExportCandidateView,
-    FormalPolicyPattern, FunctionMember, FunctionMemberKind, FunctionObject,
-    FunctionObjectDeclarationPolicy, FunctionObjectView, FunctionSliceStage,
+    project_resolved_export_view, publicly_reachable, CallablePrivilege, CapabilityRealization,
+    CapabilityRealizationCell, DeclarationVisibility, ExplicitP1Position, ExplicitP1Selection,
+    ExportAdmission, ExportCandidateView, FormalPolicyPattern, FunctionObjectDeclarationPolicy,
     NamespaceCandidateSetRef, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
     NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
     ObservationHorizon, OutputModeDemand, P1Projection, PatternComponentPolicy, PolicyMode,
     PolicyPair, PolicyResultEntry, PolicyView, ResolvedCandidatePolicy, ResultPolicyDemand,
-    ReturnPolicyPattern, SealWorldSnapshot, Stage, ValueComponentPolicy, ValuePolicyQuery,
-    ValuePresence, WpreRoots,
+    ReturnPolicyPattern, Stage, ValueComponentPolicy, ValuePolicyQuery, ValuePresence, WpreRoots,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

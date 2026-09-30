@@ -470,6 +470,11 @@ before exposure; hidden resident observations cannot suppress name conflicts or
 restart search. Subsequent observation, candidate preparation and invocation
 carry one ObservationHorizon. Their distinct Policy facts and judgments remain
 separate; no independent lookup/execution environment coordinates remain.
+No function-stage slicing or separate pre-seal/seal-generated world carrier
+remains. Initializer residual handling is a consumer boundary, not a choice
+between meta evaluators. Visibility reads actual candidate Policy facts and
+does not determine delete-body legality. The pure Policy-mode product selector
+and real ordinary candidate pipeline remain reusable assets.
 Ordinary Policy deduction, R_vis/C_sigma, pending seal
 formation and E saturation remain consumer gates.
 

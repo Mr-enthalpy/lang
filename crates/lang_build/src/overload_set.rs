@@ -341,11 +341,11 @@ fn evaluate_body_local_let(
                 return Err(SourceBodyEvaluationFailure {
                     diagnostic: Diagnostic::hard_error(
                         format!(
-                            "ResidualNotAllowedInMetaStrict: runtime-only dependency in MetaStrict context ({reason})"
+                            "ResidualNotAllowedAtBoundary: selected source-body local initializer remains residual ({reason})"
                         ),
                         Some(provenance),
                     )
-                    .with_code(ResolverCode::ResidualNotAllowedInMetaStrict),
+                    .with_code(ResolverCode::ResidualNotAllowedAtBoundary),
                 });
             }
             BodyLocalInitializerCheck::Rejected(diagnostic) => {

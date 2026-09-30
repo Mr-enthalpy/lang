@@ -31,6 +31,9 @@ have substrate coverage after Stage cleanup. Name resolution fixes identity
 without a horizon. Subsequent callee observation, candidate preparation and
 body-entry observation use one invocation horizon, retaining distinct facts;
 the horizon alone proves neither readiness nor execution legality. Ordinary
+initializer boundaries retain residuals when fixed targets expose no candidate;
+candidate errors and selected-body failures remain diagnostics, with no second
+meta evaluator mode or function/world stage partition. Ordinary
 deduction, R_vis/C_sigma and E readiness/saturation still require consumer
 coverage. Carrier test success is not general source coverage of these semantics.
 

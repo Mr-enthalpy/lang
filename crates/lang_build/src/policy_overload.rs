@@ -1,6 +1,4 @@
-use crate::policy_pair::{
-    FormalPolicyPattern, ObservationHorizon, OutputModeDemand, PolicyMode, Stage,
-};
+use crate::policy_pair::{FormalPolicyPattern, OutputModeDemand, PolicyMode};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyOverloadCandidate<I> {
@@ -60,17 +58,6 @@ fn formal_policy_mode(formal: &FormalPolicyPattern) -> PolicyMode {
     formal.mode
 }
 
-/// A candidate after heterogeneous entry enumeration. The horizon-aware selector
-/// first removes candidates that are not fully admissible or whose stage is not
-/// exposed, then uses one product partial order across Policy-mode positions and
-/// ordinary mode evidence; stage visibility adds no preference.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HorizonOverloadCandidate<I> {
-    pub candidate: PolicyOverloadCandidate<I>,
-    pub stage: Stage,
-    pub fully_admissible: bool,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyOverloadSelection<I> {
     Selected(I),
@@ -106,48 +93,6 @@ pub fn select_by_policy_product<I: Clone>(
             candidates
                 .iter()
                 .map(|candidate| candidate.id.clone())
-                .collect(),
-        ),
-    }
-}
-
-pub fn select_policy_overload<I: Clone>(
-    candidates: &[HorizonOverloadCandidate<I>],
-    actual_frame: &PolicyActualFrame,
-    target_result: OutputModeDemand,
-    horizon: ObservationHorizon,
-) -> PolicyOverloadSelection<I> {
-    let admissible = candidates
-        .iter()
-        .filter(|candidate| {
-            candidate.fully_admissible
-                && candidate.stage.visible_at(horizon)
-                && frame_arity_matches(&candidate.candidate.formal_frame, actual_frame)
-        })
-        .collect::<Vec<_>>();
-    if admissible.is_empty() {
-        return PolicyOverloadSelection::NoCandidate;
-    }
-
-    let maximal = maximal_candidates(&admissible, |better, worse| {
-        dominates(
-            &better.candidate,
-            &worse.candidate,
-            actual_frame,
-            target_result,
-        )
-    });
-
-    match maximal.as_slice() {
-        [] => PolicyOverloadSelection::NoCandidate,
-        [candidate] if candidate.candidate.is_delete => {
-            PolicyOverloadSelection::RejectedByDelete(candidate.candidate.id.clone())
-        }
-        [candidate] => PolicyOverloadSelection::Selected(candidate.candidate.id.clone()),
-        candidates => PolicyOverloadSelection::Ambiguous(
-            candidates
-                .iter()
-                .map(|candidate| candidate.candidate.id.clone())
                 .collect(),
         ),
     }

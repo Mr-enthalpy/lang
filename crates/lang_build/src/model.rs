@@ -190,19 +190,19 @@ pub enum DiagnosticSeverity {
 /// genuine miss from ambiguity/conflict.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResolverCode {
-    /// Symbol genuinely not found, or filtered out by policy.
+    /// Symbol genuinely not found by identity/path resolution.
     Unresolved,
     /// Role ambiguity within a single namespace node.
     Ambiguous,
     /// Cross-root conflict — same symbol found in multiple search roots.
     Conflict,
     AmbiguousMetaCandidate,
-    NoMetaVisibleCandidate,
+    NoVisibleCandidateAtHorizon,
     BodyEntryPolicyMismatch,
     UnsupportedDeferredTypeAssertion,
     AnnotationAssertionFailed,
     ExplicitPolicyVerificationFailed,
-    ResidualNotAllowedInMetaStrict,
+    ResidualNotAllowedAtBoundary,
     UnsupportedSelectedSourceBody,
     UnsupportedSelectedSourceBodyLocalBinding,
     /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)

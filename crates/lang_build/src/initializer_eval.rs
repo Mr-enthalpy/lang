@@ -2,16 +2,10 @@ use lang_syntax::NormBindingSlot;
 
 use crate::model::{Diagnostic, DiagnosticSeverity, Provenance};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EvalMode {
-    MetaPartial,
-    MetaStrict,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ResidualReason {
     UnsupportedExpression,
-    NoMetaVisibleCandidate,
+    NoVisibleCandidateAtHorizon,
     BodyEntryPolicyMismatch,
 }
 
@@ -33,7 +27,7 @@ pub fn binding_assertion_annotation_context(slot: &NormBindingSlot) -> Option<An
 pub fn residual_diagnostic(reason: &ResidualReason, provenance: Provenance) -> Diagnostic {
     Diagnostic::new(
         DiagnosticSeverity::Error,
-        format!("initializer residualized to runtime: {reason:?}"),
+        format!("initializer remains residual at this boundary: {reason:?}"),
         Some(provenance),
     )
 }

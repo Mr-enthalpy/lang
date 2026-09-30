@@ -649,8 +649,8 @@ The model has three independent dimensions:
 evaluation horizon P2:
     meta / compile / seal / runtime
 
-evaluation demand:
-    partial / strict
+consumer completion requirement:
+    permit residual / require completed result
 
 result class:
     ordinary PatternValue
@@ -667,9 +667,9 @@ through InvocationResult rather than inventing another result envelope.
 An OverloadGroup is an ordinary algebraic value (§4.7); returning one does
 not create a new semantic result universe.
 
-`MetaPartial` / `MetaStrict` describe evaluation demand. They do not define the
-meaning of `compile` or `meta`, and they do not determine the successful result
-class.
+A consumer may permit the continuation to remain residual or require a
+completed result at its boundary. This is not a choice of evaluator and does
+not define `compile`, `meta`, or the successful result class.
 
 Callable semantics still use ordinary PatternValue result declarations; there
 is no private construction result class:

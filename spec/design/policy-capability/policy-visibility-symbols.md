@@ -224,6 +224,12 @@ The typed substrate currently provides:
   on each `ExportCandidateView`;
 - horizon visibility filtering and ordinary Policy-mode preference, with
   no ranking between distinct static stage atoms;
+- callable visibility reads the candidate's resolved Policy, without a
+  stage-specific function-member taxonomy or a separately staged world;
+- initializer consumers permit residual completion at their current boundary,
+  without selecting a partial/strict meta evaluator. Reached candidate errors
+  and selected-body failures remain diagnostics. Horizon visibility supplies
+  no delete-body execution-legality proof;
 - atomic builtin type-key / concrete numeric Tnum separation and current
   first-order TypeValue projections. These registries perform concrete type
   lookup only; they do not implement abstract literal denotations;

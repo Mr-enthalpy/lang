@@ -61,7 +61,7 @@ fn omitted_policy_is_inferred_runtime_for_residual_initializer() {
 }
 
 #[test]
-fn missing_meta_visible_candidate_residualizes_under_meta_partial() {
+fn unsupported_expression_remains_residual_at_initializer_boundary() {
     let world = build_single_fixture_world("initializer_missing_candidate_residual", "app");
     let symbol = world
         .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
@@ -99,7 +99,7 @@ fn runtime_closure_declaration_requires_tau_formation() {
 }
 
 #[test]
-fn unavailable_source_contribution_does_not_residualize_under_meta_partial() {
+fn unavailable_source_contribution_is_a_hard_formation_failure() {
     let err = build_fixture_error("initializer_ambiguous", "app");
     assert!(err
         .diagnostics

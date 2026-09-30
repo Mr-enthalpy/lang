@@ -8,7 +8,6 @@ use lang_syntax::{
 use crate::{
     core::{core_declared_pair, install_core_bootstrap},
     discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
-    initializer_eval::EvalMode,
     manifest::{BuildManifest, NamespaceMount},
     meta::expand_struct_construction_material,
     model::{
@@ -1165,7 +1164,6 @@ impl CompilationWorld {
             match self.evaluate_initializer_best_effort_connected(
                 namespace,
                 initializer,
-                EvalMode::MetaPartial,
                 result_policy_demand.clone(),
                 declaration_provenance.clone(),
             ) {
@@ -2027,7 +2025,6 @@ impl CompilationWorld {
         &mut self,
         namespace: NamespaceNodeId,
         initializer: &NormExpr,
-        mode: EvalMode,
         result_policy_demand: ResultPolicyDemand,
         provenance: Provenance,
     ) -> ConnectedInitializerOutcome {
@@ -2041,7 +2038,6 @@ impl CompilationWorld {
                 namespace,
                 policy,
                 operand,
-                mode,
                 Provenance::from_norm_origin("PolicyLet result boundary", origin),
             );
         }
@@ -2126,11 +2122,10 @@ impl CompilationWorld {
                     provenance.clone(),
                 ) {
                     Ok(result) => ConnectedInitializerOutcome::Ordinary(result),
-                    // Meta-partial residualization: a resolvable target whose
-                    // candidate set exposes nothing admissible at the static
-                    // horizon (e.g. a runtime-only body entry) defers the
-                    // binding to runtime instead of hard-failing the build.
-                    // P1 never expands such a callable into meta visibility.
+                    // This initializer consumer permits residual completion when
+                    // a fixed target exposes no admissible candidate at the
+                    // current horizon. It creates no second evaluator queue
+                    // and does not expand the callable visibility through P1.
                     // A candidate that was reached but failed to assemble or
                     // execute (`first_diagnostic: Some`) is a real error and
                     // is never residualized.
@@ -2140,8 +2135,8 @@ impl CompilationWorld {
                             first_diagnostic: None,
                             ..
                         },
-                    ) if mode == EvalMode::MetaPartial => ConnectedInitializerOutcome::Residual {
-                        reason: crate::ResidualReason::NoMetaVisibleCandidate,
+                    ) => ConnectedInitializerOutcome::Residual {
+                        reason: crate::ResidualReason::NoVisibleCandidateAtHorizon,
                         provenance,
                     },
                     Err(failure) => ConnectedInitializerOutcome::Diagnostic(
@@ -2178,7 +2173,6 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
         policy: &NormPolicySpec,
         operand: &NormExpr,
-        mode: EvalMode,
         provenance: Provenance,
     ) -> ConnectedInitializerOutcome {
         let demand = match elaborate_binding_result_demand(Some(policy), provenance.clone()) {
@@ -2205,8 +2199,8 @@ impl CompilationWorld {
                             first_diagnostic: None,
                             ..
                         },
-                    ) if mode == EvalMode::MetaPartial => ConnectedInitializerOutcome::Residual {
-                        reason: crate::ResidualReason::NoMetaVisibleCandidate,
+                    ) => ConnectedInitializerOutcome::Residual {
+                        reason: crate::ResidualReason::NoVisibleCandidateAtHorizon,
                         provenance: provenance.clone(),
                     },
                     Err(failure) => ConnectedInitializerOutcome::Diagnostic(
@@ -2223,7 +2217,6 @@ impl CompilationWorld {
             self.evaluate_initializer_best_effort_connected(
                 namespace,
                 operand,
-                mode,
                 ResultPolicyDemand::default(),
                 provenance.clone(),
             )
@@ -2857,13 +2850,13 @@ fn ordinary_invocation_failure_diagnostic(
             "ordinary invocation found no semantic target values",
             Some(provenance),
         )
-        .with_code(ResolverCode::NoMetaVisibleCandidate),
+        .with_code(ResolverCode::NoVisibleCandidateAtHorizon),
         crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. } => {
             Diagnostic::hard_error(
                 "ordinary invocation found no fully admissible candidate",
                 Some(provenance),
             )
-            .with_code(ResolverCode::NoMetaVisibleCandidate)
+            .with_code(ResolverCode::NoVisibleCandidateAtHorizon)
         }
         crate::OrdinaryInvocationFailure::Residual { residual, .. } => Diagnostic::hard_error(
             format!(
@@ -2988,7 +2981,7 @@ fn verify_residual_policy_compatible(
     }
     Err(BuildError::single(Diagnostic::hard_error(
         format!(
-            "ExplicitPolicyProjectionFailed: RHS residualized to runtime ({reason:?}) and the requested binding policy selects no runtime value slice"
+            "ExplicitPolicyProjectionFailed: initializer remains residual at this boundary ({reason:?}) and the requested binding policy admits no residual result view"
         ),
         Some(provenance),
     )
@@ -3072,6 +3065,184 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::BindingSlot { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
+    }
+}
+
+#[cfg(test)]
+mod initializer_residual_boundary_tests {
+    use super::*;
+
+    fn initializer(source: &str) -> NormExpr {
+        let parsed = lang_syntax::parse(source);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "{source}: {:?}",
+            parsed.diagnostics
+        );
+        let normalized = lang_syntax::normalize_program(&parsed.program);
+        let NormForm::Let(NormDecl::Let { slot, .. }) = &normalized.forms[0] else {
+            panic!("expected binding");
+        };
+        slot.initializer.as_deref().unwrap().clone()
+    }
+
+    fn world_with_member(source: &str) -> CompilationWorld {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let NormExpr::Closure(closure) = initializer(source) else {
+            panic!("expected callable fixture material");
+        };
+        let body_view =
+            result_policy_from_closure(&closure, Provenance::new("fixture P2")).unwrap();
+        let callable_view = derive_function_object_view(
+            &body_view,
+            &crate::FunctionObjectDeclarationPolicy::default(),
+        );
+        // Test substrate only: this does not evaluate a source closure or
+        // install the ordinary result tau_C of a closure expression.
+        world
+            .semantic_world
+            .install_callable_member_value(
+                world.package_root_node(),
+                "f",
+                crate::SymbolId(900000),
+                &closure,
+                None,
+                callable_view,
+                body_view,
+                None,
+                crate::declared_result_class_from_closure(&closure).unwrap(),
+                Provenance::new("initializer candidate fixture"),
+            )
+            .unwrap();
+        world
+    }
+
+    fn evaluate(world: &mut CompilationWorld, source: &str) -> ConnectedInitializerOutcome {
+        world.evaluate_initializer_best_effort_connected(
+            world.package_root_node(),
+            &initializer(source),
+            ResultPolicyDemand::default(),
+            Provenance::new("initializer boundary"),
+        )
+    }
+
+    #[test]
+    fn resolved_hidden_callable_remains_residual_at_both_initializer_boundaries() {
+        for source in ["let result = () f;", "let result = plain let () f;"] {
+            let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            assert!(world
+                .resolve_semantic_source_target(world.package_root_node(), &call.target)
+                .is_some());
+            let failure = world
+                .invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("hidden candidate"),
+                )
+                .unwrap_err();
+            assert!(matches!(
+                failure,
+                crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+                    first_diagnostic: None,
+                    ..
+                }
+            ));
+            assert!(matches!(
+                evaluate(&mut world, source),
+                ConnectedInitializerOutcome::Residual {
+                    reason: crate::ResidualReason::NoVisibleCandidateAtHorizon,
+                    ..
+                }
+            ));
+        }
+    }
+
+    #[test]
+    fn reached_candidate_error_is_not_residual_completion() {
+        for source in ["let result = () f;", "let result = plain let () f;"] {
+            let mut world = world_with_member("let f = (receiver, x:type):meta => { (); };");
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let failure = world
+                .invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("candidate shape mismatch"),
+                )
+                .unwrap_err();
+            let crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+                first_diagnostic: Some(expected),
+                ..
+            } = failure
+            else {
+                panic!("expected candidate diagnostic: {failure:?}");
+            };
+            let ConnectedInitializerOutcome::Diagnostic(actual) = evaluate(&mut world, source)
+            else {
+                panic!("candidate error must not become a residual");
+            };
+            assert_eq!(actual.message, expected.message);
+        }
+    }
+
+    #[test]
+    fn selected_delete_remains_a_terminal_diagnostic_at_both_initializer_boundaries() {
+        for source in ["let result = () f;", "let result = plain let () f;"] {
+            let mut world =
+                world_with_member("let f = (receiver, x):meta => (\"selected rejection\") delete;");
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            assert!(matches!(
+                world.invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("selected delete"),
+                ),
+                Err(crate::OrdinaryInvocationFailure::SelectedDelete { .. })
+            ));
+            let ConnectedInitializerOutcome::Diagnostic(diagnostic) = evaluate(&mut world, source)
+            else {
+                panic!("selected failure must not become a residual");
+            };
+            assert_eq!(diagnostic.severity, DiagnosticSeverity::Error);
+            assert!(
+                diagnostic.message.contains("selected rejection"),
+                "{diagnostic:?}"
+            );
+        }
+    }
+    #[test]
+    fn resolved_type_without_callable_members_remains_residual() {
+        for source in ["let result = () type;", "let result = plain let () type;"] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let call =
+                crate::extract_single_call_site(&initializer("let result = () type;")).unwrap();
+            assert!(world
+                .resolve_semantic_source_target(world.package_root_node(), &call.target)
+                .is_some());
+            assert!(matches!(
+                world.invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("empty type callspace"),
+                ),
+                Err(crate::OrdinaryInvocationFailure::NoTargetValues { .. })
+            ));
+            assert!(matches!(
+                evaluate(&mut world, source),
+                ConnectedInitializerOutcome::Residual {
+                    reason: crate::ResidualReason::NoVisibleCandidateAtHorizon,
+                    ..
+                }
+            ));
+        }
     }
 }
 

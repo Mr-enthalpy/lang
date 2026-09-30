@@ -7,14 +7,13 @@ use lang_build::{
     elaborate_return_policy_pattern, expose_policy_slice, externally_visible,
     function_object_declaration_policy, normalize_p2_policy, project_export_overload_sets,
     project_p1, publicly_reachable, read_pattern, read_value, resolve_explicit_path,
-    select_by_policy_product, select_policy_overload, BuiltinPrivilegedSealFunction,
-    CapabilityRealization, CapabilityRealizationCell, ExportAdmission,
-    FunctionObjectDeclarationPolicy, HorizonOverloadCandidate, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceVisibility, ObjectPlaceId, ObservationHorizon, OutputModeDemand,
-    P1Projection, PatternComponentPolicy, PolicyActualFrame, PolicyFormalFrame, PolicyMode,
+    select_by_policy_product, CapabilityRealization, CapabilityRealizationCell, ExportAdmission,
+    FunctionObjectDeclarationPolicy, NamespaceDeclarationPosition, NamespaceExportNode,
+    NamespaceVisibility, ObjectPlaceId, ObservationHorizon, OutputModeDemand, P1Projection,
+    PatternComponentPolicy, PolicyActualFrame, PolicyFormalFrame, PolicyMode,
     PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyView,
-    Provenance, ResolvedCandidatePolicy, SealWorldSnapshot, Stage, SymbolEntry,
-    ValueComponentPolicy, WpreRoots, WritableContext,
+    Provenance, ResolvedCandidatePolicy, Stage, SymbolEntry, ValueComponentPolicy, WpreRoots,
+    WritableContext,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -816,43 +815,6 @@ fn runtime_value_symbol_resolves_while_only_static_pattern_is_exposed() {
 }
 
 #[test]
-fn seal_explicit_lookup_is_distinct_from_privileged_scan() {
-    let mut world = SealWorldSnapshot::new(vec!["pre-a", "pre-b"]);
-    world.push_seal_generated("seal-a");
-    assert_eq!(
-        world.scan_domain_for_builtin(BuiltinPrivilegedSealFunction::ExportWorldMaterializer),
-        ["pre-a", "pre-b"]
-    );
-    assert_eq!(
-        world.resolve_explicit(|name| *name == "seal-a"),
-        Some(&"seal-a")
-    );
-    assert_eq!(
-        world.final_world().copied().collect::<Vec<_>>(),
-        vec!["pre-a", "pre-b", "seal-a"]
-    );
-
-    let seal_entry = result_entry(
-        Some("seal value"),
-        &[Stage::Seal],
-        "seal Pattern",
-        &[Stage::Seal],
-    );
-    assert!(read_value(&expose_policy_slice(
-        &seal_entry,
-        ObservationHorizon::OpenStatic
-    ))
-    .is_none());
-    assert_eq!(
-        read_value(&expose_policy_slice(
-            &seal_entry,
-            ObservationHorizon::SealStatic
-        )),
-        Some(&"seal value")
-    );
-}
-
-#[test]
 fn wpre_is_the_least_semantic_dependency_closure_of_export_roots() {
     let roots = WpreRoots {
         exported_symbols: vec!["api"],
@@ -1213,73 +1175,4 @@ fn capability_realization_is_a_complete_policy_orthogonal_three_by_three_grid() 
         CapabilityRealizationCell::Absent,
         "Policy preference cannot synthesize an unconfigured capability cell"
     );
-}
-
-#[test]
-fn static_stages_supply_no_overload_preference() {
-    let open = vec![
-        HorizonOverloadCandidate {
-            candidate: candidate("meta", vec![PolicyMode::Const], false),
-            stage: Stage::Meta,
-            fully_admissible: true,
-        },
-        HorizonOverloadCandidate {
-            candidate: candidate("compile", vec![PolicyMode::Const], false),
-            stage: Stage::Compile,
-            fully_admissible: true,
-        },
-    ];
-    assert_eq!(
-        select_policy_overload(
-            &open,
-            &actual_frame(PolicyMode::Const, vec![]),
-            OutputModeDemand::default(),
-            ObservationHorizon::OpenStatic
-        ),
-        PolicyOverloadSelection::Ambiguous(vec!["meta", "compile"])
-    );
-
-    let seal = vec![
-        HorizonOverloadCandidate {
-            candidate: candidate("seal", vec![PolicyMode::Mut], false),
-            stage: Stage::Seal,
-            fully_admissible: true,
-        },
-        HorizonOverloadCandidate {
-            candidate: candidate("compile", vec![PolicyMode::Mut], false),
-            stage: Stage::Compile,
-            fully_admissible: true,
-        },
-    ];
-    assert_eq!(
-        select_policy_overload(
-            &seal,
-            &actual_frame(PolicyMode::Mut, vec![]),
-            OutputModeDemand::default(),
-            ObservationHorizon::SealStatic
-        ),
-        PolicyOverloadSelection::Ambiguous(vec!["seal", "compile"])
-    );
-
-    let crossed = vec![
-        HorizonOverloadCandidate {
-            candidate: candidate("meta-plain", vec![PolicyMode::Plain], false),
-            stage: Stage::Meta,
-            fully_admissible: true,
-        },
-        HorizonOverloadCandidate {
-            candidate: candidate("compile-const", vec![PolicyMode::Const], false),
-            stage: Stage::Compile,
-            fully_admissible: true,
-        },
-    ];
-    assert!(matches!(
-        select_policy_overload(
-            &crossed,
-            &actual_frame(PolicyMode::Const, vec![]),
-            OutputModeDemand::default(),
-            ObservationHorizon::OpenStatic
-        ),
-        PolicyOverloadSelection::Selected("compile-const")
-    ));
 }
