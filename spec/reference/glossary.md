@@ -333,8 +333,9 @@ this initial type.
 
 ### SemanticContinuation
 
-The ordered evaluation position space shared by lifecycle observation and
-committed actions.
+The ordered evaluation position space shared by all semantic projections.
+One action identity and cut govern their joint Pre/commit/Post transaction;
+the lifecycle projection owns no separate commit or position allocator.
 
 ### LifeName / NameView / LifetimeValue
 
@@ -350,7 +351,7 @@ continuation cut. Preserve follows its independent narrow proof.
 ### Pre / Post
 
 Pre validates an action before mutation. Post records only committed success.
-Neither stage participates in overload reselection.
+Neither judgment participates in overload reselection.
 
 ### Color
 

@@ -82,7 +82,7 @@ semantic relations above.
 | OpenHere / construction | explicit window facts, authority, Writable and write algebra | authority/window revalidation and inject substrate | Checks implemented; source WindowLive establishment, generation-coordinate control dispositions and invocation dependency propagation pending |
 | Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
-| SemanticContinuation | lifecycle machine and event ledger | world-owned registration | source action/cleanup wiring pending |
+| SemanticContinuation | shared action transaction with separate LifecycleState and event ledger | world-owned continuation and LifeName registration; supplied lifecycle Pre in ordinary calls | Joint Pre/commit/Post substrate and linearization of fixed cleanup points implemented; source actions/E and cleanup-point derivation pending |
 | Color/access | extensible directed relations and provider interface | lifecycle Pre validation | access-tree construction Open |
 
 “Consumer pending” means the canonical relation exists and no substitute
@@ -331,7 +331,7 @@ they cannot authorize an alternate implementation of these rules.
 | Single-stage positions | lang_build/src/policy_pair.rs has single Stage atoms and separate omitted query coordinates | Connect ordinary deduction with unresolved valuations; preserve position omission/atom/hole, heterogeneous Pin and Pout authority. S01–S08, S12 |
 | Two rounds and origin | ordinary_invocation.rs routes the ordinary trunk; resolved horizon-hidden argument Val1 stops before A/maxima, without unknown/Plain fallback. policy_observation.rs only exposes existing facets and performs no name lookup | Connect R_vis evidence, lazy C_sigma family, ordinary A/D/Policy/Pattern selection and shared selected origin. S09–S11 |
 | Runtime entry and Seal | CLI exposes frontend commands; horizon visibility supplies no readiness or scheduling consumer | Connect EntryContinuation, runtime main, active dominance, real readiness dependencies, pending seal formation and scheduler invariance. E01–E09 |
-| Instance lifecycle and cleanup | lifetime substrate records events; Raw WithClauseAst and NormWithClause preserve shape | Connect Killable/MoveEffect/Movable, uniform type/meta instances, directed Touch closure, default NLL, lexical empty-with and no duplicate drop. L01–L08, W01–W08 |
+| Instance lifecycle and cleanup | lifecycle checks supplied instance/frontier facts; Move has fixed Kill/Preserve; common action witness fixes all projection identities/cuts. Fixed cleanup points use precedence then reverse-declaration linearization; Raw/Norm preserve with shape | Connect ordinary Killable/MoveEffect/Movable formation, uniform type/meta instances, directed Touch closure, default NLL and lexical empty-with to the shared transaction. L01–L08, W01–W08 |
 | Chain and residual boundary | InvocationResult residual is an opaque class/provenance carrier; no separate static/runtime flow carries completion | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
 | Ordinary meta query state | current meta root cache lacks the full retained instance/member state protocol | Connect default formation, actual member mutation, current committed reads, snapshot/Close and SealDom checks. P09–P12, E06 |
 | Operator dispatch | Norm OperatorTarget retains spelling/fixity/arity; world.rs directly resolves operator spelling | Connect OperatorUse/OperatorNameValue, operator[op]/op::adl, OG_s extraction, explicit Forget_s and current slot. Add source goldens for supported operator-name forms. O01–O07 |
@@ -510,7 +510,35 @@ transaction; the provisional preparation pipeline is not that evaluator.
 Visibility alone establishes neither readiness nor execution legality. These
 consumer connections are implementation work, not open language-design questions.
 
-The next independent cleanup cuts expose lifecycle Pre/common commit/Post with fixed
-MoveEffect; and separate callable source records and general meta-instance
-identity from body execution. These are implementation retirement tasks, not
-new semantic choices.
+Lifecycle interface cleanup removes the independently committing action machine
+and the separate Cleanup event. `LifecycleState::check_pre` is read-only;
+its opaque evidence binds the selected action, expected projection/continuation
+state (including the frozen cleanup sequence) and common cut.
+`semantic_continuation.rs` owns a generic joint transaction: all affected Pre
+checks precede publication of all Post projections at one action identity and
+position. Stale/foreign evidence publishes neither partial state nor a cut.
+The scratch copy is transaction storage, not another semantic evaluator.
+
+Move actions carry source, destination and fixed Kill/Preserve effect. Supplied
+Movable, Killable and narrow Preserve evidence remain independent; missing
+facts fail without effect substitution. Killing movement establishes the
+destination generation at the source end cut, preserves deeper origin and
+Color, and discharges the old scheduled Drop. Preserve transports the surviving
+subject without clone or a manufactured fresh object/generation.
+
+Cleanup placements retain established declaration order and fixed points.
+Freezing respects all supplied precedence and applies reverse declaration
+priority only among still-unordered available events at the same point.
+Contradictions diagnose without moving points. Scheduled cleanup commits Drop;
+already discharged obligations add no second destructor. Lifetime reification
+reads the same K only after the full sequence is frozen.
+
+Lifecycle and shared-transaction unit tests cover these substrate relations,
+not source use/move/drop/@, NLL/with point derivation, atomic extraction or
+destructor execution. Those consumers and E saturation remain unavailable.
+Ordinary selected-call DynamicLegality still checks supplied lifecycle Pre;
+it does not thereby execute the shared action transaction.
+
+The next independent cleanup cut separates callable source records and general
+meta-instance identity from body execution. This is implementation retirement,
+not a new semantic choice.

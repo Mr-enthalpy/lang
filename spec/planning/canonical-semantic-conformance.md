@@ -94,6 +94,14 @@ fails OpenHere, and saved authority cannot revive an explicitly closed window.
 
 ## Instance lifecycle and with
 
+Substrate evidence for these obligations is in `lifecycle.rs` and
+`semantic_continuation.rs` unit tests: fixed Kill/Preserve, independent supplied
+legality facts, joint Pre/commit/Post, proof identity and stale rejection,
+precedence/linearization of fixed cleanup points, and no duplicate Drop after Kill.
+The production world retains one K and lifecycle name map; source lifecycle
+actions, NLL/with cleanup-point derivation and complete E remain consumer gates.
+These tests do not claim end-to-end conformance of the source scenarios.
+
 | ID | Scenario | Required result |
 |---|---|---|
 | L01 | A killing move transfers a meta-local type instance | End the source generation at that cut. |

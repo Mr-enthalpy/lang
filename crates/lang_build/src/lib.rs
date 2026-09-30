@@ -34,6 +34,7 @@ pub mod policy_overload;
 pub mod policy_pair;
 pub mod product_shape;
 pub mod return_target;
+pub mod semantic_continuation;
 pub mod semantic_name_index;
 pub mod semantic_owner;
 pub mod semantic_world;
@@ -82,11 +83,11 @@ pub use invocation_frame::{
 };
 pub use invocation_result::{DeclaredResultClass, InvocationResidual, InvocationResult};
 pub use lifecycle::{
-    AccessPath, AccessRelationProvider, AccessSnapshot, CleanupPlacement, ColorAlgebra, ColorId,
-    LifeName, LifecycleAction, LifecycleEvent, LifecycleEventKind, LifecycleFailure,
-    LifecycleMachine, LifecyclePost, LifecyclePrecondition, LifecycleSnapshot,
-    LifecycleValidationContext, LifecycleValidationProof, LifetimeValue, NameView, Region,
-    SemanticContinuation, SemanticPosition,
+    AccessPath, AccessRelationProvider, AccessSnapshot, ColorAlgebra, ColorId, LifeName,
+    LifecycleAction, LifecycleEvent, LifecycleEventKind, LifecycleFailure, LifecyclePost,
+    LifecyclePreProof, LifecyclePrecondition, LifecycleSnapshot, LifecycleState,
+    LifecycleValidationContext, LifecycleValidationProof, LifetimeValue, MoveEffect, NameView,
+    Region,
 };
 pub use literal_semantics::{
     abstract_character_value, compile_literal_policy, form_abstract_literal_value,
@@ -187,6 +188,10 @@ pub use return_target::{
     ReturnSelfIdentity, ReturnSlotIdentity, ReturnSlotRef, ReturnTargetBinder,
     ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetStack, UnboundReturnEvent,
     UnresolvedReturnTargetForm,
+};
+pub use semantic_continuation::{
+    CleanupPlacement, CommittedSemanticAction, ContinuationFailure, ContinuationIdentity,
+    SemanticActionIdentity, SemanticCommitFailure, SemanticContinuation, SemanticPosition,
 };
 pub use semantic_name_index::{
     BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex, SemanticNameInstallError,

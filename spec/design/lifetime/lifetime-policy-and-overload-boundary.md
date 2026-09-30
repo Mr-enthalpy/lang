@@ -1,9 +1,11 @@
 # Lifetime Policy, `@`, and the Overload Boundary
 
 Status: canonical semantics for `@`, the lifetime value algebra, and the
-lifetime/ordinary-overload boundary. `LifecycleMachine` implements the shared
-continuation, LifeName, Region, Pre/Post, and Color substrate. Source operation,
-cleanup scheduling, and access-tree consumers remain pending.
+lifetime/ordinary-overload boundary. `LifecycleState` stores LifeName, Region,
+Color and lifecycle observations; it checks Pre and consumes the shared
+`SemanticContinuation` transaction's committed-action witness for Post.
+Linearization of already fixed cleanup points is implemented; source operations, cleanup
+point derivation, access-tree construction and the complete E consumer remain pending.
 
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by

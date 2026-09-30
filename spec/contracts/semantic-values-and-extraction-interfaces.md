@@ -47,3 +47,39 @@ resident or graph callable record; it cannot bind c_C in place of tau_C.
 The explicit ordinary callable-member substrate builder is not a source let
 consumer. Callable registration and selection tests remain substrate evidence, not proof of complete
 source closure formation or general body execution.
+
+## Shared action and lifecycle handoff
+
+The common continuation owns action identity and position. `LifecycleState`
+is a projection, with no private continuation or action-commit API.
+
+```text
+selected action + fixed continuation cut
+  -> all affected projection Pre checks on the current state
+  -> one common transaction commit
+  -> joint Post publication at that same action identity/cut
+```
+
+`LifecycleState::check_pre` returns opaque action/state/continuation/cut evidence without
+mutation. `apply_post` consumes the common committed-action witness and that
+evidence. Stale, foreign or mismatched evidence cannot publish a projection or
+advance the continuation. The generic transaction's scratch storage does not
+constitute another evaluator or a semantic retry. Full E/source integration
+and external effect publication remain consumer gates.
+The evidence includes the frozen cleanup sequence; a different continuation
+snapshot cannot reuse it merely because identity and action ordinal agree.
+
+Move carries its source, destination and already fixed `MoveEffect`.
+Supplied Movable, instance Killable and the narrow Preserve proof are distinct
+facts, never inferred from Alive, Type or Policy. Failure cannot change the
+effect or clone instead. Kill closes the source and establishes the destination
+generation at one cut, retaining deeper origin and Color. Preserve retains the
+surviving subject and does not construct a copy.
+
+Cleanup points arrive already fixed by all ordinary constraints. The schedule
+retains declaration order and precedence; freezing linearizes same-point
+events without shifting any point. At the scheduled cut cleanup submits Drop,
+not a separate lifecycle event. A committed Kill/Drop discharges the generation's
+obligation. Reification observes the frozen sequence; it cannot solve placement.
+NLL/with point derivation, source events and atomic decomposition/destructor
+continuations are not implemented by these substrate interfaces.

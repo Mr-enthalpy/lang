@@ -8,10 +8,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::{Diagnostic, Provenance, SemanticValueId};
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SemanticPosition(pub u64);
+use crate::{
+    CommittedSemanticAction, ContinuationIdentity, Diagnostic, Provenance, SemanticActionIdentity,
+    SemanticContinuation, SemanticPosition, SemanticValueId,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LifeName(pub u64);
@@ -51,71 +51,19 @@ pub struct LifetimeValue {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LifecycleEventKind {
     Use,
-    Move { replacement: LifeName },
+    Move {
+        destination: LifeName,
+        effect: MoveEffect,
+    },
     Drop,
-    Cleanup,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LifecycleEvent {
+    pub action: SemanticActionIdentity,
     pub name: LifeName,
     pub at: SemanticPosition,
     pub kind: LifecycleEventKind,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CleanupPlacement {
-    pub name: LifeName,
-    pub at: SemanticPosition,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct SemanticContinuation {
-    position: SemanticPosition,
-    cleanup: Vec<CleanupPlacement>,
-    cleanup_frozen: bool,
-    events: Vec<LifecycleEvent>,
-}
-
-impl SemanticContinuation {
-    pub fn position(&self) -> SemanticPosition {
-        self.position
-    }
-
-    pub fn place_cleanup(&mut self, placement: CleanupPlacement) -> Result<(), LifecycleFailure> {
-        if self.cleanup_frozen {
-            return Err(LifecycleFailure::CleanupScheduleAlreadyFrozen);
-        }
-        self.cleanup.push(placement);
-        Ok(())
-    }
-
-    pub fn freeze_cleanup_schedule(&mut self) {
-        self.cleanup_frozen = true;
-    }
-
-    pub fn cleanup_is_frozen(&self) -> bool {
-        self.cleanup_frozen
-    }
-
-    pub fn cleanup(&self) -> &[CleanupPlacement] {
-        &self.cleanup
-    }
-
-    pub fn events(&self) -> &[LifecycleEvent] {
-        &self.events
-    }
-
-    fn commit(&mut self, name: LifeName, kind: LifecycleEventKind) -> LifecycleEvent {
-        self.position.0 = self.position.0.saturating_add(1);
-        let event = LifecycleEvent {
-            name,
-            at: self.position,
-            kind,
-        };
-        self.events.push(event.clone());
-        event
-    }
 }
 
 /// Open/extensible Color identity. Adding a Color never changes a closed Rust
@@ -210,6 +158,11 @@ pub enum LifecyclePrecondition {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LifecycleSnapshot {
     pub live: BTreeSet<LifeName>,
+    /// Supplied instance/frontier facts, not inferred from Type or liveness.
+    pub killable: BTreeSet<LifeName>,
+    pub movable: BTreeSet<(LifeName, SemanticValueId)>,
+    /// The selected Preserve realization's narrow ordinary proof.
+    pub preserving_moves: BTreeSet<(LifeName, SemanticValueId)>,
     pub colors: ColorAlgebra,
     pub access: AccessSnapshot,
 }
@@ -257,84 +210,161 @@ impl LifecycleValidationContext {
     }
 }
 
+/// Fixed by the selected ordinary movement relation before any projection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MoveEffect {
+    Kill,
+    Preserve,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LifecycleAction {
     Use(LifeName),
-    Move(LifeName),
+    Move {
+        source: LifeName,
+        destination: SemanticValueId,
+        effect: MoveEffect,
+    },
     Drop(LifeName),
-    Cleanup(LifeName),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LifecyclePost {
     pub event: LifecycleEvent,
     pub closed_region: Option<NameView<()>>,
-    pub replacement: Option<LifeName>,
+    pub destination: Option<LifeName>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LifecycleFailure {
     CleanupScheduleNotFrozen,
-    CleanupScheduleAlreadyFrozen,
+    ForeignContinuation,
     UnknownValue(SemanticValueId),
+    ValueAlreadyRegistered(SemanticValueId),
+    DestinationAlreadyBound(SemanticValueId),
     DeadName(LifeName),
-    CleanupNotPlaced(LifeName),
+    MoveNotAuthorized,
+    KillNotAuthorized(LifeName),
+    PreserveNotProved,
+    CleanupPointMismatch,
+    CleanupPrecedencePending,
+    IdentityExhausted,
+    StaleOrForeignProof,
     PreRejected(String),
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct LifecycleMachine {
-    continuation: SemanticContinuation,
+/// Read-only Pre evidence tied to this state, continuation snapshot, action and cut.
+/// Fields are private; there is no fabricated or independently committing proof.
+pub struct LifecyclePreProof {
+    expected_state: LifecycleState,
+    expected_continuation: SemanticContinuation,
+    action: LifecycleAction,
+    identity: SemanticActionIdentity,
+    at: SemanticPosition,
+    validation: LifecycleValidationProof,
+}
+
+impl LifecyclePreProof {
+    pub fn validation(&self) -> &LifecycleValidationProof {
+        &self.validation
+    }
+}
+
+/// Lifetime projection storage. It owns neither a continuation nor a commit
+/// entry point, and cannot select a movement effect or run cleanup scheduling.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LifecycleState {
+    continuation: ContinuationIdentity,
     next_name: u64,
     values: BTreeMap<SemanticValueId, LifeName>,
     active: BTreeMap<LifeName, Region>,
     origins: BTreeMap<LifeName, Option<LifeName>>,
     colors: BTreeMap<LifeName, BTreeSet<ColorId>>,
     closed: Vec<NameView<()>>,
+    events: Vec<LifecycleEvent>,
 }
 
-impl LifecycleMachine {
-    pub fn continuation(&self) -> &SemanticContinuation {
-        &self.continuation
+impl LifecycleState {
+    pub fn new(continuation: &SemanticContinuation) -> Self {
+        Self {
+            continuation: continuation.identity().clone(),
+            next_name: 0,
+            values: BTreeMap::new(),
+            active: BTreeMap::new(),
+            origins: BTreeMap::new(),
+            colors: BTreeMap::new(),
+            closed: Vec::new(),
+            events: Vec::new(),
+        }
     }
 
-    pub fn continuation_mut(&mut self) -> &mut SemanticContinuation {
-        &mut self.continuation
+    fn require_continuation(
+        &self,
+        continuation: &SemanticContinuation,
+    ) -> Result<(), LifecycleFailure> {
+        if self.continuation != *continuation.identity() {
+            return Err(LifecycleFailure::ForeignContinuation);
+        }
+        Ok(())
     }
 
-    pub fn register_value(&mut self, value: SemanticValueId, origin: Option<LifeName>) -> LifeName {
+    /// Registration of an already established value at the shared cut. Source
+    /// construction/ExtractCommit wiring remains a separate consumer gate.
+    pub fn register_value(
+        &mut self,
+        continuation: &SemanticContinuation,
+        value: SemanticValueId,
+        origin: Option<LifeName>,
+    ) -> Result<LifeName, LifecycleFailure> {
+        self.require_continuation(continuation)?;
+        if self.values.contains_key(&value) {
+            return Err(LifecycleFailure::ValueAlreadyRegistered(value));
+        }
+        let next = self
+            .next_name
+            .checked_add(1)
+            .ok_or(LifecycleFailure::IdentityExhausted)?;
         let name = LifeName(self.next_name);
-        self.next_name = self.next_name.saturating_add(1);
+        self.next_name = next;
         self.values.insert(value, name);
         self.origins.insert(name, origin);
         self.active.insert(
             name,
             Region {
-                start: self.continuation.position(),
+                start: continuation.position(),
                 end: None,
                 generation: 0,
             },
         );
-        name
+        Ok(name)
     }
 
-    pub fn ensure_value(&mut self, value: SemanticValueId) -> LifeName {
-        self.values
-            .get(&value)
-            .copied()
-            .unwrap_or_else(|| self.register_value(value, None))
+    pub fn ensure_value(
+        &mut self,
+        continuation: &SemanticContinuation,
+        value: SemanticValueId,
+    ) -> Result<LifeName, LifecycleFailure> {
+        self.require_continuation(continuation)?;
+        match self.values.get(&value).copied() {
+            Some(name) => Ok(name),
+            None => self.register_value(continuation, value, None),
+        }
     }
 
     pub fn name_of(&self, value: SemanticValueId) -> Option<LifeName> {
         self.values.get(&value).copied()
     }
 
+    pub fn events(&self) -> &[LifecycleEvent] {
+        &self.events
+    }
+
     pub fn assign_color(&mut self, name: LifeName, color: ColorId) {
         self.colors.entry(name).or_default().insert(color);
     }
 
-    /// Finite observation of inherited Color facts. Cyclic/coinductive origin
-    /// material is observed only until the first repeated name.
+    /// Finite observation; cyclic/coinductive origin material stops at the
+    /// first repeated name rather than unfolding an infinite chain.
     pub fn observed_colors(&self, name: LifeName) -> BTreeSet<ColorId> {
         let mut result = BTreeSet::new();
         let mut seen = BTreeSet::new();
@@ -351,10 +381,14 @@ impl LifecycleMachine {
         result
     }
 
-    /// `@ = ReifyLife(NameOf(E), Pos(K))`. The operand is a semantic value;
-    /// no Place coordinate is read or required.
-    pub fn reify_value(&self, value: SemanticValueId) -> Result<LifetimeValue, LifecycleFailure> {
-        if !self.continuation.cleanup_is_frozen() {
+    /// ReifyLife(NameOf(E), Pos(K)); no Place is required and @ changes no cut.
+    pub fn reify_value(
+        &self,
+        continuation: &SemanticContinuation,
+        value: SemanticValueId,
+    ) -> Result<LifetimeValue, LifecycleFailure> {
+        self.require_continuation(continuation)?;
+        if !continuation.cleanup_is_frozen() {
             return Err(LifecycleFailure::CleanupScheduleNotFrozen);
         }
         let name = self
@@ -369,7 +403,7 @@ impl LifecycleMachine {
             .ok_or(LifecycleFailure::DeadName(name))?;
         Ok(LifetimeValue {
             name,
-            observed_at: self.continuation.position(),
+            observed_at: continuation.position(),
             origin: self.origins.get(&name).copied().flatten(),
             region,
         })
@@ -380,137 +414,220 @@ impl LifecycleMachine {
             live: self.active.keys().copied().collect(),
             colors,
             access,
+            ..LifecycleSnapshot::default()
         }
     }
 
-    /// Validate all Pre facts before allocating a continuation cut or
-    /// mutating lifecycle state. Post is returned only after commit.
-    pub fn perform(
-        &mut self,
-        action: LifecycleAction,
+    /// Check selected action facts without advancing K or mutating any state.
+    /// Killable, Movable and Preserve evidence are supplied independently by
+    /// the ordinary instance/frontier consumer; Alive implies none of them.
+    pub fn check_pre(
+        &self,
+        continuation: &SemanticContinuation,
+        at: SemanticPosition,
+        action: &LifecycleAction,
         validation: &LifecycleValidationContext,
-        provenance: Provenance,
-    ) -> Result<LifecyclePost, LifecycleFailure> {
-        validation
-            .validate_pre(&provenance)
+        provenance: &Provenance,
+    ) -> Result<LifecyclePreProof, LifecycleFailure> {
+        self.require_continuation(continuation)?;
+        if !continuation.cleanup_is_frozen() {
+            return Err(LifecycleFailure::CleanupScheduleNotFrozen);
+        }
+        let proof = validation
+            .validate_pre(provenance)
             .map_err(|diagnostic| LifecycleFailure::PreRejected(diagnostic.message))?;
-        let name = match &action {
-            LifecycleAction::Use(name)
-            | LifecycleAction::Move(name)
-            | LifecycleAction::Drop(name)
-            | LifecycleAction::Cleanup(name) => *name,
+        let name = match *action {
+            LifecycleAction::Use(name) | LifecycleAction::Drop(name) => name,
+            LifecycleAction::Move { source, .. } => source,
         };
         let current = self
             .active
             .get(&name)
-            .copied()
             .ok_or(LifecycleFailure::DeadName(name))?;
-        if matches!(action, LifecycleAction::Cleanup(_))
-            && !self
-                .continuation
-                .cleanup()
-                .iter()
-                .any(|placement| placement.name == name)
-        {
-            return Err(LifecycleFailure::CleanupNotPlaced(name));
-        }
-
-        match action {
-            LifecycleAction::Use(name) => {
-                let event = self.continuation.commit(name, LifecycleEventKind::Use);
-                Ok(LifecyclePost {
-                    event,
-                    closed_region: None,
-                    replacement: None,
-                })
-            }
-            LifecycleAction::Move(name) => {
-                // Freeze the finite Color observation of the old generation
-                // before committing the move cut. The replacement preserves
-                // the deeper origin (not the moved-from name), so this
-                // explicit generation snapshot is what enforces
-                // `ObservedColors(new) >= ObservedColors(old)` without
-                // inventing a new origin edge or closing the future storage
-                // representation.
-                let inherited_colors = self.observed_colors(name);
-                let replacement = LifeName(self.next_name);
-                self.next_name = self.next_name.saturating_add(1);
-                let event = self
-                    .continuation
-                    .commit(name, LifecycleEventKind::Move { replacement });
-                let closed_region = Region {
-                    end: Some(event.at),
-                    ..current
-                };
-                self.active.remove(&name);
-                let view = NameView {
-                    name,
-                    value: (),
-                    origin: self.origins.get(&name).copied().flatten(),
-                    region: closed_region,
-                };
-                self.closed.push(view.clone());
-                // Move preserves the deeper origin exactly; it does not add
-                // the moved-from name as a new ancestry layer.
-                let deeper_origin = self.origins.get(&name).copied().flatten();
-                self.origins.insert(replacement, deeper_origin);
-                self.colors.insert(replacement, inherited_colors);
-                self.active.insert(
-                    replacement,
-                    Region {
-                        start: event.at,
-                        end: None,
-                        generation: current.generation.saturating_add(1),
-                    },
-                );
-                Ok(LifecyclePost {
-                    event,
-                    closed_region: Some(view),
-                    replacement: Some(replacement),
-                })
+        match *action {
+            LifecycleAction::Move {
+                source,
+                destination,
+                effect,
+            } => {
+                if self.values.contains_key(&destination) {
+                    return Err(LifecycleFailure::DestinationAlreadyBound(destination));
+                }
+                if !validation.snapshot.movable.contains(&(source, destination)) {
+                    return Err(LifecycleFailure::MoveNotAuthorized);
+                }
+                match effect {
+                    MoveEffect::Kill => {
+                        if !validation.snapshot.killable.contains(&source) {
+                            return Err(LifecycleFailure::KillNotAuthorized(source));
+                        }
+                        self.next_name
+                            .checked_add(1)
+                            .ok_or(LifecycleFailure::IdentityExhausted)?;
+                        current
+                            .generation
+                            .checked_add(1)
+                            .ok_or(LifecycleFailure::IdentityExhausted)?;
+                    }
+                    MoveEffect::Preserve => {
+                        if !validation
+                            .snapshot
+                            .preserving_moves
+                            .contains(&(source, destination))
+                        {
+                            return Err(LifecycleFailure::PreserveNotProved);
+                        }
+                    }
+                }
             }
             LifecycleAction::Drop(name) => {
-                let event = self.continuation.commit(name, LifecycleEventKind::Drop);
-                let closed_region = Region {
-                    end: Some(event.at),
-                    ..current
-                };
-                self.active.remove(&name);
-                let view = NameView {
-                    name,
-                    value: (),
-                    origin: self.origins.get(&name).copied().flatten(),
-                    region: closed_region,
-                };
-                self.closed.push(view.clone());
-                Ok(LifecyclePost {
-                    event,
-                    closed_region: Some(view),
-                    replacement: None,
-                })
+                if let Some(index) = continuation
+                    .cleanup()
+                    .iter()
+                    .position(|entry| entry.name == name)
+                {
+                    if continuation.cleanup()[index].at != at {
+                        return Err(LifecycleFailure::CleanupPointMismatch);
+                    }
+                    if continuation.cleanup()[..index]
+                        .iter()
+                        .any(|entry| !self.cleanup_obligation_discharged(entry.name))
+                    {
+                        return Err(LifecycleFailure::CleanupPrecedencePending);
+                    }
+                }
+                if !validation.snapshot.killable.contains(&name) {
+                    return Err(LifecycleFailure::KillNotAuthorized(name));
+                }
             }
-            LifecycleAction::Cleanup(name) => {
-                let kind = LifecycleEventKind::Cleanup;
-                let event = self.continuation.commit(name, kind);
-                let closed_region = Region {
-                    end: Some(event.at),
-                    ..current
-                };
-                self.active.remove(&name);
-                let view = NameView {
-                    name,
-                    value: (),
-                    origin: self.origins.get(&name).copied().flatten(),
-                    region: closed_region,
-                };
-                self.closed.push(view.clone());
-                Ok(LifecyclePost {
-                    event,
-                    closed_region: Some(view),
-                    replacement: None,
-                })
-            }
+            LifecycleAction::Use(_) => {}
         }
+        Ok(LifecyclePreProof {
+            expected_state: self.clone(),
+            expected_continuation: continuation.clone(),
+            action: action.clone(),
+            identity: continuation.next_action_identity(),
+            at,
+            validation: proof,
+        })
+    }
+
+    /// Consume one common committed-action witness. No position is allocated
+    /// here. The common transaction stages every projection's Post and publishes
+    /// only their joint success, so a stale/foreign proof cannot partially commit.
+    pub fn apply_post(
+        &mut self,
+        committed: &CommittedSemanticAction<LifecycleAction>,
+        proof: LifecyclePreProof,
+    ) -> Result<LifecyclePost, LifecycleFailure> {
+        if *self != proof.expected_state
+            || *committed.continuation_before() != proof.expected_continuation
+            || *committed.action() != proof.action
+            || *committed.identity() != proof.identity
+            || committed.position() != proof.at
+        {
+            return Err(LifecycleFailure::StaleOrForeignProof);
+        }
+        let at = committed.position();
+        let name = match *committed.action() {
+            LifecycleAction::Use(name) | LifecycleAction::Drop(name) => name,
+            LifecycleAction::Move { source, .. } => source,
+        };
+        let current = self.active[&name];
+        let mut closed_region = None;
+        let mut destination_name = None;
+        let kind = match *committed.action() {
+            LifecycleAction::Use(_) => LifecycleEventKind::Use,
+            LifecycleAction::Move {
+                source,
+                destination,
+                effect,
+            } => {
+                let moved_name = match effect {
+                    MoveEffect::Kill => {
+                        let inherited_colors = self.observed_colors(source);
+                        let new_name = LifeName(self.next_name);
+                        self.next_name += 1;
+                        let view = self.close_region(source, current, at);
+                        closed_region = Some(view);
+                        // Preserve deeper origin, not a new edge to the old name.
+                        self.origins.insert(new_name, self.origins[&source]);
+                        self.colors.insert(new_name, inherited_colors);
+                        self.active.insert(
+                            new_name,
+                            Region {
+                                start: at,
+                                end: None,
+                                generation: current.generation + 1,
+                            },
+                        );
+                        new_name
+                    }
+                    // Transport the same surviving subject. No clone, fresh
+                    // object, new generation or origin layer is manufactured.
+                    MoveEffect::Preserve => source,
+                };
+                self.values.insert(destination, moved_name);
+                destination_name = Some(moved_name);
+                LifecycleEventKind::Move {
+                    destination: moved_name,
+                    effect,
+                }
+            }
+            LifecycleAction::Drop(_) => {
+                closed_region = Some(self.close_region(name, current, at));
+                LifecycleEventKind::Drop
+            }
+        };
+        let event = LifecycleEvent {
+            action: committed.identity().clone(),
+            name,
+            at,
+            kind,
+        };
+        self.events.push(event.clone());
+        Ok(LifecyclePost {
+            event,
+            closed_region,
+            destination: destination_name,
+        })
+    }
+
+    fn close_region(
+        &mut self,
+        name: LifeName,
+        current: Region,
+        at: SemanticPosition,
+    ) -> NameView<()> {
+        self.active.remove(&name);
+        let view = NameView {
+            name,
+            value: (),
+            origin: self.origins.get(&name).copied().flatten(),
+            region: Region {
+                end: Some(at),
+                ..current
+            },
+        };
+        self.closed.push(view.clone());
+        view
+    }
+
+    /// An already committed killing move or Drop discharges this generation's
+    /// scheduled Drop. The scheduler consumes this fact; it must not add another
+    /// destructor for the old generation.
+    pub fn cleanup_obligation_discharged(&self, name: LifeName) -> bool {
+        self.events.iter().any(|event| {
+            event.name == name
+                && matches!(
+                    event.kind,
+                    LifecycleEventKind::Drop
+                        | LifecycleEventKind::Move {
+                            effect: MoveEffect::Kill,
+                            ..
+                        }
+                )
+        })
     }
 }
 
@@ -518,120 +635,628 @@ impl LifecycleMachine {
 mod tests {
     use super::*;
 
+    fn fixture() -> (SemanticContinuation, LifecycleState, LifeName) {
+        let mut continuation = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&continuation);
+        let name = state
+            .register_value(&continuation, SemanticValueId(7), None)
+            .unwrap();
+        continuation.freeze_cleanup_schedule().unwrap();
+        (continuation, state, name)
+    }
+
+    fn validation(state: &LifecycleState, action: &LifecycleAction) -> LifecycleValidationContext {
+        let mut snapshot = state.snapshot(ColorAlgebra::default(), AccessSnapshot::default());
+        match *action {
+            LifecycleAction::Use(_) => {}
+            LifecycleAction::Drop(name) => {
+                snapshot.killable.insert(name);
+            }
+            LifecycleAction::Move {
+                source,
+                destination,
+                effect,
+            } => {
+                snapshot.movable.insert((source, destination));
+                match effect {
+                    MoveEffect::Kill => {
+                        snapshot.killable.insert(source);
+                    }
+                    MoveEffect::Preserve => {
+                        snapshot.preserving_moves.insert((source, destination));
+                    }
+                }
+            }
+        }
+        LifecycleValidationContext {
+            snapshot,
+            preconditions: Vec::new(),
+        }
+    }
+
+    fn commit(
+        continuation: &mut SemanticContinuation,
+        state: &mut LifecycleState,
+        at: u64,
+        action: LifecycleAction,
+    ) -> Result<LifecyclePost, crate::SemanticCommitFailure<LifecycleFailure>> {
+        continuation.commit_action(
+            SemanticPosition(at),
+            state,
+            action,
+            |state, k, at, action| {
+                state.check_pre(
+                    k,
+                    at,
+                    action,
+                    &validation(state, action),
+                    &Provenance::new("selected action"),
+                )
+            },
+            |state, committed, proof| state.apply_post(committed, proof),
+        )
+    }
+
     #[test]
-    fn cleanup_precedes_observation_and_move_regions_share_one_cut() {
-        let mut machine = LifecycleMachine::default();
-        let value = SemanticValueId(7);
-        let name = machine.register_value(value, None);
+    fn cleanup_precedes_observation_and_killing_move_shares_one_common_cut() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let source_value = SemanticValueId(7);
+        let source = state.register_value(&k, source_value, None).unwrap();
         assert_eq!(
-            machine.reify_value(value),
+            state.reify_value(&k, source_value),
             Err(LifecycleFailure::CleanupScheduleNotFrozen)
         );
-        machine
-            .continuation_mut()
-            .place_cleanup(CleanupPlacement {
-                name,
-                at: SemanticPosition(9),
-            })
-            .expect("cleanup placement is fixed first");
-        machine.continuation_mut().freeze_cleanup_schedule();
+        k.freeze_cleanup_schedule().unwrap();
+        assert_eq!(state.reify_value(&k, source_value).unwrap().name, source);
+        let destination = SemanticValueId(8);
+        let post = commit(
+            &mut k,
+            &mut state,
+            3,
+            LifecycleAction::Move {
+                source,
+                destination,
+                effect: MoveEffect::Kill,
+            },
+        )
+        .unwrap();
+        let new_name = post.destination.unwrap();
+        assert_ne!(new_name, source);
         assert_eq!(
-            machine.reify_value(value).expect("@ needs no Place").name,
-            name
+            post.closed_region.unwrap().region.end,
+            Some(SemanticPosition(3))
         );
-
-        let validation = LifecycleValidationContext {
-            snapshot: machine.snapshot(ColorAlgebra::default(), AccessSnapshot::default()),
-            preconditions: vec![LifecyclePrecondition::Alive(name)],
-        };
-        let moved = machine
-            .perform(
-                LifecycleAction::Move(name),
-                &validation,
-                Provenance::new("move"),
-            )
-            .expect("valid Pre commits move");
-        let replacement = moved.replacement.expect("move opens next generation");
+        assert_eq!(state.active[&new_name].start, SemanticPosition(3));
+        assert_eq!(state.reify_value(&k, destination).unwrap().name, new_name);
         assert_eq!(
-            moved
-                .closed_region
-                .expect("old generation closes")
-                .region
-                .end,
-            Some(moved.event.at)
+            state.reify_value(&k, source_value),
+            Err(LifecycleFailure::DeadName(source))
         );
+        assert_eq!(post.event.action.continuation, *k.identity());
+        assert_eq!(post.event.at, k.position());
+        assert!(state.cleanup_obligation_discharged(source));
         assert_eq!(
-            machine
-                .active
-                .get(&replacement)
-                .expect("new generation")
-                .start,
-            moved.event.at,
-            "old end and new start are the same continuation cut"
+            state.events().len(),
+            1,
+            "a killing move adds no destructor event"
         );
+        let before = state.clone();
+        assert!(commit(&mut k, &mut state, 9, LifecycleAction::Drop(source)).is_err());
+        assert_eq!(
+            state, before,
+            "the consumed generation cannot be dropped twice"
+        );
+        assert_eq!(k.position(), SemanticPosition(3));
     }
 
     #[test]
-    fn move_preserves_direct_and_inherited_colors_without_changing_deeper_origin() {
-        let mut machine = LifecycleMachine::default();
-        let ancestor = machine.register_value(SemanticValueId(70), None);
-        let old = machine.register_value(SemanticValueId(71), Some(ancestor));
+    fn preserve_move_transports_the_same_subject_without_clone_or_generation_change() {
+        let (mut k, mut state, source) = fixture();
+        let before_name_count = state.next_name;
+        let region = state.active[&source];
+        let color = ColorId("stable-subject".into());
+        state.assign_color(source, color.clone());
+        let destination = SemanticValueId(8);
+        let post = commit(
+            &mut k,
+            &mut state,
+            2,
+            LifecycleAction::Move {
+                source,
+                destination,
+                effect: MoveEffect::Preserve,
+            },
+        )
+        .unwrap();
+        assert_eq!(post.destination, Some(source));
+        assert!(post.closed_region.is_none());
+        assert_eq!(state.name_of(SemanticValueId(7)), Some(source));
+        assert_eq!(state.name_of(destination), Some(source));
+        assert_eq!(state.active[&source], region);
+        assert_eq!(
+            state.next_name, before_name_count,
+            "Preserve creates no fresh lifecycle subject"
+        );
+        assert_eq!(state.observed_colors(source), BTreeSet::from([color]));
+        assert!(!state.cleanup_obligation_discharged(source));
+        assert!(matches!(
+            post.event.kind,
+            LifecycleEventKind::Move {
+                effect: MoveEffect::Preserve,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn movable_killable_and_preserve_evidence_are_independent_and_effect_never_falls_back() {
+        let (mut k, mut state, source) = fixture();
+        let before = state.clone();
+        let action = LifecycleAction::Move {
+            source,
+            destination: SemanticValueId(8),
+            effect: MoveEffect::Kill,
+        };
+        let mut facts = LifecycleValidationContext::default();
+        facts.snapshot.killable.insert(source);
+        assert!(matches!(
+            state.check_pre(
+                &k,
+                SemanticPosition(1),
+                &action,
+                &facts,
+                &Provenance::new("killable alone")
+            ),
+            Err(LifecycleFailure::MoveNotAuthorized)
+        ));
+        facts.snapshot.movable.insert((source, SemanticValueId(8)));
+        facts.snapshot.killable.clear();
+        facts
+            .snapshot
+            .preserving_moves
+            .insert((source, SemanticValueId(8)));
+        let failed = k.commit_action(
+            SemanticPosition(1),
+            &mut state,
+            action.clone(),
+            |state, k, at, action| {
+                state.check_pre(k, at, action, &facts, &Provenance::new("fixed Kill"))
+            },
+            |state, action, proof| state.apply_post(action, proof),
+        );
+        assert!(
+            matches!(failed, Err(crate::SemanticCommitFailure::Pre(LifecycleFailure::KillNotAuthorized(n))) if n == source)
+        );
+        assert_eq!(state, before);
+        assert_eq!(k.position(), SemanticPosition(0));
+        let preserve = LifecycleAction::Move {
+            source,
+            destination: SemanticValueId(8),
+            effect: MoveEffect::Preserve,
+        };
+        facts.snapshot.preserving_moves.clear();
+        facts.snapshot.killable.insert(source);
+        assert!(matches!(
+            state.check_pre(
+                &k,
+                SemanticPosition(1),
+                &preserve,
+                &facts,
+                &Provenance::new("Kill proof is not Preserve proof")
+            ),
+            Err(LifecycleFailure::PreserveNotProved)
+        ));
+    }
+
+    #[test]
+    fn killing_move_preserves_direct_and_inherited_colors_and_deeper_origin() {
+        let (mut k, mut state, ancestor) = fixture();
+        let source = state
+            .register_value(&k, SemanticValueId(71), Some(ancestor))
+            .unwrap();
         let ancestor_color = ColorId("ancestor".into());
-        let direct_color = ColorId("direct-old-generation".into());
-        machine.assign_color(ancestor, ancestor_color.clone());
-        machine.assign_color(old, direct_color.clone());
-        let before = machine.observed_colors(old);
-        assert_eq!(
-            before,
-            BTreeSet::from([ancestor_color.clone(), direct_color.clone()])
-        );
+        let direct_color = ColorId("direct".into());
+        state.assign_color(ancestor, ancestor_color.clone());
+        state.assign_color(source, direct_color.clone());
+        let before = state.observed_colors(source);
+        let post = commit(
+            &mut k,
+            &mut state,
+            1,
+            LifecycleAction::Move {
+                source,
+                destination: SemanticValueId(72),
+                effect: MoveEffect::Kill,
+            },
+        )
+        .unwrap();
+        let destination = post.destination.unwrap();
+        assert_eq!(state.origins[&destination], Some(ancestor));
+        assert_eq!(state.observed_colors(destination), before);
+        assert_eq!(before, BTreeSet::from([ancestor_color, direct_color]));
+    }
 
-        let validation = LifecycleValidationContext {
-            snapshot: machine.snapshot(ColorAlgebra::default(), AccessSnapshot::default()),
-            preconditions: vec![LifecyclePrecondition::Alive(old)],
-        };
-        let moved = machine
-            .perform(
-                LifecycleAction::Move(old),
-                &validation,
-                Provenance::new("move keeps every observed Color"),
-            )
-            .expect("move commits");
-        let replacement = moved.replacement.expect("replacement generation");
-
-        assert_eq!(machine.origins.get(&replacement), Some(&Some(ancestor)));
-        assert_eq!(
-            machine.observed_colors(replacement),
-            before,
-            "a generation cut may slice Color regions but never remove an already observed Color"
-        );
-        assert!(machine.observed_colors(replacement).contains(&direct_color));
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct ProjectionState {
+        life: LifecycleState,
+        type_fact: u64,
+        type_position: SemanticPosition,
+        type_action: Option<SemanticActionIdentity>,
     }
 
     #[test]
-    fn pre_failure_has_no_effect_and_color_vocabulary_is_extensible() {
-        let mut machine = LifecycleMachine::default();
-        let name = machine.register_value(SemanticValueId(1), None);
-        machine.continuation_mut().freeze_cleanup_schedule();
-        let before = machine.clone();
-        let rejected = LifecycleValidationContext {
-            snapshot: machine.snapshot(ColorAlgebra::default(), AccessSnapshot::default()),
-            preconditions: vec![LifecyclePrecondition::Reject("no authority".into())],
+    fn every_projection_pre_precedes_one_shared_commit_and_posts() {
+        let (mut k, life, name) = fixture();
+        let mut state = ProjectionState {
+            life,
+            type_fact: 0,
+            type_position: SemanticPosition(0),
+            type_action: None,
         };
-        assert!(machine
-            .perform(
-                LifecycleAction::Drop(name),
-                &rejected,
-                Provenance::new("rejected drop"),
+        let before = state.clone();
+        let failed = k.commit_action(
+            SemanticPosition(1),
+            &mut state,
+            LifecycleAction::Use(name),
+            |state, k, at, action| {
+                let _life_proof = state.life.check_pre(
+                    k,
+                    at,
+                    action,
+                    &validation(&state.life, action),
+                    &Provenance::new("life passes"),
+                )?;
+                Err::<LifecyclePreProof, _>(LifecycleFailure::PreRejected("type Pre fails".into()))
+            },
+            |_: &mut ProjectionState, _, _| -> Result<(), LifecycleFailure> {
+                panic!("Post cannot run after another projection's Pre failure")
+            },
+        );
+        assert!(matches!(failed, Err(crate::SemanticCommitFailure::Pre(_))));
+        assert_eq!(state, before);
+        assert_eq!(k.position(), SemanticPosition(0));
+        let post = k
+            .commit_action(
+                SemanticPosition(4),
+                &mut state,
+                LifecycleAction::Use(name),
+                |state, k, at, action| {
+                    state.life.check_pre(
+                        k,
+                        at,
+                        action,
+                        &validation(&state.life, action),
+                        &Provenance::new("joint Pre"),
+                    )
+                },
+                |state, action, proof| {
+                    state.type_fact += 1;
+                    state.type_position = action.position();
+                    state.type_action = Some(action.identity().clone());
+                    state.life.apply_post(action, proof)
+                },
             )
-            .is_err());
-        assert_eq!(machine.continuation, before.continuation);
-        assert_eq!(machine.active, before.active);
+            .unwrap();
+        assert_eq!(state.type_position, post.event.at);
+        assert_eq!(state.type_action.as_ref(), Some(&post.event.action));
+        assert_eq!(k.position(), SemanticPosition(4));
+        assert_eq!(state.life.events().len(), 1);
+    }
 
+    #[test]
+    fn stale_foreign_and_mismatched_proofs_publish_no_projection_state() {
+        let (mut k, mut state, name) = fixture();
+        let action = LifecycleAction::Use(name);
+        let proof = state
+            .check_pre(
+                &k,
+                SemanticPosition(1),
+                &action,
+                &validation(&state, &action),
+                &Provenance::new("old proof"),
+            )
+            .unwrap();
+        commit(&mut k, &mut state, 1, action.clone()).unwrap();
+        let before = state.clone();
+        let failed = k.commit_action(
+            SemanticPosition(1),
+            &mut state,
+            action.clone(),
+            |_, _, _, _| Ok::<_, LifecycleFailure>(proof),
+            |state, action, proof| state.apply_post(action, proof),
+        );
+        assert!(matches!(
+            failed,
+            Err(crate::SemanticCommitFailure::Projection(
+                LifecycleFailure::StaleOrForeignProof
+            ))
+        ));
+        assert_eq!(state, before);
+        let mut foreign_k = SemanticContinuation::default();
+        foreign_k.freeze_cleanup_schedule().unwrap();
+        assert!(matches!(
+            state.check_pre(
+                &foreign_k,
+                SemanticPosition(1),
+                &action,
+                &validation(&state, &action),
+                &Provenance::new("other K")
+            ),
+            Err(LifecycleFailure::ForeignContinuation)
+        ));
+        let proof = state
+            .check_pre(
+                &k,
+                SemanticPosition(2),
+                &action,
+                &validation(&state, &action),
+                &Provenance::new("Use proof"),
+            )
+            .unwrap();
+        let failed = k.commit_action(
+            SemanticPosition(2),
+            &mut state,
+            LifecycleAction::Drop(name),
+            |_, _, _, _| Ok::<_, LifecycleFailure>(proof),
+            |state, action, proof| state.apply_post(action, proof),
+        );
+        assert!(matches!(
+            failed,
+            Err(crate::SemanticCommitFailure::Projection(_))
+        ));
+        assert_eq!(state, before);
+        assert_eq!(k.position(), SemanticPosition(1));
+    }
+
+    #[test]
+    fn proof_cannot_cross_different_frozen_cleanup_snapshots_of_the_same_continuation() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let a = state.register_value(&k, SemanticValueId(1), None).unwrap();
+        let b = state.register_value(&k, SemanticValueId(2), None).unwrap();
+        let mut other_snapshot = k.clone();
+        for (continuation, declarations) in [
+            (&mut k, [(a, 1), (b, 2)]),
+            (&mut other_snapshot, [(a, 2), (b, 1)]),
+        ] {
+            for (name, declaration_order) in declarations {
+                continuation
+                    .place_cleanup(crate::CleanupPlacement {
+                        name,
+                        at: SemanticPosition(3),
+                        declaration_order,
+                    })
+                    .unwrap();
+            }
+            continuation.freeze_cleanup_schedule().unwrap();
+        }
+        let action = LifecycleAction::Drop(b);
+        let facts = validation(&state, &action);
+        let proof = state
+            .check_pre(
+                &k,
+                SemanticPosition(3),
+                &action,
+                &facts,
+                &Provenance::new("b precedes a in this frozen snapshot"),
+            )
+            .unwrap();
+        let before_state = state.clone();
+        let before_continuation = other_snapshot.clone();
+        let result = other_snapshot.commit_action(
+            SemanticPosition(3),
+            &mut state,
+            action,
+            |_, _, _, _| Ok::<_, LifecycleFailure>(proof),
+            |state, action, proof| state.apply_post(action, proof),
+        );
+        assert!(matches!(
+            result,
+            Err(crate::SemanticCommitFailure::Projection(
+                LifecycleFailure::StaleOrForeignProof
+            ))
+        ));
+        assert_eq!(state, before_state);
+        assert_eq!(other_snapshot, before_continuation);
+        assert_eq!(other_snapshot.cleanup()[0].name, a);
+    }
+
+    #[test]
+    fn rejected_lifecycle_pre_keeps_state_and_color_vocabulary_extensible() {
+        let (mut k, mut state, name) = fixture();
+        let before = state.clone();
+        let mut facts = validation(&state, &LifecycleAction::Drop(name));
+        facts
+            .preconditions
+            .push(LifecyclePrecondition::Reject("no authority".into()));
+        let failed = k.commit_action(
+            SemanticPosition(1),
+            &mut state,
+            LifecycleAction::Drop(name),
+            |state, k, at, action| {
+                state.check_pre(k, at, action, &facts, &Provenance::new("rejected Drop"))
+            },
+            |state, action, proof| state.apply_post(action, proof),
+        );
+        assert!(matches!(failed, Err(crate::SemanticCommitFailure::Pre(_))));
+        assert_eq!(state, before);
+        assert_eq!(k.position(), SemanticPosition(0));
         let mut colors = ColorAlgebra::default();
         let future = ColorId("project-defined/future-color".into());
         colors.register(future.clone());
         assert!(colors.contains(&future));
+    }
+
+    #[test]
+    fn fixed_cleanup_sequence_commits_only_drops_at_the_fixed_cut() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let a = state.register_value(&k, SemanticValueId(1), None).unwrap();
+        let b = state.register_value(&k, SemanticValueId(2), None).unwrap();
+        let c = state.register_value(&k, SemanticValueId(3), None).unwrap();
+        for (name, declaration_order) in [(b, 2), (a, 1), (c, 3)] {
+            k.place_cleanup(crate::CleanupPlacement {
+                name,
+                declaration_order,
+                at: SemanticPosition(9),
+            })
+            .unwrap();
+        }
+        k.freeze_cleanup_schedule().unwrap();
+        assert_eq!(
+            k.cleanup()
+                .iter()
+                .map(|entry| entry.name)
+                .collect::<Vec<_>>(),
+            vec![c, b, a]
+        );
+        let before = state.clone();
+        assert!(matches!(
+            commit(&mut k, &mut state, 8, LifecycleAction::Drop(c)),
+            Err(crate::SemanticCommitFailure::Pre(
+                LifecycleFailure::CleanupPointMismatch
+            ))
+        ));
+        assert!(matches!(
+            commit(&mut k, &mut state, 9, LifecycleAction::Drop(a)),
+            Err(crate::SemanticCommitFailure::Pre(
+                LifecycleFailure::CleanupPrecedencePending
+            ))
+        ));
+        assert_eq!(state, before);
+        let mut identities = Vec::new();
+        for name in [c, b, a] {
+            let post = commit(&mut k, &mut state, 9, LifecycleAction::Drop(name)).unwrap();
+            assert_eq!(post.event.kind, LifecycleEventKind::Drop);
+            assert_eq!(post.event.at, SemanticPosition(9));
+            identities.push(post.event.action);
+        }
+        assert_ne!(identities[0], identities[1]);
+        assert_ne!(identities[1], identities[2]);
+        assert_eq!(k.cleanup()[0].at, SemanticPosition(9));
+    }
+
+    #[test]
+    fn equal_material_registration_does_not_merge_subjects_and_foreign_observation_fails() {
+        let (k, mut state, first) = fixture();
+        let second = state.register_value(&k, SemanticValueId(8), None).unwrap();
+        assert_ne!(first, second);
+        assert_eq!(state.ensure_value(&k, SemanticValueId(7)).unwrap(), first);
+        assert_eq!(
+            state.register_value(&k, SemanticValueId(7), None),
+            Err(LifecycleFailure::ValueAlreadyRegistered(SemanticValueId(7)))
+        );
+        let foreign = SemanticContinuation::default();
+        assert_eq!(
+            state.reify_value(&foreign, SemanticValueId(7)),
+            Err(LifecycleFailure::ForeignContinuation)
+        );
+    }
+
+    #[test]
+    fn killing_move_discharges_scheduled_drop_without_a_second_destructor() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let source = state.register_value(&k, SemanticValueId(1), None).unwrap();
+        let other = state.register_value(&k, SemanticValueId(2), None).unwrap();
+        for (name, declaration_order) in [(source, 2), (other, 1)] {
+            k.place_cleanup(crate::CleanupPlacement {
+                name,
+                declaration_order,
+                at: SemanticPosition(9),
+            })
+            .unwrap();
+        }
+        k.freeze_cleanup_schedule().unwrap();
+        commit(
+            &mut k,
+            &mut state,
+            1,
+            LifecycleAction::Move {
+                source,
+                destination: SemanticValueId(3),
+                effect: MoveEffect::Kill,
+            },
+        )
+        .unwrap();
+        assert!(state.cleanup_obligation_discharged(source));
+        // The scheduler transports the fixed sequence, consuming discharge
+        // facts instead of fabricating a separate Cleanup action.
+        for placement in k.cleanup().to_vec() {
+            if !state.cleanup_obligation_discharged(placement.name) {
+                commit(
+                    &mut k,
+                    &mut state,
+                    placement.at.0,
+                    LifecycleAction::Drop(placement.name),
+                )
+                .unwrap();
+            }
+        }
+        assert_eq!(state.events().len(), 2);
+        assert_eq!(state.events()[1].name, other);
+        assert_eq!(state.events()[1].kind, LifecycleEventKind::Drop);
+        assert!(
+            state.reify_value(&k, SemanticValueId(3)).is_ok(),
+            "the transferred generation remains independent"
+        );
+    }
+
+    #[test]
+    fn proof_requires_current_state_and_cut_and_preserves_origins_finitely() {
+        let (mut k, mut state, name) = fixture();
+        let action = LifecycleAction::Use(name);
+        let proof = state
+            .check_pre(
+                &k,
+                SemanticPosition(2),
+                &action,
+                &validation(&state, &action),
+                &Provenance::new("at two"),
+            )
+            .unwrap();
+        state.assign_color(name, ColorId("new-fact".into()));
+        let before = state.clone();
+        let failed = k.commit_action(
+            SemanticPosition(2),
+            &mut state,
+            action.clone(),
+            |_, _, _, _| Ok::<_, LifecycleFailure>(proof),
+            |state, action, proof| state.apply_post(action, proof),
+        );
+        assert!(matches!(
+            failed,
+            Err(crate::SemanticCommitFailure::Projection(_))
+        ));
+        assert_eq!(state, before);
+        let proof = state
+            .check_pre(
+                &k,
+                SemanticPosition(2),
+                &action,
+                &validation(&state, &action),
+                &Provenance::new("different cut"),
+            )
+            .unwrap();
+        let failed = k.commit_action(
+            SemanticPosition(3),
+            &mut state,
+            action,
+            |_, _, _, _| Ok::<_, LifecycleFailure>(proof),
+            |state, action, proof| state.apply_post(action, proof),
+        );
+        assert!(matches!(
+            failed,
+            Err(crate::SemanticCommitFailure::Projection(_))
+        ));
+        assert_eq!(state, before);
+        assert_eq!(k.position(), SemanticPosition(0));
+        state.origins.insert(name, Some(name));
+        assert_eq!(
+            state.observed_colors(name),
+            BTreeSet::from([ColorId("new-fact".into())])
+        );
     }
 
     #[test]
