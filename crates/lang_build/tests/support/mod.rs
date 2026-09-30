@@ -535,6 +535,18 @@ pub struct AssociatedFamily {
 
 impl AssociatedFamily {
     pub fn new(sources: &[&str]) -> Self {
+        Self::try_new(sources).expect("ordinary callable substrate")
+    }
+
+    pub fn from_fixture(workspace: &str) -> Self {
+        let source = fs::read_to_string(fixture_source_root(workspace, "app").join("main.lang"))
+            .expect("callable material fixture");
+        Self::new(&[&source])
+    }
+
+    /// Parse only the explicit callable material supplied by the test. This
+    /// bypasses source declaration evaluation and does not form tau_C.
+    pub fn try_new(sources: &[&str]) -> Result<Self, BuildError> {
         let base = CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
             .expect("core substrate");
         let namespace = base.package_root_node();
@@ -588,31 +600,35 @@ impl AssociatedFamily {
                     )
                     .unwrap();
             } else {
-                receiver = Some(
-                    world
-                        .register_source_callable(
-                            namespace,
-                            "receiver",
-                            lang_build::SymbolId(900000),
-                            closure,
-                            outer,
-                            view,
-                            p2,
-                            None,
-                            result_class,
-                            provenance,
-                        )
-                        .unwrap(),
-                );
+                receiver = Some(world.install_callable_member_value(
+                    namespace,
+                    "receiver",
+                    lang_build::SymbolId(900000),
+                    closure,
+                    outer,
+                    view,
+                    p2,
+                    None,
+                    result_class,
+                    provenance,
+                )?);
             }
         }
         let first = receiver.unwrap();
-        Self {
+        Ok(Self {
             world,
             target: first.symbol,
             namespace,
             resolver,
-        }
+        })
+    }
+
+    pub fn target_binding(&self) -> &lang_build::SemanticSymbolCell {
+        self.world.symbol(self.target).unwrap()
+    }
+
+    pub fn semantic_world_mut(&mut self) -> &mut lang_build::SemanticWorld {
+        &mut self.world
     }
 
     pub fn semantic_world(&self) -> &lang_build::SemanticWorld {

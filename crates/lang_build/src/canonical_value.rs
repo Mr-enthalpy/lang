@@ -59,7 +59,8 @@ use crate::semantic_owner::ResolvedPatternRootId;
 /// Each realized Val2 selector observes one complete resident Object.
 pub type CanonicalVal2Norm = BTreeMap<String, CanonicalValueAddr>;
 
-/// Immutable callable-member observations; selector spelling is not a V_tau axis.
+/// Sorted unique callable-member observations. Neither selector spelling nor
+/// repeated storage of one member in selector buckets is a V_tau identity axis.
 pub type CanonicalTypeCallSpaceNorm = Vec<CanonicalValueAddr>;
 
 /// `bind alpha.<Norm(Q), Norm_V^alpha(V_tau)>`.

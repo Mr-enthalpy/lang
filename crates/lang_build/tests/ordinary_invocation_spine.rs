@@ -3,11 +3,10 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
     CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
-    PolicyMode, Provenance, SemanticOwnerKind, SemanticValuePayload, SymbolPayload,
-    WritableContext,
+    PolicyMode, Provenance, SemanticOwnerKind, SemanticValuePayload, WritableContext,
 };
 
-use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
+use support::{build_single_fixture_world, initializer_from_source};
 
 #[test]
 fn type_projection_is_not_an_ordinary_resident() {
@@ -134,11 +133,10 @@ fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
 
 #[test]
 fn configured_capability_cell_is_proof_material_not_policy_preference() {
-    let mut world = build_single_fixture_world("declared_result", "app");
-    let keep = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "keep")
-        .expect("single compile callable Symbol");
+    let mut world = support::AssociatedFamily::new(&[
+        "let member = (self, _ uint8:type):compile -> let r:uint8 => { r; };",
+    ]);
+    let keep = world.target_binding();
     let entries = keep
         .ordinary_value()
         .iter()
@@ -159,6 +157,7 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
     );
     for entry in entries {
         world
+            .semantic_world_mut()
             .configure_call_entry_capability_realization(entry, realization.clone())
             .expect("terminal call entry accepts candidate-local realization");
     }
@@ -217,12 +216,40 @@ fn mut_policy_mode_does_not_grant_writable() {
 }
 
 #[test]
-fn source_position_policy_inherits_stage_and_overlays_result_mode() {
-    let world = build_single_fixture_world("position_policy", "app");
-    let function = world
+fn actual_callable_binding_place_authorizes_target_sensitive_legality() {
+    let mut world = support::AssociatedFamily::new(&[
+        "let member = (self, t:type):compile -> let r:type => { t; };",
+    ]);
+    let binding = world.target_binding();
+    let value = binding.ordinary_value().unwrap();
+    let place = world
         .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "f")
-        .expect("source callable f");
+        .binding_place(binding.identity, value)
+        .unwrap();
+    let mut writable = WritableContext::default();
+    writable.grant_place(place);
+    let call =
+        extract_single_call_site(&initializer_from_source("let result = uint8 member;")).unwrap();
+    let failure = world
+        .invoke_ordinary_call(
+            world.package_root_node(),
+            &call,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain])
+                .requiring_target_writable(&writable),
+            Provenance::new("actual binding Place"),
+        )
+        .expect_err("selected user body completion remains unavailable");
+    let lang_build::OrdinaryInvocationFailure::SelectedBody { trace, .. } = failure else {
+        panic!("actual Place grant must pass legality: {failure:?}");
+    };
+    assert!(trace.dynamic_legality.is_some());
+    assert!(trace.selected.is_some());
+}
+
+#[test]
+fn callable_material_position_policy_inherits_stage_and_overlays_result_mode() {
+    let world = support::AssociatedFamily::from_fixture("position_policy");
+    let function = world.target_binding();
     let function_value = *function
         .ordinary_value()
         .as_ref()
@@ -257,7 +284,11 @@ fn source_position_policy_inherits_stage_and_overlays_result_mode() {
 
 #[test]
 fn return_position_cannot_override_inherited_stage() {
-    let error = build_fixture_error("position_policy_invalid_stage", "app");
+    let error = support::AssociatedFamily::try_new(&[include_str!(
+        "fixtures/workspaces/position_policy_invalid_stage/app/src/main.lang"
+    )])
+    .err()
+    .expect("invalid return stage");
     assert!(
         error
             .diagnostics
@@ -790,48 +821,6 @@ fn bare_call_target_resolves_nearest_symbol_once_even_if_non_callable() {
 }
 
 #[test]
-fn bare_call_target_does_not_fall_through_after_a_rejects_nearest_symbol() {
-    let mut world = build_single_fixture_world("bare_scope_chain", "app");
-    let package = world.package_root_node();
-    let outer_namespace = world
-        .semantic_world()
-        .child_namespace(package, "outer")
-        .expect("outer physical namespace");
-    let inner_namespace = world
-        .semantic_world()
-        .child_namespace(outer_namespace, "inner")
-        .expect("inner physical namespace");
-    let inner = world
-        .semantic_world()
-        .symbol_in_namespace(inner_namespace, "g")
-        .expect("inner runtime-only callable g")
-        .identity;
-
-    let initializer = initializer_from_source("let result = uint8 g;");
-    let call_site = extract_single_call_site(&initializer).expect("bare g call");
-    assert_eq!(
-        world.resolve_source_terminal_symbol(inner_namespace, &call_site.target),
-        Some(inner),
-        "lexical resolution seals inner.g before call projection"
-    );
-    let failure = world
-        .invoke_ordinary_call(
-            inner_namespace,
-            &call_site,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
-            Provenance::new("nearest callable fails A without outward retry"),
-        )
-        .expect_err("runtime-only inner.g is inadmissible at OpenStatic");
-    assert!(
-        matches!(
-            failure,
-            lang_build::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
-        ),
-        "A-stage failure belongs to inner.g and never retries outer.g: {failure:?}"
-    );
-}
-
-#[test]
 fn same_bare_path_has_one_terminal_symbol_before_value_type_and_call_projection() {
     let world = build_single_fixture_world("bare_scope_chain", "app");
     let package = world.package_root_node();
@@ -1001,84 +990,6 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
 }
 
 #[test]
-fn declared_result_class_is_a_declaration_boundary_fact_shared_by_core_and_source() {
-    // Result class, return Pattern, and privilege are independent declared
-    // coordinates. No coordinate is projected from another.
-    let world = build_single_fixture_world("declared_result", "app");
-
-    let coordinates_of = |name: &str| {
-        let symbol = world.resolve(name).expect("declared callable resolves");
-        let SymbolPayload::MetaFunction(function) = symbol.payload else {
-            panic!("`{name}` is a callable declaration");
-        };
-        (function.declared_result_class, function.privilege)
-    };
-
-    // Neither body form nor Policy stage determines the result class.
-    assert_eq!(
-        coordinates_of("make_type"),
-        (
-            lang_build::DeclaredResultClass::OrdinaryValue,
-            lang_build::CallablePrivilege::OrdinarySource,
-        ),
-        "an ordinary annotation declares no special result ontology"
-    );
-    assert_eq!(
-        coordinates_of("keep"),
-        (
-            lang_build::DeclaredResultClass::OrdinaryValue,
-            lang_build::CallablePrivilege::OrdinarySource,
-        ),
-        "constrained-slot source callable declares a single-value return"
-    );
-
-    // Built-ins use the same declared result-class coordinate.
-    assert_eq!(
-        coordinates_of("struct"),
-        (
-            lang_build::DeclaredResultClass::CompleteType,
-            lang_build::CallablePrivilege::BuiltinPrivileged,
-        ),
-        "core struct declares a privileged complete-type return"
-    );
-    assert_eq!(
-        coordinates_of("assert"),
-        (
-            lang_build::DeclaredResultClass::OrdinaryValue,
-            lang_build::CallablePrivilege::BuiltinPrivileged,
-        ),
-        "core assert declares a privileged single-value return"
-    );
-}
-
-#[test]
-fn return_slot_declares_result_class_independent_of_body_form() {
-    let world = build_single_fixture_world("declared_result", "app");
-
-    let declared_result_class_of = |name: &str| {
-        let symbol = world.resolve(name).expect("declared callable resolves");
-        let SymbolPayload::MetaFunction(function) = symbol.payload else {
-            panic!("`{name}` is a callable declaration");
-        };
-        function.declared_result_class
-    };
-
-    // Zero member events, `-> r: symbol`: an ordinary annotation.
-    assert_eq!(
-        declared_result_class_of("empty_cluster"),
-        lang_build::DeclaredResultClass::OrdinaryValue,
-        "a `-> r: symbol` callable with an effect-free body is an ordinary annotation"
-    );
-    // This body (`let r = t; r;`) has a `-> let r: type` slot: body
-    // refactoring never changes its declared complete-type result class.
-    assert_eq!(
-        declared_result_class_of("refactor_kept"),
-        lang_build::DeclaredResultClass::CompleteType,
-        "member-event body forms cannot change a `-> let r: type` declaration"
-    );
-}
-
-#[test]
 fn unsupported_pattern_query_terminates_before_candidate_selection() {
     let mut world = support::AssociatedFamily::new(&[
         "let first = (self, if | else: type): compile -> let r: uint8 => { self; };",
@@ -1117,7 +1028,7 @@ fn unsupported_pattern_query_terminates_before_candidate_selection() {
 
 #[test]
 fn wildcard_unit_return_pattern_reaches_selection_before_execution_frontier() {
-    let mut world = build_single_fixture_world("unit_result_selection", "app");
+    let mut world = support::AssociatedFamily::from_fixture("unit_result_selection");
     let initializer = initializer_from_source("let result = uint8 unit_pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
     let failure = world

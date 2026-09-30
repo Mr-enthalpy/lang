@@ -17,7 +17,7 @@ use lang_build::{
     PatternNavigationInput, PatternValueId, PolicyMode, Provenance, SemanticOwnerId,
     SemanticValuePayload, TypeValueId,
 };
-use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
+use support::{build_fixture_error, initializer_from_source};
 
 fn invoke_struct(
     world: &mut CompilationWorld,
@@ -305,12 +305,12 @@ fn invoke_struct_under_owner(
     )
 }
 
-/// The parent-linked Self scope owner of a source callable: the owner that
+/// The parent-linked Self scope owner of an installed core callable: the owner that
 /// its function-object pattern was allocated under.
 fn callable_self_owner(world: &CompilationWorld, name: &str) -> SemanticOwnerId {
     let symbol = world
         .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), name)
+        .symbol_in_namespace(world.core_node(), name)
         .expect("fixture callable symbol");
     let function_value = symbol.ordinary_value().unwrap();
     let object = world
@@ -319,7 +319,7 @@ fn callable_self_owner(world: &CompilationWorld, name: &str) -> SemanticOwnerId 
         .expect("function object value");
     assert!(
         matches!(object.payload, SemanticValuePayload::FunctionObject { .. }),
-        "callable sibling is a function object"
+        "ordinary callable resident"
     );
     world
         .semantic_world()
@@ -347,9 +347,10 @@ fn struct_result_root(
 /// shape generates two distinct roots, each rooted under its supplier.
 #[test]
 fn different_function_self_owners_do_not_share_an_ambient_struct_root() {
-    let mut world = build_single_fixture_world("meta_type_roots", "app");
-    let owner_f = callable_self_owner(&world, "f");
-    let owner_g = callable_self_owner(&world, "g");
+    let mut world =
+        CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()])).unwrap();
+    let owner_f = callable_self_owner(&world, "IdentityType");
+    let owner_g = callable_self_owner(&world, "struct");
     assert_ne!(
         owner_f, owner_g,
         "two callables in one namespace carry distinct Self scope owners"
@@ -401,8 +402,9 @@ fn different_function_self_owners_do_not_share_an_ambient_struct_root() {
 /// error.
 #[test]
 fn replaying_the_same_shape_under_one_self_owner_stays_a_hard_error() {
-    let mut world = build_single_fixture_world("meta_type_roots", "app");
-    let owner_f = callable_self_owner(&world, "f");
+    let mut world =
+        CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()])).unwrap();
+    let owner_f = callable_self_owner(&world, "IdentityType");
 
     invoke_struct_under_owner(
         &mut world,

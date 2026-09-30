@@ -216,6 +216,7 @@ pub enum BorrowFormationFailure {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PlaceMutationFailure {
+    ValueNotInstalled(SemanticValueId),
     UnknownPlace(ObjectPlaceId),
     NotWritable,
     SlotAlreadyOccupied(ProjectionSlotIdentity),
@@ -481,18 +482,6 @@ pub enum SemanticDeclarationEntry {
         declared_result_class: DeclaredResultClass,
         provenance: Provenance,
     },
-    /// An ordinary named source callable declaration.
-    SourceCallable {
-        name: String,
-        backing_declaration: SymbolId,
-        closure: NormClosure,
-        outer_p1_explicit: Option<ExplicitP1Selection>,
-        function_view: PolicyView,
-        body_entry_view: PolicyView,
-        namespace_visibility: Option<NamespaceVisibility>,
-        declared_result_class: DeclaredResultClass,
-        provenance: Provenance,
-    },
     /// A declared type carrier (`let t: type`), including the semantic
     /// registration of its associated namespace node.
     TypeCarrier {
@@ -576,7 +565,7 @@ enum BindingResident {
     Type(PurePMember),
     Value {
         value: SemanticValueId,
-        place: Option<ObjectPlaceId>,
+        place: ObjectPlaceId,
     },
 }
 
@@ -600,7 +589,7 @@ impl SemanticSymbolCell {
             Some(BindingResident::Value {
                 value: resident,
                 place,
-            }) if resident == value => place,
+            }) if resident == value => Some(place),
             _ => None,
         }
     }
@@ -1140,7 +1129,7 @@ pub enum BindConflict {
     },
 }
 
-/// Semantic facts materialized for one source callable declaration.
+/// Installed ordinary callable member and its associated implementation entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RegisteredCallable {
     pub symbol: SemanticSymbolIdentity,
@@ -1979,6 +1968,7 @@ impl SemanticWorld {
             );
         }
         normalized.sort();
+        normalized.dedup();
         let whole = self.intern_canonical_value(CanonicalNormForm::CompleteType(
             CanonicalCompleteTypeNorm {
                 core,
@@ -3330,6 +3320,9 @@ impl SemanticWorld {
         if slot.contents == ProjectionSlotContents::Occupied {
             return Err(PlaceMutationFailure::SlotAlreadyOccupied(slot.identity));
         }
+        let value_place = self
+            .allocate_binding_destination(value)
+            .ok_or(PlaceMutationFailure::ValueNotInstalled(value))?;
         let object = self.places.get_mut(&place).expect("place was checked");
         let object_id = object.object;
         object
@@ -3338,7 +3331,10 @@ impl SemanticWorld {
         self.set_owned_val2_resident(
             object_id,
             &projection_storage_key(&selector),
-            Some(BindingResident::Value { value, place: None }),
+            Some(BindingResident::Value {
+                value,
+                place: value_place,
+            }),
         )
         .expect("resident Object has owned Val2");
         Ok(slot.identity)
@@ -3361,6 +3357,9 @@ impl SemanticWorld {
         if slot.contents == ProjectionSlotContents::Missing {
             return Err(PlaceMutationFailure::SlotMissing(slot.identity));
         }
+        let value_place = self
+            .allocate_binding_destination(value)
+            .ok_or(PlaceMutationFailure::ValueNotInstalled(value))?;
         let object = self.places.get_mut(&place).expect("place was checked");
         let object_id = object.object;
         object
@@ -3369,7 +3368,10 @@ impl SemanticWorld {
         self.set_owned_val2_resident(
             object_id,
             &projection_storage_key(&selector),
-            Some(BindingResident::Value { value, place: None }),
+            Some(BindingResident::Value {
+                value,
+                place: value_place,
+            }),
         )
         .expect("resident Object has owned Val2");
         Ok(slot.identity)
@@ -3466,6 +3468,15 @@ impl SemanticWorld {
         if !self.values.contains_key(&value) {
             return None;
         }
+        let storage = self.places.get(&place)?;
+        if storage
+            .associated_val2
+            .get(name)
+            .is_some_and(|values| values.contains(&value))
+        {
+            return Some(());
+        }
+        let value_place = self.allocate_binding_destination(value)?;
         let values = self
             .places
             .get_mut(&place)?
@@ -3483,7 +3494,7 @@ impl SemanticWorld {
             match values.as_slice() {
                 [value] => Some(BindingResident::Value {
                     value: *value,
-                    place: None,
+                    place: value_place,
                 }),
                 _ => None,
             },
@@ -3542,14 +3553,10 @@ impl SemanticWorld {
             .collect()
     }
 
-    /// Canonical callable/member projection for one name reached through a
-    /// host layer.
-    ///
-    /// `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_tau)`: local
-    /// Symbol members and the immutable complete-type snapshot occupy one
-    /// candidate space. Transport-only values are admitted as a one-way
-    /// projection source, then deduplicated in that same space. There is no
-    /// local-first / TypeMember-second fallback tier.
+    /// Binding/member transport projection for one name reached through a
+    /// host layer. It reads current associated Val2 residency and Policy views.
+    /// V_tau is projected only by the complete-type call entrance and is not
+    /// imported into this associated namespace observation.
     ///
     /// Exposure composes per layer and per phase:
     ///
@@ -4326,39 +4333,6 @@ impl SemanticWorld {
                         provenance,
                     )?;
                 }
-                SemanticDeclarationEntry::SourceCallable {
-                    name,
-                    backing_declaration,
-                    closure,
-                    outer_p1_explicit,
-                    function_view,
-                    body_entry_view,
-                    namespace_visibility,
-                    declared_result_class,
-                    provenance,
-                } => {
-                    let registered = staged.register_source_callable(
-                        delta.namespace,
-                        &name,
-                        backing_declaration,
-                        &closure,
-                        outer_p1_explicit,
-                        function_view,
-                        body_entry_view,
-                        namespace_visibility,
-                        declared_result_class,
-                        provenance,
-                    )?;
-                    if let Some(pattern) = staged.pattern_for_associated_namespace(delta.namespace)
-                    {
-                        staged
-                            .associate_existing_symbol(pattern, &name, registered.symbol)
-                            .expect("registered associated source Symbol exists");
-                        staged
-                            .associate_existing_value(pattern, &name, registered.function_value)
-                            .expect("registered source callable value exists");
-                    }
-                }
                 SemanticDeclarationEntry::TypeCarrier {
                     name,
                     binding,
@@ -4516,7 +4490,9 @@ impl SemanticWorld {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn register_source_callable(
+    /// Substrate formation of an ordinary callable member, not closure-expression
+    /// evaluation or source declaration installation. Source closures require tau_C.
+    pub fn install_callable_member_value(
         &mut self,
         namespace: NamespaceNodeId,
         name: &str,
@@ -4531,13 +4507,13 @@ impl SemanticWorld {
     ) -> Result<RegisteredCallable, BuildError> {
         if self.symbol_in_namespace(namespace, name).is_some() {
             return Err(BuildError::single(crate::Diagnostic::hard_error(
-                "same-name declaration formation requires the callability contribution consumer",
+                "callable member destination is already bound",
                 Some(provenance),
             )));
         }
         let namespace_owner = self.namespace_owner(namespace).ok_or_else(|| {
             BuildError::single(crate::Diagnostic::hard_error(
-                "source callable namespace has no semantic owner",
+                "callable member destination namespace has no semantic owner",
                 Some(provenance.clone()),
             ))
         })?;
@@ -4645,7 +4621,7 @@ impl SemanticWorld {
             .expect("interned semantic symbol exists")
             .resident = Some(BindingResident::Value {
             value: function_value,
-            place: None,
+            place: function_place,
         });
         // Member_views.value_policy/pattern_policy must read
         // the same canonical P1 as SemanticValueObject.policy and
@@ -4797,7 +4773,7 @@ impl SemanticWorld {
             .expect("interned semantic symbol exists");
         cell.resident = Some(BindingResident::Value {
             value: function_value,
-            place: None,
+            place: function_place,
         });
         // Member_views read the same canonical P1 as
         // SemanticValueObject.policy and OrdinaryCallEntry.callable_value_policy.
@@ -5055,7 +5031,7 @@ impl SemanticWorld {
             if let Some(value) = value {
                 cell.resident = Some(BindingResident::Value {
                     value,
-                    place: destination_places.get(&value).copied(),
+                    place: destination_places[&value],
                 });
             } else {
                 // Pure-P view (value=None, pattern=P):
@@ -5145,6 +5121,15 @@ impl SemanticWorld {
             .find(|view| view.value.is_none())
             .map(|view| view.pattern)
             .map(|pattern| self.pure_p_member_for_carrier(symbol, pattern));
+        let mut destination_places = BTreeMap::new();
+        for value in views
+            .iter()
+            .filter_map(|view| view.value.map(|value| value.id))
+        {
+            if !destination_places.contains_key(&value) {
+                destination_places.insert(value, self.allocate_binding_destination(value)?);
+            }
+        }
         let cell = self
             .symbols
             .get_mut(&symbol)
@@ -5155,7 +5140,10 @@ impl SemanticWorld {
         for view in views {
             let value = view.value.map(|value| value.id);
             if let Some(value) = value {
-                cell.resident = Some(BindingResident::Value { value, place: None });
+                cell.resident = Some(BindingResident::Value {
+                    value,
+                    place: destination_places[&value],
+                });
             } else {
                 // Keep the derived caches strictly in sync with the
                 // canonical member views: pure_p mirrors the first
@@ -5661,7 +5649,7 @@ mod tests {
             },
         );
         world
-            .register_source_callable(
+            .install_callable_member_value(
                 namespace,
                 &format!("callable_{}", world.next_value),
                 SymbolId(99000 + world.next_value),
@@ -5726,6 +5714,122 @@ mod tests {
             .canonical_type_core_observation_address(ty, place)
             .unwrap_err();
         assert!(failure.message.contains("ordinary resident formation"));
+    }
+
+    #[test]
+    fn complete_type_identity_ignores_repeated_member_storage_selectors() {
+        let base = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let mut world = base.semantic_world().clone();
+        let ty = base.resolve_type_value("uint8").unwrap();
+        let pattern = world.type_value(ty).unwrap().pattern;
+        let callable = test_callable(&mut world);
+        let empty = world.observe_complete_type(ty, None).unwrap();
+        world
+            .admit_direct_type_member(pattern, pattern, "a", callable)
+            .unwrap();
+        let once = world.observe_complete_type(ty, None).unwrap();
+        world
+            .admit_direct_type_member(pattern, pattern, "b", callable)
+            .unwrap();
+        let twice = world.observe_complete_type(ty, None).unwrap();
+        assert_eq!(once.whole(), twice.whole());
+        assert_ne!(
+            empty.whole(),
+            once.whole(),
+            "actual membership remains observable"
+        );
+        let CanonicalNormForm::CompleteType(norm) =
+            world.canonical_normal_form(twice.whole()).unwrap()
+        else {
+            panic!("complete type normal form");
+        };
+        assert_eq!(norm.call_space.len(), 1);
+
+        let other = test_callable(&mut world);
+        world
+            .admit_direct_type_member(pattern, pattern, "b", other)
+            .unwrap();
+        let distinct = world.observe_complete_type(ty, None).unwrap();
+        assert_ne!(
+            once.whole(),
+            distinct.whole(),
+            "distinct callable identity remains observable"
+        );
+    }
+
+    #[test]
+    fn core_callable_binding_retains_its_actual_resident_place() {
+        let base = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let world = base.semantic_world();
+        let binding = world
+            .symbol_in_namespace(base.core_node(), "IdentityType")
+            .unwrap();
+        let value = binding.ordinary_value().unwrap();
+        let place = world.binding_place(binding.identity, value).unwrap();
+        assert_eq!(
+            world.binding_places(binding.identity).get(&value),
+            Some(&place)
+        );
+        assert!(world.resident_generation(place).is_some());
+    }
+
+    #[test]
+    fn ordinary_binding_and_replacement_always_establish_destination_places() {
+        let mut world = SemanticWorld::new("unit");
+        let first = test_callable(&mut world);
+        let namespace = NamespaceNodeId(999);
+        // The member builder installs a real binding Place. Inspect by resident
+        // identity rather than depending on its generated fixture spelling.
+        let first_binding = world
+            .symbols
+            .values()
+            .find(|cell| cell.ordinary_value() == Some(first))
+            .unwrap()
+            .identity;
+        let first_place = world.binding_place(first_binding, first).unwrap();
+        assert_eq!(
+            world.binding_places(first_binding).get(&first),
+            Some(&first_place)
+        );
+        assert!(world.resident_generation(first_place).is_some());
+
+        let views = world
+            .member_views_for_values(&[first])
+            .into_iter()
+            .map(|view| PolicyResultEntry {
+                value: view.value.map(|id| crate::SemanticValueRef {
+                    id,
+                    type_value: world.value(id).unwrap().type_value,
+                }),
+                pattern: view.pattern,
+                view: view.view,
+            })
+            .collect::<Vec<_>>();
+        let bound = world
+            .bind_ordinary_new(namespace, "destination", &views, Provenance::new("binding"))
+            .unwrap();
+        let bound_place = world.binding_place(bound, first).unwrap();
+        assert_ne!(first_place, bound_place);
+        let replacement = world
+            .replace_binding_projection(
+                namespace,
+                "destination",
+                &views,
+                Provenance::new("replacement"),
+            )
+            .unwrap();
+        assert_eq!(bound, replacement);
+        let replacement_place = world.binding_place(bound, first).unwrap();
+        assert_ne!(bound_place, replacement_place);
+        assert!(world.resident_generation(replacement_place).is_some());
     }
 
     #[test]
@@ -6052,6 +6156,8 @@ mod tests {
     #[test]
     fn prospective_projection_creation_and_existing_write_are_distinct() {
         let mut world = SemanticWorld::new("app");
+        let first = test_callable(&mut world);
+        let second = test_callable(&mut world);
         let place = world.allocate_object_place();
         let selector = ProjectionSelector::Named("field".into());
         let prospective = world
@@ -6067,8 +6173,20 @@ mod tests {
 
         let mut writable = WritableContext::default();
         writable.grant_place(place);
+        let absent = SemanticValueId(u64::MAX);
+        assert_eq!(
+            world.create_projection_value(place, selector.clone(), absent, &writable),
+            Err(PlaceMutationFailure::ValueNotInstalled(absent))
+        );
+        assert_eq!(
+            world
+                .projection_slot(place, selector.clone())
+                .unwrap()
+                .contents,
+            ProjectionSlotContents::Missing
+        );
         let created = world
-            .create_projection_value(place, selector.clone(), SemanticValueId(1), &writable)
+            .create_projection_value(place, selector.clone(), first, &writable)
             .expect("let-like creation instantiates the missing slot");
         assert_eq!(created, prospective.identity);
         assert_eq!(
@@ -6092,7 +6210,7 @@ mod tests {
             Err(PlaceMutationFailure::SlotMissing(_))
         ));
         let written = world
-            .write_projection_value(place, selector, SemanticValueId(2), &writable)
+            .write_projection_value(place, selector, second, &writable)
             .expect("ordinary assignment writes only an existing slot");
         assert_eq!(written, created);
     }
@@ -6617,25 +6735,20 @@ mod tests {
         let delta = SemanticNamespaceDelta {
             namespace,
             entries: vec![
-                SemanticDeclarationEntry::SourceCallable {
+                SemanticDeclarationEntry::ProjectionOnly {
                     name: "would_be_partial".to_string(),
                     backing_declaration: SymbolId(900),
-                    closure: closure.clone(),
-                    outer_p1_explicit: None,
-                    function_view: function_view.clone(),
-                    body_entry_view: result_p2.clone(),
-                    namespace_visibility: None,
-                    declared_result_class: crate::DeclaredResultClass::OrdinaryValue,
                     provenance: Provenance::new("valid first staged entry"),
                 },
-                SemanticDeclarationEntry::SourceCallable {
-                    name: "would_be_partial".to_string(),
+                SemanticDeclarationEntry::AssociatedCallEntry {
+                    pattern: PatternValueId(u64::MAX),
                     backing_declaration: SymbolId(901),
                     closure,
                     outer_p1_explicit: None,
-                    function_view,
+                    callable_view: function_view,
                     body_entry_view: result_p2,
                     namespace_visibility: None,
+                    candidate_role: OrdinaryCandidateRole::Ordinary,
                     declared_result_class: crate::DeclaredResultClass::OrdinaryValue,
                     provenance: Provenance::new("failing second staged entry"),
                 },
@@ -6644,10 +6757,10 @@ mod tests {
 
         let error = world
             .install_namespace_delta(delta)
-            .expect_err("unavailable contribution rejects the whole semantic transaction");
+            .expect_err("invalid associated material rejects the whole semantic transaction");
         assert!(error.diagnostics.iter().any(|diagnostic| diagnostic
             .message
-            .contains("callability contribution consumer")));
+            .contains("associated Pattern owner has no TypeValue")));
         assert_eq!(world.symbols.len(), before_symbols);
         assert_eq!(world.values.len(), before_values);
         assert_eq!(world.types.len(), before_types);
@@ -6848,13 +6961,14 @@ mod tests {
             "callable-member",
             Provenance::new("associated resident"),
         );
+        let local_place = world.allocate_binding_destination(local).unwrap();
         let cell = world
             .symbols
             .get_mut(&local_binding)
             .expect("local binding was interned");
         cell.resident = Some(BindingResident::Value {
             value: local,
-            place: None,
+            place: local_place,
         });
         cell.member_views.push(PolicyResultEntry {
             value: Some(local),

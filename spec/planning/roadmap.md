@@ -454,8 +454,10 @@ complete Type, never its defining-name binding.
 The reusable associated implementation ledger is not an Object resident or an
 OverloadGroup. Multiple entries require an ordinary resident formation consumer
 before Object normalization; no aggregate normal form substitutes for that
-consumer. Source closure-to-tau formation, target-anchored common-snapshot
-contribution and general source completion remain implementation gates. The
+consumer. Named source closure declarations now fail before resident installation
+until closure-to-tau formation is connected; the ordinary callable-member
+substrate builder is not reachable from that declaration path. Target-anchored
+common-snapshot contribution and general source completion also remain gates. The
 selection tests exercise the connected substrate and do not prove those gates.
 
 The next independent cleanup cuts replace resolved stage unions and phase

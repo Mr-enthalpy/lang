@@ -158,11 +158,10 @@ fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
 // ---------------------------------------------------------------------------
 #[test]
 fn callable_member_owns_function_object_and_terminal_call_entry() {
-    let world = build_single_fixture_world("declared_result", "app");
-    let make_type = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "make_type")
-        .expect("make_type binding");
+    let world = support::AssociatedFamily::new(&[
+        "let member = (self, t:type):meta -> let r:type => { t; };",
+    ]);
+    let make_type = world.target_binding();
     assert_eq!(make_type.ordinary_value().iter().count(), 1);
     let function_value = make_type.ordinary_value().unwrap();
     let function_obj = world

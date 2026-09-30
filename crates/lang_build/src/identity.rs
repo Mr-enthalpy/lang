@@ -51,9 +51,8 @@ impl SemanticValueId {
 /// Identity of the *selected callable* behind one meta invocation.
 ///
 /// Meta instance roots are keyed by the selected callable **value** plus the
-/// selected `()` call entry, never by the carrier Symbol that hosts the
-/// overload cluster: two distinct meta function values under one Symbol must
-/// produce distinct instance roots, and — because the object model allows
+/// selected `()` call entry, independently of a source name binding. Distinct
+/// callable values produce distinct instance roots, and because the model allows
 /// one function object Pattern to expose several `()` entries — two distinct
 /// call entries under one function value are two distinct meta callables.
 /// Formal binder names, source paths, body material, and provenance never

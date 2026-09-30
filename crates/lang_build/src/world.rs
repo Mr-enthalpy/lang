@@ -1119,49 +1119,11 @@ impl CompilationWorld {
 
         let declaration_provenance =
             Provenance::from_norm_origin(format!("declaration `{binder_name}`"), origin);
-        if let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() {
-            if closure.head.is_some() {
-                let callable = source_callable_delta(
-                    self.semantic_world.namespace_index(),
-                    namespace,
-                    &binder_name,
-                    slot.policy.as_ref(),
-                    closure,
-                    declaration_provenance.clone(),
-                )?;
-
-                // Same spelling supplies no contribution role. The source consumer
-                // for common-snapshot callability contribution is not connected.
-                if self
-                    .semantic_world
-                    .symbol_in_namespace(namespace, &binder_name)
-                    .is_some()
-                {
-                    return Err(BuildError::single(Diagnostic::hard_error(
-                        "same-name declaration formation requires the callability contribution consumer",
-                        Some(declaration_provenance),
-                    )));
-                }
-                let entry = SemanticDeclarationEntry::SourceCallable {
-                    name: binder_name.clone(),
-                    backing_declaration: callable.symbol_id,
-                    closure: closure.clone(),
-                    outer_p1_explicit: callable.outer_p1_explicit.clone(),
-                    function_view: callable.function_view,
-                    body_entry_view: callable.body_entry_view,
-                    namespace_visibility: callable.namespace_visibility,
-                    declared_result_class: callable.declared_result_class,
-                    provenance: declaration_provenance,
-                };
-                self.semantic_world
-                    .install_namespace_delta(SemanticNamespaceDelta {
-                        namespace,
-                        entries: vec![entry],
-                    })?;
-                self.semantic_world
-                    .install_namespace_name_delta(callable.delta)?;
-                return Ok(());
-            }
+        if matches!(slot.initializer.as_deref(), Some(NormExpr::Closure(_))) {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "closure-to-tau formation consumer is not connected; source closure declaration cannot install a callable value",
+                Some(declaration_provenance),
+            )));
         }
 
         let namespace_declaration = elaborate_namespace_declaration_policy(
@@ -2172,7 +2134,7 @@ impl CompilationWorld {
         }
 
         // No second semantic machine.  An initializer
-        // whose call target does not resolve to a semantic cluster Symbol
+        // whose call target does not resolve to a connected callable binding
         // and which names no existing semantic material is residualized as
         // unsupported; no second evaluator is reachable from the connected
         // world.
@@ -3038,8 +3000,8 @@ fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExp
 }
 
 /// Mirrors one uniform result view onto declaration-projection records.
-/// Heterogeneous Symbol clusters keep their per-member views in the semantic
-/// Symbol and deliberately have no fabricated whole-Symbol Policy view.
+/// Nonuniform Policy projections retain their individual member views; the
+/// declaration projection receives no fabricated uniform Policy view.
 fn override_delta_binding_policy_view(
     delta: &mut SemanticNameDelta,
     binding_name: &str,
@@ -3089,6 +3051,47 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::BindingSlot { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
+    }
+}
+
+#[cfg(test)]
+mod source_closure_frontier_tests {
+    use super::*;
+
+    #[test]
+    fn closure_declarations_fail_without_installing_callable_value_or_type() {
+        for source in [
+            "let f = (receiver, t:type):compile -> let r:type => { t; };",
+            "let f = (receiver, t:type) { t; };",
+            "let f = { 1; };",
+            "let f = [let captured = 1] (receiver) => { captured; };",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let namespace = world.package_root_node();
+            let before_semantic = format!("{:?}", world.semantic_world);
+            let before_projection = format!("{:?}", world.semantic_world.namespace_index());
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty(), "{source}");
+            let normalized = lang_syntax::normalize_program(&parsed.program);
+            let error = world
+                .harvest_program(namespace, &normalized, Path::new("frontier.lang"))
+                .unwrap_err();
+            assert!(error
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("closure-to-tau formation consumer")));
+            assert!(world
+                .semantic_world
+                .symbol_in_namespace(namespace, "f")
+                .is_none());
+            assert_eq!(before_semantic, format!("{:?}", world.semantic_world));
+            assert_eq!(
+                before_projection,
+                format!("{:?}", world.semantic_world.namespace_index())
+            );
+        }
     }
 }
 

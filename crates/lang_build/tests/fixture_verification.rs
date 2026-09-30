@@ -63,7 +63,7 @@ fn source_transport_without_execution_cannot_materialize_runtime_values() {
             .build_workspace(&runtime_literal_verification_fixture(workspace))
             .expect_err("unconnected single-stage transport cannot produce a migrated value");
         assert!(
-            format!("{error:?}").contains("callability contribution consumer"),
+            format!("{error:?}").contains("closure-to-tau formation consumer"),
             "{workspace}: {error:?}"
         );
     }

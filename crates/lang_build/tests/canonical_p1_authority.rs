@@ -1,6 +1,6 @@
 //! Canonical P1 authority tests.
 //!
-//! These tests enter through source declarations and verify that the four
+//! These tests form explicit ordinary callable substrate material and verify that the four
 //! policy authorities (function object policy, call entry callable_value_policy,
 //! member view value/pattern_policy, and candidate function_object_p1) all read
 //! the same canonical P1. They also verify the complete-pair identity rule
@@ -12,7 +12,7 @@
 //!   self explicit only             => complete self with Derive(P2)
 //!   neither                        => canonical P1 = Derive(P2)
 //!
-//! The mismatch tests use `build_fixture_error` to assert that the build fails
+//! The mismatch tests use the substrate builder to assert that formation fails
 //! with a canonical P1 mismatch diagnostic.
 
 mod support;
@@ -24,14 +24,18 @@ use lang_build::{
     PolicyView, Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet,
     ValueComponentPolicy, ValuePresence,
 };
-use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
+use support::initializer_from_source;
 
 /// Outer explicit const + self explicit mut(ish) must produce a
 /// hard canonical-P1-mismatch diagnostic, not be silently swallowed.
 #[test]
 fn canonical_p1_outer_self_mismatch_is_hard_error() {
-    let error = build_fixture_error("canonical_p1_outer_self_mismatch", "app");
-    // The build must fail with a canonical P1 mismatch diagnostic. The
+    let error = support::AssociatedFamily::try_new(&[include_str!(
+        "fixtures/workspaces/canonical_p1_outer_self_mismatch/app/src/main.lang"
+    )])
+    .err()
+    .expect("substrate P1 mismatch");
+    // Substrate formation must fail with a canonical P1 mismatch diagnostic. The
     // specific wording is owned by `canonical_function_object_p1`.
     let found = error
         .diagnostics
@@ -53,7 +57,11 @@ fn canonical_p1_outer_self_mismatch_is_hard_error() {
 /// each spelling against Derive(P2) yields different pairs and must fail.
 #[test]
 fn canonical_p1_cross_dimension_assembly_is_rejected() {
-    let error = build_fixture_error("canonical_p1_cross_dimension_mismatch", "app");
+    let error = support::AssociatedFamily::try_new(&[include_str!(
+        "fixtures/workspaces/canonical_p1_cross_dimension_mismatch/app/src/main.lang"
+    )])
+    .err()
+    .expect("substrate P1 mismatch");
     assert!(
         error.diagnostics.iter().any(|d| d
             .message
@@ -79,7 +87,7 @@ fn canonical_p1_cross_dimension_assembly_is_rejected() {
 /// candidate is exercised by the spine tests in `ordinary_invocation_spine.rs`.)
 #[test]
 fn canonical_p1_outer_only_unifies_all_authorities() {
-    let world = build_single_fixture_world("canonical_p1_outer_only", "app");
+    let world = support::AssociatedFamily::from_fixture("canonical_p1_outer_only");
     assert_canonical_p1_unified(&world, "bad");
 }
 
@@ -87,7 +95,7 @@ fn canonical_p1_outer_only_unifies_all_authorities() {
 /// policy authorities must all read the same canonical P1.
 #[test]
 fn canonical_p1_self_only_unifies_all_authorities() {
-    let world = build_single_fixture_world("canonical_p1_self_only", "app");
+    let world = support::AssociatedFamily::from_fixture("canonical_p1_self_only");
     assert_canonical_p1_unified(&world, "bad");
 }
 
@@ -95,7 +103,7 @@ fn canonical_p1_self_only_unifies_all_authorities() {
 /// are equal, the four policy authorities must all read the same canonical P1.
 #[test]
 fn canonical_p1_both_equal_unifies_all_authorities() {
-    let world = build_single_fixture_world("canonical_p1_both_equal", "app");
+    let world = support::AssociatedFamily::from_fixture("canonical_p1_both_equal");
     assert_canonical_p1_unified(&world, "bad");
 }
 
@@ -104,7 +112,7 @@ fn canonical_p1_both_equal_unifies_all_authorities() {
 /// the same canonical P1.
 #[test]
 fn canonical_p1_neither_unifies_all_authorities() {
-    let world = build_single_fixture_world("canonical_p1_neither", "app");
+    let world = support::AssociatedFamily::from_fixture("canonical_p1_neither");
     assert_canonical_p1_unified(&world, "bad");
 }
 
@@ -204,20 +212,16 @@ fn invocation_candidate_function_object_p1_matches_declared_p1() {
 /// Helper: assert that the function object policy, call entry
 /// callable_value_policy, and member view value/pattern_policy all read the
 /// same `PolicyPair` for the named callable symbol.
-fn assert_canonical_p1_unified(world: &lang_build::CompilationWorld, name: &str) {
+fn assert_canonical_p1_unified(world: &support::AssociatedFamily, name: &str) {
     let semantic_world = world.semantic_world();
-    let package_root = world.package_root_node();
-    let symbol = semantic_world
-        .symbol_in_namespace(package_root, name)
-        .unwrap_or_else(|| panic!("`{name}` symbol should be registered"));
+    let symbol = world.target_binding();
 
     // The binding has one ordinary resident and Policy projections.
-    // For an ordinary `let name = closure` declaration, there is exactly one
-    // sibling function object and one corresponding member view.
+    // Explicit substrate formation installs one ordinary callable resident.
     assert_eq!(
         symbol.ordinary_value().iter().count(),
         1,
-        "expected exactly one sibling function object for `{name}`"
+        "expected exactly one ordinary callable resident for `{name}`"
     );
     let function_value_id = symbol.ordinary_value().unwrap();
     let function_obj = semantic_world
@@ -458,44 +462,6 @@ fn expose_keeps_pure_p_entries_with_clipped_value_stages() {
     );
 }
 
-/// Boundary fact — a stage-only outer declaration prefix
-/// (`compile let narrow = ...`) IS an explicit canonical P1 value-stage
-/// selection: complete `Pv:Pp` elaboration keeps a stage-only policy as an
-/// explicit P1. The canonical P1 value window is
-/// cropped to `compile`, so the downstream `meta let X` result demand rejects
-/// the producer before maxima (or, equivalently for a non-call result, cannot
-/// satisfy the completed view). The build must fail either way; it may not
-/// widen the declared P1.
-#[test]
-fn stage_only_outer_prefix_is_an_explicit_canonical_p1() {
-    let error = build_fixture_error("stage_prefix_is_p1", "app");
-    let found = error.diagnostics.iter().any(|d| {
-        d.message.contains("cannot satisfy binding P1")
-            || d.message
-                .contains("requested binding policy selects no runtime value slice")
-            || d.message.contains("no fully admissible candidate")
-    });
-    assert!(
-        found,
-        "the stage-only `compile` prefix on `narrow` is an explicit P1, so \
-         the `meta let X` demand must remain outside the cropped result \
-         position view, got: {:?}",
-        error
-            .diagnostics
-            .iter()
-            .map(|d| &d.message)
-            .collect::<Vec<_>>()
-    );
-}
-
-#[test]
-fn selected_serial_body_requires_completion_consumer() {
-    let error = build_fixture_error("exposure_window_pass", "app");
-    assert!(error.diagnostics.iter().any(|d| d
-        .message
-        .contains("serial expression completion requires the shared continuation consumer")));
-}
-
 // ---------------------------------------------------------------------------
 // Per-dimension canonical P1 elaboration:
 // stage / mutability / presence / Pattern-stage disagreements between the
@@ -507,7 +473,11 @@ fn selected_serial_body_requires_completion_consumer() {
 /// disagree on the value-stage dimension: hard error at elaboration.
 #[test]
 fn value_stage_dimension_mismatch_is_hard_error() {
-    let error = build_fixture_error("canonical_p1_stage_mismatch", "app");
+    let error = support::AssociatedFamily::try_new(&[include_str!(
+        "fixtures/workspaces/canonical_p1_stage_mismatch/app/src/main.lang"
+    )])
+    .err()
+    .expect("substrate P1 mismatch");
     let found = error.diagnostics.iter().any(|d| {
         d.message
             .contains("canonical P1 mismatch: completed outer P1")

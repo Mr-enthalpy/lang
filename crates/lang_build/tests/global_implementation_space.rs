@@ -22,61 +22,15 @@ fn transport_bundle() -> ToolchainGlobalSourceRoot {
 }
 
 #[test]
-fn toolchain_global_source_is_parsed_installed_and_invoked_through_ordinary_spine() {
+fn toolchain_global_closure_declaration_requires_tau_formation() {
     let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
     manifest.global_implementation_roots.push(global_bundle());
-
-    let mut world = CompilationWorld::from_manifest(&manifest)
-        .expect("toolchain global source and user source build");
-    let root = world.namespace_projection().root_node();
-    let global = world
-        .semantic_world()
-        .symbol_in_namespace(root, "global_identity")
-        .expect("global implementation is a real semantic Symbol at `::`");
-    assert_eq!(
-        global.declaration_owner,
-        world.semantic_world().toolchain_owner()
-    );
-    assert_eq!(global.ordinary_value().iter().count(), 1);
-
-    let initializer = initializer_from_source("let x = uint8 global_identity::;");
-    let call = extract_single_call_site(&initializer).expect("normalized global call");
-    let failure = world
-        .invoke_ordinary_call(
-            world.package_root_node(),
-            &call,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-            Provenance::new("source completion frontier"),
-        )
-        .expect_err("serial expression completion is not executable");
-    let OrdinaryInvocationFailure::SelectedBody { failure, trace } = failure else {
-        panic!("expected a sealed selected-body failure");
-    };
-    assert_eq!(
-        failure.diagnostic.code,
-        Some(lang_build::ResolverCode::UnsupportedSelectedSourceBody)
-    );
-    assert!(failure
-        .diagnostic
-        .message
-        .contains("serial expression completion requires the shared continuation consumer"));
-    assert!(
-        trace.selected.is_some(),
-        "completion failure occurs after unique selection"
-    );
-
-    let bare_initializer = initializer_from_source("let x = uint8 global_identity;");
-    let bare_call = extract_single_call_site(&bare_initializer).expect("normalized bare-name call");
-    let actual_mutability = [PolicyMode::Const];
-    assert!(matches!(
-        world.invoke_ordinary_call(
-            world.package_root_node(),
-            &bare_call,
-            OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("Gsrc is not a prelude"),
-        ),
-        Err(OrdinaryInvocationFailure::NoTargetValues { .. })
-    ));
+    let error = CompilationWorld::from_manifest(&manifest)
+        .expect_err("global source has no privileged function-value binding fallback");
+    assert!(error
+        .diagnostics
+        .iter()
+        .any(|d| d.message.contains("closure-to-tau formation consumer")));
 }
 
 #[test]
@@ -133,17 +87,17 @@ fn global_source_cannot_enter_a_package_owned_namespace_boundary() {
 }
 
 #[test]
-fn same_name_source_formation_precedes_binding_demand() {
+fn source_closure_frontier_precedes_binding_demand() {
     let error = CompilationWorld::from_manifest(&BuildManifest::single_source_root(
         "app",
         vec!["app".to_string()],
         fixture_source_root("binding_result_demand", "app"),
     ))
-    .expect_err("the uniquely selected source body still requires completion");
+    .expect_err("source closure formation is unavailable");
     assert!(error
         .diagnostics
         .iter()
-        .any(|d| d.message.contains("callability contribution consumer")));
+        .any(|d| d.message.contains("closure-to-tau formation consumer")));
 }
 
 #[test]
@@ -191,7 +145,7 @@ fn result_mode_preference_is_sealed_independently_of_callable_mode() {
 }
 
 #[test]
-fn same_named_transport_source_requires_contribution_formation() {
+fn named_transport_source_requires_tau_formation() {
     let mut manifest = BuildManifest::new("app", vec!["app".into()]);
     manifest
         .global_implementation_roots
@@ -200,7 +154,7 @@ fn same_named_transport_source_requires_contribution_formation() {
     assert!(error
         .diagnostics
         .iter()
-        .any(|d| d.message.contains("callability contribution consumer")));
+        .any(|d| d.message.contains("closure-to-tau formation consumer")));
 }
 
 #[test]
