@@ -28,6 +28,12 @@ Every row currently requires consumer alignment; see the
 [implementation evidence and gates](roadmap.md#canonical-semantic-revision-implementation-gates).
 Single-atom Policy carriers, omitted-P1 completion and horizon facet visibility
 have substrate coverage after Stage cleanup. Name resolution fixes identity
+before exposure; hidden value and Pattern facets retain their resolved material
+while read/enumeration consumers remain unavailable at that horizon. Different
+hidden identities remain distinct, and hiding never becomes absence. Explicit
+Pin stage atoms are canonical but currently report the unconnected
+InputAdmissible consumer before selection; they are not rejected as illegal
+overrides or silently replaced by inherited P2. Name resolution proceeds
 without a horizon. Subsequent callee observation, candidate preparation and
 body-entry observation use one invocation horizon, retaining distinct facts;
 the horizon alone proves neither readiness nor execution legality. Ordinary

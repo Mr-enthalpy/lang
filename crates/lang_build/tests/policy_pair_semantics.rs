@@ -247,18 +247,6 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         )
         .is_err());
     }
-    for source in ["runtime", "compile", "seal", "const + runtime"] {
-        assert!(
-            elaborate_formal_policy_pattern(
-                Some(&policy_spec(source)),
-                &inherited_p2,
-                Provenance::new(source)
-            )
-            .is_err(),
-            "formal `{source}` must not replace inherited P2 dimensions"
-        );
-    }
-
     let const_only_p2 = normalize_p2_policy(
         &policy_spec("const + runtime"),
         Provenance::new("const-only inherited P2"),
@@ -332,7 +320,35 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
 }
 
 #[test]
-fn position_policy_inherits_stage_and_overlays_only_mode() {
+fn explicit_pin_stages_report_unconnected_input_admissibility() {
+    for inherited in ["meta", "compile", "seal", "runtime"] {
+        let p2 = normalize_p2_policy(&policy_spec(inherited), Provenance::new(inherited)).unwrap();
+        let original = p2.clone();
+        for source in ["meta", "runtime", "compile", "seal", "const + runtime"] {
+            let provenance = Provenance::new(source);
+            let diagnostic = elaborate_formal_policy_pattern(
+                Some(&policy_spec(source)),
+                &p2,
+                provenance.clone(),
+            )
+            .expect_err("explicit Pin stage needs the InputAdmissible consumer");
+            assert_eq!(
+                diagnostic.code,
+                Some(lang_build::ResolverCode::UnsupportedInputAdmissibleStage)
+            );
+            assert!(diagnostic.message.contains("is canonical"));
+            assert!(diagnostic.message.contains("consumer is not connected"));
+            assert_eq!(diagnostic.provenance, Some(provenance));
+            assert_eq!(
+                p2, original,
+                "a Pin constraint never rewrites the callable P2"
+            );
+        }
+    }
+}
+
+#[test]
+fn omitted_pin_inherits_p2_and_pout_inherits_p1_stage() {
     let inherited_p2 = normalize_p2_policy(
         &policy_spec("mut + runtime"),
         Provenance::new("position inherited P2"),

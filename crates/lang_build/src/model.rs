@@ -192,6 +192,9 @@ pub enum ResolverCode {
     AmbiguousMetaCandidate,
     NoCallCandidate,
     UnsupportedInitializerContinuation,
+    /// Explicit Pin stage constraints are canonical, but their per-position
+    /// InputAdmissible consumer is not connected.
+    UnsupportedInputAdmissibleStage,
     AnnotationAssertionFailed,
     ExplicitPolicyVerificationFailed,
     ResidualNotAllowedAtBoundary,

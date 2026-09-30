@@ -116,20 +116,52 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
 
 #[test]
 fn hidden_facets_retain_the_same_resolved_observation() {
+    use lang_build::FacetView;
     let entry = PolicyResultEntry {
         value: Some(7),
         pattern: 11,
         view: declared_policy_view(Stage::Runtime, PolicyMode::Const),
     };
     let hidden = expose_policy_slice(&entry, ObservationHorizon::OpenStatic);
+    assert_eq!(hidden.value, FacetView::HiddenAtHorizon(7));
     assert!(lang_build::read_value(&hidden).is_none());
     assert_eq!(lang_build::read_pattern(&hidden), Some(&11));
     assert_eq!(hidden.value_policy, entry.view.pair.value);
     assert_eq!(hidden.pattern_policy, entry.view.pair.pattern);
     assert_eq!(hidden.mode, entry.view.mode);
     let runtime = expose_policy_slice(&entry, ObservationHorizon::Runtime);
+    assert_eq!(runtime.pattern, FacetView::HiddenAtHorizon(11));
+    assert!(lang_build::read_pattern(&runtime).is_none());
     assert_eq!(lang_build::read_value(&runtime), Some(&7));
     assert_eq!(runtime.value_policy, hidden.value_policy);
+
+    let mut other = entry.clone();
+    other.value = Some(8);
+    let other_hidden = expose_policy_slice(&other, ObservationHorizon::OpenStatic);
+    assert_eq!(other_hidden.value, FacetView::HiddenAtHorizon(8));
+    assert_ne!(
+        hidden.value, other_hidden.value,
+        "hiding preserves value identity"
+    );
+    other.pattern = 12;
+    let other_runtime = expose_policy_slice(&other, ObservationHorizon::Runtime);
+    assert_ne!(
+        runtime.pattern, other_runtime.pattern,
+        "hiding preserves Pattern identity"
+    );
+    assert_eq!(other_runtime.pattern, FacetView::HiddenAtHorizon(12));
+    assert!(lang_build::read_pattern(&other_runtime).is_none());
+
+    other.value = None;
+    other.view.pair.value = ValueComponentPolicy::Absent;
+    let absent = expose_policy_slice(&other, ObservationHorizon::OpenStatic);
+    assert_eq!(absent.value, FacetView::Absent);
+    assert_ne!(hidden.value, absent.value);
+    assert!(
+        lang_build::enumerate_value_facet(&[hidden, other_hidden, absent])
+            .next()
+            .is_none()
+    );
 }
 
 #[test]
@@ -149,6 +181,46 @@ fn explicit_absence_cannot_silently_drop_an_explicit_stage() {
     )
     .is_err());
     assert_eq!(ValueComponentPolicy::Absent.stage(), None);
+}
+
+#[test]
+fn explicit_pin_stage_stops_selection_until_input_admissibility_is_connected() {
+    let call =
+        extract_single_call_site(&initializer_from_source("let result = mystery f;")).unwrap();
+    for stage in ["meta", "compile", "seal", "runtime", "const + compile"] {
+        let constrained =
+            format!("let constrained = (self, {stage} let x):runtime -> let r => {{ x; }};");
+        let ordinary = "let ordinary = (self, let x):runtime -> let r => { x; };";
+        for sources in [
+            [constrained.as_str(), ordinary],
+            [ordinary, constrained.as_str()],
+        ] {
+            let mut family = AssociatedFamily::new(&sources);
+            let mut context = OrdinaryInvocationContext::open_static(&[]);
+            context.horizon = ObservationHorizon::Runtime;
+            let outcome = family.invoke_ordinary_call(
+                family.package_root_node(),
+                &call,
+                context,
+                Provenance::new("explicit Pin stage consumer boundary"),
+            );
+            let Err(OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, trace }) =
+                outcome
+            else {
+                panic!(
+                    "stage-constrained Pin must not be ignored or treated as illegal: {outcome:?}"
+                );
+            };
+            assert_eq!(
+                diagnostic.code,
+                Some(lang_build::ResolverCode::UnsupportedInputAdmissibleStage)
+            );
+            assert!(diagnostic.message.contains("is canonical"));
+            assert!(trace.bp_prime.is_empty());
+            assert!(trace.selected.is_none());
+            assert!(trace.dynamic_legality.is_none());
+        }
+    }
 }
 
 #[test]

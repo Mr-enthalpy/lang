@@ -264,7 +264,11 @@ engineering facilities after their inputs and effects obey the source model.
   Cover direct-meta type/root rejection, independent Val2/V_tau/Pattern roles,
   meta retention, plain closure, mut-after-OpenHere, and no-reopen on cache reuse.
 - Connect Pin=ElabIn(P2,Delta_in) and Pout=ElabOut(P1,Delta_out), with independent
-  P1/P2, explicit Pin stage atoms/holes, and Pout.stage=P1.stage. Existing formal mode inheritance is compatible with bare omission; do
+  P1/P2, explicit Pin stage atoms/holes, and Pout.stage=P1.stage. Explicit Pin
+  stage atoms currently report UnsupportedInputAdmissibleStage before selection;
+  this is an unconnected consumer, not an illegal stage override. Migration
+  endpoint elaboration transports the diagnostic instead of falling back to P2.
+  Existing formal mode inheritance is compatible with bare omission; do
   not replace it with unconditional Plain. Audit binding_result_policy_demand,
   policy_let_target_demand and ordinary-invocation defaults for the distinction
   between omitted constraint, explicit concrete atom and explicit HoleRef.

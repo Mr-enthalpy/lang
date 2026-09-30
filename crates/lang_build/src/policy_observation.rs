@@ -8,7 +8,8 @@ use crate::policy_pair::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FacetView<T> {
     Exposed(T),
-    HiddenAtHorizon,
+    /// Retained resolved material; retention does not authorize a facet read.
+    HiddenAtHorizon(T),
     Absent,
 }
 
@@ -37,12 +38,12 @@ pub fn expose_policy_slice<V: Clone, P: Clone>(
         {
             FacetView::Exposed(value.clone())
         }
-        Some(_) => FacetView::HiddenAtHorizon,
+        Some(value) => FacetView::HiddenAtHorizon(value.clone()),
     };
     let pattern = if entry.view.pair.pattern.stage.visible_at(horizon) {
         FacetView::Exposed(entry.pattern.clone())
     } else {
-        FacetView::HiddenAtHorizon
+        FacetView::HiddenAtHorizon(entry.pattern.clone())
     };
     ExposedPolicyEntry {
         value,
@@ -56,14 +57,14 @@ pub fn expose_policy_slice<V: Clone, P: Clone>(
 pub fn read_value<V, P>(entry: &ExposedPolicyEntry<V, P>) -> Option<&V> {
     match &entry.value {
         FacetView::Exposed(value) => Some(value),
-        FacetView::HiddenAtHorizon | FacetView::Absent => None,
+        FacetView::HiddenAtHorizon(_) | FacetView::Absent => None,
     }
 }
 
 pub fn read_pattern<V, P>(entry: &ExposedPolicyEntry<V, P>) -> Option<&P> {
     match &entry.pattern {
         FacetView::Exposed(pattern) => Some(pattern),
-        FacetView::HiddenAtHorizon | FacetView::Absent => None,
+        FacetView::HiddenAtHorizon(_) | FacetView::Absent => None,
     }
 }
 

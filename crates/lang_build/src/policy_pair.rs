@@ -247,11 +247,12 @@ impl Default for ResultPolicyDemand {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FormalPolicyPattern {
-    /// The parameter policy after inheriting its callable P2 and applying the
-    /// optional const/mut-only formal slice.
+    /// The connected formal-policy result after inheriting P2 and applying
+    /// a mode constraint. Explicit Pin stages are canonical; elaboration
+    /// reports an implementation frontier until InputAdmissible is connected.
     pub effective_pair: PolicyPair,
-    /// Total overload-preference point. Omitted syntax forms concrete
-    /// `PolicyMode::Plain`; it is never represented by `None`.
+    /// Total overload-preference point after inheritance or an explicit mode
+    /// constraint. Omission inherits the callable P2 mode.
     pub mode: PolicyMode,
 }
 
@@ -622,11 +623,14 @@ pub fn elaborate_formal_policy_pattern(
     };
     let atoms = parse_component(&policy.constraint, provenance.clone())?;
     reject_namespace_attributes(&atoms, "formal parameter", provenance.clone())?;
-    if atoms.stage.is_some() {
-        return Err(policy_error(
-            "formal parameter policy may restrict only the const/mut axis inherited from P2",
-            provenance,
-        ));
+    if let Some(stage) = atoms.stage {
+        return Err(Diagnostic::hard_error(
+            format!(
+                "formal Pin stage constraint {stage:?} is canonical, but the InputAdmissible stage consumer is not connected"
+            ),
+            Some(provenance),
+        )
+        .with_code(crate::ResolverCode::UnsupportedInputAdmissibleStage));
     }
     let selected = explicit_mode_atom(&atoms, "formal parameter", provenance)?;
     Ok(FormalPolicyPattern {

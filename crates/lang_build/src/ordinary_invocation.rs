@@ -1531,7 +1531,7 @@ pub(crate) fn invoke_target_values(
         // §4.2 output endpoint = canonical P1 / `callable_value_policy`.
         let (migration_input_endpoint, migration_output_endpoint) = match context.migration {
             Some(migration) => {
-                let source_formal_p1 = entry
+                let source_formal_p1 = match entry
                     .closure
                     .as_ref()
                     .and_then(|c| c.head.as_ref())
@@ -1546,11 +1546,19 @@ pub(crate) fn invoke_target_values(
                             &entry.body_entry_view,
                             provenance.clone(),
                         )
-                        .ok()
                         .map(|elab| elab.effective_pair)
                     })
-                    .flatten()
-                    .unwrap_or_else(|| entry.body_entry_view.pair.clone());
+                    .transpose()
+                {
+                    Ok(Some(pair)) => pair,
+                    Ok(None) => entry.body_entry_view.pair.clone(),
+                    Err(diagnostic) => {
+                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                            diagnostic,
+                            trace,
+                        });
+                    }
+                };
                 let input = project_migration_input_endpoint(
                     &source_formal_p1,
                     &migration.request.source_view().pair,
