@@ -1537,18 +1537,20 @@ do not intersect atom spellings.
 
 ## 7. Resolution, exposure, and facet reads
 
-Every phase distinguishes:
+Every horizon distinguishes:
 
 ```text
-Resolve(path)
-ExposePolicySlice(binding, phase)
+Resolve(path, context, expectation)
+ExposePolicySlice(binding, horizon)
 ReadValue(slice)
 ReadPattern(slice)
 EnumerateValueFacet(slice)
 EnterCallableBody(candidate)
 ```
 
-Failure to expose a value slice is not an unresolved binding. In particular:
+Resolution consumes no horizon. Exposure observes the already-fixed binding;
+hidden resident facets cannot suppress a binding, restart search, or remove a
+name conflict. Failure to expose a value slice is not an unresolved binding. In particular:
 
 ```text
 Pv = runtime

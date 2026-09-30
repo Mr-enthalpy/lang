@@ -465,9 +465,11 @@ node-kind execution partitions. Bootstrap roots and struct producers have
 explicit meta observations; runtime use requires ordinary migration rather
 than a synthesized union. Omitted queries remain distinct from completed facts.
 Horizon exposure retains hidden observations and establishes neither Ready nor
-a compile realization. Lookup, candidate preparation and invocation carry one
-ObservationHorizon; independent lookup/execution environment coordinates have
-been removed. Their distinct Policy observations and judgments remain separate.
+a compile realization. Name resolution consumes no horizon and fixes identity
+before exposure; hidden resident observations cannot suppress name conflicts or
+restart search. Subsequent observation, candidate preparation and invocation
+carry one ObservationHorizon. Their distinct Policy facts and judgments remain
+separate; no independent lookup/execution environment coordinates remain.
 Ordinary Policy deduction, R_vis/C_sigma, pending seal
 formation and E saturation remain consumer gates.
 

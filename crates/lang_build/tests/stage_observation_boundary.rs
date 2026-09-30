@@ -9,14 +9,13 @@ use lang_build::{
 use support::{initializer_from_source, AssociatedFamily};
 
 #[test]
-fn one_horizon_reaches_lookup_preparation_and_invocation_frame() {
+fn fixed_callee_identity_precedes_shared_horizon_observations() {
     use lang_build::{
         prepare_meta_callable_candidate_with_declared_planes, ArgProductShape,
         CallableCandidateKind, CandidatePrepDeferredReason, CandidatePrepResult,
         CandidatePreparationContext, CompilationWorld, FlattenedProductInvariant,
         FlattenedProductObject, InvocationCallableRef, InvocationFrame, ParameterShape,
-        ResolveExpectation, SelfPosition, SemanticValueId, SourceCategory, SymbolKind,
-        SymbolObject,
+        SelfPosition, SemanticValueId, SourceCategory, SymbolKind, SymbolObject,
     };
 
     let world = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
@@ -29,7 +28,7 @@ fn one_horizon_reaches_lookup_preparation_and_invocation_frame() {
         Some(world.package_root_node()),
         Provenance::new("horizon fixture"),
     );
-    // Lookup and body entry observe different declared facts at the same horizon.
+    // Callee exposure and body entry observe different facts after resolution.
     symbol.policy_view = Some(declared_policy_view(Stage::Compile, PolicyMode::Plain));
     delta.insert_symbol(world.package_root_node(), symbol);
     let snapshot = world.namespace_projection().install_delta(delta).unwrap();
@@ -40,17 +39,16 @@ fn one_horizon_reaches_lookup_preparation_and_invocation_frame() {
     let body = declared_policy_view(Stage::Seal, PolicyMode::Plain);
     let result = declared_policy_view(Stage::Runtime, PolicyMode::Const);
 
-    for (horizon, lookup_visible, body_visible) in [
+    for (horizon, callee_visible, body_visible) in [
         (ObservationHorizon::OpenStatic, true, false),
         (ObservationHorizon::SealStatic, true, true),
         (ObservationHorizon::Runtime, false, false),
     ] {
         assert_eq!(
-            capability
-                .resolve_with_policy(&path, &resolver, ResolveExpectation::Object, horizon)
-                .is_ok(),
-            lookup_visible,
+            lang_build::policy_view_visible_at(callee.policy_view.as_ref().unwrap(), horizon),
+            callee_visible,
         );
+        assert_eq!(capability.resolve(&path, &resolver).unwrap().id, callee.id);
         let args = ArgProductShape::from_flattened(FlattenedProductObject {
             atoms: Vec::new(),
             provenance: Provenance::new("empty args"),

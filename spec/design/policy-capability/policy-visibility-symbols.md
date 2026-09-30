@@ -204,9 +204,10 @@ The typed substrate currently provides:
 
 - `PolicySpecAst { constraint }`, `PolicyConjunctionAst { atoms }`, and `PolicyAtomAst`;
 - `PolicyPair` with single `Stage` coordinates and projection-only `ObservationHorizon`;
-- one horizon coordinate shared by lookup, candidate preparation, body-entry
-  observation and invocation frames; each retains its own observed Policy and
-  judgment, without independent lookup/execution environment enums;
+- horizon-free path/name resolution establishes a fixed binding before exposure;
+  subsequent callee observation, candidate preparation, body-entry observation
+  and invocation frames share one horizon coordinate, each retaining its own
+  observed Policy and judgment;
 - separate binding/formal/namespace elaborators;
 - formal elaboration that receives inherited P2 explicitly and preserves all
   non-mode dimensions;

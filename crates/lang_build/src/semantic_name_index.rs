@@ -5,7 +5,6 @@ use crate::model::{
     NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
     SourceCategory, SymbolId, SymbolKind, SymbolObject,
 };
-use crate::ObservationHorizon;
 
 /// Immutable revision of the SemanticWorld-owned namespace-name index.
 ///
@@ -503,37 +502,16 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
     ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_search_roots(source_order_path, context, terminal_expectation, None)
+        self.resolve_search_roots(source_order_path, context, terminal_expectation)
     }
 
-    /// Resolve a namespace path with an explicit terminal role expectation and
-    /// observation horizon filter.
-    ///
-    /// Symbols whose declaration observation is hidden at `horizon` are treated
-    /// as if they do not exist in the search root. Policy filtering precedes cross-root
-    /// conflict reporting.
-    pub fn resolve_with_policy(
-        &self,
-        source_order_path: &[String],
-        context: &ResolverContext,
-        terminal_expectation: ResolveExpectation,
-        horizon: ObservationHorizon,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_search_roots(
-            source_order_path,
-            context,
-            terminal_expectation,
-            Some(horizon),
-        )
-    }
-
-    /// Shared internal search-root loop with optional policy filtering.
+    /// Search by path and role only. Resident exposure is a later observation
+    /// of the fixed binding; it cannot suppress a hit or a search-root conflict.
     fn resolve_search_roots(
         &self,
         source_order_path: &[String],
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-        horizon: Option<ObservationHorizon>,
     ) -> Result<SymbolObject, Diagnostic> {
         if source_order_path.is_empty() {
             return Err(self
@@ -543,23 +521,17 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
 
         let mut hits = Vec::new();
         let mut errors = Vec::new();
-        match self.resolve_from_internal(
+        match self.resolve_from(
             source_order_path,
             context.current_namespace,
             terminal_expectation,
-            horizon,
         ) {
             Ok(symbol) => hits.push(symbol),
             Err(diagnostic) => errors.push(diagnostic),
         }
 
         for mount_root in &context.explicit_mount_roots {
-            match self.resolve_from_internal(
-                source_order_path,
-                *mount_root,
-                terminal_expectation,
-                horizon,
-            ) {
+            match self.resolve_from(source_order_path, *mount_root, terminal_expectation) {
                 Ok(symbol) => hits.push(symbol),
                 Err(diagnostic) => errors.push(diagnostic),
             }
@@ -567,12 +539,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
 
         if source_order_path.len() == 1 {
             for mount in &context.default_mounts {
-                match self.resolve_from_internal(
-                    source_order_path,
-                    *mount,
-                    terminal_expectation,
-                    horizon,
-                ) {
+                match self.resolve_from(source_order_path, *mount, terminal_expectation) {
                     Ok(symbol) => hits.push(symbol),
                     Err(diagnostic) => errors.push(diagnostic),
                 }
@@ -642,24 +609,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         self.resolve_with_expectation(&components, context, terminal_expectation)
     }
 
-    /// String convenience wrapper around
-    /// [`resolve_with_policy`](Self::resolve_with_policy).
-    pub fn resolve_str_with_policy(
-        &self,
-        source_order_path: &str,
-        context: &ResolverContext,
-        terminal_expectation: ResolveExpectation,
-        horizon: ObservationHorizon,
-    ) -> Result<SymbolObject, Diagnostic> {
-        let components = source_order_path
-            .split("::")
-            .filter(|component| !component.is_empty())
-            .map(str::trim)
-            .map(ToOwned::to_owned)
-            .collect::<Vec<_>>();
-        self.resolve_with_policy(&components, context, terminal_expectation, horizon)
-    }
-
     /// Resolve a terminal symbol whose kind is `Type`.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::CoreTypeProjection)`.
@@ -675,21 +624,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         )
     }
 
-    /// Policy-aware variant of [`resolve_complete_type_projection`](Self::resolve_complete_type_projection).
-    pub fn resolve_complete_type_projection_with_policy(
-        &self,
-        source_order_path: &str,
-        context: &ResolverContext,
-        horizon: ObservationHorizon,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_str_with_policy(
-            source_order_path,
-            context,
-            ResolveExpectation::CoreTypeProjection,
-            horizon,
-        )
-    }
-
     /// Resolve a terminal symbol whose kind is `MetaFunction`.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::MetaFunction)`.
@@ -702,21 +636,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             source_order_path,
             context,
             ResolveExpectation::MetaFunction,
-        )
-    }
-
-    /// Policy-aware variant of [`resolve_meta_function`](Self::resolve_meta_function).
-    pub fn resolve_meta_function_with_policy(
-        &self,
-        source_order_path: &str,
-        context: &ResolverContext,
-        horizon: ObservationHorizon,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_str_with_policy(
-            source_order_path,
-            context,
-            ResolveExpectation::MetaFunction,
-            horizon,
         )
     }
 
@@ -750,23 +669,12 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         )
     }
 
-    #[allow(dead_code)]
+    /// Traverse established path bindings without inspecting resident Policy.
     fn resolve_from(
         &self,
         source_order_path: &[String],
         start: NamespaceNodeId,
         terminal_expectation: ResolveExpectation,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_from_internal(source_order_path, start, terminal_expectation, None)
-    }
-
-    /// Internal path-resolution with optional policy filtering at each step.
-    fn resolve_from_internal(
-        &self,
-        source_order_path: &[String],
-        start: NamespaceNodeId,
-        terminal_expectation: ResolveExpectation,
-        horizon: Option<ObservationHorizon>,
     ) -> Result<SymbolObject, Diagnostic> {
         let mut current_node = start;
         let mut current_symbol = None;
@@ -784,15 +692,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
                 expectation,
             )?;
 
-            if !self.symbol_satisfies_policy(&symbol, horizon) {
-                return Err(self
-                    .hard_error(
-                        None,
-                        format!("resolver error: unresolved symbol `{component}`"),
-                    )
-                    .with_code(ResolverCode::Unresolved));
-            }
-
             current_symbol = Some(symbol.clone());
 
             if resolved_count + 1 != component_count {
@@ -809,24 +708,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             self.hard_error(None, "unresolved empty namespace path")
                 .with_code(ResolverCode::Unresolved)
         })
-    }
-
-    /// Resolve-time exposure reads the same concrete declaration view stored
-    /// on the Symbol. It never constructs another Policy representation and
-    /// never participates in overload preference or execution legality.
-    fn symbol_satisfies_policy(
-        &self,
-        symbol: &SymbolObject,
-        horizon: Option<ObservationHorizon>,
-    ) -> bool {
-        let Some(horizon) = horizon else { return true };
-        let Some(view) = &symbol.policy_view else {
-            return false;
-        };
-        view.pair
-            .value
-            .stage()
-            .is_some_and(|s| s.visible_at(horizon))
     }
 
     pub fn declare(
