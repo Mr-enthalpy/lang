@@ -217,6 +217,15 @@ pub enum MoveEffect {
     Preserve,
 }
 
+/// Formation-origin material. Pending is an unconnected producer, not the
+/// semantic proposition that the origin chain terminates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LifecycleOrigin {
+    Pending,
+    ExplicitNone,
+    Name(LifeName),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LifecycleAction {
     Use(LifeName),
@@ -241,6 +250,11 @@ pub enum LifecycleFailure {
     ForeignContinuation,
     UnknownValue(SemanticValueId),
     ValueAlreadyRegistered(SemanticValueId),
+    FormationPending(LifeName),
+    FormationAfterFrontier,
+    OriginPending(LifeName),
+    OriginAlreadyEstablished(LifeName),
+    LifecycleContinuationPending,
     DestinationAlreadyBound(SemanticValueId),
     DeadName(LifeName),
     MoveNotAuthorized,
@@ -248,6 +262,7 @@ pub enum LifecycleFailure {
     PreserveNotProved,
     CleanupPointMismatch,
     CleanupPrecedencePending,
+    CleanupBoundaryPending(LifeName),
     IdentityExhausted,
     StaleOrForeignProof,
     PreRejected(String),
@@ -278,7 +293,8 @@ pub struct LifecycleState {
     next_name: u64,
     values: BTreeMap<SemanticValueId, LifeName>,
     active: BTreeMap<LifeName, Region>,
-    origins: BTreeMap<LifeName, Option<LifeName>>,
+    pending_formations: BTreeSet<LifeName>,
+    origins: BTreeMap<LifeName, LifecycleOrigin>,
     colors: BTreeMap<LifeName, BTreeSet<ColorId>>,
     closed: Vec<NameView<()>>,
     events: Vec<LifecycleEvent>,
@@ -291,6 +307,7 @@ impl LifecycleState {
             next_name: 0,
             values: BTreeMap::new(),
             active: BTreeMap::new(),
+            pending_formations: BTreeSet::new(),
             origins: BTreeMap::new(),
             colors: BTreeMap::new(),
             closed: Vec::new(),
@@ -308,30 +325,31 @@ impl LifecycleState {
         Ok(())
     }
 
-    /// Registration of an already established value at the shared cut. Source
-    /// construction/ExtractCommit wiring remains a separate consumer gate.
-    pub fn register_value(
+    /// Consume supplied formation facts, preserving a previously discovered
+    /// name. First bookkeeping observation never supplies the formation cut.
+    pub fn establish_formation(
         &mut self,
         continuation: &SemanticContinuation,
         value: SemanticValueId,
-        origin: Option<LifeName>,
+        formed_at: SemanticPosition,
+        origin: LifecycleOrigin,
     ) -> Result<LifeName, LifecycleFailure> {
         self.require_continuation(continuation)?;
-        if self.values.contains_key(&value) {
-            return Err(LifecycleFailure::ValueAlreadyRegistered(value));
+        if formed_at > continuation.position() {
+            return Err(LifecycleFailure::FormationAfterFrontier);
         }
-        let next = self
-            .next_name
-            .checked_add(1)
-            .ok_or(LifecycleFailure::IdentityExhausted)?;
-        let name = LifeName(self.next_name);
-        self.next_name = next;
-        self.values.insert(value, name);
+        if let Some(name) = self.values.get(&value) {
+            if !self.pending_formations.contains(name) {
+                return Err(LifecycleFailure::ValueAlreadyRegistered(value));
+            }
+        }
+        let name = self.discover_value(continuation, value)?;
+        self.pending_formations.remove(&name);
         self.origins.insert(name, origin);
         self.active.insert(
             name,
             Region {
-                start: continuation.position(),
+                start: formed_at,
                 end: None,
                 generation: 0,
             },
@@ -339,7 +357,9 @@ impl LifecycleState {
         Ok(name)
     }
 
-    pub fn ensure_value(
+    /// Establish only the stable name map. No Alive, Region or origin fact
+    /// follows from discovering a SemanticWorld value.
+    pub fn discover_value(
         &mut self,
         continuation: &SemanticContinuation,
         value: SemanticValueId,
@@ -347,7 +367,50 @@ impl LifecycleState {
         self.require_continuation(continuation)?;
         match self.values.get(&value).copied() {
             Some(name) => Ok(name),
-            None => self.register_value(continuation, value, None),
+            None => {
+                let next = self
+                    .next_name
+                    .checked_add(1)
+                    .ok_or(LifecycleFailure::IdentityExhausted)?;
+                let name = LifeName(self.next_name);
+                self.next_name = next;
+                self.values.insert(value, name);
+                self.pending_formations.insert(name);
+                self.origins.insert(name, LifecycleOrigin::Pending);
+                Ok(name)
+            }
+        }
+    }
+
+    /// One explicit origin fact from its ordinary formation/default producer.
+    /// None here is intentionally written termination, never an omission.
+    pub fn establish_origin(
+        &mut self,
+        continuation: &SemanticContinuation,
+        name: LifeName,
+        origin: Option<LifeName>,
+    ) -> Result<(), LifecycleFailure> {
+        self.require_continuation(continuation)?;
+        if self.pending_formations.contains(&name) {
+            return Err(LifecycleFailure::FormationPending(name));
+        }
+        match self.origins.get(&name) {
+            Some(LifecycleOrigin::Pending) => {}
+            Some(_) => return Err(LifecycleFailure::OriginAlreadyEstablished(name)),
+            None => return Err(LifecycleFailure::OriginPending(name)),
+        }
+        self.origins.insert(
+            name,
+            origin.map_or(LifecycleOrigin::ExplicitNone, LifecycleOrigin::Name),
+        );
+        Ok(())
+    }
+
+    fn resolved_origin(&self, name: LifeName) -> Result<Option<LifeName>, LifecycleFailure> {
+        match self.origins.get(&name) {
+            Some(LifecycleOrigin::ExplicitNone) => Ok(None),
+            Some(LifecycleOrigin::Name(origin)) => Ok(Some(*origin)),
+            Some(LifecycleOrigin::Pending) | None => Err(LifecycleFailure::OriginPending(name)),
         }
     }
 
@@ -365,7 +428,7 @@ impl LifecycleState {
 
     /// Finite observation; cyclic/coinductive origin material stops at the
     /// first repeated name rather than unfolding an infinite chain.
-    pub fn observed_colors(&self, name: LifeName) -> BTreeSet<ColorId> {
+    pub fn observed_colors(&self, name: LifeName) -> Result<BTreeSet<ColorId>, LifecycleFailure> {
         let mut result = BTreeSet::new();
         let mut seen = BTreeSet::new();
         let mut cursor = Some(name);
@@ -376,12 +439,14 @@ impl LifecycleState {
             if let Some(colors) = self.colors.get(&current) {
                 result.extend(colors.iter().cloned());
             }
-            cursor = self.origins.get(&current).copied().flatten();
+            cursor = self.resolved_origin(current)?;
         }
-        result
+        Ok(result)
     }
 
-    /// ReifyLife(NameOf(E), Pos(K)); no Place is required and @ changes no cut.
+    /// ReifyLife requires the fully fixed generation continuation, including
+    /// its endpoint, not just a frozen cleanup table. That consumer is pending;
+    /// do not expose the operational active Region as a complete LifetimeValue.
     pub fn reify_value(
         &self,
         continuation: &SemanticContinuation,
@@ -396,17 +461,14 @@ impl LifecycleState {
             .get(&value)
             .copied()
             .ok_or(LifecycleFailure::UnknownValue(value))?;
-        let region = self
-            .active
+        if self.pending_formations.contains(&name) {
+            return Err(LifecycleFailure::FormationPending(name));
+        }
+        self.active
             .get(&name)
-            .copied()
             .ok_or(LifecycleFailure::DeadName(name))?;
-        Ok(LifetimeValue {
-            name,
-            observed_at: continuation.position(),
-            origin: self.origins.get(&name).copied().flatten(),
-            region,
-        })
+        self.resolved_origin(name)?;
+        Err(LifecycleFailure::LifecycleContinuationPending)
     }
 
     pub fn snapshot(&self, colors: ColorAlgebra, access: AccessSnapshot) -> LifecycleSnapshot {
@@ -433,6 +495,13 @@ impl LifecycleState {
         if !continuation.cleanup_is_frozen() {
             return Err(LifecycleFailure::CleanupScheduleNotFrozen);
         }
+        if let Some(placement) = continuation
+            .cleanup()
+            .iter()
+            .find(|entry| entry.at < at && !self.cleanup_obligation_discharged(entry.name))
+        {
+            return Err(LifecycleFailure::CleanupBoundaryPending(placement.name));
+        }
         let proof = validation
             .validate_pre(provenance)
             .map_err(|diagnostic| LifecycleFailure::PreRejected(diagnostic.message))?;
@@ -440,10 +509,14 @@ impl LifecycleState {
             LifecycleAction::Use(name) | LifecycleAction::Drop(name) => name,
             LifecycleAction::Move { source, .. } => source,
         };
+        if self.pending_formations.contains(&name) {
+            return Err(LifecycleFailure::FormationPending(name));
+        }
         let current = self
             .active
             .get(&name)
             .ok_or(LifecycleFailure::DeadName(name))?;
+        self.resolved_origin(name)?;
         match *action {
             LifecycleAction::Move {
                 source,
@@ -468,6 +541,7 @@ impl LifecycleState {
                             .generation
                             .checked_add(1)
                             .ok_or(LifecycleFailure::IdentityExhausted)?;
+                        self.observed_colors(source)?;
                     }
                     MoveEffect::Preserve => {
                         if !validation
@@ -545,7 +619,9 @@ impl LifecycleState {
             } => {
                 let moved_name = match effect {
                     MoveEffect::Kill => {
-                        let inherited_colors = self.observed_colors(source);
+                        let inherited_colors = self
+                            .observed_colors(source)
+                            .expect("Pre established the finite origin/Color observation");
                         let new_name = LifeName(self.next_name);
                         self.next_name += 1;
                         let view = self.close_region(source, current, at);
@@ -603,7 +679,9 @@ impl LifecycleState {
         let view = NameView {
             name,
             value: (),
-            origin: self.origins.get(&name).copied().flatten(),
+            origin: self
+                .resolved_origin(name)
+                .expect("Pre established the origin fact"),
             region: Region {
                 end: Some(at),
                 ..current
@@ -639,7 +717,12 @@ mod tests {
         let mut continuation = SemanticContinuation::default();
         let mut state = LifecycleState::new(&continuation);
         let name = state
-            .register_value(&continuation, SemanticValueId(7), None)
+            .establish_formation(
+                &continuation,
+                SemanticValueId(7),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
             .unwrap();
         continuation.freeze_cleanup_schedule().unwrap();
         (continuation, state, name)
@@ -698,17 +781,303 @@ mod tests {
     }
 
     #[test]
+    fn frozen_cleanup_alone_does_not_produce_an_incomplete_lifetime_value() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let name = state
+            .establish_formation(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        k.place_cleanup(crate::CleanupPlacement {
+            name,
+            at: SemanticPosition(9),
+            declaration_order: 1,
+        })
+        .unwrap();
+        k.freeze_cleanup_schedule().unwrap();
+        let before = state.clone();
+        assert_eq!(
+            state.reify_value(&k, SemanticValueId(1)),
+            Err(LifecycleFailure::LifecycleContinuationPending),
+            "a full generation continuation, not a frozen boolean, must establish [0,9)"
+        );
+        assert_eq!(state, before);
+        assert_eq!(k.position(), SemanticPosition(0));
+        assert_eq!(k.cleanup()[0].at, SemanticPosition(9));
+    }
+
+    #[test]
+    fn use_and_both_move_effects_cannot_cross_an_outstanding_fixed_cleanup() {
+        let mut k = SemanticContinuation::default();
+        let mut state = LifecycleState::new(&k);
+        let source = state
+            .establish_formation(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        let other = state
+            .establish_formation(
+                &k,
+                SemanticValueId(2),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        k.place_cleanup(crate::CleanupPlacement {
+            name: source,
+            at: SemanticPosition(5),
+            declaration_order: 1,
+        })
+        .unwrap();
+        k.freeze_cleanup_schedule().unwrap();
+        let before_state = state.clone();
+        let before_k = k.clone();
+        for action in [
+            LifecycleAction::Use(source),
+            LifecycleAction::Use(other),
+            LifecycleAction::Move {
+                source,
+                destination: SemanticValueId(3),
+                effect: MoveEffect::Kill,
+            },
+            LifecycleAction::Move {
+                source,
+                destination: SemanticValueId(3),
+                effect: MoveEffect::Preserve,
+            },
+            LifecycleAction::Drop(other),
+        ] {
+            assert_eq!(
+                commit(&mut k, &mut state, 10, action),
+                Err(crate::SemanticCommitFailure::Pre(
+                    LifecycleFailure::CleanupBoundaryPending(source)
+                ))
+            );
+            assert_eq!(state, before_state);
+            assert_eq!(
+                k, before_k,
+                "no event, cut, destination or ordinal was published"
+            );
+        }
+        let drop = commit(&mut k, &mut state, 5, LifecycleAction::Drop(source)).unwrap();
+        assert_eq!(drop.event.action.ordinal, 0);
+        commit(&mut k, &mut state, 10, LifecycleAction::Use(other)).unwrap();
+        assert_eq!(k.position(), SemanticPosition(10));
+    }
+
+    #[test]
+    fn kill_discharge_allows_later_actions_but_preserve_cannot_erase_cleanup() {
+        for effect in [MoveEffect::Kill, MoveEffect::Preserve] {
+            let mut k = SemanticContinuation::default();
+            let mut state = LifecycleState::new(&k);
+            let source = state
+                .establish_formation(
+                    &k,
+                    SemanticValueId(1),
+                    SemanticPosition(0),
+                    LifecycleOrigin::ExplicitNone,
+                )
+                .unwrap();
+            k.place_cleanup(crate::CleanupPlacement {
+                name: source,
+                at: SemanticPosition(5),
+                declaration_order: 1,
+            })
+            .unwrap();
+            k.freeze_cleanup_schedule().unwrap();
+            let post = commit(
+                &mut k,
+                &mut state,
+                1,
+                LifecycleAction::Move {
+                    source,
+                    destination: SemanticValueId(2),
+                    effect,
+                },
+            )
+            .unwrap();
+            let destination = post.destination.unwrap();
+            let before_state = state.clone();
+            let before_k = k.clone();
+            let result = commit(&mut k, &mut state, 10, LifecycleAction::Use(destination));
+            if effect == MoveEffect::Kill {
+                assert!(result.is_ok());
+                assert_eq!(
+                    state.events().len(),
+                    2,
+                    "no old-generation Drop is introduced"
+                );
+            } else {
+                assert_eq!(
+                    result,
+                    Err(crate::SemanticCommitFailure::Pre(
+                        LifecycleFailure::CleanupBoundaryPending(source)
+                    ))
+                );
+                assert_eq!(state, before_state);
+                assert_eq!(k, before_k);
+            }
+        }
+    }
+
+    #[test]
+    fn late_discovery_cannot_supply_formation_or_default_origin_facts() {
+        let mut k = SemanticContinuation::default();
+        k.freeze_cleanup_schedule().unwrap();
+        let mut state = LifecycleState::new(&k);
+        k.commit_action(
+            SemanticPosition(4),
+            &mut state,
+            (),
+            |_, _, _, _| Ok::<_, LifecycleFailure>(()),
+            |_, _, _| Ok::<_, LifecycleFailure>(()),
+        )
+        .unwrap();
+        let value = SemanticValueId(1);
+        let name = state.discover_value(&k, value).unwrap();
+        assert!(!state.active.contains_key(&name));
+        assert_eq!(state.origins[&name], LifecycleOrigin::Pending);
+        assert_eq!(
+            state.reify_value(&k, value),
+            Err(LifecycleFailure::FormationPending(name))
+        );
+        let before_state = state.clone();
+        let before_k = k.clone();
+        assert_eq!(
+            commit(&mut k, &mut state, 4, LifecycleAction::Use(name)),
+            Err(crate::SemanticCommitFailure::Pre(
+                LifecycleFailure::FormationPending(name)
+            ))
+        );
+        assert_eq!(state, before_state);
+        assert_eq!(k, before_k);
+        assert_eq!(
+            state
+                .establish_formation(&k, value, SemanticPosition(1), LifecycleOrigin::Pending)
+                .unwrap(),
+            name
+        );
+        assert_eq!(
+            state.active[&name].start,
+            SemanticPosition(1),
+            "formation occurred before discovery at 4"
+        );
+        assert_eq!(
+            state.reify_value(&k, value),
+            Err(LifecycleFailure::OriginPending(name))
+        );
+        assert_eq!(
+            state.observed_colors(name),
+            Err(LifecycleFailure::OriginPending(name))
+        );
+        state.establish_origin(&k, name, None).unwrap();
+        assert_eq!(state.origins[&name], LifecycleOrigin::ExplicitNone);
+        assert_eq!(state.observed_colors(name), Ok(BTreeSet::new()));
+        assert_eq!(
+            state.reify_value(&k, value),
+            Err(LifecycleFailure::LifecycleContinuationPending)
+        );
+        assert_eq!(
+            state.establish_origin(&k, name, Some(name)),
+            Err(LifecycleFailure::OriginAlreadyEstablished(name))
+        );
+    }
+
+    #[test]
+    fn missing_ancestor_origin_is_not_a_terminal_color_fact_or_move_post() {
+        let (mut k, mut state, _) = fixture();
+        let ancestor = state.discover_value(&k, SemanticValueId(8)).unwrap();
+        let source = state
+            .establish_formation(
+                &k,
+                SemanticValueId(9),
+                SemanticPosition(0),
+                LifecycleOrigin::Name(ancestor),
+            )
+            .unwrap();
+        let before = state.clone();
+        assert_eq!(
+            state.observed_colors(source),
+            Err(LifecycleFailure::OriginPending(ancestor))
+        );
+        assert_eq!(
+            commit(
+                &mut k,
+                &mut state,
+                1,
+                LifecycleAction::Move {
+                    source,
+                    destination: SemanticValueId(10),
+                    effect: MoveEffect::Kill
+                }
+            ),
+            Err(crate::SemanticCommitFailure::Pre(
+                LifecycleFailure::OriginPending(ancestor)
+            ))
+        );
+        assert_eq!(state, before);
+        assert_eq!(k.position(), SemanticPosition(0));
+    }
+
+    #[test]
+    fn supplied_formation_rejects_future_or_replacement_facts_before_mutation() {
+        let (k, mut state, _) = fixture();
+        let before = state.clone();
+        assert_eq!(
+            state.establish_formation(
+                &k,
+                SemanticValueId(8),
+                SemanticPosition(1),
+                LifecycleOrigin::ExplicitNone
+            ),
+            Err(LifecycleFailure::FormationAfterFrontier)
+        );
+        assert_eq!(state, before);
+        assert_eq!(
+            state.discover_value(&k, SemanticValueId(7)).unwrap(),
+            state.name_of(SemanticValueId(7)).unwrap()
+        );
+        assert_eq!(
+            state.establish_formation(
+                &k,
+                SemanticValueId(7),
+                SemanticPosition(0),
+                LifecycleOrigin::Pending
+            ),
+            Err(LifecycleFailure::ValueAlreadyRegistered(SemanticValueId(7)))
+        );
+        assert_eq!(state, before);
+    }
+
+    #[test]
     fn cleanup_precedes_observation_and_killing_move_shares_one_common_cut() {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
         let source_value = SemanticValueId(7);
-        let source = state.register_value(&k, source_value, None).unwrap();
+        let source = state
+            .establish_formation(
+                &k,
+                source_value,
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
         assert_eq!(
             state.reify_value(&k, source_value),
             Err(LifecycleFailure::CleanupScheduleNotFrozen)
         );
         k.freeze_cleanup_schedule().unwrap();
-        assert_eq!(state.reify_value(&k, source_value).unwrap().name, source);
+        assert_eq!(
+            state.reify_value(&k, source_value),
+            Err(LifecycleFailure::LifecycleContinuationPending)
+        );
         let destination = SemanticValueId(8);
         let post = commit(
             &mut k,
@@ -728,7 +1097,11 @@ mod tests {
             Some(SemanticPosition(3))
         );
         assert_eq!(state.active[&new_name].start, SemanticPosition(3));
-        assert_eq!(state.reify_value(&k, destination).unwrap().name, new_name);
+        assert_eq!(state.name_of(destination), Some(new_name));
+        assert_eq!(
+            state.reify_value(&k, destination),
+            Err(LifecycleFailure::LifecycleContinuationPending)
+        );
         assert_eq!(
             state.reify_value(&k, source_value),
             Err(LifecycleFailure::DeadName(source))
@@ -778,7 +1151,7 @@ mod tests {
             state.next_name, before_name_count,
             "Preserve creates no fresh lifecycle subject"
         );
-        assert_eq!(state.observed_colors(source), BTreeSet::from([color]));
+        assert_eq!(state.observed_colors(source), Ok(BTreeSet::from([color])));
         assert!(!state.cleanup_obligation_discharged(source));
         assert!(matches!(
             post.event.kind,
@@ -853,7 +1226,12 @@ mod tests {
     fn killing_move_preserves_direct_and_inherited_colors_and_deeper_origin() {
         let (mut k, mut state, ancestor) = fixture();
         let source = state
-            .register_value(&k, SemanticValueId(71), Some(ancestor))
+            .establish_formation(
+                &k,
+                SemanticValueId(71),
+                SemanticPosition(0),
+                LifecycleOrigin::Name(ancestor),
+            )
             .unwrap();
         let ancestor_color = ColorId("ancestor".into());
         let direct_color = ColorId("direct".into());
@@ -872,9 +1250,9 @@ mod tests {
         )
         .unwrap();
         let destination = post.destination.unwrap();
-        assert_eq!(state.origins[&destination], Some(ancestor));
+        assert_eq!(state.origins[&destination], LifecycleOrigin::Name(ancestor));
         assert_eq!(state.observed_colors(destination), before);
-        assert_eq!(before, BTreeSet::from([ancestor_color, direct_color]));
+        assert_eq!(before, Ok(BTreeSet::from([ancestor_color, direct_color])));
     }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1013,8 +1391,22 @@ mod tests {
     fn proof_cannot_cross_different_frozen_cleanup_snapshots_of_the_same_continuation() {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
-        let a = state.register_value(&k, SemanticValueId(1), None).unwrap();
-        let b = state.register_value(&k, SemanticValueId(2), None).unwrap();
+        let a = state
+            .establish_formation(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        let b = state
+            .establish_formation(
+                &k,
+                SemanticValueId(2),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
         let mut other_snapshot = k.clone();
         for (continuation, declarations) in [
             (&mut k, [(a, 1), (b, 2)]),
@@ -1092,9 +1484,30 @@ mod tests {
     fn fixed_cleanup_sequence_commits_only_drops_at_the_fixed_cut() {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
-        let a = state.register_value(&k, SemanticValueId(1), None).unwrap();
-        let b = state.register_value(&k, SemanticValueId(2), None).unwrap();
-        let c = state.register_value(&k, SemanticValueId(3), None).unwrap();
+        let a = state
+            .establish_formation(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        let b = state
+            .establish_formation(
+                &k,
+                SemanticValueId(2),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        let c = state
+            .establish_formation(
+                &k,
+                SemanticValueId(3),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
         for (name, declaration_order) in [(b, 2), (a, 1), (c, 3)] {
             k.place_cleanup(crate::CleanupPlacement {
                 name,
@@ -1140,11 +1553,23 @@ mod tests {
     #[test]
     fn equal_material_registration_does_not_merge_subjects_and_foreign_observation_fails() {
         let (k, mut state, first) = fixture();
-        let second = state.register_value(&k, SemanticValueId(8), None).unwrap();
+        let second = state
+            .establish_formation(
+                &k,
+                SemanticValueId(8),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
         assert_ne!(first, second);
-        assert_eq!(state.ensure_value(&k, SemanticValueId(7)).unwrap(), first);
+        assert_eq!(state.discover_value(&k, SemanticValueId(7)).unwrap(), first);
         assert_eq!(
-            state.register_value(&k, SemanticValueId(7), None),
+            state.establish_formation(
+                &k,
+                SemanticValueId(7),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone
+            ),
             Err(LifecycleFailure::ValueAlreadyRegistered(SemanticValueId(7)))
         );
         let foreign = SemanticContinuation::default();
@@ -1158,8 +1583,22 @@ mod tests {
     fn killing_move_discharges_scheduled_drop_without_a_second_destructor() {
         let mut k = SemanticContinuation::default();
         let mut state = LifecycleState::new(&k);
-        let source = state.register_value(&k, SemanticValueId(1), None).unwrap();
-        let other = state.register_value(&k, SemanticValueId(2), None).unwrap();
+        let source = state
+            .establish_formation(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        let other = state
+            .establish_formation(
+                &k,
+                SemanticValueId(2),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
         for (name, declaration_order) in [(source, 2), (other, 1)] {
             k.place_cleanup(crate::CleanupPlacement {
                 name,
@@ -1197,9 +1636,14 @@ mod tests {
         assert_eq!(state.events().len(), 2);
         assert_eq!(state.events()[1].name, other);
         assert_eq!(state.events()[1].kind, LifecycleEventKind::Drop);
+        let destination = state.name_of(SemanticValueId(3)).unwrap();
         assert!(
-            state.reify_value(&k, SemanticValueId(3)).is_ok(),
+            state.active.contains_key(&destination),
             "the transferred generation remains independent"
+        );
+        assert_eq!(
+            state.reify_value(&k, SemanticValueId(3)),
+            Err(LifecycleFailure::LifecycleContinuationPending)
         );
     }
 
@@ -1252,10 +1696,10 @@ mod tests {
         ));
         assert_eq!(state, before);
         assert_eq!(k.position(), SemanticPosition(0));
-        state.origins.insert(name, Some(name));
+        state.origins.insert(name, LifecycleOrigin::Name(name));
         assert_eq!(
             state.observed_colors(name),
-            BTreeSet::from([ColorId("new-fact".into())])
+            Ok(BTreeSet::from([ColorId("new-fact".into())]))
         );
     }
 

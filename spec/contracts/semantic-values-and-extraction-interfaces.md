@@ -80,6 +80,24 @@ Cleanup points arrive already fixed by all ordinary constraints. The schedule
 retains declaration order and precedence; freezing linearizes same-point
 events without shifting any point. At the scheduled cut cleanup submits Drop,
 not a separate lifecycle event. A committed Kill/Drop discharges the generation's
-obligation. Reification observes the frozen sequence; it cannot solve placement.
+obligation. Every lifecycle action's Pre rejects crossing any earlier fixed
+cleanup point whose obligation remains outstanding, even for another subject.
+Failure leaves the fixed Drop executable at its original cut; neither the cut
+nor the ordinal advances. Preserve discharges no cleanup obligation.
+
+Roster discovery establishes only the stable value-to-LifeName map. It supplies
+neither Alive nor a Region nor an origin proposition. Formation consumes an
+explicit formation cut; missing/default origin producer material remains
+`LifecycleOrigin::Pending`, distinct from `ExplicitNone` and `Name(n)`.
+Finite Color queries cannot truncate pending ancestry as if it terminated.
+
+ReifyLife must describe the fully fixed generation continuation. A frozen
+cleanup table alone proves neither its full endpoint nor the absence of other
+generation-ending actions. The operational active Region is not a completed
+LifetimeValue. Until that continuation projection is connected, `reify_value`
+reports `LifecycleContinuationPending` (or the earlier missing formation/origin
+frontier), never an incomplete value with an invented unbounded end. Thus a
+value formed at 0 with cleanup fixed at 9 cannot be exposed as `[0,?)`.
+Reification does not solve placement or move cleanup points.
 NLL/with point derivation, source events and atomic decomposition/destructor
 continuations are not implemented by these substrate interfaces.

@@ -707,7 +707,7 @@ fn production_world_owns_one_lifecycle_name_map_across_invocations() {
     let first_name = world
         .lifecycle()
         .name_of(target)
-        .expect("production invocation registers the callable value");
+        .expect("production invocation discovers the callable's stable name");
     let _ = world
         .invoke_ordinary_call(
             world.package_root_node(),
@@ -720,6 +720,21 @@ fn production_world_owns_one_lifecycle_name_map_across_invocations() {
         world.lifecycle().name_of(target),
         Some(first_name),
         "one CompilationWorld keeps one stable LifeName map"
+    );
+    let snapshot = world.lifecycle().snapshot(
+        lang_build::ColorAlgebra::default(),
+        lang_build::AccessSnapshot::default(),
+    );
+    assert!(
+        !snapshot.live.contains(&first_name),
+        "roster discovery does not establish Alive"
+    );
+    let mut k = world.continuation().clone();
+    k.freeze_cleanup_schedule().unwrap();
+    assert_eq!(
+        world.lifecycle().reify_value(&k, target),
+        Err(lang_build::LifecycleFailure::FormationPending(first_name)),
+        "sync supplies neither the formation cut nor an origin termination fact"
     );
 }
 

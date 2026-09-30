@@ -98,8 +98,12 @@ Substrate evidence for these obligations is in `lifecycle.rs` and
 `semantic_continuation.rs` unit tests: fixed Kill/Preserve, independent supplied
 legality facts, joint Pre/commit/Post, proof identity and stale rejection,
 precedence/linearization of fixed cleanup points, and no duplicate Drop after Kill.
+Additional substrate regressions reject crossing outstanding cleanup boundaries
+without advancing K, distinguish discovery from formation/origin facts, and
+keep full ReifyLife unavailable instead of returning an incomplete Region.
 The production world retains one K and lifecycle name map; source lifecycle
-actions, NLL/with cleanup-point derivation and complete E remain consumer gates.
+actions, complete generation-continuation observation, NLL/with cleanup-point
+derivation and complete E remain consumer gates.
 These tests do not claim end-to-end conformance of the source scenarios.
 
 | ID | Scenario | Required result |

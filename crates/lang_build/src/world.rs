@@ -331,7 +331,9 @@ impl CompilationWorld {
         &mut self.lifecycle
     }
 
-    fn sync_lifecycle_values(&mut self) {
+    /// Roster discovery supplies names only; formation/origin producers are
+    /// not connected by discovering a SemanticWorld value.
+    fn sync_lifecycle_names(&mut self) {
         let values = self
             .semantic_world
             .values()
@@ -339,8 +341,8 @@ impl CompilationWorld {
             .collect::<Vec<_>>();
         for value in values {
             self.lifecycle
-                .ensure_value(&self.continuation, value)
-                .expect("world registration uses its own continuation and fresh LifeNames");
+                .discover_value(&self.continuation, value)
+                .expect("world discovery uses its own continuation and fresh LifeNames");
         }
     }
 
@@ -681,7 +683,7 @@ impl CompilationWorld {
         context: crate::OrdinaryInvocationContext<'_>,
         provenance: Provenance,
     ) -> Result<crate::InvocationOutcome, crate::OrdinaryInvocationFailure> {
-        self.sync_lifecycle_values();
+        self.sync_lifecycle_names();
         let Some(candidate) = self.resolve_semantic_source_target(namespace, &call_site.target)
         else {
             return Err(crate::OrdinaryInvocationFailure::NoTargetValues {

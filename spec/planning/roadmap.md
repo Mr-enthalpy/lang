@@ -82,7 +82,7 @@ semantic relations above.
 | OpenHere / construction | explicit window facts, authority, Writable and write algebra | authority/window revalidation and inject substrate | Checks implemented; source WindowLive establishment, generation-coordinate control dispositions and invocation dependency propagation pending |
 | Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
-| SemanticContinuation | shared action transaction with separate LifecycleState and event ledger | world-owned continuation and LifeName registration; supplied lifecycle Pre in ordinary calls | Joint Pre/commit/Post substrate and linearization of fixed cleanup points implemented; source actions/E and cleanup-point derivation pending |
+| SemanticContinuation | shared action transaction with separate LifecycleState and event ledger | world-owned continuation and stable LifeName discovery without fabricated formation/origin facts; supplied lifecycle Pre in ordinary calls | Joint Pre/commit/Post substrate, cleanup boundary Pre and linearization of fixed points implemented; full ReifyLife continuation, source actions/E and cleanup-point derivation pending |
 | Color/access | extensible directed relations and provider interface | lifecycle Pre validation | access-tree construction Open |
 
 “Consumer pending” means the canonical relation exists and no substitute
@@ -531,7 +531,19 @@ Freezing respects all supplied precedence and applies reverse declaration
 priority only among still-unordered available events at the same point.
 Contradictions diagnose without moving points. Scheduled cleanup commits Drop;
 already discharged obligations add no second destructor. Lifetime reification
-reads the same K only after the full sequence is frozen.
+requires the fully fixed generation continuation, not merely the cleanup-table
+frozen flag. The operational active Region is never published as a complete
+LifetimeValue; the full continuation projection is unavailable. Lifecycle Pre
+cannot cross an earlier outstanding cleanup, including for unrelated subjects.
+Rejecting that action preserves the ability to Drop at the original point.
+
+SemanticWorld roster synchronization discovers names only; missing formation
+and origin facts do not establish Alive, a formation cut or origin=None.
+`establish_formation` takes the actual supplied cut, including a cut earlier
+than discovery. Pending origin producers remain explicit pending material.
+Origin completion is one-shot, and finite Color queries cannot silently stop
+at missing ancestry. Full ReifyLife remains an explicit consumer frontier,
+including when cleanup has been frozen but generation endpoints are not fixed.
 
 Lifecycle and shared-transaction unit tests cover these substrate relations,
 not source use/move/drop/@, NLL/with point derivation, atomic extraction or

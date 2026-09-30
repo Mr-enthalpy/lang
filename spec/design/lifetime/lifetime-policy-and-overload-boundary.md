@@ -4,8 +4,10 @@ Status: canonical semantics for `@`, the lifetime value algebra, and the
 lifetime/ordinary-overload boundary. `LifecycleState` stores LifeName, Region,
 Color and lifecycle observations; it checks Pre and consumes the shared
 `SemanticContinuation` transaction's committed-action witness for Post.
-Linearization of already fixed cleanup points is implemented; source operations, cleanup
-point derivation, access-tree construction and the complete E consumer remain pending.
+Linearization and Pre boundaries of already fixed cleanup points are implemented.
+Roster discovery supplies stable names, not formation/origin facts. Full
+generation-continuation reification, source operations, cleanup point derivation,
+access-tree construction and the complete E consumer remain pending.
 
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by

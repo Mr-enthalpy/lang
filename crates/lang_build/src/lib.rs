@@ -84,8 +84,8 @@ pub use invocation_frame::{
 pub use invocation_result::{DeclaredResultClass, InvocationResidual, InvocationResult};
 pub use lifecycle::{
     AccessPath, AccessRelationProvider, AccessSnapshot, ColorAlgebra, ColorId, LifeName,
-    LifecycleAction, LifecycleEvent, LifecycleEventKind, LifecycleFailure, LifecyclePost,
-    LifecyclePreProof, LifecyclePrecondition, LifecycleSnapshot, LifecycleState,
+    LifecycleAction, LifecycleEvent, LifecycleEventKind, LifecycleFailure, LifecycleOrigin,
+    LifecyclePost, LifecyclePreProof, LifecyclePrecondition, LifecycleSnapshot, LifecycleState,
     LifecycleValidationContext, LifecycleValidationProof, LifetimeValue, MoveEffect, NameView,
     Region,
 };
