@@ -11,13 +11,15 @@ use crate::{
         StructFieldConstructionMaterial,
     },
     model::{
-        CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, ExecutionEnv,
-        FieldObject, FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv,
-        Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
-        SymbolPayload, TypeField,
+        CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, FieldObject,
+        FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
+        SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+        TypeField,
     },
     normalized_call::NormalizedCallSite,
-    policy_pair::{declared_policy_view, NamespaceVisibility, PolicyMode, Stage},
+    policy_pair::{
+        declared_policy_view, NamespaceVisibility, ObservationHorizon, PolicyMode, Stage,
+    },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
         ProductMaterialRole,
@@ -49,8 +51,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
     site: &NormalizedCallSite,
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
-    lookup_env: PolicyEnv,
-    demanded_execution: ExecutionEnv,
+    horizon: ObservationHorizon,
     provenance: Provenance,
 ) -> Result<MetaInvocationInput, BuildError> {
     let primitive_name = match primitive {
@@ -133,8 +134,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
         classified_shape,
         parameter_shape,
         CandidatePreparationContext {
-            lookup_env,
-            demanded_execution,
+            horizon,
             provenance: provenance.clone(),
         },
     ) {
@@ -142,7 +142,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
         CandidatePrepResult::Deferred { reason, .. } => {
             let message = match reason {
                 CandidatePrepDeferredReason::BodyEntryPolicyMismatch => {
-                    "candidate preparation deferred because body-entry policy is not meta-executable"
+                    "body-entry observation is not visible at the demanded horizon"
                 }
                 CandidatePrepDeferredReason::ParameterShapeCompatibilityDeferred => {
                     "candidate preparation deferred because parameter shape compatibility is incomplete"

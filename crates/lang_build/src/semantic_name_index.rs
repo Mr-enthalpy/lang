@@ -2,9 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
     ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceNode,
-    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance, ResolverCode, SemanticNameDelta,
+    NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
     SourceCategory, SymbolId, SymbolKind, SymbolObject,
 };
+use crate::ObservationHorizon;
 
 /// Immutable revision of the SemanticWorld-owned namespace-name index.
 ///
@@ -506,23 +507,23 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     }
 
     /// Resolve a namespace path with an explicit terminal role expectation and
-    /// policy environment filter.
+    /// observation horizon filter.
     ///
-    /// Symbols that do not satisfy `policy_env` are treated as if they do not
-    /// exist in the search root. Policy filtering happens before cross-root
+    /// Symbols whose declaration observation is hidden at `horizon` are treated
+    /// as if they do not exist in the search root. Policy filtering precedes cross-root
     /// conflict reporting.
     pub fn resolve_with_policy(
         &self,
         source_order_path: &[String],
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-        policy_env: PolicyEnv,
+        horizon: ObservationHorizon,
     ) -> Result<SymbolObject, Diagnostic> {
         self.resolve_search_roots(
             source_order_path,
             context,
             terminal_expectation,
-            Some(policy_env),
+            Some(horizon),
         )
     }
 
@@ -532,7 +533,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         source_order_path: &[String],
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-        policy_env: Option<PolicyEnv>,
+        horizon: Option<ObservationHorizon>,
     ) -> Result<SymbolObject, Diagnostic> {
         if source_order_path.is_empty() {
             return Err(self
@@ -546,7 +547,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             source_order_path,
             context.current_namespace,
             terminal_expectation,
-            policy_env,
+            horizon,
         ) {
             Ok(symbol) => hits.push(symbol),
             Err(diagnostic) => errors.push(diagnostic),
@@ -557,7 +558,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
                 source_order_path,
                 *mount_root,
                 terminal_expectation,
-                policy_env,
+                horizon,
             ) {
                 Ok(symbol) => hits.push(symbol),
                 Err(diagnostic) => errors.push(diagnostic),
@@ -570,7 +571,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
                     source_order_path,
                     *mount,
                     terminal_expectation,
-                    policy_env,
+                    horizon,
                 ) {
                     Ok(symbol) => hits.push(symbol),
                     Err(diagnostic) => errors.push(diagnostic),
@@ -648,7 +649,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         source_order_path: &str,
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-        policy_env: PolicyEnv,
+        horizon: ObservationHorizon,
     ) -> Result<SymbolObject, Diagnostic> {
         let components = source_order_path
             .split("::")
@@ -656,7 +657,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             .map(str::trim)
             .map(ToOwned::to_owned)
             .collect::<Vec<_>>();
-        self.resolve_with_policy(&components, context, terminal_expectation, policy_env)
+        self.resolve_with_policy(&components, context, terminal_expectation, horizon)
     }
 
     /// Resolve a terminal symbol whose kind is `Type`.
@@ -679,13 +680,13 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &str,
         context: &ResolverContext,
-        policy_env: PolicyEnv,
+        horizon: ObservationHorizon,
     ) -> Result<SymbolObject, Diagnostic> {
         self.resolve_str_with_policy(
             source_order_path,
             context,
             ResolveExpectation::CoreTypeProjection,
-            policy_env,
+            horizon,
         )
     }
 
@@ -709,13 +710,13 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &str,
         context: &ResolverContext,
-        policy_env: PolicyEnv,
+        horizon: ObservationHorizon,
     ) -> Result<SymbolObject, Diagnostic> {
         self.resolve_str_with_policy(
             source_order_path,
             context,
             ResolveExpectation::MetaFunction,
-            policy_env,
+            horizon,
         )
     }
 
@@ -765,7 +766,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         source_order_path: &[String],
         start: NamespaceNodeId,
         terminal_expectation: ResolveExpectation,
-        policy_env: Option<PolicyEnv>,
+        horizon: Option<ObservationHorizon>,
     ) -> Result<SymbolObject, Diagnostic> {
         let mut current_node = start;
         let mut current_symbol = None;
@@ -783,7 +784,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
                 expectation,
             )?;
 
-            if !self.symbol_satisfies_policy(&symbol, policy_env) {
+            if !self.symbol_satisfies_policy(&symbol, horizon) {
                 return Err(self
                     .hard_error(
                         None,
@@ -816,16 +817,11 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     fn symbol_satisfies_policy(
         &self,
         symbol: &SymbolObject,
-        policy_env: Option<PolicyEnv>,
+        horizon: Option<ObservationHorizon>,
     ) -> bool {
-        let Some(env) = policy_env else { return true };
+        let Some(horizon) = horizon else { return true };
         let Some(view) = &symbol.policy_view else {
             return false;
-        };
-        let horizon = match env {
-            PolicyEnv::OpenStatic => crate::ObservationHorizon::OpenStatic,
-            PolicyEnv::SealStatic => crate::ObservationHorizon::SealStatic,
-            PolicyEnv::Runtime => crate::ObservationHorizon::Runtime,
         };
         view.pair
             .value

@@ -9,6 +9,101 @@ use lang_build::{
 use support::{initializer_from_source, AssociatedFamily};
 
 #[test]
+fn one_horizon_reaches_lookup_preparation_and_invocation_frame() {
+    use lang_build::{
+        prepare_meta_callable_candidate_with_declared_planes, ArgProductShape,
+        CallableCandidateKind, CandidatePrepDeferredReason, CandidatePrepResult,
+        CandidatePreparationContext, CompilationWorld, FlattenedProductInvariant,
+        FlattenedProductObject, InvocationCallableRef, InvocationFrame, ParameterShape,
+        ResolveExpectation, SelfPosition, SemanticValueId, SourceCategory, SymbolKind,
+        SymbolObject,
+    };
+
+    let world = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let mut delta = world.namespace_projection().empty_delta();
+    let mut symbol = SymbolObject::new(
+        delta.allocate_symbol_id(),
+        "candidate",
+        SymbolKind::Object,
+        SourceCategory::DeclaredSymbol,
+        Some(world.package_root_node()),
+        Provenance::new("horizon fixture"),
+    );
+    // Lookup and body entry observe different declared facts at the same horizon.
+    symbol.policy_view = Some(declared_policy_view(Stage::Compile, PolicyMode::Plain));
+    delta.insert_symbol(world.package_root_node(), symbol);
+    let snapshot = world.namespace_projection().install_delta(delta).unwrap();
+    let capability = snapshot.capability();
+    let path = ["candidate".to_string()];
+    let resolver = world.package_context();
+    let callee = capability.resolve(&path, &resolver).unwrap();
+    let body = declared_policy_view(Stage::Seal, PolicyMode::Plain);
+    let result = declared_policy_view(Stage::Runtime, PolicyMode::Const);
+
+    for (horizon, lookup_visible, body_visible) in [
+        (ObservationHorizon::OpenStatic, true, false),
+        (ObservationHorizon::SealStatic, true, true),
+        (ObservationHorizon::Runtime, false, false),
+    ] {
+        assert_eq!(
+            capability
+                .resolve_with_policy(&path, &resolver, ResolveExpectation::Object, horizon)
+                .is_ok(),
+            lookup_visible,
+        );
+        let args = ArgProductShape::from_flattened(FlattenedProductObject {
+            atoms: Vec::new(),
+            provenance: Provenance::new("empty args"),
+            invariant: FlattenedProductInvariant {
+                no_direct_product_atom_remains: true,
+            },
+        });
+        let prepared = prepare_meta_callable_candidate_with_declared_planes(
+            &callee,
+            CallableCandidateKind::MetaFunction,
+            None,
+            body.clone(),
+            result.clone(),
+            args.clone(),
+            ParameterShape::exact_arity(0, Provenance::new("zero arguments")),
+            CandidatePreparationContext {
+                horizon,
+                provenance: Provenance::new("shared horizon"),
+            },
+        );
+        let candidate = match prepared {
+            CandidatePrepResult::Applicable(candidate) => {
+                assert!(body_visible);
+                candidate
+            }
+            CandidatePrepResult::Deferred { candidate, reason } => {
+                assert!(!body_visible);
+                assert_eq!(reason, CandidatePrepDeferredReason::BodyEntryPolicyMismatch);
+                candidate
+            }
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(candidate.policy_planes.horizon, horizon);
+        assert_eq!(
+            candidate.policy_planes.symbol_policy_view,
+            callee.policy_view
+        );
+        assert_eq!(candidate.policy_planes.body_entry_policy, body);
+        assert_eq!(candidate.policy_planes.return_object_policy, result);
+        // Frame transport is checked independently of executing a pending body.
+        let frame = InvocationFrame::new(
+            InvocationCallableRef::SemanticValue(SemanticValueId(7)),
+            SelfPosition::primitive_core_object(Provenance::new("fixture self")),
+            args,
+            candidate.policy_planes.horizon,
+            Provenance::new("frame transport"),
+        )
+        .unwrap();
+        assert_eq!(frame.horizon, horizon);
+    }
+}
+
+#[test]
 fn hidden_facets_retain_the_same_resolved_observation() {
     let entry = PolicyResultEntry {
         value: Some(7),
@@ -66,10 +161,6 @@ fn ordinary_pipeline_does_not_rank_static_stage_atoms() {
         let mut family = AssociatedFamily::new(&[left, right]);
         let mut context = OrdinaryInvocationContext::open_static(&[]);
         context.horizon = horizon;
-        if horizon == ObservationHorizon::SealStatic {
-            context.execution_env = lang_build::ExecutionEnv::SealStatic;
-            context.policy_env = lang_build::PolicyEnv::SealStatic;
-        }
         let outcome = family.invoke_ordinary_call(
             family.package_root_node(),
             &call,

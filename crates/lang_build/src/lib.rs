@@ -77,9 +77,9 @@ pub use initializer_eval::{
     ResidualReason,
 };
 pub use invocation_frame::{
-    CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationExecutionEnv,
-    InvocationFrame, InvocationLookupEnv, ReceiverTypeRef, ReturnTargetShape, SelfPosition,
-    SelfPositionSource, SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
+    CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationFrame,
+    ReceiverTypeRef, ReturnTargetShape, SelfPosition, SelfPositionSource, SelfSlotKind,
+    SelfSlotShape, SELF_SLOT_INDEX,
 };
 pub use invocation_result::{DeclaredResultClass, InvocationResidual, InvocationResult};
 pub use lifecycle::{
@@ -98,7 +98,7 @@ pub use literal_semantics::{
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
 pub use meta_body::{
     check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
-    selected_meta_delete_diagnostic, ClosureBodyExecutionEnv, SelectedMetaBodyEvaluation,
+    selected_meta_delete_diagnostic, SelectedMetaBodyEvaluation,
 };
 pub use meta_candidate::{
     prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
@@ -113,11 +113,11 @@ pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterial
 pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};
 pub use model::{
     policy_view_visible_at, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
-    CoreMetaFunction, CoreTypeProjection, Diagnostic, DiagnosticSeverity, ExecutionEnv,
-    FieldObject, FieldProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
-    NamespaceNodeKind, PolicyEnv, Provenance, ResolverCode, SemanticNameDelta,
-    SourceCallableObject, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
-    SyntaxObject, SyntaxObjectKind, TypeField, VerificationPrimitive, VisibilityMetadata,
+    CoreMetaFunction, CoreTypeProjection, Diagnostic, DiagnosticSeverity, FieldObject,
+    FieldProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
+    Provenance, ResolverCode, SemanticNameDelta, SourceCallableObject, SourceCategory, SymbolId,
+    SymbolKind, SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField,
+    VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{

@@ -2,8 +2,8 @@ mod support;
 use support::*;
 
 use lang_build::{
-    declared_policy_view, policy_view_visible_at, CompilationWorld, ObservationHorizon, PolicyEnv,
-    PolicyMode, Provenance, ResolveExpectation, SourceCategory, Stage, SymbolKind, SymbolObject,
+    declared_policy_view, policy_view_visible_at, CompilationWorld, ObservationHorizon, PolicyMode,
+    Provenance, ResolveExpectation, SourceCategory, Stage, SymbolKind, SymbolObject,
 };
 
 #[test]
@@ -15,7 +15,7 @@ fn core_type_is_visible_in_open_static_horizon() {
         .resolve_complete_type_projection_with_policy(
             "uint8",
             &world.package_context(),
-            PolicyEnv::OpenStatic,
+            ObservationHorizon::OpenStatic,
         )
         .expect("uint8 should be visible in the open-static horizon");
     assert_eq!(symbol.kind, SymbolKind::CompleteTypeProjection);
@@ -75,7 +75,7 @@ fn horizon_projection_does_not_define_symbol_existence() {
             &["x".to_string()],
             &context,
             ResolveExpectation::Object,
-            PolicyEnv::OpenStatic,
+            ObservationHorizon::OpenStatic,
         )
         .is_err());
 }
@@ -115,8 +115,8 @@ fn seal_horizon_projection_reads_concrete_policy_views() {
         )
     };
 
-    assert!(resolve("meta_only", PolicyEnv::SealStatic).is_err());
-    assert!(resolve("compile_only", PolicyEnv::SealStatic).is_ok());
-    assert!(resolve("seal_only", PolicyEnv::SealStatic).is_ok());
-    assert!(resolve("seal_only", PolicyEnv::OpenStatic).is_err());
+    assert!(resolve("meta_only", ObservationHorizon::SealStatic).is_err());
+    assert!(resolve("compile_only", ObservationHorizon::SealStatic).is_ok());
+    assert!(resolve("seal_only", ObservationHorizon::SealStatic).is_ok());
+    assert!(resolve("seal_only", ObservationHorizon::OpenStatic).is_err());
 }

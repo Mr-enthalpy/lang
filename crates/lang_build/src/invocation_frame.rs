@@ -28,8 +28,9 @@
 
 use crate::{
     identity::{SemanticValueId, TypeValueId},
-    model::{Diagnostic, ExecutionEnv, PolicyEnv, Provenance},
+    model::{Diagnostic, Provenance},
     product_shape::ArgProductShape,
+    ObservationHorizon,
 };
 
 pub const SELF_SLOT_INDEX: usize = 0;
@@ -115,8 +116,7 @@ pub struct InvocationFrame {
     pub callable: InvocationCallableRef,
     pub self_position: SelfPosition,
     pub explicit_arg_product: ArgProductShape,
-    pub lookup_env: InvocationLookupEnv,
-    pub execution_env: InvocationExecutionEnv,
+    pub horizon: ObservationHorizon,
     pub provenance: Provenance,
 }
 
@@ -125,8 +125,7 @@ impl InvocationFrame {
         callable: InvocationCallableRef,
         self_position: SelfPosition,
         explicit_arg_product: ArgProductShape,
-        lookup_env: InvocationLookupEnv,
-        execution_env: InvocationExecutionEnv,
+        horizon: ObservationHorizon,
         provenance: Provenance,
     ) -> Result<Self, Diagnostic> {
         if self_position.slot_index != SELF_SLOT_INDEX {
@@ -167,8 +166,7 @@ impl InvocationFrame {
             callable,
             self_position,
             explicit_arg_product,
-            lookup_env,
-            execution_env,
+            horizon,
             provenance,
         })
     }
@@ -222,26 +220,4 @@ pub enum ReceiverTypeRef {
 pub enum SelfPositionSource {
     SemanticAssociatedValue(SemanticValueId),
     PrimitiveCoreObject,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct InvocationLookupEnv {
-    pub policy_env: PolicyEnv,
-}
-
-impl InvocationLookupEnv {
-    pub fn new(policy_env: PolicyEnv) -> Self {
-        Self { policy_env }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct InvocationExecutionEnv {
-    pub execution_env: ExecutionEnv,
-}
-
-impl InvocationExecutionEnv {
-    pub fn new(execution_env: ExecutionEnv) -> Self {
-        Self { execution_env }
-    }
 }

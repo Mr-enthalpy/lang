@@ -15,41 +15,31 @@
 use lang_syntax::{NormClosureBody, NormDeleteBody};
 
 use crate::model::{Diagnostic, DiagnosticSeverity, Provenance};
-
-// ---------------------------------------------------------------------------
-// Execution environment
-// ---------------------------------------------------------------------------
-
-/// The execution environment a closure body is demanded under.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ClosureBodyExecutionEnv {
-    OpenStatic,
-    SealStatic,
-    Runtime,
-}
+use crate::ObservationHorizon;
 
 // ---------------------------------------------------------------------------
 // Legality check
 // ---------------------------------------------------------------------------
 
-/// Check whether a closure body is legal in the given execution environment.
+/// Check the delete-body constraint at the given observation horizon.
 ///
-/// - `Block` bodies are legal in every phase.
-/// - `Delete` bodies are legal only in a static phase.
+/// - `Block` bodies impose no delete-body constraint.
+/// - `Delete` bodies require OpenStatic or SealStatic.
+/// This check is not an execution or readiness proof.
 ///
 /// If illegal, returns a `Diagnostic` describing the violation.
 pub fn check_closure_body_delete_legality(
     body: &NormClosureBody,
-    env: ClosureBodyExecutionEnv,
+    horizon: ObservationHorizon,
     fallback_provenance: Provenance,
 ) -> Result<(), Diagnostic> {
     match body {
         NormClosureBody::Block(_)
         | NormClosureBody::NamedBlock { .. }
         | NormClosureBody::Defaulted { .. } => Ok(()),
-        NormClosureBody::Delete(del) => match env {
-            ClosureBodyExecutionEnv::OpenStatic | ClosureBodyExecutionEnv::SealStatic => Ok(()),
-            ClosureBodyExecutionEnv::Runtime => Err(Diagnostic::new(
+        NormClosureBody::Delete(del) => match horizon {
+            ObservationHorizon::OpenStatic | ObservationHorizon::SealStatic => Ok(()),
+            ObservationHorizon::Runtime => Err(Diagnostic::new(
                 DiagnosticSeverity::Error,
                 "delete closure body is only valid in static bodies".to_string(),
                 Some(del.origin_reprovenance(&fallback_provenance)),

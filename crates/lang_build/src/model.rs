@@ -121,42 +121,6 @@ impl ChildBucket {
     }
 }
 
-/// Resolver lookup visibility environment.
-///
-/// This controls whether a symbol is visible to a resolver query. It does not
-/// grant permission to enter or evaluate a callable body.
-///
-/// It does not grant body execution or privileged pre-seal scanning; concrete
-/// exposure is read from a declaration's `PolicyView`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PolicyEnv {
-    OpenStatic,
-    SealStatic,
-    Runtime,
-}
-
-/// Callable body execution environment.
-///
-/// This is distinct from [`PolicyEnv`]: a resolver may see a callable symbol
-/// whose body cannot be entered in the current execution environment.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExecutionEnv {
-    OpenStatic,
-    SealStatic,
-    Runtime,
-}
-
-impl ExecutionEnv {
-    /// Visibility projection only; this does not prove that a body is ready.
-    pub fn observation_horizon(self) -> crate::ObservationHorizon {
-        match self {
-            Self::OpenStatic => crate::ObservationHorizon::OpenStatic,
-            Self::SealStatic => crate::ObservationHorizon::SealStatic,
-            Self::Runtime => crate::ObservationHorizon::Runtime,
-        }
-    }
-}
-
 pub fn policy_view_visible_at(
     policy_view: &crate::policy_pair::PolicyView,
     horizon: crate::ObservationHorizon,

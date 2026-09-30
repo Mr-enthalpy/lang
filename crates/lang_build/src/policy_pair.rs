@@ -22,10 +22,6 @@ pub enum ObservationHorizon {
 }
 
 impl Stage {
-    pub fn is_static(self) -> bool {
-        !matches!(self, Self::Runtime)
-    }
-
     pub fn visible_at(self, horizon: ObservationHorizon) -> bool {
         match self {
             Self::Meta => horizon == ObservationHorizon::OpenStatic,

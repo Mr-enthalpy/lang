@@ -1,8 +1,8 @@
 use lang_build::meta_body::{
     check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
-    selected_meta_delete_diagnostic, ClosureBodyExecutionEnv, SelectedMetaBodyEvaluation,
+    selected_meta_delete_diagnostic, SelectedMetaBodyEvaluation,
 };
-use lang_build::{DiagnosticSeverity, Provenance};
+use lang_build::{DiagnosticSeverity, ObservationHorizon, Provenance};
 use lang_syntax::{NormClosureBody, NormDeleteBody, NormOrigin, Span};
 
 // ---------------------------------------------------------------------------
@@ -45,24 +45,18 @@ fn defaulted_body() -> NormClosureBody {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn delete_body_is_legal_in_open_static_execution_env() {
+fn delete_body_is_legal_in_open_static_horizon() {
     let body = delete_body("reason");
-    let result = check_closure_body_delete_legality(
-        &body,
-        ClosureBodyExecutionEnv::OpenStatic,
-        provenance("t"),
-    );
+    let result =
+        check_closure_body_delete_legality(&body, ObservationHorizon::OpenStatic, provenance("t"));
     assert!(result.is_ok());
 }
 
 #[test]
-fn delete_body_is_rejected_in_runtime_execution_env() {
+fn delete_body_is_rejected_in_runtime_horizon() {
     let body = delete_body("reason");
-    let result = check_closure_body_delete_legality(
-        &body,
-        ClosureBodyExecutionEnv::Runtime,
-        provenance("t"),
-    );
+    let result =
+        check_closure_body_delete_legality(&body, ObservationHorizon::Runtime, provenance("t"));
     assert!(result.is_err());
     let diag = result.unwrap_err();
     assert!(diag.message.contains("static bodies"));
@@ -70,24 +64,18 @@ fn delete_body_is_rejected_in_runtime_execution_env() {
 }
 
 #[test]
-fn block_body_is_legal_in_open_static_execution_env() {
+fn block_body_is_legal_in_open_static_horizon() {
     let body = block_body();
-    let result = check_closure_body_delete_legality(
-        &body,
-        ClosureBodyExecutionEnv::OpenStatic,
-        provenance("t"),
-    );
+    let result =
+        check_closure_body_delete_legality(&body, ObservationHorizon::OpenStatic, provenance("t"));
     assert!(result.is_ok());
 }
 
 #[test]
-fn block_body_is_legal_in_runtime_execution_env() {
+fn block_body_is_legal_in_runtime_horizon() {
     let body = block_body();
-    let result = check_closure_body_delete_legality(
-        &body,
-        ClosureBodyExecutionEnv::Runtime,
-        provenance("t"),
-    );
+    let result =
+        check_closure_body_delete_legality(&body, ObservationHorizon::Runtime, provenance("t"));
     assert!(result.is_ok());
 }
 

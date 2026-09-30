@@ -33,15 +33,9 @@ use lang_syntax::{NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicy
 use crate::{
     body_entry_visible_at,
     identity::{SemanticValueId, TypeValueId},
-    invocation_frame::{
-        InvocationCallableRef, InvocationExecutionEnv, InvocationFrame, InvocationLookupEnv,
-        SelfPosition,
-    },
+    invocation_frame::{InvocationCallableRef, InvocationFrame, SelfPosition},
     meta_invocation::{MetaExecutionMaterial, MetaInvocationInput},
-    model::{
-        Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SourceCategory, SymbolId, SymbolKind,
-        SymbolObject,
-    },
+    model::{Diagnostic, Provenance, SourceCategory, SymbolId, SymbolKind, SymbolObject},
     overload_pattern::{overload_args_from_classified_shape, SpecificityTuple},
     overload_set::{
         applicable_candidate_from_closure, evaluate_selected_source_body, ApplicableCandidate,
@@ -86,8 +80,8 @@ pub struct MigrationInvocationContext<'a> {
 
 #[derive(Clone, Debug)]
 pub struct OrdinaryInvocationContext<'a> {
-    pub policy_env: PolicyEnv,
-    pub execution_env: ExecutionEnv,
+    /// The single observation coordinate for this invocation's consumers.
+    /// Each consumer still checks its own facts; visibility does not prove Ready.
     pub horizon: ObservationHorizon,
     pub caller_mode: PolicyMode,
     pub explicit_argument_modes: &'a [PolicyMode],
@@ -115,8 +109,6 @@ pub struct OrdinaryInvocationContext<'a> {
 impl<'a> OrdinaryInvocationContext<'a> {
     pub fn open_static(explicit_argument_modes: &'a [PolicyMode]) -> Self {
         Self {
-            policy_env: PolicyEnv::OpenStatic,
-            execution_env: ExecutionEnv::OpenStatic,
             horizon: ObservationHorizon::OpenStatic,
             caller_mode: PolicyMode::Plain,
             explicit_argument_modes,
@@ -260,7 +252,6 @@ impl PreparedCallCandidate {
 pub struct DynamicLegalityProof {
     pub selected_call_entry: SemanticValueId,
     pub horizon: ObservationHorizon,
-    pub execution_env: ExecutionEnv,
     pub capability_cell: Option<crate::CapabilityRealizationCell>,
     pub writable_place: Option<ObjectPlaceId>,
     pub lifecycle: Option<crate::LifecycleValidationProof>,
@@ -344,7 +335,6 @@ fn validate_dynamic_legality(
     Ok(DynamicLegalityProof {
         selected_call_entry: selected.call_entry_value,
         horizon: context.horizon,
-        execution_env: context.execution_env,
         capability_cell,
         writable_place,
         lifecycle,
@@ -765,8 +755,6 @@ pub fn invoke_policy_migration(
         migration_args,
         resolver_context,
         OrdinaryInvocationContext {
-            policy_env: PolicyEnv::OpenStatic,
-            execution_env: ExecutionEnv::OpenStatic,
             horizon: ObservationHorizon::OpenStatic,
             caller_mode: PolicyMode::Plain,
             explicit_argument_modes: &no_explicit_modes,
@@ -1287,7 +1275,6 @@ pub(crate) fn invoke_target_values(
                 entry_closure,
                 &entry.provenance,
                 &args,
-                context.execution_env,
                 entry.callable_owner,
                 Some(&resolve_named_pattern),
             ) {
@@ -1394,8 +1381,7 @@ pub(crate) fn invoke_target_values(
                 call_site,
                 &SemanticTypeEnv::new(&*semantic_world),
                 resolver_context,
-                context.policy_env,
-                context.execution_env,
+                context.horizon,
                 provenance.clone(),
             ) {
                 Ok(candidate) => candidate,
@@ -1541,8 +1527,7 @@ pub(crate) fn invoke_target_values(
             InvocationCallableRef::SemanticValue(call_entry_value),
             self_position,
             frame_args,
-            InvocationLookupEnv::new(context.policy_env),
-            InvocationExecutionEnv::new(context.execution_env),
+            context.horizon,
             provenance.clone(),
         ) {
             Ok(frame) => frame,

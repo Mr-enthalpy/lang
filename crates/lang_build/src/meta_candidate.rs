@@ -16,11 +16,9 @@
 use crate::{
     identity::TypeValueId,
     model::policy_view_visible_at,
-    model::{
-        CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SymbolId, SymbolObject,
-    },
+    model::{CoreMetaFunction, Diagnostic, Provenance, SymbolId, SymbolObject},
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
-    PolicyView,
+    ObservationHorizon, PolicyView,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,26 +72,21 @@ pub enum ParameterArgRequirement {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePreparationContext {
-    pub lookup_env: PolicyEnv,
-    pub demanded_execution: ExecutionEnv,
+    pub horizon: ObservationHorizon,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePolicyPlanes {
-    pub lookup_env: PolicyEnv,
+    pub horizon: ObservationHorizon,
     pub symbol_policy_view: Option<PolicyView>,
-    pub demanded_execution: ExecutionEnv,
     pub body_entry_policy: PolicyView,
     pub return_object_policy: PolicyView,
 }
 
 impl CandidatePolicyPlanes {
     pub fn body_entry_visible_at_demanded_horizon(&self) -> bool {
-        policy_view_visible_at(
-            &self.body_entry_policy,
-            self.demanded_execution.observation_horizon(),
-        )
+        policy_view_visible_at(&self.body_entry_policy, self.horizon)
     }
 }
 
@@ -212,8 +205,8 @@ pub enum CanonicalArgAtomKind {
 /// `NamespaceDelta`.
 ///
 /// `Deferred` means later pattern/type/policy/meta-invocation machinery must
-/// decide. It is not silent success and it does not residualize runtime
-/// expressions.
+/// decide. It is not silent success, a scheduling queue, or runtime
+/// residualization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CandidatePrepResult {
     Deferred {
@@ -249,9 +242,8 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     context: CandidatePreparationContext,
 ) -> CandidatePrepResult {
     let policy_planes = CandidatePolicyPlanes {
-        lookup_env: context.lookup_env,
+        horizon: context.horizon,
         symbol_policy_view: callee.policy_view.clone(),
-        demanded_execution: context.demanded_execution,
         body_entry_policy,
         return_object_policy,
     };
