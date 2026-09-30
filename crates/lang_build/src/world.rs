@@ -8,7 +8,6 @@ use lang_syntax::{
 use crate::{
     core::{core_declared_pair, install_core_bootstrap},
     discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
-    initializer_eval::EvalMode,
     manifest::{BuildManifest, NamespaceMount},
     meta::expand_struct_construction_material,
     model::{
@@ -23,7 +22,7 @@ use crate::{
         NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyMode,
         PolicyView, ResultPolicyDemand, ValueComponentPolicy,
     },
-    policy_pair::{PatternComponentPolicy, PolicyPair, PolicyStage, ValuePresence},
+    policy_pair::{PatternComponentPolicy, PolicyPair, Stage},
     return_target::{
         elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
         ReturnFrameOwner,
@@ -73,31 +72,53 @@ struct ConnectedExistingResult {
 
 const CONSTRUCT_OR_CONVERT_SELECTOR: &str = "<ConstructOrConvert>";
 
-fn policy_let_target_demand(demand: &ResultPolicyDemand, source: &PolicyPair) -> PolicyView {
-    let (value_query, pattern_query) = match &demand.pair_query {
-        P1Projection::Infer => (None, None),
-        P1Projection::ValueDominant { value } => (Some(value), None),
-        P1Projection::Pair(pair) => (Some(&pair.value), Some(&pair.pattern)),
+fn policy_let_target_demand(
+    demand: &ResultPolicyDemand,
+    source: &PolicyPair,
+) -> Option<PolicyView> {
+    let (value_query, pattern_stage) = match &demand.pair_query {
+        P1Projection::Infer => (None, source.pattern.stage),
+        P1Projection::ValueDominant { value } => (Some(*value), source.pattern.stage),
+        P1Projection::Pair(pair) => (Some(pair.value.into()), pair.pattern.stage),
     };
-    let value_stages = value_query
-        .filter(|query| !query.stages.is_empty())
-        .map(|query| query.stages.clone())
-        .unwrap_or_else(|| source.value.stages.clone());
-    let pattern_stages = pattern_query
-        .filter(|query| !query.stages.is_empty())
-        .map(|query| query.stages.clone())
-        .unwrap_or_else(|| source.pattern.stages.clone());
-    PolicyView {
+    let stage = value_query.and_then(|q| q.stage).or(source.value.stage())?;
+    Some(PolicyView {
         pair: PolicyPair {
-            value: ValueComponentPolicy {
-                stages: value_stages,
-                presence: ValuePresence::Present,
-            },
+            value: ValueComponentPolicy::Present(stage),
             pattern: PatternComponentPolicy {
-                stages: pattern_stages,
+                stage: pattern_stage,
             },
         },
         mode: demand.mode,
+    })
+}
+
+#[cfg(test)]
+mod stage_demand_tests {
+    use super::policy_let_target_demand;
+    use crate::{
+        P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, ResultPolicyDemand, Stage,
+        ValueComponentPolicy, ValuePolicyQuery, ValuePresence,
+    };
+
+    #[test]
+    fn omitted_stage_on_hidden_value_has_an_unavailable_demand_without_panicking() {
+        let source = PolicyPair {
+            value: ValueComponentPolicy::Absent,
+            pattern: PatternComponentPolicy {
+                stage: Stage::Compile,
+            },
+        };
+        let demand = ResultPolicyDemand {
+            pair_query: P1Projection::ValueDominant {
+                value: ValuePolicyQuery {
+                    stage: None,
+                    presence: ValuePresence::Present,
+                },
+            },
+            mode: PolicyMode::Mut,
+        };
+        assert!(policy_let_target_demand(&demand, &source).is_none());
     }
 }
 
@@ -1137,13 +1158,10 @@ impl CompilationWorld {
         // C2/A/Bp/maxima; binding projection/transfer may inspect it only
         // after that producer has been sealed.
         let result_policy_demand = binding_result_policy_demand(slot, &namespace_declaration);
-        let mut residual_binding_view = None;
-
         if let Some(initializer) = slot.initializer.as_deref() {
             match self.evaluate_initializer_best_effort_connected(
                 namespace,
                 initializer,
-                EvalMode::MetaPartial,
                 result_policy_demand.clone(),
                 declaration_provenance.clone(),
             ) {
@@ -1170,19 +1188,12 @@ impl CompilationWorld {
                     );
                 }
                 ConnectedInitializerOutcome::Residual { reason, provenance } => {
-                    verify_residual_policy_compatible(
-                        &result_policy_demand,
-                        &reason,
-                        provenance.clone(),
-                    )?;
-                    residual_binding_view = residual_policy_view(&result_policy_demand);
-                    if is_type_annotation(slot.annotation.as_ref()) {
-                        return Err(BuildError::single(Diagnostic::hard_error(
-                            "UnsupportedDeferredTypeAssertion: `: type` assertion is deferred for a residual initializer, and deferred type assertions are not connected to the initializer evaluator",
-                            Some(provenance),
-                        )
-                        .with_code(ResolverCode::UnsupportedDeferredTypeAssertion)));
-                    }
+                    // Incomplete evaluation is not a runtime producer. Until
+                    // the common continuation can be retained, do not install
+                    // a binding, even when its written demand is runtime.
+                    return Err(BuildError::single(crate::residual_diagnostic(
+                        &reason, provenance,
+                    )));
                 }
                 ConnectedInitializerOutcome::Diagnostic(diagnostic) => {
                     return Err(BuildError::single(diagnostic));
@@ -1216,16 +1227,11 @@ impl CompilationWorld {
             )
         };
         {
-            let policy_view = residual_binding_view.clone().unwrap_or_else(|| {
-                if is_type_annotation(slot.annotation.as_ref()) {
-                    declared_policy_view(
-                        &[PolicyStage::Meta, PolicyStage::Runtime],
-                        namespace_declaration.mode,
-                    )
-                } else {
-                    declared_policy_view(&[PolicyStage::Runtime], namespace_declaration.mode)
-                }
-            });
+            let policy_view = if is_type_annotation(slot.annotation.as_ref()) {
+                declared_policy_view(Stage::Meta, namespace_declaration.mode)
+            } else {
+                declared_policy_view(Stage::Runtime, namespace_declaration.mode)
+            };
             for symbol in delta.symbols.values_mut() {
                 if symbol.name == binder_name {
                     symbol.policy_view = Some(policy_view.clone());
@@ -1258,7 +1264,7 @@ impl CompilationWorld {
                 .values()
                 .find(|symbol| symbol.name == binder_name)
                 .map(|symbol| symbol.id)
-                .expect("residual binding delta contains its declaration projection");
+                .expect("initializer-free binding delta contains its declaration projection");
             SemanticDeclarationEntry::ProjectionOnly {
                 name: binder_name.clone(),
                 backing_declaration,
@@ -1305,13 +1311,16 @@ impl CompilationWorld {
                 )));
             }
             crate::InvocationResult::Residual(residual) => {
-                return Err(BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "ordinary invocation residual `{}` cannot be bound here",
-                        residual.class
-                    ),
-                    Some(residual.provenance),
-                )));
+                return Err(BuildError::single(
+                    Diagnostic::hard_error(
+                        format!(
+                            "ordinary invocation residual `{}` requires the common continuation preservation consumer, which is not connected",
+                            residual.class
+                        ),
+                        Some(residual.provenance),
+                    )
+                    .with_code(ResolverCode::UnsupportedInitializerContinuation),
+                ));
             }
             crate::InvocationResult::Diagnostic(diagnostic) => {
                 return Err(BuildError::single(diagnostic));
@@ -1648,7 +1657,7 @@ impl CompilationWorld {
         let target_members = self.semantic_world.associated_member_views_for_pattern(
             target_pattern,
             CONSTRUCT_OR_CONVERT_SELECTOR,
-            crate::Phase::OpenStatic,
+            crate::ObservationHorizon::OpenStatic,
         );
 
         // Abstract-to-concrete construction itself produces a compile view.
@@ -1793,7 +1802,10 @@ impl CompilationWorld {
                 return Err("a pure-P entry has no value realization to migrate".into());
             };
             let source_view = entry.view.clone();
-            let target_view = policy_let_target_demand(demand, &source_view.pair);
+            let target_view =
+                policy_let_target_demand(demand, &source_view.pair).ok_or_else(|| {
+                    "request formation: source has no value observation stage".to_string()
+                })?;
             let target_demand = ResultPolicyDemand {
                 pair_query: P1Projection::Pair(target_view.pair),
                 mode: target_view.mode,
@@ -2005,7 +2017,6 @@ impl CompilationWorld {
         &mut self,
         namespace: NamespaceNodeId,
         initializer: &NormExpr,
-        mode: EvalMode,
         result_policy_demand: ResultPolicyDemand,
         provenance: Provenance,
     ) -> ConnectedInitializerOutcome {
@@ -2019,7 +2030,6 @@ impl CompilationWorld {
                 namespace,
                 policy,
                 operand,
-                mode,
                 Provenance::from_norm_origin("PolicyLet result boundary", origin),
             );
         }
@@ -2104,24 +2114,6 @@ impl CompilationWorld {
                     provenance.clone(),
                 ) {
                     Ok(result) => ConnectedInitializerOutcome::Ordinary(result),
-                    // Meta-partial residualization: a resolvable target whose
-                    // candidate set exposes nothing admissible at the static
-                    // phase (e.g. a runtime-only body entry) defers the
-                    // binding to runtime instead of hard-failing the build.
-                    // P1 never expands such a callable into meta visibility.
-                    // A candidate that was reached but failed to assemble or
-                    // execute (`first_diagnostic: Some`) is a real error and
-                    // is never residualized.
-                    Err(
-                        crate::OrdinaryInvocationFailure::NoTargetValues { .. }
-                        | crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
-                            first_diagnostic: None,
-                            ..
-                        },
-                    ) if mode == EvalMode::MetaPartial => ConnectedInitializerOutcome::Residual {
-                        reason: crate::ResidualReason::NoMetaVisibleCandidate,
-                        provenance,
-                    },
                     Err(failure) => ConnectedInitializerOutcome::Diagnostic(
                         ordinary_invocation_failure_diagnostic(failure, provenance),
                     ),
@@ -2156,7 +2148,6 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
         policy: &NormPolicySpec,
         operand: &NormExpr,
-        mode: EvalMode,
         provenance: Provenance,
     ) -> ConnectedInitializerOutcome {
         let demand = match elaborate_binding_result_demand(Some(policy), provenance.clone()) {
@@ -2177,16 +2168,6 @@ impl CompilationWorld {
                 match self.invoke_ordinary_call(namespace, &call_site, context, provenance.clone())
                 {
                     Ok(result) => ConnectedInitializerOutcome::Ordinary(result),
-                    Err(
-                        crate::OrdinaryInvocationFailure::NoTargetValues { .. }
-                        | crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
-                            first_diagnostic: None,
-                            ..
-                        },
-                    ) if mode == EvalMode::MetaPartial => ConnectedInitializerOutcome::Residual {
-                        reason: crate::ResidualReason::NoMetaVisibleCandidate,
-                        provenance: provenance.clone(),
-                    },
                     Err(failure) => ConnectedInitializerOutcome::Diagnostic(
                         ordinary_invocation_failure_diagnostic(failure, provenance.clone()),
                     ),
@@ -2201,7 +2182,6 @@ impl CompilationWorld {
             self.evaluate_initializer_best_effort_connected(
                 namespace,
                 operand,
-                mode,
                 ResultPolicyDemand::default(),
                 provenance.clone(),
             )
@@ -2229,10 +2209,9 @@ impl CompilationWorld {
                 ));
             }
             ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::Residual(residual)) => {
-                return ConnectedInitializerOutcome::Residual {
-                    reason: crate::ResidualReason::UnsupportedExpression,
-                    provenance: residual.provenance,
-                };
+                return ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::Residual(
+                    residual,
+                ));
             }
             ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::Diagnostic(
                 diagnostic,
@@ -2276,7 +2255,12 @@ impl CompilationWorld {
                     Some(provenance),
                 ));
             };
-            let target_view = policy_let_target_demand(&demand, &source_view.pair);
+            let Some(target_view) = policy_let_target_demand(&demand, &source_view.pair) else {
+                return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
+                    "PolicyLet cannot form a migration demand without a source value observation stage",
+                    Some(provenance),
+                ));
+            };
             let target_demand = ResultPolicyDemand {
                 pair_query: P1Projection::Pair(target_view.pair),
                 mode: target_view.mode,
@@ -2618,20 +2602,15 @@ fn declared_bound_type_value_delta(
 
 /// The declared canonical `PolicyPair` for a type-carrier binding: the
 /// explicit declaration projection when the user wrote one, otherwise the
-/// natural `meta runtime` type-carrier pair. Namespace attributes remain on
+/// meta-formed type-carrier observation. Namespace attributes remain on
 /// the declaration object and never enter this `Pv:Pp` value.
 fn declared_type_binding_pair(namespace_declaration: &NamespaceDeclarationPolicy) -> PolicyPair {
     match &namespace_declaration.projection {
-        crate::P1Projection::Pair(pair) => pair.clone(),
-        crate::P1Projection::ValueDominant { value } => PolicyPair {
-            value: value.clone(),
-            pattern: PatternComponentPolicy {
-                stages: value.stages.static_stages(),
-            },
-        },
-        crate::P1Projection::Infer => {
-            core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], false)
+        P1Projection::Pair(pair) => pair.clone(),
+        P1Projection::ValueDominant { value } => {
+            core_declared_pair(value.stage.unwrap_or(Stage::Meta), false)
         }
+        P1Projection::Infer => core_declared_pair(Stage::Meta, false),
     }
 }
 
@@ -2835,21 +2814,21 @@ fn ordinary_invocation_failure_diagnostic(
             "ordinary invocation found no semantic target values",
             Some(provenance),
         )
-        .with_code(ResolverCode::NoMetaVisibleCandidate),
+        .with_code(ResolverCode::NoCallCandidate),
         crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. } => {
             Diagnostic::hard_error(
                 "ordinary invocation found no fully admissible candidate",
                 Some(provenance),
             )
-            .with_code(ResolverCode::NoMetaVisibleCandidate)
+            .with_code(ResolverCode::NoCallCandidate)
         }
         crate::OrdinaryInvocationFailure::Residual { residual, .. } => Diagnostic::hard_error(
             format!(
-                "invocation residual `{}` reached a binding boundary without an owning evaluator",
+                "invocation observation obstruction `{}` requires the common continuation preservation consumer, which is not connected",
                 residual.class
             ),
             Some(residual.provenance),
-        ),
+        ).with_code(ResolverCode::UnsupportedInitializerContinuation),
         crate::OrdinaryInvocationFailure::Ambiguous { .. } => Diagnostic::hard_error(
             "ordinary invocation has multiple maximal candidates",
             Some(provenance),
@@ -2901,7 +2880,7 @@ fn result_policy_from_closure(
     normalize_p2_policy(annotation, provenance)
 }
 
-/// A runtime-only result P2 (all value stages == `runtime`) paired with a
+/// A result P2 whose value stage is `runtime`, paired with a
 /// pure-P return slot (`let r: type`) declares a runtime value slice that
 /// carries no value dimension. `N2(runtime) = runtime:compile` makes Pv
 /// disjoint from Pp, so the declared value slice can never be filled by a
@@ -2913,8 +2892,7 @@ fn ensure_runtime_result_slice_has_value_dimension(
     result_p2: &PolicyPair,
     provenance: Provenance,
 ) -> Result<(), Diagnostic> {
-    let runtime_only = result_p2.value.stages.contains(PolicyStage::Runtime)
-        && result_p2.value.stages.static_stages().is_empty();
+    let runtime_only = result_p2.value.stage() == Some(Stage::Runtime);
     if !runtime_only {
         return Ok(());
     }
@@ -2955,35 +2933,6 @@ fn assert_semantic_result_satisfies_annotation(
     }
     debug_assert!(!result.is_empty());
     Ok(())
-}
-
-fn verify_residual_policy_compatible(
-    demand: &ResultPolicyDemand,
-    reason: &crate::ResidualReason,
-    provenance: Provenance,
-) -> Result<(), BuildError> {
-    if residual_policy_view(demand).is_some() {
-        return Ok(());
-    }
-    Err(BuildError::single(Diagnostic::hard_error(
-        format!(
-            "ExplicitPolicyProjectionFailed: RHS residualized to runtime ({reason:?}) and the requested binding policy selects no runtime value slice"
-        ),
-        Some(provenance),
-    )
-    .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
-}
-
-fn residual_policy_view(demand: &ResultPolicyDemand) -> Option<PolicyView> {
-    let runtime = crate::PolicyResultEntry {
-        value: Some(()),
-        pattern: (),
-        view: declared_policy_view(&[PolicyStage::Runtime], demand.mode),
-    };
-    crate::policy_pair::project_p1(&demand.pair_query, &[runtime])
-        .into_iter()
-        .next()
-        .map(|entry| entry.view)
 }
 
 fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExpectation) -> bool {
@@ -3051,6 +3000,403 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::BindingSlot { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
+    }
+}
+
+#[cfg(test)]
+mod initializer_residual_boundary_tests {
+    use super::*;
+
+    fn initializer(source: &str) -> NormExpr {
+        let parsed = lang_syntax::parse(source);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "{source}: {:?}",
+            parsed.diagnostics
+        );
+        let normalized = lang_syntax::normalize_program(&parsed.program);
+        let NormForm::Let(NormDecl::Let { slot, .. }) = &normalized.forms[0] else {
+            panic!("expected binding");
+        };
+        slot.initializer.as_deref().unwrap().clone()
+    }
+
+    fn world_with_member(source: &str) -> CompilationWorld {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let NormExpr::Closure(closure) = initializer(source) else {
+            panic!("expected callable fixture material");
+        };
+        let body_view =
+            result_policy_from_closure(&closure, Provenance::new("fixture P2")).unwrap();
+        let callable_view = derive_function_object_view(
+            &body_view,
+            &crate::FunctionObjectDeclarationPolicy::default(),
+        );
+        // Test substrate only: this does not evaluate a source closure or
+        // install the ordinary result tau_C of a closure expression.
+        world
+            .semantic_world
+            .install_callable_member_value(
+                world.package_root_node(),
+                "f",
+                crate::SymbolId(900000),
+                &closure,
+                None,
+                callable_view,
+                body_view,
+                None,
+                crate::declared_result_class_from_closure(&closure).unwrap(),
+                Provenance::new("initializer candidate fixture"),
+            )
+            .unwrap();
+        world
+    }
+
+    fn evaluate(world: &mut CompilationWorld, source: &str) -> ConnectedInitializerOutcome {
+        world.evaluate_initializer_best_effort_connected(
+            world.package_root_node(),
+            &initializer(source),
+            ResultPolicyDemand::default(),
+            Provenance::new("initializer boundary"),
+        )
+    }
+
+    #[test]
+    fn invocation_reports_hidden_observation_before_both_initializer_boundaries() {
+        for source in ["let result = () f;", "let result = plain let () f;"] {
+            let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            assert!(world
+                .resolve_semantic_source_target(world.package_root_node(), &call.target)
+                .is_some());
+            let failure = world
+                .invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("hidden candidate"),
+                )
+                .unwrap_err();
+            assert!(matches!(
+                failure,
+                crate::OrdinaryInvocationFailure::Residual { residual, .. }
+                    if residual.class == "hidden-callee-observation"
+            ));
+            assert!(matches!(
+                evaluate(&mut world, source),
+                ConnectedInitializerOutcome::Diagnostic(diagnostic)
+                    if diagnostic.code == Some(ResolverCode::UnsupportedInitializerContinuation)
+            ));
+        }
+    }
+
+    #[test]
+    fn visible_noncallable_value_is_not_a_continuation() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let type_value = world
+            .semantic_world
+            .type_for_pattern(
+                world
+                    .semantic_world
+                    .symbol_in_namespace(world.core_node(), "uint8")
+                    .unwrap()
+                    .pure_p_pattern()
+                    .unwrap(),
+            )
+            .unwrap();
+        let value = world
+            .semantic_world
+            .install_plain_value(
+                type_value,
+                declared_policy_view(Stage::Compile, PolicyMode::Plain).pair,
+                Provenance::new("noncallable ordinary value"),
+            )
+            .unwrap();
+        assert!(world
+            .semantic_world
+            .callable_entries_for_value(value)
+            .is_empty());
+        let views = world
+            .semantic_world
+            .member_views_for_values(&[value])
+            .into_iter()
+            .map(|view| crate::PolicyResultEntry {
+                value: Some(crate::SemanticValueRef {
+                    id: value,
+                    type_value,
+                }),
+                pattern: view.pattern,
+                view: view.view,
+            })
+            .collect::<Vec<_>>();
+        world
+            .semantic_world
+            .bind_ordinary_new(
+                world.package_root_node(),
+                "f",
+                &views,
+                Provenance::new("fixture binding"),
+            )
+            .unwrap();
+        let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+        let failure = world
+            .invoke_ordinary_call(
+                world.package_root_node(),
+                &call,
+                crate::OrdinaryInvocationContext::open_static(&[]),
+                Provenance::new("noncallable call"),
+            )
+            .unwrap_err();
+        let crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+            first_diagnostic: None,
+            trace,
+        } = failure
+        else {
+            panic!("{failure:?}");
+        };
+        assert_eq!(trace.c2_horizon_values, vec![value]);
+        assert!(trace.c3_call_entries.is_empty());
+        for source in ["let result = () f;", "let result = plain let () f;"] {
+            assert!(matches!(evaluate(&mut world, source),
+                ConnectedInitializerOutcome::Diagnostic(diagnostic)
+                    if diagnostic.code == Some(ResolverCode::NoCallCandidate)));
+        }
+    }
+
+    #[test]
+    fn fully_observed_result_policy_mismatch_is_not_a_continuation() {
+        let mut world = world_with_member("let f = (receiver, x):meta => { (); };");
+        let expression = initializer("let result = () f;");
+        let demand = ResultPolicyDemand {
+            pair_query: crate::P1Projection::ValueDominant {
+                value: crate::ValuePolicyQuery {
+                    stage: Some(Stage::Runtime),
+                    presence: crate::ValuePresence::Present,
+                },
+            },
+            mode: PolicyMode::Plain,
+        };
+        let call = crate::extract_single_call_site(&expression).unwrap();
+        assert!(matches!(
+            world.invoke_ordinary_call(
+                world.package_root_node(),
+                &call,
+                crate::OrdinaryInvocationContext::open_static(&[])
+                    .with_result_policy_demand(demand.clone()),
+                Provenance::new("fully observed Policy mismatch"),
+            ),
+            Err(
+                crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+                    first_diagnostic: None,
+                    ..
+                }
+            )
+        ));
+        for outcome in [
+            world.evaluate_initializer_best_effort_connected(
+                world.package_root_node(),
+                &expression,
+                demand,
+                Provenance::new("ordinary boundary"),
+            ),
+            evaluate(&mut world, "let result = runtime let () f;"),
+        ] {
+            assert!(
+                matches!(outcome, ConnectedInitializerOutcome::Diagnostic(diagnostic)
+                if diagnostic.code == Some(ResolverCode::NoCallCandidate))
+            );
+        }
+    }
+
+    #[test]
+    fn reached_candidate_error_is_not_residual_completion() {
+        for source in ["let result = () f;", "let result = plain let () f;"] {
+            let mut world = world_with_member("let f = (receiver, x:type):meta => { (); };");
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let failure = world
+                .invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("candidate shape mismatch"),
+                )
+                .unwrap_err();
+            let crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+                first_diagnostic: Some(expected),
+                ..
+            } = failure
+            else {
+                panic!("expected candidate diagnostic: {failure:?}");
+            };
+            let ConnectedInitializerOutcome::Diagnostic(actual) = evaluate(&mut world, source)
+            else {
+                panic!("candidate error must not become a residual");
+            };
+            assert_eq!(actual.message, expected.message);
+        }
+    }
+
+    #[test]
+    fn selected_delete_remains_a_terminal_diagnostic_at_both_initializer_boundaries() {
+        for source in ["let result = () f;", "let result = plain let () f;"] {
+            let mut world =
+                world_with_member("let f = (receiver, x):meta => (\"selected rejection\") delete;");
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            assert!(matches!(
+                world.invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("selected delete"),
+                ),
+                Err(crate::OrdinaryInvocationFailure::SelectedDelete { .. })
+            ));
+            let ConnectedInitializerOutcome::Diagnostic(diagnostic) = evaluate(&mut world, source)
+            else {
+                panic!("selected failure must not become a residual");
+            };
+            assert_eq!(diagnostic.severity, DiagnosticSeverity::Error);
+            assert!(
+                diagnostic.message.contains("selected rejection"),
+                "{diagnostic:?}"
+            );
+        }
+    }
+    #[test]
+    fn exact_empty_type_callspace_is_terminal_no_candidate() {
+        for source in ["let result = () type;", "let result = plain let () type;"] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let call =
+                crate::extract_single_call_site(&initializer("let result = () type;")).unwrap();
+            assert!(world
+                .resolve_semantic_source_target(world.package_root_node(), &call.target)
+                .is_some());
+            assert!(matches!(
+                world.invoke_ordinary_call(
+                    world.package_root_node(),
+                    &call,
+                    crate::OrdinaryInvocationContext::open_static(&[]),
+                    Provenance::new("empty type callspace"),
+                ),
+                Err(crate::OrdinaryInvocationFailure::NoTargetValues { .. })
+            ));
+            assert!(matches!(
+                evaluate(&mut world, source),
+                ConnectedInitializerOutcome::Diagnostic(diagnostic)
+                    if diagnostic.code == Some(ResolverCode::NoCallCandidate)
+            ));
+            let before = format!("{:?}", world.semantic_world);
+            let parsed = lang_syntax::parse(source);
+            let program = lang_syntax::normalize_program(&parsed.program);
+            let error = world
+                .harvest_program(
+                    world.package_root_node(),
+                    &program,
+                    Path::new("empty-callspace.lang"),
+                )
+                .unwrap_err();
+            assert!(error
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == Some(ResolverCode::NoCallCandidate)));
+            assert!(!error.diagnostics.iter().any(|diagnostic| diagnostic.code
+                == Some(ResolverCode::UnsupportedInitializerContinuation)));
+            assert_eq!(before, format!("{:?}", world.semantic_world));
+        }
+    }
+
+    #[test]
+    fn pending_seal_cannot_install_runtime_binding_or_change_existing_facts() {
+        for source in [
+            "let result = () f;",
+            "runtime let result = () f;",
+            "seal let result = () f;",
+            "let result = plain let () f;",
+            "let result:type = () f;",
+        ] {
+            let mut world = world_with_member("let f = (receiver, x):seal => { (); };");
+            let namespace = world.package_root_node();
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let target = world
+                .resolve_semantic_source_target(namespace, &call.target)
+                .unwrap();
+            let original_views = world
+                .semantic_world
+                .symbol(target.symbol)
+                .unwrap()
+                .member_views
+                .clone();
+            assert!(!original_views.is_empty());
+            assert!(original_views
+                .iter()
+                .all(|view| view.view.pair.value.stage() == Some(Stage::Seal)));
+            assert!(matches!(
+                evaluate(&mut world, source),
+                ConnectedInitializerOutcome::Diagnostic(diagnostic)
+                    if diagnostic.code == Some(ResolverCode::UnsupportedInitializerContinuation)
+            ));
+            let before_semantic = format!("{:?}", world.semantic_world);
+            let before_projection = format!("{:?}", world.semantic_world.namespace_index());
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let program = lang_syntax::normalize_program(&parsed.program);
+            let error = world
+                .harvest_program(namespace, &program, Path::new("pending-seal.lang"))
+                .unwrap_err();
+            assert!(error.diagnostics.iter().any(|diagnostic| diagnostic.code
+                == Some(ResolverCode::UnsupportedInitializerContinuation)));
+            assert!(world
+                .semantic_world
+                .symbol_in_namespace(namespace, "result")
+                .is_none());
+            assert_eq!(
+                world
+                    .resolve_semantic_source_target(namespace, &call.target)
+                    .unwrap()
+                    .symbol,
+                target.symbol
+            );
+            assert_eq!(before_semantic, format!("{:?}", world.semantic_world));
+            assert_eq!(
+                before_projection,
+                format!("{:?}", world.semantic_world.namespace_index())
+            );
+        }
+    }
+
+    #[test]
+    fn incomplete_initializer_never_installs_a_binding_from_result_demand() {
+        for source in [
+            "let result = unknown_expression;",
+            "runtime let result = unknown_expression;",
+            "compile let result = unknown_expression;",
+            "let result = runtime let unknown_expression;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let namespace = world.package_root_node();
+            let before = format!("{:?}", world.semantic_world);
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let program = lang_syntax::normalize_program(&parsed.program);
+            let error = world
+                .harvest_program(namespace, &program, Path::new("incomplete.lang"))
+                .unwrap_err();
+            assert!(error.diagnostics.iter().any(|diagnostic| diagnostic.code
+                == Some(ResolverCode::UnsupportedInitializerContinuation)));
+            assert!(world
+                .semantic_world
+                .symbol_in_namespace(namespace, "result")
+                .is_none());
+            assert_eq!(before, format!("{:?}", world.semantic_world));
+        }
     }
 }
 

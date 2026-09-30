@@ -2884,7 +2884,7 @@ A borrow view must not bypass policy filtering.
 ```
 
 If the observed object is not visible or not usable under the current
-`PolicyEnv`, taking a `ref` or `share` of it does not make it visible or usable.
+observation horizon, taking a `ref` or `share` of it does not make it visible or usable.
 Re-export or wrapper semantics that intentionally re-expose a target under a
 different policy is a separate, later design and is **not** defined here.
 

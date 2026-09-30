@@ -11,13 +11,15 @@ use crate::{
         StructFieldConstructionMaterial,
     },
     model::{
-        CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, ExecutionEnv,
-        FieldObject, FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv,
-        Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject,
-        SymbolPayload, TypeField,
+        CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, FieldObject,
+        FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
+        SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+        TypeField,
     },
     normalized_call::NormalizedCallSite,
-    policy_pair::{declared_policy_view, NamespaceVisibility, PolicyMode, PolicyStage},
+    policy_pair::{
+        declared_policy_view, NamespaceVisibility, ObservationHorizon, PolicyMode, Stage,
+    },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
         ProductMaterialRole,
@@ -49,8 +51,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
     site: &NormalizedCallSite,
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
-    lookup_env: PolicyEnv,
-    demanded_execution: ExecutionEnv,
+    horizon: ObservationHorizon,
     provenance: Provenance,
 ) -> Result<MetaInvocationInput, BuildError> {
     let primitive_name = match primitive {
@@ -133,16 +134,15 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
         classified_shape,
         parameter_shape,
         CandidatePreparationContext {
-            lookup_env,
-            demanded_execution,
+            horizon,
             provenance: provenance.clone(),
         },
     ) {
         CandidatePrepResult::Applicable(candidate) => *candidate,
         CandidatePrepResult::Deferred { reason, .. } => {
             let message = match reason {
-                CandidatePrepDeferredReason::BodyEntryPolicyMismatch => {
-                    "candidate preparation deferred because body-entry policy is not meta-executable"
+                CandidatePrepDeferredReason::BodyEntryObservationHidden => {
+                    "body-entry observation is not visible at the demanded horizon"
                 }
                 CandidatePrepDeferredReason::ParameterShapeCompatibilityDeferred => {
                     "candidate preparation deferred because parameter shape compatibility is incomplete"
@@ -313,10 +313,7 @@ fn insert_projection_namespace(
         Some(parent),
         provenance,
     );
-    namespace_symbol.policy_view = Some(declared_policy_view(
-        &[PolicyStage::Meta, PolicyStage::Runtime],
-        PolicyMode::Plain,
-    ));
+    namespace_symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
     delta.insert_symbol(parent, namespace_symbol);
     insert_field_projection_layer(
         delta,
@@ -349,10 +346,7 @@ fn insert_field_projection_layer(
             Some(parent),
             provenance.clone(),
         );
-        symbol.policy_view = Some(declared_policy_view(
-            &[PolicyStage::Meta, PolicyStage::Runtime],
-            PolicyMode::Plain,
-        ));
+        symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
         symbol.visibility_metadata.namespace_visibility = Some(match field.visibility {
             StructuralMemberVisibility::Default | StructuralMemberVisibility::Public => {
                 NamespaceVisibility::Public
@@ -372,11 +366,8 @@ fn insert_field_projection_layer(
             field_type_symbol_id: field.type_carrier_symbol,
             projection,
             callable_policy: CallablePolicyViews {
-                body_entry_policy: declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain),
-                return_object_policy: declared_policy_view(
-                    &[PolicyStage::Runtime],
-                    PolicyMode::Plain,
-                ),
+                body_entry_policy: declared_policy_view(Stage::Runtime, PolicyMode::Plain),
+                return_object_policy: declared_policy_view(Stage::Runtime, PolicyMode::Plain),
             },
             provenance,
         });
@@ -438,10 +429,7 @@ pub(crate) fn expand_struct_construction_material(
         Some(parent_namespace),
         provenance.clone(),
     );
-    type_projection.policy_view = Some(declared_policy_view(
-        &[PolicyStage::Meta, PolicyStage::Runtime],
-        PolicyMode::Plain,
-    ));
+    type_projection.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
     type_projection.node_kind = Some(NamespaceNodeKind::Virtual);
     type_projection.generation_origin = Some("core::struct construction".to_string());
     type_projection.cache_key_fragment = None;

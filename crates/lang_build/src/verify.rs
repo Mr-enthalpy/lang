@@ -8,7 +8,7 @@ use crate::{
     semantic_name_index::{BuildError, ResolverContext},
     semantic_owner::SemanticSymbolIdentity,
     semantic_world::SemanticWorld,
-    PolicyStage,
+    Stage,
 };
 
 const VERIFY_ERROR_PREFIX: &str = "source verification error:";
@@ -16,7 +16,7 @@ const VERIFY_ERROR_PREFIX: &str = "source verification error:";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PolicyVerificationQuery {
     ExportRoot,
-    Stage(PolicyStage),
+    Stage(Stage),
 }
 
 pub fn evaluate_source_verifications(
@@ -967,22 +967,20 @@ fn semantic_symbol_is_open_static(world: &SemanticWorld, identity: SemanticSymbo
     };
     if !symbol.member_views.is_empty() {
         return symbol.member_views.iter().any(|view| {
-            let stages = if view.value.is_some() {
-                &view.view.pair.value.stages
+            let stage = if view.value.is_some() {
+                view.view.pair.value.stage()
             } else {
-                &view.view.pair.pattern.stages
+                Some(view.view.pair.pattern.stage)
             };
-            stages
-                .iter()
-                .any(|stage| matches!(stage, PolicyStage::Meta | PolicyStage::Compile))
+            stage.is_some_and(|s| s.visible_at(crate::ObservationHorizon::OpenStatic))
         });
     }
     world
         .projected_symbol_object(identity)
         .is_some_and(|symbol| {
             symbol.policy_view.as_ref().is_some_and(|view| {
-                view.pair.value.stages.contains(PolicyStage::Meta)
-                    || view.pair.value.stages.contains(PolicyStage::Compile)
+                view.pair.value.stage() == Some(Stage::Meta)
+                    || view.pair.value.stage() == Some(Stage::Compile)
             })
         })
 }
@@ -1009,7 +1007,7 @@ fn semantic_symbol_contains_policy(
         PolicyVerificationQuery::ExportRoot => unreachable!("handled above"),
     };
     Some(symbol.member_views.iter().any(|view| {
-        view.view.pair.value.stages.contains(stage) || view.view.pair.pattern.stages.contains(stage)
+        view.view.pair.value.stage() == Some(stage) || view.view.pair.pattern.stage == stage
     }))
 }
 
@@ -1054,10 +1052,10 @@ fn namespace_kind_label(kind: NamespaceNodeKind) -> &'static str {
 fn parse_policy_query(name: &str) -> Option<PolicyVerificationQuery> {
     match name {
         "export" => Some(PolicyVerificationQuery::ExportRoot),
-        "meta" => Some(PolicyVerificationQuery::Stage(PolicyStage::Meta)),
-        "compile" => Some(PolicyVerificationQuery::Stage(PolicyStage::Compile)),
-        "seal" => Some(PolicyVerificationQuery::Stage(PolicyStage::Seal)),
-        "runtime" => Some(PolicyVerificationQuery::Stage(PolicyStage::Runtime)),
+        "meta" => Some(PolicyVerificationQuery::Stage(Stage::Meta)),
+        "compile" => Some(PolicyVerificationQuery::Stage(Stage::Compile)),
+        "seal" => Some(PolicyVerificationQuery::Stage(Stage::Seal)),
+        "runtime" => Some(PolicyVerificationQuery::Stage(Stage::Runtime)),
         _ => None,
     }
 }
@@ -1065,15 +1063,15 @@ fn parse_policy_query(name: &str) -> Option<PolicyVerificationQuery> {
 fn policy_query_label(query: PolicyVerificationQuery) -> &'static str {
     match query {
         PolicyVerificationQuery::ExportRoot => "export",
-        PolicyVerificationQuery::Stage(PolicyStage::Meta) => "meta",
-        PolicyVerificationQuery::Stage(PolicyStage::Compile) => "compile",
-        PolicyVerificationQuery::Stage(PolicyStage::Seal) => "seal",
-        PolicyVerificationQuery::Stage(PolicyStage::Runtime) => "runtime",
+        PolicyVerificationQuery::Stage(Stage::Meta) => "meta",
+        PolicyVerificationQuery::Stage(Stage::Compile) => "compile",
+        PolicyVerificationQuery::Stage(Stage::Seal) => "seal",
+        PolicyVerificationQuery::Stage(Stage::Runtime) => "runtime",
     }
 }
 
-fn policy_view_has_stage(view: &crate::PolicyView, stage: PolicyStage) -> bool {
-    view.pair.value.stages.contains(stage) || view.pair.pattern.stages.contains(stage)
+fn policy_view_has_stage(view: &crate::PolicyView, stage: Stage) -> bool {
+    view.pair.value.stage() == Some(stage) || view.pair.pattern.stage == stage
 }
 
 fn policy_view_contains_query(view: &crate::PolicyView, query: PolicyVerificationQuery) -> bool {
@@ -1134,10 +1132,7 @@ mod tests {
             Some(root),
             Provenance::new("test verify namespace"),
         );
-        verify.policy_view = Some(declared_policy_view(
-            &[PolicyStage::Meta],
-            PolicyMode::Plain,
-        ));
+        verify.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
         verify.payload = SymbolPayload::VerificationNamespace { node: verify_node };
         delta.insert_symbol(root, verify);
 
@@ -1150,7 +1145,7 @@ mod tests {
             Some(verify_node),
             Provenance::new("runtime-only verify operation"),
         );
-        let runtime_view = declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain);
+        let runtime_view = declared_policy_view(Stage::Runtime, PolicyMode::Plain);
         operation.policy_view = Some(runtime_view.clone());
         operation.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
             function_symbol_id: operation_id,

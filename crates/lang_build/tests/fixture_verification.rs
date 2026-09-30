@@ -142,7 +142,11 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     ("diagnostic_conflict", "app", "conflict"),
     ("diagnostic_descendant", "app", "parent-to-descendant"),
     ("duplicate_declaration", "app", "conflict"),
-    ("non_meta_target", "app", "UnsupportedDeferredTypeAssertion"),
+    (
+        "non_meta_target",
+        "app",
+        "ordinary invocation found no fully admissible candidate",
+    ),
     (
         "ambient_struct_collision",
         "app",

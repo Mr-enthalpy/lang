@@ -1119,7 +1119,7 @@ than merely selecting a presence tag:
 
 ```text
 Pv = absent
-  => value stages = ∅
+  => no value-stage coordinate in this observation
 ```
 
 The review matrix is therefore complete rather than shape-dependent:
@@ -1509,10 +1509,10 @@ P1.stage; output mode refinement creates no independent output stage vector.
 P1 and P2 never infer one another generally. Public/private, export, presence
 and mode do not propagate through stage completion.
 
-## 6. Three execution phases
+## 6. Observation horizons
 
 ```text
-Phase = OpenStatic | SealStatic | Runtime
+ObservationHorizon = OpenStatic | SealStatic | Runtime
 ```
 
 Stage visibility is defined by domains:
@@ -1532,23 +1532,25 @@ Vis(runtime) = { Runtime }
 | `runtime` value | no | no | yes |
 
 `compile` being visible during SealStatic does not make `compile` equal to
-`seal`. Exposure checks ask whether the current phase is in `Vis(stage)`; they
+`seal`. Exposure checks ask whether the current horizon is in `Vis(stage)`; they
 do not intersect atom spellings.
 
 ## 7. Resolution, exposure, and facet reads
 
-Every phase distinguishes:
+Every horizon distinguishes:
 
 ```text
-Resolve(path)
-ExposePolicySlice(binding, phase)
+Resolve(path, context, expectation)
+ExposePolicySlice(binding, horizon)
 ReadValue(slice)
 ReadPattern(slice)
 EnumerateValueFacet(slice)
 EnterCallableBody(candidate)
 ```
 
-Failure to expose a value slice is not an unresolved binding. In particular:
+Resolution consumes no horizon. Exposure observes the already-fixed binding;
+hidden resident facets cannot suppress a binding, restart search, or remove a
+name conflict. Failure to expose a value slice is not an unresolved binding. In particular:
 
 ```text
 Pv = runtime
@@ -1562,7 +1564,7 @@ binding/path resolves
 runtime value is unreadable
 compile Pattern/type is readable
 the admissible compile-realization family C_sigma(F) may enter round two
-original runtime computation remains in RuntimeResidualFlow
+original runtime computation remains in the common residual continuation
 ```
 
 Conversely, exposing or selecting an existing runtime Policy slice in a static
@@ -1572,7 +1574,7 @@ phase is not permission to read its value:
 Stage(Pv) = runtime
   => the declared runtime view exists
 
-current Phase is OpenStatic or SealStatic
+current observation horizon is OpenStatic or SealStatic
   => ReadValue(runtime slice) is unavailable
   => preserve already-resolved runtime computation/residual
 ```
@@ -1586,8 +1588,8 @@ resolved independently of whether a facet is exposed in the current phase.
 
 ## 8. Mechanical compile-flow projection
 
-StaticFlow and RuntimeResidualFlow are observations of one semantic
-continuation, not independent semantic passes or separate IR worlds.
+Static visibility and runtime residual observations belong to one semantic
+continuation. They do not partition node kinds into separate execution flows.
 
     complete continuation -> static observation
                           -> runtime residual observation
@@ -1857,7 +1859,7 @@ authority, and policy rules. Internal authority may resolve it through
 Its absence from the current Wpre scan does not make it unaddressable, and its
 presence in Wseal does not make it exported.
 
-## 11. Phase execution and active dominance
+## 11. Evaluation frontier and active dominance
 
 OpenStatic and SealStatic use the same E and ordinary object machinery.
 Their readiness frontiers do not order the static Stage atoms. Active stack

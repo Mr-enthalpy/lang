@@ -70,6 +70,26 @@ InvocationResult remains the single result envelope. A residual carrier is a
 representation of the remaining common continuation, not a separate result
 ontology or an evaluator with private interpretation rules.
 
+    ResidualAt(H) does_not_imply Stage = runtime
+    PendingSeal does_not_imply RuntimeResidual
+    NoTargetValues does_not_imply ResidualAt(H)
+    NoFullyAdmissibleCandidate does_not_imply ResidualAt(H)
+
+Residual provenance requires an established remaining-continuation fact. An
+exact immutable empty V_tau is a completed no-candidate failure; fully observed
+non-callability or applicability/Policy mismatch is ordinary failure as well.
+A consumer cannot infer hidden work from the shape of either failure. Only the
+consumer that observes an actual horizon obstruction can report that frontier;
+an outer initializer transports it without guessing its cause or producer stage.
+
+Failure to complete at an observation horizon establishes no producer stage.
+Pending seal work remains in the common continuation with its existing stage,
+identity, inputs, effects and dependencies. A written runtime result demand
+does not itself supply a producer or a continuation. If their preservation
+consumer is unavailable, a binding consumer reports that frontier before
+installing a resident or result Policy; it cannot fabricate a runtime result
+observation as a substitute.
+
 ## 4. Two optimization objectives
 
 O1 transforms an equivalent continuation to expose a new legal E frontier:

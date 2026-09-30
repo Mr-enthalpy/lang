@@ -14,10 +14,7 @@ use lang_syntax::{NormExpr, NormLiteralKind};
 use crate::{
     canonical_value::canonical_literal_content,
     identity::{SemanticValueId, TypeValueId},
-    policy_pair::{
-        PatternComponentPolicy, PolicyPair, PolicyStage, StageSet, ValueComponentPolicy,
-        ValuePresence,
-    },
+    policy_pair::{PatternComponentPolicy, PolicyPair, Stage, ValueComponentPolicy},
     CompilationWorld, Diagnostic, Provenance,
 };
 
@@ -236,12 +233,9 @@ impl NumericTypeRegistry {
 
 pub fn compile_literal_policy() -> PolicyPair {
     PolicyPair {
-        value: ValueComponentPolicy {
-            stages: StageSet::from([PolicyStage::Compile]),
-            presence: ValuePresence::Present,
-        },
+        value: ValueComponentPolicy::Present(Stage::Compile),
         pattern: PatternComponentPolicy {
-            stages: StageSet::from([PolicyStage::Compile]),
+            stage: Stage::Compile,
         },
     }
 }

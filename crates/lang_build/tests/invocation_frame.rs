@@ -1,9 +1,8 @@
 use lang_build::SemanticValueId;
 use lang_build::{
-    ArgProductShape, CallableFrameShape, ExecutionEnv, FlattenedProductInvariant,
-    FlattenedProductObject, InvocationCallableRef, InvocationExecutionEnv, InvocationFrame,
-    InvocationLookupEnv, PolicyEnv, ProductAtom, Provenance, ReceiverTypeRef, ReturnTargetShape,
-    SelfPosition, SelfPositionSource, SelfSlotKind,
+    ArgProductShape, CallableFrameShape, FlattenedProductInvariant, FlattenedProductObject,
+    InvocationCallableRef, InvocationFrame, ObservationHorizon, ProductAtom, Provenance,
+    ReceiverTypeRef, ReturnTargetShape, SelfPosition, SelfPositionSource, SelfSlotKind,
 };
 
 fn empty_arg_product_shape() -> ArgProductShape {
@@ -76,8 +75,7 @@ fn self_is_not_counted_in_explicit_argument_product() {
             Provenance::new("resolved callable self"),
         ),
         explicit_user_product,
-        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
-        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
+        ObservationHorizon::OpenStatic,
         Provenance::new("invocation frame"),
     )
     .expect("valid invocation frame");
@@ -100,8 +98,7 @@ fn invocation_frame_rejects_nonzero_self_position() {
             provenance: Provenance::new("invalid self position"),
         },
         empty_arg_product_shape(),
-        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
-        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
+        ObservationHorizon::OpenStatic,
         Provenance::new("invalid invocation frame"),
     );
 
@@ -122,8 +119,7 @@ fn invocation_frame_rejects_arg_shape_arity_atom_mismatch() {
             Provenance::new("resolved callable self"),
         ),
         mismatched_product,
-        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
-        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
+        ObservationHorizon::OpenStatic,
         Provenance::new("mismatched invocation frame"),
     );
 

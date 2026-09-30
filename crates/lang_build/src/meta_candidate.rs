@@ -2,7 +2,7 @@
 //!
 //! This module holds the candidate-preparation pipeline that sits between
 //! product/argument shaping and formal meta invocation. It checks arity and
-//! body-entry policy compatibility but does **not** execute meta functions,
+//! body-entry observation visibility but does **not** execute meta functions,
 //! resolve overloads, or perform type inference.
 //!
 //! Three-segment separation:
@@ -14,13 +14,11 @@
 //! derived from the argument product shape.
 
 use crate::{
+    body_entry_visible_at,
     identity::TypeValueId,
-    model::policy_view_allows_execution,
-    model::{
-        CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SymbolId, SymbolObject,
-    },
+    model::{CoreMetaFunction, Diagnostic, Provenance, SymbolId, SymbolObject},
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
-    PolicyView,
+    ObservationHorizon, PolicyView,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,23 +72,21 @@ pub enum ParameterArgRequirement {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePreparationContext {
-    pub lookup_env: PolicyEnv,
-    pub demanded_execution: ExecutionEnv,
+    pub horizon: ObservationHorizon,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePolicyPlanes {
-    pub lookup_env: PolicyEnv,
+    pub horizon: ObservationHorizon,
     pub symbol_policy_view: Option<PolicyView>,
-    pub demanded_execution: ExecutionEnv,
     pub body_entry_policy: PolicyView,
     pub return_object_policy: PolicyView,
 }
 
 impl CandidatePolicyPlanes {
-    pub fn body_entry_allows_demanded_execution(&self) -> bool {
-        policy_view_allows_execution(&self.body_entry_policy, self.demanded_execution)
+    pub fn body_entry_visible_at_demanded_horizon(&self) -> bool {
+        body_entry_visible_at(&self.body_entry_policy.pair, self.horizon)
     }
 }
 
@@ -203,14 +199,15 @@ pub enum CanonicalArgAtomKind {
 
 /// Candidate preparation result before formal meta invocation.
 ///
-/// `Applicable` means the candidate passed arity and body-entry checks. It is
+/// `Applicable` means the candidate passed arity and body-entry visibility checks.
+/// Visibility supplies neither execution legality nor readiness evidence. It is
 /// not a completed invocation result and it
 /// does not produce an `InvocationResult` or namespace installation material,
 /// `NamespaceDelta`.
 ///
 /// `Deferred` means later pattern/type/policy/meta-invocation machinery must
-/// decide. It is not silent success and it does not residualize runtime
-/// expressions.
+/// decide. It is not silent success, a scheduling queue, or runtime
+/// residualization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CandidatePrepResult {
     Deferred {
@@ -224,7 +221,9 @@ pub enum CandidatePrepResult {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CandidatePrepDeferredReason {
     ParameterShapeCompatibilityDeferred,
-    BodyEntryPolicyMismatch,
+    /// The declared body-entry observation is hidden at the requested horizon.
+    /// This supplies neither body execution legality nor readiness evidence.
+    BodyEntryObservationHidden,
 }
 
 /// Candidate preparation with declared policy planes.
@@ -246,9 +245,8 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     context: CandidatePreparationContext,
 ) -> CandidatePrepResult {
     let policy_planes = CandidatePolicyPlanes {
-        lookup_env: context.lookup_env,
+        horizon: context.horizon,
         symbol_policy_view: callee.policy_view.clone(),
-        demanded_execution: context.demanded_execution,
         body_entry_policy,
         return_object_policy,
     };
@@ -314,11 +312,11 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     }
     if !candidate
         .policy_planes
-        .body_entry_allows_demanded_execution()
+        .body_entry_visible_at_demanded_horizon()
     {
         return CandidatePrepResult::Deferred {
             candidate: Box::new(candidate),
-            reason: CandidatePrepDeferredReason::BodyEntryPolicyMismatch,
+            reason: CandidatePrepDeferredReason::BodyEntryObservationHidden,
         };
     }
 

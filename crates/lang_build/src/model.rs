@@ -121,49 +121,6 @@ impl ChildBucket {
     }
 }
 
-/// Resolver lookup visibility environment.
-///
-/// This controls whether a symbol is visible to a resolver query. It does not
-/// grant permission to enter or evaluate a callable body.
-///
-/// It does not grant body execution or privileged pre-seal scanning; concrete
-/// exposure is read from a declaration's `PolicyView`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PolicyEnv {
-    OpenStatic,
-    SealStatic,
-    Runtime,
-}
-
-/// Callable body execution environment.
-///
-/// This is distinct from [`PolicyEnv`]: a resolver may see a callable symbol
-/// whose body cannot be entered in the current execution environment.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExecutionEnv {
-    OpenStatic,
-    SealStatic,
-    Runtime,
-}
-
-pub fn policy_view_allows_execution(
-    policy_view: &crate::policy_pair::PolicyView,
-    env: ExecutionEnv,
-) -> bool {
-    let stages = &policy_view.pair.value.stages;
-    match env {
-        ExecutionEnv::OpenStatic => {
-            stages.contains(crate::PolicyStage::Meta)
-                || stages.contains(crate::PolicyStage::Compile)
-        }
-        ExecutionEnv::SealStatic => {
-            stages.contains(crate::PolicyStage::Seal)
-                || stages.contains(crate::PolicyStage::Compile)
-        }
-        ExecutionEnv::Runtime => stages.contains(crate::PolicyStage::Runtime),
-    }
-}
-
 /// Namespace visibility metadata. `namespace_visibility` and `export_root` are
 /// independent from Policy stage and whole-slot mode.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -213,7 +170,7 @@ impl Provenance {
     }
 }
 
-/// Diagnostic severity used by build/graph/meta phases.
+/// Diagnostic severity used by build/graph/meta diagnostics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
     Info,
@@ -226,19 +183,21 @@ pub enum DiagnosticSeverity {
 /// genuine miss from ambiguity/conflict.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResolverCode {
-    /// Symbol genuinely not found, or filtered out by policy.
+    /// Symbol genuinely not found by identity/path resolution.
     Unresolved,
     /// Role ambiguity within a single namespace node.
     Ambiguous,
     /// Cross-root conflict — same symbol found in multiple search roots.
     Conflict,
     AmbiguousMetaCandidate,
-    NoMetaVisibleCandidate,
-    BodyEntryPolicyMismatch,
-    UnsupportedDeferredTypeAssertion,
+    NoCallCandidate,
+    UnsupportedInitializerContinuation,
+    /// Explicit Pin stage constraints are canonical, but their per-position
+    /// InputAdmissible consumer is not connected.
+    UnsupportedInputAdmissibleStage,
     AnnotationAssertionFailed,
     ExplicitPolicyVerificationFailed,
-    ResidualNotAllowedInMetaStrict,
+    ResidualNotAllowedAtBoundary,
     UnsupportedSelectedSourceBody,
     UnsupportedSelectedSourceBodyLocalBinding,
     /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)
@@ -511,10 +470,11 @@ pub struct TypeField {
 
 /// Concrete Policy views carried by callable payloads.
 ///
-/// `body_entry_policy` controls whether a callable body may be entered in an
-/// execution environment. `return_object_policy` records the policy of the
-/// object produced by the callable. Neither field controls resolver visibility;
-/// that remains the Symbol's own `policy_view`.
+/// `body_entry_policy` records the body-entry observation plane; horizon
+/// visibility alone proves neither readiness nor execution legality.
+/// `return_object_policy` records the policy of the object produced by the
+/// callable. Neither field controls name resolution, which fixes binding
+/// identity before any resident facet observation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CallablePolicyViews {
     pub body_entry_policy: crate::policy_pair::PolicyView,

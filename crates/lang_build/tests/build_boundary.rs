@@ -36,8 +36,8 @@ fn duplicate_dependency_mount_root_is_hard_error() {
 #[test]
 fn declared_policy_view_is_preserved_by_namespace_installation() {
     use lang_build::{
-        declared_policy_view, PolicyMode, PolicyStage, Provenance, ResolverContext,
-        SemanticNameIndex, SourceCategory, SymbolKind,
+        declared_policy_view, PolicyMode, Provenance, ResolverContext, SemanticNameIndex,
+        SourceCategory, Stage, SymbolKind,
     };
 
     let snapshot = SemanticNameIndex::new();
@@ -54,10 +54,7 @@ fn declared_policy_view_is_preserved_by_namespace_installation() {
         .values_mut()
         .next()
         .expect("declared symbol in delta");
-    symbol.policy_view = Some(declared_policy_view(
-        &[PolicyStage::Compile],
-        PolicyMode::Plain,
-    ));
+    symbol.policy_view = Some(declared_policy_view(Stage::Compile, PolicyMode::Plain));
 
     let snapshot = snapshot
         .install_delta(delta)
@@ -67,7 +64,7 @@ fn declared_policy_view_is_preserved_by_namespace_installation() {
         .resolve_str("policy_symbol", &ResolverContext::new(root))
         .expect("resolve policy symbol");
     let view = symbol.policy_view.as_ref().expect("policy view");
-    assert!(view.pair.value.stages.contains(PolicyStage::Compile));
+    assert!(view.pair.value.stage() == Some(Stage::Compile));
     assert_eq!(view.mode, PolicyMode::Plain);
     assert!(symbol.visibility_metadata.slots.is_empty());
 }

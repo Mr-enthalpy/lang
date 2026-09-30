@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
     ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceNode,
-    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance, ResolverCode, SemanticNameDelta,
+    NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
     SourceCategory, SymbolId, SymbolKind, SymbolObject,
 };
 
@@ -502,37 +502,16 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
     ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_search_roots(source_order_path, context, terminal_expectation, None)
+        self.resolve_search_roots(source_order_path, context, terminal_expectation)
     }
 
-    /// Resolve a namespace path with an explicit terminal role expectation and
-    /// policy environment filter.
-    ///
-    /// Symbols that do not satisfy `policy_env` are treated as if they do not
-    /// exist in the search root. Policy filtering happens before cross-root
-    /// conflict reporting.
-    pub fn resolve_with_policy(
-        &self,
-        source_order_path: &[String],
-        context: &ResolverContext,
-        terminal_expectation: ResolveExpectation,
-        policy_env: PolicyEnv,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_search_roots(
-            source_order_path,
-            context,
-            terminal_expectation,
-            Some(policy_env),
-        )
-    }
-
-    /// Shared internal search-root loop with optional policy filtering.
+    /// Search by path and role only. Resident exposure is a later observation
+    /// of the fixed binding; it cannot suppress a hit or a search-root conflict.
     fn resolve_search_roots(
         &self,
         source_order_path: &[String],
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-        policy_env: Option<PolicyEnv>,
     ) -> Result<SymbolObject, Diagnostic> {
         if source_order_path.is_empty() {
             return Err(self
@@ -542,23 +521,17 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
 
         let mut hits = Vec::new();
         let mut errors = Vec::new();
-        match self.resolve_from_internal(
+        match self.resolve_from(
             source_order_path,
             context.current_namespace,
             terminal_expectation,
-            policy_env,
         ) {
             Ok(symbol) => hits.push(symbol),
             Err(diagnostic) => errors.push(diagnostic),
         }
 
         for mount_root in &context.explicit_mount_roots {
-            match self.resolve_from_internal(
-                source_order_path,
-                *mount_root,
-                terminal_expectation,
-                policy_env,
-            ) {
+            match self.resolve_from(source_order_path, *mount_root, terminal_expectation) {
                 Ok(symbol) => hits.push(symbol),
                 Err(diagnostic) => errors.push(diagnostic),
             }
@@ -566,12 +539,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
 
         if source_order_path.len() == 1 {
             for mount in &context.default_mounts {
-                match self.resolve_from_internal(
-                    source_order_path,
-                    *mount,
-                    terminal_expectation,
-                    policy_env,
-                ) {
+                match self.resolve_from(source_order_path, *mount, terminal_expectation) {
                     Ok(symbol) => hits.push(symbol),
                     Err(diagnostic) => errors.push(diagnostic),
                 }
@@ -641,24 +609,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         self.resolve_with_expectation(&components, context, terminal_expectation)
     }
 
-    /// String convenience wrapper around
-    /// [`resolve_with_policy`](Self::resolve_with_policy).
-    pub fn resolve_str_with_policy(
-        &self,
-        source_order_path: &str,
-        context: &ResolverContext,
-        terminal_expectation: ResolveExpectation,
-        policy_env: PolicyEnv,
-    ) -> Result<SymbolObject, Diagnostic> {
-        let components = source_order_path
-            .split("::")
-            .filter(|component| !component.is_empty())
-            .map(str::trim)
-            .map(ToOwned::to_owned)
-            .collect::<Vec<_>>();
-        self.resolve_with_policy(&components, context, terminal_expectation, policy_env)
-    }
-
     /// Resolve a terminal symbol whose kind is `Type`.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::CoreTypeProjection)`.
@@ -674,21 +624,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         )
     }
 
-    /// Policy-aware variant of [`resolve_complete_type_projection`](Self::resolve_complete_type_projection).
-    pub fn resolve_complete_type_projection_with_policy(
-        &self,
-        source_order_path: &str,
-        context: &ResolverContext,
-        policy_env: PolicyEnv,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_str_with_policy(
-            source_order_path,
-            context,
-            ResolveExpectation::CoreTypeProjection,
-            policy_env,
-        )
-    }
-
     /// Resolve a terminal symbol whose kind is `MetaFunction`.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::MetaFunction)`.
@@ -701,21 +636,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             source_order_path,
             context,
             ResolveExpectation::MetaFunction,
-        )
-    }
-
-    /// Policy-aware variant of [`resolve_meta_function`](Self::resolve_meta_function).
-    pub fn resolve_meta_function_with_policy(
-        &self,
-        source_order_path: &str,
-        context: &ResolverContext,
-        policy_env: PolicyEnv,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_str_with_policy(
-            source_order_path,
-            context,
-            ResolveExpectation::MetaFunction,
-            policy_env,
         )
     }
 
@@ -749,23 +669,12 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         )
     }
 
-    #[allow(dead_code)]
+    /// Traverse established path bindings without inspecting resident Policy.
     fn resolve_from(
         &self,
         source_order_path: &[String],
         start: NamespaceNodeId,
         terminal_expectation: ResolveExpectation,
-    ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_from_internal(source_order_path, start, terminal_expectation, None)
-    }
-
-    /// Internal path-resolution with optional policy filtering at each step.
-    fn resolve_from_internal(
-        &self,
-        source_order_path: &[String],
-        start: NamespaceNodeId,
-        terminal_expectation: ResolveExpectation,
-        policy_env: Option<PolicyEnv>,
     ) -> Result<SymbolObject, Diagnostic> {
         let mut current_node = start;
         let mut current_symbol = None;
@@ -783,15 +692,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
                 expectation,
             )?;
 
-            if !self.symbol_satisfies_policy(&symbol, policy_env) {
-                return Err(self
-                    .hard_error(
-                        None,
-                        format!("resolver error: unresolved symbol `{component}`"),
-                    )
-                    .with_code(ResolverCode::Unresolved));
-            }
-
             current_symbol = Some(symbol.clone());
 
             if resolved_count + 1 != component_count {
@@ -808,32 +708,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             self.hard_error(None, "unresolved empty namespace path")
                 .with_code(ResolverCode::Unresolved)
         })
-    }
-
-    /// Resolve-time exposure reads the same concrete declaration view stored
-    /// on the Symbol. It never constructs another Policy representation and
-    /// never participates in overload preference or execution legality.
-    fn symbol_satisfies_policy(
-        &self,
-        symbol: &SymbolObject,
-        policy_env: Option<PolicyEnv>,
-    ) -> bool {
-        let Some(env) = policy_env else { return true };
-        let Some(view) = &symbol.policy_view else {
-            return false;
-        };
-        let stages = &view.pair.value.stages;
-        match env {
-            PolicyEnv::OpenStatic => {
-                stages.contains(crate::PolicyStage::Meta)
-                    || stages.contains(crate::PolicyStage::Compile)
-            }
-            PolicyEnv::SealStatic => {
-                stages.contains(crate::PolicyStage::Compile)
-                    || stages.contains(crate::PolicyStage::Seal)
-            }
-            PolicyEnv::Runtime => stages.contains(crate::PolicyStage::Runtime),
-        }
     }
 
     pub fn declare(
@@ -891,7 +765,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             provenance,
         );
         symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-            &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+            crate::Stage::Meta,
             crate::PolicyMode::Plain,
         ));
         delta.insert_node(node);
@@ -994,7 +868,7 @@ pub(crate) fn namespace_symbol(
         provenance,
     );
     symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-        &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+        crate::Stage::Meta,
         crate::PolicyMode::Plain,
     ));
     delta.insert_node(node);

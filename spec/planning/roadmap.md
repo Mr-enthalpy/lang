@@ -79,7 +79,7 @@ semantic relations above.
 | Place / resident generation | Place and ProjectionSlot | binding, Writable and borrow substrate | Implemented; source operation coverage pending |
 | DynamicLegality | sealed post-selection validator | supplied capability/place/lifecycle premises | Implemented; automatic premise formation pending |
 | InvocationResult | declared result class + semantic payload/residual/diagnostic | connected ordinary and core/meta invocation | Implemented; residual transport remains Open |
-| OpenHere / construction | authority, window, Writable and write algebra | meta construction and inject | Base checks implemented; invocation dependency propagation pending |
+| OpenHere / construction | explicit window facts, authority, Writable and write algebra | authority/window revalidation and inject substrate | Checks implemented; source WindowLive establishment, generation-coordinate control dispositions and invocation dependency propagation pending |
 | Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
 | SemanticContinuation | lifecycle machine and event ledger | world-owned registration | source action/cleanup wiring pending |
@@ -264,7 +264,11 @@ engineering facilities after their inputs and effects obey the source model.
   Cover direct-meta type/root rejection, independent Val2/V_tau/Pattern roles,
   meta retention, plain closure, mut-after-OpenHere, and no-reopen on cache reuse.
 - Connect Pin=ElabIn(P2,Delta_in) and Pout=ElabOut(P1,Delta_out), with independent
-  P1/P2, explicit Pin stage atoms/holes, and Pout.stage=P1.stage. Existing formal mode inheritance is compatible with bare omission; do
+  P1/P2, explicit Pin stage atoms/holes, and Pout.stage=P1.stage. Explicit Pin
+  stage atoms currently report UnsupportedInputAdmissibleStage before selection;
+  this is an unconnected consumer, not an illegal stage override. Migration
+  endpoint elaboration transports the diagnostic instead of falling back to P2.
+  Existing formal mode inheritance is compatible with bare omission; do
   not replace it with unconditional Plain. Audit binding_result_policy_demand,
   policy_let_target_demand and ordinary-invocation defaults for the distinction
   between omitted constraint, explicit concrete atom and explicit HoleRef.
@@ -324,11 +328,11 @@ they cannot authorize an alternate implementation of these rules.
 
 | Gate | Existing evidence | Required consumer and acceptance coverage |
 |---|---|---|
-| Single-stage positions | lang_build/src/policy_pair.rs has PolicyStage but also StageSet; policy_pair_semantics tests admit unions | Replace resolved set semantics; preserve unresolved solver alternatives, position omission/atom/hole, heterogeneous Pin and Pout authority. S01–S08, S12 |
-| Two rounds and origin | ordinary_invocation.rs routes the ordinary trunk; phase_flow.rs has a single derived_compile_companion helper | Connect R_vis evidence, lazy C_sigma family, ordinary A/D/Policy/Pattern selection and shared selected origin. S09–S11 |
-| Runtime entry and Seal | phase_flow.rs has DeferredToSealStatic; CLI currently exposes frontend commands | Connect EntryContinuation, runtime main, active dominance, real readiness dependencies, pending seal formation and scheduler invariance. E01–E09 |
+| Single-stage positions | lang_build/src/policy_pair.rs has single Stage atoms and separate omitted query coordinates | Connect ordinary deduction with unresolved valuations; preserve position omission/atom/hole, heterogeneous Pin and Pout authority. S01–S08, S12 |
+| Two rounds and origin | ordinary_invocation.rs routes the ordinary trunk; resolved horizon-hidden argument Val1 stops before A/maxima, without unknown/Plain fallback. policy_observation.rs only exposes existing facets and performs no name lookup | Connect R_vis evidence, lazy C_sigma family, ordinary A/D/Policy/Pattern selection and shared selected origin. S09–S11 |
+| Runtime entry and Seal | CLI exposes frontend commands; horizon visibility supplies no readiness or scheduling consumer | Connect EntryContinuation, runtime main, active dominance, real readiness dependencies, pending seal formation and scheduler invariance. E01–E09 |
 | Instance lifecycle and cleanup | lifetime substrate records events; Raw WithClauseAst and NormWithClause preserve shape | Connect Killable/MoveEffect/Movable, uniform type/meta instances, directed Touch closure, default NLL, lexical empty-with and no duplicate drop. L01–L08, W01–W08 |
-| Chain and residual boundary | phase_flow.rs carries Done/ControlFlow; InvocationResult residual is an opaque class/provenance carrier | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
+| Chain and residual boundary | InvocationResult residual is an opaque class/provenance carrier; no separate static/runtime flow carries completion | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
 | Ordinary meta query state | current meta root cache lacks the full retained instance/member state protocol | Connect default formation, actual member mutation, current committed reads, snapshot/Close and SealDom checks. P09–P12, E06 |
 | Operator dispatch | Norm OperatorTarget retains spelling/fixity/arity; world.rs directly resolves operator spelling | Connect OperatorUse/OperatorNameValue, operator[op]/op::adl, OG_s extraction, explicit Forget_s and current slot. Add source goldens for supported operator-name forms. O01–O07 |
 | Expression formation and contribution | source declaration carriers and sorted discovery do not supply positional expression evaluation/common-snapshot join | Connect every legal completed ClosureExpr -> tau_C through struct, file structural installation, true lexical binding, explicit contribution roles and anchored formation. N01–N08 |
@@ -460,8 +464,53 @@ substrate builder is not reachable from that declaration path. Target-anchored
 common-snapshot contribution and general source completion also remain gates. The
 selection tests exercise the connected substrate and do not prove those gates.
 
-The next independent cleanup cuts replace resolved stage unions and phase
-execution partitions; expose lifecycle Pre/common commit/Post with fixed
+Stage cleanup removes resolved union state, static-atom preference and
+node-kind execution partitions. Construction windows have no separate runtime
+epoch or compile-branch event API. WindowLive establishment and control-event
+updates require the common continuation's generation/evaluation coordinates;
+that consumer remains unconnected. Pattern allocation supplies no live-window
+fact, and a use-observation record alone supplies no terminating disposition.
+The substrate only checks explicitly established window facts and authority.
+Bootstrap roots and struct producers have
+explicit meta observations; runtime use requires ordinary migration rather
+than a synthesized union. Omitted queries remain distinct from completed facts.
+Horizon exposure retains hidden observations and establishes neither Ready nor
+a compile realization. Name resolution consumes no horizon and fixes identity
+before exposure; hidden resident observations cannot suppress name conflicts or
+restart search. Subsequent observation, candidate preparation and invocation
+carry one ObservationHorizon. Their distinct Policy facts and judgments remain
+separate; no independent lookup/execution environment coordinates remain.
+No function-stage slicing or separate pre-seal/seal-generated world carrier
+remains. Initializer residual handling is a consumer boundary, not a choice
+between meta evaluators. Until common continuation preservation is connected,
+incomplete initializers fail before binding installation. Neither residual
+classification nor explicit runtime demand manufactures a runtime producer;
+pending seal obligations retain their semantic stage and are not runtime work.
+Exact empty call spaces and fully observed non-callability/applicability failures
+remain ordinary diagnostics. The invocation consumer records an actual hidden
+observation before reporting an unavailable continuation frontier; initializers
+transport it without guessing residual provenance from generic failure enums.
+Visible candidates retain ordinary selection, ambiguity and selected failure.
+Visibility reads actual candidate Policy facts and
+does not determine delete-body legality. The pure Policy-mode product selector
+and real ordinary candidate pipeline remain reusable assets.
+Ordinary Policy deduction, R_vis/C_sigma, pending seal
+formation and E saturation remain consumer gates.
+
+When connecting the common E consumer, rename `CandidatePrepResult::Deferred`
+to describe an incomplete relation rather than imply scheduling into a later
+phase. Its current meaning remains undecided preparation, with no scheduler
+queue or runtime residualization. This is an interface follow-up, not a missing
+semantic choice or an unfinished stage-cleanup requirement.
+
+The current `body_entry_visible_at` check supplies only body-entry observation
+visibility and can report a hidden-observation continuation frontier. Connecting
+E must separately consume R_vis evidence, Ready and the shared Pre/commit/Post
+transaction; the provisional preparation pipeline is not that evaluator.
+Visibility alone establishes neither readiness nor execution legality. These
+consumer connections are implementation work, not open language-design questions.
+
+The next independent cleanup cuts expose lifecycle Pre/common commit/Post with fixed
 MoveEffect; and separate callable source records and general meta-instance
 identity from body execution. These are implementation retirement tasks, not
 new semantic choices.

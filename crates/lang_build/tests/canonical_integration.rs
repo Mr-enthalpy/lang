@@ -17,6 +17,130 @@ use lang_build::{
 
 use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
 
+fn family_with_const_actual(
+    stage: lang_build::Stage,
+) -> (
+    support::AssociatedFamily,
+    lang_build::SemanticSymbolIdentity,
+) {
+    use lang_build::{declared_policy_view, PolicyResultEntry, SemanticValueRef};
+
+    let mut world = support::AssociatedFamily::new(&[
+        "let first = (self, const let x): compile -> let r => { x; };",
+        "let second = (self, let x): compile -> let r => { x; };",
+    ]);
+    let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let pattern = world
+        .semantic_world()
+        .symbol_in_namespace(base.core_node(), "uint8")
+        .unwrap()
+        .pure_p_pattern()
+        .unwrap();
+    let type_value = world.semantic_world().type_for_pattern(pattern).unwrap();
+    let view = declared_policy_view(stage, PolicyMode::Const);
+    let value = world
+        .semantic_world_mut()
+        .install_plain_value(
+            type_value,
+            view.pair.clone(),
+            Provenance::new("actual material"),
+        )
+        .unwrap();
+    let namespace = base.root_context().current_namespace;
+    let binding = world
+        .semantic_world_mut()
+        .bind_ordinary_new(
+            namespace,
+            "a",
+            &[PolicyResultEntry {
+                value: Some(SemanticValueRef {
+                    id: value,
+                    type_value,
+                }),
+                pattern,
+                view,
+            }],
+            Provenance::new("const actual observation"),
+        )
+        .unwrap();
+    (world, binding)
+}
+
+#[test]
+fn resolved_hidden_const_actual_cannot_fall_back_to_plain_or_seal_selection() {
+    use lang_build::{expose_policy_slice, read_pattern, read_value, ObservationHorizon, Stage};
+
+    for stage in [Stage::Runtime, Stage::Seal] {
+        for modes in [vec![], vec![PolicyMode::Plain], vec![PolicyMode::Const]] {
+            let (mut world, binding) = family_with_const_actual(stage);
+            let symbol = world.semantic_world().symbol(binding).unwrap();
+            let entry = &symbol.member_views[0];
+            let exposed = expose_policy_slice(entry, ObservationHorizon::OpenStatic);
+            assert!(read_value(&exposed).is_none());
+            if stage == Stage::Runtime {
+                assert!(read_pattern(&exposed).is_some());
+            }
+            assert_eq!(exposed.mode, PolicyMode::Const);
+            let before = format!("{:?}", world.semantic_world());
+            let call =
+                extract_single_call_site(&initializer_from_source("let r = a probe;")).unwrap();
+            let result = world.invoke_ordinary_call(
+                world.package_root_node(),
+                &call,
+                OrdinaryInvocationContext::open_static(&modes),
+                Provenance::new("hidden argument"),
+            );
+            let Err(OrdinaryInvocationFailure::Residual { residual, trace }) = result else {
+                panic!("hidden actual must stop before preference: {result:?}");
+            };
+            assert_eq!(residual.class, "hidden-argument-value-observation");
+            assert!(!trace.c3_call_entries.is_empty());
+            assert!(trace.a_fully_admissible.is_empty());
+            assert!(trace.bp_prime.is_empty());
+            assert!(trace.selected.is_none());
+            assert!(trace.dynamic_legality.is_none());
+            assert_eq!(format!("{:?}", world.semantic_world()), before);
+            let after = world.semantic_world().symbol(binding).unwrap();
+            assert_eq!(after.member_views[0].view.mode, PolicyMode::Const);
+            assert_eq!(after.member_views[0].view.pair.value.stage(), Some(stage));
+        }
+    }
+}
+
+#[test]
+fn readable_const_actual_keeps_binding_mode_over_caller_plain_default() {
+    let (mut world, _) = family_with_const_actual(lang_build::Stage::Compile);
+    let call = extract_single_call_site(&initializer_from_source("let r = a probe;")).unwrap();
+    let result = world.invoke_ordinary_call(
+        world.package_root_node(),
+        &call,
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+        Provenance::new("readable const argument"),
+    );
+    let selected = trace_of(&result).selected.expect("readable actual selects");
+    let SemanticValuePayload::CallEntry(entry) =
+        &world.semantic_world().value(selected).unwrap().payload
+    else {
+        panic!("ordinary call entry");
+    };
+    let formal = &entry
+        .closure
+        .as_ref()
+        .unwrap()
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters[0];
+    let lang_syntax::NormPatternElem::BindingSlot(formal) = formal else {
+        panic!("formal binding slot");
+    };
+    assert!(
+        formal.policy.is_some(),
+        "const formal must win for the known const observation"
+    );
+}
+
 /// Extract the pipeline trace from an invocation result, success or failure.
 /// Exposure regressions are trace facts and must stay observable even when
 /// body execution of the selected candidate is not (yet) supported.

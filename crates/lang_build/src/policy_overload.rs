@@ -1,4 +1,4 @@
-use crate::policy_pair::{FormalPolicyPattern, OutputModeDemand, Phase, PolicyMode, PolicyStage};
+use crate::policy_pair::{FormalPolicyPattern, OutputModeDemand, PolicyMode};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyOverloadCandidate<I> {
@@ -58,17 +58,6 @@ fn formal_policy_mode(formal: &FormalPolicyPattern) -> PolicyMode {
     formal.mode
 }
 
-/// A candidate after heterogeneous entry enumeration. The phase-aware selector
-/// first removes candidates that are not fully admissible or whose stage is not
-/// exposed, then uses one product partial order across Policy-mode positions and
-/// phase-local stage specificity.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PhaseOverloadCandidate<I> {
-    pub candidate: PolicyOverloadCandidate<I>,
-    pub stage: PolicyStage,
-    pub fully_admissible: bool,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyOverloadSelection<I> {
     Selected(I),
@@ -106,97 +95,6 @@ pub fn select_by_policy_product<I: Clone>(
                 .map(|candidate| candidate.id.clone())
                 .collect(),
         ),
-    }
-}
-
-pub fn select_policy_overload<I: Clone>(
-    candidates: &[PhaseOverloadCandidate<I>],
-    actual_frame: &PolicyActualFrame,
-    target_result: OutputModeDemand,
-    phase: Phase,
-) -> PolicyOverloadSelection<I> {
-    let admissible = candidates
-        .iter()
-        .filter(|candidate| {
-            candidate.fully_admissible
-                && candidate.stage.visible_at(phase)
-                && frame_arity_matches(&candidate.candidate.formal_frame, actual_frame)
-        })
-        .collect::<Vec<_>>();
-    if admissible.is_empty() {
-        return PolicyOverloadSelection::NoCandidate;
-    }
-
-    let maximal = maximal_candidates(&admissible, |better, worse| {
-        phase_dominates(better, worse, actual_frame, target_result, phase)
-    });
-
-    match maximal.as_slice() {
-        [] => PolicyOverloadSelection::NoCandidate,
-        [candidate] if candidate.candidate.is_delete => {
-            PolicyOverloadSelection::RejectedByDelete(candidate.candidate.id.clone())
-        }
-        [candidate] => PolicyOverloadSelection::Selected(candidate.candidate.id.clone()),
-        candidates => PolicyOverloadSelection::Ambiguous(
-            candidates
-                .iter()
-                .map(|candidate| candidate.candidate.id.clone())
-                .collect(),
-        ),
-    }
-}
-
-fn phase_dominates<I>(
-    better: &PhaseOverloadCandidate<I>,
-    worse: &PhaseOverloadCandidate<I>,
-    actual_frame: &PolicyActualFrame,
-    target_result: OutputModeDemand,
-    phase: Phase,
-) -> bool {
-    let Some(mut strictly_better) = compare_frames(
-        &better.candidate.formal_frame,
-        &worse.candidate.formal_frame,
-        actual_frame,
-    ) else {
-        return false;
-    };
-
-    match compare_position(
-        better.candidate.result_policy,
-        worse.candidate.result_policy,
-        target_result.mode(),
-    ) {
-        PositionPreference::Worse => return false,
-        PositionPreference::Better => strictly_better = true,
-        PositionPreference::Equal => {}
-    }
-
-    match compare_stage_specificity(better.stage, worse.stage, phase) {
-        PositionPreference::Worse => return false,
-        PositionPreference::Better => strictly_better = true,
-        PositionPreference::Equal => {}
-    }
-
-    strictly_better
-}
-
-fn compare_stage_specificity(
-    left: PolicyStage,
-    right: PolicyStage,
-    phase: Phase,
-) -> PositionPreference {
-    let rank = |stage| match (phase, stage) {
-        (Phase::OpenStatic, PolicyStage::Meta) => 2,
-        (Phase::OpenStatic, PolicyStage::Compile) => 1,
-        (Phase::SealStatic, PolicyStage::Seal) => 2,
-        (Phase::SealStatic, PolicyStage::Compile) => 1,
-        (Phase::Runtime, PolicyStage::Runtime) => 1,
-        _ => 0,
-    };
-    match rank(left).cmp(&rank(right)) {
-        std::cmp::Ordering::Greater => PositionPreference::Better,
-        std::cmp::Ordering::Equal => PositionPreference::Equal,
-        std::cmp::Ordering::Less => PositionPreference::Worse,
     }
 }
 
@@ -292,10 +190,8 @@ pub(crate) fn policy_mode_preference_rank(candidate: PolicyMode, demand: PolicyM
 }
 
 /// Shared maximal-element selection for ordinary typed partial orders.
-///
-/// Candidate projections own admissibility and comparison dimensions; this
-/// function owns the common "retain every non-dominated maximum" rule. It
-/// intentionally has no declaration-order fallback.
+/// Candidate projections own admissibility and comparison dimensions;
+/// every non-dominated maximum remains, with no declaration-order fallback.
 pub(crate) fn maximal_candidates<'a, T, F>(candidates: &[&'a T], mut dominates: F) -> Vec<&'a T>
 where
     F: FnMut(&T, &T) -> bool,

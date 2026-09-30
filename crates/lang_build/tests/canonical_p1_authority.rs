@@ -20,8 +20,8 @@ mod support;
 use lang_build::{
     canonical_function_object_view, extract_single_call_site, BuildManifest, CompilationWorld,
     ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext,
-    PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair, PolicyResultEntry, PolicyStage,
-    PolicyView, Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, StageSet,
+    PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair, PolicyResultEntry, PolicyView,
+    Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, Stage,
     ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
@@ -280,27 +280,12 @@ fn assert_canonical_p1_unified(world: &support::AssociatedFamily, name: &str) {
 //   CompleteResultView(P2) -> expose under callable P1 -> outer binding P1
 // ---------------------------------------------------------------------------
 
-fn stage_set(stages: &[PolicyStage]) -> StageSet {
-    let mut set = StageSet::new();
-    for stage in stages {
-        set.insert(*stage);
-    }
-    set
-}
-
-fn exposure_window(
-    value_stages: &[PolicyStage],
-    mode: PolicyMode,
-    pattern_stages: &[PolicyStage],
-) -> PolicyView {
+fn exposure_window(value_stage: Stage, mode: PolicyMode, pattern_stage: Stage) -> PolicyView {
     PolicyView {
         pair: PolicyPair {
-            value: ValueComponentPolicy {
-                stages: stage_set(value_stages),
-                presence: ValuePresence::Present,
-            },
+            value: ValueComponentPolicy::Present(value_stage),
             pattern: PatternComponentPolicy {
-                stages: stage_set(pattern_stages),
+                stage: pattern_stage,
             },
         },
         mode,
@@ -308,9 +293,9 @@ fn exposure_window(
 }
 
 fn value_entry(
-    value_stages: &[PolicyStage],
+    value_stage: Stage,
     mode: PolicyMode,
-    pattern_stages: &[PolicyStage],
+    pattern_stage: Stage,
 ) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
     PolicyResultEntry {
         value: Some(SemanticValueRef {
@@ -320,12 +305,9 @@ fn value_entry(
         pattern: PatternValueId(1),
         view: PolicyView {
             pair: PolicyPair {
-                value: ValueComponentPolicy {
-                    stages: stage_set(value_stages),
-                    presence: ValuePresence::Present,
-                },
+                value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stages: stage_set(pattern_stages),
+                    stage: pattern_stage,
                 },
             },
             mode,
@@ -334,20 +316,17 @@ fn value_entry(
 }
 
 fn pure_p_entry(
-    value_stages: &[PolicyStage],
-    pattern_stages: &[PolicyStage],
+    value_stage: Stage,
+    pattern_stage: Stage,
 ) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
     PolicyResultEntry {
         value: None,
         pattern: PatternValueId(1),
         view: PolicyView {
             pair: PolicyPair {
-                value: ValueComponentPolicy {
-                    stages: stage_set(value_stages),
-                    presence: ValuePresence::Absent,
-                },
+                value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stages: stage_set(pattern_stages),
+                    stage: pattern_stage,
                 },
             },
             mode: PolicyMode::Plain,
@@ -355,32 +334,21 @@ fn pure_p_entry(
     }
 }
 
-/// B3 — a constrained canonical P1 crops the pair's stage window while the
-/// material's primitive whole-slot mode remains independent.
+/// Matching concrete observations preserve the independent mode.
 #[test]
-fn expose_crops_stage_window_and_unconstrained_mutability() {
-    let outward = exposure_window(
-        &[PolicyStage::Compile],
-        PolicyMode::Const,
-        &[PolicyStage::Compile],
-    );
+fn expose_preserves_matching_single_stage_and_independent_mode() {
+    let outward = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
     let complete = vec![value_entry(
-        &[PolicyStage::Meta, PolicyStage::Compile],
+        Stage::Compile,
         PolicyMode::Plain,
-        &[PolicyStage::Meta, PolicyStage::Compile],
+        Stage::Compile,
     )];
     let exposed = ExposedInvocationResult::expose(outward.pair, &complete);
     assert_eq!(exposed.material.len(), 1);
     let entry = &exposed.material[0];
-    assert_eq!(
-        entry.view.pair.value.stages,
-        stage_set(&[PolicyStage::Compile])
-    );
+    assert_eq!(entry.view.pair.value.stage(), Some(Stage::Compile));
     assert_eq!(entry.view.mode, PolicyMode::Plain);
-    assert_eq!(
-        entry.view.pair.pattern.stages,
-        stage_set(&[PolicyStage::Compile])
-    );
+    assert_eq!(entry.view.pair.pattern.stage, Stage::Compile);
 }
 
 /// B3 — an entry whose exposed window vanishes is not part of the outward
@@ -388,77 +356,48 @@ fn expose_crops_stage_window_and_unconstrained_mutability() {
 #[test]
 fn expose_hides_entries_whose_window_vanishes() {
     let stage_disjoint = ExposedInvocationResult::expose(
-        exposure_window(
-            &[PolicyStage::Meta],
-            PolicyMode::Plain,
-            &[PolicyStage::Meta],
-        )
-        .pair,
+        exposure_window(Stage::Meta, PolicyMode::Plain, Stage::Meta).pair,
         &[value_entry(
-            &[PolicyStage::Compile],
+            Stage::Compile,
             PolicyMode::Plain,
-            &[PolicyStage::Compile],
+            Stage::Compile,
         )],
     );
     assert!(stage_disjoint.material.is_empty());
 
     let mode_orthogonal = ExposedInvocationResult::expose(
-        exposure_window(&[PolicyStage::Compile], PolicyMode::Const, &[]).pair,
-        &[value_entry(
-            &[PolicyStage::Compile],
-            PolicyMode::Mut,
-            &[PolicyStage::Compile],
-        )],
+        exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile).pair,
+        &[value_entry(Stage::Compile, PolicyMode::Mut, Stage::Compile)],
     );
     assert_eq!(mode_orthogonal.material.len(), 1);
     assert_eq!(mode_orthogonal.material[0].view.mode, PolicyMode::Mut);
 }
 
-/// B3 — when the canonical P1 is the P2 derivation (no explicit P1 written),
-/// the window is a superset of the material and exposure is an identity.
+/// A matching completed query preserves material identity.
 #[test]
-fn expose_is_identity_under_the_derived_superset_window() {
+fn expose_is_identity_under_the_same_stage_observation() {
     let complete = vec![value_entry(
-        &[PolicyStage::Compile],
+        Stage::Compile,
         PolicyMode::Plain,
-        &[PolicyStage::Compile],
+        Stage::Compile,
     )];
     let exposed = ExposedInvocationResult::expose(
-        exposure_window(
-            &[PolicyStage::Meta, PolicyStage::Compile],
-            PolicyMode::Plain,
-            &[PolicyStage::Meta, PolicyStage::Compile],
-        )
-        .pair,
+        exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile).pair,
         &complete,
     );
     assert_eq!(exposed.material, complete);
 }
 
-/// B3 — a pure-P entry is carried by its Pattern facet: its recorded static
-/// value stages are clipped to the window, but an empty value window does
-/// not hide the entry.
+/// A pure Object retains the same Pv/Pp observation; mismatch cannot clip Pv.
 #[test]
-fn expose_keeps_pure_p_entries_with_clipped_value_stages() {
+fn expose_does_not_clip_a_pure_object_into_a_different_stage() {
     let exposed = ExposedInvocationResult::expose(
-        exposure_window(
-            &[PolicyStage::Runtime],
-            PolicyMode::Plain,
-            &[PolicyStage::Compile],
-        )
-        .pair,
-        &[pure_p_entry(
-            &[PolicyStage::Compile],
-            &[PolicyStage::Compile],
-        )],
+        exposure_window(Stage::Runtime, PolicyMode::Plain, Stage::Compile).pair,
+        &[pure_p_entry(Stage::Compile, Stage::Compile)],
     );
-    assert_eq!(exposed.material.len(), 1);
-    let entry = &exposed.material[0];
-    assert!(entry.value.is_none());
-    assert!(entry.view.pair.value.stages.is_empty());
-    assert_eq!(
-        entry.view.pair.pattern.stages,
-        stage_set(&[PolicyStage::Compile])
+    assert!(
+        exposed.material.is_empty(),
+        "a runtime query cannot relabel a pure compile Object"
     );
 }
 
@@ -497,18 +436,14 @@ fn value_stage_dimension_mismatch_is_hard_error() {
 #[test]
 fn pattern_stage_dimension_mismatch_is_hard_error() {
     let outer = ExplicitP1Selection {
-        pattern_stages: Some(stage_set(&[PolicyStage::Meta])),
+        pattern_stage: Some(Stage::Meta),
         ..ExplicitP1Selection::default()
     };
     let initializer = initializer_from_source("let f = (compile let self): compile => { (); };");
     let lang_syntax::NormExpr::Closure(self_formal) = initializer else {
         panic!("closure")
     };
-    let derived = exposure_window(
-        &[PolicyStage::Compile],
-        PolicyMode::Plain,
-        &[PolicyStage::Compile],
-    );
+    let derived = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
     let error = canonical_function_object_view(
         Some(&outer),
         &derived,
@@ -520,53 +455,29 @@ fn pattern_stage_dimension_mismatch_is_hard_error() {
     assert!(error.message.contains("canonical P1 mismatch"));
 }
 
-/// The presence dimension participates in the merge on its own:
-/// an explicit `Pv = absent` selection that would be recombined with
-/// non-empty derived value stages / mutability violates the canonical P1
-/// value-component invariant and is a hard error, not a silent recombination.
+/// Absent value observation is distinct from an unhidden pure Object.
 #[test]
-fn presence_dimension_absent_recombination_is_hard_error() {
+fn explicit_absent_observation_has_no_stage_coordinate() {
     let outer_explicit = ExplicitP1Selection {
         presence: Some(ValuePresence::Absent),
         ..ExplicitP1Selection::default()
     };
-    let derived = exposure_window(
-        &[PolicyStage::Compile],
-        PolicyMode::Const,
-        &[PolicyStage::Compile],
-    );
-    let p2 = exposure_window(
-        &[PolicyStage::Compile],
-        PolicyMode::Plain,
-        &[PolicyStage::Compile],
-    );
+    let derived = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
+    let p2 = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
     let provenance = Provenance::new("presence-dimension acceptance");
-    let error =
+    let selected =
         canonical_function_object_view(Some(&outer_explicit), &derived, &p2, None, &provenance)
-            .expect_err(
-                "an absent explicit presence over a present derived value component must fail",
-            );
-    assert!(
-        error.message.contains("`Pv = absent` cannot carry"),
-        "expected the absent-value invariant diagnostic, got: {}",
-        error.message
-    );
+            .expect("absence removes the value observation rather than forming an empty stage set");
+    assert_eq!(selected.pair.value, ValueComponentPolicy::Absent);
+    assert_eq!(selected.pair.value.stage(), None);
 }
 
 /// With neither an outer nor a self explicit P1, every
 /// dimension is Derive(P2): the canonical P1 is exactly the derived pair.
 #[test]
 fn full_omission_derives_every_dimension_from_p2() {
-    let derived = exposure_window(
-        &[PolicyStage::Meta, PolicyStage::Compile],
-        PolicyMode::Const,
-        &[PolicyStage::Compile],
-    );
-    let p2 = exposure_window(
-        &[PolicyStage::Meta, PolicyStage::Compile],
-        PolicyMode::Plain,
-        &[PolicyStage::Compile],
-    );
+    let derived = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
+    let p2 = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
     let provenance = Provenance::new("full-omission acceptance");
     let canonical = canonical_function_object_view(None, &derived, &p2, None, &provenance)
         .expect("full omission elaborates without error");

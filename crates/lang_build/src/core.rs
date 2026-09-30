@@ -4,10 +4,7 @@ use crate::{
         NamespaceNodeKind, Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind,
         SymbolObject, SymbolPayload, VerificationPrimitive,
     },
-    policy_pair::{
-        PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyView, StageSet,
-        ValueComponentPolicy, ValuePresence,
-    },
+    policy_pair::{PolicyMode, PolicyPair, PolicyView, Stage},
     semantic_name_index::{namespace_symbol, BuildError, SemanticNameIndex},
 };
 
@@ -71,10 +68,7 @@ pub(crate) fn install_core_bootstrap(
 
     for symbol in delta.symbols.values_mut() {
         if symbol.kind == SymbolKind::Namespace && symbol.name == CORE_NAMESPACE {
-            symbol.policy_view = Some(core_declared_view(&[
-                PolicyStage::Meta,
-                PolicyStage::Runtime,
-            ]));
+            symbol.policy_view = Some(core_declared_view(Stage::Meta));
         }
     }
 
@@ -85,7 +79,7 @@ pub(crate) fn install_core_bootstrap(
         "struct",
         CoreMetaFunction::Struct,
         Provenance::new("core meta-function `struct`"),
-        core_declared_view(&[PolicyStage::Meta]),
+        core_declared_view(Stage::Meta),
     );
     insert_meta_function(
         &mut delta,
@@ -94,7 +88,7 @@ pub(crate) fn install_core_bootstrap(
         "assert",
         CoreMetaFunction::Assert,
         Provenance::new("core meta-function `assert`"),
-        core_declared_view(&[PolicyStage::Meta]),
+        core_declared_view(Stage::Meta),
     );
     insert_meta_function(
         &mut delta,
@@ -103,7 +97,7 @@ pub(crate) fn install_core_bootstrap(
         "IdentityType",
         CoreMetaFunction::IdentityType,
         Provenance::new("core meta-function `IdentityType`"),
-        core_declared_view(&[PolicyStage::Meta]),
+        core_declared_view(Stage::Meta),
     );
     insert_verification_namespace(&mut delta, &mut core_callables, core_node);
 
@@ -129,7 +123,7 @@ pub(crate) fn install_core_bootstrap(
             core_node,
             name,
             Provenance::new(format!("core type symbol `{name}`")),
-            core_declared_view(&[PolicyStage::Meta, PolicyStage::Runtime]),
+            core_declared_view(Stage::Meta),
         );
     }
 
@@ -139,35 +133,13 @@ pub(crate) fn install_core_bootstrap(
         .map_err(BuildError::from)
 }
 
-/// Declared canonical PolicyPair coordinate for a core built-in: the value
-/// stage set is spelled directly and the Pattern stage set is its static
-/// projection. Core built-ins are always present; their whole-slot mode is
-/// carried separately by the callable's `PolicyView`.
-pub(crate) fn core_declared_pair(stages: &[PolicyStage], _export_root: bool) -> PolicyPair {
-    let mut value_stages = StageSet::new();
-    let mut pattern_stages = StageSet::new();
-    for &stage in stages {
-        value_stages.insert(stage);
-        if stage.is_static() {
-            pattern_stages.insert(stage);
-        }
-    }
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: value_stages,
-            presence: ValuePresence::Present,
-        },
-        pattern: PatternComponentPolicy {
-            stages: pattern_stages,
-        },
-    }
+/// Bootstrap declarations are meta-formed resolved observations.
+/// Runtime use requires a separately admitted ordinary migration, not a union.
+pub(crate) fn core_declared_pair(stage: Stage, _export_root: bool) -> PolicyPair {
+    crate::declared_policy_view(stage, PolicyMode::Plain).pair
 }
-
-fn core_declared_view(stages: &[PolicyStage]) -> PolicyView {
-    PolicyView {
-        pair: core_declared_pair(stages, false),
-        mode: PolicyMode::Plain,
-    }
+fn core_declared_view(stage: Stage) -> PolicyView {
+    crate::declared_policy_view(stage, PolicyMode::Plain)
 }
 
 /// Declared body-entry / return-object planes of one
@@ -178,12 +150,12 @@ pub(crate) fn core_primitive_callable_planes(
     primitive: CoreMetaFunction,
 ) -> (PolicyView, PolicyView) {
     let return_view = match primitive {
-        CoreMetaFunction::Struct => core_declared_view(&[PolicyStage::Meta, PolicyStage::Runtime]),
+        CoreMetaFunction::Struct => core_declared_view(Stage::Meta),
         CoreMetaFunction::Assert | CoreMetaFunction::Verify(_) | CoreMetaFunction::IdentityType => {
-            core_declared_view(&[PolicyStage::Meta])
+            core_declared_view(Stage::Meta)
         }
     };
-    (core_declared_view(&[PolicyStage::Meta]), return_view)
+    (core_declared_view(Stage::Meta), return_view)
 }
 
 fn insert_meta_function(
@@ -236,8 +208,8 @@ fn insert_meta_function(
         privilege: crate::CallablePrivilege::BuiltinPrivileged,
     });
     // Declared semantic registration fact, spelled once next to the graph
-    // payload. `struct` exposes the completed type value at meta and runtime
-    // while its independent body-entry plane remains meta-only; execution
+    // payload. `struct` has one meta producer observation. Runtime use
+    // requires an ordinary migration; execution
     // authority is never inferred from the result view.
     core_callables.push(CoreCallableRegistration {
         namespace: parent,
@@ -246,25 +218,21 @@ fn insert_meta_function(
         primitive,
         function_view: PolicyView {
             pair: match primitive {
-                CoreMetaFunction::Struct => {
-                    core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true)
-                }
-                _ => core_declared_pair(&[PolicyStage::Meta], true),
+                CoreMetaFunction::Struct => core_declared_pair(Stage::Meta, true),
+                _ => core_declared_pair(Stage::Meta, true),
             },
             mode: PolicyMode::Plain,
         },
         body_entry_view: PolicyView {
-            pair: core_declared_pair(&[PolicyStage::Meta], false),
+            pair: core_declared_pair(Stage::Meta, false),
             mode: PolicyMode::Plain,
         },
         result_view: PolicyView {
             pair: match primitive {
-                CoreMetaFunction::Struct => {
-                    core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], false)
-                }
+                CoreMetaFunction::Struct => core_declared_pair(Stage::Meta, false),
                 CoreMetaFunction::Assert
                 | CoreMetaFunction::Verify(_)
-                | CoreMetaFunction::IdentityType => core_declared_pair(&[PolicyStage::Meta], false),
+                | CoreMetaFunction::IdentityType => core_declared_pair(Stage::Meta, false),
             },
             mode: PolicyMode::Plain,
         },
@@ -301,7 +269,7 @@ fn insert_verification_namespace(
         Some(core_node),
         provenance,
     );
-    symbol.policy_view = Some(core_declared_view(&[PolicyStage::Meta]));
+    symbol.policy_view = Some(core_declared_view(Stage::Meta));
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;
     symbol.payload = SymbolPayload::VerificationNamespace { node: node_id };
@@ -336,7 +304,7 @@ fn insert_verification_namespace(
             name,
             CoreMetaFunction::Verify(primitive),
             Provenance::new(format!("core verification operation `verify::{name}`")),
-            core_declared_view(&[PolicyStage::Meta]),
+            core_declared_view(Stage::Meta),
         );
     }
 }
@@ -377,14 +345,14 @@ pub(crate) fn insert_core_type(
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
     let represented_type = type_lookup_indices.allocate();
     // Declared semantic registration fact: core type carriers are declared
-    // `export meta runtime`, spelled as the canonical pair directly.
+    // meta-formed observations; export is a separate declaration fact.
     core_types.push(CoreTypeRegistration {
         namespace: parent,
         name: name.to_string(),
         binding: symbol_id,
         represented_type,
         associated_namespace: associated_node,
-        policy: core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true),
+        policy: core_declared_pair(Stage::Meta, true),
         provenance: provenance.clone(),
     });
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {

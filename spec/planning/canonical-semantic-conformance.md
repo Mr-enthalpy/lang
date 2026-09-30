@@ -26,7 +26,40 @@ observations. The 30 pre-implementation ALIGN cases below bring the total to
 
 Every row currently requires consumer alignment; see the
 [implementation evidence and gates](roadmap.md#canonical-semantic-revision-implementation-gates).
-Existing carrier test success is not coverage of these new semantics.
+Single-atom Policy carriers, omitted-P1 completion and horizon facet visibility
+have substrate coverage after Stage cleanup. Name resolution fixes identity
+before exposure; hidden value and Pattern facets retain their resolved material
+while read/enumeration consumers remain unavailable at that horizon. Different
+hidden identities remain distinct, and hiding never becomes absence. Explicit
+Pin stage atoms are canonical but currently report the unconnected
+InputAdmissible consumer before selection; they are not rejected as illegal
+overrides or silently replaced by inherited P2. Name resolution proceeds
+without a horizon. Subsequent callee observation, candidate preparation and
+body-entry observation use one invocation horizon, retaining distinct facts;
+the horizon alone proves neither readiness nor execution legality. Ordinary
+initializer bindings require the common continuation preservation consumer
+when evaluation cannot complete; until it is connected they fail before
+installation, without deriving runtime from residual or pending seal work.
+Exact empty V_tau, visible non-callable values and fully observed result-Policy
+mismatches have terminal no-candidate coverage at both initializer boundaries.
+Actual hidden observations are reported by invocation itself, never inferred
+from generic failure or an absent diagnostic. Mixed body observations retain
+ordinary visible-candidate ambiguity and terminal selected failure.
+Resolved argument bindings whose Val1 is hidden stop before applicability,
+preference and selection at the common-continuation frontier. They never fall
+back to unknown-expression Plain, even with a readable Pattern or a supplied
+argument mode. Readable binding observations retain their mode; genuinely
+unknown expressions remain a separate case. Stage and horizon carriers expose
+no enum-order preference, and facet observation defines no alternate resolver.
+Candidate errors and selected-body failures remain diagnostics, with no second
+meta evaluator mode or function/world stage partition. Ordinary
+deduction, R_vis/C_sigma and E readiness/saturation still require consumer
+coverage. Carrier test success is not general source coverage of these semantics.
+Construction-window checks consume explicit WindowLive and authority facts;
+generation-coordinate split/merge and owner-interval termination remain
+unconnected consumers. Neither a global runtime epoch nor a compile-branch
+no-op supplies those facts. Allocation without established construction facts
+fails OpenHere, and saved authority cannot revive an explicitly closed window.
 
 ## Stage, Policy and two-round calls
 

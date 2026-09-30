@@ -10,8 +10,8 @@ use crate::{
     meta_body::selected_meta_delete_diagnostic,
     meta_invocation::MetaExecutionMaterial,
     model::{
-        Diagnostic, DiagnosticSeverity, ExecutionEnv, Provenance, ResolverCode,
-        SourceCallableObject, SymbolObject,
+        Diagnostic, DiagnosticSeverity, Provenance, ResolverCode, SourceCallableObject,
+        SymbolObject,
     },
     overload_pattern::{OverloadArgShape, SpecificityTuple},
     pattern_relation::{
@@ -71,7 +71,6 @@ pub(crate) fn applicable_candidate_from_closure(
     closure: &NormClosure,
     provenance: &Provenance,
     args: &[OverloadArgShape],
-    demanded_execution: ExecutionEnv,
     callable_owner: SemanticOwnerId,
     resolve_named_pattern: Option<&dyn Fn(&str) -> Option<NamedPatternObservation>>,
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
@@ -82,7 +81,6 @@ pub(crate) fn applicable_candidate_from_closure(
             provenance: provenance.clone(),
         },
         args,
-        demanded_execution,
         callable_owner,
         resolve_named_pattern,
     )
@@ -92,7 +90,6 @@ fn applicable_candidate_from_source_callable(
     symbol: &SymbolObject,
     source_callable: SourceCallableObject,
     args: &[OverloadArgShape],
-    _demanded_execution: ExecutionEnv,
     callable_owner: SemanticOwnerId,
     resolve_named_pattern: Option<&dyn Fn(&str) -> Option<NamedPatternObservation>>,
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
@@ -344,11 +341,11 @@ fn evaluate_body_local_let(
                 return Err(SourceBodyEvaluationFailure {
                     diagnostic: Diagnostic::hard_error(
                         format!(
-                            "ResidualNotAllowedInMetaStrict: runtime-only dependency in MetaStrict context ({reason})"
+                            "ResidualNotAllowedAtBoundary: selected source-body local initializer remains residual ({reason})"
                         ),
                         Some(provenance),
                     )
-                    .with_code(ResolverCode::ResidualNotAllowedInMetaStrict),
+                    .with_code(ResolverCode::ResidualNotAllowedAtBoundary),
                 });
             }
             BodyLocalInitializerCheck::Rejected(diagnostic) => {

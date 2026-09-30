@@ -13,7 +13,7 @@ use crate::{
     model::Provenance,
     policy_pair::{
         project_p1, P1Projection, PatternComponentPolicy, PolicyPair, PolicyResultEntry,
-        PolicyView, ResultPolicyDemand, StageSet, ValuePresence,
+        PolicyView, ResultPolicyDemand, ValuePresence,
     },
 };
 
@@ -66,9 +66,8 @@ pub struct PolicyMigrationRequest {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyMigrationRequestFailure {
     SourceValueAbsent,
-    SourceValueStageDomainEmpty,
     TargetValueAbsent,
-    TargetValueStageDomainEmpty,
+    TargetStageOmitted,
     TargetPatternPolicyUnavailable {
         source: PatternComponentPolicy,
         target: PatternComponentPolicy,
@@ -84,25 +83,14 @@ impl PolicyMigrationRequest {
         provenance: Provenance,
     ) -> Result<Self, PolicyMigrationRequestFailure> {
         let target_pair = concrete_target_pair(&target_demand)
-            .ok_or(PolicyMigrationRequestFailure::TargetValueStageDomainEmpty)?;
-        if source_view.pair.value.presence == ValuePresence::Absent {
+            .ok_or(PolicyMigrationRequestFailure::TargetStageOmitted)?;
+        if source_view.pair.value.presence() == ValuePresence::Absent {
             return Err(PolicyMigrationRequestFailure::SourceValueAbsent);
         }
-        if source_view.pair.value.stages.is_empty() {
-            return Err(PolicyMigrationRequestFailure::SourceValueStageDomainEmpty);
-        }
-        if target_pair.value.presence == ValuePresence::Absent {
+        if target_pair.value.presence() == ValuePresence::Absent {
             return Err(PolicyMigrationRequestFailure::TargetValueAbsent);
         }
-        if target_pair.value.stages.is_empty() {
-            return Err(PolicyMigrationRequestFailure::TargetValueStageDomainEmpty);
-        }
-        if target_pair.pattern.stages.is_empty()
-            || !target_pair
-                .pattern
-                .stages
-                .is_subset(&source_view.pair.pattern.stages)
-        {
+        if target_pair.pattern.stage != source_view.pair.pattern.stage {
             return Err(
                 PolicyMigrationRequestFailure::TargetPatternPolicyUnavailable {
                     source: source_view.pair.pattern.clone(),
@@ -237,7 +225,11 @@ fn relax_projection_presence(projection: &P1Projection) -> P1Projection {
     match &mut relaxed {
         P1Projection::Infer => {}
         P1Projection::ValueDominant { value } => value.presence = ValuePresence::Optional,
-        P1Projection::Pair(pair) => pair.value.presence = ValuePresence::Optional,
+        P1Projection::Pair(pair) => {
+            if let Some(stage) = pair.value.stage() {
+                pair.value = crate::ValueComponentPolicy::Optional(stage);
+            }
+        }
     }
     relaxed
 }
@@ -260,22 +252,23 @@ fn project_migration_endpoint_hard_coordinates(
     query: &PolicyPair,
     available: &PolicyPair,
 ) -> Option<PolicyPair> {
-    let presence = intersect_presence(query.value.presence, available.value.presence)?;
-    let value_stages = if presence == ValuePresence::Absent {
-        StageSet::new()
-    } else {
-        project_non_empty_stages(&query.value.stages, &available.value.stages)?
-    };
-    let pattern_stages =
-        project_non_empty_stages(&query.pattern.stages, &available.pattern.stages)?;
+    let presence = intersect_presence(query.value.presence(), available.value.presence())?;
+    if query.pattern.stage != available.pattern.stage
+        || (presence != ValuePresence::Absent && query.value.stage() != available.value.stage())
+    {
+        return None;
+    }
     Some(PolicyPair {
-        value: crate::policy_pair::ValueComponentPolicy {
-            stages: value_stages,
-            presence,
-        },
-        pattern: PatternComponentPolicy {
-            stages: pattern_stages,
-        },
+        value: available
+            .value
+            .stage()
+            .map(|s| match presence {
+                ValuePresence::Present => crate::ValueComponentPolicy::Present(s),
+                ValuePresence::Optional => crate::ValueComponentPolicy::Optional(s),
+                ValuePresence::Absent => crate::ValueComponentPolicy::Absent,
+            })
+            .unwrap_or(crate::ValueComponentPolicy::Absent),
+        pattern: available.pattern,
     })
 }
 
@@ -287,15 +280,6 @@ fn intersect_presence(query: ValuePresence, available: ValuePresence) -> Option<
         (ValuePresence::Present, ValuePresence::Absent)
         | (ValuePresence::Absent, ValuePresence::Present) => None,
     }
-}
-
-fn project_non_empty_stages(query: &StageSet, available: &StageSet) -> Option<StageSet> {
-    let selected = if query.is_empty() {
-        available.clone()
-    } else {
-        query.intersection(available)
-    };
-    (!selected.is_empty()).then_some(selected)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -348,14 +332,52 @@ fn compare_output_policy_fit(
 
 fn compare_policy_endpoint_fit(left: &PolicyPair, right: &PolicyPair) -> PolicyPartialOrdering {
     compose_orders([
-        compare_stage_domains(&left.value.stages, &right.value.stages),
-        compare_presence_domains(left.value.presence, right.value.presence),
-        compare_stage_domains(&left.pattern.stages, &right.pattern.stages),
+        compare_stage_atoms(left.value.stage(), right.value.stage()),
+        compare_presence_domains(left.value.presence(), right.value.presence()),
+        compare_stage_atoms(Some(left.pattern.stage), Some(right.pattern.stage)),
     ])
 }
 
-fn compare_stage_domains(left: &StageSet, right: &StageSet) -> PolicyPartialOrdering {
-    compare_subsets(left.is_subset(right), right.is_subset(left))
+fn compare_stage_atoms(
+    left: Option<crate::Stage>,
+    right: Option<crate::Stage>,
+) -> PolicyPartialOrdering {
+    if left == right {
+        PolicyPartialOrdering::Equal
+    } else {
+        PolicyPartialOrdering::Incomparable
+    }
+}
+
+#[cfg(test)]
+mod stage_endpoint_tests {
+    use super::project_migration_endpoint_hard_coordinates;
+    use crate::{PatternComponentPolicy, PolicyPair, Stage, ValueComponentPolicy};
+
+    fn endpoint(value: ValueComponentPolicy) -> PolicyPair {
+        PolicyPair {
+            value,
+            pattern: PatternComponentPolicy {
+                stage: Stage::Compile,
+            },
+        }
+    }
+
+    #[test]
+    fn absent_presence_intersection_has_no_value_stage_to_compare() {
+        let optional = endpoint(ValueComponentPolicy::Optional(Stage::Runtime));
+        let absent = endpoint(ValueComponentPolicy::Absent);
+        for (query, actual) in [(&optional, &absent), (&absent, &optional)] {
+            let result = project_migration_endpoint_hard_coordinates(query, actual).unwrap();
+            assert_eq!(result.value, ValueComponentPolicy::Absent);
+            assert_eq!(result.pattern, absent.pattern);
+        }
+        assert!(project_migration_endpoint_hard_coordinates(
+            &endpoint(ValueComponentPolicy::Present(Stage::Runtime)),
+            &absent,
+        )
+        .is_none());
+    }
 }
 
 fn presence_domain(presence: ValuePresence) -> BTreeSet<bool> {

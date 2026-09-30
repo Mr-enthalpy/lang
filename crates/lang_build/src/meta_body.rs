@@ -1,63 +1,12 @@
-//! Build/check semantics for `delete` closure bodies.
+//! Selected closure-body diagnostic substrate.
 //!
-//! `delete` is a contextual explicit-closure body terminator introduced by
-//! the `=> ("msg") delete` syntax. This module provides the minimal
-//! build/check substrate:
-//!
-//! 1. Legality check: `Delete` bodies are only valid in statically executed
-//!    closures; runtime-only closures reject them.
-//! 2. Selected-body evaluation: when a selected static closure body is a
-//!    `Delete` body, it produces a hard static diagnostic.
-//!
-//! `delete` is not a primitive callable, not a value, not `assert`, and
-//! not `panic`. It remains `NormClosureBody::Delete` through normalization.
+//! `delete` remains `NormClosureBody::Delete` through normalization.
+//! Horizon visibility is not an execution-legality proof; this module does
+//! not infer body legality from the observation horizon.
 
 use lang_syntax::{NormClosureBody, NormDeleteBody};
 
 use crate::model::{Diagnostic, DiagnosticSeverity, Provenance};
-
-// ---------------------------------------------------------------------------
-// Execution environment
-// ---------------------------------------------------------------------------
-
-/// The execution environment a closure body is demanded under.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ClosureBodyExecutionEnv {
-    OpenStatic,
-    SealStatic,
-    Runtime,
-}
-
-// ---------------------------------------------------------------------------
-// Legality check
-// ---------------------------------------------------------------------------
-
-/// Check whether a closure body is legal in the given execution environment.
-///
-/// - `Block` bodies are legal in every phase.
-/// - `Delete` bodies are legal only in a static phase.
-///
-/// If illegal, returns a `Diagnostic` describing the violation.
-pub fn check_closure_body_delete_legality(
-    body: &NormClosureBody,
-    env: ClosureBodyExecutionEnv,
-    fallback_provenance: Provenance,
-) -> Result<(), Diagnostic> {
-    match body {
-        NormClosureBody::Block(_)
-        | NormClosureBody::NamedBlock { .. }
-        | NormClosureBody::Defaulted { .. } => Ok(()),
-        NormClosureBody::Delete(del) => match env {
-            ClosureBodyExecutionEnv::OpenStatic | ClosureBodyExecutionEnv::SealStatic => Ok(()),
-            ClosureBodyExecutionEnv::Runtime => Err(Diagnostic::new(
-                DiagnosticSeverity::Error,
-                "delete closure body is only valid in static bodies".to_string(),
-                Some(del.origin_reprovenance(&fallback_provenance)),
-            )),
-        },
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Selected meta delete evaluation
 // ---------------------------------------------------------------------------
