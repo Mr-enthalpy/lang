@@ -1,8 +1,1 @@
 let f: type = uint8;
-
-let g =
-  (self, t: type): runtime
-    -> let r: uint8 =>
-{
-  r;
-};

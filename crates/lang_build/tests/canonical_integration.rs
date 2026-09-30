@@ -1,7 +1,7 @@
 //! Canonical semantic-spine integration tests.
 //!
 //! These tests pin the canonical invariants end to end:
-//! one resolved cluster Symbol per call target, member views as the canonical
+//! one resolved binding per call target, member views as the canonical
 //! fact (never a flat Symbol/Policy aggregate), declaration-time return
 //! ontology shared by core and source, ordinary let-binding of meta outcomes
 //! (bind the RHS value to the LHS symbol — types have value semantics too),
@@ -10,15 +10,12 @@
 mod support;
 
 use lang_build::{
-    extract_single_call_site, BuildManifest, CompilationWorld, ExecutionEnv, InvocationOutcome,
-    OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace,
-    PatternClusterOwner, Phase, PolicyEnv, PolicyMode, Provenance, ResolverCode, SemanticOwnerKind,
-    SemanticValuePayload, ToolchainGlobalSourceRoot,
+    extract_single_call_site, BuildManifest, CompilationWorld, InvocationOutcome,
+    OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace, PolicyMode,
+    Provenance, ResolverCode, SemanticOwnerKind, SemanticValuePayload,
 };
 
-use support::{
-    build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
-};
+use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
 
 /// Extract the pipeline trace from an invocation result, success or failure.
 /// Exposure regressions are trace facts and must stay observable even when
@@ -35,10 +32,6 @@ fn trace_of<'a>(
             value: lang_build::ProjectedInvocationOutcome::SingleMember(r),
             ..
         }) => &r.trace,
-        Ok(lang_build::InvocationResult::SemanticResult {
-            value: lang_build::ProjectedInvocationOutcome::ClusterSymbol(c),
-            ..
-        }) => &c.trace,
         Ok(lang_build::InvocationResult::Residual(_))
         | Ok(lang_build::InvocationResult::Diagnostic(_)) => {
             panic!("ordinary invocation did not produce a semantic result")
@@ -78,21 +71,18 @@ fn invoke(
 
 #[test]
 fn unknown_actual_uses_primitive_plain_and_never_world_fabricated_const() {
-    let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
-    manifest
-        .global_implementation_roots
-        .push(ToolchainGlobalSourceRoot::new(
-            fixture_root()
-                .join("global_implementation")
-                .join("unknown_actual_default"),
-        ));
-    let mut world = CompilationWorld::from_manifest(&manifest).expect("probe family builds");
+    let mut world = support::AssociatedFamily::new(&[
+        "let first = (self, const let x): compile -> let r => { x; };",
+        "let second = (self, let x): compile -> let r => { x; };",
+    ]);
     let no_fabricated_modes = [];
-    let result = invoke(
-        &mut world,
-        "let result = mystery probe::;",
+    let call =
+        extract_single_call_site(&initializer_from_source("let r = mystery probe;")).unwrap();
+    let result = world.invoke_ordinary_call(
+        world.package_root_node(),
+        &call,
         OrdinaryInvocationContext::open_static(&no_fabricated_modes),
-        "unknown actual defaults to Plain",
+        Provenance::new("unknown actual defaults to Plain"),
     );
     let selected = trace_of(&result).selected.unwrap_or_else(|| {
         panic!("selection must seal before the unknown body result is diagnosed: {result:?}")
@@ -119,14 +109,6 @@ fn unknown_actual_uses_primitive_plain_and_never_world_fabricated_const() {
     );
 }
 
-fn seal_static(explicit_argument_mutability: &[PolicyMode]) -> OrdinaryInvocationContext<'_> {
-    let mut context = OrdinaryInvocationContext::open_static(explicit_argument_mutability);
-    context.phase = Phase::SealStatic;
-    context.policy_env = PolicyEnv::SealStatic;
-    context.execution_env = ExecutionEnv::SealStatic;
-    context
-}
-
 // ---------------------------------------------------------------------------
 // Fixture build smoke: the committed semantic workspaces must build.
 // ---------------------------------------------------------------------------
@@ -135,16 +117,6 @@ fn seal_static(explicit_argument_mutability: &[PolicyMode]) -> OrdinaryInvocatio
 fn fixture_type_binding_builds() {
     let _ = build_single_fixture_world("type_binding", "app");
 }
-
-#[test]
-fn fixture_cluster_exposure_builds() {
-    let _ = build_single_fixture_world("cluster_exposure", "app");
-}
-
-// ---------------------------------------------------------------------------
-// ① `let T: type = uint8;` — ordinary let binding: the RHS type value is
-// bound to the fresh destination Symbol `T`. No aliasing, no Pattern reroot.
-// ---------------------------------------------------------------------------
 
 #[test]
 fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
@@ -158,7 +130,7 @@ fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
 
-    // Fresh destination Symbol: T is its own cluster Symbol, not an alias
+    // Fresh destination Symbol: T is its own name binding, not an alias
     // facet of uint8.
     assert_ne!(
         t.identity, uint8.identity,
@@ -174,154 +146,24 @@ fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
     );
 
     // No reroot: carrier rebinding does not rewrite the Pattern's owning
-    // cluster; uint8's PatternValue stays owned by uint8.
+    // binding; uint8's PatternValue stays owned by uint8.
     let pattern = uint8.pure_p_pattern().expect("core uint8 pure-P");
     assert_eq!(
-        world.semantic_world().owner_cluster(pattern),
-        Some(PatternClusterOwner::Installed(uint8.identity)),
+        world.semantic_world().pattern_declaration(pattern),
+        Some(uint8.identity),
         "carrier rebinding must not reroot the RHS PatternValue"
     );
 }
 
 // ---------------------------------------------------------------------------
-// ② Cluster with members of different Policy exposes only the member views
-// whose own value Policy is visible at the call phase (C2 is per-member).
-// ---------------------------------------------------------------------------
-
-#[test]
-fn cluster_exposure_filters_per_member_view_by_phase() {
-    let mut world = build_single_fixture_world("cluster_exposure", "app");
-    let muts = [PolicyMode::Const];
-
-    // OpenStatic: both the meta-P2 member and the compile-P2 member are
-    // visible, so both enter C2.
-    let open = invoke(
-        &mut world,
-        "let R: type = uint8 pick;",
-        OrdinaryInvocationContext::open_static(&muts),
-        "open-static exposure",
-    );
-    let open_trace = trace_of(&open);
-    assert_eq!(
-        open_trace.c0_target_values.len(),
-        2,
-        "both members enter C0"
-    );
-    assert_eq!(
-        open_trace.c1_visible_values, open_trace.c0_target_values,
-        "internal caller sees every member view"
-    );
-    assert_eq!(
-        open_trace.c2_phase_values.len(),
-        2,
-        "meta and compile member P1 stages are both visible at OpenStatic"
-    );
-    for value in &open_trace.callable_values {
-        assert!(
-            open_trace.c2_phase_values.contains(value),
-            "Cc only filters within the C2-exposed member subset"
-        );
-    }
-
-    // SealStatic: the meta member's P1 stages are not visible; only the
-    // compile member view survives C2. The dropped member stays a legal
-    // cluster member — C2 keeps/drops individual views, never the Symbol.
-    let seal = invoke(
-        &mut world,
-        "let R: type = uint8 pick;",
-        seal_static(&muts),
-        "seal-static exposure",
-    );
-    let seal_trace = trace_of(&seal);
-    assert_eq!(
-        seal_trace.c0_target_values.len(),
-        2,
-        "C0 still carries both members — exposure happens at C2, not C0"
-    );
-    assert_eq!(
-        seal_trace.c2_phase_values.len(),
-        1,
-        "only the phase-matching member view is exposed"
-    );
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("pick cluster symbol");
-    let surviving = seal_trace.c2_phase_values[0];
-    let surviving_view = pick
-        .member_views
-        .iter()
-        .find(|view| view.value == Some(surviving))
-        .expect("surviving C2 value is a member view of the cluster");
-    assert!(
-        surviving_view
-            .view
-            .pair
-            .value
-            .stages
-            .visible_at(Phase::SealStatic),
-        "the surviving member is exactly the one whose own view Policy is visible"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// ③ Crossed Policy coordinates are never unioned across members: each member
-// view keeps its own value/pattern Policy, identical to its own value object.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn member_view_policies_do_not_union_across_members() {
-    let world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("pick cluster symbol");
-    assert_eq!(pick.sibling_vals.len(), 2);
-    assert_eq!(pick.member_views.len(), 2);
-
-    let a = &pick.member_views[0];
-    let b = &pick.member_views[1];
-    assert_ne!(
-        a.view.pair.value.stages, b.view.pair.value.stages,
-        "fixture must keep two members with genuinely different P1 stages"
-    );
-    let union = a.view.pair.value.stages.union(&b.view.pair.value.stages);
-    assert_ne!(a.view.pair.value.stages, union, "member A carries no union");
-    assert_ne!(b.view.pair.value.stages, union, "member B carries no union");
-
-    // Each view's coordinates are its own member's canonical P1 — the same
-    // PolicyPair carried by the member's function-object value.
-    for view in &pick.member_views {
-        let value = view.value.expect("callable member view has a value");
-        let object = world
-            .semantic_world()
-            .value(value)
-            .expect("member value exists");
-        assert_eq!(object.policy.value, view.view.pair.value);
-        assert_eq!(object.policy.pattern, view.view.pair.pattern);
-    }
-}
-
-// ---------------------------------------------------------------------------
-// ④ A complete type is an ordinary first-class value but is not callable
-// unless its complete callspace contains associated `()`.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ⑤ A callable member owns its own function-object value with associated
-// Val2["()"] and a terminal FunctionItem call entry. (The injected self
-// slot 0 is exercised by ⑦: the call product carries explicit args only.)
-// ---------------------------------------------------------------------------
-
 #[test]
 fn callable_member_owns_function_object_and_terminal_call_entry() {
-    let world = build_single_fixture_world("declared_result", "app");
-    let make_type = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "make_type")
-        .expect("make_type cluster symbol");
-    assert_eq!(make_type.sibling_vals.len(), 1);
-    let function_value = make_type.sibling_vals[0];
+    let world = support::AssociatedFamily::new(&[
+        "let member = (self, t:type):meta -> let r:type => { t; };",
+    ]);
+    let make_type = world.target_binding();
+    assert_eq!(make_type.ordinary_value().iter().count(), 1);
+    let function_value = make_type.ordinary_value().unwrap();
     let function_obj = world
         .semantic_world()
         .value(function_value)
@@ -421,90 +263,6 @@ fn privileged_struct_uses_the_normal_overload_path() {
 }
 
 // ---------------------------------------------------------------------------
-// ⑦ Source meta callables share the core return ontology.  Repeated
-// contributions at the declaration layer produce multiple cluster members
-// (the two `let pick` declarations — pinned in ③); inside one meta body, the
-// legal type member is constructed self-rooted (`let r = (...) |> struct;`)
-// and delivered by the `r;` terminal.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ⑧ A Meta outcome is received by an ordinary let binding: build-time
-// `let T: type = (uint8 a) struct;` and `let R: type = uint8 make_one;`
-// install fresh destination cluster Symbols.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ⑩ A flat symbol-level Policy aggregate cannot reproduce the canonical
-// member-level result: the per-member C2 exposure decision differs from what
-// any single unioned coordinate would produce.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn flat_symbol_policy_cannot_express_member_level_exposure() {
-    let mut world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("pick cluster symbol");
-    let views = pick.member_views.clone();
-    assert_eq!(views.len(), 2);
-
-    let visible: Vec<_> = views
-        .iter()
-        .filter(|view| view.view.pair.value.stages.visible_at(Phase::SealStatic))
-        .collect();
-    let hidden: Vec<_> = views
-        .iter()
-        .filter(|view| !view.view.pair.value.stages.visible_at(Phase::SealStatic))
-        .collect();
-    assert_eq!(visible.len(), 1);
-    assert_eq!(hidden.len(), 1);
-
-    // The flat union coordinate WOULD be visible at SealStatic — a flat
-    // symbol-level Policy cannot express the member-level distinction.
-    let union = visible[0]
-        .view
-        .pair
-        .value
-        .stages
-        .union(&hidden[0].view.pair.value.stages);
-    assert!(union.visible_at(Phase::SealStatic));
-
-    // The canonical pipeline reads the per-member view Policy: the hidden
-    // member is dropped at C2 even though the flat union would keep it.
-    let muts = [PolicyMode::Const];
-    let seal = invoke(
-        &mut world,
-        "let R: type = uint8 pick;",
-        seal_static(&muts),
-        "member-level authority",
-    );
-    let trace = trace_of(&seal);
-    assert!(trace
-        .c2_phase_values
-        .contains(&visible[0].value.expect("callable member value")));
-    assert!(!trace
-        .c2_phase_values
-        .contains(&hidden[0].value.expect("callable member value")));
-}
-
-// ---------------------------------------------------------------------------
-// ⑪ Direct forwarding of an external type value out of a meta body violates
-// the self-root invariant: `{ let r = t; r; }` must fail with
-// MetaReturnTypeRootMismatch. Root mismatch is terminal.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ⑫ A meta body with construction effects but no terminal delivers nothing:
-// `{ let r = (t inner) |> struct; }` (no trailing `r;`) must not succeed.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ⑬ Alias syntax remains available to Raw/Normalized AST consumers, but it
-// has no semantic forwarding authority.
-// ---------------------------------------------------------------------------
-
 #[test]
 fn unwired_lexical_alias_creates_no_semantic_entity() {
     let error = build_fixture_error("lexical_alias_unwired", "app");

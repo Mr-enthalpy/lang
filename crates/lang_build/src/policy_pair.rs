@@ -220,35 +220,6 @@ pub enum CallablePrivilege {
     BuiltinPrivileged,
 }
 
-/// Legality relation between result Policy and the declared result class.
-///
-/// The core criterion for meta-legal returns is a SINGLE position:
-///
-/// * `ClusterSymbol` (one position, plural values) requires `P2 = meta`.
-/// * `CompleteType` / `OrdinaryValue` / `Unit` are legal under both; root
-///   constraints (self-rooting of meta type results) are enforced by the
-///   invocation/installation layer, not here.
-pub fn validate_declared_result_class(
-    result_class: crate::DeclaredResultClass,
-    p2: &PolicyPair,
-    provenance: &crate::Provenance,
-) -> Result<(), crate::Diagnostic> {
-    let stages = p2.value.stages.union(&p2.pattern.stages);
-    let includes_meta = stages.contains(PolicyStage::Meta);
-    let cluster_construction_authorized = stages.len() == 1 && includes_meta;
-    match result_class {
-        crate::DeclaredResultClass::ClusterSymbol if !cluster_construction_authorized => {
-            Err(crate::Diagnostic::hard_error(
-                "a ClusterSymbol return (`-> r: symbol`) requires a pure meta result P2: \
-                 a Symbol cluster cannot be constructed by a mixed meta/compile or \
-                 meta/runtime result domain",
-                Some(provenance.clone()),
-            ))
-        }
-        _ => Ok(()),
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValuePresence {
     Present,
@@ -279,49 +250,6 @@ pub struct PolicyPair {
 pub struct PolicyView {
     pub pair: PolicyPair,
     pub mode: PolicyMode,
-}
-
-/// Policy disjunction: the least Policy admitting everything either
-/// operand admits.
-///
-/// This is the algebraic base of the derived cluster Policy law
-/// `P_cluster = P_member_1 || … || P_member_n`
-/// (`derived_cluster_policy` in `semantic_world`).  The result is a
-/// derived fact only — it never becomes a storage or exposure
-/// authority; exposure keeps filtering per member
-/// (`Expose(cluster, phase) = { member_i | Expose(P_i, phase) }`).
-///
-/// EXCLUSIVITY: the member → whole-function-object P1 disjunction holds
-/// between the members of one ClusterSymbol and nowhere else;
-/// `derived_cluster_policy` is this function's only legitimate caller.
-/// A Val2 name is itself a recursive ClusterSymbol (`Val2(T_t)[f] = C_f`), so
-/// the same law applies one layer down: `P(C_f)` is the disjunction of `C_f`'s
-/// OWN members.  What never happens is absorption across layers — a host
-/// type/cluster does not disjoin its associated Symbols' Policies into its own,
-/// layered exposure composes conjunctively (`∧`) at lookup, and a written `||`
-/// inside one Policy spelling is elaborated within that single spelling only.
-///
-/// Component rules:
-/// * stages — set union on both the value and pattern components;
-/// * presence — `Present || Present = Present`,
-///   `Absent || Absent = Absent`, any mix is `Optional`.
-/// Whole-slot PolicyMode is deliberately absent: callers combine complete
-/// [`PolicyView`] values without inventing a mode disjunction.
-pub fn policy_or(a: &PolicyPair, b: &PolicyPair) -> PolicyPair {
-    let presence = match (a.value.presence, b.value.presence) {
-        (ValuePresence::Present, ValuePresence::Present) => ValuePresence::Present,
-        (ValuePresence::Absent, ValuePresence::Absent) => ValuePresence::Absent,
-        _ => ValuePresence::Optional,
-    };
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: a.value.stages.union(&b.value.stages),
-            presence,
-        },
-        pattern: PatternComponentPolicy {
-            stages: a.pattern.stages.union(&b.pattern.stages),
-        },
-    }
 }
 
 /// Namespace declaration attributes adjacent to, but never part of, a

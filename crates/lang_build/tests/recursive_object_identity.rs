@@ -1,14 +1,12 @@
 //! Type-object identity is the RECURSIVE object normal form, and every
-//! use context shares ONE Val2 Symbol navigator.
+//! use context shares ONE Val2 member-binding navigator.
 //!
 //! A pure type Object is `null × P × Val2`, so its normal form must carry both
 //! components:
 //!
 //! ```text
 //! Norm_type(x)    = ⟨ Norm_P(P_x), Norm_Val2(Val2_x) ⟩
-//! Norm_Val2(V)    = Map_name( Norm_Cluster(V[name]) )
-//! Norm_Cluster(C) = ⟨ Norm_pureP(C.pureP)?, Multiset{ Norm_val(v) } ⟩
-//! Norm_pureP(x)   = ⟨ Norm_P(P_x), Norm_Val2(Val2_x) ⟩
+//! Norm_Val2(V)    = Map_selector( Addr(Norm(Resident(V[selector]))) )
 //! ```
 //!
 //! `ObjectPlaceId ∉ Norm_type`: a place is only the observation coordinate
@@ -20,7 +18,7 @@
 //! ```
 //!
 //! even when `place(x) ≠ place(y)`.  The recursion is well-founded finite
-//! recursion: it descends into each associated cluster Symbol and bottoms out
+//! recursion: it descends into each associated resident Object and bottoms out
 //! at leaves with no vertically traversable object children
 //! (`Children_V(x) = ∅`, e.g. `Val2(()) = ∅`).  Re-entering an object still
 //! on the ACTIVE recursion stack proves an illegal cyclic Val2 and is a hard
@@ -29,13 +27,13 @@
 //! `SemanticValueId`, `ObjectPlaceId`, or memo node number reaches the
 //! normal form.
 //!
-//! Navigation is Symbol-first and context-independent:
+//! Navigation resolves a member binding once, independently of its consumer:
 //!
 //! ```text
-//! Path -> Symbol -> ContextDirectedProjection
+//! Path -> NameBinding -> ContextDirectedResidentProjection
 //! ```
 //!
-//! Which Symbol a path denotes is NOT decided by whether the result is later
+//! Which binding a path denotes is NOT decided by whether the result is later
 //! used as a call target, a type, a value, or an injection target; only the
 //! final facet projection differs.
 
@@ -43,13 +41,13 @@ mod support;
 
 use lang_build::{
     classify_type_arguments_env_with_report, compute_meta_invocation_material_key,
-    extract_single_call_site, invoke_host_member_symbol_ordinary, CanonicalValueAddr,
+    extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr,
     DeclaredResultClass, MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
     Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
     RawArgShape, RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv,
-    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeMemberFacet, TypeResolutionEnv,
-    TypeValueId, ValueComponentPolicy, ValuePresence,
+    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeResolutionEnv, TypeValueId,
+    ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
 
@@ -319,18 +317,29 @@ fn successor_vtau_does_not_redefine_object_val2() {
         .observe_complete_type(type_value, Some(t_place))
         .expect("initial complete tau observes")
         .whole();
+    let closure_expr = initializer_from_source("let f = (self): compile -> let r => { self; };");
+    let lang_syntax::NormExpr::Closure(closure) = closure_expr else {
+        panic!("closure");
+    };
+    let view = lang_build::declared_policy_view(&[PolicyStage::Compile], PolicyMode::Plain);
     let builtin_member = world
-        .core_type_projection_value(support::numbered_type_lookup_fixture("recursive-object", 1))
-        .expect("member type has a transport value");
+        .install_callable_member_value(
+            NamespaceNodeId(0),
+            "call_member",
+            SymbolId(99900),
+            &closure,
+            None,
+            view.clone(),
+            view,
+            None,
+            lang_build::DeclaredResultClass::OrdinaryValue,
+            Provenance::new("ordinary type-call member"),
+        )
+        .unwrap()
+        .function_value;
 
     world
-        .admit_direct_type_member(
-            pattern,
-            pattern,
-            "vtau_only",
-            TypeMemberFacet::Value,
-            builtin_member,
-        )
+        .admit_direct_type_member(pattern, pattern, "vtau_only", builtin_member)
         .expect("a fresh direct TypeMember is admitted");
     let tau_after = world
         .observe_complete_type(type_value, Some(t_place))
@@ -430,7 +439,7 @@ fn unit_is_terminal_leaf() {
         panic!("callable fixture initializer is a closure");
     };
     let registered = world
-        .register_source_callable(
+        .install_callable_member_value(
             NamespaceNodeId(0),
             "f",
             SymbolId(90),
@@ -448,7 +457,7 @@ fn unit_is_terminal_leaf() {
             DeclaredResultClass::OrdinaryValue,
             provenance.clone(),
         )
-        .expect("source callable registers in the unit world");
+        .expect("ordinary callable substrate member is installed");
     let (entry_pattern, entry_type) = {
         let entry = world
             .value(registered.call_entry)
@@ -640,7 +649,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
         .expect("`f::T` navigates T's Val2");
     assert_eq!(
         navigation.terminal_symbol, member,
-        "the path resolves to the associated cluster Symbol"
+        "the path resolves to the associated member binding"
     );
     assert_eq!(
         navigation
@@ -835,7 +844,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     // The whole chain is gated: `T` is hidden, so `g::f::T(...)` is
     // unreachable at SealStatic. Resolution is already sealed, so the
     // projection reports `NoTargetValues` without any outward fallback.
-    let blocked = invoke_host_member_symbol_ordinary(
+    let blocked = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain,
         g,
@@ -854,7 +863,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
 
     // Omitting the outer host reaches member processing instead, producing a
     // different failure. This isolates `T` as the host that gates the call.
-    let leaked = invoke_host_member_symbol_ordinary(
+    let leaked = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain[1..],
         g,
@@ -864,17 +873,17 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         provenance.clone(),
     );
     assert!(
-        !matches!(
+        matches!(
             leaked,
             Err(OrdinaryInvocationFailure::NoTargetValues { .. })
         ),
-        "the inner host f is visible; only the dropped outer host T was gating: {leaked:?}"
+        "the visible inner chain does not fabricate callability for g: {leaked:?}"
     );
 
     // With every host exposed, the call reaches member processing (`g` carries
     // no callable value here).
     let open = OrdinaryInvocationContext::open_static(&[]);
-    let passed = invoke_host_member_symbol_ordinary(
+    let passed = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain,
         g,
@@ -884,23 +893,19 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         provenance,
     );
     assert!(
-        !matches!(
+        matches!(
             passed,
             Err(OrdinaryInvocationFailure::NoTargetValues { .. })
         ),
-        "with every host exposed the chain gate passes: {passed:?}"
+        "visible hosts do not turn a noncallable binding into a candidate: {passed:?}"
     );
 }
 
-/// Two DISTINCT associated cluster Symbols with identical pure-P and
-/// sibling-val normal content produce ONE type normal form: an associated
-/// Symbol's allocation identity `C_f^T ≠ C_f^U` never leaks into `Norm_type`.
-///
-/// The existing place-vs-identity test reuses ONE member Symbol under two
-/// places; this pins the stronger claim that even two SEPARATE cluster
-/// Symbols merge as long as their recursive content matches.
+/// Distinct associated bindings with equal resident content produce the same
+/// Core normal form. Binding identity and destination Place are not coordinates
+/// of the resident Object normal form.
 #[test]
-fn distinct_associated_symbols_with_equal_content_share_one_type_normal_form() {
+fn distinct_associated_bindings_with_equal_resident_content_share_one_core_normal_form() {
     let mut world = SemanticWorld::new("unit");
     world.bind_package_namespace(NamespaceNodeId(0));
     let provenance = Provenance::new("distinct associated symbol identity");
@@ -931,7 +936,7 @@ fn distinct_associated_symbols_with_equal_content_share_one_type_normal_form() {
     assert_eq!(t_pattern, u_pattern, "T and U carry one Pattern");
     let (c_t, _, c_t_pattern) = register(&mut world, "c_t", 3, 2, policy.clone());
     let (c_u, _, c_u_pattern) = register(&mut world, "c_u", 4, 2, policy);
-    assert_ne!(c_t, c_u, "two DISTINCT associated cluster Symbols");
+    assert_ne!(c_t, c_u, "two distinct associated member bindings");
     assert_eq!(
         c_t_pattern, c_u_pattern,
         "but they carry ONE Pattern, so their pure-P norms are equal"

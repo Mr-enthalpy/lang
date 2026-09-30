@@ -25,7 +25,6 @@ pub enum DeclaredResultClass {
     Unit,
     OrdinaryValue,
     CompleteType,
-    ClusterSymbol,
     Extension(String),
 }
 

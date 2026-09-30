@@ -214,7 +214,7 @@ fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() 
     let package = owners.package_root(PackageId(1), "app");
     let namespace = owners.namespace(package, "meta");
     // Meta instance interning keys off the selected function object VALUE
-    // identity, never the carrier Symbol hosting the overload cluster.
+    // identity, independently of the source name binding.
     let f = MetaCallableIdentity {
         selected_function_value: SemanticValueId(7),
         selected_call_entry: SemanticValueId(70),

@@ -2,7 +2,7 @@ mod support;
 
 use std::path::Path;
 
-use lang_build::{PolicyStage, ResolverCode, SymbolPayload};
+use lang_build::{PolicyStage, ResolverCode};
 use support::{build_fixture_error, build_single_fixture_world};
 
 fn has_code(error: &lang_build::BuildError, code: ResolverCode) -> bool {
@@ -86,52 +86,21 @@ fn residual_type_name_annotation_remains_deferred() {
 }
 
 #[test]
-fn runtime_body_declaration_may_contain_local_meta_shaped_initializer() {
-    let world = build_single_fixture_world("initializer_runtime_body_local_meta", "app");
-    let runtime_body = world
-        .resolve_with_expectation("runtime_body", lang_build::ResolveExpectation::MetaFunction)
-        .expect("runtime_body callable");
-    let SymbolPayload::MetaFunction(meta_function) = &runtime_body.payload else {
-        panic!("runtime_body must be meta function object");
-    };
-    assert!(meta_function
-        .body_entry_policy
-        .pair
-        .value
-        .stages
-        .contains(PolicyStage::Runtime));
-    assert!(!meta_function
-        .body_entry_policy
-        .pair
-        .value
-        .stages
-        .contains(PolicyStage::Meta));
+fn runtime_closure_declaration_requires_tau_formation() {
+    let error = build_fixture_error("initializer_runtime_body_local_meta", "app");
+    assert!(error
+        .diagnostics
+        .iter()
+        .any(|d| d.message.contains("closure-to-tau formation consumer")));
 }
 
 #[test]
-fn ambiguity_does_not_residualize_under_meta_partial() {
+fn unavailable_source_contribution_does_not_residualize_under_meta_partial() {
     let err = build_fixture_error("initializer_ambiguous", "app");
-    assert!(has_code(&err, ResolverCode::AmbiguousMetaCandidate));
-}
-
-// A runtime-only result P2 (`: runtime ->` = `runtime:compile`) claims a
-// runtime value slice whose stage is disjoint from its Pattern stage
-// (`N2(runtime) = runtime:compile`). A pure-P return slot (`let r: type`)
-// carries no value dimension, so the declared runtime slice could never be
-// filled: the declaration itself is rejected at elaboration. Static single
-// policies keep Pv == Pp (`N2(P) = P:(P - runtime)`) and stay legal for
-// pure-P return slots.
-#[test]
-fn runtime_only_pure_p_return_slot_declaration_is_hard_error() {
-    let err = build_fixture_error("runtime_slice_no_value_dimension", "app");
-    assert!(has_code(
-        &err,
-        ResolverCode::RuntimeSliceWithoutValueDimension
-    ));
     assert!(err
         .diagnostics
         .iter()
-        .any(|diagnostic| diagnostic.message.contains("no value dimension")));
+        .any(|d| d.message.contains("closure-to-tau formation consumer")));
 }
 
 #[test]

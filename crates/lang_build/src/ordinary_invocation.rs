@@ -5,12 +5,11 @@
 //! values and then use exactly this sequence:
 //!
 //! ```text
-//! Cluster Symbol
-//!   -> sibling vals of the owning cluster                  (C0)
+//! Resolved ordinary resident, or every member of a complete type V_tau (C0)
 //!   -> target value visibility                             (C1)
 //!   -> target value phase view                             (C2)
-//!   -> Callable filtering: CallSpace(Type(v)) contains ()  (Cc)
-//!   -> resolve associated call entries from the exact tau  (C3)
+//!   -> Callable filtering: AssociatedNamespace(Type(v)).Val2[()]  (Cc)
+//!   -> retain (ordinary receiver, associated implementation) pairs  (C3)
 //!   -> hard applicability                                  (A)
 //!   -> optional fallback suppression                       (Af)
 //!   -> one Bp' product comparison
@@ -40,8 +39,8 @@ use crate::{
     },
     meta_invocation::{MetaExecutionMaterial, MetaInvocationInput},
     model::{
-        Diagnostic, ExecutionEnv, PolicyEnv, Provenance, ResolverCode, SourceCategory, SymbolId,
-        SymbolKind, SymbolObject,
+        Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SourceCategory, SymbolId, SymbolKind,
+        SymbolObject,
     },
     overload_pattern::{overload_args_from_classified_shape, SpecificityTuple},
     overload_set::{
@@ -185,6 +184,7 @@ pub struct DynamicLegalityDemand<'a> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OrdinaryCandidateOrigin {
     SourceSymbol(SemanticSymbolIdentity),
+    TypeCallSpace(crate::CanonicalValueAddr),
     PatternAssociatedCallEntry(PatternValueId),
     PatternAssociatedValue(PatternValueId),
 }
@@ -352,13 +352,13 @@ fn validate_dynamic_legality(
     })
 }
 
-/// A sibling val that has been verified callable by the Cc stage.
+/// An ordinary value that has been verified callable by the Cc stage.
 ///
-/// Keeps the sibling value and its resolved call entries distinct so that
+/// Keeps the actual receiver and its resolved call entries distinct so that
 /// overload enumeration and call-entry resolution are visibly separate.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CallableTarget {
-    pub sibling_value: SemanticValueId,
+    pub callable_value: SemanticValueId,
     pub call_entries: Vec<SemanticValueId>,
 }
 
@@ -431,7 +431,7 @@ impl SingleMemberResult {
 /// The outward visibility of an invocation result is the canonical P1 —
 /// the same single output authority as the migration output endpoint —
 /// while P2 keeps only input/result compatibility and the complete result
-/// type/pattern domain.  Cluster member views carry each member's own
+/// type/pattern domain.  Resident Policy views carry each value's own
 /// Policy and are a third, separate coordinate.
 #[derive(Clone, Debug)]
 pub struct ExposedInvocationResult {
@@ -520,24 +520,6 @@ fn expose_result_entry(
     })
 }
 
-/// Result of an invocation declaring `ClusterSymbol`: a completed Symbol
-/// cluster construction (plural values under one name at one position).
-#[derive(Clone, Debug)]
-pub struct ClusterSymbolResult {
-    pub construction: crate::ClusterConstructionMaterial,
-    /// Struct construction materials backing the construction's self-rooted
-    /// type members, in member order. The binding side uses these to
-    /// expand the field-function and ref/share projection namespaces instead
-    /// of a bare bound-type-value carrier. Forwarded members contribute no
-    /// entry here.
-    pub struct_materials: Vec<crate::StructConstructionMaterial>,
-    /// The complete result P2 of the selected callable.  Carried per
-    /// result class. This field keeps the independent Policy coordinate
-    /// alongside it.
-    pub result_p2: PolicyPair,
-    pub trace: OrdinaryPipelineTrace,
-}
-
 /// Result of an invocation declaring `Unit` (`_: unit`). This is a value-less
 /// result. Reserved carrier — no executable producer exists yet; the
 /// declaration level validates the class and invocation reports the
@@ -559,7 +541,6 @@ pub struct UnitInvocationResult {
 pub enum ProjectedInvocationOutcome {
     Unit(UnitInvocationResult),
     SingleMember(SingleMemberResult),
-    ClusterSymbol(ClusterSymbolResult),
 }
 
 /// Unified ordinary invocation boundary. Selection/admissibility failures
@@ -655,7 +636,7 @@ pub enum OrdinaryInvocationFailure {
         trace: OrdinaryPipelineTrace,
     },
     /// Meta-return self-root enforcement.  The unique type
-    /// member of a meta invocation's cluster must be rooted at the meta
+    /// result of a meta invocation must be rooted at the meta
     /// function itself plus its normalized input arguments
     /// (`MetaTypeRoot = MetaFunctionIdentity + Normalize(Arguments)`).
     /// Forwarding an existing type root out of the body is a hard
@@ -788,25 +769,22 @@ pub fn invoke_policy_migration(
         },
     });
 
-    // Follow PatternValue → OwnerCluster → member views, not
-    // Pattern → P.Val2["()"].  Transport members are sibling vals
-    // of the owning cluster, not associated Val2 of the pure P.
-    let cluster_owner = semantic_world
-        .owner_cluster(source.pattern)
+    // Read the exact complete Type captured by the source value. A declaration
+    // binding may now carry a successor Type and is not a recovery path.
+    let complete = semantic_world
+        .complete_type_for_value(source.id)
         .ok_or_else(|| OrdinaryInvocationFailure::NoTargetValues {
             trace: OrdinaryPipelineTrace::default(),
         })?;
-    let cluster =
-        cluster_owner
-            .installed()
-            .ok_or_else(|| OrdinaryInvocationFailure::NoTargetValues {
-                trace: OrdinaryPipelineTrace::default(),
-            })?;
-    let target_members = semantic_world
-        .symbol(cluster)
-        .map(|cell| cell.member_views.clone())
-        .unwrap_or_default();
-    let target_places = semantic_world.binding_places(cluster);
+    let whole = complete.whole();
+    let values = complete
+        .call_space()
+        .values()
+        .flatten()
+        .map(|entry| entry.value)
+        .collect::<Vec<_>>();
+    let target_members = semantic_world.member_views_for_values(&values);
+    let target_places = BTreeMap::new();
 
     let no_explicit_modes = [];
     let trace = OrdinaryPipelineTrace {
@@ -822,7 +800,7 @@ pub fn invoke_policy_migration(
 
     let invocation = invoke_target_values(
         semantic_world,
-        OrdinaryCandidateOrigin::SourceSymbol(cluster),
+        OrdinaryCandidateOrigin::TypeCallSpace(whole),
         target_members,
         target_places,
         None,
@@ -881,32 +859,49 @@ pub fn invoke_policy_migration(
     })
 }
 
-/// Invoke all value members of one resolved semantic Symbol.
-///
-/// C0 is the resolved ClusterSymbol's canonical member views — not a flat
-/// value-id list.  Pure-P members (value = None) stay legal cluster members
-/// but are not invocation candidates; exposure and callability are decided
-/// per member view downstream.
-pub fn invoke_symbol_ordinary(
-    semantic_world: &mut SemanticWorld,
-    symbol: SemanticSymbolIdentity,
-    call_site: &NormalizedCallSite,
-    resolver_context: &ResolverContext,
-    context: OrdinaryInvocationContext<'_>,
-    provenance: Provenance,
-) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    invoke_host_member_symbol_ordinary(
-        semantic_world,
-        &[],
-        symbol,
-        call_site,
-        resolver_context,
-        context,
-        provenance,
-    )
+/// Read one resolved binding before candidate projection. A type projects only
+/// its own immutable V_tau; an ordinary resident enters through its classifier.
+/// A declaration ledger is not a callable value or an implicit overload group.
+fn resolved_binding_call_views(
+    world: &SemanticWorld,
+    binding: SemanticSymbolIdentity,
+    provenance: &Provenance,
+) -> Result<Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>, OrdinaryInvocationFailure> {
+    let Some(cell) = world.symbol(binding) else {
+        return Ok(Vec::new());
+    };
+    if let Some(ty) = cell.pure_p() {
+        let complete = ty
+            .complete_type
+            .and_then(|whole| world.complete_type_by_whole_observation(whole));
+        let values = complete
+            .into_iter()
+            .flat_map(|ty| ty.call_space().values())
+            .flatten()
+            .map(|entry| entry.value)
+            .collect::<Vec<_>>();
+        return Ok(world.member_views_for_values(&values));
+    }
+    let Some(resident) = cell.ordinary_value() else {
+        return Ok(Vec::new());
+    };
+    if cell
+        .member_views
+        .iter()
+        .any(|view| view.value != Some(resident))
+    {
+        return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+            first_diagnostic: Some(Diagnostic::hard_error(
+                "same-name declaration contribution formation is not connected; declarations are not an invocation candidate source",
+                Some(provenance.clone()),
+            )),
+            trace: OrdinaryPipelineTrace::default(),
+        });
+    }
+    Ok(cell.member_views.clone())
 }
 
-/// Invoke one resolved semantic Symbol reached through an explicit host chain.
+/// Invoke one resolved binding reached through an explicit host chain.
 ///
 /// Exposure of a navigated target composes per layer and per phase over the
 /// WHOLE chain the navigator stepped through:
@@ -925,7 +920,7 @@ pub fn invoke_symbol_ordinary(
 /// A bare-name target has an empty host chain and composes only the member
 /// factor.
 #[allow(clippy::too_many_arguments)]
-pub fn invoke_host_member_symbol_ordinary(
+pub fn invoke_resolved_binding_ordinary(
     semantic_world: &mut SemanticWorld,
     hosts: &[crate::PatternHostMember],
     symbol: SemanticSymbolIdentity,
@@ -939,10 +934,7 @@ pub fn invoke_host_member_symbol_ordinary(
             trace: OrdinaryPipelineTrace::default(),
         });
     }
-    let target_members = semantic_world
-        .symbol(symbol)
-        .map(|symbol| symbol.member_views.clone())
-        .unwrap_or_default();
+    let target_members = resolved_binding_call_views(semantic_world, symbol, &provenance)?;
     let target_places = semantic_world.binding_places(symbol);
     invoke_target_values(
         semantic_world,
@@ -1039,12 +1031,8 @@ pub fn invoke_pattern_associated_value_ordinary(
     )
 }
 
-/// Cc stage: filter sibling vals that are callable.
-///
-/// Callable(v) iff the immutable callspace of the exact complete Type captured
-/// when `v` was formed contains `()`. Object.Val2 is not callable authority,
-/// and the Type lookup key must not be refreshed to a later snapshot.
-
+/// Ordinary callability comes from Type(v)'s associated namespace, independently
+/// of both v's owned Val2 and the type-call V_tau projection.
 fn filter_callable(
     semantic_world: &SemanticWorld,
     values: &[SemanticValueId],
@@ -1066,7 +1054,7 @@ fn filter_callable(
                 return None;
             }
             Some(CallableTarget {
-                sibling_value: *value,
+                callable_value: *value,
                 call_entries,
             })
         })
@@ -1087,10 +1075,10 @@ pub(crate) fn invoke_target_values(
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
     // C0: canonical member views of the resolved target.  Pure-P member
-    // views (value = None) are legal cluster members but never invocation
+    // views (value = None) have no ordinary Val1 and are never invocation
     // candidates; only value-bearing views continue.  All subsequent
     // exposure decisions read the per-member view Policy — never a flat
-    // Symbol/cluster aggregate.
+    // aggregate Policy.
     let value_views = target_members
         .iter()
         .filter(|view| view.value.is_some())
@@ -1129,7 +1117,7 @@ pub(crate) fn invoke_target_values(
     // C2: expose the member views whose own value Policy is visible at the
     // call phase; do not confuse exposure with ReadValue.  The projection
     // reads the member view's value_policy — not the value object's flat
-    // PolicyPair and not any cluster-level union.
+    // PolicyPair and not a disjunction of unrelated residents.
     let c2_views = c1_views
         .into_iter()
         .filter(|view| view.view.pair.value.stages.visible_at(context.phase))
@@ -1144,19 +1132,18 @@ pub(crate) fn invoke_target_values(
     }
     trace.c2_phase_values = c2.clone();
 
-    // Cc: filter sibling vals that are callable.  A value v is callable iff
+    // Cc: filter ordinary values that are callable.  A value v is callable iff
     // (v |> type).Val2 contains an associated `()` call entry.
     let callable_targets = filter_callable(semantic_world, &c2);
     trace.callable_values = callable_targets
         .iter()
-        .map(|target| target.sibling_value)
+        .map(|target| target.callable_value)
         .collect();
 
-    // C3: for each callable sibling val, resolve its call entries.
+    // C3: for each ordinary callable value, resolve its call entries.
     // A compiler-authorized Pattern entrance has already reached associated
     // Val2 and therefore feeds those call-entry values directly into C3.
     let mut c3 = Vec::new();
-    let mut call_entry_receivers = BTreeMap::new();
     if direct_pattern_entries {
         let Some(receiver_value) = associated_receiver else {
             return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
@@ -1172,21 +1159,19 @@ pub(crate) fn invoke_target_values(
                 semantic_world.value(entry).map(|value| &value.payload),
                 Some(SemanticValuePayload::CallEntry(_))
             ) {
-                c3.push(entry);
-                call_entry_receivers.insert(entry, receiver_value);
+                c3.push((entry, receiver_value));
             }
         }
     } else {
         for target in &callable_targets {
             for entry in &target.call_entries {
-                c3.push(*entry);
-                call_entry_receivers.insert(*entry, target.sibling_value);
+                c3.push((*entry, target.callable_value));
             }
         }
     }
     c3.sort();
     c3.dedup();
-    trace.c3_call_entries = c3.clone();
+    trace.c3_call_entries = c3.iter().map(|(entry, _)| *entry).collect();
 
     classify_semantic_value_arguments(
         &mut arg_shape,
@@ -1212,7 +1197,7 @@ pub(crate) fn invoke_target_values(
     // A: hard structural and phase/body-entry applicability.
     let mut prepared = Vec::new();
     let mut first_diagnostic = None;
-    for call_entry_value in c3 {
+    for (call_entry_value, target_value) in c3 {
         let Some(entry_value) = semantic_world.value(call_entry_value) else {
             continue;
         };
@@ -1251,10 +1236,6 @@ pub(crate) fn invoke_target_values(
             entry.provenance.clone(),
         );
 
-        let target_value = call_entry_receivers
-            .get(&call_entry_value)
-            .copied()
-            .expect("every C3 entry retains its receiver");
         let target = semantic_world
             .value(target_value)
             .cloned()
@@ -1751,25 +1732,12 @@ pub(crate) fn invoke_target_values(
     // owner rule establishes no MetaInstance root, so forcing its private AST
     // carrier through an ordinary meta material key would invent semantic
     // identity that the language does not have.
-    let mut canonical_instance_key = if selected.declared_result_class
-        != DeclaredResultClass::ClusterSymbol
-        || is_ambient_struct
-    {
-        None
-    } else {
-        Some(canonical_meta_instance_key_for_selected(
-            semantic_world,
-            &classified.classified_shape,
-            canonical_callable_identity,
-            &provenance,
-            &trace,
-        )?)
-    };
+    let mut canonical_instance_key = None;
 
     // A declared `Unit` result is validated at the declaration boundary but
     // has no executable producer yet: report the execution gap explicitly
     // instead of silently misrouting the result into a single-member or
-    // cluster carrier.
+    // name binding.
     if selected.declared_result_class == DeclaredResultClass::Unit {
         return Err(OrdinaryInvocationFailure::SelectedCoreBody {
             diagnostic: Diagnostic::hard_error(
@@ -1779,227 +1747,6 @@ pub(crate) fn invoke_target_values(
             ),
             trace,
         });
-    }
-
-    let meta_construction_result = if selected.declared_result_class
-        == DeclaredResultClass::ClusterSymbol
-    {
-        // The meta instance root binds the selected function object VALUE
-        // identity (never the carrier Symbol hosting the overload cluster);
-        // owner-forest placement comes from the selected call entry's
-        // declaration environment — a SourceSymbol
-        // origin is NOT required to return a meta construction cluster.
-        let Some(placement_parent) =
-            semantic_world.callable_declaration_environment(selected.call_entry_value)
-        else {
-            return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
-                first_diagnostic: Some(Diagnostic::hard_error(
-                    "meta construction requires a resolved call entry with a \
-                     declaration-environment owner",
-                    Some(provenance.clone()),
-                )),
-                trace,
-            });
-        };
-        let meta_root = crate::MetaInstanceRoot {
-            meta_callable: canonical_callable_identity,
-            placement_parent,
-        };
-        // Begin an open cluster construction for this meta invocation.
-        // The owner strategy is a fact of the selected callable and the
-        // call context, never of the return category: a source meta
-        // function roots its contributions at `MetaInstance(meta callable,
-        // normalized arguments)`, while the builtin privileged `struct`
-        // called directly attaches its complete type result to the ambient
-        // declaration environment and never creates a
-        // `MetaInstance(struct, arguments)` scope of its own.
-        let owner_strategy = if is_ambient_struct {
-            crate::OwnerStrategy::AmbientStructScope
-        } else {
-            crate::OwnerStrategy::OrdinaryMetaInstanceScope
-        };
-        // B8: the ambient construction owner is a fact of the declaration
-        // environment supplied by the caller.  A declaration inside a
-        // callable body supplies its innermost anonymous function object's
-        // Self scope owner, so two ordinary functions in one namespace never
-        // share an ambient struct root; the resolver's namespace node is
-        // only the top-level declaration case.
-        let ambient_owner = ambient_construction_owner;
-        let (authority, owner) = match owner_strategy {
-            crate::OwnerStrategy::AmbientStructScope => {
-                let Some(ambient_owner) = ambient_owner else {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
-                        diagnostic: Diagnostic::hard_error(
-                            "ambient struct construction requires a declaration environment with a semantic owner",
-                            Some(provenance.clone()),
-                        ),
-                        trace,
-                    });
-                };
-                (
-                    crate::ConstructionAuthority::AmbientScope {
-                        owner: ambient_owner,
-                    },
-                    ambient_owner,
-                )
-            }
-            _ => {
-                let instance_key = canonical_instance_key
-                    .as_ref()
-                    .expect("ordinary meta construction has a canonical instance key")
-                    .clone();
-                (
-                    crate::ConstructionAuthority::MetaInvocation {
-                        meta_callable: meta_root.meta_callable,
-                        canonical_key: instance_key,
-                    },
-                    meta_root.placement_parent,
-                )
-            }
-        };
-        let cid = semantic_world.begin_cluster_construction(authority, owner, provenance.clone());
-
-        // Struct construction materials harvested for the binding side's
-        // namespace projection expansion (field layer, ref/share views).
-        let mut struct_materials: Vec<crate::StructConstructionMaterial> = Vec::new();
-
-        // Each member contribution carries the member's own value Policy and
-        // Pattern Policy together with its Pattern identity.
-        let pure_p_member_view = |pattern| PolicyResultEntry {
-            value: None,
-            pattern,
-            view: selected.complete_result_view.clone(),
-        };
-
-        if let Some(core) = &selected.core_invocation {
-            // Core primitive bodies produce exactly one local result
-            // carrier; the carrier drives one member contribution.
-            let mut core_input = core.clone();
-            attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
-            let value = match crate::meta_invocation::invoke_meta_callable(core_input) {
-                crate::MetaPrimitiveExecution::Material(value) => value,
-                crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
-                }
-            };
-            match &value {
-                MetaExecutionMaterial::IdentityType(value) => {
-                    // Core identity-forwarding primitives (builtin
-                    // privileged contract, e.g. `IdentityType`): the
-                    // cluster's unique type member is still navigated as
-                    // the meta function plus its input arguments.  The
-                    // forwarded type's own PatternValue keeps its
-                    // original owner and is never rerooted.
-                    let Some(created) = semantic_world.install_meta_instance_type_value(
-                        &meta_root,
-                        canonical_instance_key
-                            .as_ref()
-                            .expect("ordinary forwarded meta result has an instance key")
-                            .clone(),
-                        value.provenance.clone(),
-                    ) else {
-                        return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
-                            first_diagnostic: Some(Diagnostic::hard_error(
-                                "meta instance type member installation failed",
-                                Some(provenance.clone()),
-                            )),
-                            trace: trace.clone(),
-                        });
-                    };
-                    semantic_world
-                        .contribute_cluster_member_view(cid, pure_p_member_view(created.1));
-                }
-                MetaExecutionMaterial::StructConstructionMaterial(value) => {
-                    let installed = match owner_strategy {
-                        crate::OwnerStrategy::AmbientStructScope => {
-                            let ambient_owner = ambient_owner
-                                .expect("AmbientStructScope construction carries an ambient owner");
-                            if let Some((_existing, binder)) = semantic_world
-                                .ambient_struct_collision(ambient_owner, value.material_id)
-                            {
-                                return Err(OrdinaryInvocationFailure::SelectedCoreBody {
-                                    diagnostic: Diagnostic::hard_error(
-                                        ambient_struct_collision_message(binder),
-                                        Some(provenance.clone()),
-                                    ),
-                                    trace,
-                                });
-                            }
-                            semantic_world.install_ambient_struct_type_value(
-                                ambient_owner,
-                                value.material_id,
-                                value.canonical_pattern_value(),
-                                selected.complete_result_view.pair.clone(),
-                                value.provenance.clone(),
-                            )
-                        }
-                        _ => match semantic_world.install_meta_struct_complete_type(
-                            &meta_root,
-                            canonical_instance_key
-                                .as_ref()
-                                .expect("ordinary meta struct result has an instance key")
-                                .clone(),
-                            value.material_id,
-                            value.canonical_pattern_value(),
-                            selected.complete_result_view.pair.clone(),
-                            value.provenance.clone(),
-                        ) {
-                            Ok(installed) => installed,
-                            Err(diagnostic) => {
-                                return Err(OrdinaryInvocationFailure::SelectedCoreBody {
-                                    diagnostic,
-                                    trace,
-                                });
-                            }
-                        },
-                    };
-                    if let Some((_value_id, pattern, complete_type)) = installed {
-                        semantic_world
-                            .contribute_cluster_member_view(cid, pure_p_member_view(pattern));
-                        let mut value = value.clone();
-                        value.canonical_type = Some(complete_type.lookup_key());
-                        struct_materials.push(value);
-                    }
-                }
-            }
-        } else if selected.source_shape.is_some() {
-            return Err(OrdinaryInvocationFailure::SelectedCoreBody {
-                diagnostic: Diagnostic::hard_error(
-                    "source meta construction is not connected to the canonical member-creation operations",
-                    Some(provenance.clone()),
-                )
-                .with_code(ResolverCode::UnsupportedSelectedSourceBody),
-                trace,
-            });
-        } else {
-            unreachable!("a prepared meta candidate has exactly one implementation body")
-        }
-
-        let construction = semantic_world.finalize_type_cluster(cid).ok_or_else(|| {
-            OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
-                first_diagnostic: Some(Diagnostic::hard_error(
-                    "meta cluster construction finalization failed",
-                    Some(provenance.clone()),
-                )),
-                trace: trace.clone(),
-            }
-        })?;
-
-        Some(ClusterSymbolResult {
-            construction,
-            struct_materials,
-            result_p2: selected.body_entry_view.pair.clone(),
-            trace: trace.clone(),
-        })
-    } else {
-        None
-    };
-
-    if let Some(meta_result) = meta_construction_result {
-        return Ok(semantic_invocation_outcome(
-            selected.declared_result_class.clone(),
-            ProjectedInvocationOutcome::ClusterSymbol(meta_result),
-        ));
     }
 
     let returned = if let Some(source_shape) = &selected.source_shape {

@@ -28,7 +28,7 @@ let keep =
   result;
 };
 
-let empty_cluster =
+let effect_free_ordinary_result =
   (self, t: type): meta
     -> r: symbol =>
 {

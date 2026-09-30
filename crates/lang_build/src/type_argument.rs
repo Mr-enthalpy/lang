@@ -125,7 +125,7 @@ pub trait TypeResolutionEnv {
 }
 
 /// Canonical semantic-world environment. Resolution flows through recursive
-/// ClusterSymbol lookup (`resolve_symbol_path` → pure-P → pattern type); no
+/// Resolved type-binding lookup (`resolve_symbol_path` → pure-P → pattern type); no
 /// graph Symbol payload is read on this path.
 pub struct SemanticTypeEnv<'a> {
     world: &'a SemanticWorld,
@@ -165,7 +165,7 @@ impl<'a> SemanticTypeEnv<'a> {
             represented_type: self.world.type_for_pattern(pattern)?,
             effective_view: cell.pure_p_view().cloned(),
             carrier_place: cell.pure_p_place(),
-            complete_type_observation: cell.pure_p.and_then(|member| member.complete_type),
+            complete_type_observation: cell.pure_p().and_then(|member| member.complete_type),
         })
     }
 }

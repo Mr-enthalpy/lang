@@ -1,4 +1,4 @@
-let bad_cluster =
+let ordinary_result_annotation =
   (self, t: type): compile
     -> r: symbol =>
 {

@@ -522,3 +522,136 @@ pub fn candidate_fixture_call_site() -> NormalizedCallSite {
 pub fn identity_type_fixture_world() -> CompilationWorld {
     build_single_fixture_world("identity_type", "app")
 }
+
+/// Test the ordinary implementation-selection substrate with one receiver and
+/// several explicitly installed associated entries. No same-name declaration
+/// aggregation or source contribution consumer is involved.
+pub struct AssociatedFamily {
+    world: lang_build::SemanticWorld,
+    target: lang_build::SemanticSymbolIdentity,
+    namespace: NamespaceNodeId,
+    resolver: lang_build::ResolverContext,
+}
+
+impl AssociatedFamily {
+    pub fn new(sources: &[&str]) -> Self {
+        Self::try_new(sources).expect("ordinary callable substrate")
+    }
+
+    pub fn from_fixture(workspace: &str) -> Self {
+        let source = fs::read_to_string(fixture_source_root(workspace, "app").join("main.lang"))
+            .expect("callable material fixture");
+        Self::new(&[&source])
+    }
+
+    /// Parse only the explicit callable material supplied by the test. This
+    /// bypasses source declaration evaluation and does not form tau_C.
+    pub fn try_new(sources: &[&str]) -> Result<Self, BuildError> {
+        let base = CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+            .expect("core substrate");
+        let namespace = base.package_root_node();
+        let resolver = base.root_context();
+        let mut world = base.semantic_world().clone();
+        let mut receiver: Option<lang_build::RegisteredCallable> = None;
+        for (index, source) in sources.iter().enumerate() {
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let normalized = lang_syntax::normalize_program(&parsed.program);
+            let NormForm::Let(NormDecl::Let { slot, .. }) = &normalized.forms[0] else {
+                panic!("declaration")
+            };
+            let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() else {
+                panic!("closure")
+            };
+            let provenance = Provenance::new("associated implementation fixture");
+            let p2 = lang_build::normalize_p2_policy(
+                closure.head.as_ref().unwrap().call_policy.as_ref().unwrap(),
+                provenance.clone(),
+            )
+            .unwrap();
+            let outer = lang_build::policy_pair::elaborate_explicit_p1(
+                slot.policy.as_ref(),
+                &p2.pair,
+                lang_build::policy_pair::ExplicitP1Position::OuterBinding,
+                provenance.clone(),
+            )
+            .unwrap();
+            let view = lang_build::derive_function_object_view(
+                &p2,
+                &lang_build::FunctionObjectDeclarationPolicy {
+                    mode: lang_build::PolicyMode::Plain,
+                },
+            );
+            let result_class = lang_build::declared_result_class_from_closure(closure).unwrap();
+            if let Some(first) = &receiver {
+                world
+                    .register_associated_call_entry(
+                        first.function_pattern,
+                        namespace,
+                        lang_build::SymbolId(900000 + index as u64),
+                        closure,
+                        outer,
+                        view,
+                        p2,
+                        None,
+                        lang_build::OrdinaryCandidateRole::Ordinary,
+                        result_class,
+                        provenance,
+                    )
+                    .unwrap();
+            } else {
+                receiver = Some(world.install_callable_member_value(
+                    namespace,
+                    "receiver",
+                    lang_build::SymbolId(900000),
+                    closure,
+                    outer,
+                    view,
+                    p2,
+                    None,
+                    result_class,
+                    provenance,
+                )?);
+            }
+        }
+        let first = receiver.unwrap();
+        Ok(Self {
+            world,
+            target: first.symbol,
+            namespace,
+            resolver,
+        })
+    }
+
+    pub fn target_binding(&self) -> &lang_build::SemanticSymbolCell {
+        self.world.symbol(self.target).unwrap()
+    }
+
+    pub fn semantic_world_mut(&mut self) -> &mut lang_build::SemanticWorld {
+        &mut self.world
+    }
+
+    pub fn semantic_world(&self) -> &lang_build::SemanticWorld {
+        &self.world
+    }
+    pub fn package_root_node(&self) -> NamespaceNodeId {
+        self.namespace
+    }
+    pub fn invoke_ordinary_call(
+        &mut self,
+        _namespace: NamespaceNodeId,
+        call: &NormalizedCallSite,
+        context: lang_build::OrdinaryInvocationContext<'_>,
+        provenance: Provenance,
+    ) -> Result<lang_build::InvocationOutcome, lang_build::OrdinaryInvocationFailure> {
+        lang_build::invoke_resolved_binding_ordinary(
+            &mut self.world,
+            &[],
+            self.target,
+            call,
+            &self.resolver,
+            context,
+            provenance,
+        )
+    }
+}
