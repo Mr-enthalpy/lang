@@ -76,7 +76,10 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
             }
             CandidatePrepResult::Deferred { candidate, reason } => {
                 assert!(!body_visible);
-                assert_eq!(reason, CandidatePrepDeferredReason::BodyEntryPolicyMismatch);
+                assert_eq!(
+                    reason,
+                    CandidatePrepDeferredReason::BodyEntryObservationHidden
+                );
                 candidate
             }
             other => panic!("{other:?}"),

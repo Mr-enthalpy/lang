@@ -834,8 +834,8 @@ pub fn canonical_function_object_view(
             },
             None => crate::ValueComponentPolicy::Absent,
         };
-        if let Some(stages) = &selection.pattern_stage {
-            complete.pair.pattern.stage = stages.clone();
+        if let Some(stage) = selection.pattern_stage {
+            complete.pair.pattern.stage = stage;
         }
         if let Some(mode) = selection.mode {
             complete.mode = mode;

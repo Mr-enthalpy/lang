@@ -141,7 +141,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
         CandidatePrepResult::Applicable(candidate) => *candidate,
         CandidatePrepResult::Deferred { reason, .. } => {
             let message = match reason {
-                CandidatePrepDeferredReason::BodyEntryPolicyMismatch => {
+                CandidatePrepDeferredReason::BodyEntryObservationHidden => {
                     "body-entry observation is not visible at the demanded horizon"
                 }
                 CandidatePrepDeferredReason::ParameterShapeCompatibilityDeferred => {

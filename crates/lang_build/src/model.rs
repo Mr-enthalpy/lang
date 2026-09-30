@@ -198,7 +198,6 @@ pub enum ResolverCode {
     Conflict,
     AmbiguousMetaCandidate,
     NoCallCandidate,
-    BodyEntryPolicyMismatch,
     UnsupportedInitializerContinuation,
     AnnotationAssertionFailed,
     ExplicitPolicyVerificationFailed,

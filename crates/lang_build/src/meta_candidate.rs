@@ -2,7 +2,7 @@
 //!
 //! This module holds the candidate-preparation pipeline that sits between
 //! product/argument shaping and formal meta invocation. It checks arity and
-//! body-entry policy compatibility but does **not** execute meta functions,
+//! body-entry observation visibility but does **not** execute meta functions,
 //! resolve overloads, or perform type inference.
 //!
 //! Three-segment separation:
@@ -199,7 +199,8 @@ pub enum CanonicalArgAtomKind {
 
 /// Candidate preparation result before formal meta invocation.
 ///
-/// `Applicable` means the candidate passed arity and body-entry checks. It is
+/// `Applicable` means the candidate passed arity and body-entry visibility checks.
+/// Visibility supplies neither execution legality nor readiness evidence. It is
 /// not a completed invocation result and it
 /// does not produce an `InvocationResult` or namespace installation material,
 /// `NamespaceDelta`.
@@ -220,7 +221,9 @@ pub enum CandidatePrepResult {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CandidatePrepDeferredReason {
     ParameterShapeCompatibilityDeferred,
-    BodyEntryPolicyMismatch,
+    /// The declared body-entry observation is hidden at the requested horizon.
+    /// This supplies neither body execution legality nor readiness evidence.
+    BodyEntryObservationHidden,
 }
 
 /// Candidate preparation with declared policy planes.
@@ -313,7 +316,7 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     {
         return CandidatePrepResult::Deferred {
             candidate: Box::new(candidate),
-            reason: CandidatePrepDeferredReason::BodyEntryPolicyMismatch,
+            reason: CandidatePrepDeferredReason::BodyEntryObservationHidden,
         };
     }
 
