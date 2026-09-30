@@ -55,6 +55,11 @@ Candidate errors and selected-body failures remain diagnostics, with no second
 meta evaluator mode or function/world stage partition. Ordinary
 deduction, R_vis/C_sigma and E readiness/saturation still require consumer
 coverage. Carrier test success is not general source coverage of these semantics.
+Construction-window checks consume explicit WindowLive and authority facts;
+generation-coordinate split/merge and owner-interval termination remain
+unconnected consumers. Neither a global runtime epoch nor a compile-branch
+no-op supplies those facts. Allocation without established construction facts
+fails OpenHere, and saved authority cannot revive an explicitly closed window.
 
 ## Stage, Policy and two-round calls
 

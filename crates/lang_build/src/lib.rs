@@ -203,16 +203,15 @@ pub use semantic_owner::{
 pub use semantic_world::{
     canonical_function_object_view, AmbientTypeBinder, BindConflict, BorrowFormationFailure,
     BorrowKind, BorrowOperand, BorrowView, BorrowViewId, CompleteTypeValue, ConstructionAuthority,
-    ConstructionEvaluationContext, ConstructionWindow, ImmutableTypeCallSpace, MemberCreationProof,
-    MetaInstanceRoot, MetaInstanceRootKey, ObjectPlace, ObjectPlaceId, OpenHereFailure,
-    OpenHereProof, OrdinaryCallEntry, OrdinaryCandidateRole, OrdinaryOpenWindow, OwnerStrategy,
-    PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector, ProjectionSlot,
-    ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
-    ResidentGeneration, ResidentIdentity, ResidualRuntimeEpoch, ResolvedExtractionTarget,
-    ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId,
-    SemanticPatternValue, SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot,
-    SemanticValueObject, SemanticValuePayload, SemanticWorld, StableBorrowTarget,
-    TypeMemberSnapshotEntry, WritableContext,
+    ConstructionEvaluationContext, ImmutableTypeCallSpace, MemberCreationProof, MetaInstanceRoot,
+    MetaInstanceRootKey, ObjectPlace, ObjectPlaceId, OpenHereFailure, OpenHereProof,
+    OrdinaryCallEntry, OrdinaryCandidateRole, OwnerStrategy, PatternHostMember, PatternValueId,
+    PlaceMutationFailure, ProjectionSelector, ProjectionSlot, ProjectionSlotContents,
+    ProjectionSlotIdentity, PurePMember, RegisteredCallable, ResidentGeneration, ResidentIdentity,
+    ResolvedExtractionTarget, ResolvedPatternScope, ResolvedPatternScopeId,
+    ResolvedSemanticNavigation, SemanticObjectId, SemanticPatternValue, SemanticSymbolCell,
+    SemanticTypeValue, SemanticVal2Snapshot, SemanticValueObject, SemanticValuePayload,
+    SemanticWorld, StableBorrowTarget, TypeMemberSnapshotEntry, WritableContext,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{

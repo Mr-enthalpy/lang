@@ -918,10 +918,9 @@ pub enum ConstructionAuthority {
 
 /// Dynamic construction-authority frames visible at one evaluation point.
 ///
-/// The vector is ordered nearest-first and contains only authority-bearing
-/// frames; transparent compile/intrinsic frames have already been erased by
-/// the evaluator. A live window does not by itself prove that the current
-/// continuation owns the value's construction anchor.
+/// The vector is an authority projection supplied in nearest-first order.
+/// It is not a generation/control-flow coordinate. A live window does not by
+/// itself prove that the current continuation owns the construction anchor.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ConstructionEvaluationContext {
     frames_nearest_first: Vec<ConstructionAuthority>,
@@ -1040,62 +1039,10 @@ pub enum AmbientTypeBinder {
     CallableParameter(String),
 }
 
-/// Monotone coordinate of the residual runtime serial flow.
-///
-/// After `compile` stripping, the residual runtime flow is a serial
-/// stream; every fork of that stream and every end of a serial segment
-/// advances the epoch.  Purely static (compile-evaluated) branching
-/// never advances it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ResidualRuntimeEpoch(pub u64);
-
-/// Open-window discipline of one construction window.
-///
-/// A meta construction window and an ambient ordinary construction window
-/// have distinct closing coordinates:
-///
-/// ```text
-/// MetaInvocation window:
-///     Observe(P) / Transform(Val2)      keep open
-///     UseForVal1                        close
-///     static/compile-only branching     transparent
-///
-/// Ambient ordinary window:
-///     FirstUse                          close
-///     residual runtime fork / end       close
-///     compile-only branching            transparent
-/// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConstructionWindow {
-    /// Meta construction window: a meta-invocation or build-root
-    /// construction transaction.  Observation and Val2 transformation
-    /// keep it open across static control flow; producing a Val1 of the
-    /// constructed type closes it.
-    Meta,
-    /// Ambient ordinary construction window (`AmbientScope` authority).
-    Ordinary(OrdinaryOpenWindow),
-}
-
-/// Window coordinates of an ambient ordinary construction.
-///
-/// The construction stays open from its creation flow segment until its
-/// first semantic use, and never survives past the end or fork of the
-/// residual runtime serial flow it was created in.  The coordinates and
-/// transitions are the settled contract; deriving the closing events
-/// from real source-level control-flow analysis is future work (see the
-/// registered unclosed items in `spec/planning/open-questions.md`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct OrdinaryOpenWindow {
-    /// The residual-runtime flow segment the construction was created in.
-    pub creation_flow_segment: ResidualRuntimeEpoch,
-    pub first_use_seen: bool,
-    pub closed_by_fork_or_end: bool,
-}
-
 /// Tracking of how construction material has been used or observed.
 ///
-/// In an ordinary window, the first semantic use closes the window. In a meta
-/// window, `ObserveOrTransform(P,Val2)` keeps it live; `UseForVal1` closes it.
+/// These observations do not determine OpenDisposition or WindowLive. Their
+/// interpretation requires the source generation and evaluation coordinates.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct UseObservationKind {
     pub has_been_used_for_val1: bool,
@@ -1107,21 +1054,10 @@ pub struct UseObservationKind {
 #[derive(Clone, Debug)]
 struct PatternConstructionFacts {
     authority: ConstructionAuthority,
-    window: ConstructionWindow,
+    /// Explicit WindowLive fact. Its source/control-flow establishment and
+    /// updates require the common continuation consumer, which is not connected.
+    window_live: bool,
     use_observation: UseObservationKind,
-}
-
-impl PatternConstructionFacts {
-    fn window_is_live(&self, current_epoch: ResidualRuntimeEpoch) -> bool {
-        match self.window {
-            ConstructionWindow::Meta => !self.use_observation.has_been_used_for_val1,
-            ConstructionWindow::Ordinary(window) => {
-                !window.first_use_seen
-                    && !window.closed_by_fork_or_end
-                    && window.creation_flow_segment == current_epoch
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1254,10 +1190,6 @@ pub struct SemanticWorld {
     opaque_val1_ids: BTreeMap<SemanticValueId, crate::OpaqueVal1Id>,
     type_rank: Option<TypeValueId>,
     symbol_rank: Option<TypeValueId>,
-    /// Current residual-runtime flow segment.  Ambient ordinary
-    /// construction windows record it at creation and never survive a
-    /// later segment (`note_residual_runtime_fork_or_end`).
-    residual_runtime_epoch: ResidualRuntimeEpoch,
     next_callable: u64,
     next_value: u64,
     next_object: u64,
@@ -1329,7 +1261,6 @@ impl SemanticWorld {
             opaque_val1_ids: BTreeMap::new(),
             type_rank: None,
             symbol_rank: None,
-            residual_runtime_epoch: ResidualRuntimeEpoch::default(),
             next_callable: 0,
             next_value: 0,
             next_object: 0,
@@ -2809,8 +2740,10 @@ impl SemanticWorld {
     ///
     /// This is the single write boundary for semantic values whose Val1 is
     /// present.  If the value's type Pattern is still owned by an open
-    /// construction, materializing the Val1 performs `UseForVal1` before the
-    /// value becomes observable. Core projections represent pure
+    /// construction, materializing the Val1 records `UseForVal1` before the
+    /// value becomes observable. This record supplies no window disposition;
+    /// that requires the unconnected generation-coordinate consumer.
+    /// Core projections represent pure
     /// `null × P × Val2` graph material and are not Val1 residents.
     fn materialize_val1_object(&mut self, mut object: SemanticValueObject) -> SemanticValueId {
         object.object = self.allocate_semantic_object(SemanticVal2Snapshot::default());
@@ -5189,7 +5122,7 @@ impl SemanticWorld {
             .construction_facts
             .get(&target_pattern)
             .ok_or(OpenHereFailure::NoLiveConstruction(target_pattern))?;
-        if !self.construction_window_is_live(construction) {
+        if !construction.window_live {
             return Err(OpenHereFailure::WindowClosed(target_pattern));
         }
         if !authority_matches_context(&construction.authority, context) {
@@ -5214,16 +5147,12 @@ impl SemanticWorld {
             .map(|open_here| MemberCreationProof { open_here })
     }
 
-    fn construction_window_is_live(&self, construction: &PatternConstructionFacts) -> bool {
-        construction.window_is_live(self.residual_runtime_epoch)
-    }
-
     fn revalidate_open_here(&self, proof: &OpenHereProof) -> Result<(), OpenHereFailure> {
         let construction = self
             .construction_facts
             .get(&proof.target_pattern)
             .ok_or(OpenHereFailure::NoLiveConstruction(proof.target_pattern))?;
-        if !self.construction_window_is_live(construction) {
+        if !construction.window_live {
             return Err(OpenHereFailure::WindowClosed(proof.target_pattern));
         }
         if construction.authority != proof.authority {
@@ -5231,47 +5160,6 @@ impl SemanticWorld {
         }
         Ok(())
     }
-
-    /// Current residual-runtime flow segment coordinate.
-    pub fn residual_runtime_epoch(&self) -> ResidualRuntimeEpoch {
-        self.residual_runtime_epoch
-    }
-
-    /// The residual runtime serial flow forked or a serial segment ended.
-    ///
-    /// Advances the flow-segment coordinate and closes every active
-    /// ordinary-window construction created in an earlier segment: an
-    /// ambient ordinary construction never survives past the end or fork
-    /// of the residual runtime flow it was created in.  Meta windows are
-    /// untouched — a meta construction transaction spans static control
-    /// flow freely.
-    ///
-    /// Wiring this event to real source-level control-flow analysis is
-    /// future work (registered in `spec/planning/open-questions.md`);
-    /// today the event is raised explicitly by the evaluation driver.
-    pub fn note_residual_runtime_fork_or_end(&mut self) {
-        self.residual_runtime_epoch = ResidualRuntimeEpoch(
-            self.residual_runtime_epoch
-                .0
-                .checked_add(1)
-                .expect("residual runtime epoch exhausted"),
-        );
-        let boundary = self.residual_runtime_epoch;
-        for construction in self.construction_facts.values_mut() {
-            if let ConstructionWindow::Ordinary(window) = &mut construction.window {
-                if window.creation_flow_segment < boundary {
-                    window.closed_by_fork_or_end = true;
-                }
-            }
-        }
-    }
-
-    /// A purely static (compile-evaluated) branch was taken.
-    ///
-    /// Deliberately a no-op: compile-only branching is transparent to
-    /// both window kinds.  It neither advances the residual-runtime
-    /// coordinate nor closes any window.
-    pub fn note_compile_only_branch(&mut self) {}
 
     /// Contribute one evaluated pure Pattern resident
     /// (`null × P × Val2`) to a still-open named Pattern layer.
@@ -6277,6 +6165,26 @@ mod tests {
     }
 
     #[test]
+    fn pattern_allocation_does_not_establish_a_construction_window() {
+        let mut world = SemanticWorld::new("app");
+        let owner = world.package_owner();
+        let (pattern, _) = world.allocate_pattern(owner, Provenance::new("unconnected window"));
+        let context = ConstructionEvaluationContext::current(ConstructionAuthority::BuildRoot);
+        assert!(world.pattern_place(pattern).is_some());
+        assert!(world.construction_facts.is_empty());
+        assert_eq!(
+            world.open_here(pattern, &context),
+            Err(OpenHereFailure::NoLiveConstruction(pattern)),
+            "Pattern, Place and authority do not establish source WindowLive"
+        );
+        assert_eq!(
+            world.can_create_member_here(pattern, &context),
+            Err(OpenHereFailure::NoLiveConstruction(pattern))
+        );
+        assert!(world.construction_facts.is_empty());
+    }
+
+    #[test]
     fn open_here_extend_and_inject_keep_authority_writability_and_effects_distinct() {
         let mut world = SemanticWorld::new("app");
         let owner = world.package_owner();
@@ -6289,11 +6197,13 @@ mod tests {
             .pattern_structural_norms
             .insert(pattern, original.clone());
         let authority = ConstructionAuthority::BuildRoot;
+        // Explicit test facts exercise authority and mutation revalidation;
+        // this is not source construction or control-flow evaluation.
         world.construction_facts.insert(
             pattern,
             PatternConstructionFacts {
                 authority: authority.clone(),
-                window: ConstructionWindow::Meta,
+                window_live: true,
                 use_observation: UseObservationKind::default(),
             },
         );
@@ -6377,6 +6287,21 @@ mod tests {
             .unwrap()
             .use_observation
             .has_been_used_for_val1 = true;
+        assert_eq!(
+            world.revalidate_open_here(&open_here),
+            Ok(()),
+            "a use record alone does not infer a generation-coordinate disposition"
+        );
+        world
+            .construction_facts
+            .get_mut(&pattern)
+            .unwrap()
+            .window_live = false;
+        assert_eq!(
+            world.revalidate_open_here(&open_here),
+            Err(OpenHereFailure::WindowClosed(pattern)),
+            "saved authority cannot revive an explicitly closed window"
+        );
         assert!(matches!(
             world.extend_pattern_value(
                 &open_here,

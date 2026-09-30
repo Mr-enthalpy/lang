@@ -79,7 +79,7 @@ semantic relations above.
 | Place / resident generation | Place and ProjectionSlot | binding, Writable and borrow substrate | Implemented; source operation coverage pending |
 | DynamicLegality | sealed post-selection validator | supplied capability/place/lifecycle premises | Implemented; automatic premise formation pending |
 | InvocationResult | declared result class + semantic payload/residual/diagnostic | connected ordinary and core/meta invocation | Implemented; residual transport remains Open |
-| OpenHere / construction | authority, window, Writable and write algebra | meta construction and inject | Base checks implemented; invocation dependency propagation pending |
+| OpenHere / construction | explicit window facts, authority, Writable and write algebra | authority/window revalidation and inject substrate | Checks implemented; source WindowLive establishment, generation-coordinate control dispositions and invocation dependency propagation pending |
 | Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
 | SemanticContinuation | lifecycle machine and event ledger | world-owned registration | source action/cleanup wiring pending |
@@ -465,7 +465,13 @@ common-snapshot contribution and general source completion also remain gates. Th
 selection tests exercise the connected substrate and do not prove those gates.
 
 Stage cleanup removes resolved union state, static-atom preference and
-node-kind execution partitions. Bootstrap roots and struct producers have
+node-kind execution partitions. Construction windows have no separate runtime
+epoch or compile-branch event API. WindowLive establishment and control-event
+updates require the common continuation's generation/evaluation coordinates;
+that consumer remains unconnected. Pattern allocation supplies no live-window
+fact, and a use-observation record alone supplies no terminating disposition.
+The substrate only checks explicitly established window facts and authority.
+Bootstrap roots and struct producers have
 explicit meta observations; runtime use requires ordinary migration rather
 than a synthesized union. Omitted queries remain distinct from completed facts.
 Horizon exposure retains hidden observations and establishes neither Ready nor
