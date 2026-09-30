@@ -471,9 +471,9 @@ layout do not collapse them.
 ### Terminal pass and copy-derived realization
 
 Pass = Move. Ordinary copy-derived use is share -> selected clone -> fresh
-complete result -> Move; ref/share uses rebind -> selected clone -> Move.
-CopyConstruct abbreviates this ordinary realization, never an opaque primitive
-or second pass kind. Copyable means that clone realization is available.
+complete result -> Move; ref/share uses rebind -> selected clone -> fresh
+complete result -> Move. Lowering retains the selected ordinary producer actions
+and terminal Move. Copyable means that clone realization is available.
 Preserve Move is not copy; selected clone alone determines its origin post.
 
 ### With placement

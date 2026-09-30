@@ -495,39 +495,37 @@ positions consistently for both interval endpoints; the one-position semantic
 model above has no strict `>` edge.
 
 The new generation therefore does not acquire the old generation itself as its
-origin. Origin effects of copy construction belong to the selected
-`CopyConstruct` candidate's lifecycle postcondition rather than to the
+origin. Origin effects of copy-derived formation belong to the selected
+ordinary share/rebind and clone lifecycle postconditions rather than to the
 lifetime calculus as a universal copy theorem:
 
 ```text
-SelectedCopyRealization(T, source):
-  ordinary T
-    -> shared_view := share(source)
-    -> SelectedCloneCandidate(shared_view)
+ordinary source : T:
+  shared_view := share(source)
+  selected ordinary clone invocation on shared_view
+    -> fresh complete result with the selected clone's lifecycle post
+  Move(result)
 
-  T ref | T share
-    -> rebound_view := rebind(source)
-    -> SelectedRebindCloneCandidate(rebound_view)
-
-CopyLifecycle(copy_T, source)
-  = LifecyclePost(SelectedCopyRealization(T, source))
-
-CopyConstruct.lifecycle_post
-  = lifecycle_post of the selected share/rebind + clone realization
+source : T ref | T share:
+  rebound_view := rebind(source)
+  selected ordinary clone invocation on rebound_view
+    -> fresh complete result with the selected clone's lifecycle post
+  Move(result)
 ```
 
 The selected clone-family realization owns the relation. A particular builtin,
 default, or custom clone candidate may declare
 `origin(result)=NameOf(source)`, `SomeInternalOrigin(source)`, a re-rooted
-relation, or another legal lifecycle post. None is implied merely by the names
-`copy` or `CopyConstruct`. The lifetime calculus consumes that selected post
+relation, or another legal lifecycle post. None is implied merely by the name
+`copy`. The lifetime calculus consumes that selected post
 through the ordinary Pre/Post boundary and adds no copy-origin equation.
 
-Mechanical `copy(x)` still means that selected `CopyConstruct(x)` realization
-followed by terminal `Move(result)`; `CopyConstruct` is the compact family name
-for the established ordinary `share -> clone` expansion, or `rebind -> clone`
-for `T ref` / `T share`, rather than a new opaque primitive. Candidate-specific
-origin effects do not authorize a pre-move of `x`.
+Mechanical `copy(x)` evaluates ordinary share/rebind and the selected clone,
+then transports the fresh complete result through terminal `Move(result)`.
+The clone owns result formation/origin; terminal Move has its independently
+fixed lifecycle effect. There is no opaque copy-producing action or compact
+semantic alias. Candidate-specific origin effects do not authorize a pre-move
+of `x`.
 
 `drop` ends the outstanding lifecycle/cleanup obligation for the current
 generation. Path-sensitive facts are represented by a region slice plus a
