@@ -472,7 +472,11 @@ carry one ObservationHorizon. Their distinct Policy facts and judgments remain
 separate; no independent lookup/execution environment coordinates remain.
 No function-stage slicing or separate pre-seal/seal-generated world carrier
 remains. Initializer residual handling is a consumer boundary, not a choice
-between meta evaluators. Visibility reads actual candidate Policy facts and
+between meta evaluators. Until common continuation preservation is connected,
+incomplete initializers fail before binding installation. Neither residual
+classification nor explicit runtime demand manufactures a runtime producer;
+pending seal obligations retain their semantic stage and are not runtime work.
+Visibility reads actual candidate Policy facts and
 does not determine delete-body legality. The pure Policy-mode product selector
 and real ordinary candidate pipeline remain reusable assets.
 Ordinary Policy deduction, R_vis/C_sigma, pending seal

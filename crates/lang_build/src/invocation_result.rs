@@ -1,11 +1,11 @@
 //! Unified semantic invocation result universe.
 //!
-//! Evaluation stage (`meta`, `compile`, or `runtime`) does not define a
+//! Evaluation stage (`meta`, `compile`, `seal`, or `runtime`) does not define a
 //! separate value ontology.  Every selected callable reports the result class
 //! declared by that callable and then produces exactly one of:
 //!
 //! * a semantic value in that declared class;
-//! * an opaque residual owned by a later evaluator boundary; or
+//! * opaque remaining common-continuation material at a consumer boundary; or
 //! * a diagnostic.
 //!
 //! The payload is generic because the current vertical slice still has more
@@ -30,8 +30,9 @@ pub enum DeclaredResultClass {
 
 /// Opaque residual crossing the unified invocation boundary.
 ///
-/// The evaluator that owns `class` also owns the payload interpretation.  This
-/// carrier deliberately makes no claim about the still-open residual IR/ABI.
+/// The common evaluator owns payload interpretation. Neither `class` nor the
+/// presence of this carrier determines a result stage. This carrier deliberately
+/// makes no claim about the still-open residual IR/ABI.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InvocationResidual {
     pub class: String,

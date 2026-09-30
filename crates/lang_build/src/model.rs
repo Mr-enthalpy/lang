@@ -177,7 +177,7 @@ impl Provenance {
     }
 }
 
-/// Diagnostic severity used by build/graph/meta phases.
+/// Diagnostic severity used by build/graph/meta diagnostics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
     Info,
@@ -199,7 +199,7 @@ pub enum ResolverCode {
     AmbiguousMetaCandidate,
     NoVisibleCandidateAtHorizon,
     BodyEntryPolicyMismatch,
-    UnsupportedDeferredTypeAssertion,
+    UnsupportedInitializerContinuation,
     AnnotationAssertionFailed,
     ExplicitPolicyVerificationFailed,
     ResidualNotAllowedAtBoundary,

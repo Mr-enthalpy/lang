@@ -1181,6 +1181,9 @@ pub(crate) fn invoke_target_values(
         // declaration-local P2; the declaration identity below is rebuilt
         // from the entry's declared facts for the shared candidate and
         // body-evaluator carriers.
+        // This exposure test is not Ready evidence. The full common E
+        // readiness/Pre/commit consumer remains a separate implementation gate;
+        // visibility must not authorize additional body execution paths.
         if !body_entry_visible_at(&entry.body_entry_view.pair, context.horizon) {
             continue;
         }

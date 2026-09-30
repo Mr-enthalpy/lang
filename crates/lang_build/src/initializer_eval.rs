@@ -1,6 +1,6 @@
 use lang_syntax::NormBindingSlot;
 
-use crate::model::{Diagnostic, DiagnosticSeverity, Provenance};
+use crate::model::{Diagnostic, Provenance, ResolverCode};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ResidualReason {
@@ -25,9 +25,9 @@ pub fn binding_assertion_annotation_context(slot: &NormBindingSlot) -> Option<An
 }
 
 pub fn residual_diagnostic(reason: &ResidualReason, provenance: Provenance) -> Diagnostic {
-    Diagnostic::new(
-        DiagnosticSeverity::Error,
-        format!("initializer remains residual at this boundary: {reason:?}"),
+    Diagnostic::hard_error(
+        format!("initializer continuation preservation consumer is not connected: {reason:?}; incomplete evaluation establishes no result Policy or binding"),
         Some(provenance),
     )
+    .with_code(ResolverCode::UnsupportedInitializerContinuation)
 }

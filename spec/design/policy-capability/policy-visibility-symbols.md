@@ -226,8 +226,10 @@ The typed substrate currently provides:
   no ranking between distinct static stage atoms;
 - callable visibility reads the candidate's resolved Policy, without a
   stage-specific function-member taxonomy or a separately staged world;
-- initializer consumers permit residual completion at their current boundary,
-  without selecting a partial/strict meta evaluator. Reached candidate errors
+- incomplete initializer evaluation establishes no result stage. Until the
+  common continuation preservation consumer is connected, binding reports an
+  explicit unavailable diagnostic and installs no name or result Policy, even
+  with an explicit runtime demand. Reached candidate errors
   and selected-body failures remain diagnostics. Horizon visibility supplies
   no delete-body execution-legality proof;
 - atomic builtin type-key / concrete numeric Tnum separation and current

@@ -2,8 +2,8 @@ mod support;
 
 use std::path::Path;
 
-use lang_build::{ResolverCode, Stage};
-use support::{build_fixture_error, build_single_fixture_world};
+use lang_build::ResolverCode;
+use support::build_fixture_error;
 
 fn has_code(error: &lang_build::BuildError, code: ResolverCode) -> bool {
     error
@@ -12,80 +12,51 @@ fn has_code(error: &lang_build::BuildError, code: ResolverCode) -> bool {
         .any(|diagnostic| diagnostic.code == Some(code))
 }
 
-fn assert_symbol_stage(symbol: &lang_build::SymbolObject, stage: Stage) {
-    assert!(
-        symbol
-            .policy_view
-            .as_ref()
-            .expect("Symbol Policy view")
-            .pair
-            .value
-            .stage()
-            == Some(stage)
-    );
-}
-
-fn assert_symbol_not_stage(symbol: &lang_build::SymbolObject, stage: Stage) {
-    assert!(
-        symbol
-            .policy_view
-            .as_ref()
-            .expect("Symbol Policy view")
-            .pair
-            .value
-            .stage()
-            != Some(stage)
-    );
-}
-
 #[test]
 fn let_type_annotation_is_post_rhs_assertion_not_meta_trigger() {
     let err = build_fixture_error("initializer_annotation_non_trigger", "app");
     assert!(has_code(
         &err,
-        ResolverCode::UnsupportedDeferredTypeAssertion
+        ResolverCode::UnsupportedInitializerContinuation
     ));
     assert!(err.diagnostics.iter().any(|diagnostic| diagnostic
         .message
-        .contains("deferred for a residual initializer")));
+        .contains("continuation preservation consumer is not connected")));
 }
 
 #[test]
-fn omitted_policy_is_inferred_runtime_for_residual_initializer() {
-    let world = build_single_fixture_world("initializer_default_policy_residual", "app");
-    let symbol = world
-        .resolve_with_expectation("runtime_residual", lang_build::ResolveExpectation::Object)
-        .expect("runtime residual symbol");
-    assert_symbol_stage(&symbol, Stage::Runtime);
-    assert_symbol_not_stage(&symbol, Stage::Meta);
+fn omitted_policy_cannot_derive_runtime_from_incomplete_evaluation() {
+    let error = build_fixture_error("initializer_default_policy_residual", "app");
+    assert!(has_code(
+        &error,
+        ResolverCode::UnsupportedInitializerContinuation
+    ));
 }
 
 #[test]
-fn unsupported_expression_remains_residual_at_initializer_boundary() {
-    let world = build_single_fixture_world("initializer_missing_candidate_residual", "app");
-    let symbol = world
-        .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
-        .expect("runtime residual symbol");
-    assert_symbol_stage(&symbol, Stage::Runtime);
-    assert_symbol_not_stage(&symbol, Stage::Meta);
+fn unsupported_expression_cannot_install_a_residual_binding() {
+    let error = build_fixture_error("initializer_missing_candidate_residual", "app");
+    assert!(has_code(
+        &error,
+        ResolverCode::UnsupportedInitializerContinuation
+    ));
 }
 
 #[test]
-fn explicit_p1_projects_runtime_slice_from_residual_initializer() {
-    let world = build_single_fixture_world("initializer_explicit_policy_failure", "app");
-    let symbol = world
-        .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
-        .expect("runtime P1 slice");
-    assert_symbol_stage(&symbol, Stage::Runtime);
-    assert_symbol_not_stage(&symbol, Stage::Meta);
+fn explicit_runtime_demand_cannot_fabricate_a_residual_producer() {
+    let error = build_fixture_error("initializer_explicit_policy_failure", "app");
+    assert!(has_code(
+        &error,
+        ResolverCode::UnsupportedInitializerContinuation
+    ));
 }
 
 #[test]
-fn residual_type_name_annotation_remains_deferred() {
+fn residual_type_name_annotation_requires_continuation_preservation() {
     let err = build_fixture_error("initializer_residual_type_name", "app");
     assert!(has_code(
         &err,
-        ResolverCode::UnsupportedDeferredTypeAssertion
+        ResolverCode::UnsupportedInitializerContinuation
     ));
 }
 

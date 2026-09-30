@@ -1158,8 +1158,6 @@ impl CompilationWorld {
         // C2/A/Bp/maxima; binding projection/transfer may inspect it only
         // after that producer has been sealed.
         let result_policy_demand = binding_result_policy_demand(slot, &namespace_declaration);
-        let mut residual_binding_view = None;
-
         if let Some(initializer) = slot.initializer.as_deref() {
             match self.evaluate_initializer_best_effort_connected(
                 namespace,
@@ -1190,19 +1188,12 @@ impl CompilationWorld {
                     );
                 }
                 ConnectedInitializerOutcome::Residual { reason, provenance } => {
-                    verify_residual_policy_compatible(
-                        &result_policy_demand,
-                        &reason,
-                        provenance.clone(),
-                    )?;
-                    residual_binding_view = residual_policy_view(&result_policy_demand);
-                    if is_type_annotation(slot.annotation.as_ref()) {
-                        return Err(BuildError::single(Diagnostic::hard_error(
-                            "UnsupportedDeferredTypeAssertion: `: type` assertion is deferred for a residual initializer, and deferred type assertions are not connected to the initializer evaluator",
-                            Some(provenance),
-                        )
-                        .with_code(ResolverCode::UnsupportedDeferredTypeAssertion)));
-                    }
+                    // Incomplete evaluation is not a runtime producer. Until
+                    // the common continuation can be retained, do not install
+                    // a binding, even when its written demand is runtime.
+                    return Err(BuildError::single(crate::residual_diagnostic(
+                        &reason, provenance,
+                    )));
                 }
                 ConnectedInitializerOutcome::Diagnostic(diagnostic) => {
                     return Err(BuildError::single(diagnostic));
@@ -1236,13 +1227,11 @@ impl CompilationWorld {
             )
         };
         {
-            let policy_view = residual_binding_view.clone().unwrap_or_else(|| {
-                if is_type_annotation(slot.annotation.as_ref()) {
-                    declared_policy_view(Stage::Meta, namespace_declaration.mode)
-                } else {
-                    declared_policy_view(Stage::Runtime, namespace_declaration.mode)
-                }
-            });
+            let policy_view = if is_type_annotation(slot.annotation.as_ref()) {
+                declared_policy_view(Stage::Meta, namespace_declaration.mode)
+            } else {
+                declared_policy_view(Stage::Runtime, namespace_declaration.mode)
+            };
             for symbol in delta.symbols.values_mut() {
                 if symbol.name == binder_name {
                     symbol.policy_view = Some(policy_view.clone());
@@ -1275,7 +1264,7 @@ impl CompilationWorld {
                 .values()
                 .find(|symbol| symbol.name == binder_name)
                 .map(|symbol| symbol.id)
-                .expect("residual binding delta contains its declaration projection");
+                .expect("initializer-free binding delta contains its declaration projection");
             SemanticDeclarationEntry::ProjectionOnly {
                 name: binder_name.clone(),
                 backing_declaration,
@@ -1322,13 +1311,16 @@ impl CompilationWorld {
                 )));
             }
             crate::InvocationResult::Residual(residual) => {
-                return Err(BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "ordinary invocation residual `{}` cannot be bound here",
-                        residual.class
-                    ),
-                    Some(residual.provenance),
-                )));
+                return Err(BuildError::single(
+                    Diagnostic::hard_error(
+                        format!(
+                            "ordinary invocation residual `{}` requires the common continuation preservation consumer, which is not connected",
+                            residual.class
+                        ),
+                        Some(residual.provenance),
+                    )
+                    .with_code(ResolverCode::UnsupportedInitializerContinuation),
+                ));
             }
             crate::InvocationResult::Diagnostic(diagnostic) => {
                 return Err(BuildError::single(diagnostic));
@@ -2122,10 +2114,9 @@ impl CompilationWorld {
                     provenance.clone(),
                 ) {
                     Ok(result) => ConnectedInitializerOutcome::Ordinary(result),
-                    // This initializer consumer permits residual completion when
-                    // a fixed target exposes no admissible candidate at the
-                    // current horizon. It creates no second evaluator queue
-                    // and does not expand the callable visibility through P1.
+                    // Report incomplete continuation material without deriving
+                    // a producer stage. The binding consumer rejects it until
+                    // common continuation preservation is connected.
                     // A candidate that was reached but failed to assemble or
                     // execute (`first_diagnostic: Some`) is a real error and
                     // is never residualized.
@@ -2971,35 +2962,6 @@ fn assert_semantic_result_satisfies_annotation(
     Ok(())
 }
 
-fn verify_residual_policy_compatible(
-    demand: &ResultPolicyDemand,
-    reason: &crate::ResidualReason,
-    provenance: Provenance,
-) -> Result<(), BuildError> {
-    if residual_policy_view(demand).is_some() {
-        return Ok(());
-    }
-    Err(BuildError::single(Diagnostic::hard_error(
-        format!(
-            "ExplicitPolicyProjectionFailed: initializer remains residual at this boundary ({reason:?}) and the requested binding policy admits no residual result view"
-        ),
-        Some(provenance),
-    )
-    .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
-}
-
-fn residual_policy_view(demand: &ResultPolicyDemand) -> Option<PolicyView> {
-    let runtime = crate::PolicyResultEntry {
-        value: Some(()),
-        pattern: (),
-        view: declared_policy_view(Stage::Runtime, demand.mode),
-    };
-    crate::policy_pair::project_p1(&demand.pair_query, &[runtime])
-        .into_iter()
-        .next()
-        .map(|entry| entry.view)
-}
-
 fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExpectation) -> bool {
     match expectation {
         ResolveExpectation::AnyUnique | ResolveExpectation::Object => {
@@ -3242,6 +3204,97 @@ mod initializer_residual_boundary_tests {
                     ..
                 }
             ));
+        }
+    }
+
+    #[test]
+    fn pending_seal_cannot_install_runtime_binding_or_change_existing_facts() {
+        for source in [
+            "let result = () f;",
+            "runtime let result = () f;",
+            "seal let result = () f;",
+            "let result = plain let () f;",
+            "let result:type = () f;",
+        ] {
+            let mut world = world_with_member("let f = (receiver, x):seal => { (); };");
+            let namespace = world.package_root_node();
+            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let target = world
+                .resolve_semantic_source_target(namespace, &call.target)
+                .unwrap();
+            let original_views = world
+                .semantic_world
+                .symbol(target.symbol)
+                .unwrap()
+                .member_views
+                .clone();
+            assert!(!original_views.is_empty());
+            assert!(original_views
+                .iter()
+                .all(|view| view.view.pair.value.stage() == Some(Stage::Seal)));
+            assert!(matches!(
+                evaluate(&mut world, source),
+                ConnectedInitializerOutcome::Residual {
+                    reason: crate::ResidualReason::NoVisibleCandidateAtHorizon,
+                    ..
+                }
+            ));
+            let before_semantic = format!("{:?}", world.semantic_world);
+            let before_projection = format!("{:?}", world.semantic_world.namespace_index());
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let program = lang_syntax::normalize_program(&parsed.program);
+            let error = world
+                .harvest_program(namespace, &program, Path::new("pending-seal.lang"))
+                .unwrap_err();
+            assert!(error.diagnostics.iter().any(|diagnostic| diagnostic.code
+                == Some(ResolverCode::UnsupportedInitializerContinuation)));
+            assert!(world
+                .semantic_world
+                .symbol_in_namespace(namespace, "result")
+                .is_none());
+            assert_eq!(
+                world
+                    .resolve_semantic_source_target(namespace, &call.target)
+                    .unwrap()
+                    .symbol,
+                target.symbol
+            );
+            assert_eq!(before_semantic, format!("{:?}", world.semantic_world));
+            assert_eq!(
+                before_projection,
+                format!("{:?}", world.semantic_world.namespace_index())
+            );
+        }
+    }
+
+    #[test]
+    fn incomplete_initializer_never_installs_a_binding_from_result_demand() {
+        for source in [
+            "let result = unknown_expression;",
+            "runtime let result = unknown_expression;",
+            "compile let result = unknown_expression;",
+            "let result = runtime let unknown_expression;",
+            "let result = () type;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let namespace = world.package_root_node();
+            let before = format!("{:?}", world.semantic_world);
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let program = lang_syntax::normalize_program(&parsed.program);
+            let error = world
+                .harvest_program(namespace, &program, Path::new("incomplete.lang"))
+                .unwrap_err();
+            assert!(error.diagnostics.iter().any(|diagnostic| diagnostic.code
+                == Some(ResolverCode::UnsupportedInitializerContinuation)));
+            assert!(world
+                .semantic_world
+                .symbol_in_namespace(namespace, "result")
+                .is_none());
+            assert_eq!(before, format!("{:?}", world.semantic_world));
         }
     }
 }

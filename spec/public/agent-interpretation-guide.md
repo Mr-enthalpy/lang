@@ -318,6 +318,11 @@ and optimizer structures cannot introduce program facts.
 - Main has runtime horizon. Stable roots do not establish active MetaDom.
   Actual meta/seal frames exclude seal/meta respectively, including through
   compile helpers and caches; deferred work preserves actual dependencies.
+- ResidualAt(H) does not establish runtime producer Policy. Pending seal work
+  remains in the same continuation and retains its stage and identity. An
+  explicit runtime result demand supplies no producer. If the continuation
+  preservation consumer is not connected, report the unavailable boundary
+  before installing a binding; never fabricate a runtime result observation.
 - Killable is instance-local; MoveEffect is fixed before observation; Movable
   is frontier legality. Equal types and ZST layout prove no blanket exemption.
   with placement precedes @; killing move adds no old-generation destructor.
