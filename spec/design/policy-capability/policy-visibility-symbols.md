@@ -81,8 +81,8 @@ explicit target observation/stage Policy is written, each candidate's evaluation
 stage view may use the applicable stage-only default completion in §2 and is then
 checked against this table. Therefore `compile`/`runtime` exposure does not
 require `PolicyLet`; that syntax remains an optional explicit result boundary.
-The phase rule does not choose whole-slot mode: no written constraint, explicit
-plain/const/mut and an explicit hole remain distinct. Result demand must be
+Stage-only default completion does not choose whole-slot mode: no written
+constraint, explicit plain/const/mut and an explicit hole remain distinct. Result demand must be
 resolved from the actual context/completion before maxima; inner selection seals.
 
 Resolution and exposure are distinct. A name binding whose resident has a
@@ -141,12 +141,12 @@ InternalView(type export)  = absent:Pp
 ExternalView(type export)  = absent:Pp
 ```
 
-The absent value form has no hidden value stages, but it does not erase the
+The absent value form has no value-stage coordinate, but it does not erase the
 orthogonal whole-slot mode:
 
 ```text
 Pv = absent
-  => value stages = ∅
+  => no value-stage coordinate in this observation
   && SemanticValueId = none
 
 PolicyMode(absent:Pp slot) ∈ {const, plain, mut}

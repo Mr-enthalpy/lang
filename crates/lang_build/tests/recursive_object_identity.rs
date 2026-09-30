@@ -50,11 +50,8 @@ use lang_build::{
 };
 use support::initializer_from_source;
 
-fn stage_pair(stage: &[Stage]) -> PolicyPair {
-    let [stage] = stage else {
-        panic!("identity fixtures have one resolved stage")
-    };
-    lang_build::declared_policy_view(*stage, PolicyMode::Plain).pair
+fn stage_pair(stage: Stage) -> PolicyPair {
+    lang_build::declared_policy_view(stage, PolicyMode::Plain).pair
 }
 
 struct Carriers {
@@ -89,7 +86,7 @@ fn carriers() -> Carriers {
                 support::numbered_type_lookup_fixture("recursive-object", represented),
                 support::numbered_type_lookup_fixture("recursive-object", 0),
                 None,
-                stage_pair(&[Stage::Meta]),
+                stage_pair(Stage::Meta),
                 provenance.clone(),
             )
             .expect("type-rank symbol registers in the unit world")
@@ -438,11 +435,11 @@ fn unit_is_terminal_leaf() {
             &closure,
             None,
             lang_build::PolicyView {
-                pair: stage_pair(&[Stage::Meta]),
+                pair: stage_pair(Stage::Meta),
                 mode: PolicyMode::Plain,
             },
             lang_build::PolicyView {
-                pair: stage_pair(&[Stage::Meta]),
+                pair: stage_pair(Stage::Meta),
                 mode: PolicyMode::Plain,
             },
             None,
@@ -780,12 +777,12 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
             )
             .expect("type-rank symbol registers in the unit world")
     };
-    let visible = stage_pair(&[Stage::Compile]);
+    let visible = stage_pair(Stage::Compile);
     // Seed the `type` rank before any carrier of it.
     let _ = register(&mut world, "type_root", 0, 0, visible.clone());
     // T is the outer host and is meta-only, so it is hidden at SealStatic.
     // f is the middle host and g the terminal, both compile-visible there.
-    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(&[Stage::Meta]));
+    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(Stage::Meta));
     let (f, _, _) = register(&mut world, "f", 2, 2, visible.clone());
     let (g, _, _) = register(&mut world, "g", 3, 3, visible);
     let t_place = place_of(&world, t);
@@ -916,7 +913,7 @@ fn distinct_associated_bindings_with_equal_resident_content_share_one_core_norma
             )
             .expect("type-rank symbol registers in the unit world")
     };
-    let policy = stage_pair(&[Stage::Meta]);
+    let policy = stage_pair(Stage::Meta);
     // A type-rank root, two carriers T and U of ONE Pattern, and two DISTINCT
     // member carriers c_t and c_u of one SECOND Pattern (equal content).
     let _ = register(&mut world, "type_root", 0, 0, policy.clone());

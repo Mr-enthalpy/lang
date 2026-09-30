@@ -365,7 +365,7 @@ pub struct SemanticOuterScope {
     /// The complete host layer, not just its Pattern: the carrier Symbol,
     /// its own object place, and its own pure-P member view.  Navigation
     /// must not collapse this to a bare `PatternValueId` — the layered
-    /// exposure conjunction `Expose(T_t, φ) ∧ Expose(C_f, φ)` needs the
+    /// exposure conjunction `Expose(T_t, φ) ∧ Expose(f-member, φ)` needs the
     /// host's binding view, and per-carrier Val2 needs the host's place.
     pub host: Option<PatternHostMember>,
     pub namespace: Option<NamespaceNodeId>,
@@ -397,7 +397,7 @@ impl SemanticOuterScope {
 /// * extraction context: the Pattern facet.
 ///
 /// The `host_chain` is the layered exposure material of the navigation:
-/// `Expose(t::f, φ) = Expose(T_t, φ) ∧ Expose(C_f, φ)` needs each traversed
+/// `Expose(t::f, φ) = Expose(T_t, φ) ∧ Expose(f-member, φ)` needs each traversed
 /// host's own binding view, and per-carrier Val2 needs each host's own place.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedSemanticNavigation {
@@ -436,7 +436,7 @@ pub struct PatternHostMember {
 impl PatternHostMember {
     /// The host factor of `Expose(t::f, φ) = Expose(T_t, φ) ∧ Expose(f, φ)`.
     ///
-    /// The host member's own Pattern stages are the navigability coordinate
+    /// The host member's own Pattern stage is the navigability coordinate
     /// of everything reached through its Val2, so when that layer is not
     /// visible at `horizon` nothing under the name is reachable.  This is a
     /// horizon predicate, never a stage-set intersection: a `meta` host
@@ -2247,11 +2247,11 @@ impl SemanticWorld {
     /// The Symbol named by `name` at one navigation cursor.
     ///
     /// Symbol-first, object-before-namespace: when the cursor stands on an
-    /// object, that object's own Val2 answers the name (`Val2(T_t)[f] = C_f`,
-    /// read through the carrier's own place with per-name inheritance from the
-    /// Pattern's canonical pure type Object).  The namespace side of the cursor is
-    /// the fallback for names that live in a declaration namespace instead of
-    /// an object's Val2.
+    /// object, that object's own Val2 resolves the member binding at selector
+    /// `f`. It is read through the carrier's own place with per-name inheritance
+    /// from the Pattern's canonical pure type Object. The namespace side of
+    /// the cursor is the fallback for names that live in a declaration namespace
+    /// instead of an object's Val2.
     fn cursor_symbol(
         &self,
         cursor: &SemanticOuterScope,

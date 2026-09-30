@@ -293,7 +293,7 @@ fn return_position_cannot_override_inherited_stage() {
         error
             .diagnostics
             .iter()
-            .any(|diagnostic| diagnostic.message.contains("inherits evaluation stages")),
+            .any(|diagnostic| diagnostic.message.contains("inherits the P1 stage")),
         "return-stage rewrite is rejected during declaration Policy formation: {:?}",
         error.diagnostics
     );

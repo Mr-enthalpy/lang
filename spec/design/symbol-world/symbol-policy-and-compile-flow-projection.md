@@ -1119,7 +1119,7 @@ than merely selecting a presence tag:
 
 ```text
 Pv = absent
-  => value stages = ∅
+  => no value-stage coordinate in this observation
 ```
 
 The review matrix is therefore complete rather than shape-dependent:

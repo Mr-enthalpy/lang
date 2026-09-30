@@ -653,7 +653,7 @@ pub fn elaborate_return_policy_pattern(
     reject_namespace_attributes(&atoms, "return position", provenance.clone())?;
     if atoms.stage.is_some() {
         return Err(policy_error(
-            "return position policy inherits evaluation stages and may override only PolicyMode",
+            "return position policy inherits the P1 stage and may override only PolicyMode",
             provenance,
         ));
     }

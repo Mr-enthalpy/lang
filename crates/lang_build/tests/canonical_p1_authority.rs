@@ -280,19 +280,12 @@ fn assert_canonical_p1_unified(world: &support::AssociatedFamily, name: &str) {
 //   CompleteResultView(P2) -> expose under callable P1 -> outer binding P1
 // ---------------------------------------------------------------------------
 
-fn stage_atom(stages: &[Stage]) -> Stage {
-    let [stage] = stages else {
-        panic!("resolved test observations require one Stage")
-    };
-    *stage
-}
-
-fn exposure_window(value_stage: &[Stage], mode: PolicyMode, pattern_stage: &[Stage]) -> PolicyView {
+fn exposure_window(value_stage: Stage, mode: PolicyMode, pattern_stage: Stage) -> PolicyView {
     PolicyView {
         pair: PolicyPair {
-            value: ValueComponentPolicy::Present(stage_atom(value_stage)),
+            value: ValueComponentPolicy::Present(value_stage),
             pattern: PatternComponentPolicy {
-                stage: stage_atom(pattern_stage),
+                stage: pattern_stage,
             },
         },
         mode,
@@ -300,9 +293,9 @@ fn exposure_window(value_stage: &[Stage], mode: PolicyMode, pattern_stage: &[Sta
 }
 
 fn value_entry(
-    value_stage: &[Stage],
+    value_stage: Stage,
     mode: PolicyMode,
-    pattern_stage: &[Stage],
+    pattern_stage: Stage,
 ) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
     PolicyResultEntry {
         value: Some(SemanticValueRef {
@@ -312,9 +305,9 @@ fn value_entry(
         pattern: PatternValueId(1),
         view: PolicyView {
             pair: PolicyPair {
-                value: ValueComponentPolicy::Present(stage_atom(value_stage)),
+                value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: stage_atom(pattern_stage),
+                    stage: pattern_stage,
                 },
             },
             mode,
@@ -323,17 +316,17 @@ fn value_entry(
 }
 
 fn pure_p_entry(
-    value_stage: &[Stage],
-    pattern_stage: &[Stage],
+    value_stage: Stage,
+    pattern_stage: Stage,
 ) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
     PolicyResultEntry {
         value: None,
         pattern: PatternValueId(1),
         view: PolicyView {
             pair: PolicyPair {
-                value: ValueComponentPolicy::Present(stage_atom(value_stage)),
+                value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: stage_atom(pattern_stage),
+                    stage: pattern_stage,
                 },
             },
             mode: PolicyMode::Plain,
@@ -344,21 +337,18 @@ fn pure_p_entry(
 /// Matching concrete observations preserve the independent mode.
 #[test]
 fn expose_preserves_matching_single_stage_and_independent_mode() {
-    let outward = exposure_window(&[Stage::Compile], PolicyMode::Const, &[Stage::Compile]);
+    let outward = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
     let complete = vec![value_entry(
-        &[Stage::Compile],
+        Stage::Compile,
         PolicyMode::Plain,
-        &[Stage::Compile],
+        Stage::Compile,
     )];
     let exposed = ExposedInvocationResult::expose(outward.pair, &complete);
     assert_eq!(exposed.material.len(), 1);
     let entry = &exposed.material[0];
-    assert_eq!(
-        entry.view.pair.value.stage(),
-        Some(stage_atom(&[Stage::Compile]))
-    );
+    assert_eq!(entry.view.pair.value.stage(), Some(Stage::Compile));
     assert_eq!(entry.view.mode, PolicyMode::Plain);
-    assert_eq!(entry.view.pair.pattern.stage, stage_atom(&[Stage::Compile]));
+    assert_eq!(entry.view.pair.pattern.stage, Stage::Compile);
 }
 
 /// B3 — an entry whose exposed window vanishes is not part of the outward
@@ -366,22 +356,18 @@ fn expose_preserves_matching_single_stage_and_independent_mode() {
 #[test]
 fn expose_hides_entries_whose_window_vanishes() {
     let stage_disjoint = ExposedInvocationResult::expose(
-        exposure_window(&[Stage::Meta], PolicyMode::Plain, &[Stage::Meta]).pair,
+        exposure_window(Stage::Meta, PolicyMode::Plain, Stage::Meta).pair,
         &[value_entry(
-            &[Stage::Compile],
+            Stage::Compile,
             PolicyMode::Plain,
-            &[Stage::Compile],
+            Stage::Compile,
         )],
     );
     assert!(stage_disjoint.material.is_empty());
 
     let mode_orthogonal = ExposedInvocationResult::expose(
-        exposure_window(&[Stage::Compile], PolicyMode::Const, &[Stage::Compile]).pair,
-        &[value_entry(
-            &[Stage::Compile],
-            PolicyMode::Mut,
-            &[Stage::Compile],
-        )],
+        exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile).pair,
+        &[value_entry(Stage::Compile, PolicyMode::Mut, Stage::Compile)],
     );
     assert_eq!(mode_orthogonal.material.len(), 1);
     assert_eq!(mode_orthogonal.material[0].view.mode, PolicyMode::Mut);
@@ -391,12 +377,12 @@ fn expose_hides_entries_whose_window_vanishes() {
 #[test]
 fn expose_is_identity_under_the_same_stage_observation() {
     let complete = vec![value_entry(
-        &[Stage::Compile],
+        Stage::Compile,
         PolicyMode::Plain,
-        &[Stage::Compile],
+        Stage::Compile,
     )];
     let exposed = ExposedInvocationResult::expose(
-        exposure_window(&[Stage::Compile], PolicyMode::Plain, &[Stage::Compile]).pair,
+        exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile).pair,
         &complete,
     );
     assert_eq!(exposed.material, complete);
@@ -406,8 +392,8 @@ fn expose_is_identity_under_the_same_stage_observation() {
 #[test]
 fn expose_does_not_clip_a_pure_object_into_a_different_stage() {
     let exposed = ExposedInvocationResult::expose(
-        exposure_window(&[Stage::Runtime], PolicyMode::Plain, &[Stage::Compile]).pair,
-        &[pure_p_entry(&[Stage::Compile], &[Stage::Compile])],
+        exposure_window(Stage::Runtime, PolicyMode::Plain, Stage::Compile).pair,
+        &[pure_p_entry(Stage::Compile, Stage::Compile)],
     );
     assert!(
         exposed.material.is_empty(),
@@ -450,14 +436,14 @@ fn value_stage_dimension_mismatch_is_hard_error() {
 #[test]
 fn pattern_stage_dimension_mismatch_is_hard_error() {
     let outer = ExplicitP1Selection {
-        pattern_stage: Some(stage_atom(&[Stage::Meta])),
+        pattern_stage: Some(Stage::Meta),
         ..ExplicitP1Selection::default()
     };
     let initializer = initializer_from_source("let f = (compile let self): compile => { (); };");
     let lang_syntax::NormExpr::Closure(self_formal) = initializer else {
         panic!("closure")
     };
-    let derived = exposure_window(&[Stage::Compile], PolicyMode::Plain, &[Stage::Compile]);
+    let derived = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
     let error = canonical_function_object_view(
         Some(&outer),
         &derived,
@@ -476,8 +462,8 @@ fn explicit_absent_observation_has_no_stage_coordinate() {
         presence: Some(ValuePresence::Absent),
         ..ExplicitP1Selection::default()
     };
-    let derived = exposure_window(&[Stage::Compile], PolicyMode::Const, &[Stage::Compile]);
-    let p2 = exposure_window(&[Stage::Compile], PolicyMode::Plain, &[Stage::Compile]);
+    let derived = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
+    let p2 = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
     let provenance = Provenance::new("presence-dimension acceptance");
     let selected =
         canonical_function_object_view(Some(&outer_explicit), &derived, &p2, None, &provenance)
@@ -490,8 +476,8 @@ fn explicit_absent_observation_has_no_stage_coordinate() {
 /// dimension is Derive(P2): the canonical P1 is exactly the derived pair.
 #[test]
 fn full_omission_derives_every_dimension_from_p2() {
-    let derived = exposure_window(&[Stage::Compile], PolicyMode::Const, &[Stage::Compile]);
-    let p2 = exposure_window(&[Stage::Compile], PolicyMode::Plain, &[Stage::Compile]);
+    let derived = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
+    let p2 = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
     let provenance = Provenance::new("full-omission acceptance");
     let canonical = canonical_function_object_view(None, &derived, &p2, None, &provenance)
         .expect("full omission elaborates without error");

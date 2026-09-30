@@ -30,13 +30,6 @@ fn policy_spec(source: &str) -> NormPolicySpec {
     }
 }
 
-fn stages(expected: &[Stage]) -> Stage {
-    let [stage] = expected else {
-        panic!("resolved test observations require exactly one Stage")
-    };
-    *stage
-}
-
 fn elaborate_binding_p1_projection(
     policy: Option<&NormPolicySpec>,
     provenance: Provenance,
@@ -46,22 +39,18 @@ fn elaborate_binding_p1_projection(
 
 fn result_entry<V, P>(
     value: Option<V>,
-    value_stage: &[Stage],
+    value_stage: Stage,
     pattern: P,
-    pattern_stage: &[Stage],
+    pattern_stage: Stage,
 ) -> PolicyResultEntry<V, P> {
     PolicyResultEntry {
         value,
         pattern,
         view: PolicyView {
             pair: PolicyPair {
-                value: if value_stage.is_empty() {
-                    ValueComponentPolicy::Absent
-                } else {
-                    ValueComponentPolicy::Present(stages(value_stage))
-                },
+                value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: stages(pattern_stage),
+                    stage: pattern_stage,
                 },
             },
             mode: PolicyMode::Plain,
@@ -72,9 +61,9 @@ fn result_entry<V, P>(
 #[test]
 fn policy_pair_and_whole_slot_mode_are_orthogonal_facts() {
     let pair = PolicyPair {
-        value: ValueComponentPolicy::Present(stages(&[Stage::Compile])),
+        value: ValueComponentPolicy::Present(Stage::Compile),
         pattern: PatternComponentPolicy {
-            stage: stages(&[Stage::Compile]),
+            stage: Stage::Compile,
         },
     };
     let plain = PolicyView {
@@ -148,17 +137,17 @@ fn policy_algebra_rejects_same_dimension_conjunction() {
 #[test]
 fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
     let cases = [
-        ("meta", vec![Stage::Meta], vec![Stage::Meta]),
-        ("compile", vec![Stage::Compile], vec![Stage::Compile]),
-        ("seal", vec![Stage::Seal], vec![Stage::Seal]),
-        ("runtime", vec![Stage::Runtime], vec![Stage::Compile]),
+        ("meta", Stage::Meta, Stage::Meta),
+        ("compile", Stage::Compile, Stage::Compile),
+        ("seal", Stage::Seal, Stage::Seal),
+        ("runtime", Stage::Runtime, Stage::Compile),
     ];
 
     for (source, value_stage, pattern_stage) in cases {
         let view =
             normalize_p2_policy(&policy_spec(source), Provenance::new(source)).expect("valid P2");
-        assert_eq!(view.pair.value.stage(), Some(stages(&value_stage)));
-        assert_eq!(view.pair.pattern.stage, stages(&pattern_stage));
+        assert_eq!(view.pair.value.stage(), Some(value_stage));
+        assert_eq!(view.pair.pattern.stage, pattern_stage);
     }
 }
 
@@ -173,22 +162,16 @@ fn p1_value_dominant_projection_restricts_the_actual_slice() {
 
     let result = vec![result_entry(
         Some("same-symbol"),
-        &[Stage::Runtime],
+        Stage::Runtime,
         "same-pattern",
-        &[Stage::Compile],
+        Stage::Compile,
     )];
     let selected = project_p1(&projection, &result);
     assert_eq!(selected.len(), 1);
     assert_eq!(selected[0].value, Some("same-symbol"));
     assert_eq!(selected[0].pattern, "same-pattern");
-    assert_eq!(
-        selected[0].view.pair.value.stage(),
-        Some(stages(&[Stage::Runtime]))
-    );
-    assert_eq!(
-        selected[0].view.pair.pattern.stage,
-        stages(&[Stage::Compile])
-    );
+    assert_eq!(selected[0].view.pair.value.stage(), Some(Stage::Runtime));
+    assert_eq!(selected[0].view.pair.pattern.stage, Stage::Compile);
 
     assert_eq!(
         project_p1(
@@ -416,15 +399,15 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
     }
 
     let runtime_value = || PolicyPair {
-        value: ValueComponentPolicy::Present(stages(&[Stage::Runtime])),
+        value: ValueComponentPolicy::Present(Stage::Runtime),
         pattern: PatternComponentPolicy {
-            stage: stages(&[Stage::Compile]),
+            stage: Stage::Compile,
         },
     };
     let type_only = || PolicyPair {
         value: ValueComponentPolicy::Absent,
         pattern: PatternComponentPolicy {
-            stage: stages(&[Stage::Compile]),
+            stage: Stage::Compile,
         },
     };
     fn namespace_path<'a>(
@@ -720,10 +703,8 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
 fn omitted_p1_completes_to_one_p2_stage() {
     let result = PolicyView {
         pair: PolicyPair {
-            value: ValueComponentPolicy::Present(stages(&[Stage::Runtime])),
-            pattern: PatternComponentPolicy {
-                stage: stages(&[Stage::Seal]),
-            },
+            value: ValueComponentPolicy::Present(Stage::Runtime),
+            pattern: PatternComponentPolicy { stage: Stage::Seal },
         },
         mode: PolicyMode::Const,
     };
@@ -734,14 +715,14 @@ fn omitted_p1_completes_to_one_p2_stage() {
         },
     );
     assert_eq!(object.pair.value.stage(), Some(Stage::Runtime));
-    assert_eq!(object.pair.pattern.stage, stages(&[Stage::Seal]));
+    assert_eq!(object.pair.pattern.stage, Stage::Seal);
     assert_eq!(object.mode, PolicyMode::Const);
 
     let compile = normalize_p2_policy(&policy_spec("runtime"), Provenance::new("compile result"))
         .expect("valid result policy");
     let object = derive_function_object_p1(&compile, &FunctionObjectDeclarationPolicy::default());
-    assert_eq!(object.pair.value.stage(), Some(stages(&[Stage::Runtime])));
-    assert_eq!(object.pair.pattern.stage, stages(&[Stage::Compile]));
+    assert_eq!(object.pair.value.stage(), Some(Stage::Runtime));
+    assert_eq!(object.pair.pattern.stage, Stage::Compile);
     assert_eq!(object.mode, PolicyMode::Plain);
     let const_projection = elaborate_binding_p1_projection(
         Some(&policy_spec("const")),
@@ -809,16 +790,16 @@ fn horizon_visibility_uses_visibility_domains_not_atom_intersection() {
 fn fixed_runtime_value_observation_exposes_only_static_pattern() {
     let entry = result_entry(
         Some("runtime computation"),
-        &[Stage::Runtime],
+        Stage::Runtime,
         "compile Pattern",
-        &[Stage::Compile],
+        Stage::Compile,
     );
     let exposed = expose_policy_slice(&entry, ObservationHorizon::OpenStatic);
     assert!(read_value(&exposed).is_none());
     assert_eq!(read_pattern(&exposed), Some(&"compile Pattern"));
     assert_eq!(
         entry.view.pair.value.stage(),
-        Some(stages(&[Stage::Runtime])),
+        Some(Stage::Runtime),
         "static projection must not consume the runtime computation"
     );
 }

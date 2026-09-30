@@ -2626,17 +2626,7 @@ mod tests {
         ValueComponentPolicy,
     };
 
-    fn view(
-        value_stage: impl IntoIterator<Item = Stage>,
-        pattern_stage: impl IntoIterator<Item = Stage>,
-        mode: PolicyMode,
-    ) -> PolicyView {
-        let mut value_stages = value_stage.into_iter();
-        let value_stage = value_stages.next().expect("one resolved value stage");
-        assert!(value_stages.next().is_none());
-        let mut pattern_stages = pattern_stage.into_iter();
-        let pattern_stage = pattern_stages.next().expect("one resolved Pattern stage");
-        assert!(pattern_stages.next().is_none());
+    fn view(value_stage: Stage, pattern_stage: Stage, mode: PolicyMode) -> PolicyView {
         PolicyView {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
@@ -2650,8 +2640,8 @@ mod tests {
 
     #[test]
     fn result_pair_demand_is_a_pre_maxima_hard_coordinate() {
-        let runtime = view([Stage::Runtime], [Stage::Compile], PolicyMode::Const);
-        let compile = view([Stage::Compile], [Stage::Compile], PolicyMode::Mut);
+        let runtime = view(Stage::Runtime, Stage::Compile, PolicyMode::Const);
+        let compile = view(Stage::Compile, Stage::Compile, PolicyMode::Mut);
         let runtime_demand = P1Projection::ValueDominant {
             value: runtime.pair.value.into(),
         };

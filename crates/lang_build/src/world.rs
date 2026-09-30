@@ -2880,7 +2880,7 @@ fn result_policy_from_closure(
     normalize_p2_policy(annotation, provenance)
 }
 
-/// A runtime-only result P2 (all value stages == `runtime`) paired with a
+/// A result P2 whose value stage is `runtime`, paired with a
 /// pure-P return slot (`let r: type`) declares a runtime value slice that
 /// carries no value dimension. `N2(runtime) = runtime:compile` makes Pv
 /// disjoint from Pp, so the declared value slice can never be filled by a
