@@ -187,11 +187,11 @@ engineering facilities after their inputs and effects obey the source model.
 
 ## Canonical/source alignment gates
 
-- Replace the optional pure-P/sibling cluster carrier semantics with named-type
-  synthesis and explicit OverloadGroup aggregation. Existing Rust cluster/result
-  labels are implementation encodings, not the target ontology. In particular,
-  DeclaredResultClass::ClusterSymbol must be removed or re-encoded as private
-  implementation material; it is not an ordinary semantic result class.
+- Connect named-type synthesis and explicit OverloadGroup formation to source
+  contribution consumers. A binding now has at most one type or ordinary
+  resident. Result envelopes and Object normal forms no longer encode a
+  type-plus-value aggregate. Same-spelled declarations cannot supply an
+  invocation family; unavailable contribution formation reports a diagnostic.
 - Connect typed structural NameExpr creation, explicit Place borrowing without
   reading, and ordinary first-write initialization. Uninitialized is non-Object
   state. Qualified formation resolves a structural root and checks its current
@@ -444,8 +444,22 @@ completion has an explicit unavailable frontier until the common continuation
 consumer is connected. Stage-union/source-forwarding execution fixtures do not
 prove that consumer.
 
-The next independent cleanup cuts are: remove cluster candidate sources while
-preserving selection; replace resolved stage unions and phase execution
-partitions; expose lifecycle Pre/common commit/Post with fixed MoveEffect; and
-separate callable source records and general meta-instance identity from body
-execution. These are implementation retirement tasks, not new semantic choices.
+The invocation cleanup removes aggregate construction/result identities and
+candidate enumeration from declaration siblings. Ordinary values project
+their classifier's associated `()` entries; complete types project all V_tau
+members before one selection. Candidate identity retains both the actual
+receiver and implementation entry. Policy migration reads the source's captured
+complete Type, never its defining-name binding.
+
+The reusable associated implementation ledger is not an Object resident or an
+OverloadGroup. Multiple entries require an ordinary resident formation consumer
+before Object normalization; no aggregate normal form substitutes for that
+consumer. Source closure-to-tau formation, target-anchored common-snapshot
+contribution and general source completion remain implementation gates. The
+selection tests exercise the connected substrate and do not prove those gates.
+
+The next independent cleanup cuts replace resolved stage unions and phase
+execution partitions; expose lifecycle Pre/common commit/Post with fixed
+MoveEffect; and separate callable source records and general meta-instance
+identity from body execution. These are implementation retirement tasks, not
+new semantic choices.

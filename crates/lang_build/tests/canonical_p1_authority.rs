@@ -211,15 +211,15 @@ fn assert_canonical_p1_unified(world: &lang_build::CompilationWorld, name: &str)
         .symbol_in_namespace(package_root, name)
         .unwrap_or_else(|| panic!("`{name}` symbol should be registered"));
 
-    // The symbol cell has sibling_vals (function objects) and member_views.
+    // The binding has one ordinary resident and Policy projections.
     // For an ordinary `let name = closure` declaration, there is exactly one
     // sibling function object and one corresponding member view.
     assert_eq!(
-        symbol.sibling_vals.len(),
+        symbol.ordinary_value().iter().count(),
         1,
         "expected exactly one sibling function object for `{name}`"
     );
-    let function_value_id = symbol.sibling_vals[0];
+    let function_value_id = symbol.ordinary_value().unwrap();
     let function_obj = semantic_world
         .value(function_value_id)
         .expect("function object exists");

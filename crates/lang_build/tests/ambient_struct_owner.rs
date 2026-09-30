@@ -312,7 +312,7 @@ fn callable_self_owner(world: &CompilationWorld, name: &str) -> SemanticOwnerId 
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), name)
         .expect("fixture callable symbol");
-    let function_value = symbol.sibling_vals[0];
+    let function_value = symbol.ordinary_value().unwrap();
     let object = world
         .semantic_world()
         .value(function_value)

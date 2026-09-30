@@ -16,13 +16,10 @@
 //! object's identity:
 //!
 //! ```text
-//! Norm_Val2(V)     = Map_name( Norm_Cluster(V[name]) )
-//! Norm_Cluster(C)  = ⟨ Norm_pureP(C.pureP)?, Multiset{ Norm_val(v) } ⟩
-//! Norm_pureP(x)    = ⟨ Norm_P(P_x), Norm_Val2(Val2_x) ⟩
+//! Norm_Val2(V) = Map_name(Addr(Resident(V[name])))
 //! ```
 //!
-//! The recursion descends into the associated Symbol of each source-visible
-//! Val2 name and terminates at objects whose Val2 is empty (`Val2(()) = ∅`).
+//! Each realized member has one complete resident Object.
 //! The observation coordinate — which carrier's [`crate::ObjectPlaceId`] was
 //! read to obtain a Val2 — is NOT identity material: it only decides *which*
 //! Val2 is observed.  Equal Pattern plus equal recursive Val2 means one type
@@ -59,18 +56,11 @@ use std::collections::BTreeMap;
 
 use crate::semantic_owner::ResolvedPatternRootId;
 
-/// `Norm_Val2(V) = Map_name(Norm_Cluster(V[name]))` — the recursive normal
-/// form of one object's Val2 at canonicalization time.
-///
-/// Keys are the object's source-visible Val2 names (a `BTreeMap`, so name
-/// order is not identity material).  Each entry is the recursive normal form
-/// of that name's ClusterSymbol, never a raw allocation id list.
-pub type CanonicalVal2Norm = BTreeMap<String, CanonicalClusterNorm>;
+/// Each realized Val2 selector observes one complete resident Object.
+pub type CanonicalVal2Norm = BTreeMap<String, CanonicalValueAddr>;
 
-/// Immutable normalized `V_tau` snapshot.  The selector map is separate from
-/// the core Object's owned Val2 even when current construction substrate
-/// projects the same direct TypeMembers into both views.
-pub type CanonicalTypeCallSpaceNorm = BTreeMap<String, CanonicalClusterNorm>;
+/// Immutable callable-member observations; selector spelling is not a V_tau axis.
+pub type CanonicalTypeCallSpaceNorm = Vec<CanonicalValueAddr>;
 
 /// `bind alpha.<Norm(Q), Norm_V^alpha(V_tau)>`.
 ///
@@ -81,35 +71,6 @@ pub type CanonicalTypeCallSpaceNorm = BTreeMap<String, CanonicalClusterNorm>;
 pub struct CanonicalCompleteTypeNorm {
     pub core: CanonicalValueAddr,
     pub call_space: CanonicalTypeCallSpaceNorm,
-}
-
-/// `Norm_Cluster(C) = ⟨Norm_pureP(C.pureP)?, Multiset{Norm_val(v)}⟩` — the
-/// normal form of one Val2 name.
-///
-/// `Val2(T_t)[f] = C_f` is itself a ClusterSymbol, so a Val2 name normalizes
-/// exactly like any other cluster: at most one pure-P facet plus its sibling
-/// vals.  `vals` is a multiset (sorted; duplicates retained) because sibling
-/// order is not cluster identity, and each element is a content-derived
-/// interning address rather than a `SemanticValueId`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CanonicalClusterNorm {
-    /// `Norm_pureP(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩`, interned.  Absent
-    /// when the name carries only vals.
-    pub pure_p: Option<CanonicalValueAddr>,
-    /// The sibling vals' interned normal forms, sorted as a multiset.
-    pub vals: Vec<CanonicalValueAddr>,
-}
-
-impl CanonicalClusterNorm {
-    /// Build one cluster normal form, sorting the val multiset.
-    pub fn new(pure_p: Option<CanonicalValueAddr>, mut vals: Vec<CanonicalValueAddr>) -> Self {
-        vals.sort();
-        Self { pure_p, vals }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.pure_p.is_none() && self.vals.is_empty()
-    }
 }
 
 /// Snapshot-local semantic interning address: `Addr(v) = Intern(Norm(v))`.

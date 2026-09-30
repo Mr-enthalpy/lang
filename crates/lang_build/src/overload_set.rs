@@ -217,8 +217,6 @@ fn parameter_arity_matches(params: &[NormPatternElem], explicit_arity: usize) ->
 ///
 /// Mapping:
 ///
-/// * `-> r: symbol` → `ClusterSymbol` (one position, plural values under
-///   one name);
 /// * `-> r: type`   → `CompleteType`;
 /// * `-> _: unit`   → `Unit` — the value-less result REQUIRES the `_`
 ///   binder (`_: unit` matches and discards the value, exactly as `_ unit`
@@ -244,7 +242,6 @@ pub fn declared_result_class_from_closure(
         None => None,
     };
     match annotation_name {
-        Some("symbol") => Ok(DeclaredResultClass::ClusterSymbol),
         Some("type") => Ok(DeclaredResultClass::CompleteType),
         Some("unit") => {
             // `_` in binder position normalizes to a wildcard skeleton

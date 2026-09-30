@@ -43,13 +43,13 @@ mod support;
 
 use lang_build::{
     classify_type_arguments_env_with_report, compute_meta_invocation_material_key,
-    extract_single_call_site, invoke_host_member_symbol_ordinary, CanonicalValueAddr,
+    extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr,
     DeclaredResultClass, MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
     Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
     RawArgShape, RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv,
-    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeMemberFacet, TypeResolutionEnv,
-    TypeValueId, ValueComponentPolicy, ValuePresence,
+    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeResolutionEnv, TypeValueId,
+    ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
 
@@ -319,18 +319,29 @@ fn successor_vtau_does_not_redefine_object_val2() {
         .observe_complete_type(type_value, Some(t_place))
         .expect("initial complete tau observes")
         .whole();
+    let closure_expr = initializer_from_source("let f = (self): compile -> let r => { self; };");
+    let lang_syntax::NormExpr::Closure(closure) = closure_expr else {
+        panic!("closure");
+    };
+    let view = lang_build::declared_policy_view(&[PolicyStage::Compile], PolicyMode::Plain);
     let builtin_member = world
-        .core_type_projection_value(support::numbered_type_lookup_fixture("recursive-object", 1))
-        .expect("member type has a transport value");
+        .register_source_callable(
+            NamespaceNodeId(0),
+            "call_member",
+            SymbolId(99900),
+            &closure,
+            None,
+            view.clone(),
+            view,
+            None,
+            lang_build::DeclaredResultClass::OrdinaryValue,
+            Provenance::new("ordinary type-call member"),
+        )
+        .unwrap()
+        .function_value;
 
     world
-        .admit_direct_type_member(
-            pattern,
-            pattern,
-            "vtau_only",
-            TypeMemberFacet::Value,
-            builtin_member,
-        )
+        .admit_direct_type_member(pattern, pattern, "vtau_only", builtin_member)
         .expect("a fresh direct TypeMember is admitted");
     let tau_after = world
         .observe_complete_type(type_value, Some(t_place))
@@ -835,7 +846,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     // The whole chain is gated: `T` is hidden, so `g::f::T(...)` is
     // unreachable at SealStatic. Resolution is already sealed, so the
     // projection reports `NoTargetValues` without any outward fallback.
-    let blocked = invoke_host_member_symbol_ordinary(
+    let blocked = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain,
         g,
@@ -854,7 +865,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
 
     // Omitting the outer host reaches member processing instead, producing a
     // different failure. This isolates `T` as the host that gates the call.
-    let leaked = invoke_host_member_symbol_ordinary(
+    let leaked = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain[1..],
         g,
@@ -864,17 +875,17 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         provenance.clone(),
     );
     assert!(
-        !matches!(
+        matches!(
             leaked,
             Err(OrdinaryInvocationFailure::NoTargetValues { .. })
         ),
-        "the inner host f is visible; only the dropped outer host T was gating: {leaked:?}"
+        "the visible inner chain does not fabricate callability for g: {leaked:?}"
     );
 
     // With every host exposed, the call reaches member processing (`g` carries
     // no callable value here).
     let open = OrdinaryInvocationContext::open_static(&[]);
-    let passed = invoke_host_member_symbol_ordinary(
+    let passed = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain,
         g,
@@ -884,11 +895,11 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         provenance,
     );
     assert!(
-        !matches!(
+        matches!(
             passed,
             Err(OrdinaryInvocationFailure::NoTargetValues { .. })
         ),
-        "with every host exposed the chain gate passes: {passed:?}"
+        "visible hosts do not turn a noncallable binding into a candidate: {passed:?}"
     );
 }
 

@@ -109,9 +109,12 @@ fn runtime_body_declaration_may_contain_local_meta_shaped_initializer() {
 }
 
 #[test]
-fn ambiguity_does_not_residualize_under_meta_partial() {
+fn unavailable_source_contribution_does_not_residualize_under_meta_partial() {
     let err = build_fixture_error("initializer_ambiguous", "app");
-    assert!(has_code(&err, ResolverCode::AmbiguousMetaCandidate));
+    assert!(err
+        .diagnostics
+        .iter()
+        .any(|d| d.message.contains("callability contribution consumer")));
 }
 
 // A runtime-only result P2 (`: runtime ->` = `runtime:compile`) claims a

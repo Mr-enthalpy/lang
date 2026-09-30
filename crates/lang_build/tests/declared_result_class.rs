@@ -1,15 +1,8 @@
 //! Declared result-class and return-Pattern invariants.
 
-mod support;
+use lang_build::{declared_result_class_from_closure, DeclaredResultClass};
 
-use lang_build::{
-    declared_result_class_from_closure, validate_declared_result_class, DeclaredResultClass,
-    PatternComponentPolicy, PolicyPair, PolicyStage, Provenance, StageSet, ValueComponentPolicy,
-    ValuePresence,
-};
 use lang_syntax::{NormClosure, NormDecl, NormExpr, NormForm};
-
-use support::build_fixture_error;
 
 fn closure_initializer(source: &str) -> NormClosure {
     let parsed = lang_syntax::parse(source);
@@ -33,30 +26,11 @@ fn declared_result_class(source: &str) -> DeclaredResultClass {
         .expect("the return slot declares a result class")
 }
 
-fn p2(value_stages: &[PolicyStage], pattern_stages: &[PolicyStage]) -> PolicyPair {
-    let stage_set = |stages: &[PolicyStage]| {
-        let mut set = StageSet::new();
-        for stage in stages {
-            set.insert(*stage);
-        }
-        set
-    };
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: stage_set(value_stages),
-            presence: ValuePresence::Present,
-        },
-        pattern: PatternComponentPolicy {
-            stages: stage_set(pattern_stages),
-        },
-    }
-}
-
 #[test]
 fn declared_result_class_is_the_single_result_authority() {
     assert_eq!(
         declared_result_class("let f = (self, t: type): meta -> r: symbol => { r; };"),
-        DeclaredResultClass::ClusterSymbol
+        DeclaredResultClass::OrdinaryValue
     );
     assert_eq!(
         declared_result_class("let f = (self, t: type): meta -> let r: type => { r; };"),
@@ -91,54 +65,4 @@ fn unit_result_requires_the_underscore_binder_spelling() {
     ))
     .expect_err("a named binder with a unit annotation is rejected");
     assert!(error.message.contains("_: unit"));
-}
-
-#[test]
-fn cluster_symbol_result_requires_a_pure_meta_domain() {
-    let provenance = Provenance::new("ClusterSymbol result Policy validation");
-    let meta = p2(&[PolicyStage::Meta], &[PolicyStage::Meta]);
-    let compile = p2(&[PolicyStage::Compile], &[PolicyStage::Compile]);
-    let meta_compile = p2(
-        &[PolicyStage::Meta, PolicyStage::Compile],
-        &[PolicyStage::Meta, PolicyStage::Compile],
-    );
-    assert!(
-        validate_declared_result_class(DeclaredResultClass::ClusterSymbol, &meta, &provenance)
-            .is_ok()
-    );
-    assert!(validate_declared_result_class(
-        DeclaredResultClass::ClusterSymbol,
-        &compile,
-        &provenance
-    )
-    .is_err());
-    assert!(validate_declared_result_class(
-        DeclaredResultClass::ClusterSymbol,
-        &meta_compile,
-        &provenance
-    )
-    .is_err());
-}
-
-#[test]
-fn non_cluster_result_classes_do_not_acquire_a_policy_derived_category() {
-    let provenance = Provenance::new("result class remains declaration-owned");
-    let meta = p2(&[PolicyStage::Meta], &[PolicyStage::Meta]);
-    let compile = p2(&[PolicyStage::Compile], &[PolicyStage::Compile]);
-    for result_class in [
-        DeclaredResultClass::Unit,
-        DeclaredResultClass::CompleteType,
-        DeclaredResultClass::OrdinaryValue,
-    ] {
-        assert!(validate_declared_result_class(result_class.clone(), &meta, &provenance).is_ok());
-        assert!(validate_declared_result_class(result_class, &compile, &provenance).is_ok());
-    }
-}
-
-#[test]
-fn invalid_cluster_symbol_policy_fails_at_declaration() {
-    let error = build_fixture_error("result_class_validation_error", "app");
-    assert!(error.diagnostics.iter().any(|diagnostic| diagnostic
-        .message
-        .contains("requires a pure meta result P2")));
 }

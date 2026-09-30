@@ -4,179 +4,22 @@ use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
     CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
     PolicyMode, Provenance, SemanticOwnerKind, SemanticValuePayload, SymbolPayload,
-    ToolchainGlobalSourceRoot, WritableContext,
+    WritableContext,
 };
 
-use support::{
-    build_fixture_error, build_single_fixture_world, fixture_root, initializer_from_source,
-};
-
-fn transport_bundle() -> ToolchainGlobalSourceRoot {
-    ToolchainGlobalSourceRoot::under(
-        fixture_root()
-            .join("global_implementation")
-            .join("uint8_transport"),
-        vec!["core".to_string(), "uint8".to_string()],
-    )
-}
-
-fn build_transport_world() -> CompilationWorld {
-    let mut manifest = BuildManifest::new("app", vec!["app".to_string()]);
-    manifest
-        .global_implementation_roots
-        .push(transport_bundle());
-    CompilationWorld::from_manifest(&manifest).expect("transport bundle builds")
-}
-
-// ---------------------------------------------------------------------------
-// Invariant tests: I1-I12 from the semantic model closure
-// ---------------------------------------------------------------------------
+use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
 
 #[test]
-fn i1_let_parens_never_changes_sibling_vals() {
-    // I1 — sibling_vals only changes when a declaration's binder name matches
-    // an existing cluster Symbol.  Before any transport fixture is loaded,
-    // sibling_vals is empty.  After loading the transport fixture (4
-    // declarations named `uint8`), sibling_vals has exactly 5 entries,
-    // including the canonical plain-input transport.
-    // Named methods like `identity` and `type_identity` do NOT match the
-    // `uint8` cluster Symbol and must appear in Val2[name], not sibling_vals.
-
-    // Before: no transport fixture, sibling_vals is empty.
-    let before_world = build_single_fixture_world("single_package_type_binding", "app");
-    let before_uint8 = before_world
-        .semantic_world()
-        .symbol_in_namespace(before_world.core_node(), "uint8")
-        .expect("core uint8");
-    assert_eq!(
-        before_uint8.sibling_vals.len(),
-        0,
-        "I1 before: no transports, sibling_vals is empty"
-    );
-
-    // After: transport fixture loaded, sibling_vals has exactly 5.
-    let after_world = build_transport_world();
-    let after_uint8 = after_world
-        .semantic_world()
-        .symbol_in_namespace(after_world.core_node(), "uint8")
-        .expect("core uint8 with transports");
-    assert_eq!(
-        after_uint8.sibling_vals.len(),
-        5,
-        "I1 after: exactly 5 transports named `uint8` are cluster sibling vals"
-    );
-
-    // `identity` and `type_identity` must NOT be cluster siblings — they are
-    // registered as ordinary source callables in Val2[name].
-    let pattern = after_world
-        .semantic_world()
-        .pattern_for_associated_namespace(after_world.core_node());
-    if let Some(pat) = pattern {
-        let identity_vals = after_world
-            .semantic_world()
-            .associated_values_for_pattern(pat, "identity")
-            .map(|vals| vals.len())
-            .unwrap_or(0);
-        assert_eq!(
-            identity_vals, 1,
-            "I1: `identity` is in Val2[\"identity\"], not sibling_vals"
-        );
-        let type_identity_vals = after_world
-            .semantic_world()
-            .associated_values_for_pattern(pat, "type_identity")
-            .map(|vals| vals.len())
-            .unwrap_or(0);
-        assert_eq!(
-            type_identity_vals, 1,
-            "I1: `type_identity` is in Val2[\"type_identity\"], not sibling_vals"
-        );
-    }
-}
-
-#[test]
-fn i2_every_callable_sibling_is_function_object() {
-    let world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("pick symbol");
-    for v in &pick.sibling_vals {
-        let obj = world.semantic_world().value(*v).unwrap();
-        assert!(
-            matches!(obj.payload, SemanticValuePayload::FunctionObject { .. }),
-            "I2: every callable sibling is a FunctionObject"
-        );
-    }
-}
-
-#[test]
-fn i8_call_entry_is_terminal_function_item() {
-    let world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("pick symbol");
-    for v in &pick.sibling_vals {
-        let entries = world
-            .semantic_world()
-            .associated_values_for_value(*v, "()")
-            .unwrap_or(&[]);
-        for entry in entries.iter().copied() {
-            let call = world.semantic_world().value(entry).unwrap();
-            assert!(
-                matches!(call.payload, SemanticValuePayload::CallEntry(_)),
-                "I8: () entry is terminal FunctionItem"
-            );
-            assert!(
-                world
-                    .semantic_world()
-                    .associated_values_for_pattern(call.pattern, "()")
-                    .is_none(),
-                "I8: call entry Val2 is empty (terminal)"
-            );
-            // Test A — function object type != call-entry FunctionItem type,
-            // function object pattern != call-entry pattern.  Each terminal
-            // call entry has an independent FunctionItem type and pattern
-            // allocated by allocate_terminal_call_entry.
-            let func_obj = world.semantic_world().value(*v).unwrap();
-            assert_ne!(
-                func_obj.type_value, call.type_value,
-                "Test A: function object type != call-entry FunctionItem type"
-            );
-            assert_ne!(
-                func_obj.pattern, call.pattern,
-                "Test A: function object pattern != call-entry pattern"
-            );
-        }
-    }
-}
-
-#[test]
-fn i11_sibling_vals_different_from_pure_p_val2() {
-    // Cluster sibling vals and pure-P.Val2 are different structural layers.
+fn type_projection_is_not_an_ordinary_resident() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let uint8 = world
         .semantic_world()
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
-    assert!(uint8.pure_p_pattern().is_some());
-    // sibling_vals contains no CoreTypeProjection graph value
-    assert!(uint8.sibling_vals.is_empty());
-    // pure-P.Val2["()"] may contain call entries from let () declarations,
-    // which are NOT sibling vals. This structural separation is invariant I11.
-}
-
-#[test]
-fn i12_type_projection_not_in_sibling_vals() {
-    let world = build_single_fixture_world("single_package_type_binding", "app");
-    let uint8 = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8");
-    assert!(uint8.sibling_vals.is_empty());
+    assert!(uint8.ordinary_value().is_none());
     assert!(uint8.pure_p_pattern().is_some());
     // CoreTypeProjection graph value is accessible through core_type_projection_value_for_symbol,
-    // never through sibling_vals.
+    // never through an ordinary resident.
     let type_obj = world
         .semantic_world()
         .core_type_projection_value_for_symbol(uint8.identity)
@@ -196,7 +39,7 @@ fn struct_binding_carries_exact_tau_independently_of_core_projection() {
         .symbol_in_namespace(world.package_root_node(), "T")
         .expect("struct result is bound as T");
     let member = binding
-        .pure_p
+        .pure_p()
         .expect("T carries the returned pure type Object");
     let whole = member
         .complete_type
@@ -214,102 +57,11 @@ fn struct_binding_carries_exact_tau_independently_of_core_projection() {
 }
 
 #[test]
-fn i14_finalize_construction_separate_from_install() {
-    // I14 — the cluster construction lifecycle is: begin → contribute →
-    // finalize → install.  Each phase is a distinct step:
-    //   begin:    begin_cluster_construction creates an Open cluster
-    //   contribute: contribute_cluster_pure_p sets pure_p on the open cluster
-    //   finalize: finalize_type_cluster produces a
-    //             ClusterConstructionMaterial (removes from open_clusters)
-    //   install:  the material is installed as a cluster Symbol
-    //             (upgrade_cluster_owner sets PatternClusterOwner::Installed)
-    //
-    // A cluster Symbol comes from a construction-family meta invocation
-    // (`(uint8 field) struct`).  Ordinary callable declarations (e.g. the
-    // `pick` overloads) contribute sibling vals to their name Symbol
-    // and never open a cluster themselves.
-    let world = build_single_fixture_world("single_package_type_binding", "app");
-    let direct = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "Direct")
-        .expect("struct-generated Direct symbol");
-
-    // contribute phase: pure_p was set during the struct meta invocation.
-    assert!(
-        direct.pure_p_pattern().is_some(),
-        "I14 contribute: pure_p was set during meta invocation"
-    );
-
-    // finalize phase: the construction was finalized (not left Open).
-    // After finalization, the cluster is removed from open_clusters.
-    let pattern = direct.pure_p_pattern().unwrap();
-    let owner = world.semantic_world().owner_cluster(pattern);
-    assert!(
-        owner.is_some(),
-        "I14 finalize: pattern has a cluster owner (was finalized)"
-    );
-
-    // install phase: the cluster owner is Installed (a Symbol), not Open
-    // (a ClusterConstructionId).  This verifies the final install step.
-    use lang_build::semantic_world::PatternClusterOwner;
-    let owner = owner.unwrap();
-    assert!(
-        matches!(owner, PatternClusterOwner::Installed(_)),
-        "I14 install: cluster owner is Installed (a Symbol), not Open (a ClusterConstructionId)"
-    );
-
-    // sibling_vals accrue on an installed cluster Symbol through later
-    // ContributeSiblingVal declarations (transport fixture), separate from
-    // the install step itself.
-    let transport_world = build_transport_world();
-    let uint8 = transport_world
-        .semantic_world()
-        .symbol_in_namespace(transport_world.core_node(), "uint8")
-        .expect("core uint8 cluster with transports");
-    let uint8_owner = transport_world
-        .semantic_world()
-        .owner_cluster(uint8.pure_p_pattern().expect("core uint8 pure P"))
-        .expect("core uint8 cluster owner");
-    assert!(
-        matches!(uint8_owner, PatternClusterOwner::Installed(_)),
-        "I14: transported cluster stays Installed"
-    );
-    assert_eq!(
-        uint8.sibling_vals.len(),
-        5,
-        "I14 contribute-after-install: cluster gains sibling_vals from transports"
-    );
-}
-
-#[test]
-fn i15_source_ordinary_call_begins_from_cluster_sibling_enumeration() {
-    // Source ordinary call begins from ClusterSymbol sibling enumeration,
-    // not from Pattern.Val2["()"].  This is structurally enforced by
-    // the ordinary invocation trunk, which reads target_values from
-    // the cluster's sibling_vals, not from associated_val2.
-    let world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("pick symbol");
-    // The sibling_vals are the callable candidates that the invocation
-    // pipeline enumerates.  They are FunctionObjects, not Val2["()"] entries.
-    assert!(
-        !pick.sibling_vals.is_empty(),
-        "I15: cluster has sibling vals for ordinary call enumeration"
-    );
-    for v in &pick.sibling_vals {
-        let obj = world.semantic_world().value(*v).unwrap();
-        assert!(
-            matches!(obj.payload, SemanticValuePayload::FunctionObject { .. }),
-            "I15: enumerated siblings are FunctionObjects (callable candidates)"
-        );
-    }
-}
-
-#[test]
 fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
-    let mut world = build_single_fixture_world("cluster_exposure", "app");
+    let mut world = support::AssociatedFamily::new(&[
+        "let first = (self, t: type): compile -> let r: type => { t; };",
+        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+    ]);
     let initializer = initializer_from_source("let R: type = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
@@ -340,7 +92,10 @@ fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
 
 #[test]
 fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
-    let mut world = build_single_fixture_world("cluster_exposure", "app");
+    let mut world = support::AssociatedFamily::new(&[
+        "let first = (self, t: type): compile -> let r: type => { t; };",
+        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+    ]);
     let initializer = initializer_from_source("let R: type = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
@@ -385,7 +140,7 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
         .symbol_in_namespace(world.package_root_node(), "keep")
         .expect("single compile callable Symbol");
     let entries = keep
-        .sibling_vals
+        .ordinary_value()
         .iter()
         .flat_map(|value| {
             world
@@ -434,7 +189,10 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
 
 #[test]
 fn mut_policy_mode_does_not_grant_writable() {
-    let mut world = build_single_fixture_world("cluster_exposure", "app");
+    let mut world = support::AssociatedFamily::new(&[
+        "let first = (self, t: type): compile -> let r: type => { t; };",
+        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+    ]);
     let initializer = initializer_from_source("let R: type = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
@@ -466,8 +224,8 @@ fn source_position_policy_inherits_stage_and_overlays_result_mode() {
         .symbol_in_namespace(world.package_root_node(), "f")
         .expect("source callable f");
     let function_value = *function
-        .sibling_vals
-        .first()
+        .ordinary_value()
+        .as_ref()
         .expect("f has one function object");
     let call_entry = *world
         .semantic_world()
@@ -511,38 +269,6 @@ fn return_position_cannot_override_inherited_stage() {
 }
 
 // ---------------------------------------------------------------------------
-
-#[test]
-fn one_semantic_symbol_preserves_distinct_function_object_identities() {
-    let world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("semantic `pick` Symbol");
-    let mut ids = pick.sibling_vals.clone();
-    ids.sort();
-    ids.dedup();
-    assert_eq!(ids.len(), pick.sibling_vals.len());
-
-    let mut function_types = pick
-        .sibling_vals
-        .iter()
-        .map(|value| {
-            world
-                .semantic_world()
-                .value(*value)
-                .expect("function value")
-                .type_value
-        })
-        .collect::<Vec<_>>();
-    function_types.sort();
-    function_types.dedup();
-    assert_eq!(
-        function_types.len(),
-        pick.sibling_vals.len(),
-        "each source function object owns a distinct anonymous TypeValue"
-    );
-}
 
 #[test]
 fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
@@ -725,7 +451,7 @@ fn rebound_type_value_is_canonical_struct_field_material() {
 }
 
 #[test]
-fn owner_cluster_preserved_across_carrier_rebinding() {
+fn original_declaration_is_preserved_across_carrier_rebinding() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let bound = world
         .semantic_world()
@@ -747,33 +473,30 @@ fn owner_cluster_preserved_across_carrier_rebinding() {
     assert_eq!(bound_pure, core_pure);
     assert_eq!(rebound_pure, core_pure);
 
-    let bound_cluster = world
+    let bound_declaration = world
         .semantic_world()
-        .owner_cluster(bound_pure)
-        .and_then(|owner| owner.installed())
-        .expect("T PatternValue has owning cluster");
-    let core_cluster = world
+        .pattern_declaration(bound_pure)
+        .expect("T PatternValue has original declaration");
+    let core_declaration = world
         .semantic_world()
-        .owner_cluster(core_pure)
-        .and_then(|owner| owner.installed())
-        .expect("uint8 PatternValue has owning cluster");
-    let rebound_cluster = world
+        .pattern_declaration(core_pure)
+        .expect("uint8 PatternValue has original declaration");
+    let rebound_declaration = world
         .semantic_world()
-        .owner_cluster(rebound_pure)
-        .and_then(|owner| owner.installed())
-        .expect("U PatternValue has owning cluster");
+        .pattern_declaration(rebound_pure)
+        .expect("U PatternValue has original declaration");
 
     assert_eq!(
-        bound_cluster, core_cluster,
-        "carrier rebinding must not change the canonical owning cluster"
+        bound_declaration, core_declaration,
+        "carrier rebinding must not change the canonical original declaration"
     );
     assert_eq!(
-        rebound_cluster, core_cluster,
-        "two-level carrier rebinding must still refer to the original owning cluster"
+        rebound_declaration, core_declaration,
+        "two-level carrier rebinding must still refer to the original original declaration"
     );
     assert_ne!(
         bound.identity, core.identity,
-        "carrier Symbol identity is distinct from the owning cluster identity"
+        "carrier Symbol identity is distinct from the original declaration identity"
     );
 }
 
@@ -838,98 +561,13 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
         "two ordinary bindings of one Pattern never share one Val2 place"
     );
 
-    // The Pattern's canonical pure type Object belongs to the cluster that
+    // The Pattern's canonical pure type Object belongs to the declaration that
     // declared the Pattern; neither rebinding writes there.
     let canonical = semantic
         .pattern_place(pattern)
         .expect("the Pattern has a canonical pure type Object");
     assert_ne!(bound_place, canonical);
     assert_ne!(rebound_place, canonical);
-}
-
-#[test]
-fn cluster_pure_p_not_in_sibling_vals() {
-    let world = build_single_fixture_world("single_package_type_binding", "app");
-    let bound = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "T")
-        .expect("source binding T");
-    assert!(
-        bound.pure_p_pattern().is_some(),
-        "type binding T has a pure P PatternValue"
-    );
-    assert!(
-        bound.sibling_vals.is_empty(),
-        "CoreTypeProjection graph value value does not appear in sibling_vals"
-    );
-    let core = world
-        .semantic_world()
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .expect("core uint8");
-    assert!(core.pure_p_pattern().is_some());
-    assert!(
-        core.sibling_vals.is_empty(),
-        "core type without transport fixture has no sibling vals (CoreTypeProjection is not a sibling val)"
-    );
-
-    // Ordinary callable declarations cluster by name into a Symbol whose
-    // pure_p is absent; the `pick` overloads live in the candidate fixture.
-    let pick_world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = pick_world
-        .semantic_world()
-        .symbol_in_namespace(pick_world.package_root_node(), "pick")
-        .expect("callable `pick` symbol");
-    assert!(
-        pick.pure_p_pattern().is_none(),
-        "callable symbol has no pure P, only sibling vals"
-    );
-    assert!(
-        pick.sibling_vals.len() > 1,
-        "callable sibling vals form an overload set"
-    );
-}
-
-#[test]
-fn callable_sibling_has_own_type_and_terminal_call_entry() {
-    let world = build_single_fixture_world("cluster_exposure", "app");
-    let pick = world
-        .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "pick")
-        .expect("semantic `pick` Symbol");
-    for value in &pick.sibling_vals {
-        let value_obj = world
-            .semantic_world()
-            .value(*value)
-            .expect("sibling val exists");
-        assert!(
-            matches!(
-                value_obj.payload,
-                SemanticValuePayload::FunctionObject { .. }
-            ),
-            "I2: every callable sibling is already a complete function object"
-        );
-        let entries = world
-            .semantic_world()
-            .associated_values_for_value(*value, "()")
-            .expect("function object owns () via its type");
-        for entry in entries {
-            let call_obj = world
-                .semantic_world()
-                .value(*entry)
-                .expect("call entry value exists");
-            assert!(
-                matches!(call_obj.payload, SemanticValuePayload::CallEntry(_)),
-                "I8: call entry is terminal FunctionItem"
-            );
-            assert!(
-                world
-                    .semantic_world()
-                    .associated_values_for_pattern(call_obj.pattern, "()")
-                    .is_none(),
-                "I8: call entry Val2 is empty — terminal"
-            );
-        }
-    }
 }
 
 #[test]
@@ -983,7 +621,10 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
         .semantic_world()
         .symbol_in_namespace(world.core_node(), "IdentityType")
         .expect("core primitive has a semantic Symbol/value facet");
-    assert_eq!(result.trace.c0_target_values, identity.sibling_vals);
+    assert_eq!(
+        result.trace.c0_target_values,
+        identity.ordinary_value().into_iter().collect::<Vec<_>>()
+    );
     assert_eq!(result.trace.c3_call_entries.len(), 1);
 
     let uint8 = world
@@ -1124,7 +765,7 @@ fn bare_call_target_resolves_nearest_symbol_once_even_if_non_callable() {
         .expect("inner non-callable f")
         .clone();
     assert!(
-        inner.sibling_vals.is_empty(),
+        inner.ordinary_value().is_none(),
         "near f is deliberately non-callable"
     );
 
@@ -1377,10 +1018,10 @@ fn declared_result_class_is_a_declaration_boundary_fact_shared_by_core_and_sourc
     assert_eq!(
         coordinates_of("make_type"),
         (
-            lang_build::DeclaredResultClass::ClusterSymbol,
+            lang_build::DeclaredResultClass::OrdinaryValue,
             lang_build::CallablePrivilege::OrdinarySource,
         ),
-        "source-defined `-> r: symbol` callable declares a ClusterSymbol return"
+        "an ordinary annotation declares no special result ontology"
     );
     assert_eq!(
         coordinates_of("keep"),
@@ -1422,11 +1063,11 @@ fn return_slot_declares_result_class_independent_of_body_form() {
         function.declared_result_class
     };
 
-    // Zero member events, `-> r: symbol`: still a cluster construction.
+    // Zero member events, `-> r: symbol`: an ordinary annotation.
     assert_eq!(
         declared_result_class_of("empty_cluster"),
-        lang_build::DeclaredResultClass::ClusterSymbol,
-        "a `-> r: symbol` callable with an effect-free body is still a cluster construction"
+        lang_build::DeclaredResultClass::OrdinaryValue,
+        "a `-> r: symbol` callable with an effect-free body is an ordinary annotation"
     );
     // This body (`let r = t; r;`) has a `-> let r: type` slot: body
     // refactoring never changes its declared complete-type result class.
@@ -1439,7 +1080,10 @@ fn return_slot_declares_result_class_independent_of_body_form() {
 
 #[test]
 fn unsupported_pattern_query_terminates_before_candidate_selection() {
-    let mut world = build_single_fixture_world("applicability_frontier", "app");
+    let mut world = support::AssociatedFamily::new(&[
+        "let first = (self, if | else: type): compile -> let r: uint8 => { self; };",
+        "let second = (self, t: type): compile -> let r: uint8 => { self; };",
+    ]);
     let initializer = initializer_from_source("let result = uint8 choose;");
     let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
     let failure = world

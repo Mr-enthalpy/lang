@@ -625,7 +625,7 @@ impl CompilationWorld {
         let Some(member) = self
             .semantic_world
             .symbol(identity)
-            .and_then(|symbol| symbol.pure_p)
+            .and_then(|symbol| symbol.pure_p())
         else {
             return Ok(None);
         };
@@ -677,7 +677,7 @@ impl CompilationWorld {
         {
             attempt_context.visibility = crate::VisibilityView::External;
         }
-        crate::invoke_host_member_symbol_ordinary(
+        crate::invoke_resolved_binding_ordinary(
             &mut self.semantic_world,
             &candidate.host_chain,
             symbol,
@@ -1130,61 +1130,28 @@ impl CompilationWorld {
                     declaration_provenance.clone(),
                 )?;
 
-                // A declaration contributes as a cluster sibling exactly when
-                // its binder names an existing cluster Symbol (a Symbol whose
-                // `pure_p` is set) in the same namespace. For example,
-                // `const let uint8 = (self, ...) => {...}` contributes to the
-                // `uint8` cluster, while `let identity = ...` is installed as
-                // an ordinary Val2 callable under its own name.
-                let cluster_symbol = self
+                // Same spelling supplies no contribution role. The source consumer
+                // for common-snapshot callability contribution is not connected.
+                if self
                     .semantic_world
                     .symbol_in_namespace(namespace, &binder_name)
-                    .filter(|cell| cell.pure_p.is_some())
-                    .map(|cell| cell.identity)
-                    .or_else(|| {
-                        // A declaration mounted inside a type-associated
-                        // namespace (e.g. a global implementation root at
-                        // `core::uint8`) contributes to the owning cluster
-                        // Symbol when the binder name matches the cluster
-                        // Symbol's own name.
-                        self.semantic_world
-                            .pattern_for_associated_namespace(namespace)
-                            .and_then(|pattern| self.semantic_world.owner_cluster(pattern))
-                            .and_then(|owner| owner.installed())
-                            .filter(|identity| {
-                                self.semantic_world.symbol(*identity).is_some_and(|cell| {
-                                    cell.name == binder_name && cell.pure_p.is_some()
-                                })
-                            })
-                    });
-
-                // The semantic declaration is authoritative;
-                // its graph rendering is installed afterward within
-                // the same staged CompilationWorld transaction.
-                let entry = if let Some(cluster_symbol) = cluster_symbol {
-                    SemanticDeclarationEntry::ClusterContribution {
-                        cluster_symbol,
-                        backing_declaration: callable.symbol_id,
-                        closure: closure.clone(),
-                        outer_p1_explicit: callable.outer_p1_explicit.clone(),
-                        function_view: callable.function_view,
-                        body_entry_view: callable.body_entry_view,
-                        namespace_visibility: callable.namespace_visibility,
-                        declared_result_class: callable.declared_result_class,
-                        provenance: declaration_provenance,
-                    }
-                } else {
-                    SemanticDeclarationEntry::SourceCallable {
-                        name: binder_name.clone(),
-                        backing_declaration: callable.symbol_id,
-                        closure: closure.clone(),
-                        outer_p1_explicit: callable.outer_p1_explicit.clone(),
-                        function_view: callable.function_view,
-                        body_entry_view: callable.body_entry_view,
-                        namespace_visibility: callable.namespace_visibility,
-                        declared_result_class: callable.declared_result_class,
-                        provenance: declaration_provenance,
-                    }
+                    .is_some()
+                {
+                    return Err(BuildError::single(Diagnostic::hard_error(
+                        "same-name declaration formation requires the callability contribution consumer",
+                        Some(declaration_provenance),
+                    )));
+                }
+                let entry = SemanticDeclarationEntry::SourceCallable {
+                    name: binder_name.clone(),
+                    backing_declaration: callable.symbol_id,
+                    closure: closure.clone(),
+                    outer_p1_explicit: callable.outer_p1_explicit.clone(),
+                    function_view: callable.function_view,
+                    body_entry_view: callable.body_entry_view,
+                    namespace_visibility: callable.namespace_visibility,
+                    declared_result_class: callable.declared_result_class,
+                    provenance: declaration_provenance,
                 };
                 self.semantic_world
                     .install_namespace_delta(SemanticNamespaceDelta {
@@ -1364,20 +1331,6 @@ impl CompilationWorld {
                 declared_result_class: crate::DeclaredResultClass::CompleteType,
                 value: crate::ProjectedInvocationOutcome::SingleMember(result),
             } => result,
-            crate::InvocationResult::SemanticResult {
-                declared_result_class: crate::DeclaredResultClass::ClusterSymbol,
-                value: crate::ProjectedInvocationOutcome::ClusterSymbol(meta),
-            } => {
-                return self.bind_connected_meta_construction_result(
-                    namespace,
-                    binder_name,
-                    slot,
-                    namespace_declaration,
-                    demand,
-                    meta,
-                    provenance,
-                );
-            }
             crate::InvocationResult::SemanticResult {
                 declared_result_class: crate::DeclaredResultClass::Unit,
                 value: crate::ProjectedInvocationOutcome::Unit(_),
@@ -1623,133 +1576,6 @@ impl CompilationWorld {
         Ok(())
     }
 
-    /// Project a unified invocation success carrying ClusterSymbol material
-    /// into the ordinary let-binding path. The finalized cluster construction's
-    /// member views are the canonical result facts; they flow through the same
-    /// annotation check, P1 elaboration, and installation as any other result.
-    /// Installation creates a fresh destination Symbol; patterns generated
-    /// by this construction flip from `Open(cluster)` to `Installed`, while
-    /// forwarded patterns keep their original owner (no reroot, no alias of
-    /// the callee or any result source Symbol).
-    fn bind_connected_meta_construction_result(
-        &mut self,
-        namespace: NamespaceNodeId,
-        binder_name: &str,
-        slot: &lang_syntax::NormBindingSlot,
-        namespace_declaration: &NamespaceDeclarationPolicy,
-        demand: &ResultPolicyDemand,
-        meta: crate::ClusterSymbolResult,
-        provenance: Provenance,
-    ) -> Result<(), BuildError> {
-        let construction = meta.construction;
-        let struct_materials = meta.struct_materials;
-        let result = construction
-            .member_views
-            .iter()
-            .map(|entry| crate::PolicyResultEntry {
-                value: entry.value.map(|id| {
-                    let value = self
-                        .semantic_world
-                        .value(id)
-                        .expect("cluster construction member view references an installed value");
-                    crate::SemanticValueRef {
-                        id,
-                        type_value: value.type_value,
-                    }
-                }),
-                pattern: entry.pattern,
-                view: entry.view.clone(),
-            })
-            .collect::<Vec<_>>();
-        let semantic_complete_type = if struct_materials.len() == 1 {
-            struct_materials
-                .first()
-                .and_then(|material| material.canonical_type)
-                .and_then(|lookup| {
-                    let pattern = self.semantic_world.type_value(lookup)?.pattern;
-                    let place = self.semantic_world.pattern_place(pattern);
-                    self.semantic_world
-                        .observe_complete_type(lookup, place)
-                        .ok()
-                })
-        } else {
-            None
-        };
-        assert_semantic_result_satisfies_annotation(
-            slot.annotation.as_ref(),
-            &result,
-            semantic_complete_type.as_ref(),
-            provenance.clone(),
-        )?;
-
-        let selected = self
-            .satisfy_binding_result_demand(&result, demand, &provenance)
-            .map_err(|failure| {
-                BuildError::single(
-                    Diagnostic::hard_error(
-                        format!(
-                            "ExplicitPolicyProjectionFailed: meta construction result cannot satisfy complete result demand ({failure})"
-                        ),
-                        Some(provenance.clone()),
-                    )
-                    .with_code(ResolverCode::ExplicitPolicyVerificationFailed),
-                )
-            })?;
-        // A construction whose sole member is backed by struct material
-        // expands the field-function and ref/share projection namespaces.
-        // Everything else installs the plain semantic binding carrier.
-        let destination =
-            if struct_materials.len() == 1 && selected.iter().all(|entry| entry.value.is_none()) {
-                let struct_material = struct_materials
-                    .into_iter()
-                    .next()
-                    .expect("struct_materials holds exactly one entry");
-                // Diagnostic-only binder record: an ambient struct collision
-                // at this level later points at this source-visible binding.
-                // The binder never feeds type identity.
-                let canonical_type = struct_material.canonical_type;
-                let destination = self.install_connected_struct_result_binding(
-                    namespace,
-                    binder_name,
-                    namespace_declaration,
-                    &selected,
-                    struct_material,
-                    semantic_complete_type.as_ref().ok_or_else(|| {
-                        BuildError::single(Diagnostic::hard_error(
-                            "struct result material lost its exact complete tau",
-                            Some(provenance.clone()),
-                        ))
-                    })?,
-                    provenance,
-                )?;
-                if let Some(canonical_type) = canonical_type {
-                    self.semantic_world.record_ambient_type_binder(
-                        canonical_type,
-                        crate::AmbientTypeBinder::WholeSymbol(binder_name.to_string()),
-                    );
-                }
-                destination
-            } else {
-                self.install_connected_semantic_binding(
-                    namespace,
-                    binder_name,
-                    namespace_declaration,
-                    &selected,
-                    None,
-                    provenance,
-                )?
-            };
-        // Patterns generated by this construction are still registered to
-        // the open cluster id; flip them to the fresh destination Symbol.
-        // A forwarded-only construction has no `Open` pattern and yields
-        // `None` here, which is the correct outcome: the forwarded pattern
-        // keeps its original owner.
-        let _ = self
-            .semantic_world
-            .upgrade_cluster_owner(construction.identity, destination);
-        Ok(())
-    }
-
     fn bind_connected_existing_result(
         &mut self,
         namespace: NamespaceNodeId,
@@ -1852,23 +1678,16 @@ impl CompilationWorld {
                     no_direct_product_atom_remains: true,
                 },
             });
-        let candidate_values = request
-            .target
-            .call_space()
-            .get(CONSTRUCT_OR_CONVERT_SELECTOR)
-            .into_iter()
-            .flatten()
-            .filter(|entry| entry.facet == crate::TypeMemberFacet::Value)
-            .map(|entry| entry.value)
-            .collect::<Vec<_>>();
-        let target_members = self
-            .semantic_world
-            .member_views_for_values(&candidate_values);
         let target_pattern = self
             .semantic_world
             .type_value(request.target.lookup_key())
             .expect("complete target lookup key remains installed")
             .pattern;
+        let target_members = self.semantic_world.associated_member_views_for_pattern(
+            target_pattern,
+            CONSTRUCT_OR_CONVERT_SELECTOR,
+            crate::Phase::OpenStatic,
+        );
 
         // Abstract-to-concrete construction itself produces a compile view.
         // A surrounding runtime demand is satisfied only afterwards by the
@@ -2220,74 +2039,6 @@ impl CompilationWorld {
     /// while the semantic side binds the construction's member views under
     /// a fresh destination Symbol — the same canonical facts as the plain
     /// carrier path, plus the namespace projection the plain carrier lacks.
-    fn install_connected_struct_result_binding(
-        &mut self,
-        namespace: NamespaceNodeId,
-        binder_name: &str,
-        namespace_declaration: &NamespaceDeclarationPolicy,
-        selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        struct_material: crate::StructConstructionMaterial,
-        semantic_complete_type: &crate::CompleteTypeValue,
-        provenance: Provenance,
-    ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
-        let result_view = uniform_result_policy_view(selected);
-        let mut expansion = expand_struct_construction_material(
-            struct_material,
-            semantic_complete_type,
-            self.semantic_world.namespace_index(),
-            namespace,
-            binder_name,
-            provenance.clone(),
-        )?;
-        override_delta_binding_policy_view(
-            &mut expansion.namespace_delta,
-            binder_name,
-            result_view.clone(),
-        );
-        override_delta_binding_visibility(
-            &mut expansion.namespace_delta,
-            binder_name,
-            namespace_declaration,
-        );
-        expansion.replacement_object.policy_view = result_view;
-        expansion
-            .replacement_object
-            .visibility_metadata
-            .namespace_visibility = namespace_declaration.visibility;
-        expansion.replacement_object.visibility_metadata.export_root =
-            namespace_declaration.export_root;
-        let destination = self
-            .semantic_world
-            .bind_ordinary_new(namespace, binder_name, selected, provenance.clone())
-            .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
-        // Semantic type and projection Symbols are
-        // installed before their graph rendering.
-        if let Some(entry) = selected.first() {
-            let associated_namespace = match &expansion.replacement_object.payload {
-                SymbolPayload::CompleteTypeProjection(projection) => {
-                    projection.type_associated_namespace
-                }
-                _ => None,
-            };
-            self.register_installed_type_carrier(
-                namespace,
-                &expansion.replacement_object.name,
-                expansion.replacement_object.id,
-                semantic_complete_type.lookup_key(),
-                Some(semantic_complete_type.whole()),
-                associated_namespace,
-                declared_pair_from_result_entry(entry, namespace_declaration),
-                expansion.replacement_object.provenance.clone(),
-            )?;
-        }
-        self.semantic_world
-            .register_generated_projection_symbols(&expansion.namespace_delta)?;
-        self.semantic_world
-            .install_namespace_name_delta(expansion.namespace_delta)?;
-        self.diagnostics.extend(expansion.diagnostics);
-        Ok(destination)
-    }
-
     fn evaluate_initializer_best_effort_connected(
         &mut self,
         namespace: NamespaceNodeId,
@@ -2507,31 +2258,6 @@ impl CompilationWorld {
                 ..
             }) => (result.exposed().material, result.complete_type),
             ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
-                declared_result_class: crate::DeclaredResultClass::ClusterSymbol,
-                value: crate::ProjectedInvocationOutcome::ClusterSymbol(result),
-            }) => (
-                result
-                    .construction
-                    .member_views
-                    .into_iter()
-                    .map(|entry| crate::PolicyResultEntry {
-                        value: entry.value.map(|id| {
-                            let value = self
-                                .semantic_world
-                                .value(id)
-                                .expect("construction result references installed value");
-                            crate::SemanticValueRef {
-                                id,
-                                type_value: value.type_value,
-                            }
-                        }),
-                        pattern: entry.pattern,
-                        view: entry.view,
-                    })
-                    .collect(),
-                None,
-            ),
-            ConnectedInitializerOutcome::Ordinary(crate::InvocationResult::SemanticResult {
                 declared_result_class: crate::DeclaredResultClass::Unit,
                 value: crate::ProjectedInvocationOutcome::Unit(_),
             }) => {
@@ -2643,7 +2369,7 @@ impl CompilationWorld {
             .symbol;
         let symbol = self.semantic_world.symbol(symbol)?;
         let complete_type = symbol
-            .pure_p
+            .pure_p()
             .and_then(|member| member.complete_type)
             .and_then(|whole| {
                 self.semantic_world
@@ -3018,12 +2744,6 @@ fn source_callable_delta(
     // return Pattern remains in the closure.
     let declared_result_class = crate::overload_set::declared_result_class_from_closure(closure)
         .map_err(BuildError::single)?;
-    crate::policy_pair::validate_declared_result_class(
-        declared_result_class.clone(),
-        &result_p2.pair,
-        &provenance,
-    )
-    .map_err(BuildError::single)?;
     let namespace_declaration = elaborate_namespace_declaration_policy(
         policy_expr,
         NamespaceDeclarationPosition::DirectTopLevel,
@@ -3485,13 +3205,13 @@ mod literal_construction_tests {
     fn selected_constructor_failure_does_not_run_plain_runner_up() {
         let mut world = world();
         let target = world.resolve_type_value("uint16").expect("uint16 resolves");
+        let request = request(&mut world, "uint16", PolicyMode::Const);
         add_test_candidate(
             &mut world,
             target,
             PolicyMode::Const,
             crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
         );
-        let request = request(&mut world, "uint16", PolicyMode::Const);
         let before = constructed_count(&world);
         let error = world
             .invoke_literal_construction_request(
@@ -3513,13 +3233,13 @@ mod literal_construction_tests {
         let target = deleted
             .resolve_type_value("uint16")
             .expect("uint16 resolves");
+        let deleted_request = request(&mut deleted, "uint16", PolicyMode::Mut);
         add_test_candidate(
             &mut deleted,
             target,
             PolicyMode::Mut,
             crate::semantic_world::OrdinaryIntrinsicBody::Delete,
         );
-        let deleted_request = request(&mut deleted, "uint16", PolicyMode::Mut);
         let before = constructed_count(&deleted);
         let error = deleted
             .invoke_literal_construction_request(
@@ -3539,13 +3259,13 @@ mod literal_construction_tests {
             target_key: crate::NumericTypeKey::new(crate::NumericFamily::Uint, 16),
             target_type: target,
         };
+        let ambiguous_request = request(&mut ambiguous, "uint16", PolicyMode::Plain);
         add_test_candidate(
             &mut ambiguous,
             target,
             PolicyMode::Plain,
             crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(builtin_spec),
         );
-        let ambiguous_request = request(&mut ambiguous, "uint16", PolicyMode::Plain);
         let before = constructed_count(&ambiguous);
         let error = ambiguous
             .invoke_literal_construction_request(
