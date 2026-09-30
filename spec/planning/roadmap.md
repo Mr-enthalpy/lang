@@ -476,6 +476,11 @@ between meta evaluators. Until common continuation preservation is connected,
 incomplete initializers fail before binding installation. Neither residual
 classification nor explicit runtime demand manufactures a runtime producer;
 pending seal obligations retain their semantic stage and are not runtime work.
+Exact empty call spaces and fully observed non-callability/applicability failures
+remain ordinary diagnostics. The invocation consumer records an actual hidden
+observation before reporting an unavailable continuation frontier; initializers
+transport it without guessing residual provenance from generic failure enums.
+Visible candidates retain ordinary selection, ambiguity and selected failure.
 Visibility reads actual candidate Policy facts and
 does not determine delete-body legality. The pure Policy-mode product selector
 and real ordinary candidate pipeline remain reusable assets.

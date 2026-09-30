@@ -557,6 +557,9 @@ pub enum OrdinaryInvocationFailure {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
+    /// Explicit remaining-observation material recorded at its source. This
+    /// frontier is not inferred from an ordinary no-candidate failure and
+    /// does not promise future applicability or assign an execution stage.
     Residual {
         residual: InvocationResidual,
         trace: OrdinaryPipelineTrace,
@@ -860,7 +863,8 @@ fn resolved_binding_call_views(
 /// carrier's own binding-level pure-P member view.  A single host anywhere in
 /// the chain that is not navigable at this horizon hides everything reached
 /// through it, so the whole chain must be exposed; the failure is reported as
-/// `NoTargetValues` for the already resolved Symbol. Name resolution is sealed
+/// an explicit hidden-observation frontier for the already resolved binding.
+/// Name resolution is sealed
 /// before this projection, so the failure never resumes an outward scope walk.
 /// A bare-name target has an empty host chain and composes only the member
 /// factor.
@@ -875,7 +879,11 @@ pub fn invoke_resolved_binding_ordinary(
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
     if hosts.iter().any(|host| !host.exposed_at(context.horizon)) {
-        return Err(OrdinaryInvocationFailure::NoTargetValues {
+        return Err(OrdinaryInvocationFailure::Residual {
+            residual: InvocationResidual {
+                class: "hidden-navigation-host-observation".into(),
+                provenance,
+            },
             trace: OrdinaryPipelineTrace::default(),
         });
     }
@@ -908,6 +916,18 @@ pub fn invoke_pattern_associated_ordinary(
     context: OrdinaryInvocationContext<'_>,
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
+    if semantic_world
+        .host_member_for_pattern(pattern)
+        .is_some_and(|host| !host.exposed_at(context.horizon))
+    {
+        return Err(OrdinaryInvocationFailure::Residual {
+            residual: InvocationResidual {
+                class: "hidden-associated-host-observation".into(),
+                provenance,
+            },
+            trace: OrdinaryPipelineTrace::default(),
+        });
+    }
     let target_members = semantic_world.associated_member_views_for_pattern(
         pattern,
         operation_name,
@@ -963,6 +983,18 @@ pub fn invoke_pattern_associated_value_ordinary(
             no_direct_product_atom_remains: true,
         },
     });
+    if semantic_world
+        .host_member_for_pattern(pattern)
+        .is_some_and(|host| !host.exposed_at(context.horizon))
+    {
+        return Err(OrdinaryInvocationFailure::Residual {
+            residual: InvocationResidual {
+                class: "hidden-associated-host-observation".into(),
+                provenance,
+            },
+            trace: OrdinaryPipelineTrace::default(),
+        });
+    }
     let target_members = semantic_world.associated_member_views_for_pattern(
         pattern,
         operation_name,
@@ -1069,14 +1101,22 @@ pub(crate) fn invoke_target_values(
     // call horizon; do not confuse exposure with ReadValue.  The projection
     // reads the member view's value_policy — not the value object's flat
     // PolicyPair and not a disjunction of unrelated residents.
+    // Record only an observation actually hidden here, never a cause inferred
+    // from an empty candidate family or an applicability failure. This opaque
+    // frontier proves neither future applicability nor readiness or a stage.
+    let mut horizon_obstruction = None;
     let c2_views = c1_views
         .into_iter()
-        .filter(|view| {
-            view.view
-                .pair
-                .value
-                .stage()
-                .is_some_and(|s| s.visible_at(context.horizon))
+        .filter(|view| match view.view.pair.value.stage() {
+            Some(stage) if stage.visible_at(context.horizon) => true,
+            Some(_) => {
+                horizon_obstruction.get_or_insert_with(|| InvocationResidual {
+                    class: "hidden-callee-observation".into(),
+                    provenance: provenance.clone(),
+                });
+                false
+            }
+            None => false,
         })
         .collect::<Vec<_>>();
     let mut c2 = Vec::new();
@@ -1185,6 +1225,10 @@ pub(crate) fn invoke_target_values(
         // readiness/Pre/commit consumer remains a separate implementation gate;
         // visibility must not authorize additional body execution paths.
         if !body_entry_visible_at(&entry.body_entry_view.pair, context.horizon) {
+            horizon_obstruction.get_or_insert_with(|| InvocationResidual {
+                class: "hidden-body-entry-observation".into(),
+                provenance: entry.provenance.clone(),
+            });
             continue;
         }
         let declaration_identity = SymbolObject::new(
@@ -1569,6 +1613,15 @@ pub(crate) fn invoke_target_values(
         .map(|candidate| candidate.call_entry_value)
         .collect();
     if prepared.is_empty() {
+        // Exposed candidates still follow the ordinary pipeline, including
+        // ambiguity and selected failure. Only a directly recorded obstruction
+        // can reach this unavailable boundary; ordinary mismatches never create
+        // it, and a reached diagnostic remains a diagnostic.
+        if first_diagnostic.is_none() {
+            if let Some(residual) = horizon_obstruction {
+                return Err(OrdinaryInvocationFailure::Residual { residual, trace });
+            }
+        }
         return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
             first_diagnostic,
             trace,

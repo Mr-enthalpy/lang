@@ -171,3 +171,135 @@ fn ordinary_pipeline_does_not_rank_static_stage_atoms() {
         );
     }
 }
+
+#[test]
+fn hidden_body_observation_is_an_explicit_invocation_frontier() {
+    // P1 is visible; the actual declared P2 observation is hidden.
+    let mut family = AssociatedFamily::new(&["meta let f = (receiver, x):seal => { (); };"]);
+    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
+    let outcome = family.invoke_ordinary_call(
+        family.package_root_node(),
+        &call,
+        OrdinaryInvocationContext::open_static(&[]),
+        Provenance::new("visible callable, hidden body"),
+    );
+    assert!(
+        matches!(outcome, Err(OrdinaryInvocationFailure::Residual { residual, .. })
+        if residual.class == "hidden-body-entry-observation")
+    );
+}
+
+#[test]
+fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
+    let visible = "let f = (receiver, x):meta => (\"visible rejection\") delete;";
+    let hidden = "meta let f = (receiver, x):seal => { (); };";
+    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
+    for sources in [
+        vec![visible, hidden],
+        vec![hidden, visible],
+        vec![visible, hidden, visible],
+    ] {
+        let ambiguous = sources.len() == 3;
+        let mut family = AssociatedFamily::new(&sources);
+        let outcome = family.invoke_ordinary_call(
+            family.package_root_node(),
+            &call,
+            OrdinaryInvocationContext::open_static(&[]),
+            Provenance::new("mixed body observations"),
+        );
+        if ambiguous {
+            assert!(
+                matches!(outcome, Err(OrdinaryInvocationFailure::Ambiguous { .. })),
+                "{outcome:?}"
+            );
+        } else {
+            assert!(
+                matches!(
+                    outcome,
+                    Err(OrdinaryInvocationFailure::SelectedDelete { .. })
+                ),
+                "{outcome:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn hidden_body_does_not_override_a_reached_applicability_diagnostic() {
+    let visible = "let f = (receiver, x:type):meta => { (); };";
+    let hidden = "meta let f = (receiver, x):seal => { (); };";
+    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
+    for sources in [[visible, hidden], [hidden, visible]] {
+        let mut family = AssociatedFamily::new(&sources);
+        let outcome = family.invoke_ordinary_call(
+            family.package_root_node(),
+            &call,
+            OrdinaryInvocationContext::open_static(&[]),
+            Provenance::new("mixed applicability and body observation"),
+        );
+        assert!(
+            matches!(
+                outcome,
+                Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+                    first_diagnostic: Some(_),
+                    ..
+                })
+            ),
+            "{outcome:?}"
+        );
+    }
+}
+
+#[test]
+fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
+    let base = lang_build::CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let call =
+        extract_single_call_site(&initializer_from_source("let result = () uint8;")).unwrap();
+    for hidden_first in [false, true] {
+        let mut family = AssociatedFamily::new(&[
+            "let f = (receiver, x):meta => (\"visible rejection\") delete;",
+        ]);
+        let visible = family.target_binding().ordinary_value().unwrap();
+        let world = family.semantic_world_mut();
+        let classifier = world.value(visible).unwrap().type_value;
+        let hidden = world
+            .install_plain_value(
+                classifier,
+                declared_policy_view(Stage::Seal, PolicyMode::Plain).pair,
+                Provenance::new("hidden receiver"),
+            )
+            .unwrap();
+        let target = world
+            .symbol_in_namespace(base.core_node(), "uint8")
+            .unwrap()
+            .identity;
+        let pattern = world.symbol(target).unwrap().pure_p_pattern().unwrap();
+        let receivers = if hidden_first {
+            [hidden, visible]
+        } else {
+            [visible, hidden]
+        };
+        for (index, receiver) in receivers.into_iter().enumerate() {
+            world
+                .admit_direct_type_member(pattern, pattern, &format!("member{index}"), receiver)
+                .unwrap();
+        }
+        let failure = lang_build::invoke_resolved_binding_ordinary(
+            world,
+            &[],
+            target,
+            &call,
+            &base.root_context(),
+            OrdinaryInvocationContext::open_static(&[]),
+            Provenance::new("mixed type-call observations"),
+        )
+        .unwrap_err();
+        let OrdinaryInvocationFailure::SelectedDelete { trace, .. } = failure else {
+            panic!("{failure:?}");
+        };
+        assert!(trace.c0_target_values.contains(&hidden));
+        assert!(trace.c0_target_values.contains(&visible));
+        assert_eq!(trace.c2_horizon_values, vec![visible]);
+        assert_eq!(trace.a_fully_admissible.len(), 1);
+    }
+}

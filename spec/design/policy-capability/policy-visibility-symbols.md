@@ -229,7 +229,12 @@ The typed substrate currently provides:
 - incomplete initializer evaluation establishes no result stage. Until the
   common continuation preservation consumer is connected, binding reports an
   explicit unavailable diagnostic and installs no name or result Policy, even
-  with an explicit runtime demand. Reached candidate errors
+  with an explicit runtime demand. Exact empty call spaces and fully observed
+  non-callability or applicability/Policy mismatch remain ordinary failures.
+  Invocation records actual hidden host/callee/body observations directly;
+  an initializer never infers horizon obstruction from a generic failure or
+  an absent diagnostic. Exposed candidates still undergo ordinary selection.
+  Reached candidate errors
   and selected-body failures remain diagnostics. Horizon visibility supplies
   no delete-body execution-legality proof;
 - atomic builtin type-key / concrete numeric Tnum separation and current

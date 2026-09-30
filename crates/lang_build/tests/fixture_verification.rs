@@ -145,7 +145,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
         "non_meta_target",
         "app",
-        "continuation preservation consumer is not connected",
+        "ordinary invocation found no fully admissible candidate",
     ),
     (
         "ambient_struct_collision",

@@ -197,7 +197,7 @@ pub enum ResolverCode {
     /// Cross-root conflict — same symbol found in multiple search roots.
     Conflict,
     AmbiguousMetaCandidate,
-    NoVisibleCandidateAtHorizon,
+    NoCallCandidate,
     BodyEntryPolicyMismatch,
     UnsupportedInitializerContinuation,
     AnnotationAssertionFailed,

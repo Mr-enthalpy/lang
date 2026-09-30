@@ -323,6 +323,9 @@ and optimizer structures cannot introduce program facts.
   explicit runtime result demand supplies no producer. If the continuation
   preservation consumer is not connected, report the unavailable boundary
   before installing a binding; never fabricate a runtime result observation.
+  An exact empty call space or ordinary applicability failure does not establish
+  a residual continuation. Only an actual remaining-continuation fact can do so;
+  never infer hidden work from a generic no-candidate failure or absent diagnostic.
 - Killable is instance-local; MoveEffect is fixed before observation; Movable
   is frontier legality. Equal types and ZST layout prove no blanket exemption.
   with placement precedes @; killing move adds no old-generation destructor.

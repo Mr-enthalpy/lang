@@ -835,7 +835,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
 
     // The whole chain is gated: `T` is hidden, so `g::f::T(...)` is
     // unreachable at SealStatic. Resolution is already sealed, so the
-    // projection reports `NoTargetValues` without any outward fallback.
+    // projection reports the hidden observation without any outward fallback.
     let blocked = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain,
@@ -846,10 +846,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         provenance.clone(),
     );
     assert!(
-        matches!(
-            blocked,
-            Err(OrdinaryInvocationFailure::NoTargetValues { .. })
-        ),
+        matches!(blocked, Err(OrdinaryInvocationFailure::Residual { .. })),
         "a hidden OUTER host hides the whole navigation at SealStatic: {blocked:?}"
     );
 

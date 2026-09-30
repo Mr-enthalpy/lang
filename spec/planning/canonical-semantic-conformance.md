@@ -34,6 +34,11 @@ the horizon alone proves neither readiness nor execution legality. Ordinary
 initializer bindings require the common continuation preservation consumer
 when evaluation cannot complete; until it is connected they fail before
 installation, without deriving runtime from residual or pending seal work.
+Exact empty V_tau, visible non-callable values and fully observed result-Policy
+mismatches have terminal no-candidate coverage at both initializer boundaries.
+Actual hidden observations are reported by invocation itself, never inferred
+from generic failure or an absent diagnostic. Mixed body observations retain
+ordinary visible-candidate ambiguity and terminal selected failure.
 Candidate errors and selected-body failures remain diagnostics, with no second
 meta evaluator mode or function/world stage partition. Ordinary
 deduction, R_vis/C_sigma and E readiness/saturation still require consumer

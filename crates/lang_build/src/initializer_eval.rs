@@ -5,7 +5,6 @@ use crate::model::{Diagnostic, Provenance, ResolverCode};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ResidualReason {
     UnsupportedExpression,
-    NoVisibleCandidateAtHorizon,
     BodyEntryPolicyMismatch,
 }
 
