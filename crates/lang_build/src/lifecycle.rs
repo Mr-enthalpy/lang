@@ -424,9 +424,35 @@ impl LifecycleState {
         &self.events
     }
 
-    /// Import a committed Color fact; this is not a lifecycle action entry point.
-    pub fn admit_committed_color_fact(&mut self, name: LifeName, color: ColorId) {
+    /// Import a producer-established Color fact for an active generation in K.
+    /// This is not an action entry point or historical backfill: ended, unknown
+    /// and formation-pending subjects cannot acquire new Color facts here.
+    pub fn admit_committed_color_fact(
+        &mut self,
+        continuation: &SemanticContinuation,
+        name: LifeName,
+        color: ColorId,
+    ) -> Result<(), LifecycleFailure> {
+        self.require_continuation(continuation)?;
+        if self.pending_formations.contains(&name) {
+            return Err(LifecycleFailure::FormationPending(name));
+        }
+        let region = self
+            .active
+            .get(&name)
+            .ok_or(LifecycleFailure::DeadName(name))?;
+        // An old clone of K must not import facts into a projection that has
+        // already observed later committed actions or this subject's birth.
+        if region.start > continuation.position()
+            || self.events.last().is_some_and(|event| {
+                event.at > continuation.position()
+                    || event.action.ordinal >= continuation.next_action_identity().ordinal
+            })
+        {
+            return Err(LifecycleFailure::StaleOrForeignProof);
+        }
         self.colors.entry(name).or_default().insert(color);
+        Ok(())
     }
 
     /// Finite observation; cyclic/coinductive origin material stops at the
@@ -1475,7 +1501,9 @@ mod tests {
         let before_name_count = state.next_name;
         let region = state.active[&source];
         let color = ColorId("stable-subject".into());
-        state.admit_committed_color_fact(source, color.clone());
+        state
+            .admit_committed_color_fact(&k, source, color.clone())
+            .unwrap();
         let destination = SemanticValueId(8);
         let post = commit(
             &mut k,
@@ -1506,6 +1534,172 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn color_admission_requires_its_continuation_and_a_formed_active_subject() {
+        let (k, mut state, name) = fixture();
+        let (foreign_k, mut foreign_state, foreign_name) = fixture();
+        assert_eq!(name, foreign_name, "numeric names may coincide across K");
+        let color = ColorId("red".into());
+        let before = (state.clone(), k.clone());
+        assert_eq!(
+            state.admit_committed_color_fact(&foreign_k, foreign_name, color.clone()),
+            Err(LifecycleFailure::ForeignContinuation)
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+
+        let foreign_only = foreign_state
+            .admit_committed_formation_fact(
+                &foreign_k,
+                SemanticValueId(8),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        assert_eq!(
+            state.admit_committed_color_fact(&k, foreign_only, color.clone()),
+            Err(LifecycleFailure::DeadName(foreign_only))
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+        let pending = state.discover_value(&k, SemanticValueId(8)).unwrap();
+        let before = state.clone();
+        assert_eq!(
+            state.admit_committed_color_fact(&k, pending, color.clone()),
+            Err(LifecycleFailure::FormationPending(pending))
+        );
+        assert_eq!(state, before);
+
+        let unallocated = LifeName(state.next_name);
+        let before = state.clone();
+        assert_eq!(
+            state.admit_committed_color_fact(&k, unallocated, color.clone()),
+            Err(LifecycleFailure::DeadName(unallocated))
+        );
+        assert_eq!(state, before);
+        let later = state
+            .admit_committed_formation_fact(
+                &k,
+                SemanticValueId(9),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        assert_eq!(later, unallocated);
+        assert_eq!(
+            state.observed_colors(later),
+            Ok(BTreeSet::new()),
+            "rejected Color cannot pollute a future allocated subject"
+        );
+
+        let before_k = k.clone();
+        state
+            .admit_committed_color_fact(&k, name, color.clone())
+            .unwrap();
+        let once = state.clone();
+        state
+            .admit_committed_color_fact(&k, name, color.clone())
+            .unwrap();
+        assert_eq!(state, once, "admission is monotone and idempotent");
+        assert_eq!(state.observed_colors(name), Ok(BTreeSet::from([color])));
+        assert_eq!(k, before_k, "fact import allocates no action or cut");
+    }
+
+    #[test]
+    fn closed_generations_cannot_receive_late_color_or_break_kill_inheritance() {
+        let (mut k, mut state, source) = fixture();
+        let inherited = ColorId("inherited".into());
+        state
+            .admit_committed_color_fact(&k, source, inherited.clone())
+            .unwrap();
+        let destination = commit(
+            &mut k,
+            &mut state,
+            2,
+            LifecycleAction::Move {
+                source,
+                destination: SemanticValueId(8),
+                effect: MoveEffect::Kill,
+            },
+        )
+        .unwrap()
+        .destination
+        .unwrap();
+        let before = (state.clone(), k.clone());
+        assert_eq!(
+            state.admit_committed_color_fact(&k, source, ColorId("late".into())),
+            Err(LifecycleFailure::DeadName(source))
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+        assert_eq!(
+            state.observed_colors(source),
+            Ok(BTreeSet::from([inherited.clone()]))
+        );
+        assert_eq!(
+            state.observed_colors(destination),
+            Ok(BTreeSet::from([inherited.clone()]))
+        );
+        assert_eq!(state.origins[&destination], state.origins[&source]);
+
+        let added = ColorId("destination".into());
+        state
+            .admit_committed_color_fact(&k, destination, added.clone())
+            .unwrap();
+        let expected = BTreeSet::from([inherited, added]);
+        commit(&mut k, &mut state, 3, LifecycleAction::Drop(destination)).unwrap();
+        let before = (state.clone(), k.clone());
+        assert_eq!(
+            state.admit_committed_color_fact(&k, destination, ColorId("after-drop".into())),
+            Err(LifecycleFailure::DeadName(destination))
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+        assert_eq!(state.observed_colors(destination), Ok(expected));
+    }
+
+    #[test]
+    fn color_admission_rejects_an_old_continuation_before_projection_frontier() {
+        let (mut k, mut state, name) = fixture();
+        let old_k = k.clone();
+        // Same cut, different ordinal: position comparison alone is insufficient.
+        commit(&mut k, &mut state, 0, LifecycleAction::Use(name)).unwrap();
+        let before = (state.clone(), k.clone());
+        assert_eq!(
+            state.admit_committed_color_fact(&old_k, name, ColorId("stale".into())),
+            Err(LifecycleFailure::StaleOrForeignProof)
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+        state
+            .admit_committed_color_fact(&k, name, ColorId("current".into()))
+            .unwrap();
+
+        let before_birth = k.clone();
+        let destination = commit(
+            &mut k,
+            &mut state,
+            2,
+            LifecycleAction::Move {
+                source: name,
+                destination: SemanticValueId(8),
+                effect: MoveEffect::Kill,
+            },
+        )
+        .unwrap()
+        .destination
+        .unwrap();
+        let before = (state.clone(), k.clone());
+        assert_eq!(
+            state.admit_committed_color_fact(
+                &before_birth,
+                destination,
+                ColorId("before-birth".into())
+            ),
+            Err(LifecycleFailure::StaleOrForeignProof)
+        );
+        assert_eq!((state.clone(), k.clone()), before);
+        assert_eq!(
+            state.observed_colors(destination),
+            Ok(BTreeSet::from([ColorId("current".into())]))
+        );
     }
 
     #[test]
@@ -1581,8 +1775,12 @@ mod tests {
             .unwrap();
         let ancestor_color = ColorId("ancestor".into());
         let direct_color = ColorId("direct".into());
-        state.admit_committed_color_fact(ancestor, ancestor_color.clone());
-        state.admit_committed_color_fact(source, direct_color.clone());
+        state
+            .admit_committed_color_fact(&k, ancestor, ancestor_color.clone())
+            .unwrap();
+        state
+            .admit_committed_color_fact(&k, source, direct_color.clone())
+            .unwrap();
         let before = state.observed_colors(source);
         let post = commit(
             &mut k,
@@ -2010,7 +2208,9 @@ mod tests {
                 &Provenance::new("at two"),
             )
             .unwrap();
-        state.admit_committed_color_fact(name, ColorId("new-fact".into()));
+        state
+            .admit_committed_color_fact(&k, name, ColorId("new-fact".into()))
+            .unwrap();
         let before = state.clone();
         let failed = k.commit_action(
             SemanticPosition(2),

@@ -105,6 +105,10 @@ Prefix regressions cover future cleanup of Kill destinations and late admitted
 formation, immutable fixed prefixes, stale evidence after prefix/suffix changes,
 same-cut Use/Preserve rejection, and fixed-order boundary Kill. Scalar half-open
 Regions also reject later endings at an existing Use/Preserve cut.
+Color admission regressions reject foreign K (including colliding numeric
+LifeNames), unallocated/pending/closed subjects and stale frontiers without
+mutation; ended-generation Color cannot invalidate Kill inheritance or pollute
+a later allocation. Active admission remains monotone and invalidates old Pre.
 The production world retains one K and lifecycle name map; source lifecycle
 actions, complete generation-continuation observation, NLL/with cleanup-point
 derivation and complete E remain consumer gates.

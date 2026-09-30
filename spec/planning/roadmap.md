@@ -551,6 +551,11 @@ than discovery. Pending origin producers remain explicit pending material.
 Origin completion is one-shot, and finite Color queries cannot silently stop
 at missing ancestry. Full ReifyLife remains an explicit consumer frontier,
 including when cleanup has been frozen but generation endpoints are not fixed.
+Color fact admission requires the matching K, a frontier covering already
+committed projection events, and a formed active generation; unknown, pending,
+closed and foreign subjects cannot mutate the projection. Historical Color
+backfill is not supported, so ended-generation direct facts cannot invalidate Kill's
+inherited snapshot.
 
 Lifecycle and shared-transaction unit tests cover these substrate relations,
 not source use/move/drop/@, NLL/with point derivation, atomic extraction or

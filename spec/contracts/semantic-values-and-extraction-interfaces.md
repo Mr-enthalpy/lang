@@ -106,6 +106,15 @@ Finite Color queries cannot truncate pending ancestry as if it terminated.
 The `admit_committed_*_fact` interfaces import producer-established facts;
 they are not lifecycle action commits. CompilationWorld exposes lifecycle
 state read-only; source fact producers remain unconnected.
+Color admission additionally checks the supplied continuation identity and
+that its frontier covers this projection's committed events and subject birth.
+It accepts only formed, active generations. Unknown, formation-pending, ended
+or foreign subjects fail before mutation. This API does not backfill historical
+Color: after Kill/Drop, the old generation's direct Color facts cannot change,
+preserving Kill's inherited direct/deeper Color facts. Observations through
+retained origins still include permitted additions to active ancestors.
+Bare LifeName numbers
+are interpreted within the supplied K, never as independent authority.
 
 ReifyLife must describe the fully fixed generation continuation. A frozen
 cleanup table alone proves neither its full endpoint nor the absence of other
