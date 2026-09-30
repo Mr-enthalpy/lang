@@ -2,13 +2,13 @@ mod support;
 use support::*;
 
 use lang_build::{
-    declared_policy_view, policy_view_visible_at, CompilationWorld, ObservationHorizon, PolicyMode,
-    Provenance, ResolveExpectation, ResolverCode, ResolverContext, SourceCategory, Stage,
-    SymbolKind, SymbolObject,
+    declared_policy_view, expose_policy_slice, read_pattern, read_value, CompilationWorld,
+    ObservationHorizon, PolicyMode, PolicyResultEntry, Provenance, ResolveExpectation,
+    ResolverCode, ResolverContext, SourceCategory, Stage, SymbolKind, SymbolObject,
 };
 
 #[test]
-fn core_type_is_visible_in_open_static_horizon() {
+fn core_type_pattern_is_visible_in_open_static_horizon() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let symbol = world
         .namespace_projection()
@@ -17,32 +17,37 @@ fn core_type_is_visible_in_open_static_horizon() {
         .expect("resolve uint8 independently of its exposure");
     assert_eq!(symbol.kind, SymbolKind::CompleteTypeProjection);
     assert_eq!(symbol.name, "uint8");
-    assert!(policy_view_visible_at(
-        symbol.policy_view.as_ref().unwrap(),
-        ObservationHorizon::OpenStatic,
-    ));
+    let entry = PolicyResultEntry::<(), _> {
+        value: None,
+        pattern: symbol.id,
+        view: symbol.policy_view.as_ref().unwrap().clone(),
+    };
+    let observed = expose_policy_slice(&entry, ObservationHorizon::OpenStatic);
+    assert_eq!(read_pattern(&observed), Some(&symbol.id));
+    assert_eq!(read_value(&observed), None);
 }
 
 #[test]
-fn policy_view_stage_controls_visibility_without_changing_mode() {
-    let meta = declared_policy_view(Stage::Meta, PolicyMode::Plain);
-    let runtime = declared_policy_view(Stage::Runtime, PolicyMode::Plain);
-
-    assert!(policy_view_visible_at(
-        &meta,
-        ObservationHorizon::OpenStatic
-    ));
-    assert!(!policy_view_visible_at(&meta, ObservationHorizon::Runtime));
-    assert!(!policy_view_visible_at(
-        &runtime,
-        ObservationHorizon::OpenStatic
-    ));
-    assert!(policy_view_visible_at(
-        &runtime,
-        ObservationHorizon::Runtime
-    ));
-    assert_eq!(meta.mode, PolicyMode::Plain);
-    assert_eq!(runtime.mode, PolicyMode::Plain);
+fn value_and_pattern_facets_have_independent_visibility_without_policy_changes() {
+    for (stage, horizon, value_visible, pattern_visible) in [
+        (Stage::Meta, ObservationHorizon::OpenStatic, true, true),
+        (Stage::Meta, ObservationHorizon::Runtime, false, false),
+        (Stage::Runtime, ObservationHorizon::OpenStatic, false, true),
+        (Stage::Runtime, ObservationHorizon::SealStatic, false, true),
+        (Stage::Runtime, ObservationHorizon::Runtime, true, false),
+    ] {
+        let entry = PolicyResultEntry {
+            value: Some(7),
+            pattern: 11,
+            view: declared_policy_view(stage, PolicyMode::Plain),
+        };
+        let observed = expose_policy_slice(&entry, horizon);
+        assert_eq!(read_value(&observed).is_some(), value_visible);
+        assert_eq!(read_pattern(&observed).is_some(), pattern_visible);
+        assert_eq!(observed.value_policy, entry.view.pair.value);
+        assert_eq!(observed.pattern_policy, entry.view.pair.pattern);
+        assert_eq!(observed.mode, entry.view.mode);
+    }
 }
 
 #[test]
@@ -129,22 +134,21 @@ fn seal_horizon_projection_reads_concrete_policy_views() {
     let meta = capability.resolve_str("meta_only", &context).unwrap();
     let compile = capability.resolve_str("compile_only", &context).unwrap();
     let seal = capability.resolve_str("seal_only", &context).unwrap();
-    assert!(!policy_view_visible_at(
-        meta.policy_view.as_ref().unwrap(),
-        ObservationHorizon::SealStatic
-    ));
-    assert!(policy_view_visible_at(
-        compile.policy_view.as_ref().unwrap(),
-        ObservationHorizon::SealStatic
-    ));
-    assert!(policy_view_visible_at(
-        seal.policy_view.as_ref().unwrap(),
-        ObservationHorizon::SealStatic
-    ));
-    assert!(!policy_view_visible_at(
-        seal.policy_view.as_ref().unwrap(),
-        ObservationHorizon::OpenStatic
-    ));
+    for (symbol, horizon, exposed) in [
+        (&meta, ObservationHorizon::SealStatic, false),
+        (&compile, ObservationHorizon::SealStatic, true),
+        (&seal, ObservationHorizon::SealStatic, true),
+        (&seal, ObservationHorizon::OpenStatic, false),
+    ] {
+        let entry = PolicyResultEntry {
+            value: Some(symbol.id),
+            pattern: symbol.id,
+            view: symbol.policy_view.as_ref().unwrap().clone(),
+        };
+        let observed = expose_policy_slice(&entry, horizon);
+        assert_eq!(read_value(&observed).is_some(), exposed);
+        assert_eq!(read_pattern(&observed).is_some(), exposed);
+    }
 }
 
 #[test]
@@ -184,9 +188,19 @@ fn hidden_observation_cannot_suppress_a_search_root_conflict() {
         ObservationHorizon::Runtime,
     ] {
         // Exactly one resident value is visible, but both bindings still exist.
+        let local_entry = PolicyResultEntry {
+            value: Some(local.id),
+            pattern: (),
+            view: local.policy_view.as_ref().unwrap().clone(),
+        };
+        let outer_entry = PolicyResultEntry {
+            value: Some(outer.id),
+            pattern: (),
+            view: outer.policy_view.as_ref().unwrap().clone(),
+        };
         assert_ne!(
-            policy_view_visible_at(local.policy_view.as_ref().unwrap(), horizon),
-            policy_view_visible_at(outer.policy_view.as_ref().unwrap(), horizon),
+            read_value(&expose_policy_slice(&local_entry, horizon)).is_some(),
+            read_value(&expose_policy_slice(&outer_entry, horizon)).is_some(),
         );
         let failure = capability
             .resolve_with_expectation(&path, &mounted, ResolveExpectation::Object)

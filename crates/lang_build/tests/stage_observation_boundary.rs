@@ -39,14 +39,24 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
     let body = declared_policy_view(Stage::Seal, PolicyMode::Plain);
     let result = declared_policy_view(Stage::Runtime, PolicyMode::Const);
 
-    for (horizon, callee_visible, body_visible) in [
+    for (horizon, callee_value_visible, body_visible) in [
         (ObservationHorizon::OpenStatic, true, false),
         (ObservationHorizon::SealStatic, true, true),
         (ObservationHorizon::Runtime, false, false),
     ] {
+        let callee_entry = PolicyResultEntry {
+            value: Some(callee.id),
+            pattern: (),
+            view: callee.policy_view.as_ref().unwrap().clone(),
+        };
+        let observed = expose_policy_slice(&callee_entry, horizon);
         assert_eq!(
-            lang_build::policy_view_visible_at(callee.policy_view.as_ref().unwrap(), horizon),
-            callee_visible,
+            lang_build::read_value(&observed).is_some(),
+            callee_value_visible
+        );
+        assert_eq!(
+            lang_build::body_entry_visible_at(&body.pair, horizon),
+            body_visible
         );
         assert_eq!(capability.resolve(&path, &resolver).unwrap().id, callee.id);
         let args = ArgProductShape::from_flattened(FlattenedProductObject {

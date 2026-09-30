@@ -14,8 +14,8 @@
 //! derived from the argument product shape.
 
 use crate::{
+    body_entry_visible_at,
     identity::TypeValueId,
-    model::policy_view_visible_at,
     model::{CoreMetaFunction, Diagnostic, Provenance, SymbolId, SymbolObject},
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
     ObservationHorizon, PolicyView,
@@ -86,7 +86,7 @@ pub struct CandidatePolicyPlanes {
 
 impl CandidatePolicyPlanes {
     pub fn body_entry_visible_at_demanded_horizon(&self) -> bool {
-        policy_view_visible_at(&self.body_entry_policy, self.horizon)
+        body_entry_visible_at(&self.body_entry_policy.pair, self.horizon)
     }
 }
 

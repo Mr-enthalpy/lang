@@ -111,12 +111,12 @@ pub(crate) use meta_invocation::{
 pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterialId};
 pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};
 pub use model::{
-    policy_view_visible_at, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
-    CoreMetaFunction, CoreTypeProjection, Diagnostic, DiagnosticSeverity, FieldObject,
-    FieldProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
-    Provenance, ResolverCode, SemanticNameDelta, SourceCallableObject, SourceCategory, SymbolId,
-    SymbolKind, SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField,
-    VerificationPrimitive, VisibilityMetadata,
+    CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole, CoreMetaFunction,
+    CoreTypeProjection, Diagnostic, DiagnosticSeverity, FieldObject, FieldProjection,
+    MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
+    ResolverCode, SemanticNameDelta, SourceCallableObject, SourceCategory, SymbolId, SymbolKind,
+    SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, VerificationPrimitive,
+    VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{

@@ -121,13 +121,6 @@ impl ChildBucket {
     }
 }
 
-pub fn policy_view_visible_at(
-    policy_view: &crate::policy_pair::PolicyView,
-    horizon: crate::ObservationHorizon,
-) -> bool {
-    crate::body_entry_visible_at(&policy_view.pair, horizon)
-}
-
 /// Namespace visibility metadata. `namespace_visibility` and `export_root` are
 /// independent from Policy stage and whole-slot mode.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -474,10 +467,11 @@ pub struct TypeField {
 
 /// Concrete Policy views carried by callable payloads.
 ///
-/// `body_entry_policy` controls whether a callable body may be entered in an
-/// execution environment. `return_object_policy` records the policy of the
-/// object produced by the callable. Neither field controls resolver visibility;
-/// that remains the Symbol's own `policy_view`.
+/// `body_entry_policy` records the body-entry observation plane; horizon
+/// visibility alone proves neither readiness nor execution legality.
+/// `return_object_policy` records the policy of the object produced by the
+/// callable. Neither field controls name resolution, which fixes binding
+/// identity before any resident facet observation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CallablePolicyViews {
     pub body_entry_policy: crate::policy_pair::PolicyView,
