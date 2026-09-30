@@ -822,18 +822,15 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         let Some(view) = &symbol.policy_view else {
             return false;
         };
-        let stages = &view.pair.value.stages;
-        match env {
-            PolicyEnv::OpenStatic => {
-                stages.contains(crate::PolicyStage::Meta)
-                    || stages.contains(crate::PolicyStage::Compile)
-            }
-            PolicyEnv::SealStatic => {
-                stages.contains(crate::PolicyStage::Compile)
-                    || stages.contains(crate::PolicyStage::Seal)
-            }
-            PolicyEnv::Runtime => stages.contains(crate::PolicyStage::Runtime),
-        }
+        let horizon = match env {
+            PolicyEnv::OpenStatic => crate::ObservationHorizon::OpenStatic,
+            PolicyEnv::SealStatic => crate::ObservationHorizon::SealStatic,
+            PolicyEnv::Runtime => crate::ObservationHorizon::Runtime,
+        };
+        view.pair
+            .value
+            .stage()
+            .is_some_and(|s| s.visible_at(horizon))
     }
 
     pub fn declare(
@@ -891,7 +888,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             provenance,
         );
         symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-            &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+            crate::Stage::Meta,
             crate::PolicyMode::Plain,
         ));
         delta.insert_node(node);
@@ -994,7 +991,7 @@ pub(crate) fn namespace_symbol(
         provenance,
     );
     symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-        &[crate::PolicyStage::Meta, crate::PolicyStage::Runtime],
+        crate::Stage::Meta,
         crate::PolicyMode::Plain,
     ));
     delta.insert_node(node);

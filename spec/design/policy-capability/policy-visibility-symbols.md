@@ -63,10 +63,10 @@ Formal elaboration feeds the same position facts to body entry and ordinary
 candidate comparison. Namespace export retains identity and stable declaration
 facts; later consumer demand and DynamicLegality create no second view owner.
 
-## 3. Phase mapping
+## 3. Observation horizon mapping
 
 ```text
-Phase = OpenStatic | SealStatic | Runtime
+ObservationHorizon = OpenStatic | SealStatic | Runtime
 ```
 
 | Stage | OpenStatic | SealStatic | Runtime |
@@ -76,7 +76,7 @@ Phase = OpenStatic | SealStatic | Runtime
 | seal | no | yes | no |
 | runtime | no | no | yes |
 
-For ordinary call evaluation, the current `Phase` is already known. When no
+For ordinary call evaluation, the current observation horizon is already known. When no
 explicit target observation/stage Policy is written, each candidate's evaluation P1
 stage view may use the applicable stage-only default completion in §2 and is then
 checked against this table. Therefore `compile`/`runtime` exposure does not
@@ -87,8 +87,8 @@ resolved from the actual context/completion before maxima; inner selection seals
 
 Resolution and exposure are distinct. A name binding whose resident has a
 `runtime:compile` view resolves in OpenStatic. Subsequent resident projection
-exposes no readable runtime value, but exposes its compile Pattern and derived
-compile companion. Seal-only slices are hidden in OpenStatic but
+exposes no readable runtime value, but exposes its compile Pattern. An
+admissible compile realization still requires independent ordinary evidence. Seal-only slices are hidden in OpenStatic but
 their explicit paths are not semantically conflated with unresolved paths.
 
 A declared runtime view can exist while its Val1 is unreadable at a static
@@ -194,31 +194,32 @@ a future custom `?` design owns richer extraction-interface construction.
 ## 5. Rust substrate
 
 The following carriers are implementation inventory, not evidence that the
-single-stage or R_vis/C_sigma model is connected. StageSet and union-accepting
-helpers/tests still require migration; the mapping below is not normative algebra. Existing helpers that insert Plain
+full R_vis/C_sigma model is connected. Resolved observations carry one Stage
+atom, while omitted query coordinates remain separate. The mapping below is
+not normative algebra. Existing helpers that insert Plain
 for every omitted binding or call demand need alignment; operator-Pattern policy
 deduction and the joint Pin/Pout solution relation remain pending consumers.
 
 The typed substrate currently provides:
 
 - `PolicySpecAst { constraint }`, `PolicyConjunctionAst { atoms }`, and `PolicyAtomAst`;
-- `PolicyPair` with typed dimensions and `Phase` with exactly three variants;
+- `PolicyPair` with single `Stage` coordinates and projection-only `ObservationHorizon`;
 - separate binding/formal/namespace elaborators;
 - formal elaboration that receives inherited P2 explicitly and preserves all
   non-mode dimensions;
-- P2 normalization and stage-only function-object derivation;
-- owned P1 restricted views rather than reference-only filtering;
-- explicit resolution followed by phase exposure and facet reads;
-- `CompleteSymbolFlow` projection (legacy Rust carrier name, not a canonical
-  Symbol Object or a binding facet);
+- P2 normalization and single-atom omitted-P1 completion;
+- owned matching P1 observations that preserve identity without stage cropping;
+- explicit resolution followed by horizon exposure and facet reads; hidden
+  facets retain their underlying resolved observations; no static/runtime node
+  partition or visibility-based readiness classifier exists;
 - Wpre and export-retention least-closure helpers;
 - complete and externally projected namespace overload-set carriers that
   require a typed `ExportAdmission { in_export_retention_closure,
   publicly_reachable }` before projection and
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
-- phase-aware overload preference combined with the current Policy-mode
-  carrier;
+- horizon visibility filtering and ordinary Policy-mode preference, with
+  no ranking between distinct static stage atoms;
 - atomic builtin type-key / concrete numeric Tnum separation and current
   first-order TypeValue projections. These registries perform concrete type
   lookup only; they do not implement abstract literal denotations;
@@ -244,7 +245,7 @@ scalar policy projection.
 - Pattern | retains its own relation; no dedicated public Policy union is added.
 - Runtime horizon uses runtime:compile for ordinary value/Pattern observation.
 - Internal (Pv=runtime,Pp=seal) observations remain valid; public colon pairs do not.
-- P1 projection crops an exposed slice.
+- P1 projection accepts existing matching observations without cropping stage atoms.
 - A non-empty ordinary P1 projection never manufactures absent query
   alternatives and makes migration unreachable.
 - After existing projection is empty, a concrete runtime demand may admit one

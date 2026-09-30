@@ -1,7 +1,7 @@
 mod support;
 use support::*;
 
-use lang_build::{PolicyStage, ResolveExpectation, SourceCategory, SymbolPayload};
+use lang_build::{ResolveExpectation, SourceCategory, Stage, SymbolPayload};
 
 #[test]
 fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
@@ -20,8 +20,8 @@ fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
         .policy_view
         .as_ref()
         .expect("type binding Policy view");
-    assert!(view.pair.value.stages.contains(PolicyStage::Meta));
-    assert!(view.pair.value.stages.contains(PolicyStage::Runtime));
+    assert!(view.pair.value.stage() == Some(Stage::Meta));
+    assert!(view.pair.value.stage() != Some(Stage::Runtime));
     let symbol_id = symbol.id;
 
     let SymbolPayload::CompleteTypeProjection(type_projection) = symbol.payload else {

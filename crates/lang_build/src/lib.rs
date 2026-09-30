@@ -28,8 +28,8 @@ mod overload_pattern;
 mod overload_set;
 pub mod owner_namespace;
 pub mod pattern_relation;
-pub mod phase_flow;
 pub mod policy_migration;
+pub mod policy_observation;
 pub mod policy_overload;
 pub mod policy_pair;
 pub mod product_shape;
@@ -112,7 +112,7 @@ pub(crate) use meta_invocation::{
 pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterialId};
 pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};
 pub use model::{
-    policy_view_allows_execution, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
+    policy_view_visible_at, CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole,
     CoreMetaFunction, CoreTypeProjection, Diagnostic, DiagnosticSeverity, ExecutionEnv,
     FieldObject, FieldProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
     NamespaceNodeKind, PolicyEnv, Provenance, ResolverCode, SemanticNameDelta,
@@ -147,25 +147,23 @@ pub use pattern_relation::{
     PatternRelationDerivation, PatternRelationFailure, PatternSelector, ResolvedPatternBinderId,
     StructuralDefault,
 };
-pub use phase_flow::{
-    classify_static_task, enumerate_value_facet, expose_policy_slice, project_complete_symbol_flow,
-    read_pattern, read_value, resolve_explicit_path, CompleteFlowNode, CompleteSymbolFlow,
-    ExposedPolicyEntry, FacetView, ProjectedCompileFlow, RuntimeResidualFlow, StaticFlow,
-    StaticTaskDisposition, SymbolEntry, SymbolResolutionError,
-};
 pub use policy_migration::{
     elaborate_pure_type_binding_p1, elaborate_value_binding_p1, P1Elaboration,
     P1ElaborationFailure, P1Origin, PolicyMigrationRequest, PolicyMigrationRequestFailure,
     PolicyPartialOrdering, PureTypeP1Elaboration, SemanticValueRef,
 };
+pub use policy_observation::{
+    enumerate_value_facet, expose_policy_slice, read_pattern, read_value, resolve_explicit_path,
+    ExposedPolicyEntry, FacetView, SymbolEntry, SymbolResolutionError,
+};
 pub use policy_overload::{
-    select_by_policy_product, select_policy_overload, PhaseOverloadCandidate, PolicyActualFrame,
+    select_by_policy_product, select_policy_overload, HorizonOverloadCandidate, PolicyActualFrame,
     PolicyFormalFrame, PolicyOverloadCandidate, PolicyOverloadSelection,
 };
 pub use policy_pair::{
-    body_entry_allows_execution, compute_export_retention_closure, compute_wpre,
-    declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
-    elaborate_explicit_p1, elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
+    body_entry_visible_at, compute_export_retention_closure, compute_wpre, declared_policy_view,
+    derive_function_object_view, elaborate_binding_result_demand, elaborate_explicit_p1,
+    elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
     elaborate_return_policy_pattern, externally_visible, function_object_declaration_policy,
     normalize_p2_policy, project_export_overload_sets, project_export_root_preview, project_p1,
     project_resolved_export_view, publicly_reachable, BuiltinPrivilegedSealFunction,
@@ -175,10 +173,10 @@ pub use policy_pair::{
     FunctionObjectDeclarationPolicy, FunctionObjectView, FunctionSliceStage,
     NamespaceCandidateSetRef, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
     NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
-    OutputModeDemand, P1Projection, PatternComponentPolicy, Phase, PolicyMode, PolicyPair,
-    PolicyResultEntry, PolicyStage, PolicyView, ResolvedCandidatePolicy, ResultPolicyDemand,
-    ReturnPolicyPattern, SealWorldSnapshot, StageSet, ValueComponentPolicy, ValuePresence,
-    WpreRoots,
+    ObservationHorizon, OutputModeDemand, P1Projection, PatternComponentPolicy, PolicyMode,
+    PolicyPair, PolicyResultEntry, PolicyView, ResolvedCandidatePolicy, ResultPolicyDemand,
+    ReturnPolicyPattern, SealWorldSnapshot, Stage, ValueComponentPolicy, ValuePolicyQuery,
+    ValuePresence, WpreRoots,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

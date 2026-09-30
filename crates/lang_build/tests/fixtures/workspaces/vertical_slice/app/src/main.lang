@@ -15,7 +15,7 @@ verify field_owner id::User User;
 verify field_type id::User uint8;
 verify field_type age::User uint16;
 verify policy id::User meta;
-verify policy id::User runtime;
+verify not_policy id::User runtime;
 verify not_policy id::User export;
 verify body_entry_policy id::User runtime;
 verify not_body_entry_policy id::User meta;

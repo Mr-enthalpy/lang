@@ -2,4 +2,4 @@ let U: type = uint8;
 
 verify kind U type;
 verify policy U meta;
-verify policy U runtime;
+verify not_policy U runtime;

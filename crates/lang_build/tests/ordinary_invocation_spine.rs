@@ -276,9 +276,9 @@ fn callable_material_position_policy_inherits_stage_and_overlays_result_mode() {
         entry.return_position_view.pair, entry.callable_view.pair,
         "P_out inherits the canonical P1 pair/stage byte-for-byte"
     );
-    assert_ne!(
+    assert_eq!(
         entry.body_entry_view.pair, entry.return_position_view.pair,
-        "declaration-local P2 remains distinct from callable-internal P_out"
+        "omitted P1 completes to the single P2 stage; the authorities remain independent"
     );
 }
 

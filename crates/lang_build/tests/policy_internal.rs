@@ -2,13 +2,12 @@ mod support;
 use support::*;
 
 use lang_build::{
-    declared_policy_view, policy_view_allows_execution, CompilationWorld, ExecutionEnv, PolicyEnv,
-    PolicyMode, PolicyStage, Provenance, ResolveExpectation, SourceCategory, SymbolKind,
-    SymbolObject,
+    declared_policy_view, policy_view_visible_at, CompilationWorld, ObservationHorizon, PolicyEnv,
+    PolicyMode, Provenance, ResolveExpectation, SourceCategory, Stage, SymbolKind, SymbolObject,
 };
 
 #[test]
-fn core_type_is_visible_in_open_static_phase() {
+fn core_type_is_visible_in_open_static_horizon() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let symbol = world
         .namespace_projection()
@@ -18,35 +17,35 @@ fn core_type_is_visible_in_open_static_phase() {
             &world.package_context(),
             PolicyEnv::OpenStatic,
         )
-        .expect("uint8 should be visible in the open-static phase");
+        .expect("uint8 should be visible in the open-static horizon");
     assert_eq!(symbol.kind, SymbolKind::CompleteTypeProjection);
     assert_eq!(symbol.name, "uint8");
 }
 
 #[test]
-fn policy_view_stage_controls_execution_without_changing_mode() {
-    let meta = declared_policy_view(&[PolicyStage::Meta], PolicyMode::Plain);
-    let runtime = declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain);
+fn policy_view_stage_controls_visibility_without_changing_mode() {
+    let meta = declared_policy_view(Stage::Meta, PolicyMode::Plain);
+    let runtime = declared_policy_view(Stage::Runtime, PolicyMode::Plain);
 
-    assert!(policy_view_allows_execution(
+    assert!(policy_view_visible_at(
         &meta,
-        ExecutionEnv::OpenStatic
+        ObservationHorizon::OpenStatic
     ));
-    assert!(!policy_view_allows_execution(&meta, ExecutionEnv::Runtime));
-    assert!(!policy_view_allows_execution(
+    assert!(!policy_view_visible_at(&meta, ObservationHorizon::Runtime));
+    assert!(!policy_view_visible_at(
         &runtime,
-        ExecutionEnv::OpenStatic
+        ObservationHorizon::OpenStatic
     ));
-    assert!(policy_view_allows_execution(
+    assert!(policy_view_visible_at(
         &runtime,
-        ExecutionEnv::Runtime
+        ObservationHorizon::Runtime
     ));
     assert_eq!(meta.mode, PolicyMode::Plain);
     assert_eq!(runtime.mode, PolicyMode::Plain);
 }
 
 #[test]
-fn phase_projection_does_not_define_symbol_existence() {
+fn horizon_projection_does_not_define_symbol_existence() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.namespace_projection().empty_delta();
     let mut symbol = SymbolObject::new(
@@ -57,10 +56,7 @@ fn phase_projection_does_not_define_symbol_existence() {
         Some(world.package_root_node()),
         Provenance::new("runtime observation fixture"),
     );
-    symbol.policy_view = Some(declared_policy_view(
-        &[PolicyStage::Runtime],
-        PolicyMode::Plain,
-    ));
+    symbol.policy_view = Some(declared_policy_view(Stage::Runtime, PolicyMode::Plain));
     delta.insert_symbol(world.package_root_node(), symbol);
     let snapshot = world
         .namespace_projection()
@@ -85,13 +81,13 @@ fn phase_projection_does_not_define_symbol_existence() {
 }
 
 #[test]
-fn seal_phase_projection_reads_concrete_policy_views() {
+fn seal_horizon_projection_reads_concrete_policy_views() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.namespace_projection().empty_delta();
     for (name, stage) in [
-        ("meta_only", PolicyStage::Meta),
-        ("compile_only", PolicyStage::Compile),
-        ("seal_only", PolicyStage::Seal),
+        ("meta_only", Stage::Meta),
+        ("compile_only", Stage::Compile),
+        ("seal_only", Stage::Seal),
     ] {
         let symbol_id = delta.allocate_symbol_id();
         let mut symbol = SymbolObject::new(
@@ -102,7 +98,7 @@ fn seal_phase_projection_reads_concrete_policy_views() {
             Some(world.package_root_node()),
             Provenance::new(name),
         );
-        symbol.policy_view = Some(declared_policy_view(&[stage], PolicyMode::Plain));
+        symbol.policy_view = Some(declared_policy_view(stage, PolicyMode::Plain));
         delta.insert_symbol(world.package_root_node(), symbol);
     }
     let snapshot = world

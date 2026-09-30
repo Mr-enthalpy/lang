@@ -438,15 +438,13 @@ impl PatternHostMember {
     ///
     /// The host member's own Pattern stages are the navigability coordinate
     /// of everything reached through its Val2, so when that layer is not
-    /// visible at `phase` nothing under the name is reachable.  This is a
-    /// phase predicate, never a stage-set intersection: a `meta` host
+    /// visible at `horizon` nothing under the name is reachable.  This is a
+    /// horizon predicate, never a stage-set intersection: a `meta` host
     /// legitimately carries `compile` members.  A host with no recorded
     /// Pattern stage carries no exposure fact to compose.
-    pub fn exposed_at(&self, phase: crate::Phase) -> bool {
+    pub fn exposed_at(&self, horizon: crate::ObservationHorizon) -> bool {
         match &self.view {
-            Some(view) if !view.view.pair.pattern.stages.is_empty() => {
-                view.view.pair.pattern.stages.visible_at(phase)
-            }
+            Some(view) => view.view.pair.pattern.stage.visible_at(horizon),
             _ => true,
         }
     }
@@ -810,16 +808,34 @@ pub fn canonical_function_object_view(
         None => None,
     };
 
+    for selection in [outer_explicit, self_explicit.as_ref()]
+        .into_iter()
+        .flatten()
+    {
+        if selection.presence == Some(crate::ValuePresence::Absent)
+            && selection.value_stage.is_some()
+        {
+            return Err(crate::Diagnostic::hard_error(
+                "canonical P1: an explicit absent value observation cannot also select a value stage",
+                Some(provenance.clone()),
+            ));
+        }
+    }
+
     fn complete(selection: &ExplicitP1Selection, derived: &crate::PolicyView) -> crate::PolicyView {
         let mut complete = derived.clone();
-        if let Some(stages) = &selection.value_stages {
-            complete.pair.value.stages = stages.clone();
-        }
-        if let Some(presence) = selection.presence {
-            complete.pair.value.presence = presence;
-        }
-        if let Some(stages) = &selection.pattern_stages {
-            complete.pair.pattern.stages = stages.clone();
+        let presence = selection.presence.unwrap_or(complete.pair.value.presence());
+        let stage = selection.value_stage.or(complete.pair.value.stage());
+        complete.pair.value = match stage {
+            Some(stage) => match presence {
+                crate::ValuePresence::Present => crate::ValueComponentPolicy::Present(stage),
+                crate::ValuePresence::Optional => crate::ValueComponentPolicy::Optional(stage),
+                crate::ValuePresence::Absent => crate::ValueComponentPolicy::Absent,
+            },
+            None => crate::ValueComponentPolicy::Absent,
+        };
+        if let Some(stages) = &selection.pattern_stage {
+            complete.pair.pattern.stage = stages.clone();
         }
         if let Some(mode) = selection.mode {
             complete.mode = mode;
@@ -846,16 +862,6 @@ pub fn canonical_function_object_view(
         (None, Some(self_formal)) => complete(self_formal, outer_derived),
         (None, None) => outer_derived.clone(),
     };
-    // Cross-site dimension fallback must not assemble an inconsistent
-    // value component: `Pv = absent` carries neither stages nor const/mut.
-    if canonical.pair.value.presence == crate::policy_pair::ValuePresence::Absent
-        && !canonical.pair.value.stages.is_empty()
-    {
-        return Err(crate::Diagnostic::hard_error(
-            "canonical P1: `Pv = absent` cannot carry value stages",
-            Some(provenance.clone()),
-        ));
-    }
     Ok(canonical)
 }
 
@@ -3558,7 +3564,7 @@ impl SemanticWorld {
     /// V_tau is projected only by the complete-type call entrance and is not
     /// imported into this associated namespace observation.
     ///
-    /// Exposure composes per layer and per phase:
+    /// Exposure composes per layer and per horizon:
     ///
     /// ```text
     /// Expose(t::f, φ) = Expose(T_t, φ) ∧ Expose(f, φ)
@@ -3575,9 +3581,9 @@ impl SemanticWorld {
         &self,
         host: &PatternHostMember,
         name: &str,
-        phase: crate::Phase,
+        horizon: crate::ObservationHorizon,
     ) -> Vec<PolicyResultEntry<SemanticValueId, PatternValueId>> {
-        if !host.exposed_at(phase) {
+        if !host.exposed_at(horizon) {
             return Vec::new();
         }
         let mut projected = self
@@ -3614,10 +3620,10 @@ impl SemanticWorld {
         &self,
         pattern: PatternValueId,
         name: &str,
-        phase: crate::Phase,
+        horizon: crate::ObservationHorizon,
     ) -> Vec<PolicyResultEntry<SemanticValueId, PatternValueId>> {
         match self.host_member_for_pattern(pattern) {
-            Some(host) => self.associated_member_views_for_host(&host, name, phase),
+            Some(host) => self.associated_member_views_for_host(&host, name, horizon),
             None => Vec::new(),
         }
     }
@@ -5895,7 +5901,7 @@ mod tests {
         let mut world = base.semantic_world().clone();
         let ty = base.resolve_type_value("uint8").unwrap();
         let pattern = world.type_value(ty).unwrap().pattern;
-        let view = crate::declared_policy_view(&[crate::PolicyStage::Compile], PolicyMode::Plain);
+        let view = crate::declared_policy_view(crate::Stage::Compile, PolicyMode::Plain);
         let source = world
             .install_plain_value(
                 ty,
@@ -6439,12 +6445,9 @@ mod tests {
             .expect("fresh Place has a resident Object")
             .object;
         let policy = PolicyPair {
-            value: crate::ValueComponentPolicy {
-                stages: crate::StageSet::new(),
-                presence: crate::ValuePresence::Absent,
-            },
+            value: crate::ValueComponentPolicy::Absent,
             pattern: crate::PatternComponentPolicy {
-                stages: crate::StageSet::new(),
+                stage: crate::Stage::Compile,
             },
         };
         world.values.insert(
@@ -6573,12 +6576,9 @@ mod tests {
         );
         world.pattern_types.insert(pattern, type_value);
         let policy = PolicyPair {
-            value: crate::ValueComponentPolicy {
-                stages: crate::StageSet::new(),
-                presence: crate::ValuePresence::Present,
-            },
+            value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
             pattern: crate::PatternComponentPolicy {
-                stages: crate::StageSet::new(),
+                stage: crate::Stage::Compile,
             },
         };
         let install_equal_literal = |world: &mut SemanticWorld| {
@@ -6785,14 +6785,11 @@ mod tests {
     /// and reports the remaining disagreement as an ambiguity.
     #[test]
     fn navigation_across_roots_with_distinct_host_chains_is_ambiguous_not_terminal_deduped() {
-        fn any_stage_policy() -> PolicyPair {
+        fn compile_policy() -> PolicyPair {
             PolicyPair {
-                value: crate::ValueComponentPolicy {
-                    stages: crate::StageSet::new(),
-                    presence: crate::ValuePresence::Present,
-                },
+                value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
                 pattern: crate::PatternComponentPolicy {
-                    stages: crate::StageSet::new(),
+                    stage: crate::Stage::Compile,
                 },
             }
         }
@@ -6814,7 +6811,7 @@ mod tests {
                     test_type_lookup(represented),
                     test_type_lookup(0),
                     None,
-                    any_stage_policy(),
+                    compile_policy(),
                     provenance.clone(),
                 )
                 .expect("type-rank symbol registers")
@@ -6939,12 +6936,9 @@ mod tests {
         );
         world.pattern_types.insert(pattern, lookup);
         let policy = PolicyPair {
-            value: crate::ValueComponentPolicy {
-                stages: crate::StageSet::new(),
-                presence: crate::ValuePresence::Present,
-            },
+            value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
             pattern: crate::PatternComponentPolicy {
-                stages: crate::StageSet::new(),
+                stage: crate::Stage::Compile,
             },
         };
         let local = world
@@ -6994,8 +6988,11 @@ mod tests {
                 .expect("call projection consumes an exact complete type")
                 .whole(),
         );
-        let projected =
-            world.associated_member_views_for_host(&host, "()", crate::Phase::OpenStatic);
+        let projected = world.associated_member_views_for_host(
+            &host,
+            "()",
+            crate::ObservationHorizon::OpenStatic,
+        );
         assert_eq!(
             projected
                 .iter()
@@ -7022,12 +7019,9 @@ mod tests {
         );
         world.pattern_types.insert(pattern, lookup);
         let policy = PolicyPair {
-            value: crate::ValueComponentPolicy {
-                stages: crate::StageSet::new(),
-                presence: crate::ValuePresence::Present,
-            },
+            value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
             pattern: crate::PatternComponentPolicy {
-                stages: crate::StageSet::new(),
+                stage: crate::Stage::Compile,
             },
         };
         let old_value = world
@@ -7088,12 +7082,9 @@ mod tests {
             .install_plain_value(
                 foreign_type,
                 PolicyPair {
-                    value: crate::ValueComponentPolicy {
-                        stages: crate::StageSet::new(),
-                        presence: crate::ValuePresence::Present,
-                    },
+                    value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
                     pattern: crate::PatternComponentPolicy {
-                        stages: crate::StageSet::new(),
+                        stage: crate::Stage::Compile,
                     },
                 },
                 Provenance::new("foreign member"),

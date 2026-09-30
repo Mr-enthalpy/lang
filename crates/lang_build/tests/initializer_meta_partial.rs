@@ -2,7 +2,7 @@ mod support;
 
 use std::path::Path;
 
-use lang_build::{PolicyStage, ResolverCode};
+use lang_build::{ResolverCode, Stage};
 use support::{build_fixture_error, build_single_fixture_world};
 
 fn has_code(error: &lang_build::BuildError, code: ResolverCode) -> bool {
@@ -12,26 +12,30 @@ fn has_code(error: &lang_build::BuildError, code: ResolverCode) -> bool {
         .any(|diagnostic| diagnostic.code == Some(code))
 }
 
-fn assert_symbol_stage(symbol: &lang_build::SymbolObject, stage: PolicyStage) {
-    assert!(symbol
-        .policy_view
-        .as_ref()
-        .expect("Symbol Policy view")
-        .pair
-        .value
-        .stages
-        .contains(stage));
+fn assert_symbol_stage(symbol: &lang_build::SymbolObject, stage: Stage) {
+    assert!(
+        symbol
+            .policy_view
+            .as_ref()
+            .expect("Symbol Policy view")
+            .pair
+            .value
+            .stage()
+            == Some(stage)
+    );
 }
 
-fn assert_symbol_not_stage(symbol: &lang_build::SymbolObject, stage: PolicyStage) {
-    assert!(!symbol
-        .policy_view
-        .as_ref()
-        .expect("Symbol Policy view")
-        .pair
-        .value
-        .stages
-        .contains(stage));
+fn assert_symbol_not_stage(symbol: &lang_build::SymbolObject, stage: Stage) {
+    assert!(
+        symbol
+            .policy_view
+            .as_ref()
+            .expect("Symbol Policy view")
+            .pair
+            .value
+            .stage()
+            != Some(stage)
+    );
 }
 
 #[test]
@@ -52,8 +56,8 @@ fn omitted_policy_is_inferred_runtime_for_residual_initializer() {
     let symbol = world
         .resolve_with_expectation("runtime_residual", lang_build::ResolveExpectation::Object)
         .expect("runtime residual symbol");
-    assert_symbol_stage(&symbol, PolicyStage::Runtime);
-    assert_symbol_not_stage(&symbol, PolicyStage::Meta);
+    assert_symbol_stage(&symbol, Stage::Runtime);
+    assert_symbol_not_stage(&symbol, Stage::Meta);
 }
 
 #[test]
@@ -62,8 +66,8 @@ fn missing_meta_visible_candidate_residualizes_under_meta_partial() {
     let symbol = world
         .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
         .expect("runtime residual symbol");
-    assert_symbol_stage(&symbol, PolicyStage::Runtime);
-    assert_symbol_not_stage(&symbol, PolicyStage::Meta);
+    assert_symbol_stage(&symbol, Stage::Runtime);
+    assert_symbol_not_stage(&symbol, Stage::Meta);
 }
 
 #[test]
@@ -72,8 +76,8 @@ fn explicit_p1_projects_runtime_slice_from_residual_initializer() {
     let symbol = world
         .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
         .expect("runtime P1 slice");
-    assert_symbol_stage(&symbol, PolicyStage::Runtime);
-    assert_symbol_not_stage(&symbol, PolicyStage::Meta);
+    assert_symbol_stage(&symbol, Stage::Runtime);
+    assert_symbol_not_stage(&symbol, Stage::Meta);
 }
 
 #[test]

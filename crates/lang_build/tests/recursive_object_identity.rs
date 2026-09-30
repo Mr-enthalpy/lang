@@ -43,26 +43,18 @@ use lang_build::{
     classify_type_arguments_env_with_report, compute_meta_invocation_material_key,
     extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr,
     DeclaredResultClass, MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
-    OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternComponentPolicy, PatternValueId,
-    Phase, PolicyMode, PolicyPair, PolicyStage, ProductAtom, ProductMaterialRole, Provenance,
-    RawArgShape, RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv,
-    SemanticValueId, SemanticWorld, StageSet, SymbolId, TypeResolutionEnv, TypeValueId,
-    ValueComponentPolicy, ValuePresence,
+    ObservationHorizon, OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId,
+    PolicyMode, PolicyPair, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
+    RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId,
+    SemanticWorld, Stage, SymbolId, TypeResolutionEnv, TypeValueId,
 };
 use support::initializer_from_source;
 
-fn stage_pair(stages: &[PolicyStage]) -> PolicyPair {
-    let mut set = StageSet::new();
-    for stage in stages {
-        set.insert(*stage);
-    }
-    PolicyPair {
-        value: ValueComponentPolicy {
-            stages: set.clone(),
-            presence: ValuePresence::Present,
-        },
-        pattern: PatternComponentPolicy { stages: set },
-    }
+fn stage_pair(stage: &[Stage]) -> PolicyPair {
+    let [stage] = stage else {
+        panic!("identity fixtures have one resolved stage")
+    };
+    lang_build::declared_policy_view(*stage, PolicyMode::Plain).pair
 }
 
 struct Carriers {
@@ -97,7 +89,7 @@ fn carriers() -> Carriers {
                 support::numbered_type_lookup_fixture("recursive-object", represented),
                 support::numbered_type_lookup_fixture("recursive-object", 0),
                 None,
-                stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
+                stage_pair(&[Stage::Meta]),
                 provenance.clone(),
             )
             .expect("type-rank symbol registers in the unit world")
@@ -321,7 +313,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
     let lang_syntax::NormExpr::Closure(closure) = closure_expr else {
         panic!("closure");
     };
-    let view = lang_build::declared_policy_view(&[PolicyStage::Compile], PolicyMode::Plain);
+    let view = lang_build::declared_policy_view(Stage::Compile, PolicyMode::Plain);
     let builtin_member = world
         .install_callable_member_value(
             NamespaceNodeId(0),
@@ -446,11 +438,11 @@ fn unit_is_terminal_leaf() {
             &closure,
             None,
             lang_build::PolicyView {
-                pair: stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
+                pair: stage_pair(&[Stage::Meta]),
                 mode: PolicyMode::Plain,
             },
             lang_build::PolicyView {
-                pair: stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]),
+                pair: stage_pair(&[Stage::Meta]),
                 mode: PolicyMode::Plain,
             },
             None,
@@ -788,12 +780,12 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
             )
             .expect("type-rank symbol registers in the unit world")
     };
-    let visible = stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]);
+    let visible = stage_pair(&[Stage::Compile]);
     // Seed the `type` rank before any carrier of it.
     let _ = register(&mut world, "type_root", 0, 0, visible.clone());
     // T is the outer host and is meta-only, so it is hidden at SealStatic.
     // f is the middle host and g the terminal, both compile-visible there.
-    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(&[PolicyStage::Meta]));
+    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(&[Stage::Meta]));
     let (f, _, _) = register(&mut world, "f", 2, 2, visible.clone());
     let (g, _, _) = register(&mut world, "g", 3, 3, visible);
     let t_place = place_of(&world, t);
@@ -822,24 +814,24 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
 
     // Exposure facts: only the outer host `T` is hidden at SealStatic.
     assert!(
-        !navigation.host_chain[0].exposed_at(Phase::SealStatic),
+        !navigation.host_chain[0].exposed_at(ObservationHorizon::SealStatic),
         "the meta-only outer host T is hidden at SealStatic"
     );
     assert!(
-        navigation.host_chain[1].exposed_at(Phase::SealStatic),
+        navigation.host_chain[1].exposed_at(ObservationHorizon::SealStatic),
         "the middle host f is compile-visible at SealStatic"
     );
     assert!(navigation
         .host_chain
         .iter()
-        .all(|host| host.exposed_at(Phase::OpenStatic)));
+        .all(|host| host.exposed_at(ObservationHorizon::OpenStatic)));
 
     let initializer = initializer_from_source("let probe = (0) g;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call site");
     let resolver = ResolverContext::new(NamespaceNodeId(0));
 
     let mut sealed = OrdinaryInvocationContext::open_static(&[]);
-    sealed.phase = Phase::SealStatic;
+    sealed.horizon = ObservationHorizon::SealStatic;
 
     // The whole chain is gated: `T` is hidden, so `g::f::T(...)` is
     // unreachable at SealStatic. Resolution is already sealed, so the
@@ -927,7 +919,7 @@ fn distinct_associated_bindings_with_equal_resident_content_share_one_core_norma
             )
             .expect("type-rank symbol registers in the unit world")
     };
-    let policy = stage_pair(&[PolicyStage::Meta, PolicyStage::Compile]);
+    let policy = stage_pair(&[Stage::Meta]);
     // A type-rank root, two carriers T and U of ONE Pattern, and two DISTINCT
     // member carriers c_t and c_u of one SECOND Pattern (equal content).
     let _ = register(&mut world, "type_root", 0, 0, policy.clone());

@@ -15,7 +15,7 @@
 
 use crate::{
     identity::TypeValueId,
-    model::policy_view_allows_execution,
+    model::policy_view_visible_at,
     model::{
         CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SymbolId, SymbolObject,
     },
@@ -89,8 +89,11 @@ pub struct CandidatePolicyPlanes {
 }
 
 impl CandidatePolicyPlanes {
-    pub fn body_entry_allows_demanded_execution(&self) -> bool {
-        policy_view_allows_execution(&self.body_entry_policy, self.demanded_execution)
+    pub fn body_entry_visible_at_demanded_horizon(&self) -> bool {
+        policy_view_visible_at(
+            &self.body_entry_policy,
+            self.demanded_execution.observation_horizon(),
+        )
     }
 }
 
@@ -314,7 +317,7 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     }
     if !candidate
         .policy_planes
-        .body_entry_allows_demanded_execution()
+        .body_entry_visible_at_demanded_horizon()
     {
         return CandidatePrepResult::Deferred {
             candidate: Box::new(candidate),

@@ -7,7 +7,7 @@
 //! ```text
 //! Resolved ordinary resident, or every member of a complete type V_tau (C0)
 //!   -> target value visibility                             (C1)
-//!   -> target value phase view                             (C2)
+//!   -> target value horizon view                             (C2)
 //!   -> Callable filtering: AssociatedNamespace(Type(v)).Val2[()]  (Cc)
 //!   -> retain (ordinary receiver, associated implementation) pairs  (C3)
 //!   -> hard applicability                                  (A)
@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 use lang_syntax::{NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicySpec};
 
 use crate::{
-    body_entry_allows_execution,
+    body_entry_visible_at,
     identity::{SemanticValueId, TypeValueId},
     invocation_frame::{
         InvocationCallableRef, InvocationExecutionEnv, InvocationFrame, InvocationLookupEnv,
@@ -58,9 +58,8 @@ use crate::{
     },
     policy_pair::{
         elaborate_explicit_p1, elaborate_formal_policy_pattern, project_p1, CapabilityRealization,
-        ExplicitP1Position, OutputModeDemand, P1Projection, PatternComponentPolicy, Phase,
-        PolicyMode, PolicyPair, PolicyResultEntry, PolicyStage, PolicyView, ResultPolicyDemand,
-        ValueComponentPolicy,
+        ExplicitP1Position, ObservationHorizon, OutputModeDemand, P1Projection, PolicyMode,
+        PolicyPair, PolicyResultEntry, PolicyView, ResultPolicyDemand,
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
@@ -89,7 +88,7 @@ pub struct MigrationInvocationContext<'a> {
 pub struct OrdinaryInvocationContext<'a> {
     pub policy_env: PolicyEnv,
     pub execution_env: ExecutionEnv,
-    pub phase: Phase,
+    pub horizon: ObservationHorizon,
     pub caller_mode: PolicyMode,
     pub explicit_argument_modes: &'a [PolicyMode],
     /// Total before candidate maxima. Pair/stage coordinates are hard
@@ -118,7 +117,7 @@ impl<'a> OrdinaryInvocationContext<'a> {
         Self {
             policy_env: PolicyEnv::OpenStatic,
             execution_env: ExecutionEnv::OpenStatic,
-            phase: Phase::OpenStatic,
+            horizon: ObservationHorizon::OpenStatic,
             caller_mode: PolicyMode::Plain,
             explicit_argument_modes,
             result_policy_demand: ResultPolicyDemand::default(),
@@ -260,7 +259,7 @@ impl PreparedCallCandidate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DynamicLegalityProof {
     pub selected_call_entry: SemanticValueId,
-    pub phase: Phase,
+    pub horizon: ObservationHorizon,
     pub execution_env: ExecutionEnv,
     pub capability_cell: Option<crate::CapabilityRealizationCell>,
     pub writable_place: Option<ObjectPlaceId>,
@@ -344,7 +343,7 @@ fn validate_dynamic_legality(
 
     Ok(DynamicLegalityProof {
         selected_call_entry: selected.call_entry_value,
-        phase: context.phase,
+        horizon: context.horizon,
         execution_env: context.execution_env,
         capability_cell,
         writable_place,
@@ -366,7 +365,7 @@ pub struct CallableTarget {
 pub struct OrdinaryPipelineTrace {
     pub c0_target_values: Vec<SemanticValueId>,
     pub c1_visible_values: Vec<SemanticValueId>,
-    pub c2_phase_values: Vec<SemanticValueId>,
+    pub c2_horizon_values: Vec<SemanticValueId>,
     /// Explicit Callable filter result: only values v for which
     /// (v |> type).Val2 contains `()`.
     pub callable_values: Vec<SemanticValueId>,
@@ -446,12 +445,8 @@ pub struct ExposedInvocationResult {
 impl ExposedInvocationResult {
     /// `CompleteResultView(P2) -> expose under callable P1`.
     ///
-    /// Every entry's stage / Policy-mode window is intersected with the
-    /// callable's canonical P1 before any consumer sees it; entries whose
-    /// exposed window vanishes are not part of the outward result at all.
-    /// When the canonical P1 is the P2 derivation (no explicit P1 written
-    /// anywhere), the window is a superset of the material and exposure is
-    /// an identity.
+    /// The outward demand accepts matching completed observations without
+    /// rewriting their stages. Distinct P1/P2 authorities may carry equal atoms.
     pub fn expose(
         outward_policy: PolicyPair,
         complete_result: &[PolicyResultEntry<SemanticValueRef, PatternValueId>],
@@ -469,55 +464,17 @@ impl ExposedInvocationResult {
 
 /// Expose one complete-result entry under the callable P1 window.
 ///
-/// Window rules mirror `project_p1`'s slice restriction (`restrict_stages`
-/// is shared): stage sets are intersected, an empty window facet stays
-/// unconstrained, and a facet whose non-empty intersection vanishes hides
-/// the entry. Whole-slot mode remains the independent concrete coordinate
-/// already stored on `PolicyView`; it is never inferred from this pair.
+/// Stage and presence matching preserves the complete observation, including
+/// Pv=Pp on an unhidden pure Object. Mode is independent.
 fn expose_result_entry(
     outward: &PolicyPair,
     entry: &PolicyResultEntry<SemanticValueRef, PatternValueId>,
 ) -> Option<PolicyResultEntry<SemanticValueRef, PatternValueId>> {
-    let pattern_stages = crate::policy_pair::restrict_stages(
-        &outward.pattern.stages,
-        &entry.view.pair.pattern.stages,
-    )?;
-    let value_policy = if entry.value.is_some() {
-        let stages = crate::policy_pair::restrict_stages(
-            &outward.value.stages,
-            &entry.view.pair.value.stages,
-        )?;
-        ValueComponentPolicy {
-            stages,
-            presence: entry.view.pair.value.presence,
-        }
-    } else {
-        // Pure-P entry: the recorded static source stages are still
-        // clipped to the window so a later materialization cannot exceed
-        // the exposed view, but a pure-P entry is carried by its Pattern
-        // facet and is not hidden by an empty value window.
-        ValueComponentPolicy {
-            stages: crate::policy_pair::restrict_stages(
-                &outward.value.stages,
-                &entry.view.pair.value.stages,
-            )
-            .unwrap_or_default(),
-            presence: entry.view.pair.value.presence,
-        }
-    };
-    Some(PolicyResultEntry {
-        value: entry.value.clone(),
-        pattern: entry.pattern,
-        view: PolicyView {
-            pair: PolicyPair {
-                value: value_policy,
-                pattern: PatternComponentPolicy {
-                    stages: pattern_stages,
-                },
-            },
-            mode: entry.view.mode,
-        },
-    })
+    let material = crate::policy_pair::project_p1(
+        &P1Projection::Pair(outward.clone()),
+        std::slice::from_ref(entry),
+    );
+    material.into_iter().next()
 }
 
 /// Result of an invocation declaring `Unit` (`_: unit`). This is a value-less
@@ -810,7 +767,7 @@ pub fn invoke_policy_migration(
         OrdinaryInvocationContext {
             policy_env: PolicyEnv::OpenStatic,
             execution_env: ExecutionEnv::OpenStatic,
-            phase: Phase::OpenStatic,
+            horizon: ObservationHorizon::OpenStatic,
             caller_mode: PolicyMode::Plain,
             explicit_argument_modes: &no_explicit_modes,
             result_policy_demand: request.target_demand().clone(),
@@ -903,7 +860,7 @@ fn resolved_binding_call_views(
 
 /// Invoke one resolved binding reached through an explicit host chain.
 ///
-/// Exposure of a navigated target composes per layer and per phase over the
+/// Exposure of a navigated target composes per layer and per horizon over the
 /// WHOLE chain the navigator stepped through:
 ///
 /// ```text
@@ -913,7 +870,7 @@ fn resolved_binding_call_views(
 /// The member factor is the per-member exposure stage decided downstream in
 /// this pipeline; the host factors are decided here, each from that host
 /// carrier's own binding-level pure-P member view.  A single host anywhere in
-/// the chain that is not navigable at this phase hides everything reached
+/// the chain that is not navigable at this horizon hides everything reached
 /// through it, so the whole chain must be exposed; the failure is reported as
 /// `NoTargetValues` for the already resolved Symbol. Name resolution is sealed
 /// before this projection, so the failure never resumes an outward scope walk.
@@ -929,7 +886,7 @@ pub fn invoke_resolved_binding_ordinary(
     context: OrdinaryInvocationContext<'_>,
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    if hosts.iter().any(|host| !host.exposed_at(context.phase)) {
+    if hosts.iter().any(|host| !host.exposed_at(context.horizon)) {
         return Err(OrdinaryInvocationFailure::NoTargetValues {
             trace: OrdinaryPipelineTrace::default(),
         });
@@ -963,8 +920,11 @@ pub fn invoke_pattern_associated_ordinary(
     context: OrdinaryInvocationContext<'_>,
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    let target_members =
-        semantic_world.associated_member_views_for_pattern(pattern, operation_name, context.phase);
+    let target_members = semantic_world.associated_member_views_for_pattern(
+        pattern,
+        operation_name,
+        context.horizon,
+    );
     invoke_target_values(
         semantic_world,
         OrdinaryCandidateOrigin::PatternAssociatedCallEntry(pattern),
@@ -1015,8 +975,11 @@ pub fn invoke_pattern_associated_value_ordinary(
             no_direct_product_atom_remains: true,
         },
     });
-    let target_members =
-        semantic_world.associated_member_views_for_pattern(pattern, operation_name, context.phase);
+    let target_members = semantic_world.associated_member_views_for_pattern(
+        pattern,
+        operation_name,
+        context.horizon,
+    );
     invoke_target_values(
         semantic_world,
         OrdinaryCandidateOrigin::PatternAssociatedValue(pattern),
@@ -1115,12 +1078,18 @@ pub(crate) fn invoke_target_values(
     trace.c1_visible_values = c1_views.iter().filter_map(|view| view.value).collect();
 
     // C2: expose the member views whose own value Policy is visible at the
-    // call phase; do not confuse exposure with ReadValue.  The projection
+    // call horizon; do not confuse exposure with ReadValue.  The projection
     // reads the member view's value_policy — not the value object's flat
     // PolicyPair and not a disjunction of unrelated residents.
     let c2_views = c1_views
         .into_iter()
-        .filter(|view| view.view.pair.value.stages.visible_at(context.phase))
+        .filter(|view| {
+            view.view
+                .pair
+                .value
+                .stage()
+                .is_some_and(|s| s.visible_at(context.horizon))
+        })
         .collect::<Vec<_>>();
     let mut c2 = Vec::new();
     for view in &c2_views {
@@ -1130,7 +1099,7 @@ pub(crate) fn invoke_target_values(
             }
         }
     }
-    trace.c2_phase_values = c2.clone();
+    trace.c2_horizon_values = c2.clone();
 
     // Cc: filter ordinary values that are callable.  A value v is callable iff
     // (v |> type).Val2 contains an associated `()` call entry.
@@ -1177,7 +1146,7 @@ pub(crate) fn invoke_target_values(
         &mut arg_shape,
         semantic_world,
         resolver_context,
-        context.phase,
+        context.horizon,
     );
     let classified = classify_type_arguments_env_with_report(
         &arg_shape,
@@ -1194,7 +1163,7 @@ pub(crate) fn invoke_target_values(
         },
     );
 
-    // A: hard structural and phase/body-entry applicability.
+    // A: hard structural and horizon/body-entry applicability.
     let mut prepared = Vec::new();
     let mut first_diagnostic = None;
     for (call_entry_value, target_value) in c3 {
@@ -1224,7 +1193,7 @@ pub(crate) fn invoke_target_values(
         // declaration-local P2; the declaration identity below is rebuilt
         // from the entry's declared facts for the shared candidate and
         // body-evaluator carriers.
-        if !body_entry_allows_execution(&entry.body_entry_view.pair, context.execution_env) {
+        if !body_entry_visible_at(&entry.body_entry_view.pair, context.horizon) {
             continue;
         }
         let declaration_identity = SymbolObject::new(
@@ -1661,7 +1630,6 @@ pub(crate) fn invoke_target_values(
             better,
             worse,
             &actual_frame,
-            context.phase,
             OutputModeDemand(context.result_policy_demand.mode),
             context.migration,
         )
@@ -1971,7 +1939,7 @@ fn classify_semantic_value_arguments(
     shape: &mut ArgProductShape,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
-    phase: Phase,
+    horizon: ObservationHorizon,
 ) {
     for raw_arg in &mut shape.raw_args {
         if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
@@ -2012,9 +1980,8 @@ fn classify_semantic_value_arguments(
                     .view
                     .pair
                     .value
-                    .stages
-                    .iter()
-                    .any(|stage| stage.visible_at(phase))
+                    .stage()
+                    .is_some_and(|stage| stage.visible_at(horizon))
                 {
                     return None;
                 }
@@ -2334,7 +2301,6 @@ fn bp_prime_dominates(
     better: &PreparedCallCandidate,
     worse: &PreparedCallCandidate,
     actual: &PolicyActualFrame,
-    phase: Phase,
     output_demand: OutputModeDemand,
     migration: Option<MigrationInvocationContext<'_>>,
 ) -> bool {
@@ -2343,16 +2309,6 @@ fn bp_prime_dominates(
         &better.formal_policy_frame,
         &worse.formal_policy_frame,
         actual,
-    ) {
-        PolicyPartialOrdering::Less | PolicyPartialOrdering::Incomparable => return false,
-        PolicyPartialOrdering::Greater => strictly_better = true,
-        PolicyPartialOrdering::Equal => {}
-    }
-
-    match compare_phase_view(
-        &better.function_object_view.pair,
-        &worse.function_object_view.pair,
-        phase,
     ) {
         PolicyPartialOrdering::Less | PolicyPartialOrdering::Incomparable => return false,
         PolicyPartialOrdering::Greater => strictly_better = true,
@@ -2449,58 +2405,23 @@ fn compare_policy_mode_position(
     }
 }
 
-fn compare_phase_view(
-    left: &PolicyPair,
-    right: &PolicyPair,
-    phase: Phase,
-) -> PolicyPartialOrdering {
-    match best_stage_rank(left, phase).cmp(&best_stage_rank(right, phase)) {
-        std::cmp::Ordering::Greater => PolicyPartialOrdering::Greater,
-        std::cmp::Ordering::Equal => PolicyPartialOrdering::Equal,
-        std::cmp::Ordering::Less => PolicyPartialOrdering::Less,
-    }
-}
-
 fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> bool {
-    let value_admits = |required: &ValueComponentPolicy| {
-        let presence = matches!(required.presence, crate::ValuePresence::Optional)
-            || matches!(candidate.value.presence, crate::ValuePresence::Optional)
-            || required.presence == candidate.value.presence;
-        let stages = required.stages.is_empty()
-            || (required.presence == crate::ValuePresence::Absent
-                && candidate.value.presence == crate::ValuePresence::Absent)
-            || required.stages.intersects(&candidate.value.stages);
-        presence && stages
+    let value_admits = |required: crate::ValuePolicyQuery| {
+        let presence = required.presence == crate::ValuePresence::Optional
+            || candidate.value.presence() == crate::ValuePresence::Optional
+            || required.presence == candidate.value.presence();
+        presence
+            && required
+                .stage
+                .is_none_or(|s| candidate.value.stage() == Some(s))
     };
     match demand {
         P1Projection::Infer => true,
-        P1Projection::ValueDominant { value } => value_admits(value),
+        P1Projection::ValueDominant { value } => value_admits(*value),
         P1Projection::Pair(required) => {
-            value_admits(&required.value)
-                && (required.pattern.stages.is_empty()
-                    || required
-                        .pattern
-                        .stages
-                        .intersects(&candidate.pattern.stages))
+            value_admits(required.value.into()) && required.pattern.stage == candidate.pattern.stage
         }
     }
-}
-
-fn best_stage_rank(policy: &PolicyPair, phase: Phase) -> u8 {
-    policy
-        .value
-        .stages
-        .iter()
-        .map(|stage| match (phase, stage) {
-            (Phase::OpenStatic, PolicyStage::Meta) => 2,
-            (Phase::OpenStatic, PolicyStage::Compile) => 1,
-            (Phase::SealStatic, PolicyStage::Seal) => 2,
-            (Phase::SealStatic, PolicyStage::Compile) => 1,
-            (Phase::Runtime, PolicyStage::Runtime) => 1,
-            _ => 0,
-        })
-        .max()
-        .unwrap_or(0)
 }
 
 fn ordering_from_advantages(left: bool, right: bool) -> PolicyPartialOrdering {
@@ -2639,31 +2560,26 @@ fn ordinary_result_identity(
 mod tests {
     use super::result_pair_demand_admits;
     use crate::{
-        P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, PolicyStage, PolicyView,
-        StageSet, ValueComponentPolicy, ValuePresence,
+        P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, PolicyView, Stage,
+        ValueComponentPolicy,
     };
 
     fn view(
-        value_stages: impl IntoIterator<Item = PolicyStage>,
-        pattern_stages: impl IntoIterator<Item = PolicyStage>,
+        value_stage: impl IntoIterator<Item = Stage>,
+        pattern_stage: impl IntoIterator<Item = Stage>,
         mode: PolicyMode,
     ) -> PolicyView {
-        let mut value_stage_set = StageSet::new();
-        for stage in value_stages {
-            value_stage_set.insert(stage);
-        }
-        let mut pattern_stage_set = StageSet::new();
-        for stage in pattern_stages {
-            pattern_stage_set.insert(stage);
-        }
+        let mut value_stages = value_stage.into_iter();
+        let value_stage = value_stages.next().expect("one resolved value stage");
+        assert!(value_stages.next().is_none());
+        let mut pattern_stages = pattern_stage.into_iter();
+        let pattern_stage = pattern_stages.next().expect("one resolved Pattern stage");
+        assert!(pattern_stages.next().is_none());
         PolicyView {
             pair: PolicyPair {
-                value: ValueComponentPolicy {
-                    stages: value_stage_set,
-                    presence: ValuePresence::Present,
-                },
+                value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stages: pattern_stage_set,
+                    stage: pattern_stage,
                 },
             },
             mode,
@@ -2672,27 +2588,17 @@ mod tests {
 
     #[test]
     fn result_pair_demand_is_a_pre_maxima_hard_coordinate() {
-        let runtime = view(
-            [PolicyStage::Runtime],
-            [PolicyStage::Compile],
-            PolicyMode::Const,
-        );
-        let compile = view(
-            [PolicyStage::Compile],
-            [PolicyStage::Compile],
-            PolicyMode::Mut,
-        );
+        let runtime = view([Stage::Runtime], [Stage::Compile], PolicyMode::Const);
+        let compile = view([Stage::Compile], [Stage::Compile], PolicyMode::Mut);
         let runtime_demand = P1Projection::ValueDominant {
-            value: runtime.pair.value.clone(),
+            value: runtime.pair.value.into(),
         };
         assert!(result_pair_demand_admits(&runtime.pair, &runtime_demand));
         assert!(!result_pair_demand_admits(&compile.pair, &runtime_demand));
 
         let pair_demand = P1Projection::Pair(PolicyPair {
             value: runtime.pair.value.clone(),
-            pattern: PatternComponentPolicy {
-                stages: StageSet::from([PolicyStage::Seal]),
-            },
+            pattern: PatternComponentPolicy { stage: Stage::Seal },
         });
         assert!(!result_pair_demand_admits(&runtime.pair, &pair_demand));
         assert_ne!(

@@ -17,7 +17,7 @@ use crate::{
         SymbolPayload, TypeField,
     },
     normalized_call::NormalizedCallSite,
-    policy_pair::{declared_policy_view, NamespaceVisibility, PolicyMode, PolicyStage},
+    policy_pair::{declared_policy_view, NamespaceVisibility, PolicyMode, Stage},
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
         ProductMaterialRole,
@@ -313,10 +313,7 @@ fn insert_projection_namespace(
         Some(parent),
         provenance,
     );
-    namespace_symbol.policy_view = Some(declared_policy_view(
-        &[PolicyStage::Meta, PolicyStage::Runtime],
-        PolicyMode::Plain,
-    ));
+    namespace_symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
     delta.insert_symbol(parent, namespace_symbol);
     insert_field_projection_layer(
         delta,
@@ -349,10 +346,7 @@ fn insert_field_projection_layer(
             Some(parent),
             provenance.clone(),
         );
-        symbol.policy_view = Some(declared_policy_view(
-            &[PolicyStage::Meta, PolicyStage::Runtime],
-            PolicyMode::Plain,
-        ));
+        symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
         symbol.visibility_metadata.namespace_visibility = Some(match field.visibility {
             StructuralMemberVisibility::Default | StructuralMemberVisibility::Public => {
                 NamespaceVisibility::Public
@@ -372,11 +366,8 @@ fn insert_field_projection_layer(
             field_type_symbol_id: field.type_carrier_symbol,
             projection,
             callable_policy: CallablePolicyViews {
-                body_entry_policy: declared_policy_view(&[PolicyStage::Runtime], PolicyMode::Plain),
-                return_object_policy: declared_policy_view(
-                    &[PolicyStage::Runtime],
-                    PolicyMode::Plain,
-                ),
+                body_entry_policy: declared_policy_view(Stage::Runtime, PolicyMode::Plain),
+                return_object_policy: declared_policy_view(Stage::Runtime, PolicyMode::Plain),
             },
             provenance,
         });
@@ -438,10 +429,7 @@ pub(crate) fn expand_struct_construction_material(
         Some(parent_namespace),
         provenance.clone(),
     );
-    type_projection.policy_view = Some(declared_policy_view(
-        &[PolicyStage::Meta, PolicyStage::Runtime],
-        PolicyMode::Plain,
-    ));
+    type_projection.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
     type_projection.node_kind = Some(NamespaceNodeKind::Virtual);
     type_projection.generation_origin = Some("core::struct construction".to_string());
     type_projection.cache_key_fragment = None;

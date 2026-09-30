@@ -26,7 +26,10 @@ observations. The 30 pre-implementation ALIGN cases below bring the total to
 
 Every row currently requires consumer alignment; see the
 [implementation evidence and gates](roadmap.md#canonical-semantic-revision-implementation-gates).
-Existing carrier test success is not coverage of these new semantics.
+Single-atom Policy carriers, omitted-P1 completion and horizon facet visibility
+have substrate coverage after Stage cleanup. Ordinary deduction, R_vis/C_sigma
+and E readiness/saturation still require consumer coverage. Carrier test success
+is not general source coverage of these semantics.
 
 ## Stage, Policy and two-round calls
 

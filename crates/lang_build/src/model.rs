@@ -146,22 +146,22 @@ pub enum ExecutionEnv {
     Runtime,
 }
 
-pub fn policy_view_allows_execution(
-    policy_view: &crate::policy_pair::PolicyView,
-    env: ExecutionEnv,
-) -> bool {
-    let stages = &policy_view.pair.value.stages;
-    match env {
-        ExecutionEnv::OpenStatic => {
-            stages.contains(crate::PolicyStage::Meta)
-                || stages.contains(crate::PolicyStage::Compile)
+impl ExecutionEnv {
+    /// Visibility projection only; this does not prove that a body is ready.
+    pub fn observation_horizon(self) -> crate::ObservationHorizon {
+        match self {
+            Self::OpenStatic => crate::ObservationHorizon::OpenStatic,
+            Self::SealStatic => crate::ObservationHorizon::SealStatic,
+            Self::Runtime => crate::ObservationHorizon::Runtime,
         }
-        ExecutionEnv::SealStatic => {
-            stages.contains(crate::PolicyStage::Seal)
-                || stages.contains(crate::PolicyStage::Compile)
-        }
-        ExecutionEnv::Runtime => stages.contains(crate::PolicyStage::Runtime),
     }
+}
+
+pub fn policy_view_visible_at(
+    policy_view: &crate::policy_pair::PolicyView,
+    horizon: crate::ObservationHorizon,
+) -> bool {
+    crate::body_entry_visible_at(&policy_view.pair, horizon)
 }
 
 /// Namespace visibility metadata. `namespace_visibility` and `export_root` are

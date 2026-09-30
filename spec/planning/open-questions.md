@@ -60,7 +60,7 @@ same-Type Policy migration are separate ordinary operations.
 - What is the final call-site candidate-family selector syntax?
 - What are the remaining later B-filter interfaces and their proof carriers?
 - How does any future policy stage compose with the fixed OpenStatic,
-  SealStatic, and Runtime phases?
+  SealStatic, and Runtime observation horizons?
 - Which effect/error/panic/resource capability dimensions are added to
   DynamicLegality?
 
@@ -77,8 +77,8 @@ not a separate inference primitive. Default completion is not a source constrain
 
 ## Residual and serial evaluation
 
-- What IR represents partially evaluated invocation frames across static and
-  runtime phases?
+- What IR represents partially evaluated invocation frames within the common continuation
+  across observation horizons?
 - What concrete effect and overlay representation implements sequential file
   actions and unordered common-snapshot sibling composition?
 - What ABI and storage representation carries residual continuations?

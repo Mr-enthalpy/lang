@@ -23,7 +23,7 @@ use crate::{
         NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyMode,
         PolicyView, ResultPolicyDemand, ValueComponentPolicy,
     },
-    policy_pair::{PatternComponentPolicy, PolicyPair, PolicyStage, ValuePresence},
+    policy_pair::{PatternComponentPolicy, PolicyPair, Stage},
     return_target::{
         elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
         ReturnFrameOwner,
@@ -73,31 +73,53 @@ struct ConnectedExistingResult {
 
 const CONSTRUCT_OR_CONVERT_SELECTOR: &str = "<ConstructOrConvert>";
 
-fn policy_let_target_demand(demand: &ResultPolicyDemand, source: &PolicyPair) -> PolicyView {
-    let (value_query, pattern_query) = match &demand.pair_query {
-        P1Projection::Infer => (None, None),
-        P1Projection::ValueDominant { value } => (Some(value), None),
-        P1Projection::Pair(pair) => (Some(&pair.value), Some(&pair.pattern)),
+fn policy_let_target_demand(
+    demand: &ResultPolicyDemand,
+    source: &PolicyPair,
+) -> Option<PolicyView> {
+    let (value_query, pattern_stage) = match &demand.pair_query {
+        P1Projection::Infer => (None, source.pattern.stage),
+        P1Projection::ValueDominant { value } => (Some(*value), source.pattern.stage),
+        P1Projection::Pair(pair) => (Some(pair.value.into()), pair.pattern.stage),
     };
-    let value_stages = value_query
-        .filter(|query| !query.stages.is_empty())
-        .map(|query| query.stages.clone())
-        .unwrap_or_else(|| source.value.stages.clone());
-    let pattern_stages = pattern_query
-        .filter(|query| !query.stages.is_empty())
-        .map(|query| query.stages.clone())
-        .unwrap_or_else(|| source.pattern.stages.clone());
-    PolicyView {
+    let stage = value_query.and_then(|q| q.stage).or(source.value.stage())?;
+    Some(PolicyView {
         pair: PolicyPair {
-            value: ValueComponentPolicy {
-                stages: value_stages,
-                presence: ValuePresence::Present,
-            },
+            value: ValueComponentPolicy::Present(stage),
             pattern: PatternComponentPolicy {
-                stages: pattern_stages,
+                stage: pattern_stage,
             },
         },
         mode: demand.mode,
+    })
+}
+
+#[cfg(test)]
+mod stage_demand_tests {
+    use super::policy_let_target_demand;
+    use crate::{
+        P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, ResultPolicyDemand, Stage,
+        ValueComponentPolicy, ValuePolicyQuery, ValuePresence,
+    };
+
+    #[test]
+    fn omitted_stage_on_hidden_value_has_an_unavailable_demand_without_panicking() {
+        let source = PolicyPair {
+            value: ValueComponentPolicy::Absent,
+            pattern: PatternComponentPolicy {
+                stage: Stage::Compile,
+            },
+        };
+        let demand = ResultPolicyDemand {
+            pair_query: P1Projection::ValueDominant {
+                value: ValuePolicyQuery {
+                    stage: None,
+                    presence: ValuePresence::Present,
+                },
+            },
+            mode: PolicyMode::Mut,
+        };
+        assert!(policy_let_target_demand(&demand, &source).is_none());
     }
 }
 
@@ -1218,12 +1240,9 @@ impl CompilationWorld {
         {
             let policy_view = residual_binding_view.clone().unwrap_or_else(|| {
                 if is_type_annotation(slot.annotation.as_ref()) {
-                    declared_policy_view(
-                        &[PolicyStage::Meta, PolicyStage::Runtime],
-                        namespace_declaration.mode,
-                    )
+                    declared_policy_view(Stage::Meta, namespace_declaration.mode)
                 } else {
-                    declared_policy_view(&[PolicyStage::Runtime], namespace_declaration.mode)
+                    declared_policy_view(Stage::Runtime, namespace_declaration.mode)
                 }
             });
             for symbol in delta.symbols.values_mut() {
@@ -1648,7 +1667,7 @@ impl CompilationWorld {
         let target_members = self.semantic_world.associated_member_views_for_pattern(
             target_pattern,
             CONSTRUCT_OR_CONVERT_SELECTOR,
-            crate::Phase::OpenStatic,
+            crate::ObservationHorizon::OpenStatic,
         );
 
         // Abstract-to-concrete construction itself produces a compile view.
@@ -1793,7 +1812,10 @@ impl CompilationWorld {
                 return Err("a pure-P entry has no value realization to migrate".into());
             };
             let source_view = entry.view.clone();
-            let target_view = policy_let_target_demand(demand, &source_view.pair);
+            let target_view =
+                policy_let_target_demand(demand, &source_view.pair).ok_or_else(|| {
+                    "request formation: source has no value observation stage".to_string()
+                })?;
             let target_demand = ResultPolicyDemand {
                 pair_query: P1Projection::Pair(target_view.pair),
                 mode: target_view.mode,
@@ -2106,7 +2128,7 @@ impl CompilationWorld {
                     Ok(result) => ConnectedInitializerOutcome::Ordinary(result),
                     // Meta-partial residualization: a resolvable target whose
                     // candidate set exposes nothing admissible at the static
-                    // phase (e.g. a runtime-only body entry) defers the
+                    // horizon (e.g. a runtime-only body entry) defers the
                     // binding to runtime instead of hard-failing the build.
                     // P1 never expands such a callable into meta visibility.
                     // A candidate that was reached but failed to assemble or
@@ -2276,7 +2298,12 @@ impl CompilationWorld {
                     Some(provenance),
                 ));
             };
-            let target_view = policy_let_target_demand(&demand, &source_view.pair);
+            let Some(target_view) = policy_let_target_demand(&demand, &source_view.pair) else {
+                return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
+                    "PolicyLet cannot form a migration demand without a source value observation stage",
+                    Some(provenance),
+                ));
+            };
             let target_demand = ResultPolicyDemand {
                 pair_query: P1Projection::Pair(target_view.pair),
                 mode: target_view.mode,
@@ -2618,20 +2645,15 @@ fn declared_bound_type_value_delta(
 
 /// The declared canonical `PolicyPair` for a type-carrier binding: the
 /// explicit declaration projection when the user wrote one, otherwise the
-/// natural `meta runtime` type-carrier pair. Namespace attributes remain on
+/// meta-formed type-carrier observation. Namespace attributes remain on
 /// the declaration object and never enter this `Pv:Pp` value.
 fn declared_type_binding_pair(namespace_declaration: &NamespaceDeclarationPolicy) -> PolicyPair {
     match &namespace_declaration.projection {
-        crate::P1Projection::Pair(pair) => pair.clone(),
-        crate::P1Projection::ValueDominant { value } => PolicyPair {
-            value: value.clone(),
-            pattern: PatternComponentPolicy {
-                stages: value.stages.static_stages(),
-            },
-        },
-        crate::P1Projection::Infer => {
-            core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], false)
+        P1Projection::Pair(pair) => pair.clone(),
+        P1Projection::ValueDominant { value } => {
+            core_declared_pair(value.stage.unwrap_or(Stage::Meta), false)
         }
+        P1Projection::Infer => core_declared_pair(Stage::Meta, false),
     }
 }
 
@@ -2913,8 +2935,7 @@ fn ensure_runtime_result_slice_has_value_dimension(
     result_p2: &PolicyPair,
     provenance: Provenance,
 ) -> Result<(), Diagnostic> {
-    let runtime_only = result_p2.value.stages.contains(PolicyStage::Runtime)
-        && result_p2.value.stages.static_stages().is_empty();
+    let runtime_only = result_p2.value.stage() == Some(Stage::Runtime);
     if !runtime_only {
         return Ok(());
     }
@@ -2978,7 +2999,7 @@ fn residual_policy_view(demand: &ResultPolicyDemand) -> Option<PolicyView> {
     let runtime = crate::PolicyResultEntry {
         value: Some(()),
         pattern: (),
-        view: declared_policy_view(&[PolicyStage::Runtime], demand.mode),
+        view: declared_policy_view(Stage::Runtime, demand.mode),
     };
     crate::policy_pair::project_p1(&demand.pair_query, &[runtime])
         .into_iter()
