@@ -3377,10 +3377,10 @@ impl SemanticWorld {
         Ok(slot.identity)
     }
 
-    /// The source-visible Val2 Symbol of one object place.
+    /// The source-visible member binding of one object place.
     ///
-    /// `Val2(obj)[f] = C_f`: the place's `associated_symbols` is the single
-    /// authority for source-visible names of that object.
+    /// Val2 navigation under a selector resolves its associated binding at
+    /// this residency: `(ObjectPlace, selector) -> NameBinding`.
     pub fn associated_symbol_in_place(
         &self,
         place: ObjectPlaceId,
