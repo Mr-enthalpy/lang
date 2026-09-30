@@ -497,6 +497,19 @@ and real ordinary candidate pipeline remain reusable assets.
 Ordinary Policy deduction, R_vis/C_sigma, pending seal
 formation and E saturation remain consumer gates.
 
+When connecting the common E consumer, rename `CandidatePrepResult::Deferred`
+to describe an incomplete relation rather than imply scheduling into a later
+phase. Its current meaning remains undecided preparation, with no scheduler
+queue or runtime residualization. This is an interface follow-up, not a missing
+semantic choice or an unfinished stage-cleanup requirement.
+
+The current `body_entry_visible_at` check supplies only body-entry observation
+visibility and can report a hidden-observation continuation frontier. Connecting
+E must separately consume R_vis evidence, Ready and the shared Pre/commit/Post
+transaction; the provisional preparation pipeline is not that evaluator.
+Visibility alone establishes neither readiness nor execution legality. These
+consumer connections are implementation work, not open language-design questions.
+
 The next independent cleanup cuts expose lifecycle Pre/common commit/Post with fixed
 MoveEffect; and separate callable source records and general meta-instance
 identity from body execution. These are implementation retirement tasks, not
