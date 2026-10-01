@@ -44,9 +44,9 @@ use lang_build::{
     extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr,
     DeclaredResultClass, MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
     ObservationHorizon, OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId,
-    PolicyMode, PolicyPair, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
-    RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId,
-    SemanticWorld, Stage, SymbolId, TypeResolutionEnv, TypeValueId,
+    PolicyMode, PolicyPair, ProductAtom, Provenance, RawArgShape, RawArgValueClass,
+    ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId, SemanticWorld,
+    Stage, SymbolId, TypeResolutionEnv, TypeValueId,
 };
 use support::initializer_from_source;
 
@@ -678,8 +678,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
     // Meta-argument context: `let B = (f::T) meta_fn`.
     let initializer = initializer_from_source("let B = (f::T) meta_fn;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call");
-    let shape =
-        call_site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let shape = call_site.to_arg_product_shape();
     let report =
         classify_type_arguments_env_with_report(&shape, &SemanticTypeEnv::new(&world), &context);
     assert!(

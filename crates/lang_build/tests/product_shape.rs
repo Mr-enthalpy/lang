@@ -2,34 +2,23 @@ mod support;
 
 use support::*;
 
-use lang_build::{
-    NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgValueClass,
-};
+use lang_build::{NonValueArgKind, ProductAtom, ProductObject, RawArgValueClass};
 use lang_syntax::NormExpr;
 
 #[test]
 fn exposed_product_nodes_flatten_left_to_right_from_source_fixture() {
-    let shape = fixture_arg_product_shape(
-        "product_exposed_left.lang",
-        ProductMaterialRole::CallableArgumentProduct,
-    );
+    let shape = fixture_arg_product_shape("product_exposed_left.lang");
     assert_eq!(atom_labels(&shape.flattened.atoms), ["a", "b", "c"]);
     assert!(shape.flattened.invariant.no_direct_product_atom_remains);
 
-    let shape = fixture_arg_product_shape(
-        "product_exposed_right.lang",
-        ProductMaterialRole::CallableArgumentProduct,
-    );
+    let shape = fixture_arg_product_shape("product_exposed_right.lang");
     assert_eq!(atom_labels(&shape.flattened.atoms), ["a", "b", "c"]);
 }
 
 #[test]
 fn expression_barrier_blocks_product_flattening_from_source_fixture() {
     let site = fixture_call_site("product_expression_barrier.lang");
-    let product = ProductObject::from_norm_product(
-        site.source_product.clone(),
-        ProductMaterialRole::CallableArgumentProduct,
-    );
+    let product = ProductObject::from_norm_product(site.source_product.clone());
     let flattened = product.flatten();
     assert_eq!(atom_labels(&flattened.atoms), ["Call", "c"]);
 
@@ -49,20 +38,14 @@ fn expression_barrier_blocks_product_flattening_from_source_fixture() {
 
 #[test]
 fn nested_call_source_local_flatten_and_expression_barrier_are_not_contradictory() {
-    let shape_left = fixture_arg_product_shape(
-        "product_exposed_left.lang",
-        ProductMaterialRole::CallableArgumentProduct,
-    );
+    let shape_left = fixture_arg_product_shape("product_exposed_left.lang");
     assert_eq!(
         atom_labels(&shape_left.flattened.atoms),
         ["a", "b", "c"],
         "((a, b), c) |> f: inner product flattens into the call source"
     );
 
-    let shape_barrier = fixture_arg_product_shape(
-        "product_expression_barrier.lang",
-        ProductMaterialRole::CallableArgumentProduct,
-    );
+    let shape_barrier = fixture_arg_product_shape("product_expression_barrier.lang");
     assert_eq!(
         atom_labels(&shape_barrier.flattened.atoms),
         ["Call", "c"],
@@ -72,10 +55,7 @@ fn nested_call_source_local_flatten_and_expression_barrier_are_not_contradictory
 
 #[test]
 fn unit_positions_and_raw_arg_non_value_boundary_are_preserved_from_source_fixture() {
-    let shape = fixture_arg_product_shape(
-        "product_unit_preservation.lang",
-        ProductMaterialRole::MetaConstructionArgumentProduct,
-    );
+    let shape = fixture_arg_product_shape("product_unit_preservation.lang");
     assert_eq!(atom_labels(&shape.flattened.atoms), ["a", "Unit", "b"]);
     assert!(shape.flattened.atoms[1].provenance().span.is_some());
 
@@ -94,11 +74,8 @@ fn unit_positions_and_raw_arg_non_value_boundary_are_preserved_from_source_fixtu
 #[test]
 fn normalized_call_site_exposes_product_object_before_arg_shape_from_source_fixture() {
     let site = fixture_call_site("product_unit_preservation.lang");
-    let product_obj = site.source_product_object(ProductMaterialRole::SourceProduct);
-    assert_eq!(
-        product_obj.material_role,
-        ProductMaterialRole::SourceProduct
-    );
+    let product_obj = site.source_product_object();
+    assert_eq!(product_obj.original, site.source_product);
     assert!(product_obj.provenance.description.contains("ProductObject"));
     let shape = product_obj.to_arg_product_shape();
     assert_eq!(shape.arity, 3);

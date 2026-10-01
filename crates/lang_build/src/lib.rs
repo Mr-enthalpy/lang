@@ -172,8 +172,7 @@ pub use policy_pair::{
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
-    NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,
-    RawArgValueClass,
+    NonValueArgKind, ProductAtom, ProductObject, RawArgShape, RawArgValueClass,
 };
 pub use return_target::{
     elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,

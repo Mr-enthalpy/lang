@@ -167,7 +167,6 @@ fn trace_of<'a>(
         | Err(OrdinaryInvocationFailure::SelectedDelete { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedBody { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedCoreBody { trace, .. })
-        | Err(OrdinaryInvocationFailure::MetaReturnTypeRootMismatch { trace, .. })
         | Err(OrdinaryInvocationFailure::ResultTypeHasNoPattern { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationResultTypeChanged { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed { trace })

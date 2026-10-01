@@ -21,7 +21,6 @@ use crate::{
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
-        ProductMaterialRole,
     },
     semantic_name_index::{BuildError, ResolverContext, SemanticNameIndex},
     struct_pattern_material::{
@@ -60,8 +59,7 @@ pub(crate) fn prepare_resolved_builtin_call(
         BuiltinCallableImpl::IdentityType => "IdentityType",
     };
 
-    let arg_product_shape =
-        site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let arg_product_shape = site.to_arg_product_shape();
     let mut unresolved_type_names = Vec::new();
     let mut struct_decoded_pattern: Option<crate::struct_decoder::DecodedStructPattern> = None;
     let (classified_shape, parameter_shape) = match primitive {
@@ -107,13 +105,13 @@ pub(crate) fn prepare_resolved_builtin_call(
         }
         BuiltinCallableImpl::Assert => {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "meta hard error: direct source-level `assert` expansion is not implemented",
+                "selected builtin `assert`: direct source-level expansion is not implemented",
                 Some(provenance),
             )));
         }
         BuiltinCallableImpl::Verify(_) => {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "meta hard error: source verification operations cannot be used as initializers",
+                "builtin verification operations cannot be used as initializers",
                 Some(provenance),
             )));
         }
@@ -155,7 +153,7 @@ pub(crate) fn prepare_resolved_builtin_call(
                 let names = unresolved_type_names.join(", ");
                 return Err(BuildError::single(Diagnostic::hard_error(
                     format!(
-                        "meta hard error: {primitive_name} argument `{names}` could not be resolved as a pure type Object"
+                        "builtin argument error: {primitive_name} argument `{names}` could not be resolved as a pure type Object"
                     ),
                     Some(provenance),
                 )));

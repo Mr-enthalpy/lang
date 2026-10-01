@@ -78,7 +78,7 @@ pub(crate) fn install_core_bootstrap(
         core_node,
         "struct",
         BuiltinCallableImpl::Struct,
-        Provenance::new("core meta-function `struct`"),
+        Provenance::new("core builtin callable `struct`"),
         core_declared_view(Stage::Meta),
     );
     insert_builtin_callable(
@@ -87,7 +87,7 @@ pub(crate) fn install_core_bootstrap(
         core_node,
         "assert",
         BuiltinCallableImpl::Assert,
-        Provenance::new("core meta-function `assert`"),
+        Provenance::new("core builtin callable `assert`"),
         core_declared_view(Stage::Meta),
     );
     insert_builtin_callable(
@@ -96,7 +96,7 @@ pub(crate) fn install_core_bootstrap(
         core_node,
         "IdentityType",
         BuiltinCallableImpl::IdentityType,
-        Provenance::new("core meta-function `IdentityType`"),
+        Provenance::new("core builtin callable `IdentityType`"),
         core_declared_view(Stage::Meta),
     );
     insert_verification_namespace(&mut delta, &mut core_callables, core_node);

@@ -2793,7 +2793,6 @@ fn ordinary_invocation_failure_diagnostic(
         | crate::OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::DynamicLegality { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::CyclicVal2 { diagnostic, .. }
-        | crate::OrdinaryInvocationFailure::MetaReturnTypeRootMismatch { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedBody {
             failure: crate::SourceBodyEvaluationFailure { diagnostic, .. },
@@ -2826,7 +2825,7 @@ fn ordinary_invocation_failure_diagnostic(
             "ordinary invocation has multiple maximal candidates",
             Some(provenance),
         )
-        .with_code(ResolverCode::AmbiguousMetaCandidate),
+        .with_code(ResolverCode::AmbiguousCallableCandidate),
         crate::OrdinaryInvocationFailure::ResultTypeHasNoPattern { type_value, .. } => {
             Diagnostic::hard_error(
                 format!(

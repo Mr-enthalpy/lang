@@ -189,7 +189,7 @@ pub enum ResolverCode {
     Ambiguous,
     /// Cross-root conflict — same symbol found in multiple search roots.
     Conflict,
-    AmbiguousMetaCandidate,
+    AmbiguousCallableCandidate,
     NoCallCandidate,
     UnsupportedInitializerContinuation,
     /// Explicit Pin stage constraints are canonical, but their per-position
@@ -644,7 +644,7 @@ pub struct ChildLink {
     pub provenance: Provenance,
 }
 
-/// Closed syntax object passed to early meta-functions.
+/// Closed source syntax carrier.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SyntaxObject {
     pub kind: SyntaxObjectKind,

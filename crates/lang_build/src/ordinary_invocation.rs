@@ -57,7 +57,7 @@ use crate::{
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
-        ProductMaterialRole, RawArgValueClass,
+        RawArgValueClass,
     },
     semantic_name_index::ResolverContext,
     semantic_owner::{SemanticOwnerId, SemanticSymbolIdentity},
@@ -592,17 +592,6 @@ pub enum OrdinaryInvocationFailure {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
-    /// Meta-return self-root enforcement.  The unique type
-    /// result of a meta invocation must be rooted at the meta
-    /// function itself plus its normalized input arguments
-    /// (`MetaInstanceRoot = CallableIdentity + Normalize(Arguments)`).
-    /// Forwarding an existing type root out of the body is a hard
-    /// diagnostic; no automatic re-rooting or wrapper construction is
-    /// performed.
-    MetaReturnTypeRootMismatch {
-        diagnostic: Diagnostic,
-        trace: OrdinaryPipelineTrace,
-    },
     ResultTypeHasNoPattern {
         type_value: TypeValueId,
         trace: OrdinaryPipelineTrace,
@@ -903,7 +892,7 @@ pub fn invoke_resolved_binding_ordinary(
         target_places,
         None,
         Some(call_site),
-        call_site.to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct),
+        call_site.to_arg_product_shape(),
         resolver_context,
         context,
         provenance,

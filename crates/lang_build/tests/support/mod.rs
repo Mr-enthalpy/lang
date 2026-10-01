@@ -13,8 +13,8 @@ use lang_build::{
     prepare_callable_candidate_with_declared_planes, ArgProductShape, BuildError, BuildManifest,
     BuildSession, BuildWorkspace, CandidatePrepResult, CandidatePreparationContext,
     CompilationWorld, CoreTypeProjection, NamespaceNodeId, NormalizedCallSite, PackageBuildSpec,
-    ParameterShape, ProductMaterialRole, Provenance, SourceCategory, SourceRoot,
-    StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, ToolchainGlobalSourceRoot,
+    ParameterShape, Provenance, SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind,
+    SymbolObject, SymbolPayload, ToolchainGlobalSourceRoot,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
@@ -484,14 +484,10 @@ pub fn fixture_call_site(name: &str) -> NormalizedCallSite {
 /// Produce an `ArgProductShape` from a committed product-shape fixture.
 ///
 /// The fixture is expected to normalize to a single call expression.
-/// The call site source product is wrapped in a `ProductObject` with the
-/// given role and shaped.
-pub fn fixture_arg_product_shape(
-    name: &str,
-    role: ProductMaterialRole,
-) -> lang_build::ArgProductShape {
+/// The call site source product is wrapped in a `ProductObject` and shaped.
+pub fn fixture_arg_product_shape(name: &str) -> lang_build::ArgProductShape {
     let site = fixture_call_site(name);
-    site.to_arg_product_shape(role)
+    site.to_arg_product_shape()
 }
 
 /// Build the candidate fixture world (`candidate_world` / `app`).

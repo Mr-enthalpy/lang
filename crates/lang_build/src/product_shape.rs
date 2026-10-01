@@ -30,16 +30,14 @@ use crate::{
 pub struct ProductObject {
     pub original: NormProduct,
     pub provenance: Provenance,
-    pub material_role: ProductMaterialRole,
 }
 
 impl ProductObject {
-    pub fn from_norm_product(product: NormProduct, material_role: ProductMaterialRole) -> Self {
+    pub fn from_norm_product(product: NormProduct) -> Self {
         let provenance = Provenance::from_norm_origin("ProductObject", &product.origin);
         Self {
             original: product,
             provenance,
-            material_role,
         }
     }
 
@@ -58,20 +56,6 @@ impl ProductObject {
     pub fn to_arg_product_shape(&self) -> ArgProductShape {
         ArgProductShape::from_flattened(self.flatten())
     }
-}
-
-/// Future policy/candidate-prep role marker.
-///
-/// This enum distinguishes the context in which a product object is constructed.
-/// It does **not** encode type-check results or runtime ABI decisions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ProductMaterialRole {
-    /// Source side of a normalized call.
-    SourceProduct,
-    /// Candidate-preparation input (argument product).
-    CallableArgumentProduct,
-    /// Meta-construction argument product.
-    MetaConstructionArgumentProduct,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
