@@ -114,6 +114,20 @@ actions, complete generation-continuation observation, NLL/with cleanup-point
 derivation and complete E remain consumer gates.
 These tests do not claim end-to-end conformance of the source scenarios.
 
+Future E integration must additionally pass these regressions; current
+substrate tests do not establish either gate:
+
+- With K at 4 and an outstanding fixed Drop at 9, an action at 10 without a
+  lifecycle projection cannot commit or publish state. After the Drop is
+  committed or its obligation discharged, the same boundary no longer blocks
+  advancement. Enforcement must come from the shared scheduler or common
+  transaction, not optional inclusion of lifecycle Pre.
+- A formation/origin/Color producer and its lifecycle Post share one committed
+  action identity/cut and one scratch publication. Failure of any affected Pre
+  or Post leaves producer facts, projection state and K unchanged. Successful
+  publication includes the producer-established facts; calling a trusted import
+  separately after common publication is not conformance evidence.
+
 | ID | Scenario | Required result |
 |---|---|---|
 | L01 | A killing move transfers a meta-local type instance | End the source generation at that cut. |

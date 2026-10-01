@@ -563,6 +563,21 @@ destructor execution. Those consumers and E saturation remain unavailable.
 Ordinary selected-call DynamicLegality still checks supplied lifecycle Pre;
 it does not thereby execute the shared action transaction.
 
+Future E wiring has two hard acceptance gates. First, no semantic action may
+advance past an earlier fixed, outstanding cleanup, even if that action has no
+lifecycle projection. The current guard is in lifecycle Pre, not automatically
+in `SemanticContinuation::commit_action`. The shared scheduler or common
+transaction must enforce it for all actions before publication.
+Second, source formation/origin/Color producers must publish their lifecycle
+Post with all other affected projections in the same scratch transaction.
+The current trusted `admit_committed_*_fact` imports are not producer witnesses;
+they must become internal joint-Post helpers or consume the common producer
+witness within that transaction. Commit followed by separate lifecycle mutation
+is not an accepted source handoff. Regressions must cover a non-lifecycle action
+blocked by earlier cleanup and producer-fact rollback on any affected Pre/Post
+failure. These gates remain unconnected and do not reopen the completed
+lifecycle interface cleanup.
+
 The next independent cleanup cut separates callable source records and general
 meta-instance identity from body execution. This is implementation retirement,
 not a new semantic choice.

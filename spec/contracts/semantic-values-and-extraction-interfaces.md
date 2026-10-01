@@ -98,6 +98,14 @@ at a cut already containing Use/Preserve of that subject, even without a
 scheduled Drop. Action ordinals do not enlarge Region membership.
 Preserve discharges no cleanup obligation.
 
+Full E integration must enforce the outstanding-cleanup boundary for every
+semantic action, including actions without a lifecycle projection. Currently
+that check resides in `LifecycleState::check_pre`; `commit_action` does not
+perform it automatically. Before any action commits at k, every fixed cleanup
+strictly before k must have been committed or its obligation discharged.
+The shared scheduler or common transaction must enforce this gate; inclusion
+of lifecycle Pre by an individual caller is not sufficient integration evidence.
+
 Roster discovery establishes only the stable value-to-LifeName map. It supplies
 neither Alive nor a Region nor an origin proposition. Formation consumes an
 explicit formation cut; missing/default origin producer material remains
@@ -106,6 +114,14 @@ Finite Color queries cannot truncate pending ancestry as if it terminated.
 The `admit_committed_*_fact` interfaces import producer-established facts;
 they are not lifecycle action commits. CompilationWorld exposes lifecycle
 state read-only; source fact producers remain unconnected.
+When those producers are connected, formation/origin/Color facts must enter
+their projection Post in the same scratch publication as the producer action:
+`ProducerPre -> one common commit -> joint producer/lifecycle Post`.
+The trusted-import interfaces do not prove that handoff. They must either be
+restricted to internal helpers within joint Post or consume the common
+committed producer witness within that transaction. A separate lifecycle
+mutation after common publication does not satisfy the contract; any affected
+Pre or Post failure must publish neither producer facts nor a continuation cut.
 Color admission additionally checks the supplied continuation identity and
 that its frontier covers this projection's committed events and subject birth.
 It accepts only formed, active generations. Unknown, formation-pending, ended
