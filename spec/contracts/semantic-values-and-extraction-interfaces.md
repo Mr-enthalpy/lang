@@ -132,21 +132,22 @@ neither Alive nor a Region nor an origin proposition. Formation consumes an
 explicit formation cut; missing/default origin producer material remains
 `LifecycleOrigin::Pending`, distinct from `ExplicitNone` and `Name(n)`.
 Finite Color queries cannot truncate pending ancestry as if it terminated.
-The `admit_committed_*_fact` interfaces import producer-established facts;
-they are not lifecycle action commits. CompilationWorld exposes lifecycle
-state read-only; source fact producers remain unconnected.
+The private `#[cfg(test)]` `admit_committed_*_fact` helpers seed lifecycle test
+fixtures only; no production fact-import API is exposed. CompilationWorld
+exposes lifecycle state read-only; source fact producers remain unconnected.
 When those producers are connected, formation/origin/Color facts must enter
 their projection Post in the same scratch publication as the producer action:
 `ProducerPre -> one common commit -> joint producer/lifecycle Post`.
-The trusted-import interfaces do not prove that handoff. They must either be
-restricted to internal helpers within joint Post or consume the common
-committed producer witness within that transaction. A separate lifecycle
-mutation after common publication does not satisfy the contract; any affected
+Any internal helper must run within joint Post or consume the common
+committed producer witness within that transaction. Test fixture imports do
+not prove that handoff. A separate lifecycle mutation after common publication
+does not satisfy the contract; any affected
 Pre or Post failure must publish neither producer facts nor a continuation cut.
-Color admission additionally checks the supplied continuation identity and
-that its frontier covers this projection's committed events and subject birth.
+The Color fixture helper additionally checks the supplied continuation
+identity and that its frontier covers this projection's committed events and
+subject birth.
 It accepts only formed, active generations. Unknown, formation-pending, ended
-or foreign subjects fail before mutation. This API does not backfill historical
+or foreign subjects fail before mutation. This helper does not backfill historical
 Color: after Kill/Drop, the old generation's direct Color facts cannot change,
 preserving Kill's inherited direct/deeper Color facts. Observations through
 retained origins still include permitted additions to active ancestors.

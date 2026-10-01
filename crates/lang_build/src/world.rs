@@ -11,9 +11,10 @@ use crate::{
     discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
     manifest::{BuildManifest, NamespaceMount},
     model::{
-        CallableDeclaration, CoreTypeProjection, Diagnostic, DiagnosticSeverity, NamespaceNode,
-        NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
-        SourceCallableSyntax, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
+        CallableDeclaration, CoreTypeProjection, Diagnostic, DiagnosticSeverity,
+        NamespaceGraphSymbol, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
+        ResolverCode, SemanticNameDelta, SourceCallableSyntax, SourceCategory, SymbolKind,
+        SymbolPayload,
     },
     policy_pair::{
         declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
@@ -513,7 +514,7 @@ impl CompilationWorld {
         )
     }
 
-    pub fn resolve(&self, source_order_path: &str) -> Result<SymbolObject, Diagnostic> {
+    pub fn resolve(&self, source_order_path: &str) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_with_expectation(source_order_path, ResolveExpectation::AnyUnique)
     }
 
@@ -521,7 +522,7 @@ impl CompilationWorld {
         &self,
         source_order_path: &str,
         expectation: ResolveExpectation,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         let components = source_order_path
             .split("::")
             .filter(|component| !component.is_empty())
@@ -534,9 +535,9 @@ impl CompilationWorld {
             &[self.semantic_world.namespace_index().root_node()],
             &[self.core_node],
         )?;
-        let object = self
+        let projection = self
             .semantic_world
-            .projected_symbol_object(identity)
+            .projected_namespace_symbol(identity)
             .cloned()
             .ok_or_else(|| {
                 Diagnostic::hard_error(
@@ -547,8 +548,8 @@ impl CompilationWorld {
                 )
                 .with_code(ResolverCode::Unresolved)
             })?;
-        if projection_matches_expectation(&object, expectation) {
-            Ok(object)
+        if projection_matches_expectation(&projection, expectation) {
+            Ok(projection)
         } else {
             Err(Diagnostic::hard_error(
                 format!(
@@ -1148,7 +1149,7 @@ impl CompilationWorld {
         // after that producer has been sealed.
         let result_policy_demand = binding_result_policy_demand(slot, &namespace_declaration);
         if let Some(initializer) = slot.initializer.as_deref() {
-            match self.evaluate_initializer_best_effort_connected(
+            match self.evaluate_connected_initializer_fragment(
                 namespace,
                 initializer,
                 result_policy_demand.clone(),
@@ -1477,12 +1478,12 @@ impl CompilationWorld {
             binder_name,
             namespace_declaration,
         );
-        expansion.replacement_object.policy_view = result_view;
+        expansion.replacement_symbol.policy_view = result_view;
         expansion
-            .replacement_object
+            .replacement_symbol
             .visibility_metadata
             .namespace_visibility = namespace_declaration.visibility;
-        expansion.replacement_object.visibility_metadata.export_root =
+        expansion.replacement_symbol.visibility_metadata.export_root =
             namespace_declaration.export_root;
         self.semantic_world
             .bind_ordinary_new(namespace, binder_name, selected, provenance.clone())
@@ -1491,7 +1492,7 @@ impl CompilationWorld {
         // graph rendering.
         if let Some(entry) = selected.first() {
             let pair = declared_pair_from_result_entry(entry, namespace_declaration);
-            let associated_namespace = match &expansion.replacement_object.payload {
+            let associated_namespace = match &expansion.replacement_symbol.payload {
                 SymbolPayload::CompleteTypeProjection(projection) => {
                     projection.type_associated_namespace
                 }
@@ -1499,13 +1500,13 @@ impl CompilationWorld {
             };
             self.register_installed_type_carrier(
                 namespace,
-                &expansion.replacement_object.name,
-                expansion.replacement_object.id,
+                &expansion.replacement_symbol.name,
+                expansion.replacement_symbol.id,
                 complete_type.lookup_key(),
                 Some(complete_type.whole()),
                 associated_namespace,
                 pair,
-                expansion.replacement_object.provenance.clone(),
+                expansion.replacement_symbol.provenance.clone(),
             )?;
         }
         self.semantic_world
@@ -1617,7 +1618,7 @@ impl CompilationWorld {
             provenance: provenance.clone(),
         };
         let explicit_product =
-            crate::ArgProductShape::from_flattened(crate::FlattenedProductObject {
+            crate::ArgProductShape::from_flattened(crate::FlattenedProductMaterial {
                 atoms: vec![explicit_atom],
                 provenance: provenance.clone(),
                 invariant: crate::FlattenedProductInvariant {
@@ -1981,14 +1982,11 @@ impl CompilationWorld {
         Ok(destination)
     }
 
-    /// Installs a connected meta construction result whose unique complete
-    /// type member is backed by struct construction material. The namespace
-    /// side forms the full projection (CoreTypeProjection with fields,
-    /// field-function projection layer, ref/share projection namespaces),
-    /// while the semantic side binds the construction's member views under
-    /// a fresh destination Symbol — the same canonical facts as the plain
-    /// carrier path, plus the namespace projection the plain carrier lacks.
-    fn evaluate_initializer_best_effort_connected(
+    /// Evaluate the connected initializer fragment: PolicyLet, abstract
+    /// literals, ordinary invocation and existing semantic material.
+    /// Missing consumers retain an explicit diagnostic or observed frontier;
+    /// this boundary supplies no approximation of the common evaluator.
+    fn evaluate_connected_initializer_fragment(
         &mut self,
         namespace: NamespaceNodeId,
         initializer: &NormExpr,
@@ -2154,7 +2152,7 @@ impl CompilationWorld {
                 }
             }
         } else if matches!(operand, NormExpr::PolicyLet { .. }) {
-            self.evaluate_initializer_best_effort_connected(
+            self.evaluate_connected_initializer_fragment(
                 namespace,
                 operand,
                 ResultPolicyDemand::default(),
@@ -2477,7 +2475,7 @@ fn declared_type_projection_delta(
     // Graph projection for a declared type carrier. `let t: type =
     // uint8` is an ordinary fresh Symbol/Place binding, not type generation or
     // aliasing. Canonical Core/whole equality and Writable judgments live in
-    // SemanticWorld; this graph object only renders the already-decided type
+    // SemanticWorld; this graph symbol only renders the already-decided type
     // binding for namespace projection.
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
@@ -2491,7 +2489,7 @@ fn declared_type_projection_delta(
         provenance.clone(),
     ));
 
-    let mut symbol = SymbolObject::new(
+    let mut symbol = NamespaceGraphSymbol::new(
         type_symbol_id,
         name,
         SymbolKind::CompleteTypeProjection,
@@ -2720,7 +2718,7 @@ fn source_callable_delta(
         });
     }
 
-    let mut symbol = SymbolObject::new(
+    let mut symbol = NamespaceGraphSymbol::new(
         symbol_id,
         name,
         SymbolKind::Callable,
@@ -2908,16 +2906,19 @@ fn assert_semantic_result_satisfies_annotation(
     Ok(())
 }
 
-fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExpectation) -> bool {
+fn projection_matches_expectation(
+    symbol: &NamespaceGraphSymbol,
+    expectation: ResolveExpectation,
+) -> bool {
     match expectation {
         ResolveExpectation::AnyUnique | ResolveExpectation::Object => {
-            object.kind != SymbolKind::Namespace
+            symbol.kind != SymbolKind::Namespace
         }
-        ResolveExpectation::NamespaceSubspace => object.kind == SymbolKind::Namespace,
-        ResolveExpectation::NamespaceCapableParent => object.namespace_node().is_some(),
-        ResolveExpectation::CoreTypeProjection => object.kind == SymbolKind::CompleteTypeProjection,
-        ResolveExpectation::Callable => object.kind == SymbolKind::Callable,
-        ResolveExpectation::FieldFunction => object.kind == SymbolKind::FieldFunction,
+        ResolveExpectation::NamespaceSubspace => symbol.kind == SymbolKind::Namespace,
+        ResolveExpectation::NamespaceCapableParent => symbol.namespace_node().is_some(),
+        ResolveExpectation::CoreTypeProjection => symbol.kind == SymbolKind::CompleteTypeProjection,
+        ResolveExpectation::Callable => symbol.kind == SymbolKind::Callable,
+        ResolveExpectation::FieldFunction => symbol.kind == SymbolKind::FieldFunction,
     }
 }
 
@@ -3048,7 +3049,7 @@ mod initializer_residual_boundary_tests {
     }
 
     fn evaluate(world: &mut CompilationWorld, source: &str) -> ConnectedInitializerOutcome {
-        world.evaluate_initializer_best_effort_connected(
+        world.evaluate_connected_initializer_fragment(
             world.package_root_node(),
             &initializer(source),
             ResultPolicyDemand::default(),
@@ -3190,7 +3191,7 @@ mod initializer_residual_boundary_tests {
             )
         ));
         for outcome in [
-            world.evaluate_initializer_best_effort_connected(
+            world.evaluate_connected_initializer_fragment(
                 world.package_root_node(),
                 &expression,
                 demand,

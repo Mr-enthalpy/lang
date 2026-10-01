@@ -326,10 +326,10 @@ impl LifecycleState {
         Ok(())
     }
 
-    /// Admit formation already committed by its ordinary producer, preserving
-    /// a discovered name. This imports facts; it does not execute formation.
-    /// First bookkeeping observation never supplies the formation cut.
-    pub fn admit_committed_formation_fact(
+    /// Seed a test fixture with a supplied formation cut, preserving a
+    /// discovered name. This does not execute or witness a producer action.
+    #[cfg(test)]
+    fn admit_committed_formation_fact(
         &mut self,
         continuation: &SemanticContinuation,
         value: SemanticValueId,
@@ -384,9 +384,10 @@ impl LifecycleState {
         }
     }
 
-    /// Admit one origin fact already committed by its formation/default producer.
+    /// Complete a test fixture's origin fact once.
     /// None here is intentionally written termination, never an omission.
-    pub fn admit_committed_origin_fact(
+    #[cfg(test)]
+    fn admit_committed_origin_fact(
         &mut self,
         continuation: &SemanticContinuation,
         name: LifeName,
@@ -424,10 +425,10 @@ impl LifecycleState {
         &self.events
     }
 
-    /// Import a producer-established Color fact for an active generation in K.
-    /// This is not an action entry point or historical backfill: ended, unknown
-    /// and formation-pending subjects cannot acquire new Color facts here.
-    pub fn admit_committed_color_fact(
+    /// Seed a test fixture's Color fact for an active generation in K.
+    /// Ended, unknown and formation-pending subjects cannot acquire facts here.
+    #[cfg(test)]
+    fn admit_committed_color_fact(
         &mut self,
         continuation: &SemanticContinuation,
         name: LifeName,

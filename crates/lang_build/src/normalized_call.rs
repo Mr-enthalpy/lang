@@ -15,7 +15,7 @@ use lang_syntax::{NormExpr, NormProduct};
 
 use crate::{
     model::{Diagnostic, Provenance},
-    product_shape::{ArgProductShape, ProductObject},
+    product_shape::{ArgProductShape, ProductSyntaxMaterial},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -26,15 +26,15 @@ pub struct NormalizedCallSite {
 }
 
 impl NormalizedCallSite {
-    /// Expose the `ProductObject` boundary before jumping to `ArgProductShape`.
-    /// Makes the pipeline chain `call-site → ProductObject → ArgProductShape`
+    /// Expose the `ProductSyntaxMaterial` boundary before jumping to `ArgProductShape`.
+    /// Makes the pipeline chain `call-site → ProductSyntaxMaterial → ArgProductShape`
     /// explicitly visible in caller code.
-    pub fn source_product_object(&self) -> ProductObject {
-        ProductObject::from_norm_product(self.source_product.clone())
+    pub fn source_product_material(&self) -> ProductSyntaxMaterial {
+        ProductSyntaxMaterial::from_norm_product(self.source_product.clone())
     }
 
     pub fn to_arg_product_shape(&self) -> ArgProductShape {
-        self.source_product_object().to_arg_product_shape()
+        self.source_product_material().to_arg_product_shape()
     }
 }
 

@@ -3,7 +3,7 @@
 //! `InvocationFrame` is the semantic layer between candidate selection and
 //! callable body entry.
 //!
-//! `ProductObject` / `ArgProductShape` describe only the explicit
+//! `ProductSyntaxMaterial` / `ArgProductShape` describe only the explicit
 //! user-supplied call product. They do not contain caller `self`.
 //!
 //! `self` is injected by the invocation frame and occupies callable formal slot

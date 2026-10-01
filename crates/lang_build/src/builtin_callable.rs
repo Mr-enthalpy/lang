@@ -6,21 +6,21 @@ use crate::{
         StructFieldConstructionMaterial,
     },
     candidate_preparation::{
-        prepare_callable_candidate_with_declared_planes, CandidatePrepDeferredReason,
+        prepare_callable_candidate_with_declared_planes, CandidatePrepIncompleteReason,
         CandidatePrepResult, CandidatePreparationContext, ParameterShape,
     },
     model::{
-        BuiltinCallableImpl, CallablePolicyViews, CoreTypeProjection, Diagnostic, FieldObject,
-        FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
-        SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
-        TypeField,
+        BuiltinCallableImpl, CallablePolicyViews, CoreTypeProjection, Diagnostic,
+        FieldFunctionProjection, FieldProjection, NamespaceGraphSymbol, NamespaceNode,
+        NamespaceNodeId, NamespaceNodeKind, Provenance, SemanticNameDelta, SourceCategory,
+        SymbolId, SymbolKind, SymbolPayload, TypeField,
     },
     normalized_call::NormalizedCallSite,
     policy_pair::{
         declared_policy_view, NamespaceVisibility, ObservationHorizon, PolicyMode, Stage,
     },
     product_shape::{
-        ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
+        ArgProductShape, FlattenedProductInvariant, FlattenedProductMaterial, ProductAtom,
     },
     semantic_name_index::{BuildError, ResolverContext, SemanticNameIndex},
     semantic_world::{OrdinaryCallEntry, OrdinaryCallableImplementation},
@@ -33,7 +33,7 @@ use crate::{
 /// Namespace installation material for a completed struct construction.
 #[derive(Clone, Debug)]
 pub(crate) struct StructProjectionInstall {
-    pub replacement_object: SymbolObject,
+    pub replacement_symbol: NamespaceGraphSymbol,
     pub namespace_delta: SemanticNameDelta,
     pub diagnostics: Vec<Diagnostic>,
 }
@@ -141,13 +141,13 @@ pub(crate) fn prepare_resolved_builtin_call(
         },
     ) {
         CandidatePrepResult::Applicable(candidate) => *candidate,
-        CandidatePrepResult::Deferred { reason, .. } => {
+        CandidatePrepResult::Incomplete { reason, .. } => {
             let message = match reason {
-                CandidatePrepDeferredReason::BodyEntryObservationHidden => {
+                CandidatePrepIncompleteReason::BodyEntryObservationHidden => {
                     "body-entry observation is not visible at the demanded horizon"
                 }
-                CandidatePrepDeferredReason::ParameterShapeCompatibilityDeferred => {
-                    "candidate preparation deferred because parameter shape compatibility is incomplete"
+                CandidatePrepIncompleteReason::ParameterShapeCompatibilityIncomplete => {
+                    "candidate preparation is incomplete because parameter shape compatibility is not established"
                 }
             };
             return Err(BuiltinPreparationFailure::Incomplete(
@@ -213,7 +213,7 @@ fn classify_decoded_struct_field_arguments(
         return Err(BuildError { diagnostics });
     }
 
-    let flattened = FlattenedProductObject {
+    let flattened = FlattenedProductMaterial {
         atoms,
         provenance: provenance.clone(),
         invariant: FlattenedProductInvariant {
@@ -301,16 +301,16 @@ fn insert_projection_namespace(
         node_id,
         name,
         NamespaceNodeKind::Virtual,
-        SourceCategory::MetaInstantiationVirtualLayer,
+        SourceCategory::GeneratedChild,
         Some(parent),
         provenance.clone(),
     ));
-    let mut namespace_symbol = SymbolObject::namespace(
+    let mut namespace_symbol = NamespaceGraphSymbol::namespace(
         symbol_id,
         name,
         node_id,
         NamespaceNodeKind::Virtual,
-        SourceCategory::MetaInstantiationVirtualLayer,
+        SourceCategory::GeneratedChild,
         Some(parent),
         provenance,
     );
@@ -339,7 +339,7 @@ fn insert_field_projection_layer(
         let provenance = forced_provenance
             .clone()
             .unwrap_or_else(|| field.provenance.clone());
-        let mut symbol = SymbolObject::new(
+        let mut symbol = NamespaceGraphSymbol::new(
             symbol_id,
             &field.name,
             SymbolKind::FieldFunction,
@@ -360,7 +360,7 @@ fn insert_field_projection_layer(
             owner_type_symbol_id.as_u64(),
             field.name
         ));
-        symbol.payload = SymbolPayload::FieldFunction(FieldObject {
+        symbol.payload = SymbolPayload::FieldFunction(FieldFunctionProjection {
             owner_type_symbol_id,
             field_name: field.name.clone(),
             field_type_value: field.type_value,
@@ -422,7 +422,7 @@ pub(crate) fn expand_struct_construction_material(
         provenance.clone(),
     ));
 
-    let mut type_projection = SymbolObject::new(
+    let mut type_projection = NamespaceGraphSymbol::new(
         type_symbol_id,
         binding_name,
         SymbolKind::CompleteTypeProjection,
@@ -498,7 +498,7 @@ pub(crate) fn expand_struct_construction_material(
     );
 
     Ok(StructProjectionInstall {
-        replacement_object: type_projection,
+        replacement_symbol: type_projection,
         namespace_delta: delta,
         diagnostics: Vec::new(),
     })

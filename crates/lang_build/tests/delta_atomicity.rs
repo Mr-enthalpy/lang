@@ -2,8 +2,8 @@ mod support;
 use support::*;
 
 use lang_build::{
-    ChildLink, ChildNameRole, NamespaceNodeId, Provenance, ResolverContext, SemanticNameIndex,
-    SourceCategory, SymbolKind, SymbolObject,
+    ChildLink, ChildNameRole, NamespaceGraphSymbol, NamespaceNodeId, Provenance, ResolverContext,
+    SemanticNameIndex, SourceCategory, SymbolKind,
 };
 
 #[test]
@@ -15,7 +15,7 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     let b = delta.allocate_symbol_id();
     delta.insert_symbol(
         root,
-        SymbolObject::new(
+        NamespaceGraphSymbol::new(
             a,
             "A",
             SymbolKind::Object,
@@ -26,7 +26,7 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     );
     delta.insert_symbol(
         root,
-        SymbolObject::new(
+        NamespaceGraphSymbol::new(
             b,
             "B",
             SymbolKind::Object,
@@ -45,7 +45,7 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     let x2 = conflict.allocate_symbol_id();
     conflict.insert_symbol(
         root,
-        SymbolObject::new(
+        NamespaceGraphSymbol::new(
             x1,
             "X",
             SymbolKind::Object,
@@ -56,7 +56,7 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
     );
     conflict.insert_symbol(
         root,
-        SymbolObject::new(
+        NamespaceGraphSymbol::new(
             x2,
             "X",
             SymbolKind::Object,

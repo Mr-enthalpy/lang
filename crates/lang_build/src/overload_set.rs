@@ -9,8 +9,8 @@ use lang_syntax::{
 use crate::{
     callable_diagnostic::selected_callable_delete_diagnostic,
     model::{
-        Diagnostic, DiagnosticSeverity, Provenance, ResolverCode, SourceCallableSyntax,
-        SymbolObject,
+        Diagnostic, DiagnosticSeverity, NamespaceGraphSymbol, Provenance, ResolverCode,
+        SourceCallableSyntax,
     },
     overload_pattern::{OverloadArgShape, SpecificityTuple},
     pattern_relation::{
@@ -29,7 +29,7 @@ pub enum VisibilityView {
 /// Source-body input formed after unique selection and DynamicLegality.
 #[derive(Clone, Debug)]
 pub(crate) struct SelectedSourceBody {
-    pub(crate) symbol: SymbolObject,
+    pub(crate) symbol: NamespaceGraphSymbol,
     pub(crate) source_callable: SourceCallableSyntax,
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
@@ -44,7 +44,7 @@ pub struct SourceBodyFrontierFailure {
 
 #[derive(Clone, Debug)]
 pub(crate) struct ApplicableCandidate {
-    pub(crate) symbol: SymbolObject,
+    pub(crate) symbol: NamespaceGraphSymbol,
     pub(crate) source_callable: SourceCallableSyntax,
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
@@ -66,7 +66,7 @@ pub(crate) enum CandidateApplicabilityFailure {
 /// The candidate is shaped from the `OrdinaryCallEntry`'s own closure
 /// handle; no graph payload is read.
 pub(crate) fn applicable_candidate_from_closure(
-    symbol: &SymbolObject,
+    symbol: &NamespaceGraphSymbol,
     closure: &NormClosure,
     provenance: &Provenance,
     args: &[OverloadArgShape],
@@ -86,7 +86,7 @@ pub(crate) fn applicable_candidate_from_closure(
 }
 
 fn applicable_candidate_from_source_callable(
-    symbol: &SymbolObject,
+    symbol: &NamespaceGraphSymbol,
     source_callable: SourceCallableSyntax,
     args: &[OverloadArgShape],
     callable_owner: SemanticOwnerId,
