@@ -1114,7 +1114,8 @@ fn wildcard_unit_return_pattern_reaches_selection_before_execution_frontier() {
         )
         .expect_err("Unit execution is an explicit implementation frontier");
 
-    let lang_build::OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace } = failure
+    let lang_build::OrdinaryInvocationFailure::SelectedImplementation { diagnostic, trace } =
+        failure
     else {
         panic!("return Pattern shape must not remove the candidate during A: {failure:?}");
     };

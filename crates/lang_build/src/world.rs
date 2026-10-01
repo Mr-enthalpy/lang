@@ -2790,12 +2790,12 @@ fn ordinary_invocation_failure_diagnostic(
 ) -> Diagnostic {
     match failure {
         crate::OrdinaryInvocationFailure::SelectedDelete { diagnostic, .. }
-        | crate::OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, .. }
+        | crate::OrdinaryInvocationFailure::SelectedImplementation { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::DynamicLegality { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::CyclicVal2 { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedBody {
-            failure: crate::SourceBodyEvaluationFailure { diagnostic, .. },
+            failure: crate::SourceBodyFrontierFailure { diagnostic, .. },
             ..
         } => diagnostic,
         crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {

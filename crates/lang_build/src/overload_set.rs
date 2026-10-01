@@ -37,8 +37,10 @@ pub(crate) struct SelectedSourceBody {
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
 }
 
+/// Diagnostic from the selected source-body frontier; no evaluation result
+/// or successful completion is established by this carrier.
 #[derive(Clone, Debug)]
-pub struct SourceBodyEvaluationFailure {
+pub struct SourceBodyFrontierFailure {
     pub diagnostic: Diagnostic,
 }
 
@@ -278,7 +280,7 @@ pub(crate) fn check_selected_source_body_frontier(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
-) -> SourceBodyEvaluationFailure {
+) -> SourceBodyFrontierFailure {
     match &selected.source_callable.closure.body {
         NormClosureBody::Delete(delete) => {
             let diagnostic = selected_callable_delete_diagnostic(
@@ -286,7 +288,7 @@ pub(crate) fn check_selected_source_body_frontier(
                 selected.source_callable.provenance.clone(),
             )
             .with_code(ResolverCode::UnsupportedSelectedSourceBody);
-            SourceBodyEvaluationFailure { diagnostic }
+            SourceBodyFrontierFailure { diagnostic }
         }
         NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
             check_block_body_frontier(type_env, resolver_context, selected, program)
@@ -305,7 +307,7 @@ fn check_body_local_let_frontier(
     selected: &SelectedSourceBody,
     local_names: &BTreeSet<String>,
     slot: &lang_syntax::NormBindingSlot,
-) -> Result<(), SourceBodyEvaluationFailure> {
+) -> Result<(), SourceBodyFrontierFailure> {
     // Execution gap — a body-local `let x:symbol = ...` outside the
     // return-slot position has no defined meaning yet: symbol-rank
     // local construction is an undefined future construct, so it is
@@ -340,7 +342,7 @@ fn check_body_local_let_frontier(
         ) {
             BodyLocalInitializerCheck::Accepted => {}
             BodyLocalInitializerCheck::Residual { reason, provenance } => {
-                return Err(SourceBodyEvaluationFailure {
+                return Err(SourceBodyFrontierFailure {
                     diagnostic: Diagnostic::hard_error(
                         format!(
                             "ResidualNotAllowedAtBoundary: selected source-body local initializer remains residual ({reason})"
@@ -351,7 +353,7 @@ fn check_body_local_let_frontier(
                 });
             }
             BodyLocalInitializerCheck::Rejected(diagnostic) => {
-                return Err(SourceBodyEvaluationFailure { diagnostic });
+                return Err(SourceBodyFrontierFailure { diagnostic });
             }
         }
     }
@@ -363,7 +365,7 @@ fn check_block_body_frontier(
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
     program: &lang_syntax::NormProgram,
-) -> SourceBodyEvaluationFailure {
+) -> SourceBodyFrontierFailure {
     // Validate connected local forms without inventing expression completion.
     // Shared continuation execution must supply UnitDiscard and tail inference.
     let mut local_names = BTreeSet::new();
@@ -450,11 +452,11 @@ fn lexical_alias_operator_shape(expr: &NormExpr) -> bool {
 
 /// Expression spellings cannot become a back door to the lexical-alias
 /// declaration mechanism.
-fn bare_alias_spelling_failure(selected: &SelectedSourceBody) -> SourceBodyEvaluationFailure {
+fn bare_alias_spelling_failure(selected: &SelectedSourceBody) -> SourceBodyFrontierFailure {
     unsupported_lexical_alias_failure(selected)
 }
 
-fn unsupported_lexical_alias_failure(selected: &SelectedSourceBody) -> SourceBodyEvaluationFailure {
+fn unsupported_lexical_alias_failure(selected: &SelectedSourceBody) -> SourceBodyFrontierFailure {
     selected_body_failure(
         selected,
         ResolverCode::UnsupportedLexicalAlias,
@@ -466,7 +468,7 @@ fn unsupported_body(
     selected: &SelectedSourceBody,
     code: ResolverCode,
     message: impl Into<String>,
-) -> SourceBodyEvaluationFailure {
+) -> SourceBodyFrontierFailure {
     selected_body_failure(selected, code, message)
 }
 
@@ -486,7 +488,7 @@ fn selected_body_failure(
     selected: &SelectedSourceBody,
     code: ResolverCode,
     message: impl Into<String>,
-) -> SourceBodyEvaluationFailure {
+) -> SourceBodyFrontierFailure {
     let diagnostic = Diagnostic::new(
         DiagnosticSeverity::Error,
         message,
@@ -494,7 +496,7 @@ fn selected_body_failure(
     )
     .with_symbol_context(selected.symbol.id)
     .with_code(code);
-    SourceBodyEvaluationFailure { diagnostic }
+    SourceBodyFrontierFailure { diagnostic }
 }
 
 fn binding_slot_name(slot: &lang_syntax::NormBindingSlot) -> Option<String> {

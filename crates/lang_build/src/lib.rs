@@ -129,7 +129,7 @@ pub use overload_pattern::{
     PackOperandClass, PatternLayerOrder, SpecificityTuple,
 };
 pub use overload_set::{
-    declared_result_class_from_closure, SourceBodyEvaluationFailure, VisibilityView,
+    declared_result_class_from_closure, SourceBodyFrontierFailure, VisibilityView,
 };
 pub use owner_namespace::{
     ExtractionMemberVisibility, NamespaceLookupFailure, NamespaceLookupResult, NamespaceNameView,

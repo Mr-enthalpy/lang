@@ -106,7 +106,7 @@ fn second_direct_struct_invocation_collides_in_the_same_world() {
         "let T: type = (uint8 a) struct;",
         "ambient collision: second generation",
     );
-    let Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, .. }) = second else {
+    let Err(OrdinaryInvocationFailure::SelectedImplementation { diagnostic, .. }) = second else {
         panic!("second generation of the same shape at the same level is a hard error");
     };
     assert!(
@@ -419,7 +419,7 @@ fn replaying_the_same_shape_under_one_self_owner_stays_a_hard_error() {
         "let T: type = (uint8 a) struct;",
         "self chain replay: second",
     );
-    let Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, .. }) = replay else {
+    let Err(OrdinaryInvocationFailure::SelectedImplementation { diagnostic, .. }) = replay else {
         panic!("replaying the same shape at one Self level is a hard error");
     };
     assert!(

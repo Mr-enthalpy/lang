@@ -40,7 +40,7 @@ use crate::{
     overload_set::{
         applicable_candidate_from_closure, check_selected_source_body_frontier,
         ApplicableCandidate, CandidateApplicabilityFailure, SelectedSourceBody,
-        SourceBodyEvaluationFailure, VisibilityView,
+        SourceBodyFrontierFailure, VisibilityView,
     },
     policy_migration::{
         compare_migration_endpoint_coordinates, project_migration_input_endpoint,
@@ -585,10 +585,12 @@ pub enum OrdinaryInvocationFailure {
         trace: OrdinaryPipelineTrace,
     },
     SelectedBody {
-        failure: SourceBodyEvaluationFailure,
+        failure: SourceBodyFrontierFailure,
         trace: OrdinaryPipelineTrace,
     },
-    SelectedCoreBody {
+    /// The sealed implementation or its declared-result realization failed.
+    /// This failure is terminal and never reopens candidate selection.
+    SelectedImplementation {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
@@ -1743,7 +1745,7 @@ pub(crate) fn invoke_target_values(
     // instead of silently misrouting the result into a single-member or
     // name binding.
     if selected.declared_result_class == DeclaredResultClass::Unit {
-        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+        return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
                 "invocation of a Unit result is future work: \
                  the declaration is validated, but no executable producer exists yet",
@@ -1786,14 +1788,17 @@ pub(crate) fn invoke_target_values(
                     SelectedBodyOutput::BuiltinMaterial(value)
                 }
                 crate::BuiltinBodyResult::Diagnostic(diagnostic) => {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
+                        diagnostic,
+                        trace,
+                    });
                 }
             }
         }
         PreparedImplementation::Intrinsic(intrinsic) => match intrinsic {
             crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(_) => {
                 let Some(target) = context.construction_target else {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
                         diagnostic: Diagnostic::hard_error(
                             "selected literal constructor lost its exact complete target Type",
                             Some(provenance.clone()),
@@ -1811,7 +1816,7 @@ pub(crate) fn invoke_target_values(
                     .atoms
                     .as_slice()
                 else {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
                         diagnostic: Diagnostic::hard_error(
                             "selected literal constructor requires exactly one abstract source value",
                             Some(provenance.clone()),
@@ -1825,7 +1830,7 @@ pub(crate) fn invoke_target_values(
                     selected.complete_result_view.clone(),
                     provenance.clone(),
                 ) else {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
                         diagnostic: Diagnostic::hard_error(
                             "selected literal constructor failed to realize its result",
                             Some(provenance.clone()),
@@ -1846,7 +1851,7 @@ pub(crate) fn invoke_target_values(
                 });
             }
             crate::semantic_world::OrdinaryIntrinsicBody::FailSelected => {
-                return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                return Err(OrdinaryInvocationFailure::SelectedImplementation {
                     diagnostic: Diagnostic::hard_error(
                         "selected literal construction candidate failed to realize its result",
                         Some(provenance.clone()),
@@ -1881,12 +1886,14 @@ pub(crate) fn invoke_target_values(
             .flatten(),
         returned,
     )
-    .map_err(|diagnostic| OrdinaryInvocationFailure::SelectedCoreBody {
-        diagnostic,
-        trace: trace.clone(),
-    })?;
+    .map_err(
+        |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+            diagnostic,
+            trace: trace.clone(),
+        },
+    )?;
     let Some((result_type, pattern, returned_value, returned)) = identity else {
-        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+        return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
                 "selected callable did not form a canonical semantic result",
                 Some(provenance),
@@ -1898,7 +1905,7 @@ pub(crate) fn invoke_target_values(
         let source = migration.request.source_type();
         let same_type =
             same_type_core(semantic_world, source, result_type).map_err(|diagnostic| {
-                OrdinaryInvocationFailure::SelectedCoreBody {
+                OrdinaryInvocationFailure::SelectedImplementation {
                     diagnostic,
                     trace: trace.clone(),
                 }
@@ -1930,7 +1937,7 @@ pub(crate) fn invoke_target_values(
     if (selected.declared_result_class == DeclaredResultClass::CompleteType)
         != semantic_complete_type.is_some()
     {
-        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+        return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
                 "declared CompleteType result did not materialize an exact complete tau",
                 Some(provenance.clone()),
