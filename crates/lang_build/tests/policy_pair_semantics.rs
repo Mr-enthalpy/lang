@@ -625,8 +625,8 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
     let wpre = compute_wpre(
         WpreRoots {
             exported_symbols: vec!["f"],
-            materialized_results_of_exported_meta_functions: vec![],
-            parameter_dependencies_of_exported_meta_functions: vec![],
+            materialized_results_of_exported_callables: vec![],
+            parameter_dependencies_of_exported_callables: vec![],
         },
         |symbol| {
             if *symbol == "f" {
@@ -808,8 +808,8 @@ fn fixed_runtime_value_observation_exposes_only_static_pattern() {
 fn wpre_is_the_least_semantic_dependency_closure_of_export_roots() {
     let roots = WpreRoots {
         exported_symbols: vec!["api"],
-        materialized_results_of_exported_meta_functions: vec!["made"],
-        parameter_dependencies_of_exported_meta_functions: vec!["parameter"],
+        materialized_results_of_exported_callables: vec!["made"],
+        parameter_dependencies_of_exported_callables: vec!["parameter"],
     };
     let closure = compute_wpre(roots, |symbol| match *symbol {
         "api" => vec!["private-type"],

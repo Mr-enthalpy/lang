@@ -10,12 +10,11 @@ use std::{
 };
 
 use lang_build::{
-    prepare_meta_callable_candidate_with_declared_planes, ArgProductShape, BuildError,
-    BuildManifest, BuildSession, BuildWorkspace, CallableCandidateKind, CandidatePrepResult,
-    CandidatePreparationContext, CompilationWorld, CoreTypeProjection, NamespaceNodeId,
-    NormalizedCallSite, PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance,
-    SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload,
-    ToolchainGlobalSourceRoot,
+    prepare_callable_candidate_with_declared_planes, ArgProductShape, BuildError, BuildManifest,
+    BuildSession, BuildWorkspace, CandidatePrepResult, CandidatePreparationContext,
+    CompilationWorld, CoreTypeProjection, NamespaceNodeId, NormalizedCallSite, PackageBuildSpec,
+    ParameterShape, ProductMaterialRole, Provenance, SourceCategory, SourceRoot,
+    StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, ToolchainGlobalSourceRoot,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
@@ -60,7 +59,7 @@ pub fn numbered_type_lookup_fixture(scope: &'static str, label: u64) -> lang_bui
 
 /// Test-side candidate preparation from a fixture-declared symbol payload.
 ///
-/// The production spine supplies callable kind, primitive, and body-entry /
+/// The production spine retains the selected implementation and supplies body-entry /
 /// return-object planes from its own declared facts; tests read those planes
 /// from the payload material they constructed themselves and call the
 /// declared-planes entry directly. This is fixture bookkeeping, not a graph
@@ -71,26 +70,19 @@ pub fn prepare_candidate_from_fixture_symbol(
     parameter_shape: ParameterShape,
     context: CandidatePreparationContext,
 ) -> CandidatePrepResult {
-    let (callable_kind, callee_primitive, body_entry_policy, return_object_policy) =
-        match &callee.payload {
-            SymbolPayload::MetaFunction(mf) => (
-                CallableCandidateKind::MetaFunction,
-                mf.primitive,
-                mf.body_entry_policy.clone(),
-                mf.return_object_policy.clone(),
-            ),
-            SymbolPayload::FieldFunction(field) => (
-                CallableCandidateKind::FieldFunction,
-                None,
-                field.callable_policy.body_entry_policy.clone(),
-                field.callable_policy.return_object_policy.clone(),
-            ),
-            _ => panic!("fixture callee must carry a callable payload"),
-        };
-    prepare_meta_callable_candidate_with_declared_planes(
+    let (body_entry_policy, return_object_policy) = match &callee.payload {
+        SymbolPayload::Callable(mf) => (
+            mf.body_entry_policy.clone(),
+            mf.return_object_policy.clone(),
+        ),
+        SymbolPayload::FieldFunction(field) => (
+            field.callable_policy.body_entry_policy.clone(),
+            field.callable_policy.return_object_policy.clone(),
+        ),
+        _ => panic!("fixture callee must carry a callable payload"),
+    };
+    prepare_callable_candidate_with_declared_planes(
         callee,
-        callable_kind,
-        callee_primitive,
         body_entry_policy,
         return_object_policy,
         arg_product_shape,
@@ -600,7 +592,7 @@ impl AssociatedFamily {
                     )
                     .unwrap();
             } else {
-                receiver = Some(world.install_callable_member_value(
+                receiver = Some(world.install_callable_fixture(
                     namespace,
                     "receiver",
                     lang_build::SymbolId(900000),

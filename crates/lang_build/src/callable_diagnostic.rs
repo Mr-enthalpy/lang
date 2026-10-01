@@ -4,11 +4,11 @@
 //! Horizon visibility is not an execution-legality proof; this module does
 //! not infer body legality from the observation horizon.
 
-use lang_syntax::{NormClosureBody, NormDeleteBody};
+use lang_syntax::NormDeleteBody;
 
 use crate::model::{Diagnostic, DiagnosticSeverity, Provenance};
 // ---------------------------------------------------------------------------
-// Selected meta delete evaluation
+// Selected callable delete diagnostic
 // ---------------------------------------------------------------------------
 
 /// Strip the outer double-quote characters from a normalized string
@@ -39,11 +39,11 @@ fn strip_string_literal_payload(quoted: &str) -> String {
     result
 }
 
-/// Build a hard static diagnostic from a selected meta `Delete` body.
+/// Build the diagnostic for an ordinary selected `Delete` body.
 ///
-/// The diagnostic message carries the string payload with a `meta delete:`
+/// The diagnostic message carries the string payload with a `selected delete:`
 /// prefix. Non-string messages cannot reach this typed normalized node.
-pub fn selected_meta_delete_diagnostic(
+pub fn selected_callable_delete_diagnostic(
     delete: &NormDeleteBody,
     fallback_provenance: Provenance,
 ) -> Diagnostic {
@@ -51,51 +51,16 @@ pub fn selected_meta_delete_diagnostic(
     let Some(message) = delete.message.as_deref() else {
         return Diagnostic::new(
             DiagnosticSeverity::Error,
-            "meta delete: selected callable is deleted".to_string(),
+            "selected delete: selected callable is deleted".to_string(),
             Some(provenance),
         );
     };
     let message = strip_string_literal_payload(message);
     Diagnostic::new(
         DiagnosticSeverity::Error,
-        format!("meta delete: {message}"),
+        format!("selected delete: {message}"),
         Some(provenance),
     )
-}
-
-// ---------------------------------------------------------------------------
-// Selected meta body evaluation
-// ---------------------------------------------------------------------------
-
-/// Outcome of evaluating a selected meta closure body.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SelectedMetaBodyEvaluation {
-    /// The body is a `Block` — full meta evaluation is deferred.
-    DeferredBlock,
-    /// Compiler default implementation generation is deferred to the
-    /// callable's default rule.
-    Defaulted,
-    /// The body is a `Delete` — evaluation produces a static diagnostic.
-    DeleteDiagnostic(Diagnostic),
-}
-
-/// Evaluate a selected meta closure body.
-///
-/// - `Block` → `DeferredBlock` (full meta evaluation not yet implemented).
-/// - `Delete` → `DeleteDiagnostic` carrying the delete message.
-pub fn evaluate_selected_meta_closure_body(
-    body: &NormClosureBody,
-    fallback_provenance: Provenance,
-) -> SelectedMetaBodyEvaluation {
-    match body {
-        NormClosureBody::Block(_) | NormClosureBody::NamedBlock { .. } => {
-            SelectedMetaBodyEvaluation::DeferredBlock
-        }
-        NormClosureBody::Defaulted { .. } => SelectedMetaBodyEvaluation::Defaulted,
-        NormClosureBody::Delete(del) => SelectedMetaBodyEvaluation::DeleteDiagnostic(
-            selected_meta_delete_diagnostic(del, fallback_provenance),
-        ),
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +78,7 @@ impl DeleteOrigin for NormDeleteBody {
         match &self.origin {
             lang_syntax::NormOrigin::Source(span) => Provenance {
                 description: format!("delete body at {}:{}", span.line, span.column),
-                file: None,
+                file: fallback.file.clone(),
                 span: Some(*span),
             },
             _ => fallback.clone(),

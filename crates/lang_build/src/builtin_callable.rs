@@ -1,17 +1,16 @@
 use lang_syntax::{NormExpr, NormProduct, NormProductElem};
 
 use crate::{
-    meta_candidate::{
-        prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
-        CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
-        ParameterShape,
-    },
-    meta_invocation::{
-        compute_struct_construction_material_id, MetaInvocationInput, StructConstructionMaterial,
+    callable_body::{
+        compute_struct_construction_material_id, BuiltinBodyInput, StructConstructionMaterial,
         StructFieldConstructionMaterial,
     },
+    candidate_preparation::{
+        prepare_callable_candidate_with_declared_planes, CandidatePrepDeferredReason,
+        CandidatePrepResult, CandidatePreparationContext, ParameterShape,
+    },
     model::{
-        CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, FieldObject,
+        BuiltinCallableImpl, CallablePolicyViews, CoreTypeProjection, Diagnostic, FieldObject,
         FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
         SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
         TypeField,
@@ -42,23 +41,23 @@ pub(crate) struct StructProjectionInstall {
 /// Primitive-explicit variant for the canonical A-stage.
 ///
 /// The core primitive identity comes from the semantic
-/// `OrdinaryCallEntry.core_primitive`, so the invocation spine never reads
-/// the graph `SymbolPayload::MetaFunction` to enter a core body.
+/// `OrdinaryCallEntry`'s single implementation coordinate, so the invocation spine never reads
+/// the graph `SymbolPayload::Callable` to enter a core body.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
+pub(crate) fn prepare_resolved_builtin_call(
     callee: &SymbolObject,
-    primitive: CoreMetaFunction,
+    primitive: BuiltinCallableImpl,
     site: &NormalizedCallSite,
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     horizon: ObservationHorizon,
     provenance: Provenance,
-) -> Result<MetaInvocationInput, BuildError> {
+) -> Result<BuiltinBodyInput, BuildError> {
     let primitive_name = match primitive {
-        CoreMetaFunction::Struct => "struct",
-        CoreMetaFunction::Assert => "assert",
-        CoreMetaFunction::Verify(_) => "verify",
-        CoreMetaFunction::IdentityType => "IdentityType",
+        BuiltinCallableImpl::Struct => "struct",
+        BuiltinCallableImpl::Assert => "assert",
+        BuiltinCallableImpl::Verify(_) => "verify",
+        BuiltinCallableImpl::IdentityType => "IdentityType",
     };
 
     let arg_product_shape =
@@ -66,7 +65,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
     let mut unresolved_type_names = Vec::new();
     let mut struct_decoded_pattern: Option<crate::struct_decoder::DecodedStructPattern> = None;
     let (classified_shape, parameter_shape) = match primitive {
-        CoreMetaFunction::IdentityType => {
+        BuiltinCallableImpl::IdentityType => {
             let report = classify_type_arguments_env_with_report(
                 &arg_product_shape,
                 type_env,
@@ -80,7 +79,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
                 ))),
             )
         }
-        CoreMetaFunction::Struct => {
+        BuiltinCallableImpl::Struct => {
             validate_struct_source_product(&site.source_product)?;
             let source_arg = NormExpr::Product(site.source_product.clone());
             let decoded_shape = crate::struct_decoder::decode_struct_type_pattern_expr(
@@ -106,13 +105,13 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
                 ),
             )
         }
-        CoreMetaFunction::Assert => {
+        BuiltinCallableImpl::Assert => {
             return Err(BuildError::single(Diagnostic::hard_error(
                 "meta hard error: direct source-level `assert` expansion is not implemented",
                 Some(provenance),
             )));
         }
-        CoreMetaFunction::Verify(_) => {
+        BuiltinCallableImpl::Verify(_) => {
             return Err(BuildError::single(Diagnostic::hard_error(
                 "meta hard error: source verification operations cannot be used as initializers",
                 Some(provenance),
@@ -122,13 +121,11 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
 
     // The core body-entry / return-object planes come
     // from the primitive's declared facts, not from re-reading the graph
-    // `SymbolPayload::MetaFunction` payload on the invocation spine.
+    // `SymbolPayload::Callable` payload on the invocation spine.
     let (body_entry_policy, return_object_policy) =
         crate::core::core_primitive_callable_planes(primitive);
-    let candidate = match prepare_meta_callable_candidate_with_declared_planes(
+    let candidate = match prepare_callable_candidate_with_declared_planes(
         callee,
-        CallableCandidateKind::MetaFunction,
-        Some(primitive),
         body_entry_policy,
         return_object_policy,
         classified_shape,
@@ -166,7 +163,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
             return Err(BuildError::single(diagnostic));
         }
     };
-    let mut invocation_input = MetaInvocationInput::new(candidate, provenance);
+    let mut invocation_input = BuiltinBodyInput::new(candidate, primitive, provenance);
     invocation_input.struct_decoded_pattern = struct_decoded_pattern;
     Ok(invocation_input)
 }

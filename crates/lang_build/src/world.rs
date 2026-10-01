@@ -6,14 +6,14 @@ use lang_syntax::{
 };
 
 use crate::{
+    builtin_callable::expand_struct_construction_material,
     core::{core_declared_pair, install_core_bootstrap},
     discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
     manifest::{BuildManifest, NamespaceMount},
-    meta::expand_struct_construction_material,
     model::{
-        CoreTypeProjection, Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceNode,
+        CallableDeclaration, CoreTypeProjection, Diagnostic, DiagnosticSeverity, NamespaceNode,
         NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
-        SourceCallableObject, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
+        SourceCallableSyntax, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
     },
     policy_pair::{
         declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
@@ -1418,7 +1418,7 @@ impl CompilationWorld {
                             binder_name,
                             namespace_declaration,
                             &selected,
-                            crate::MetaExecutionMaterial::StructConstructionMaterial(material),
+                            crate::CallableBodyMaterial::StructConstructionMaterial(material),
                             Some(complete_type),
                             provenance,
                         )
@@ -1472,13 +1472,13 @@ impl CompilationWorld {
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        value: crate::MetaExecutionMaterial,
+        value: crate::CallableBodyMaterial,
         semantic_complete_type: Option<&crate::CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
         let (material, complete_type) = match (value, semantic_complete_type) {
             (
-                crate::MetaExecutionMaterial::StructConstructionMaterial(material),
+                crate::CallableBodyMaterial::StructConstructionMaterial(material),
                 Some(complete_type),
             ) => (material, complete_type),
             (material, _) => {
@@ -2738,7 +2738,7 @@ fn source_callable_delta(
     let mut delta = snapshot.empty_delta();
     let symbol_id = delta.allocate_symbol_id();
     // Return targets are validated during source harvesting. Bound return
-    // events are not stored in SourceCallableObject; execution wiring remains
+    // events are not stored in SourceCallableSyntax; execution wiring remains
     // outside this source-harvesting boundary.
     let return_target_report = elaborate_return_targets_in_returnable_closure(
         closure,
@@ -2756,7 +2756,7 @@ fn source_callable_delta(
     let mut symbol = SymbolObject::new(
         symbol_id,
         name,
-        SymbolKind::MetaFunction,
+        SymbolKind::Callable,
         SourceCategory::DeclaredSymbol,
         Some(parent),
         provenance.clone(),
@@ -2764,10 +2764,9 @@ fn source_callable_delta(
     symbol.policy_view = Some(derived_function_view.clone());
     symbol.visibility_metadata.namespace_visibility = namespace_declaration.visibility;
     symbol.visibility_metadata.export_root = namespace_declaration.export_root;
-    symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
+    symbol.payload = SymbolPayload::Callable(CallableDeclaration {
         function_symbol_id: symbol_id,
-        primitive: None,
-        source_callable: Some(SourceCallableObject {
+        implementation: crate::CallableImplementation::Source(SourceCallableSyntax {
             closure: closure.clone(),
             provenance: provenance.clone(),
         }),
@@ -2951,7 +2950,7 @@ fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExp
         ResolveExpectation::NamespaceSubspace => object.kind == SymbolKind::Namespace,
         ResolveExpectation::NamespaceCapableParent => object.namespace_node().is_some(),
         ResolveExpectation::CoreTypeProjection => object.kind == SymbolKind::CompleteTypeProjection,
-        ResolveExpectation::MetaFunction => object.kind == SymbolKind::MetaFunction,
+        ResolveExpectation::Callable => object.kind == SymbolKind::Callable,
         ResolveExpectation::FieldFunction => object.kind == SymbolKind::FieldFunction,
     }
 }
@@ -3046,7 +3045,7 @@ mod initializer_residual_boundary_tests {
         // install the ordinary result tau_C of a closure expression.
         world
             .semantic_world
-            .install_callable_member_value(
+            .install_callable_fixture(
                 world.package_root_node(),
                 "f",
                 crate::SymbolId(900000),

@@ -1,108 +1,39 @@
-use lang_build::meta_body::{
-    evaluate_selected_meta_closure_body, selected_meta_delete_diagnostic,
-    SelectedMetaBodyEvaluation,
-};
-use lang_build::{DiagnosticSeverity, Provenance};
-use lang_syntax::{NormClosureBody, NormDeleteBody, NormOrigin, Span};
+use lang_build::{selected_callable_delete_diagnostic, DiagnosticSeverity, Provenance};
+use lang_syntax::{NormDeleteBody, NormOrigin, Span};
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn provenance(desc: &str) -> Provenance {
-    Provenance::new(desc)
+#[test]
+fn selected_delete_keeps_message_and_source_provenance() {
+    let span = Span::new(3, 9, 2, 4);
+    let body = NormDeleteBody {
+        message: Some("\"cannot combine bare if\"".into()),
+        origin: NormOrigin::Source(span),
+    };
+    let mut provenance = Provenance::new("selected callable");
+    provenance.file = Some("body.lang".into());
+    let diagnostic = selected_callable_delete_diagnostic(&body, provenance);
+    assert_eq!(diagnostic.severity, DiagnosticSeverity::Error);
+    assert_eq!(
+        diagnostic.message,
+        "selected delete: cannot combine bare if"
+    );
+    let origin = diagnostic.provenance.unwrap();
+    assert_eq!(origin.span, Some(span));
+    assert_eq!(
+        origin.file.as_deref(),
+        Some(std::path::Path::new("body.lang"))
+    );
 }
 
-fn block_body() -> NormClosureBody {
-    NormClosureBody::Block(lang_syntax::NormProgram {
-        forms: vec![],
-        origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
-    })
-}
-
-fn delete_body(msg: &str) -> NormClosureBody {
-    NormClosureBody::Delete(NormDeleteBody {
-        message: Some(format!("\"{msg}\"")),
-        origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
-    })
-}
-
-fn bare_delete_body() -> NormClosureBody {
-    NormClosureBody::Delete(NormDeleteBody {
+#[test]
+fn selected_bare_delete_rejects_without_producing_material() {
+    let body = NormDeleteBody {
         message: None,
         origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
-    })
-}
-
-fn defaulted_body() -> NormClosureBody {
-    NormClosureBody::Defaulted {
-        origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Selected meta evaluation tests
-// ---------------------------------------------------------------------------
-
-#[test]
-fn delete_body_produces_static_diagnostic_when_selected_meta_body_is_evaluated() {
-    let body = delete_body("cannot combine bare if");
-    let result = evaluate_selected_meta_closure_body(&body, provenance("t"));
-    match result {
-        SelectedMetaBodyEvaluation::DeleteDiagnostic(diag) => {
-            assert_eq!(diag.severity, DiagnosticSeverity::Error);
-            assert!(diag.message.contains("meta delete:"));
-            assert!(diag.message.contains("cannot combine bare if"));
-        }
-        _ => panic!("expected DeleteDiagnostic"),
-    }
-}
-
-#[test]
-fn delete_body_diagnostic_uses_string_literal_message() {
-    let body = delete_body("bare if residual");
-    let diag = selected_meta_delete_diagnostic(
-        match &body {
-            NormClosureBody::Delete(d) => d,
-            _ => panic!("expected Delete"),
-        },
-        provenance("t"),
-    );
-    assert!(diag.message.contains("bare if residual"));
-}
-
-#[test]
-fn bare_delete_body_produces_a_specific_static_rejection() {
-    let result = evaluate_selected_meta_closure_body(&bare_delete_body(), provenance("t"));
-    let SelectedMetaBodyEvaluation::DeleteDiagnostic(diag) = result else {
-        panic!("expected bare delete diagnostic");
     };
-    assert!(diag.message.contains("selected callable is deleted"));
-}
-
-#[test]
-fn defaulted_body_is_preserved_for_compiler_generation() {
+    let diagnostic = selected_callable_delete_diagnostic(&body, Provenance::new("callable"));
+    assert_eq!(diagnostic.severity, DiagnosticSeverity::Error);
     assert_eq!(
-        evaluate_selected_meta_closure_body(&defaulted_body(), provenance("t")),
-        SelectedMetaBodyEvaluation::Defaulted
+        diagnostic.message,
+        "selected delete: selected callable is deleted"
     );
-}
-
-#[test]
-fn delete_body_does_not_produce_value() {
-    // Delete is not a MetaExecutionMaterial variant — it produces a
-    // Diagnostic. The evaluate function proves this.
-    let body = delete_body("msg");
-    let result = evaluate_selected_meta_closure_body(&body, provenance("t"));
-    assert!(matches!(
-        result,
-        SelectedMetaBodyEvaluation::DeleteDiagnostic(_)
-    ));
-}
-
-#[test]
-fn block_body_deferred_by_selected_meta_evaluation() {
-    let body = block_body();
-    let result = evaluate_selected_meta_closure_body(&body, provenance("t"));
-    assert_eq!(result, SelectedMetaBodyEvaluation::DeferredBlock);
 }

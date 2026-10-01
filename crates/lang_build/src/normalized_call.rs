@@ -8,7 +8,7 @@
 //! infer type identities.
 //!
 //! The current implementation boundary lives in `lang_build::normalized_call`,
-//! `lang_build::product_shape`, and `lang_build::meta_candidate`. These are
+//! `lang_build::product_shape`, and `lang_build::candidate_preparation`. These are
 //! substrate boundaries, not full implementations of the future systems.
 
 use lang_syntax::{NormExpr, NormProduct};

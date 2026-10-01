@@ -44,9 +44,16 @@ Same-spelled source declarations do not establish contribution authority. The
 source closure-to-tau formation and common-snapshot contribution consumers are
 unavailable. A named source closure declaration fails before installing any
 resident or graph callable record; it cannot bind c_C in place of tau_C.
-The explicit ordinary callable-member substrate builder is not a source let
+`install_callable_fixture` is a test substrate builder, not a source let
 consumer. Callable registration and selection tests remain substrate evidence, not proof of complete
 source closure formation or general body execution.
+
+Callable source syntax and declaration records are distinct from Object identity.
+Declaration, call-entry and prepared-selection carriers retain one implementation
+variant each, with stage/Policy facts independent of implementation kind.
+Builtin body handling returns private material to the ordinary declared-result
+consumer. Source completion remains unavailable; no separate meta block evaluator
+supplies a substitute result. Preparation supplies no Ready or common commit proof.
 
 ## Shared action and lifecycle handoff
 

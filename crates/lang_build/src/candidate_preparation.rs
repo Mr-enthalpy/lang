@@ -1,8 +1,8 @@
-//! Candidate preparation boundary before formal meta invocation.
+//! Argument-shape and observation checks for ordinary callable preparation.
 //!
 //! This module holds the candidate-preparation pipeline that sits between
-//! product/argument shaping and formal meta invocation. It checks arity and
-//! body-entry observation visibility but does **not** execute meta functions,
+//! product/argument shaping and selected implementation handling. It checks arity and
+//! body-entry observation visibility but does **not** execute callable bodies,
 //! resolve overloads, or perform type inference.
 //!
 //! Three-segment separation:
@@ -16,7 +16,7 @@
 use crate::{
     body_entry_visible_at,
     identity::TypeValueId,
-    model::{CoreMetaFunction, Diagnostic, Provenance, SymbolId, SymbolObject},
+    model::{Diagnostic, Provenance, SymbolId, SymbolObject},
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
     ObservationHorizon, PolicyView,
 };
@@ -94,18 +94,10 @@ impl CandidatePolicyPlanes {
 pub struct PreparedCallableCandidate {
     pub callee_symbol_id: SymbolId,
     pub callee_name: String,
-    pub callee_primitive: Option<CoreMetaFunction>,
-    pub callable_kind: CallableCandidateKind,
     pub arg_product_shape: ArgProductShape,
     pub parameter_shape: ParameterShape,
     pub policy_planes: CandidatePolicyPlanes,
     pub provenance: Provenance,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CallableCandidateKind {
-    MetaFunction,
-    FieldFunction,
 }
 
 /// Prepared argument-shape material consumed by primitive execution.
@@ -197,7 +189,7 @@ pub enum CanonicalArgAtomKind {
     Unsupported,
 }
 
-/// Candidate preparation result before formal meta invocation.
+/// Candidate preparation result before selected implementation handling.
 ///
 /// `Applicable` means the candidate passed arity and body-entry visibility checks.
 /// Visibility supplies neither execution legality nor readiness evidence. It is
@@ -205,7 +197,7 @@ pub enum CanonicalArgAtomKind {
 /// does not produce an `InvocationResult` or namespace installation material,
 /// `NamespaceDelta`.
 ///
-/// `Deferred` means later pattern/type/policy/meta-invocation machinery must
+/// `Deferred` means the corresponding pattern/type/policy consumer must
 /// decide. It is not silent success, a scheduling queue, or runtime
 /// residualization.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -229,15 +221,13 @@ pub enum CandidatePrepDeferredReason {
 /// Candidate preparation with declared policy planes.
 ///
 /// This is the only candidate-preparation entry. The canonical spine supplies
-/// the callable kind, primitive identity, and body-entry/return-object planes
+/// the body-entry/return-object planes
 /// from its own declared facts (the core bootstrap roster or the semantic call
 /// entry); no `SymbolPayload` is read here. The callee `SymbolObject` remains
 /// identity/visibility material.
 #[allow(clippy::too_many_arguments)]
-pub fn prepare_meta_callable_candidate_with_declared_planes(
+pub fn prepare_callable_candidate_with_declared_planes(
     callee: &SymbolObject,
-    callable_kind: CallableCandidateKind,
-    callee_primitive: Option<CoreMetaFunction>,
     body_entry_policy: PolicyView,
     return_object_policy: PolicyView,
     arg_product_shape: ArgProductShape,
@@ -253,8 +243,6 @@ pub fn prepare_meta_callable_candidate_with_declared_planes(
     let candidate = PreparedCallableCandidate {
         callee_symbol_id: callee.id,
         callee_name: callee.name.clone(),
-        callee_primitive,
-        callable_kind,
         arg_product_shape,
         parameter_shape,
         policy_planes,

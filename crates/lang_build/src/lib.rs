@@ -4,6 +4,10 @@
 //! normalized source fragments, but does not add parser or normalizer rules.
 
 pub mod build;
+mod builtin_callable;
+mod callable_body;
+pub mod callable_diagnostic;
+mod candidate_preparation;
 pub mod canonical_value;
 pub mod control_flow_end;
 pub mod core;
@@ -16,10 +20,6 @@ pub mod invocation_result;
 pub mod lifecycle;
 pub mod literal_semantics;
 pub mod manifest;
-mod meta;
-pub mod meta_body;
-mod meta_candidate;
-mod meta_invocation;
 mod meta_key;
 pub mod model;
 pub mod normalized_call;
@@ -50,6 +50,15 @@ pub use build::{
     DependencyBuildMetadata, ExplicitMountBuildMetadata, PackageBuildArtifact,
     PackageBuildMetadata, PackageBuildSpec, SourceRootMetadata, SourceUnitBuildMetadata,
     StaticDependencySpec, SyntheticSymbolBuildMetadata,
+};
+pub(crate) use callable_body::{BuiltinBodyInput, BuiltinBodyResult, CallableBodyMaterial};
+pub use callable_body::{StructConstructionMaterial, StructConstructionMaterialId};
+pub use callable_diagnostic::selected_callable_delete_diagnostic;
+pub use candidate_preparation::{
+    prepare_callable_candidate_with_declared_planes, CandidatePolicyPlanes,
+    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, ParameterArgRequirement,
+    ParameterShape, PreparedCallableCandidate,
 };
 pub use canonical_value::{
     canonical_literal_content, canonical_literal_norm, expand_extraction_navigation,
@@ -96,26 +105,12 @@ pub use literal_semantics::{
     NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
-pub use meta_body::{
-    evaluate_selected_meta_closure_body, selected_meta_delete_diagnostic,
-    SelectedMetaBodyEvaluation,
-};
-pub use meta_candidate::{
-    prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
-    CandidatePolicyPlanes, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
-    ParameterArgRequirement, ParameterShape, PreparedCallableCandidate,
-};
-pub(crate) use meta_invocation::{
-    MetaExecutionMaterial, MetaInvocationInput, MetaPrimitiveExecution,
-};
-pub use meta_invocation::{StructConstructionMaterial, StructConstructionMaterialId};
 pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};
 pub use model::{
-    CallablePolicyViews, ChildBucket, ChildLink, ChildNameRole, CoreMetaFunction,
-    CoreTypeProjection, Diagnostic, DiagnosticSeverity, FieldObject, FieldProjection,
-    MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
-    ResolverCode, SemanticNameDelta, SourceCallableObject, SourceCategory, SymbolId, SymbolKind,
+    BuiltinCallableImpl, CallableDeclaration, CallableImplementation, CallablePolicyViews,
+    ChildBucket, ChildLink, ChildNameRole, CoreTypeProjection, Diagnostic, DiagnosticSeverity,
+    FieldObject, FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
+    ResolverCode, SemanticNameDelta, SourceCallableSyntax, SourceCategory, SymbolId, SymbolKind,
     SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, VerificationPrimitive,
     VisibilityMetadata,
 };
@@ -208,15 +203,16 @@ pub use semantic_owner::{
 pub use semantic_world::{
     canonical_function_object_view, AmbientTypeBinder, BindConflict, BorrowFormationFailure,
     BorrowKind, BorrowOperand, BorrowView, BorrowViewId, CompleteTypeValue, ConstructionAuthority,
-    ConstructionEvaluationContext, ImmutableTypeCallSpace, MemberCreationProof, MetaInstanceRoot,
-    MetaInstanceRootKey, ObjectPlace, ObjectPlaceId, OpenHereFailure, OpenHereProof,
-    OrdinaryCallEntry, OrdinaryCandidateRole, OwnerStrategy, PatternHostMember, PatternValueId,
-    PlaceMutationFailure, ProjectionSelector, ProjectionSlot, ProjectionSlotContents,
-    ProjectionSlotIdentity, PurePMember, RegisteredCallable, ResidentGeneration, ResidentIdentity,
-    ResolvedExtractionTarget, ResolvedPatternScope, ResolvedPatternScopeId,
-    ResolvedSemanticNavigation, SemanticObjectId, SemanticPatternValue, SemanticSymbolCell,
-    SemanticTypeValue, SemanticVal2Snapshot, SemanticValueObject, SemanticValuePayload,
-    SemanticWorld, StableBorrowTarget, TypeMemberSnapshotEntry, WritableContext,
+    ConstructionEvaluationContext, ImmutableTypeCallSpace, MemberCreationProof, MetaInstanceId,
+    MetaInstanceRoot, MetaInstanceRootKey, MetaInstanceState, MetaStructResultState, ObjectPlace,
+    ObjectPlaceId, OpenHereFailure, OpenHereProof, OrdinaryCallEntry, OrdinaryCandidateRole,
+    OwnerStrategy, PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector,
+    ProjectionSlot, ProjectionSlotContents, ProjectionSlotIdentity, PurePMember,
+    RegisteredCallable, ResidentGeneration, ResidentIdentity, ResolvedExtractionTarget,
+    ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId,
+    SemanticPatternValue, SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot,
+    SemanticValueObject, SemanticValuePayload, SemanticWorld, StableBorrowTarget,
+    TypeMemberSnapshotEntry, WritableContext,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{

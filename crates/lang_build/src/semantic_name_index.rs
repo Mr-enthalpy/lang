@@ -450,7 +450,7 @@ pub enum ResolveExpectation {
     NamespaceSubspace,
     NamespaceCapableParent,
     CoreTypeProjection,
-    MetaFunction,
+    Callable,
     FieldFunction,
 }
 
@@ -468,7 +468,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// exist for the same name the lookup fails with an ambiguity diagnostic.
     ///
     /// Most semantic passes should use [`resolve_with_expectation`] or one of
-    /// the typed helpers (`resolve_complete_type_projection`, `resolve_meta_function`, …)
+    /// the typed helpers (`resolve_complete_type_projection`, `resolve_callable`, …)
     /// instead of plain `resolve`, because plain `resolve` rejects role
     /// coexistence that may be semantically valid.
     pub fn resolve(
@@ -491,7 +491,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// | `NamespaceSubspace` | Terminal in the namespace-subspace role |
     /// | `NamespaceCapableParent` | Terminal must be a namespace-capable symbol (object with `namespace_node` or namespace-subspace) |
     /// | `CoreTypeProjection` | Terminal with kind `Type` |
-    /// | `MetaFunction` | Terminal with kind `MetaFunction` |
+    /// | `Callable` | Terminal with kind `Callable` |
     /// | `FieldFunction` | Terminal with kind `FieldFunction` |
     ///
     /// Intermediate path components always resolve as
@@ -624,19 +624,15 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         )
     }
 
-    /// Resolve a terminal symbol whose kind is `MetaFunction`.
+    /// Resolve a terminal symbol whose kind is `Callable`.
     ///
-    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::MetaFunction)`.
-    pub fn resolve_meta_function(
+    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::Callable)`.
+    pub fn resolve_callable(
         &self,
         source_order_path: &str,
         context: &ResolverContext,
     ) -> Result<SymbolObject, Diagnostic> {
-        self.resolve_str_with_expectation(
-            source_order_path,
-            context,
-            ResolveExpectation::MetaFunction,
-        )
+        self.resolve_str_with_expectation(source_order_path, context, ResolveExpectation::Callable)
     }
 
     /// Resolve a terminal symbol whose kind is `FieldFunction`.
@@ -928,9 +924,9 @@ fn select_symbol_from_bucket<'symbols>(
                 symbol.kind == SymbolKind::CompleteTypeProjection
             })
         }
-        ResolveExpectation::MetaFunction => {
+        ResolveExpectation::Callable => {
             select_unique_object_symbol(symbols, bucket, name, |symbol| {
-                symbol.kind == SymbolKind::MetaFunction
+                symbol.kind == SymbolKind::Callable
             })
         }
         ResolveExpectation::FieldFunction => {
@@ -976,7 +972,7 @@ fn object_symbols_are_overload_compatible(
     matches!(
         (existing, incoming),
         (Some(left), Some(right))
-            if left.kind == SymbolKind::MetaFunction && right.kind == SymbolKind::MetaFunction
+            if left.kind == SymbolKind::Callable && right.kind == SymbolKind::Callable
     )
 }
 

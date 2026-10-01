@@ -312,7 +312,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
     };
     let view = lang_build::declared_policy_view(Stage::Compile, PolicyMode::Plain);
     let builtin_member = world
-        .install_callable_member_value(
+        .install_callable_fixture(
             NamespaceNodeId(0),
             "call_member",
             SymbolId(99900),
@@ -428,7 +428,7 @@ fn unit_is_terminal_leaf() {
         panic!("callable fixture initializer is a closure");
     };
     let registered = world
-        .install_callable_member_value(
+        .install_callable_fixture(
             NamespaceNodeId(0),
             "f",
             SymbolId(90),

@@ -97,13 +97,13 @@ fn typed_resolver_helpers_select_expected_kind() {
     assert_eq!(type_symbol.kind, SymbolKind::CompleteTypeProjection);
 
     let meta_symbol = capability
-        .resolve_meta_function("struct", &context)
+        .resolve_callable("struct", &context)
         .expect("struct is a meta function");
-    assert_eq!(meta_symbol.kind, SymbolKind::MetaFunction);
+    assert_eq!(meta_symbol.kind, SymbolKind::Callable);
 
     let error = capability
         .resolve_complete_type_projection("struct", &context)
-        .expect_err("struct is a MetaFunction, not a Type");
+        .expect_err("struct is a Callable, not a Type");
     assert!(error.message.contains("resolver error"));
 }
 

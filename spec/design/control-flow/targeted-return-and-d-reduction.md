@@ -290,7 +290,7 @@ the result Pattern from `name`.
 
 The build-layer source callable hook currently runs this pass as validation.
 It rejects malformed return targets but does not store bound events in
-`SourceCallableObject`; later body evaluators may re-run target binding when
+`SourceCallableSyntax`; later body evaluators may re-run target binding when
 they need the bound return-event stream for completion/result semantics.
 
 Diagnostics are structured:

@@ -7,10 +7,10 @@ use lang_syntax::{
 };
 
 use crate::{
-    meta_body::selected_meta_delete_diagnostic,
-    meta_invocation::MetaExecutionMaterial,
+    callable_body::CallableBodyMaterial,
+    callable_diagnostic::selected_callable_delete_diagnostic,
     model::{
-        Diagnostic, DiagnosticSeverity, Provenance, ResolverCode, SourceCallableObject,
+        Diagnostic, DiagnosticSeverity, Provenance, ResolverCode, SourceCallableSyntax,
         SymbolObject,
     },
     overload_pattern::{OverloadArgShape, SpecificityTuple},
@@ -33,7 +33,7 @@ pub enum VisibilityView {
 #[derive(Clone, Debug)]
 pub(crate) struct SelectedSourceBody {
     pub(crate) symbol: SymbolObject,
-    pub(crate) source_callable: SourceCallableObject,
+    pub(crate) source_callable: SourceCallableSyntax,
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
 }
@@ -46,7 +46,7 @@ pub struct SourceBodyEvaluationFailure {
 #[derive(Clone, Debug)]
 pub(crate) struct ApplicableCandidate {
     pub(crate) symbol: SymbolObject,
-    pub(crate) source_callable: SourceCallableObject,
+    pub(crate) source_callable: SourceCallableSyntax,
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub(crate) specificity: SpecificityTuple,
@@ -76,7 +76,7 @@ pub(crate) fn applicable_candidate_from_closure(
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
     applicable_candidate_from_source_callable(
         symbol,
-        SourceCallableObject {
+        SourceCallableSyntax {
             closure: closure.clone(),
             provenance: provenance.clone(),
         },
@@ -88,7 +88,7 @@ pub(crate) fn applicable_candidate_from_closure(
 
 fn applicable_candidate_from_source_callable(
     symbol: &SymbolObject,
-    source_callable: SourceCallableObject,
+    source_callable: SourceCallableSyntax,
     args: &[OverloadArgShape],
     callable_owner: SemanticOwnerId,
     resolve_named_pattern: Option<&dyn Fn(&str) -> Option<NamedPatternObservation>>,
@@ -276,10 +276,10 @@ pub(crate) fn evaluate_selected_source_body(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
-) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
+) -> Result<CallableBodyMaterial, SourceBodyEvaluationFailure> {
     match &selected.source_callable.closure.body {
         NormClosureBody::Delete(delete) => {
-            let diagnostic = selected_meta_delete_diagnostic(
+            let diagnostic = selected_callable_delete_diagnostic(
                 delete,
                 selected.source_callable.provenance.clone(),
             )
@@ -361,7 +361,7 @@ fn evaluate_block_body(
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
     program: &lang_syntax::NormProgram,
-) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
+) -> Result<CallableBodyMaterial, SourceBodyEvaluationFailure> {
     // Validate connected local forms without inventing expression completion.
     // Shared continuation execution must supply UnitDiscard and tail inference.
     let mut local_names = BTreeSet::new();

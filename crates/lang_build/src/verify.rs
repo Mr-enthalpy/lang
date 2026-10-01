@@ -2,7 +2,7 @@ use lang_syntax::{NormExpr, NormForm, NormNavComponent, NormOrigin, NormProductE
 
 use crate::{
     model::{
-        CoreMetaFunction, Diagnostic, FieldProjection, NamespaceNodeId, NamespaceNodeKind,
+        BuiltinCallableImpl, Diagnostic, FieldProjection, NamespaceNodeId, NamespaceNodeKind,
         Provenance, ResolverCode, SymbolKind, SymbolObject, SymbolPayload, VerificationPrimitive,
     },
     semantic_name_index::{BuildError, ResolverContext},
@@ -130,16 +130,18 @@ impl VerificationInvocation {
                 }
             };
 
-        let SymbolPayload::MetaFunction(meta_function) = &operation_symbol.payload else {
+        let SymbolPayload::Callable(callable) = &operation_symbol.payload else {
             return Some(Err(source_verification_error(
                 &operation_origin,
                 format!(
-                    "verification operation `{}` has no meta-function payload",
+                    "verification operation `{}` has no callable declaration payload",
                     operation_path.source_order_display()
                 ),
             )));
         };
-        let Some(CoreMetaFunction::Verify(primitive)) = meta_function.primitive else {
+        let crate::CallableImplementation::Builtin(BuiltinCallableImpl::Verify(primitive)) =
+            callable.implementation
+        else {
             return Some(Err(source_verification_error(
                 &operation_origin,
                 format!(
@@ -558,11 +560,11 @@ impl VerificationInvocation {
             (SymbolPayload::FieldFunction(field), CallablePolicyPlane::Return) => {
                 &field.callable_policy.return_object_policy
             }
-            (SymbolPayload::MetaFunction(meta_function), CallablePolicyPlane::BodyEntry) => {
-                &meta_function.body_entry_policy
+            (SymbolPayload::Callable(callable), CallablePolicyPlane::BodyEntry) => {
+                &callable.body_entry_policy
             }
-            (SymbolPayload::MetaFunction(meta_function), CallablePolicyPlane::Return) => {
-                &meta_function.return_object_policy
+            (SymbolPayload::Callable(callable), CallablePolicyPlane::Return) => {
+                &callable.return_object_policy
             }
             _ => {
                 return Err(self.error(format!(
@@ -874,7 +876,7 @@ fn resolve_callable_symbol(
     let symbol = resolve_any_role(world, context, path)?;
     if matches!(
         symbol.kind,
-        SymbolKind::FieldFunction | SymbolKind::MetaFunction
+        SymbolKind::FieldFunction | SymbolKind::Callable
     ) {
         Ok(symbol)
     } else {
@@ -1015,7 +1017,7 @@ fn parse_symbol_kind(name: &str) -> Option<SymbolKind> {
     match name {
         "namespace" => Some(SymbolKind::Namespace),
         "type" => Some(SymbolKind::CompleteTypeProjection),
-        "meta_function" => Some(SymbolKind::MetaFunction),
+        "callable" => Some(SymbolKind::Callable),
         "field_function" => Some(SymbolKind::FieldFunction),
         "object" => Some(SymbolKind::Object),
         _ => None,
@@ -1026,7 +1028,7 @@ fn symbol_kind_label(kind: SymbolKind) -> &'static str {
     match kind {
         SymbolKind::Namespace => "namespace",
         SymbolKind::CompleteTypeProjection => "type",
-        SymbolKind::MetaFunction => "meta_function",
+        SymbolKind::Callable => "callable",
         SymbolKind::FieldFunction => "field_function",
         SymbolKind::Object => "object",
     }
@@ -1103,7 +1105,7 @@ mod tests {
     use super::*;
     use crate::{
         declared_policy_view,
-        model::{MetaFunctionObject, NamespaceNode, SourceCategory},
+        model::{CallableDeclaration, NamespaceNode, SourceCategory},
         semantic_name_index::{ResolverContext, SemanticNameIndex},
         PolicyMode,
     };
@@ -1140,17 +1142,18 @@ mod tests {
         let mut operation = SymbolObject::new(
             operation_id,
             "exists",
-            SymbolKind::MetaFunction,
+            SymbolKind::Callable,
             SourceCategory::CoreBootstrap,
             Some(verify_node),
             Provenance::new("runtime-only verify operation"),
         );
         let runtime_view = declared_policy_view(Stage::Runtime, PolicyMode::Plain);
         operation.policy_view = Some(runtime_view.clone());
-        operation.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
+        operation.payload = SymbolPayload::Callable(CallableDeclaration {
             function_symbol_id: operation_id,
-            primitive: Some(CoreMetaFunction::Verify(VerificationPrimitive::Exists)),
-            source_callable: None,
+            implementation: crate::CallableImplementation::Builtin(BuiltinCallableImpl::Verify(
+                VerificationPrimitive::Exists,
+            )),
             function_policy: runtime_view.clone(),
             body_entry_policy: runtime_view.clone(),
             return_object_policy: runtime_view,
