@@ -614,8 +614,9 @@ impl SemanticSymbolCell {
     }
 }
 
+/// Record of a semantic value and its owning Object identity.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SemanticValueObject {
+pub struct SemanticValueRecord {
     pub id: SemanticValueId,
     /// The Object carrying this value's Val1/Pattern/owned-Val2 coordinates.
     pub object: SemanticObjectId,
@@ -628,7 +629,7 @@ pub struct SemanticValueObject {
     pub provenance: Provenance,
 }
 
-impl SemanticValueObject {
+impl SemanticValueRecord {
     pub fn policy_view(&self) -> PolicyView {
         PolicyView {
             pair: self.policy.clone(),
@@ -1116,7 +1117,7 @@ pub struct SemanticWorld {
     local_symbol_counters: BTreeMap<SemanticOwnerId, u64>,
     local_pattern_root_counters: BTreeMap<SemanticOwnerId, u32>,
     symbols: BTreeMap<SemanticSymbolIdentity, SemanticSymbolCell>,
-    values: BTreeMap<SemanticValueId, SemanticValueObject>,
+    values: BTreeMap<SemanticValueId, SemanticValueRecord>,
     /// Exact immutable complete-Type snapshot captured when each ordinary
     /// Val1 is formed. This is `Type(v) = tau_v`; it is never reconstructed
     /// from the lookup key after later TypeMember contributions.
@@ -1172,7 +1173,7 @@ pub struct SemanticWorld {
     backing_to_function_value: BTreeMap<SymbolId, SemanticValueId>,
     /// Projection-only link from a semantic Symbol to its source/core
     /// declaration record. Resolution chooses the semantic Symbol first; graph
-    /// rendering may then use this link to obtain a `SymbolObject`.
+    /// rendering may then use this link to obtain a `NamespaceGraphSymbol`.
     symbol_backing_declarations: BTreeMap<SemanticSymbolIdentity, SymbolId>,
     registered_type_bindings: BTreeSet<SymbolId>,
     construction_facts: BTreeMap<PatternValueId, PatternConstructionFacts>,
@@ -1301,7 +1302,7 @@ impl SemanticWorld {
         // Namespace Symbols are semantic Symbols too.  Earlier bootstrap
         // adoption registered only namespace topology, leaving compiler-owned
         // Admit bootstrap namespace binding identities into the typed graph;
-        // their SymbolObjects remain read projections of that graph.
+        // their namespace graph records remain read projections of that graph.
         let namespace_symbols = self
             .namespace_index
             .symbols()
@@ -2698,7 +2699,7 @@ impl SemanticWorld {
         self.core_type_projection_value(type_value)
     }
 
-    pub fn value(&self, id: SemanticValueId) -> Option<&SemanticValueObject> {
+    pub fn value(&self, id: SemanticValueId) -> Option<&SemanticValueRecord> {
         self.values.get(&id)
     }
 
@@ -2726,7 +2727,7 @@ impl SemanticWorld {
         Ok(())
     }
 
-    pub fn values(&self) -> impl Iterator<Item = &SemanticValueObject> {
+    pub fn values(&self) -> impl Iterator<Item = &SemanticValueRecord> {
         self.values.values()
     }
 
@@ -2753,7 +2754,7 @@ impl SemanticWorld {
     /// that requires the unconnected generation-coordinate consumer.
     /// Core projections represent pure
     /// `null × P × Val2` graph material and are not Val1 residents.
-    fn materialize_val1_object(&mut self, mut object: SemanticValueObject) -> SemanticValueId {
+    fn materialize_val1_object(&mut self, mut object: SemanticValueRecord) -> SemanticValueId {
         object.object = self.allocate_semantic_object(SemanticVal2Snapshot::default());
         let residency = self.allocate_residency_for_object(object.object);
         let id = object.id;
@@ -3466,10 +3467,10 @@ impl SemanticWorld {
     /// The name index is not consulted for selection here: semantic path/scope
     /// resolution has already chosen `symbol`; this operation only renders its
     /// graph projection.
-    pub fn projected_symbol_object(
+    pub fn projected_namespace_symbol(
         &self,
         symbol: SemanticSymbolIdentity,
-    ) -> Option<&crate::SymbolObject> {
+    ) -> Option<&crate::NamespaceGraphSymbol> {
         let backing = self.backing_declaration_for_symbol(symbol)?;
         self.namespace_index.symbol(backing)
     }
@@ -3737,7 +3738,7 @@ impl SemanticWorld {
                 .object;
             self.values.insert(
                 value,
-                SemanticValueObject {
+                SemanticValueRecord {
                     id: value,
                     object,
                     type_value: type_rank,
@@ -3762,7 +3763,7 @@ impl SemanticWorld {
         };
         debug_assert!(matches!(
             self.values.get(&value),
-            Some(SemanticValueObject {
+            Some(SemanticValueRecord {
                 type_value,
                 pattern,
                 payload:
@@ -3968,7 +3969,7 @@ impl SemanticWorld {
             .object;
         self.values.insert(
             value,
-            SemanticValueObject {
+            SemanticValueRecord {
                 id: value,
                 object,
                 type_value: type_rank,
@@ -4065,7 +4066,7 @@ impl SemanticWorld {
             .object;
         self.values.insert(
             value,
-            SemanticValueObject {
+            SemanticValueRecord {
                 id: value,
                 object,
                 type_value: type_rank,
@@ -4140,7 +4141,7 @@ impl SemanticWorld {
         provenance: Provenance,
     ) -> Result<SemanticValueId, BuildError> {
         // Capture a clone of provenance for use in error closures below —
-        // `provenance` is moved into SemanticValueObject later in this
+        // `provenance` is moved into SemanticValueRecord later in this
         // function, and we cannot borrow it after the move.
         let err_provenance = provenance.clone();
         let owner_pattern_value = self
@@ -4172,7 +4173,7 @@ impl SemanticWorld {
             .insert(function_item_pattern, function_item_type);
 
         let call_entry = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
+        self.materialize_val1_object(SemanticValueRecord {
             id: call_entry,
             type_value: function_item_type,
             pattern: function_item_pattern,
@@ -4421,7 +4422,7 @@ impl SemanticWorld {
 
         // Canonical P1 normalization: reconcile the outer
         // let() P1 with the self-slot P1 from the closure head. The
-        // canonical P1 is the single authority — SemanticValueObject.policy,
+        // canonical P1 is the single authority — SemanticValueRecord.policy,
         // OrdinaryCallEntry.callable_value_policy, and member_views.value_policy
         // all read the same canonical_p1. Mismatch between explicit outer
         // and explicit self is a hard diagnostic.
@@ -4557,7 +4558,7 @@ impl SemanticWorld {
         self.pattern_types.insert(function_pattern, function_type);
 
         let function_value = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
+        self.materialize_val1_object(SemanticValueRecord {
             id: function_value,
             type_value: function_type,
             pattern: function_pattern,
@@ -4608,7 +4609,7 @@ impl SemanticWorld {
             place: function_place,
         });
         // Member_views.value_policy/pattern_policy must read
-        // the same canonical P1 as SemanticValueObject.policy and
+        // the same canonical P1 as SemanticValueRecord.policy and
         // OrdinaryCallEntry.callable_value_policy. The object and member view
         // therefore observe one canonical P1.
         self.symbols
@@ -4706,7 +4707,7 @@ impl SemanticWorld {
         self.pattern_types.insert(function_pattern, function_type);
 
         let function_value = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
+        self.materialize_val1_object(SemanticValueRecord {
             id: function_value,
             type_value: function_type,
             pattern: function_pattern,
@@ -4758,7 +4759,7 @@ impl SemanticWorld {
             place: function_place,
         });
         // Member_views read the same canonical P1 as
-        // SemanticValueObject.policy and OrdinaryCallEntry.callable_value_policy.
+        // SemanticValueRecord.policy and OrdinaryCallEntry.callable_value_policy.
         cell.member_views.push(PolicyResultEntry {
             value: Some(function_value),
             pattern: function_pattern,
@@ -4803,7 +4804,7 @@ impl SemanticWorld {
     ) -> Option<SemanticValueId> {
         let pattern = self.type_value(type_value)?.pattern;
         let id = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
+        self.materialize_val1_object(SemanticValueRecord {
             id,
             type_value,
             pattern,
@@ -4844,7 +4845,7 @@ impl SemanticWorld {
             _ => return None,
         };
         let id = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
+        self.materialize_val1_object(SemanticValueRecord {
             id,
             type_value,
             pattern,
@@ -4875,7 +4876,7 @@ impl SemanticWorld {
     ) -> Option<SemanticValueId> {
         let pattern = self.type_value(type_value)?.pattern;
         let id = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
+        self.materialize_val1_object(SemanticValueRecord {
             id,
             type_value,
             pattern,
@@ -4911,7 +4912,7 @@ impl SemanticWorld {
         };
         let pattern = self.type_value(target.lookup_key())?.pattern;
         let id = self.allocate_value_id();
-        self.materialize_val1_object(SemanticValueObject {
+        self.materialize_val1_object(SemanticValueRecord {
             id,
             type_value: target.lookup_key(),
             pattern,
@@ -4951,7 +4952,7 @@ impl SemanticWorld {
             .cloned()
             .map(|mut view| {
                 if let Some(value) = view.value {
-                    if let Some(SemanticValueObject {
+                    if let Some(SemanticValueRecord {
                         payload:
                             SemanticValuePayload::CoreTypeProjection {
                                 represented_pattern,
@@ -5082,7 +5083,7 @@ impl SemanticWorld {
             .cloned()
             .map(|mut view| {
                 if let Some(value) = view.value {
-                    if let Some(SemanticValueObject {
+                    if let Some(SemanticValueRecord {
                         payload:
                             SemanticValuePayload::CoreTypeProjection {
                                 represented_pattern,
@@ -6706,7 +6707,7 @@ mod tests {
         };
         world.values.insert(
             value_id,
-            SemanticValueObject {
+            SemanticValueRecord {
                 id: value_id,
                 object: value_object,
                 type_value: type_rank,
@@ -6734,7 +6735,6 @@ mod tests {
         let raw = crate::product_shape::RawArgShape {
             index: 0,
             value_class: crate::product_shape::RawArgValueClass::Value,
-            explicit_pass_mode: None,
             known_type_symbol_id: None,
             known_type_pattern_name: None,
             known_first_order_type_value: Some(represented_type),
@@ -6766,7 +6766,7 @@ mod tests {
         let (leaf_pattern, _) =
             world.allocate_pattern(owner, Provenance::new("normalizable injected leaf pattern"));
         let injected_value = world.allocate_value_id();
-        world.materialize_val1_object(SemanticValueObject {
+        world.materialize_val1_object(SemanticValueRecord {
             id: injected_value,
             type_value: test_type_lookup(9999),
             pattern: leaf_pattern,
@@ -6837,7 +6837,7 @@ mod tests {
         };
         let install_equal_literal = |world: &mut SemanticWorld| {
             let id = world.allocate_value_id();
-            world.materialize_val1_object(SemanticValueObject {
+            world.materialize_val1_object(SemanticValueRecord {
                 id,
                 type_value,
                 pattern,
@@ -6865,7 +6865,7 @@ mod tests {
 
         let (leaf_pattern, _) = world.allocate_pattern(owner, Provenance::new("Val2 leaf Pattern"));
         let leaf = world.allocate_value_id();
-        world.materialize_val1_object(SemanticValueObject {
+        world.materialize_val1_object(SemanticValueRecord {
             id: leaf,
             type_value: test_type_lookup(501),
             pattern: leaf_pattern,

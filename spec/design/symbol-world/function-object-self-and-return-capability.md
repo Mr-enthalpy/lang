@@ -43,7 +43,7 @@ The corresponding actual is never written in the call-site argument Product.
 It is injected by the invocation mechanism after the call entry `()` has been
 resolved.
 
-`self` is **not** part of `ProductObject`, `ArgProductShape`, or
+`self` is **not** part of `ProductSyntaxMaterial`, `ArgProductShape`, or
 `RawArgShape`. These represent only the explicit user-supplied argument
 product.
 

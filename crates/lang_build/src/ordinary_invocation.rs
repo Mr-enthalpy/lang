@@ -35,7 +35,7 @@ use crate::{
     callable_body::{BuiltinBodyInput, BuiltinBodyMaterial},
     identity::{SemanticValueId, TypeValueId},
     invocation_frame::{InvocationCallableRef, InvocationFrame, SelfPosition},
-    model::{Diagnostic, Provenance, SourceCategory, SymbolId, SymbolKind, SymbolObject},
+    model::{Diagnostic, NamespaceGraphSymbol, Provenance, SourceCategory, SymbolId, SymbolKind},
     overload_pattern::{overload_args_from_classified_shape, SpecificityTuple},
     overload_set::{
         applicable_candidate_from_closure, check_selected_source_body_frontier,
@@ -56,7 +56,7 @@ use crate::{
         PolicyPair, PolicyResultEntry, PolicyView, ResultPolicyDemand,
     },
     product_shape::{
-        ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
+        ArgProductShape, FlattenedProductInvariant, FlattenedProductMaterial, ProductAtom,
         RawArgValueClass,
     },
     semantic_name_index::ResolverContext,
@@ -704,7 +704,7 @@ pub fn invoke_policy_migration(
             trace: OrdinaryPipelineTrace::default(),
         });
     }
-    let migration_args = ArgProductShape::from_flattened(FlattenedProductObject {
+    let migration_args = ArgProductShape::from_flattened(FlattenedProductMaterial {
         atoms: vec![ProductAtom::SemanticValue {
             value: request.source_value(),
             type_value: request.source_type(),
@@ -974,7 +974,7 @@ pub fn invoke_pattern_associated_value_ordinary(
         provenance: provenance.clone(),
     });
     atoms.append(&mut explicit_arg_product.flattened.atoms);
-    let explicit_arg_product = ArgProductShape::from_flattened(FlattenedProductObject {
+    let explicit_arg_product = ArgProductShape::from_flattened(FlattenedProductMaterial {
         atoms,
         provenance: provenance.clone(),
         invariant: FlattenedProductInvariant {
@@ -1241,7 +1241,7 @@ pub(crate) fn invoke_target_values(
         let (implementation, formal_policy_frame, self_policy, overload_strategy, frame_args) =
             match &entry.implementation {
                 OrdinaryCallableImplementation::Source(entry_closure) => {
-                    let declaration_identity = SymbolObject::new(
+                    let declaration_identity = NamespaceGraphSymbol::new(
                         entry.backing_declaration,
                         entry.declaration_name.clone(),
                         SymbolKind::Object,
@@ -2105,7 +2105,7 @@ fn formal_policy_frame(
 fn apply_self_formal_structure(
     candidate: &mut ApplicableCandidate,
     entry: &OrdinaryCallEntry,
-    actual: &crate::semantic_world::SemanticValueObject,
+    actual: &crate::semantic_world::SemanticValueRecord,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     provenance: Provenance,

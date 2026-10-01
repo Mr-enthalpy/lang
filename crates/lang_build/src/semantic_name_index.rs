@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
-    ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceNode,
-    NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
-    SourceCategory, SymbolId, SymbolKind, SymbolObject,
+    ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceGraphSymbol,
+    NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
+    SourceCategory, SymbolId, SymbolKind,
 };
 
 /// Immutable revision of the SemanticWorld-owned namespace-name index.
@@ -15,7 +15,7 @@ pub struct SemanticNameIndex {
     snapshot_id: u64,
     root_node: NamespaceNodeId,
     nodes: BTreeMap<NamespaceNodeId, NamespaceNode>,
-    symbols: BTreeMap<SymbolId, SymbolObject>,
+    symbols: BTreeMap<SymbolId, NamespaceGraphSymbol>,
     diagnostics: Vec<Diagnostic>,
     next_node_id: u64,
     next_symbol_id: u64,
@@ -73,11 +73,11 @@ impl SemanticNameIndex {
         self.nodes.values()
     }
 
-    pub fn symbol(&self, id: SymbolId) -> Option<&SymbolObject> {
+    pub fn symbol(&self, id: SymbolId) -> Option<&NamespaceGraphSymbol> {
         self.symbols.get(&id)
     }
 
-    pub fn symbols(&self) -> &BTreeMap<SymbolId, SymbolObject> {
+    pub fn symbols(&self) -> &BTreeMap<SymbolId, NamespaceGraphSymbol> {
         &self.symbols
     }
 
@@ -85,7 +85,11 @@ impl SemanticNameIndex {
         &self.diagnostics
     }
 
-    pub fn child_symbol(&self, parent: NamespaceNodeId, name: &str) -> Option<&SymbolObject> {
+    pub fn child_symbol(
+        &self,
+        parent: NamespaceNodeId,
+        name: &str,
+    ) -> Option<&NamespaceGraphSymbol> {
         self.child_symbol_with_expectation(parent, name, ResolveExpectation::AnyUnique)
             .ok()
     }
@@ -95,7 +99,7 @@ impl SemanticNameIndex {
         parent: NamespaceNodeId,
         name: &str,
         expectation: ResolveExpectation,
-    ) -> Result<&SymbolObject, Diagnostic> {
+    ) -> Result<&NamespaceGraphSymbol, Diagnostic> {
         let bucket = self
             .nodes
             .get(&parent)
@@ -475,7 +479,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &[String],
         context: &ResolverContext,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_with_expectation(source_order_path, context, ResolveExpectation::AnyUnique)
     }
 
@@ -501,7 +505,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         source_order_path: &[String],
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_search_roots(source_order_path, context, terminal_expectation)
     }
 
@@ -512,7 +516,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         source_order_path: &[String],
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         if source_order_path.is_empty() {
             return Err(self
                 .hard_error(None, "unresolved empty namespace path")
@@ -585,7 +589,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &str,
         context: &ResolverContext,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_str_with_expectation(source_order_path, context, ResolveExpectation::AnyUnique)
     }
 
@@ -599,7 +603,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         source_order_path: &str,
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         let components = source_order_path
             .split("::")
             .filter(|component| !component.is_empty())
@@ -616,7 +620,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &str,
         context: &ResolverContext,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_str_with_expectation(
             source_order_path,
             context,
@@ -631,7 +635,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &str,
         context: &ResolverContext,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_str_with_expectation(source_order_path, context, ResolveExpectation::Callable)
     }
 
@@ -642,7 +646,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &str,
         context: &ResolverContext,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_str_with_expectation(
             source_order_path,
             context,
@@ -657,7 +661,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         &self,
         source_order_path: &str,
         context: &ResolverContext,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         self.resolve_str_with_expectation(
             source_order_path,
             context,
@@ -671,7 +675,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         source_order_path: &[String],
         start: NamespaceNodeId,
         terminal_expectation: ResolveExpectation,
-    ) -> Result<SymbolObject, Diagnostic> {
+    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
         let mut current_node = start;
         let mut current_symbol = None;
 
@@ -716,7 +720,8 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     ) -> SemanticNameDelta {
         let mut delta = self.snapshot.empty_delta();
         let id = delta.allocate_symbol_id();
-        let symbol = SymbolObject::new(id, name, kind, source_category, Some(parent), provenance);
+        let symbol =
+            NamespaceGraphSymbol::new(id, name, kind, source_category, Some(parent), provenance);
         delta.insert_symbol(parent, symbol);
         delta
     }
@@ -724,11 +729,11 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     pub fn inject_child(
         &self,
         parent: NamespaceNodeId,
-        object: SymbolObject,
+        symbol: NamespaceGraphSymbol,
         _provenance: Provenance,
     ) -> SemanticNameDelta {
         let mut delta = self.snapshot.empty_delta();
-        delta.insert_symbol(parent, object);
+        delta.insert_symbol(parent, symbol);
         delta
     }
 
@@ -751,7 +756,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             Some(parent),
             provenance.clone(),
         );
-        let mut symbol = SymbolObject::namespace(
+        let mut symbol = NamespaceGraphSymbol::namespace(
             symbol_id,
             key,
             node_id,
@@ -854,7 +859,7 @@ pub(crate) fn namespace_symbol(
         Some(parent),
         provenance.clone(),
     );
-    let mut symbol = SymbolObject::namespace(
+    let mut symbol = NamespaceGraphSymbol::namespace(
         symbol_id,
         name,
         node_id,
@@ -873,11 +878,11 @@ pub(crate) fn namespace_symbol(
 }
 
 fn select_symbol_from_bucket<'symbols>(
-    symbols: &'symbols BTreeMap<SymbolId, SymbolObject>,
+    symbols: &'symbols BTreeMap<SymbolId, NamespaceGraphSymbol>,
     bucket: &ChildBucket,
     name: &str,
     expectation: ResolveExpectation,
-) -> Option<Result<&'symbols SymbolObject, Diagnostic>> {
+) -> Option<Result<&'symbols NamespaceGraphSymbol, Diagnostic>> {
     let symbol = |id: SymbolId| symbols.get(&id);
     match expectation {
         ResolveExpectation::AnyUnique => {
@@ -938,11 +943,11 @@ fn select_symbol_from_bucket<'symbols>(
 }
 
 fn select_unique_object_symbol<'symbols>(
-    symbols: &'symbols BTreeMap<SymbolId, SymbolObject>,
+    symbols: &'symbols BTreeMap<SymbolId, NamespaceGraphSymbol>,
     bucket: &ChildBucket,
     name: &str,
-    predicate: impl Fn(&SymbolObject) -> bool,
-) -> Option<Result<&'symbols SymbolObject, Diagnostic>> {
+    predicate: impl Fn(&NamespaceGraphSymbol) -> bool,
+) -> Option<Result<&'symbols NamespaceGraphSymbol, Diagnostic>> {
     let mut candidates = bucket
         .object_symbols()
         .iter()
@@ -966,8 +971,8 @@ fn select_unique_object_symbol<'symbols>(
 }
 
 fn object_symbols_are_overload_compatible(
-    existing: Option<&SymbolObject>,
-    incoming: Option<&SymbolObject>,
+    existing: Option<&NamespaceGraphSymbol>,
+    incoming: Option<&NamespaceGraphSymbol>,
 ) -> bool {
     matches!(
         (existing, incoming),
@@ -978,8 +983,8 @@ fn object_symbols_are_overload_compatible(
 
 fn cross_role_namespace_capable_conflict(
     role: ChildNameRole,
-    symbol: &SymbolObject,
-    opposite: Option<&SymbolObject>,
+    symbol: &NamespaceGraphSymbol,
+    opposite: Option<&NamespaceGraphSymbol>,
 ) -> bool {
     let Some(opposite) = opposite else {
         return false;

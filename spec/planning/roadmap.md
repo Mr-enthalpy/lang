@@ -335,7 +335,7 @@ they cannot authorize an alternate implementation of these rules.
 | Runtime entry and Seal | CLI exposes frontend commands; horizon visibility supplies no readiness or scheduling consumer | Connect EntryContinuation, runtime main, active dominance, real readiness dependencies, pending seal formation and scheduler invariance. E01–E09 |
 | Instance lifecycle and cleanup | lifecycle checks supplied instance/frontier facts; Move has fixed Kill/Preserve; common action witness fixes all projection identities/cuts. Fixed cleanup points use precedence then reverse-declaration linearization; Raw/Norm preserve with shape | Connect ordinary Killable/MoveEffect/Movable formation, uniform type/meta instances, directed Touch closure, default NLL and lexical empty-with to the shared transaction. L01–L08, W01–W08 |
 | Chain and residual boundary | InvocationResult residual is an opaque class/provenance carrier; no separate static/runtime flow carries completion | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
-| Ordinary meta query state | current meta root cache lacks the full retained instance/member state protocol | Connect default formation, actual member mutation, current committed reads, snapshot/Close and SealDom checks. P09–P12, E06 |
+| Ordinary meta query state | the MetaInstanceId registry lacks the full retained instance/member state protocol | Connect default formation, actual member mutation, current committed reads, snapshot/Close and SealDom checks. P09–P12, E06 |
 | Operator dispatch | Norm OperatorTarget retains spelling/fixity/arity; world.rs directly resolves operator spelling | Connect OperatorUse/OperatorNameValue, operator[op]/op::adl, OG_s extraction, explicit Forget_s and current slot. Add source goldens for supported operator-name forms. O01–O07 |
 | Expression formation and contribution | source declaration carriers and sorted discovery do not supply positional expression evaluation/common-snapshot join | Connect every legal completed ClosureExpr -> tau_C through struct, file structural installation, true lexical binding, explicit contribution roles and anchored formation. N01–N08 |
 
@@ -499,11 +499,9 @@ and real ordinary candidate pipeline remain reusable assets.
 Ordinary Policy deduction, R_vis/C_sigma, pending seal
 formation and E saturation remain consumer gates.
 
-When connecting the common E consumer, rename `CandidatePrepResult::Deferred`
-to describe an incomplete relation rather than imply scheduling into a later
-phase. Its current meaning remains undecided preparation, with no scheduler
-queue or runtime residualization. This is an interface follow-up, not a missing
-semantic choice or an unfinished stage-cleanup requirement.
+`CandidatePrepResult::Incomplete` records an undecided preparation relation,
+with no scheduler queue or runtime residualization. The interface names the
+missing consumer evidence directly; common E wiring remains a separate gate.
 
 The current `body_entry_visible_at` check supplies only body-entry observation
 visibility and can report a hidden-observation continuation frontier. Connecting
@@ -548,8 +546,9 @@ a Region at a cut already containing that subject's Use/Preserve either.
 
 SemanticWorld roster synchronization discovers names only; missing formation
 and origin facts do not establish Alive, a formation cut or origin=None.
-`admit_committed_formation_fact` takes the actual supplied cut, including a cut earlier
-than discovery. Pending origin producers remain explicit pending material.
+The private test fixture helper `admit_committed_formation_fact` takes the
+supplied cut, including a cut earlier than discovery. Production exposes no
+fact-import API. Pending origin producers remain explicit pending material.
 Origin completion is one-shot, and finite Color queries cannot silently stop
 at missing ancestry. Full ReifyLife remains an explicit consumer frontier,
 including when cleanup has been frozen but generation endpoints are not fixed.
@@ -572,10 +571,10 @@ in `SemanticContinuation::commit_action`. The shared scheduler or common
 transaction must enforce it for all actions before publication.
 Second, source formation/origin/Color producers must publish their lifecycle
 Post with all other affected projections in the same scratch transaction.
-The current trusted `admit_committed_*_fact` imports are not producer witnesses;
-they must become internal joint-Post helpers or consume the common producer
-witness within that transaction. Commit followed by separate lifecycle mutation
-is not an accepted source handoff. Regressions must cover a non-lifecycle action
+The private `#[cfg(test)]` `admit_committed_*_fact` helpers are not producer
+witnesses. Future producer helpers must execute within joint Post or consume
+the common producer witness within that transaction. Commit followed by
+separate lifecycle mutation is not an accepted source handoff. Regressions must cover a non-lifecycle action
 blocked by earlier cleanup and producer-fact rollback on any affected Pre/Post
 failure. These gates remain unconnected and do not reopen the completed
 lifecycle interface cleanup.

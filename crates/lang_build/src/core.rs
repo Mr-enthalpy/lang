@@ -1,8 +1,8 @@
 use crate::{
     model::{
-        BuiltinCallableImpl, CallableDeclaration, CoreTypeProjection, NamespaceNode,
-        NamespaceNodeId, NamespaceNodeKind, Provenance, SemanticNameDelta, SourceCategory,
-        SymbolId, SymbolKind, SymbolObject, SymbolPayload, VerificationPrimitive,
+        BuiltinCallableImpl, CallableDeclaration, CoreTypeProjection, NamespaceGraphSymbol,
+        NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance, SemanticNameDelta,
+        SourceCategory, SymbolId, SymbolKind, SymbolPayload, VerificationPrimitive,
     },
     policy_pair::{PolicyMode, PolicyPair, PolicyView, Stage},
     semantic_name_index::{namespace_symbol, BuildError, SemanticNameIndex},
@@ -168,7 +168,7 @@ fn insert_builtin_callable(
             crate::DeclaredResultClass::OrdinaryValue
         }
     };
-    let mut symbol = SymbolObject::new(
+    let mut symbol = NamespaceGraphSymbol::new(
         symbol_id,
         name,
         SymbolKind::Callable,
@@ -244,7 +244,7 @@ fn insert_verification_namespace(
         provenance.clone(),
     ));
 
-    let mut symbol = SymbolObject::namespace(
+    let mut symbol = NamespaceGraphSymbol::namespace(
         symbol_id,
         "verify",
         node_id,
@@ -312,7 +312,7 @@ pub(crate) fn insert_core_type(
         provenance.clone(),
     ));
 
-    let mut symbol = SymbolObject::new(
+    let mut symbol = NamespaceGraphSymbol::new(
         symbol_id,
         name,
         SymbolKind::CompleteTypeProjection,

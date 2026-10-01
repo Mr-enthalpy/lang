@@ -12,9 +12,9 @@ use std::{
 use lang_build::{
     prepare_callable_candidate_with_declared_planes, ArgProductShape, BuildError, BuildManifest,
     BuildSession, BuildWorkspace, CandidatePrepResult, CandidatePreparationContext,
-    CompilationWorld, CoreTypeProjection, NamespaceNodeId, NormalizedCallSite, PackageBuildSpec,
-    ParameterShape, Provenance, SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind,
-    SymbolObject, SymbolPayload, ToolchainGlobalSourceRoot,
+    CompilationWorld, CoreTypeProjection, NamespaceGraphSymbol, NamespaceNodeId,
+    NormalizedCallSite, PackageBuildSpec, ParameterShape, Provenance, SourceCategory, SourceRoot,
+    StaticDependencySpec, SymbolKind, SymbolPayload, ToolchainGlobalSourceRoot,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
@@ -149,7 +149,7 @@ pub fn numbered_type_lookup_fixture(scope: &'static str, label: u64) -> lang_bui
 /// declared-planes entry directly. This is fixture bookkeeping, not a graph
 /// semantic read in the canonical path.
 pub fn prepare_candidate_from_fixture_symbol(
-    callee: &SymbolObject,
+    callee: &NamespaceGraphSymbol,
     arg_product_shape: ArgProductShape,
     parameter_shape: ParameterShape,
     context: CandidatePreparationContext,
@@ -420,8 +420,8 @@ pub fn object_symbol(
     parent: NamespaceNodeId,
     name: &str,
     provenance: &str,
-) -> SymbolObject {
-    SymbolObject::new(
+) -> NamespaceGraphSymbol {
+    NamespaceGraphSymbol::new(
         id,
         name,
         SymbolKind::Object,
@@ -437,8 +437,8 @@ pub fn namespace_symbol(
     name: &str,
     node_id: NamespaceNodeId,
     provenance: &str,
-) -> SymbolObject {
-    SymbolObject::namespace(
+) -> NamespaceGraphSymbol {
+    NamespaceGraphSymbol::namespace(
         id,
         name,
         node_id,
@@ -456,7 +456,7 @@ pub fn type_with_namespace(
     parent: NamespaceNodeId,
     type_namespace_id: NamespaceNodeId,
     provenance: &str,
-) -> SymbolObject {
+) -> NamespaceGraphSymbol {
     let mut symbol = object_symbol(type_id, parent, name, provenance);
     symbol.kind = SymbolKind::CompleteTypeProjection;
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
@@ -570,7 +570,7 @@ pub fn fixture_call_site(name: &str) -> NormalizedCallSite {
 /// Produce an `ArgProductShape` from a committed product-shape fixture.
 ///
 /// The fixture is expected to normalize to a single call expression.
-/// The call site source product is wrapped in a `ProductObject` and shaped.
+/// The call site source product is wrapped in a `ProductSyntaxMaterial` and shaped.
 pub fn fixture_arg_product_shape(name: &str) -> lang_build::ArgProductShape {
     let site = fixture_call_site(name);
     site.to_arg_product_shape()

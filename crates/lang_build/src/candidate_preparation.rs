@@ -6,7 +6,7 @@
 //! resolve overloads, or perform type inference.
 //!
 //! Three-segment separation:
-//! - `ProductObject` does **not** resolve the call target.
+//! - `ProductSyntaxMaterial` does **not** resolve the call target.
 //! - Candidate preparation does **not** parse source.
 //! - The resolver does **not** flatten products.
 //!
@@ -134,18 +134,6 @@ impl CanonicalArgProductShapeMaterial {
                     RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection) => {
                         CanonicalArgAtomKind::CoreTypeProjection
                     }
-                    RawArgValueClass::NonValue(NonValueArgKind::RankObject) => {
-                        CanonicalArgAtomKind::RankObject
-                    }
-                    RawArgValueClass::NonValue(NonValueArgKind::NamespaceObject) => {
-                        CanonicalArgAtomKind::NamespaceObject
-                    }
-                    RawArgValueClass::NonValue(NonValueArgKind::MetaObject) => {
-                        CanonicalArgAtomKind::MetaObject
-                    }
-                    RawArgValueClass::NonValue(NonValueArgKind::PatternObject) => {
-                        CanonicalArgAtomKind::PatternObject
-                    }
                     RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => {
                         CanonicalArgAtomKind::ProductUnit
                     }
@@ -161,10 +149,10 @@ impl CanonicalArgProductShapeMaterial {
     }
 }
 
-/// Structural kind of an argument atom at the canonical key boundary.
+/// Structural kind of an argument atom at the preparation boundary.
 ///
 /// Records whether an argument position carries an Expression barrier, a
-/// positively classified value, a specific non-value object kind, a Product
+/// positively classified value, a complete type projection, a Product
 /// Unit, or unsupported material. This is structural classification only —
 /// it does **not** encode first-order projection values, resolve lookup, or decide semantics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -175,14 +163,6 @@ pub enum CanonicalArgAtomKind {
     ResolvedValue,
     /// Classified as a complete type projection argument.
     CoreTypeProjection,
-    /// Classified as a rank object argument.
-    RankObject,
-    /// Classified as a namespace object argument.
-    NamespaceObject,
-    /// Classified as a meta object argument.
-    MetaObject,
-    /// Classified as a pattern object argument.
-    PatternObject,
     /// Product Unit (non-value structural position).
     ProductUnit,
     /// Unsupported or unclassifiable material.
@@ -197,22 +177,22 @@ pub enum CanonicalArgAtomKind {
 /// does not produce an `InvocationResult` or namespace installation material,
 /// `NamespaceDelta`.
 ///
-/// `Deferred` means the corresponding pattern/type/policy consumer must
+/// `Incomplete` means the corresponding pattern/type/policy consumer must
 /// decide. It is not silent success, a scheduling queue, or runtime
 /// residualization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CandidatePrepResult {
-    Deferred {
+    Incomplete {
         candidate: Box<PreparedCallableCandidate>,
-        reason: CandidatePrepDeferredReason,
+        reason: CandidatePrepIncompleteReason,
     },
     Applicable(Box<PreparedCallableCandidate>),
     Diagnostic(Diagnostic),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CandidatePrepDeferredReason {
-    ParameterShapeCompatibilityDeferred,
+pub enum CandidatePrepIncompleteReason {
+    ParameterShapeCompatibilityIncomplete,
     /// The declared body-entry observation is hidden at the requested horizon.
     /// This supplies neither body execution legality nor readiness evidence.
     BodyEntryObservationHidden,
@@ -251,9 +231,9 @@ pub fn prepare_callable_candidate_with_declared_planes(
     };
 
     let Some(expected_arity) = candidate.parameter_shape.expected_arity else {
-        return CandidatePrepResult::Deferred {
+        return CandidatePrepResult::Incomplete {
             candidate: Box::new(candidate),
-            reason: CandidatePrepDeferredReason::ParameterShapeCompatibilityDeferred,
+            reason: CandidatePrepIncompleteReason::ParameterShapeCompatibilityIncomplete,
         };
     };
     if expected_arity != candidate.arg_product_shape.arity {
@@ -303,9 +283,9 @@ pub fn prepare_callable_candidate_with_declared_planes(
         .policy_planes
         .body_entry_visible_at_demanded_horizon()
     {
-        return CandidatePrepResult::Deferred {
+        return CandidatePrepResult::Incomplete {
             candidate: Box::new(candidate),
-            reason: CandidatePrepDeferredReason::BodyEntryObservationHidden,
+            reason: CandidatePrepIncompleteReason::BodyEntryObservationHidden,
         };
     }
 

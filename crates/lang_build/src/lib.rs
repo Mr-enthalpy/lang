@@ -55,7 +55,7 @@ pub use callable_body::{StructConstructionMaterial, StructConstructionMaterialId
 pub use callable_diagnostic::selected_callable_delete_diagnostic;
 pub use candidate_preparation::{
     prepare_callable_candidate_with_declared_planes, CandidatePolicyPlanes,
-    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CandidatePrepIncompleteReason, CandidatePrepResult, CandidatePreparationContext,
     CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, ParameterArgRequirement,
     ParameterShape, PreparedCallableCandidate,
 };
@@ -110,9 +110,9 @@ pub use meta_key::{
 pub use model::{
     BuiltinCallableImpl, CallableDeclaration, CallableImplementation, CallablePolicyViews,
     ChildBucket, ChildLink, ChildNameRole, CoreTypeProjection, Diagnostic, DiagnosticSeverity,
-    FieldObject, FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
-    ResolverCode, SemanticNameDelta, SourceCallableSyntax, SourceCategory, SymbolId, SymbolKind,
-    SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, VerificationPrimitive,
+    FieldFunctionProjection, FieldProjection, NamespaceGraphSymbol, NamespaceNode, NamespaceNodeId,
+    NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta, SourceCallableSyntax,
+    SourceCategory, SymbolId, SymbolKind, SymbolPayload, TypeField, VerificationPrimitive,
     VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
@@ -172,8 +172,8 @@ pub use policy_pair::{
     ReturnPolicyPattern, Stage, ValueComponentPolicy, ValuePolicyQuery, ValuePresence, WpreRoots,
 };
 pub use product_shape::{
-    ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
-    NonValueArgKind, ProductAtom, ProductObject, RawArgShape, RawArgValueClass,
+    ArgProductShape, FlattenedProductInvariant, FlattenedProductMaterial, NonValueArgKind,
+    ProductAtom, ProductSyntaxMaterial, RawArgShape, RawArgValueClass,
 };
 pub use return_target::{
     elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
@@ -210,8 +210,8 @@ pub use semantic_world::{
     ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
     ResidentGeneration, ResidentIdentity, ResolvedExtractionTarget, ResolvedPatternScope,
     ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId, SemanticPatternValue,
-    SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot, SemanticValueObject,
-    SemanticValuePayload, SemanticWorld, StableBorrowTarget, TypeMemberSnapshotEntry,
+    SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot, SemanticValuePayload,
+    SemanticValueRecord, SemanticWorld, StableBorrowTarget, TypeMemberSnapshotEntry,
     WritableContext,
 };
 pub use source::SourceFragment;

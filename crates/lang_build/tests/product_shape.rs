@@ -2,7 +2,7 @@ mod support;
 
 use support::*;
 
-use lang_build::{NonValueArgKind, ProductAtom, ProductObject, RawArgValueClass};
+use lang_build::{NonValueArgKind, ProductAtom, ProductSyntaxMaterial, RawArgValueClass};
 use lang_syntax::NormExpr;
 
 #[test]
@@ -18,7 +18,7 @@ fn exposed_product_nodes_flatten_left_to_right_from_source_fixture() {
 #[test]
 fn expression_barrier_blocks_product_flattening_from_source_fixture() {
     let site = fixture_call_site("product_expression_barrier.lang");
-    let product = ProductObject::from_norm_product(site.source_product.clone());
+    let product = ProductSyntaxMaterial::from_norm_product(site.source_product.clone());
     let flattened = product.flatten();
     assert_eq!(atom_labels(&flattened.atoms), ["Call", "c"]);
 
@@ -65,19 +65,18 @@ fn unit_positions_and_raw_arg_non_value_boundary_are_preserved_from_source_fixtu
         RawArgValueClass::NonValue(NonValueArgKind::ProductUnit)
     ));
     assert_eq!(shape.raw_args[1].is_value(), Some(false));
-    assert!(
-        !shape.raw_args[1].receives_automatic_pass_action(),
-        "ProductUnit does not receive automatic pass action at candidate-prep boundary"
-    );
 }
 
 #[test]
-fn normalized_call_site_exposes_product_object_before_arg_shape_from_source_fixture() {
+fn normalized_call_site_exposes_product_material_before_arg_shape_from_source_fixture() {
     let site = fixture_call_site("product_unit_preservation.lang");
-    let product_obj = site.source_product_object();
-    assert_eq!(product_obj.original, site.source_product);
-    assert!(product_obj.provenance.description.contains("ProductObject"));
-    let shape = product_obj.to_arg_product_shape();
+    let product_material = site.source_product_material();
+    assert_eq!(product_material.original, site.source_product);
+    assert!(product_material
+        .provenance
+        .description
+        .contains("ProductSyntaxMaterial"));
+    let shape = product_material.to_arg_product_shape();
     assert_eq!(shape.arity, 3);
     assert!(matches!(
         shape.raw_args[1].value_class,

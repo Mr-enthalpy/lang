@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt, path::PathBuf};
 
-use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
+use lang_syntax::{NormClosure, NormOrigin, Span};
 
 use crate::identity::TypeValueId;
 
@@ -23,7 +23,7 @@ impl fmt::Display for NamespaceNodeId {
     }
 }
 
-/// Stable identity for a symbol object inside one graph snapshot.
+/// Stable identity for a namespace graph symbol inside one graph snapshot.
 ///
 /// Symbols with the same display name in different namespaces must still have
 /// different `SymbolId`s.
@@ -56,7 +56,6 @@ pub enum SourceCategory {
     PhysicalDirectory,
     DeclaredSymbol,
     TypeAssociatedNamespace,
-    MetaInstantiationVirtualLayer,
     GeneratedChild,
     CoreBootstrap,
     DependencyMount,
@@ -308,12 +307,13 @@ impl NamespaceNode {
     }
 }
 
-/// Canonical graph object returned by the resolver.
+/// Namespace graph record returned by the resolver.
 ///
-/// Future compiler phases should consume `SymbolObject`s rather than reparsing
-/// path strings or building side tables.
+/// This record carries name-resolution and rendering projections. It is not
+/// a canonical semantic Object or invocation authority; those facts belong to
+/// the semantic world and its call entries.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SymbolObject {
+pub struct NamespaceGraphSymbol {
     pub id: SymbolId,
     pub name: String,
     pub kind: SymbolKind,
@@ -329,7 +329,7 @@ pub struct SymbolObject {
     pub payload: SymbolPayload,
 }
 
-impl SymbolObject {
+impl NamespaceGraphSymbol {
     pub fn new(
         id: SymbolId,
         name: impl Into<String>,
@@ -410,7 +410,7 @@ impl SymbolObject {
     }
 }
 
-/// Graph projection payload carried by a `SymbolObject`.
+/// Graph projection payload carried by a `NamespaceGraphSymbol`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SymbolPayload {
     Namespace {
@@ -418,7 +418,7 @@ pub enum SymbolPayload {
     },
     CompleteTypeProjection(CoreTypeProjection),
     Callable(CallableDeclaration),
-    FieldFunction(FieldObject),
+    FieldFunction(FieldFunctionProjection),
     /// No specialized graph projection is attached to this Symbol.
     None,
 }
@@ -478,7 +478,7 @@ pub struct CallablePolicyViews {
 
 /// Field-function projection generated under a type namespace.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldObject {
+pub struct FieldFunctionProjection {
     pub owner_type_symbol_id: SymbolId,
     pub field_name: String,
     pub field_type_value: TypeValueId,
@@ -569,7 +569,7 @@ pub enum VerificationPrimitive {
 pub struct SemanticNameDelta {
     pub base_snapshot_id: u64,
     pub nodes: BTreeMap<NamespaceNodeId, NamespaceNode>,
-    pub symbols: BTreeMap<SymbolId, SymbolObject>,
+    pub symbols: BTreeMap<SymbolId, NamespaceGraphSymbol>,
     pub child_links: Vec<ChildLink>,
     pub diagnostics: Vec<Diagnostic>,
     next_node_id: u64,
@@ -613,7 +613,7 @@ impl SemanticNameDelta {
         self.nodes.insert(node.id, node);
     }
 
-    pub fn insert_symbol(&mut self, parent: NamespaceNodeId, symbol: SymbolObject) {
+    pub fn insert_symbol(&mut self, parent: NamespaceNodeId, symbol: NamespaceGraphSymbol) {
         self.child_links.push(ChildLink {
             parent,
             name: symbol.name.clone(),
@@ -637,17 +637,4 @@ pub struct ChildLink {
     pub symbol: SymbolId,
     pub role: ChildNameRole,
     pub provenance: Provenance,
-}
-
-/// Closed source syntax carrier.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SyntaxObject {
-    pub kind: SyntaxObjectKind,
-    pub provenance: Provenance,
-}
-
-/// Supported closed syntax object forms for the current vertical slice.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SyntaxObjectKind {
-    Product(NormProduct),
 }

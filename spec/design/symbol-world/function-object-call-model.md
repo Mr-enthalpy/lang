@@ -440,7 +440,7 @@ implicit `self`. For a standalone function this value is the function object;
 for an associated call entry it may be a `T`, `T ref`, `T share`, or another
 ordinary callable object. The user cannot manually pass this slot.
 
-The source product contains only the explicit user arguments. `ProductObject`, `ArgProductShape`, and `RawArgShape` represent only the explicit product supplied by the user. They do not contain the implicit `self`.
+The source product contains only the explicit user arguments. `ProductSyntaxMaterial`, `ArgProductShape`, and `RawArgShape` represent only the explicit product supplied by the user. They do not contain the implicit `self`.
 
 The implicit `self` belongs to the callable-entry invocation frame, not to the source product.
 
@@ -730,7 +730,7 @@ Current source carriers do not implement this full consumer.
 - The self role is positional; the first written formal exposes it under an
   ordinary user-chosen binder/Pattern, and `self` is only a conventional
   spelling.
-- Implicit `self` is not part of `ProductObject` / `ArgProductShape`.
+- Implicit `self` is not part of `ProductSyntaxMaterial` / `ArgProductShape`.
 - The user cannot manually pass implicit `self`.
 - `()` is not an operator.
 - Operator values cannot be namespace/navigation parents.

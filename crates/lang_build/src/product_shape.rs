@@ -27,24 +27,24 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProductObject {
+pub struct ProductSyntaxMaterial {
     pub original: NormProduct,
     pub provenance: Provenance,
 }
 
-impl ProductObject {
+impl ProductSyntaxMaterial {
     pub fn from_norm_product(product: NormProduct) -> Self {
-        let provenance = Provenance::from_norm_origin("ProductObject", &product.origin);
+        let provenance = Provenance::from_norm_origin("ProductSyntaxMaterial", &product.origin);
         Self {
             original: product,
             provenance,
         }
     }
 
-    pub fn flatten(&self) -> FlattenedProductObject {
+    pub fn flatten(&self) -> FlattenedProductMaterial {
         let mut atoms = Vec::new();
         flatten_product(&self.original, &mut atoms);
-        FlattenedProductObject {
+        FlattenedProductMaterial {
             atoms,
             provenance: self.provenance.clone(),
             invariant: FlattenedProductInvariant {
@@ -59,7 +59,7 @@ impl ProductObject {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FlattenedProductObject {
+pub struct FlattenedProductMaterial {
     pub atoms: Vec<ProductAtom>,
     pub provenance: Provenance,
     pub invariant: FlattenedProductInvariant,
@@ -67,11 +67,11 @@ pub struct FlattenedProductObject {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FlattenedProductInvariant {
-    /// Contract marker for product semantic normalization.
+    /// Contract marker for product material flattening.
     ///
     /// `ProductAtom` intentionally has no Product variant, so this is not a
     /// separate runtime proof. It records the no-direct-Product-atom invariant
-    /// at the object boundary consumed by `ArgProductShape`.
+    /// at the material boundary consumed by `ArgProductShape`.
     pub no_direct_product_atom_remains: bool,
 }
 
@@ -111,7 +111,7 @@ impl ProductAtom {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ArgProductShape {
-    pub flattened: FlattenedProductObject,
+    pub flattened: FlattenedProductMaterial,
     pub arity: usize,
     pub raw_args: Vec<RawArgShape>,
     pub provenance: Provenance,
@@ -120,7 +120,7 @@ pub struct ArgProductShape {
 impl ArgProductShape {
     pub fn empty(provenance: Provenance) -> Self {
         Self {
-            flattened: FlattenedProductObject {
+            flattened: FlattenedProductMaterial {
                 atoms: Vec::new(),
                 provenance: provenance.clone(),
                 invariant: FlattenedProductInvariant {
@@ -133,11 +133,11 @@ impl ArgProductShape {
         }
     }
 
-    pub fn from_product_object(product: &ProductObject) -> Self {
+    pub fn from_product_material(product: &ProductSyntaxMaterial) -> Self {
         product.to_arg_product_shape()
     }
 
-    pub fn from_flattened(flattened: FlattenedProductObject) -> Self {
+    pub fn from_flattened(flattened: FlattenedProductMaterial) -> Self {
         let raw_args = flattened
             .atoms
             .iter()
@@ -157,7 +157,6 @@ impl ArgProductShape {
 pub struct RawArgShape {
     pub index: usize,
     pub value_class: RawArgValueClass,
-    pub explicit_pass_mode: Option<ExplicitPassMode>,
     pub known_type_symbol_id: Option<SymbolId>,
     /// Source-level pattern name recorded when a semantic type resolution
     /// classified this argument without a graph carrier Symbol. This is
@@ -230,7 +229,6 @@ impl RawArgShape {
         Self {
             index,
             value_class,
-            explicit_pass_mode: None,
             known_type_symbol_id: None,
             known_type_pattern_name: None,
             known_first_order_type_value,
@@ -262,20 +260,8 @@ impl RawArgShape {
             .map(CanonicalTypeObservation::Observed)
     }
 
-    /// Returns true only after this argument has been positively classified as
-    /// a value argument.
-    ///
-    /// `UnknownExpression` returns false because mechanical pass insertion is
-    /// not allowed before
-    /// value/type/rank/meta/pattern classification. This is not a final
-    /// semantic claim that ordinary expressions never receive automatic pass
-    /// actions after later classification.
-    pub fn receives_automatic_pass_action(&self) -> bool {
-        matches!(self.value_class, RawArgValueClass::Value)
-    }
-
     /// Controlled refinement: replace the value class while preserving index,
-    /// provenance, and existing type-value / pass-mode fields.
+    /// provenance, and existing type-value observations.
     ///
     /// This records a completed classification step; it is **not** type checking.
     pub fn with_value_class(self, value_class: RawArgValueClass) -> Self {
@@ -295,8 +281,7 @@ impl RawArgShape {
 
     /// Refine an `UnknownExpression` into a positively classified value.
     ///
-    /// After this call, `receives_automatic_pass_action()` returns `true`.
-    /// This is an object-boundary classification operation — it does **not**
+    /// This is an argument-material classification operation — it does **not**
     /// represent completed semantic value typing.
     pub fn as_resolved_value(self) -> Self {
         self.with_value_class(RawArgValueClass::Value)
@@ -304,9 +289,8 @@ impl RawArgShape {
 
     /// Refine an `UnknownExpression` into a non-value with the given kind.
     ///
-    /// After this call, `is_value()` returns `Some(false)` and
-    /// `receives_automatic_pass_action()` remains `false`.
-    /// This is an object-boundary classification operation — it does **not**
+    /// After this call, `is_value()` returns `Some(false)`.
+    /// This is an argument-material classification operation — it does **not**
     /// represent completed semantic non-value classification.
     pub fn as_non_value(self, kind: NonValueArgKind) -> Self {
         self.with_value_class(RawArgValueClass::NonValue(kind))
@@ -374,7 +358,7 @@ impl RawArgShape {
     /// projection. The argument material is a value; the type-value
     /// projection identifies the value's type.
     ///
-    /// This is an object-boundary classification operation. It does **not**
+    /// This is an argument-material classification operation. It does **not**
     /// perform type checking.
     pub fn as_resolved_value_with_value_type(self, type_value: TypeValueId) -> Self {
         self.with_value_class(RawArgValueClass::Value)
@@ -406,20 +390,7 @@ pub enum RawArgValueClass {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NonValueArgKind {
     CoreTypeProjection,
-    RankObject,
-    NamespaceObject,
-    MetaObject,
-    PatternObject,
     ProductUnit,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExplicitPassMode {
-    Move,
-    Ref,
-    Share,
-    Copy,
-    In,
 }
 
 fn flatten_product(product: &NormProduct, atoms: &mut Vec<ProductAtom>) {

@@ -3,8 +3,8 @@ use support::*;
 
 use lang_build::{
     declared_policy_view, expose_policy_slice, read_pattern, read_value, CompilationWorld,
-    ObservationHorizon, PolicyMode, PolicyResultEntry, Provenance, ResolveExpectation,
-    ResolverCode, ResolverContext, SourceCategory, Stage, SymbolKind, SymbolObject,
+    NamespaceGraphSymbol, ObservationHorizon, PolicyMode, PolicyResultEntry, Provenance,
+    ResolveExpectation, ResolverCode, ResolverContext, SourceCategory, Stage, SymbolKind,
 };
 
 #[test]
@@ -54,7 +54,7 @@ fn value_and_pattern_facets_have_independent_visibility_without_policy_changes()
 fn horizon_projection_does_not_define_symbol_existence() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.namespace_projection().empty_delta();
-    let mut symbol = SymbolObject::new(
+    let mut symbol = NamespaceGraphSymbol::new(
         delta.allocate_symbol_id(),
         "x",
         SymbolKind::Object,
@@ -114,7 +114,7 @@ fn seal_horizon_projection_reads_concrete_policy_views() {
         ("seal_only", Stage::Seal),
     ] {
         let symbol_id = delta.allocate_symbol_id();
-        let mut symbol = SymbolObject::new(
+        let mut symbol = NamespaceGraphSymbol::new(
             symbol_id,
             name,
             SymbolKind::Object,
@@ -159,7 +159,7 @@ fn hidden_observation_cannot_suppress_a_search_root_conflict() {
         (world.package_root_node(), Stage::Runtime),
         (world.core_node(), Stage::Compile),
     ] {
-        let mut symbol = SymbolObject::new(
+        let mut symbol = NamespaceGraphSymbol::new(
             delta.allocate_symbol_id(),
             "x",
             SymbolKind::Object,

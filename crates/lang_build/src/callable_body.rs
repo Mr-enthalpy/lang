@@ -22,7 +22,7 @@
 //! Production invocation reaches this builtin leaf only after ordinary
 //! value → complete type → associated `()` resolution has selected a call-entry
 //! semantic value. The implicit `self` belongs to that invocation frame, never
-//! to `ProductObject` / `ArgProductShape` / `RawArgShape`.
+//! to `ProductSyntaxMaterial` / `ArgProductShape` / `RawArgShape`.
 
 use std::collections::{BTreeMap, BTreeSet};
 

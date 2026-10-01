@@ -1,12 +1,12 @@
 use lang_build::SemanticValueId;
 use lang_build::{
-    ArgProductShape, CallableFrameShape, FlattenedProductInvariant, FlattenedProductObject,
+    ArgProductShape, CallableFrameShape, FlattenedProductInvariant, FlattenedProductMaterial,
     InvocationCallableRef, InvocationFrame, ObservationHorizon, ProductAtom, Provenance,
     ReceiverTypeRef, ReturnTargetShape, SelfPosition, SelfPositionSource, SelfSlotKind,
 };
 
 fn empty_arg_product_shape() -> ArgProductShape {
-    ArgProductShape::from_flattened(FlattenedProductObject {
+    ArgProductShape::from_flattened(FlattenedProductMaterial {
         atoms: Vec::new(),
         provenance: Provenance::new("empty explicit user product"),
         invariant: FlattenedProductInvariant {
@@ -16,7 +16,7 @@ fn empty_arg_product_shape() -> ArgProductShape {
 }
 
 fn unit_arg_product_shape() -> ArgProductShape {
-    ArgProductShape::from_flattened(FlattenedProductObject {
+    ArgProductShape::from_flattened(FlattenedProductMaterial {
         atoms: vec![ProductAtom::Unit {
             provenance: Provenance::new("explicit unit user argument"),
         }],

@@ -12,15 +12,15 @@ use support::{initializer_from_source, AssociatedFamily};
 fn fixed_callee_identity_precedes_shared_horizon_observations() {
     use lang_build::{
         prepare_callable_candidate_with_declared_planes, ArgProductShape,
-        CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
-        CompilationWorld, FlattenedProductInvariant, FlattenedProductObject, InvocationCallableRef,
-        InvocationFrame, ParameterShape, SelfPosition, SemanticValueId, SourceCategory, SymbolKind,
-        SymbolObject,
+        CandidatePrepIncompleteReason, CandidatePrepResult, CandidatePreparationContext,
+        CompilationWorld, FlattenedProductInvariant, FlattenedProductMaterial,
+        InvocationCallableRef, InvocationFrame, NamespaceGraphSymbol, ParameterShape, SelfPosition,
+        SemanticValueId, SourceCategory, SymbolKind,
     };
 
     let world = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
     let mut delta = world.namespace_projection().empty_delta();
-    let mut symbol = SymbolObject::new(
+    let mut symbol = NamespaceGraphSymbol::new(
         delta.allocate_symbol_id(),
         "candidate",
         SymbolKind::Object,
@@ -59,7 +59,7 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
             body_visible
         );
         assert_eq!(capability.resolve(&path, &resolver).unwrap().id, callee.id);
-        let args = ArgProductShape::from_flattened(FlattenedProductObject {
+        let args = ArgProductShape::from_flattened(FlattenedProductMaterial {
             atoms: Vec::new(),
             provenance: Provenance::new("empty args"),
             invariant: FlattenedProductInvariant {
@@ -84,11 +84,11 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
                 assert!(body_visible);
                 candidate
             }
-            CandidatePrepResult::Deferred { candidate, reason } => {
+            CandidatePrepResult::Incomplete { candidate, reason } => {
                 assert!(!body_visible);
                 assert_eq!(
                     reason,
-                    CandidatePrepDeferredReason::BodyEntryObservationHidden
+                    CandidatePrepIncompleteReason::BodyEntryObservationHidden
                 );
                 candidate
             }

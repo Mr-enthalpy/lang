@@ -14,8 +14,8 @@ Pattern normalization and the candidate model that feeds invocation:
 
 - the canonical relational Pattern coordinate, proof-relevant derivations,
   structural incidence, observation, and extraction
-- `PatternObject` and occurrence roles (binder / type / path / literal / discard)
-- `ProductObject` / `ArgProductShape` as the bridge from normalized products to
+- Pattern occurrence roles (binder / type / path / literal / discard)
+- `ProductSyntaxMaterial` / `ArgProductShape` as the bridge from normalized products to
   argument-shape formation
 - `RawArgShape` and `ParameterShape`
 - first-order type-value candidate adaptation, applicability, specificity
@@ -52,18 +52,19 @@ Runtime overload resolution implementation, full pattern-space algebra, and
 match/exhaustiveness checking. Lifetime checking/refinement is later than this
 type/compile pipeline and is bounded separately in `../lifetime/`.
 
-## Product semantic normalization bridge
+## Product material observation bridge
 
-Product semantic normalization is not surface normalization. Before
-`RawArgShape` formation, a normalized product must pass through:
+Before `RawArgShape` formation, normalized product syntax passes through
+material carriers:
 
 ```text
-NormProduct -> ProductObject -> FlattenedProductObject -> ArgProductShape -> RawArgShape
+NormProduct -> ProductSyntaxMaterial -> FlattenedProductMaterial -> ArgProductShape -> RawArgShape
 ```
 
 The bridge flattens exposed Product nodes, does not cross Expression nodes,
 preserves each layer's named/ordered relation, preserves `Unit`, and preserves provenance. This is an input to
-candidate preparation, not runtime overload resolution.
+candidate preparation. These carriers are not canonical semantic Objects and
+do not perform name resolution, selection or execution.
 
 ## Documents
 
