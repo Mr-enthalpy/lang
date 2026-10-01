@@ -381,10 +381,10 @@ compatible with a full 3x3 capability space: selection coordinates and the
 surface inventory of explicit reconstruction operations are different facts.
 The normative action meaning is owned by
 [`CanonicalMechanicalPassCore`](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md#0-canonical-pass-action-core):
-copy performs `CopyConstruct` followed by one terminal Move, with no pre-move
-of the source. `CopyConstruct` is the compact name for the selected ordinary
-copy algebra: ordinary `T` expands through share/clone, while `T ref` and
-`T share` expand through rebind/clone. It is not a new opaque primitive.
+copy uses ordinary share then the selected clone for ordinary `T`, or ordinary
+rebind then the selected clone for `T ref` / `T share`. The fresh complete
+result travels through terminal Move, with no pre-move of the source. Lowering
+preserves those selected ordinary actions without an opaque copy-producing step.
 
 ## 2. Pattern alternative and policy operators
 
@@ -646,15 +646,16 @@ realization before that terminal transport, not an automatic second pass kind.
 A const producer
 may win under an explicit plain output preference without becoming plain itself;
 ordinary transfer installs its result in the independently completed destination.
-For an existing source that must be preserved, the explicit copy trace remains:
+For an existing source that must be preserved, the source declaration below
+is followed by its semantic action trace:
 
     plain let y = x copy
-      -> tmp := CopyConstruct(x)
-           ~= share -> clone   for ordinary T
-           ~= rebind -> clone  for T ref / T share
+      -> share(x) -> selected clone    for ordinary T
+         rebind(x) -> selected clone   for T ref / T share
+      -> tmp := fresh complete result of that selected clone
       -> Move(tmp) -> y with PolicyMode=plain
 
-There is no move of x before CopyConstruct and no implicit policy conversion.
+There is no move of x before the selected clone and no implicit policy conversion.
 Changing the omission rule changes neither that mechanical core nor the sealed
 producer/destination distinction.
 

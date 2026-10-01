@@ -186,16 +186,16 @@ A call mode depends on already-normalized argument passing.
 objects that result from argument-passing normalization (semantic metanotation):
 
 ```text
-copy(x)  -> tmp = CopyConstruct(x); move(tmp)
-            where CopyConstruct(ordinary T) ~= share -> clone
-              and CopyConstruct(T ref/share) ~= rebind -> clone
+copy(x) when x : ordinary T:
+  share(x) -> selected clone -> fresh complete result -> Move(result)
+copy(x) when x : T ref | T share:
+  rebind(x) -> selected clone -> fresh complete result -> Move(result)
 share(x) -> b = share_borrow(x); move(b)
 ref(x)   -> b = ref_borrow(x); move(b)
 move(x)  -> move(x)
 ```
 
-`CopyConstruct` is the selected ordinary copy-family realization, not a new
-opaque primitive. These internal share/rebind expansions do not authorize
+These selected ordinary share/rebind and clone actions do not authorize
 automatic pass adaptation to choose `share` or `ref`. Pass=Move; Preserve Move
 uses no clone and is not the copy-derived path shown above. Cleanup points and
 same-point reverse-declaration order are fixed before lifecycle observation.

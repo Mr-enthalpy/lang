@@ -94,6 +94,40 @@ fails OpenHere, and saved authority cannot revive an explicitly closed window.
 
 ## Instance lifecycle and with
 
+Substrate evidence for these obligations is in `lifecycle.rs` and
+`semantic_continuation.rs` unit tests: fixed Kill/Preserve, independent supplied
+legality facts, joint Pre/commit/Post, proof identity and stale rejection,
+precedence/linearization of fixed cleanup points, and no duplicate Drop after Kill.
+Additional substrate regressions reject crossing outstanding cleanup boundaries
+without advancing K, distinguish discovery from formation/origin facts, and
+keep full ReifyLife unavailable instead of returning an incomplete Region.
+Prefix regressions cover future cleanup of Kill destinations and late admitted
+formation, immutable fixed prefixes, stale evidence after prefix/suffix changes,
+same-cut Use/Preserve rejection, and fixed-order boundary Kill. Scalar half-open
+Regions also reject later endings at an existing Use/Preserve cut.
+Color admission regressions reject foreign K (including colliding numeric
+LifeNames), unallocated/pending/closed subjects and stale frontiers without
+mutation; ended-generation Color cannot invalidate Kill inheritance or pollute
+a later allocation. Active admission remains monotone and invalidates old Pre.
+The production world retains one K and lifecycle name map; source lifecycle
+actions, complete generation-continuation observation, NLL/with cleanup-point
+derivation and complete E remain consumer gates.
+These tests do not claim end-to-end conformance of the source scenarios.
+
+Future E integration must additionally pass these regressions; current
+substrate tests do not establish either gate:
+
+- With K at 4 and an outstanding fixed Drop at 9, an action at 10 without a
+  lifecycle projection cannot commit or publish state. After the Drop is
+  committed or its obligation discharged, the same boundary no longer blocks
+  advancement. Enforcement must come from the shared scheduler or common
+  transaction, not optional inclusion of lifecycle Pre.
+- A formation/origin/Color producer and its lifecycle Post share one committed
+  action identity/cut and one scratch publication. Failure of any affected Pre
+  or Post leaves producer facts, projection state and K unchanged. Successful
+  publication includes the producer-established facts; calling a trusted import
+  separately after common publication is not conformance evidence.
+
 | ID | Scenario | Required result |
 |---|---|---|
 | L01 | A killing move transfers a meta-local type instance | End the source generation at that cut. |

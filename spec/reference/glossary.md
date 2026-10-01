@@ -333,8 +333,9 @@ this initial type.
 
 ### SemanticContinuation
 
-The ordered evaluation position space shared by lifecycle observation and
-committed actions.
+The ordered evaluation position space shared by all semantic projections.
+One action identity and cut govern their joint Pre/commit/Post transaction;
+the lifecycle projection owns no separate commit or position allocator.
 
 ### LifeName / NameView / LifetimeValue
 
@@ -350,7 +351,7 @@ continuation cut. Preserve follows its independent narrow proof.
 ### Pre / Post
 
 Pre validates an action before mutation. Post records only committed success.
-Neither stage participates in overload reselection.
+Neither judgment participates in overload reselection.
 
 ### Color
 
@@ -470,9 +471,9 @@ layout do not collapse them.
 ### Terminal pass and copy-derived realization
 
 Pass = Move. Ordinary copy-derived use is share -> selected clone -> fresh
-complete result -> Move; ref/share uses rebind -> selected clone -> Move.
-CopyConstruct abbreviates this ordinary realization, never an opaque primitive
-or second pass kind. Copyable means that clone realization is available.
+complete result -> Move; ref/share uses rebind -> selected clone -> fresh
+complete result -> Move. Lowering retains the selected ordinary producer actions
+and terminal Move. Copyable means that clone realization is available.
 Preserve Move is not copy; selected clone alone determines its origin post.
 
 ### With placement

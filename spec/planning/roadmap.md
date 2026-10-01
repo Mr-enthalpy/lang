@@ -82,7 +82,7 @@ semantic relations above.
 | OpenHere / construction | explicit window facts, authority, Writable and write algebra | authority/window revalidation and inject substrate | Checks implemented; source WindowLive establishment, generation-coordinate control dispositions and invocation dependency propagation pending |
 | Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
-| SemanticContinuation | lifecycle machine and event ledger | world-owned registration | source action/cleanup wiring pending |
+| SemanticContinuation | shared action transaction with separate LifecycleState and event ledger | world-owned continuation and stable LifeName discovery without fabricated formation/origin facts; supplied lifecycle Pre in ordinary calls | Joint Pre/commit/Post substrate, cleanup boundary Pre and linearization of fixed points implemented; full ReifyLife continuation, source actions/E and cleanup-point derivation pending |
 | Color/access | extensible directed relations and provider interface | lifecycle Pre validation | access-tree construction Open |
 
 “Consumer pending” means the canonical relation exists and no substitute
@@ -331,7 +331,7 @@ they cannot authorize an alternate implementation of these rules.
 | Single-stage positions | lang_build/src/policy_pair.rs has single Stage atoms and separate omitted query coordinates | Connect ordinary deduction with unresolved valuations; preserve position omission/atom/hole, heterogeneous Pin and Pout authority. S01–S08, S12 |
 | Two rounds and origin | ordinary_invocation.rs routes the ordinary trunk; resolved horizon-hidden argument Val1 stops before A/maxima, without unknown/Plain fallback. policy_observation.rs only exposes existing facets and performs no name lookup | Connect R_vis evidence, lazy C_sigma family, ordinary A/D/Policy/Pattern selection and shared selected origin. S09–S11 |
 | Runtime entry and Seal | CLI exposes frontend commands; horizon visibility supplies no readiness or scheduling consumer | Connect EntryContinuation, runtime main, active dominance, real readiness dependencies, pending seal formation and scheduler invariance. E01–E09 |
-| Instance lifecycle and cleanup | lifetime substrate records events; Raw WithClauseAst and NormWithClause preserve shape | Connect Killable/MoveEffect/Movable, uniform type/meta instances, directed Touch closure, default NLL, lexical empty-with and no duplicate drop. L01–L08, W01–W08 |
+| Instance lifecycle and cleanup | lifecycle checks supplied instance/frontier facts; Move has fixed Kill/Preserve; common action witness fixes all projection identities/cuts. Fixed cleanup points use precedence then reverse-declaration linearization; Raw/Norm preserve with shape | Connect ordinary Killable/MoveEffect/Movable formation, uniform type/meta instances, directed Touch closure, default NLL and lexical empty-with to the shared transaction. L01–L08, W01–W08 |
 | Chain and residual boundary | InvocationResult residual is an opaque class/provenance carrier; no separate static/runtime flow carries completion | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
 | Ordinary meta query state | current meta root cache lacks the full retained instance/member state protocol | Connect default formation, actual member mutation, current committed reads, snapshot/Close and SealDom checks. P09–P12, E06 |
 | Operator dispatch | Norm OperatorTarget retains spelling/fixity/arity; world.rs directly resolves operator spelling | Connect OperatorUse/OperatorNameValue, operator[op]/op::adl, OG_s extraction, explicit Forget_s and current slot. Add source goldens for supported operator-name forms. O01–O07 |
@@ -510,7 +510,74 @@ transaction; the provisional preparation pipeline is not that evaluator.
 Visibility alone establishes neither readiness nor execution legality. These
 consumer connections are implementation work, not open language-design questions.
 
-The next independent cleanup cuts expose lifecycle Pre/common commit/Post with fixed
-MoveEffect; and separate callable source records and general meta-instance
-identity from body execution. These are implementation retirement tasks, not
-new semantic choices.
+Lifecycle interface cleanup removes the independently committing action machine
+and the separate Cleanup event. `LifecycleState::check_pre` is read-only;
+its opaque evidence binds the selected action, expected projection/continuation
+state (including the fixed cleanup prefix and pending suffix) and common cut.
+`semantic_continuation.rs` owns a generic joint transaction: all affected Pre
+checks precede publication of all Post projections at one action identity and
+position. Stale/foreign evidence publishes neither partial state nor a cut.
+The scratch copy is transaction storage, not another semantic evaluator.
+
+Move actions carry source, destination and fixed Kill/Preserve effect. Supplied
+Movable, Killable and narrow Preserve evidence remain independent; missing
+facts fail without effect substitution. Killing movement establishes the
+destination generation at the source end cut, preserves deeper origin and
+Color, and discharges the old scheduled Drop. Preserve transports the surviving
+subject without clone or a manufactured fresh object/generation.
+
+Cleanup placements retain established declaration order and fixed points.
+Freezing fixes a complete prefix through an explicit cut. Later generations
+may acquire cleanup in the still-unfixed suffix; neither a committed cut nor
+the fixed prefix can be reopened. Pre requires its action cut covered, and
+prefix/suffix changes invalidate earlier evidence.
+Freezing respects all supplied precedence and applies reverse declaration
+priority only among still-unordered available events at the same point.
+Contradictions diagnose without moving points. Scheduled cleanup commits Drop;
+already discharged obligations add no second destructor. Lifetime reification
+requires the fully fixed generation continuation, not merely the cleanup-table
+fixed prefix. The operational active Region is never published as a complete
+LifetimeValue; the full continuation projection is unavailable. Lifecycle Pre
+cannot cross an earlier outstanding cleanup, including for unrelated subjects.
+Rejecting that action preserves the ability to Drop at the original point.
+Use/Preserve cannot occupy their own half-open endpoint. Scheduled Drop and
+same-cut Kill discharge in fixed order. An unscheduled ending cannot close
+a Region at a cut already containing that subject's Use/Preserve either.
+
+SemanticWorld roster synchronization discovers names only; missing formation
+and origin facts do not establish Alive, a formation cut or origin=None.
+`admit_committed_formation_fact` takes the actual supplied cut, including a cut earlier
+than discovery. Pending origin producers remain explicit pending material.
+Origin completion is one-shot, and finite Color queries cannot silently stop
+at missing ancestry. Full ReifyLife remains an explicit consumer frontier,
+including when cleanup has been frozen but generation endpoints are not fixed.
+Color fact admission requires the matching K, a frontier covering already
+committed projection events, and a formed active generation; unknown, pending,
+closed and foreign subjects cannot mutate the projection. Historical Color
+backfill is not supported, so ended-generation direct facts cannot invalidate Kill's
+inherited snapshot.
+
+Lifecycle and shared-transaction unit tests cover these substrate relations,
+not source use/move/drop/@, NLL/with point derivation, atomic extraction or
+destructor execution. Those consumers and E saturation remain unavailable.
+Ordinary selected-call DynamicLegality still checks supplied lifecycle Pre;
+it does not thereby execute the shared action transaction.
+
+Future E wiring has two hard acceptance gates. First, no semantic action may
+advance past an earlier fixed, outstanding cleanup, even if that action has no
+lifecycle projection. The current guard is in lifecycle Pre, not automatically
+in `SemanticContinuation::commit_action`. The shared scheduler or common
+transaction must enforce it for all actions before publication.
+Second, source formation/origin/Color producers must publish their lifecycle
+Post with all other affected projections in the same scratch transaction.
+The current trusted `admit_committed_*_fact` imports are not producer witnesses;
+they must become internal joint-Post helpers or consume the common producer
+witness within that transaction. Commit followed by separate lifecycle mutation
+is not an accepted source handoff. Regressions must cover a non-lifecycle action
+blocked by earlier cleanup and producer-fact rollback on any affected Pre/Post
+failure. These gates remain unconnected and do not reopen the completed
+lifecycle interface cleanup.
+
+The next independent cleanup cut separates callable source records and general
+meta-instance identity from body execution. This is implementation retirement,
+not a new semantic choice.

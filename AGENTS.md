@@ -168,8 +168,8 @@ alternate relation or identity.
   complete tau.
 - Lifecycle facts are relative to one SemanticContinuation. Killable is instance-local, MoveEffect is fixed, Movable is frontier legality.
   Move does not imply Kill; Preserve Move is not copy and invokes no clone.
-  Pass=Move; copy-derived paths are share/rebind -> selected clone -> Move(fresh result).
-  CopyConstruct abbreviates that ordinary realization, never another primitive/pass kind.
+  Pass=Move; copy-derived paths are share/rebind -> selected clone -> fresh complete result -> Move.
+  Lowering retains the selected ordinary producer actions and terminal Move, with no opaque copy-producing action.
   Cleanup points are fixed under all constraints, then remaining unordered same-point
   events use reverse declaration order; the full sequence precedes observation.
   Killing move adds no

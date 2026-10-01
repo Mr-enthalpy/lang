@@ -47,3 +47,98 @@ resident or graph callable record; it cannot bind c_C in place of tau_C.
 The explicit ordinary callable-member substrate builder is not a source let
 consumer. Callable registration and selection tests remain substrate evidence, not proof of complete
 source closure formation or general body execution.
+
+## Shared action and lifecycle handoff
+
+The common continuation owns action identity and position. `LifecycleState`
+is a projection, with no private continuation or action-commit API.
+
+```text
+selected action + fixed continuation cut
+  -> all affected projection Pre checks on the current state
+  -> one common transaction commit
+  -> joint Post publication at that same action identity/cut
+```
+
+`LifecycleState::check_pre` returns opaque action/state/continuation/cut evidence without
+mutation. `apply_post` consumes the common committed-action witness and that
+evidence. Stale, foreign or mismatched evidence cannot publish a projection or
+advance the continuation. The generic transaction's scratch storage does not
+constitute another evaluator or a semantic retry. Full E/source integration
+and external effect publication remain consumer gates.
+The evidence includes the fixed cleanup prefix and pending suffix; extending
+either changes the continuation snapshot. A different snapshot cannot reuse
+evidence merely because identity and action ordinal agree.
+
+Move carries its source, destination and already fixed `MoveEffect`.
+Supplied Movable, instance Killable and the narrow Preserve proof are distinct
+facts, never inferred from Alive, Type or Policy. Failure cannot change the
+effect or clone instead. Kill closes the source and establishes the destination
+generation at one cut, retaining deeper origin and Color. Preserve retains the
+surviving subject and does not construct a copy.
+
+Cleanup points arrive already fixed by all ordinary constraints. The schedule
+retains declaration order and precedence. `freeze_cleanup_through(k)` fixes
+the complete prefix through k, including empty cuts, without shifting any point.
+It linearizes same-point events while preserving all previously fixed order.
+New generations may receive placements strictly beyond that prefix and the
+committed frontier. Future material remains a separate, unfinalized suffix;
+`cleanup()` exposes only the fixed sequence. Every lifecycle Pre requires its
+requested cut to be covered by the fixed prefix.
+At the scheduled cut cleanup submits Drop,
+not a separate lifecycle event. A committed Kill/Drop discharges the generation's
+obligation. Every lifecycle action's Pre rejects crossing any earlier fixed
+cleanup point whose obligation remains outstanding, even for another subject.
+Failure leaves the fixed Drop executable at its original cut; neither the cut
+nor the ordinal advances. At its own fixed endpoint, Use/Preserve fail; Drop
+and a Kill replacing that Drop must follow the fixed sequence. Kill before
+its future scheduled Drop still discharges that obligation without borrowing
+the future cut's ordering. An ending action cannot close a half-open Region
+at a cut already containing Use/Preserve of that subject, even without a
+scheduled Drop. Action ordinals do not enlarge Region membership.
+Preserve discharges no cleanup obligation.
+
+Full E integration must enforce the outstanding-cleanup boundary for every
+semantic action, including actions without a lifecycle projection. Currently
+that check resides in `LifecycleState::check_pre`; `commit_action` does not
+perform it automatically. Before any action commits at k, every fixed cleanup
+strictly before k must have been committed or its obligation discharged.
+The shared scheduler or common transaction must enforce this gate; inclusion
+of lifecycle Pre by an individual caller is not sufficient integration evidence.
+
+Roster discovery establishes only the stable value-to-LifeName map. It supplies
+neither Alive nor a Region nor an origin proposition. Formation consumes an
+explicit formation cut; missing/default origin producer material remains
+`LifecycleOrigin::Pending`, distinct from `ExplicitNone` and `Name(n)`.
+Finite Color queries cannot truncate pending ancestry as if it terminated.
+The `admit_committed_*_fact` interfaces import producer-established facts;
+they are not lifecycle action commits. CompilationWorld exposes lifecycle
+state read-only; source fact producers remain unconnected.
+When those producers are connected, formation/origin/Color facts must enter
+their projection Post in the same scratch publication as the producer action:
+`ProducerPre -> one common commit -> joint producer/lifecycle Post`.
+The trusted-import interfaces do not prove that handoff. They must either be
+restricted to internal helpers within joint Post or consume the common
+committed producer witness within that transaction. A separate lifecycle
+mutation after common publication does not satisfy the contract; any affected
+Pre or Post failure must publish neither producer facts nor a continuation cut.
+Color admission additionally checks the supplied continuation identity and
+that its frontier covers this projection's committed events and subject birth.
+It accepts only formed, active generations. Unknown, formation-pending, ended
+or foreign subjects fail before mutation. This API does not backfill historical
+Color: after Kill/Drop, the old generation's direct Color facts cannot change,
+preserving Kill's inherited direct/deeper Color facts. Observations through
+retained origins still include permitted additions to active ancestors.
+Bare LifeName numbers
+are interpreted within the supplied K, never as independent authority.
+
+ReifyLife must describe the fully fixed generation continuation. A frozen
+cleanup table alone proves neither its full endpoint nor the absence of other
+generation-ending actions. The operational active Region is not a completed
+LifetimeValue. Until that continuation projection is connected, `reify_value`
+reports `LifecycleContinuationPending` (or the earlier missing formation/origin
+frontier), never an incomplete value with an invented unbounded end. Thus a
+value formed at 0 with cleanup fixed at 9 cannot be exposed as `[0,?)`.
+Reification does not solve placement or move cleanup points.
+NLL/with point derivation, source events and atomic decomposition/destructor
+continuations are not implemented by these substrate interfaces.

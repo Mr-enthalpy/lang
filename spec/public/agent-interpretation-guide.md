@@ -110,8 +110,9 @@ Incoming source Product, no following Product?  -> first legality repair (PipeFa
   Objects. Destructors continue over complete children after decomposition.
 - field : T -> F is affine value access. Affine use does not prove death.
   Movable, Killable and MoveEffect are independent; Preserve Move is not copy.
-- Terminal Pass = Move. Copy-derived use is ordinary share/rebind -> clone ->
-  Move(fresh result). CopyConstruct abbreviates that realization, not a primitive.
+- Terminal Pass = Move. Copy-derived use is ordinary share/rebind -> selected clone ->
+  fresh complete result -> Move. Lowering preserves those selected ordinary
+  producer actions; there is no opaque copy-producing action or second pass kind.
 - First fix cleanup points under all established constraints; only same-point
   otherwise-unordered events use reverse declaration order. Fix the full
   sequence before lifecycle/@ observation. Never move points for that tie-break.

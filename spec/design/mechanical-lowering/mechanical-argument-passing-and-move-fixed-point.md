@@ -6,7 +6,7 @@ owns Killable, MoveEffect, Movable and Pre/Post on the same continuation.
 
 ## 0. Canonical pass-action core
 
-Move(x), clone(x), share(x), rebind(x) and CopyConstruct(x) below are semantic
+Move(x), copy(x), clone(x), share(x) and rebind(x) below are semantic
 metanotation, not callee-first source syntax. Source calls retain P |> E or P E.
 
 ```text
@@ -14,18 +14,16 @@ CanonicalMechanicalPassCore:
   Pass = Move
   move(move(x)) = move(x)
 
-CopyConstructExpansion (only for a selected copy-derived route):
+For a selected copy-derived route:
 ordinary source : T:
   source -> share(source) -> selected clone -> fresh complete result -> Move(result)
 source : T ref | T share:
   source -> rebind(source) -> selected clone -> fresh complete result -> Move(result)
 
 copy-derived route = selected share/rebind + clone realization + terminal Move
-CopyConstruct = compact name for that ordinary realization before Move
 ```
 
-CopyConstruct is not an opaque primitive or a second terminal pass. Copyable
-states that the appropriate clone realization can succeed; it selects no
+Copyable states that the appropriate clone realization can succeed; it selects no
 default copy pass. There is no DefaultPass(x) in {move, copy} judgment to
 complete. Failed movement permission does not silently try cloning.
 
@@ -149,10 +147,16 @@ move(x):
   perform the predetermined MoveEffect_K(x,m)
   transfer into the argument slot
 
-copy(x):
-  tmp = CopyConstruct(x)
-      ~= shared_view := share(x); clone(shared_view)     when x : ordinary T
-      ~= rebound_view := rebind(x); clone(rebound_view)  when x : T ref | T share
+copy(x) when x : ordinary T:
+  shared_view := share(x)
+  tmp := result of the selected ordinary clone invocation on shared_view
+  tmp is a fresh complete result
+  move(tmp)
+
+copy(x) when x : T ref | T share:
+  rebound_view := rebind(x)
+  tmp := result of the selected ordinary clone invocation on rebound_view
+  tmp is a fresh complete result
   move(tmp)
 
 ref(x):
@@ -178,21 +182,23 @@ Two additional invariants close the Policy-mode boundary:
 ```text
 PlainMaterializationPrinciple:
   destination PolicyMode ∈ {const, plain, mut}
-  copy-to-destination = CopyConstruct(x) + terminal Move
+  ordinary T:
+    share(source) -> selected clone -> fresh complete result -> Move(result)
+  T ref | T share:
+    rebind(source) -> selected clone -> fresh complete result -> Move(result)
 
 NoPreMoveBeforeCopy:
-  copy(x) ≠ move(x); CopyConstruct(x)
-  copy(x) = CopyConstruct(x); terminal Move(result)
+  source x is not moved before the selected clone completes
+  terminal Move transports the fresh complete result, not x
 ```
 
 The const, plain, and mut destination cases use this same ordinary realization. The
 destination mode may affect candidate preference or capability realization,
 but it does not introduce three different kinds of copy and never consumes
-`x` before `CopyConstruct(x)` has completed. Nor does transfer relabel the
+`x` before the selected clone has completed. Nor does transfer relabel the
 producer result: source and destination modes are independent slot facts.
-`CopyConstruct` here is the ordinary selected copy-family candidate summarized
-by `CopyConstructExpansion`, not an additional builtin whose behavior is left
-uninterpreted.
+The share/rebind action and clone invocation remain selected ordinary actions;
+there is no additional copy-producing primitive or compact semantic instruction.
 
 ## 8. Borrow movement preserves parent/origin
 
@@ -271,7 +277,12 @@ The IR must not retain `in`, and it must not retain an undecided default pass.
 The final IR / lower-action layer sees only fully decided actions, for example:
 
 ```text
-CopyConstruct x -> tmp
+selected ordinary share action: x -> shared_view
+selected ordinary clone invocation: shared_view -> tmp (fresh complete result)
+Move tmp -> arg_slot
+
+selected ordinary rebind action: x -> rebound_view
+selected ordinary clone invocation: rebound_view -> tmp (fresh complete result)
 Move tmp -> arg_slot
 
 Move explicit_share_handle -> arg_slot
@@ -288,10 +299,10 @@ move(move(x)) => move(x)
 ```
 
 This fixed-point equation is canonical target semantics, not a description of
-current implemented behavior. An IR may retain `CopyConstruct` as a compact
-instruction only after recording which ordinary share/clone or rebind/clone
-realization was selected; the instruction name does not erase the semantic
-equivalence in `CopyConstructExpansion`.
+current implemented behavior. Physical lowering preserves the already selected
+ordinary producer actions and their lifecycle postconditions, followed by
+terminal Move. It introduces no opaque copy-producing instruction. The concrete
+IR encoding of those ordinary actions remains a representation question.
 
 ## 12. Relation to later call modes
 

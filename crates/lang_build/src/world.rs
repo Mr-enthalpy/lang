@@ -132,10 +132,11 @@ pub struct CompilationWorld {
     package_root_node: NamespaceNodeId,
     core_node: NamespaceNodeId,
     semantic_world: SemanticWorld,
-    /// One shared continuation/lifecycle state owned by the real evaluator.
+    /// Shared continuation and its orthogonal lifetime projection storage.
     /// SemanticWorld stores object ontology; lifecycle remains an orthogonal
     /// evaluation-state judgment.
-    lifecycle: crate::LifecycleMachine,
+    continuation: crate::SemanticContinuation,
+    lifecycle: crate::LifecycleState,
     source_fragments: Vec<SourceFragment>,
     diagnostics: Vec<Diagnostic>,
     /// Graph-projection declaration ids for compiler-internal call
@@ -208,11 +209,14 @@ impl CompilationWorld {
         install_dependency_mounts(&mut snapshot, &manifest.dependency_mounts)?;
         semantic_world.replace_namespace_index(snapshot);
 
+        let continuation = crate::SemanticContinuation::default();
+        let lifecycle = crate::LifecycleState::new(&continuation);
         let mut world = Self {
             package_root_node,
             core_node,
             semantic_world,
-            lifecycle: crate::LifecycleMachine::default(),
+            continuation,
+            lifecycle,
             source_fragments: Vec::new(),
             diagnostics: Vec::new(),
             next_intrinsic_backing: u64::MAX,
@@ -315,22 +319,26 @@ impl CompilationWorld {
         &self.semantic_world
     }
 
-    pub fn lifecycle(&self) -> &crate::LifecycleMachine {
+    pub fn continuation(&self) -> &crate::SemanticContinuation {
+        &self.continuation
+    }
+
+    pub fn lifecycle(&self) -> &crate::LifecycleState {
         &self.lifecycle
     }
 
-    pub fn lifecycle_mut(&mut self) -> &mut crate::LifecycleMachine {
-        &mut self.lifecycle
-    }
-
-    fn sync_lifecycle_values(&mut self) {
+    /// Roster discovery supplies names only; formation/origin producers are
+    /// not connected by discovering a SemanticWorld value.
+    fn sync_lifecycle_names(&mut self) {
         let values = self
             .semantic_world
             .values()
             .map(|value| value.id)
             .collect::<Vec<_>>();
         for value in values {
-            self.lifecycle.ensure_value(value);
+            self.lifecycle
+                .discover_value(&self.continuation, value)
+                .expect("world discovery uses its own continuation and fresh LifeNames");
         }
     }
 
@@ -671,7 +679,7 @@ impl CompilationWorld {
         context: crate::OrdinaryInvocationContext<'_>,
         provenance: Provenance,
     ) -> Result<crate::InvocationOutcome, crate::OrdinaryInvocationFailure> {
-        self.sync_lifecycle_values();
+        self.sync_lifecycle_names();
         let Some(candidate) = self.resolve_semantic_source_target(namespace, &call_site.target)
         else {
             return Err(crate::OrdinaryInvocationFailure::NoTargetValues {
