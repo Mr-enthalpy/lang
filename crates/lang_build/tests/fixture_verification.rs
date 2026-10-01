@@ -5,8 +5,6 @@ use lang_build::{BuildSession, BuildWorkspace, ToolchainGlobalSourceRoot};
 
 const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("vertical_slice", "app"),
-    ("core_verify_namespace", "app"),
-    ("resolver_core_paths", "app"),
     ("verify_meta_conflict", "app"),
     ("early_struct_meta", "app"),
     ("struct_single_field", "app"),
@@ -22,7 +20,6 @@ const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("single_package_type_binding", "app"),
     ("nested_physical_namespace", "app"),
     ("multi_file_same_namespace", "app"),
-    ("no_import_syntax", "app"),
     ("non_lang_files_ignored", "app"),
 ];
 
@@ -37,7 +34,7 @@ const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
     ),
 ];
 
-fn runtime_literal_verification_fixture(workspace: &str) -> BuildWorkspace {
+fn runtime_transport_fixture(workspace: &str) -> BuildWorkspace {
     let mut app = fixture_package_spec(workspace, "app");
     app.global_implementation_roots
         .push(ToolchainGlobalSourceRoot::under(
@@ -60,7 +57,7 @@ fn source_transport_without_execution_cannot_materialize_runtime_values() {
     ] {
         let mut session = BuildSession::new();
         let error = session
-            .build_workspace(&runtime_literal_verification_fixture(workspace))
+            .build_workspace(&runtime_transport_fixture(workspace))
             .expect_err("unconnected single-stage transport cannot produce a migrated value");
         assert!(
             format!("{error:?}").contains("closure-to-tau formation consumer"),
@@ -69,21 +66,19 @@ fn source_transport_without_execution_cannot_materialize_runtime_values() {
     }
 }
 
-// Temporary runner metadata, not semantic verification: these fixtures fail
-// before source verification can run, so the runner checks only the expected
-// diagnostic prefix/category.
+// These fixtures exercise connected declaration diagnostics and explicit
+// unavailable completion frontiers.
 const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
-        "source_verification_failure",
+        "source_expression_frontier",
         "app",
-        "source verification error:",
+        "source expression completion requires common E",
     ),
     (
-        "verify_unknown_operation",
+        "no_import_syntax",
         "app",
-        "unknown verification operation",
+        "source expression completion requires common E",
     ),
-    ("verify_malformed_arity", "app", "expects 2 argument(s)"),
     ("struct_duplicate_field", "app", "duplicate field name"),
     ("struct_non_type_field", "app", "unknown struct field type"),
     ("struct_nested_product", "app", "invalid struct syntax"),
@@ -160,7 +155,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
 ];
 
 #[test]
-fn pass_fixtures_run_source_verification_loop() {
+fn declaration_fixtures_build_without_source_evaluation() {
     // Collect every failing fixture instead of stopping at the first one so
     // a single run reports the complete pass-fixture status.
     let mut failures = Vec::new();

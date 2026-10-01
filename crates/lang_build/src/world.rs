@@ -32,7 +32,6 @@ use crate::{
     },
     semantic_world::{SemanticDeclarationEntry, SemanticNamespaceDelta, SemanticWorld},
     source::SourceFragment,
-    verify::evaluate_source_verifications as evaluate_verify_forms,
 };
 
 /// One resolved source target together with the COMPLETE host chain it was
@@ -854,8 +853,6 @@ impl CompilationWorld {
             self.consume_source_unit(unit, unit_namespace)?;
         }
 
-        self.evaluate_source_verifications()?;
-
         Ok(())
     }
 
@@ -978,30 +975,6 @@ impl CompilationWorld {
         Ok(())
     }
 
-    fn evaluate_source_verifications(&mut self) -> Result<(), BuildError> {
-        let mut diagnostics = Vec::new();
-        for fragment in &self.source_fragments {
-            let context = ResolverContext::with_mounts(
-                fragment.namespace,
-                vec![self.semantic_world.namespace_index().root_node()],
-                vec![self.core_node],
-            );
-            diagnostics.extend(evaluate_verify_forms(
-                &self.semantic_world,
-                fragment.namespace,
-                &fragment.normalized,
-                &context,
-            )?);
-        }
-
-        if diagnostics.is_empty() {
-            Ok(())
-        } else {
-            self.diagnostics.extend(diagnostics.clone());
-            Err(BuildError { diagnostics })
-        }
-    }
-
     fn harvest_program(
         &mut self,
         namespace: NamespaceNodeId,
@@ -1025,7 +998,15 @@ impl CompilationWorld {
             match form {
                 NormForm::Let(decl) => staged.harvest_let(namespace, decl, file)?,
                 NormForm::Alias(decl) => staged.harvest_alias(namespace, decl, file)?,
-                NormForm::Expr(_) => {}
+                NormForm::Expr(expr) => {
+                    return Err(BuildError::single(Diagnostic::hard_error(
+                        "source expression completion requires common E, which is not connected",
+                        Some(
+                            Provenance::file("source expression frontier", file)
+                                .with_span(norm_expr_span(expr)),
+                        ),
+                    )));
+                }
                 NormForm::ReturnEvent(return_ev) => {
                     return Err(BuildError::single(Diagnostic::hard_error(
                         "source contribution error: unbound return event reached declaration harvesting after return target binding",
@@ -2975,6 +2956,26 @@ fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
     )
 }
 
+fn norm_expr_span(expr: &NormExpr) -> lang_syntax::Span {
+    let origin = match expr {
+        NormExpr::PolicyLet { origin, .. }
+        | NormExpr::Call { origin, .. }
+        | NormExpr::Name { origin, .. }
+        | NormExpr::Literal { origin, .. }
+        | NormExpr::Nav { origin, .. }
+        | NormExpr::OperatorTarget { origin, .. }
+        | NormExpr::Unsupported { origin, .. } => origin,
+        NormExpr::Product(product) => &product.origin,
+        NormExpr::Closure(closure) => &closure.origin,
+        NormExpr::Error(error) => &error.origin,
+    };
+    match origin {
+        NormOrigin::Source(span)
+        | NormOrigin::Generated { span, .. }
+        | NormOrigin::Derived { span, .. } => *span,
+    }
+}
+
 fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
     match pattern {
         NormPattern::Binder { origin, .. }
@@ -3395,6 +3396,59 @@ mod initializer_residual_boundary_tests {
 #[cfg(test)]
 mod source_closure_frontier_tests {
     use super::*;
+
+    #[test]
+    fn verification_source_calls_require_ordinary_completion_without_publication() {
+        for source in [
+            "(uint8) exists::verify::core;",
+            "let result = (uint8) exists::verify::core;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let namespace = world.package_root_node();
+            let before = format!("{:?}", world.semantic_world);
+            let parsed = lang_syntax::parse(source);
+            assert!(
+                parsed.diagnostics.is_empty(),
+                "{source}: {:?}",
+                parsed.diagnostics
+            );
+            let normalized = lang_syntax::normalize_program(&parsed.program);
+            let file = Path::new("verification-frontier.lang");
+            let error = world
+                .harvest_program(namespace, &normalized, file)
+                .unwrap_err();
+            let message = if source.starts_with("let") {
+                "selected builtin verification consumer is not connected"
+            } else {
+                "source expression completion requires common E"
+            };
+            assert!(
+                error
+                    .diagnostics
+                    .iter()
+                    .any(|d| d.message.contains(message)),
+                "{error:?}"
+            );
+            assert_eq!(before, format!("{:?}", world.semantic_world));
+            assert!(world
+                .semantic_world
+                .symbol_in_namespace(namespace, "result")
+                .is_none());
+            if !source.starts_with("let") {
+                assert_eq!(
+                    error.diagnostics[0]
+                        .provenance
+                        .as_ref()
+                        .unwrap()
+                        .file
+                        .as_deref(),
+                    Some(file)
+                );
+            }
+        }
+    }
 
     #[test]
     fn closure_declarations_fail_without_installing_callable_value_or_type() {

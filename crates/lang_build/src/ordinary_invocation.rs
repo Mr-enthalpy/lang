@@ -1220,7 +1220,7 @@ pub(crate) fn invoke_target_values(
         // Body-entry admissibility is judged on the call entry's own
         // declaration-local P2; the declaration identity below is rebuilt
         // from the entry's declared facts for the shared candidate and
-        // body-evaluator carriers.
+        // future source-completion carriers.
         // This exposure test is not Ready evidence. The full common E
         // readiness/Pre/commit consumer remains a separate implementation gate;
         // visibility must not authorize additional body execution paths.
@@ -1765,11 +1765,7 @@ pub(crate) fn invoke_target_values(
                 bindings: source_shape.bindings.clone(),
                 pack_bindings: source_shape.pack_bindings.clone(),
             };
-            let failure = check_selected_source_body_frontier(
-                &SemanticTypeEnv::new(&*semantic_world),
-                resolver_context,
-                &selected_body_input,
-            );
+            let failure = check_selected_source_body_frontier(&selected_body_input);
             return Err(if selected.is_delete() {
                 OrdinaryInvocationFailure::SelectedDelete {
                     selected: selected.call_entry_value,

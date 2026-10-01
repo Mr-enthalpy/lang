@@ -42,7 +42,6 @@ pub mod source;
 mod struct_decoder;
 mod struct_pattern_material;
 pub mod type_argument;
-pub mod verify;
 pub mod world;
 
 pub use build::{
@@ -223,8 +222,7 @@ pub use struct_pattern_material::{
     StructuralMemberVisibility,
 };
 pub use type_argument::{
-    classify_type_arguments_env_with_report, BodyLocalInitializerCheck, NamedTypeResolution,
-    SemanticTypeEnv, TypeArgumentClassificationReport, TypeResolutionEnv,
+    classify_type_arguments_env_with_report, NamedTypeResolution, SemanticTypeEnv,
+    TypeArgumentClassificationReport, TypeResolutionEnv,
 };
-pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;

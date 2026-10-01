@@ -383,9 +383,7 @@ impl SymbolObject {
 
     pub fn namespace_node(&self) -> Option<NamespaceNodeId> {
         match &self.payload {
-            SymbolPayload::Namespace { node } | SymbolPayload::VerificationNamespace { node } => {
-                Some(*node)
-            }
+            SymbolPayload::Namespace { node } => Some(*node),
             SymbolPayload::CompleteTypeProjection(type_projection) => {
                 type_projection.type_associated_namespace
             }
@@ -416,9 +414,6 @@ impl SymbolObject {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SymbolPayload {
     Namespace {
-        node: NamespaceNodeId,
-    },
-    VerificationNamespace {
         node: NamespaceNodeId,
     },
     CompleteTypeProjection(CoreTypeProjection),

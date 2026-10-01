@@ -1,5 +1,1 @@
 mut + runtime let verify: uint8 = 1;
-
-verify policy verify::app runtime;
-verify not_policy verify::app meta;
-verify kind verify::core namespace;

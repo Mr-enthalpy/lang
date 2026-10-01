@@ -18,6 +18,90 @@ use lang_build::{
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
+/// Test-local assembly of an ordinary receiver x:T and its associated ()
+/// implementation. This does not evaluate a closure expression or form tau_C.
+#[allow(clippy::too_many_arguments)]
+pub fn install_callable_receiver_fixture(
+    world: &mut lang_build::SemanticWorld,
+    namespace: NamespaceNodeId,
+    name: &str,
+    backing: lang_build::SymbolId,
+    closure: &lang_syntax::NormClosure,
+    outer: Option<lang_build::ExplicitP1Selection>,
+    view: lang_build::PolicyView,
+    p2: lang_build::PolicyView,
+    visibility: Option<lang_build::NamespaceVisibility>,
+    result_class: lang_build::DeclaredResultClass,
+    provenance: Provenance,
+) -> Result<lang_build::RegisteredCallable, BuildError> {
+    let canonical = lang_build::canonical_function_object_view(
+        outer.as_ref(),
+        &view,
+        &p2,
+        Some(closure),
+        &provenance,
+    )
+    .map_err(BuildError::single)?;
+    let receiver_type = numbered_type_lookup_fixture("ordinary-receiver", backing.0);
+    let rank = world.type_rank().unwrap_or(receiver_type);
+    let (_, _, pattern) = world
+        .register_type_symbol(
+            namespace,
+            &format!("{name}_fixture_type"),
+            backing,
+            receiver_type,
+            rank,
+            None,
+            canonical.pair.clone(),
+            provenance.clone(),
+        )
+        .expect("fixture classifier registers");
+    let entry = world.register_associated_call_entry(
+        pattern,
+        namespace,
+        backing,
+        closure,
+        outer,
+        view,
+        p2,
+        visibility,
+        lang_build::OrdinaryCandidateRole::Ordinary,
+        result_class,
+        provenance.clone(),
+    )?;
+    let receiver = world
+        .install_ordinary_value(receiver_type, canonical.clone(), provenance.clone())
+        .expect("fixture receiver has a registered Type");
+    for place in world.value_residencies(receiver) {
+        world
+            .associate_existing_value_in_place(place, "()", entry)
+            .unwrap();
+    }
+    let symbol = world
+        .bind_ordinary_new(
+            namespace,
+            name,
+            &[lang_build::PolicyResultEntry {
+                value: Some(lang_build::SemanticValueRef {
+                    id: receiver,
+                    type_value: receiver_type,
+                }),
+                pattern,
+                view: canonical,
+            }],
+            provenance,
+        )
+        .expect("fixture receiver binds once");
+    Ok(lang_build::RegisteredCallable {
+        symbol,
+        function_value: receiver,
+        function_type: receiver_type,
+        function_pattern: pattern,
+        pattern_scope: world.pattern(pattern).unwrap().scope,
+        call_entry: entry,
+    })
+}
+
 pub fn type_lookup_fixture(label: &'static str) -> lang_build::TypeValueId {
     static REGISTRY: OnceLock<
         Mutex<(
@@ -588,7 +672,8 @@ impl AssociatedFamily {
                     )
                     .unwrap();
             } else {
-                receiver = Some(world.install_callable_fixture(
+                receiver = Some(install_callable_receiver_fixture(
+                    &mut world,
                     namespace,
                     "receiver",
                     lang_build::SymbolId(900000),

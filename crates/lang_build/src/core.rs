@@ -271,7 +271,6 @@ fn insert_verification_namespace(
     symbol.policy_view = Some(core_declared_view(Stage::Meta));
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;
-    symbol.payload = SymbolPayload::VerificationNamespace { node: node_id };
     delta.insert_symbol(core_node, symbol);
 
     for (name, primitive) in [

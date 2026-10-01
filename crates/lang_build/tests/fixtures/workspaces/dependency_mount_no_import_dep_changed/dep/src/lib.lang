@@ -1,5 +1,1 @@
 let DepType: type = (uint8 a) |> struct;
-
-verify kind DepType type;
-verify field_names DepType a;
-verify kind a::DepType field_function;

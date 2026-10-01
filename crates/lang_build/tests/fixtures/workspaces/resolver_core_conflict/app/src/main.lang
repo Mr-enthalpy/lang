@@ -1,7 +1,1 @@
 let uint8 = uint8;
-
-verify kind uint8 type;
-verify kind uint8::app type;
-verify not_policy uint8::app runtime;
-verify policy uint8::app meta;
-verify kind uint8::core type;

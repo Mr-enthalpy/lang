@@ -17,9 +17,7 @@ use crate::{
         solve_parameter_product_relation, NamedPatternObservation, PatternApplicabilityProof,
         PatternRelationContext, PatternRelationFailure,
     },
-    semantic_name_index::ResolverContext,
     semantic_owner::SemanticOwnerId,
-    type_argument::{BodyLocalInitializerCheck, TypeResolutionEnv},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,7 +50,7 @@ pub(crate) struct ApplicableCandidate {
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub(crate) specificity: SpecificityTuple,
     /// Proof-relevant result of the canonical Pattern relation. The name-keyed
-    /// maps above are one-way body-evaluator transport derived from
+    /// maps above are future source-completion transport derived from
     /// this proof and never participate in applicability.
     pub(crate) pattern_proof: PatternApplicabilityProof,
     pub(crate) overload_strategy: NormOverloadStrategy,
@@ -277,8 +275,6 @@ pub fn declared_result_class_from_closure(
 /// Source execution must eventually produce ordinary semantic completion through
 /// common E; builtin private material cannot cross this interface.
 pub(crate) fn check_selected_source_body_frontier(
-    type_env: &dyn TypeResolutionEnv,
-    resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
 ) -> SourceBodyFrontierFailure {
     match &selected.source_callable.closure.body {
@@ -291,7 +287,7 @@ pub(crate) fn check_selected_source_body_frontier(
             SourceBodyFrontierFailure { diagnostic }
         }
         NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
-            check_block_body_frontier(type_env, resolver_context, selected, program)
+            check_block_body_frontier(selected, program)
         }
         NormClosureBody::Defaulted { .. } => selected_body_failure(
             selected,
@@ -302,8 +298,6 @@ pub(crate) fn check_selected_source_body_frontier(
 }
 
 fn check_body_local_let_frontier(
-    type_env: &dyn TypeResolutionEnv,
-    resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
     local_names: &BTreeSet<String>,
     slot: &lang_syntax::NormBindingSlot,
@@ -334,52 +328,22 @@ fn check_body_local_let_frontier(
                 "selected source-body local bindings are not connected to execution",
             ));
         }
-        match type_env.check_body_local_initializer(
-            selected.symbol.parent,
-            initializer,
-            resolver_context,
-            Provenance::from_norm_origin("selected source-body local let", &slot.origin),
-        ) {
-            BodyLocalInitializerCheck::Accepted => {}
-            BodyLocalInitializerCheck::Residual { reason, provenance } => {
-                return Err(SourceBodyFrontierFailure {
-                    diagnostic: Diagnostic::hard_error(
-                        format!(
-                            "ResidualNotAllowedAtBoundary: selected source-body local initializer remains residual ({reason})"
-                        ),
-                        Some(provenance),
-                    )
-                    .with_code(ResolverCode::ResidualNotAllowedAtBoundary),
-                });
-            }
-            BodyLocalInitializerCheck::Rejected(diagnostic) => {
-                return Err(SourceBodyFrontierFailure { diagnostic });
-            }
-        }
     }
     Ok(())
 }
 
 fn check_block_body_frontier(
-    type_env: &dyn TypeResolutionEnv,
-    resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
     program: &lang_syntax::NormProgram,
 ) -> SourceBodyFrontierFailure {
-    // Validate connected local forms without inventing expression completion.
+    // Inspect source/frontier shape without deciding initializer semantics.
     // Shared continuation execution must supply UnitDiscard and tail inference.
     let mut local_names = BTreeSet::new();
 
     for form in &program.forms {
         match form {
             NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) => {
-                if let Err(failure) = check_body_local_let_frontier(
-                    type_env,
-                    resolver_context,
-                    selected,
-                    &local_names,
-                    slot,
-                ) {
+                if let Err(failure) = check_body_local_let_frontier(selected, &local_names, slot) {
                     return failure;
                 }
                 if let Some(name) = binding_slot_name(slot) {

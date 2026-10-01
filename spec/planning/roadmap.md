@@ -597,7 +597,11 @@ the outer source body. There is no separate source
 meta body evaluator or block-deferral result. Source blocks remain unavailable
 until the shared serial/completion consumer is connected; visibility and argument
 preparation do not establish Ready or a transaction witness. Callable fixture
-installation is explicitly test substrate, not closure-expression evaluation.
+installation is crate-private under `cfg(test)`, not closure-expression evaluation.
+Integration tests construct ordinary receivers through test-local helpers. Source
+frontiers expose no body-local initializer evaluation hook. Standalone expressions
+require common E; the ordinary Verify entries have no connected selected consumer
+and no source-scanning evaluator supplies one.
 
 The instance registry maps the full root key to `MetaInstanceId`, which reuses
 the existing semantic owner independently of TypeValueId. The connected struct

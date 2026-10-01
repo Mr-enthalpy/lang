@@ -21,7 +21,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use lang_syntax::{NormClosure, NormClosurePlacement, NormExpr, NormPatternElem, NormPolicySpec};
+#[cfg(test)]
+use lang_syntax::NormClosurePlacement;
+use lang_syntax::{NormClosure, NormExpr, NormPatternElem, NormPolicySpec};
 
 use crate::{
     callable_body::StructConstructionMaterialId,
@@ -4531,8 +4533,8 @@ impl SemanticWorld {
     #[allow(clippy::too_many_arguments)]
     /// Fixture builder for callable selection tests. Not a source formation
     /// consumer: source closure expressions require complete tau_C formation.
-    #[doc(hidden)]
-    pub fn install_callable_fixture(
+    #[cfg(test)]
+    pub(crate) fn install_callable_fixture(
         &mut self,
         namespace: NamespaceNodeId,
         name: &str,
@@ -4837,6 +4839,24 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
+        self.install_ordinary_value(
+            type_value,
+            PolicyView {
+                pair: policy,
+                mode: PolicyMode::Plain,
+            },
+            provenance,
+        )
+    }
+
+    /// Install an ordinary value under an already registered Type and resolved
+    /// Policy view. This accepts no source closure or implementation syntax.
+    pub fn install_ordinary_value(
+        &mut self,
+        type_value: TypeValueId,
+        view: PolicyView,
+        provenance: Provenance,
+    ) -> Option<SemanticValueId> {
         let pattern = self.type_value(type_value)?.pattern;
         let id = self.allocate_value_id();
         self.materialize_val1_object(SemanticValueObject {
@@ -4844,8 +4864,8 @@ impl SemanticWorld {
             type_value,
             pattern,
             object: SemanticObjectId(0), // assigned by materialize_val1_object
-            policy,
-            mode: PolicyMode::Plain,
+            policy: view.pair,
+            mode: view.mode,
             namespace_visibility: None,
             payload: SemanticValuePayload::PlainValue,
             provenance,

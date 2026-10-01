@@ -255,6 +255,8 @@ fn assert_canonical_p1_unified(world: &support::AssociatedFamily, name: &str) {
         "expected exactly one member view for `{name}`"
     );
     let member_view = &symbol.member_views[0];
+    assert_eq!(function_obj.mode, member_view.view.mode);
+    assert_eq!(call_entry_obj.mode, member_view.view.mode);
     let member_value_policy = member_view.view.pair.value.clone();
     let member_pattern_policy = member_view.view.pair.pattern.clone();
 

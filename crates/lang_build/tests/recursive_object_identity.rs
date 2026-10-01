@@ -311,21 +311,21 @@ fn successor_vtau_does_not_redefine_object_val2() {
         panic!("closure");
     };
     let view = lang_build::declared_policy_view(Stage::Compile, PolicyMode::Plain);
-    let builtin_member = world
-        .install_callable_fixture(
-            NamespaceNodeId(0),
-            "call_member",
-            SymbolId(99900),
-            &closure,
-            None,
-            view.clone(),
-            view,
-            None,
-            lang_build::DeclaredResultClass::OrdinaryValue,
-            Provenance::new("ordinary type-call member"),
-        )
-        .unwrap()
-        .function_value;
+    let builtin_member = support::install_callable_receiver_fixture(
+        &mut world,
+        NamespaceNodeId(0),
+        "call_member",
+        SymbolId(99900),
+        &closure,
+        None,
+        view.clone(),
+        view,
+        None,
+        lang_build::DeclaredResultClass::OrdinaryValue,
+        Provenance::new("ordinary type-call member"),
+    )
+    .unwrap()
+    .function_value;
 
     world
         .admit_direct_type_member(pattern, pattern, "vtau_only", builtin_member)
@@ -427,26 +427,26 @@ fn unit_is_terminal_leaf() {
     let lang_syntax::NormExpr::Closure(closure) = initializer else {
         panic!("callable fixture initializer is a closure");
     };
-    let registered = world
-        .install_callable_fixture(
-            NamespaceNodeId(0),
-            "f",
-            SymbolId(90),
-            &closure,
-            None,
-            lang_build::PolicyView {
-                pair: stage_pair(Stage::Meta),
-                mode: PolicyMode::Plain,
-            },
-            lang_build::PolicyView {
-                pair: stage_pair(Stage::Meta),
-                mode: PolicyMode::Plain,
-            },
-            None,
-            DeclaredResultClass::OrdinaryValue,
-            provenance.clone(),
-        )
-        .expect("ordinary callable substrate member is installed");
+    let registered = support::install_callable_receiver_fixture(
+        &mut world,
+        NamespaceNodeId(0),
+        "f",
+        SymbolId(90),
+        &closure,
+        None,
+        lang_build::PolicyView {
+            pair: stage_pair(Stage::Meta),
+            mode: PolicyMode::Plain,
+        },
+        lang_build::PolicyView {
+            pair: stage_pair(Stage::Meta),
+            mode: PolicyMode::Plain,
+        },
+        None,
+        DeclaredResultClass::OrdinaryValue,
+        provenance.clone(),
+    )
+    .expect("ordinary callable substrate member is installed");
     let (entry_pattern, entry_type) = {
         let entry = world
             .value(registered.call_entry)

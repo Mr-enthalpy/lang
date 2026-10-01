@@ -111,7 +111,7 @@ pub(crate) fn prepare_resolved_builtin_call(
         }
         BuiltinCallableImpl::Verify(_) => {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "builtin verification operations cannot be used as initializers",
+                "selected builtin verification consumer is not connected",
                 Some(provenance),
             )));
         }
