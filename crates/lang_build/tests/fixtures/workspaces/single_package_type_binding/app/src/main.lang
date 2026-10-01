@@ -4,14 +4,3 @@ let Direct: type = (uint8 field) struct;
 let Rebound: type = Direct;
 
 let PatternResult: type = T IdentityType::core;
-
-verify kind T type;
-verify kind U type;
-verify kind Direct type;
-verify kind Rebound type;
-verify kind PatternResult type;
-verify field_type field::Direct T;
-verify field_owner field::Direct Rebound;
-verify kind T::app type;
-verify not_exists main;
-verify not_exists T::main::app;

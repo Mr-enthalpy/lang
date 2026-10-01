@@ -3,9 +3,10 @@
 Status: semantic handoff with source-consumer migration pending
 
 Meta construction uses the shared semantic universe and ordinary invocation
-boundary. A selected primitive or source body may produce private execution
-material. That material is installed under the selected call's stable
-`SemanticOwner`, after which the declared semantic entity is returned through:
+boundary. Selected builtin leaves produce private material consumed at their
+own declared-result boundary under the call's specified `SemanticOwner`.
+Source bodies require ordinary semantic completion through common E; they do
+not forward builtin private material. The declared semantic entity is returned through:
 
 ```text
 InvocationResult
@@ -70,9 +71,34 @@ See [names and type algebra](../design/symbol-world/names-and-overload-groups.md
 [closure replication](../design/symbol-world/closure-anchored-replication.md),
 and [associated state A](../design/symbol-world/associated-compile-state.md),
 which is derived from the general invocation facilities.
-Legacy result-class/cell carriers do not add a semantic result ontology.
 Construction effects participate in the enclosing evaluator's existing commit
 rules; files do not supply construction authority.
+
+The connected substrate uses ordinary `CallableDeclaration` records and one
+selected implementation coordinate. `SourceCallableSyntax` holds normalized
+syntax, not an Object. Builtin leaves produce private construction material;
+source blocks require the shared completion consumer and remain unavailable.
+The source-body frontier returns diagnostics only, with no success carrier for
+builtin material. Inner builtin invocations consume `BuiltinBodyMaterial` into
+their own complete semantic result; future source execution must deliver ordinary
+semantic completion through common E rather than forward that private material.
+There is no separate meta body evaluator. Preparation and horizon visibility
+prove neither Ready nor execution legality.
+
+`MetaInstanceId` reuses the interned semantic owner and is independent of
+TypeValueId. Identity admission alone establishes no Object, Place, openness or
+completed result. The registry's currently supported struct-result record is a
+specific payload under that identity. `SelectedCallableIdentity` keeps the actual
+receiver and selected implementation. `MetaInstanceMaterialKey` combines that
+pair with canonical arguments. The complete `MetaInstanceRootKey` is the sole
+identity input to owner interning and struct-result installation, with no second
+callable or half-root parameter to reconcile. Equal full keys preserve the instance;
+conflicting formation material cannot split or replace it. Reacquisition reads
+current ordinary type/Val2 storage and preserves old complete-type snapshots.
+Missing prerequisites and formation conflicts publish no partial instance/result
+installation. This storage transaction does not establish the common E producer
+transaction. General instance residency, dependencies, current write authority,
+P1 completion and source body execution remain unconnected consumers.
 
 Compilation entry has runtime P2 and omitted ordinary P1 defaults to runtime.
 Bootstrap or ordinary legal meta formation supplies stable roots, without an

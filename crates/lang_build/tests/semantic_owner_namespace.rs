@@ -1,9 +1,9 @@
 use lang_build::{
     CallableOwnerPlacement, CallableReceiverBindingSource, CallableReceiverTypeId,
     CanonicalValueAddr, ExtractionMemberVisibility, LocalCallableIdentity, LocalGenerationIdentity,
-    LocalSymbolIdentity, MetaCallableIdentity, MetaInvocationMaterialKey, NamespaceLookupFailure,
-    NamespaceNameView, NamespaceSymbolEntry, NamespaceVisibility, OwnerNamespaceGraph,
-    OwnerNamespaceNodeId, OwnerQualificationError, PackageId, Provenance, SemanticOwnerGraph,
+    LocalSymbolIdentity, MetaInstanceMaterialKey, NamespaceLookupFailure, NamespaceNameView,
+    NamespaceSymbolEntry, NamespaceVisibility, OwnerNamespaceGraph, OwnerNamespaceNodeId,
+    OwnerQualificationError, PackageId, Provenance, SelectedCallableIdentity, SemanticOwnerGraph,
     SemanticOwnerQualification, SemanticSymbolIdentity, SemanticValueId,
 };
 use lang_syntax::{NormDecl, NormForm};
@@ -30,10 +30,10 @@ fn entry(
 }
 
 fn canonical_meta_key(
-    callable: MetaCallableIdentity,
+    callable: SelectedCallableIdentity,
     argument_addr: u64,
-) -> MetaInvocationMaterialKey {
-    MetaInvocationMaterialKey {
+) -> MetaInstanceMaterialKey {
+    MetaInstanceMaterialKey {
         callable,
         arguments: CanonicalValueAddr(argument_addr),
         provenance: Provenance::new(format!("canonical args@{argument_addr}")),
@@ -215,30 +215,42 @@ fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() 
     let namespace = owners.namespace(package, "meta");
     // Meta instance interning keys off the selected function object VALUE
     // identity, independently of the source name binding.
-    let f = MetaCallableIdentity {
+    let f = SelectedCallableIdentity {
         selected_function_value: SemanticValueId(7),
         selected_call_entry: SemanticValueId(70),
     };
     let uint8 = canonical_meta_key(f, 8);
     let uint16 = canonical_meta_key(f, 16);
 
-    let f_uint8 = owners.meta_instance(namespace, uint8.clone());
+    let f_uint8 = owners.meta_instance(lang_build::MetaInstanceRootKey {
+        parent_owner: namespace,
+        material: uint8.clone(),
+    });
     assert_eq!(
         f_uint8,
-        owners.meta_instance(namespace, uint8),
+        owners.meta_instance(lang_build::MetaInstanceRootKey {
+            parent_owner: namespace,
+            material: uint8
+        }),
         "the same canonical invocation reuses one semantic owner"
     );
     assert_ne!(
         f_uint8,
-        owners.meta_instance(namespace, uint16),
+        owners.meta_instance(lang_build::MetaInstanceRootKey {
+            parent_owner: namespace,
+            material: uint16
+        }),
         "different canonical arguments create distinct owners"
     );
 
-    let returned_meta = MetaCallableIdentity {
+    let returned_meta = SelectedCallableIdentity {
         selected_function_value: SemanticValueId(100),
         selected_call_entry: SemanticValueId(101),
     };
-    let nested = owners.meta_instance(f_uint8, canonical_meta_key(returned_meta, 8));
+    let nested = owners.meta_instance(lang_build::MetaInstanceRootKey {
+        parent_owner: f_uint8,
+        material: canonical_meta_key(returned_meta, 8),
+    });
     assert_eq!(owners.parent(nested), Some(f_uint8));
 }
 

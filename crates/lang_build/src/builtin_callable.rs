@@ -1,17 +1,16 @@
 use lang_syntax::{NormExpr, NormProduct, NormProductElem};
 
 use crate::{
-    meta_candidate::{
-        prepare_meta_callable_candidate_with_declared_planes, CallableCandidateKind,
-        CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
-        ParameterShape,
-    },
-    meta_invocation::{
-        compute_struct_construction_material_id, MetaInvocationInput, StructConstructionMaterial,
+    callable_body::{
+        compute_struct_construction_material_id, BuiltinBodyInput, StructConstructionMaterial,
         StructFieldConstructionMaterial,
     },
+    candidate_preparation::{
+        prepare_callable_candidate_with_declared_planes, CandidatePrepDeferredReason,
+        CandidatePrepResult, CandidatePreparationContext, ParameterShape,
+    },
     model::{
-        CallablePolicyViews, CoreMetaFunction, CoreTypeProjection, Diagnostic, FieldObject,
+        BuiltinCallableImpl, CallablePolicyViews, CoreTypeProjection, Diagnostic, FieldObject,
         FieldProjection, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
         SemanticNameDelta, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
         TypeField,
@@ -22,9 +21,9 @@ use crate::{
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
-        ProductMaterialRole,
     },
     semantic_name_index::{BuildError, ResolverContext, SemanticNameIndex},
+    semantic_world::{OrdinaryCallEntry, OrdinaryCallableImplementation},
     struct_pattern_material::{
         StructLeafSyntaxMaterial, StructPatternSyntaxMaterial, StructuralMemberVisibility,
     },
@@ -39,34 +38,46 @@ pub(crate) struct StructProjectionInstall {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// Primitive-explicit variant for the canonical A-stage.
-///
-/// The core primitive identity comes from the semantic
-/// `OrdinaryCallEntry.core_primitive`, so the invocation spine never reads
-/// the graph `SymbolPayload::MetaFunction` to enter a core body.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
-    callee: &SymbolObject,
-    primitive: CoreMetaFunction,
+/// Distinguish decided argument diagnostics from an incomplete applicability relation.
+#[derive(Debug)]
+pub(crate) enum BuiltinPreparationFailure {
+    Diagnostic(BuildError),
+    /// Applicability is unknown; the candidate family cannot reach maxima.
+    Incomplete(Diagnostic),
+}
+
+impl From<BuildError> for BuiltinPreparationFailure {
+    fn from(error: BuildError) -> Self {
+        Self::Diagnostic(error)
+    }
+}
+
+/// Prepare builtin argument relations from the real call entry.
+/// Its implementation selects argument handling; its declared Policy planes
+/// remain the only Policy authority. No graph callable payload is read.
+pub(crate) fn prepare_resolved_builtin_call(
+    entry: &OrdinaryCallEntry,
     site: &NormalizedCallSite,
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     horizon: ObservationHorizon,
     provenance: Provenance,
-) -> Result<MetaInvocationInput, BuildError> {
+) -> Result<BuiltinBodyInput, BuiltinPreparationFailure> {
+    let OrdinaryCallableImplementation::Builtin(primitive) = entry.implementation else {
+        unreachable!("builtin preparation requires a builtin call entry");
+    };
     let primitive_name = match primitive {
-        CoreMetaFunction::Struct => "struct",
-        CoreMetaFunction::Assert => "assert",
-        CoreMetaFunction::Verify(_) => "verify",
-        CoreMetaFunction::IdentityType => "IdentityType",
+        BuiltinCallableImpl::Struct => "struct",
+        BuiltinCallableImpl::Assert => "assert",
+        BuiltinCallableImpl::Verify(_) => "verify",
+        BuiltinCallableImpl::IdentityType => "IdentityType",
     };
 
-    let arg_product_shape =
-        site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let arg_product_shape = site.to_arg_product_shape();
     let mut unresolved_type_names = Vec::new();
     let mut struct_decoded_pattern: Option<crate::struct_decoder::DecodedStructPattern> = None;
     let (classified_shape, parameter_shape) = match primitive {
-        CoreMetaFunction::IdentityType => {
+        BuiltinCallableImpl::IdentityType => {
             let report = classify_type_arguments_env_with_report(
                 &arg_product_shape,
                 type_env,
@@ -80,7 +91,7 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
                 ))),
             )
         }
-        CoreMetaFunction::Struct => {
+        BuiltinCallableImpl::Struct => {
             validate_struct_source_product(&site.source_product)?;
             let source_arg = NormExpr::Product(site.source_product.clone());
             let decoded_shape = crate::struct_decoder::decode_struct_type_pattern_expr(
@@ -106,31 +117,22 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
                 ),
             )
         }
-        CoreMetaFunction::Assert => {
-            return Err(BuildError::single(Diagnostic::hard_error(
-                "meta hard error: direct source-level `assert` expansion is not implemented",
-                Some(provenance),
-            )));
-        }
-        CoreMetaFunction::Verify(_) => {
-            return Err(BuildError::single(Diagnostic::hard_error(
-                "meta hard error: source verification operations cannot be used as initializers",
+        BuiltinCallableImpl::Assert | BuiltinCallableImpl::Verify(_) => {
+            return Err(BuiltinPreparationFailure::Incomplete(Diagnostic::hard_error(
+                format!("builtin `{primitive_name}` applicability relation consumer is not connected"),
                 Some(provenance),
             )));
         }
     };
 
-    // The core body-entry / return-object planes come
-    // from the primitive's declared facts, not from re-reading the graph
-    // `SymbolPayload::MetaFunction` payload on the invocation spine.
-    let (body_entry_policy, return_object_policy) =
-        crate::core::core_primitive_callable_planes(primitive);
-    let candidate = match prepare_meta_callable_candidate_with_declared_planes(
-        callee,
-        CallableCandidateKind::MetaFunction,
-        Some(primitive),
-        body_entry_policy,
-        return_object_policy,
+    // All Policy planes are the real call entry's already declared facts.
+    // Implementation identity supplies argument handling, never Policy.
+    let candidate = match prepare_callable_candidate_with_declared_planes(
+        entry.backing_declaration,
+        &entry.declaration_name,
+        entry.callable_view.clone(),
+        entry.body_entry_view.clone(),
+        entry.complete_result_view.clone(),
         classified_shape,
         parameter_shape,
         CandidatePreparationContext {
@@ -148,25 +150,24 @@ pub(crate) fn prepare_resolved_core_meta_call_with_primitive(
                     "candidate preparation deferred because parameter shape compatibility is incomplete"
                 }
             };
-            return Err(BuildError::single(Diagnostic::hard_error(
-                message,
-                Some(provenance),
-            )));
+            return Err(BuiltinPreparationFailure::Incomplete(
+                Diagnostic::hard_error(message, Some(provenance)),
+            ));
         }
         CandidatePrepResult::Diagnostic(diagnostic) => {
             if !unresolved_type_names.is_empty() {
                 let names = unresolved_type_names.join(", ");
                 return Err(BuildError::single(Diagnostic::hard_error(
                     format!(
-                        "meta hard error: {primitive_name} argument `{names}` could not be resolved as a pure type Object"
+                        "builtin argument error: {primitive_name} argument `{names}` could not be resolved as a pure type Object"
                     ),
                     Some(provenance),
-                )));
+                )).into());
             }
-            return Err(BuildError::single(diagnostic));
+            return Err(BuildError::single(diagnostic).into());
         }
     };
-    let mut invocation_input = MetaInvocationInput::new(candidate, provenance);
+    let mut invocation_input = BuiltinBodyInput::new(candidate, primitive, provenance);
     invocation_input.struct_decoded_pattern = struct_decoded_pattern;
     Ok(invocation_input)
 }
@@ -392,7 +393,7 @@ pub(crate) fn expand_struct_construction_material(
     if expected != value.material_id {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: StructConstructionMaterial has mismatched material identity (expected {}, got {})",
+                "struct projection: construction material has mismatched material identity (expected {}, got {})",
                 expected.as_u64(),
                 value.material_id.as_u64()
             ),
@@ -501,4 +502,85 @@ pub(crate) fn expand_struct_construction_material(
         namespace_delta: delta,
         diagnostics: Vec::new(),
     })
+}
+
+#[cfg(test)]
+mod preparation_policy_tests {
+    use super::*;
+
+    #[test]
+    fn changing_builtin_leaf_does_not_reconstruct_declared_policy_planes() {
+        let base = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let mut world = base.semantic_world().clone();
+        let callable = declared_policy_view(Stage::Compile, PolicyMode::Const);
+        let body = declared_policy_view(Stage::Seal, PolicyMode::Mut);
+        let result = declared_policy_view(Stage::Runtime, PolicyMode::Plain);
+        let installed = world
+            .register_core_callable(
+                base.package_root_node(),
+                "declared",
+                SymbolId(900_003),
+                BuiltinCallableImpl::IdentityType,
+                None,
+                crate::DeclaredResultClass::CompleteType,
+                callable.clone(),
+                body.clone(),
+                result.clone(),
+                None,
+                Provenance::new("declared planes"),
+            )
+            .unwrap();
+        let crate::SemanticValuePayload::CallEntry(entry) =
+            &world.value(installed.call_entry).unwrap().payload
+        else {
+            panic!("call entry");
+        };
+        for (implementation, source) in [
+            (
+                BuiltinCallableImpl::IdentityType,
+                "let result = uint8 declared;",
+            ),
+            (
+                BuiltinCallableImpl::Struct,
+                "let result = (uint8 field) declared;",
+            ),
+        ] {
+            let mut entry = entry.clone();
+            entry.implementation = OrdinaryCallableImplementation::Builtin(implementation);
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let program = lang_syntax::normalize_program(&parsed.program);
+            let lang_syntax::NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) =
+                &program.forms[0]
+            else {
+                panic!("initializer");
+            };
+            let site =
+                crate::extract_single_call_site(slot.initializer.as_deref().unwrap()).unwrap();
+            let prepared = prepare_resolved_builtin_call(
+                &entry,
+                &site,
+                &crate::SemanticTypeEnv::new(&world),
+                &base.package_context(),
+                ObservationHorizon::SealStatic,
+                Provenance::new("entry observation"),
+            )
+            .unwrap();
+            assert_eq!(
+                prepared.candidate.callee_symbol_id,
+                entry.backing_declaration
+            );
+            assert_eq!(prepared.candidate.callee_name, entry.declaration_name);
+            assert_eq!(prepared.candidate.policy_planes.callable_view, callable);
+            assert_eq!(prepared.candidate.policy_planes.body_entry_policy, body);
+            assert_eq!(
+                prepared.candidate.policy_planes.return_object_policy,
+                result
+            );
+        }
+    }
 }

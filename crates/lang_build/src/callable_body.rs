@@ -1,8 +1,8 @@
-//! Formal meta invocation boundary.
+//! Builtin implementation leaves selected by ordinary invocation.
 //!
-//! Consumes a `PreparedCallableCandidate` and dispatches to the appropriate
-//! primitive invocation. This step is graph-installation-free and binding-free:
-//! it produces a `MetaExecutionMaterial` but does **not** install
+//! Consumes a fixed builtin implementation and its prepared argument material.
+//! This step is graph-installation-free and binding-free:
+//! it produces a `BuiltinBodyMaterial` but does **not** install
 //! `NamespaceDelta`, bind declared symbols, or mutate the namespace graph. It
 //! does not allocate graph or Pattern-relation state.
 //!
@@ -10,17 +10,16 @@
 //!
 //! ```text
 //! CandidatePrepResult::Applicable
-//!   → MetaInvocationInput
-//!   → invoke_meta_callable
-//!   → MetaPrimitiveExecution::Material(MetaExecutionMaterial)
+//!   → BuiltinBodyInput
+//!   → invoke_selected_builtin_body
+//!   → BuiltinBodyResult::Material(BuiltinBodyMaterial)
 //!     (no semantic result, graph installation, or binding)
 //!
-//! MetaExecutionMaterial
-//!   → bind_meta_invocation_value_result (meta.rs)
-//!   → namespace installation material
+//! BuiltinBodyMaterial
+//!   → ordinary invocation's declared-result consumer
 //! ```
 //!
-//! Production invocation reaches this primitive executor only after ordinary
+//! Production invocation reaches this builtin leaf only after ordinary
 //! value → complete type → associated `()` resolution has selected a call-entry
 //! semantic value. The implicit `self` belongs to that invocation frame, never
 //! to `ProductObject` / `ArgProductShape` / `RawArgShape`.
@@ -30,32 +29,38 @@ use std::collections::{BTreeMap, BTreeSet};
 use lang_syntax::{NormExpr, NormProductElem};
 
 use crate::{
-    meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
+    candidate_preparation::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     model::{Diagnostic, Provenance, SymbolId},
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
     struct_decoder::DecodedStructPattern,
     struct_pattern_material::{StructPatternSyntaxMaterial, StructuralMemberVisibility},
 };
 
-/// Input for formal meta invocation.
+/// Input for a selected builtin implementation leaf.
 ///
 /// The candidate must already have passed candidate preparation
-/// (`prepare_meta_callable_candidate_with_declared_planes`).
-/// The primitive is read from `candidate.callee_primitive` — callers do not
-/// pass it separately, preventing primitive-vs-candidate mismatch.
+/// (`prepare_callable_candidate_with_declared_planes`).
+/// The implementation is the leaf retained by ordinary candidate preparation;
+/// this carrier supplies neither Ready nor a common transaction witness.
 #[derive(Clone, Debug)]
-pub struct MetaInvocationInput {
+pub struct BuiltinBodyInput {
     pub candidate: PreparedCallableCandidate,
+    pub implementation: crate::BuiltinCallableImpl,
     pub provenance: Provenance,
     /// Pre-decoded struct type-pattern shape, if this is a struct invocation
     /// and the decoder was able to interpret the argument.
     pub struct_decoded_pattern: Option<DecodedStructPattern>,
 }
 
-impl MetaInvocationInput {
-    pub fn new(candidate: PreparedCallableCandidate, provenance: Provenance) -> Self {
+impl BuiltinBodyInput {
+    pub fn new(
+        candidate: PreparedCallableCandidate,
+        implementation: crate::BuiltinCallableImpl,
+        provenance: Provenance,
+    ) -> Self {
         Self {
             candidate,
+            implementation,
             provenance,
             struct_decoded_pattern: None,
         }
@@ -237,8 +242,9 @@ fn complete_pattern_navigation(
     )
 }
 
-/// Replayable execution material produced behind the unified invocation
-/// result boundary.
+/// Private material produced only by selected builtin implementation leaves.
+/// Source bodies have no route to this carrier; their future common E consumer
+/// must deliver ordinary semantic completion.
 ///
 /// `IdentityTypeMaterial` records an `IdentityType` proof for later result
 /// formation.
@@ -247,7 +253,7 @@ fn complete_pattern_navigation(
 /// callable.  The world-connected invocation path installs the material and
 /// returns a complete type value.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum MetaExecutionMaterial {
+pub(crate) enum BuiltinBodyMaterial {
     IdentityType(IdentityTypeMaterial),
     StructConstructionMaterial(StructConstructionMaterial),
 }
@@ -262,8 +268,8 @@ pub enum MetaExecutionMaterial {
 /// [`crate::InvocationResult::SemanticResult`] with class
 /// [`crate::DeclaredResultClass::CompleteType`] may be formed.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum MetaPrimitiveExecution {
-    Material(MetaExecutionMaterial),
+pub enum BuiltinBodyResult {
+    Material(BuiltinBodyMaterial),
     Diagnostic(Diagnostic),
 }
 
@@ -475,27 +481,14 @@ fn hash_canonical_pattern(
     }
 }
 
-pub(crate) fn invoke_meta_callable(input: MetaInvocationInput) -> MetaPrimitiveExecution {
-    let Some(primitive) = input.candidate.callee_primitive else {
-        return MetaPrimitiveExecution::Diagnostic(
+pub(crate) fn invoke_selected_builtin_body(input: BuiltinBodyInput) -> BuiltinBodyResult {
+    match input.implementation {
+        crate::model::BuiltinCallableImpl::IdentityType => invoke_identity_type(&input),
+        crate::model::BuiltinCallableImpl::Struct => invoke_struct_construction(&input),
+        primitive => BuiltinBodyResult::Diagnostic(
             Diagnostic::hard_error(
                 format!(
-                    "meta invocation: candidate `{}` has no callee primitive",
-                    input.candidate.callee_name
-                ),
-                Some(input.provenance),
-            )
-            .with_symbol_context(input.candidate.callee_symbol_id),
-        );
-    };
-
-    match primitive {
-        crate::model::CoreMetaFunction::IdentityType => invoke_identity_type(&input),
-        crate::model::CoreMetaFunction::Struct => invoke_struct_construction(&input),
-        _ => MetaPrimitiveExecution::Diagnostic(
-            Diagnostic::hard_error(
-                format!(
-                    "meta invocation: primitive {:?} is not callable through formal invocation",
+                    "selected builtin implementation {:?} has no connected body consumer",
                     primitive
                 ),
                 Some(input.provenance),
@@ -505,13 +498,13 @@ pub(crate) fn invoke_meta_callable(input: MetaInvocationInput) -> MetaPrimitiveE
     }
 }
 
-fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
+fn invoke_identity_type(input: &BuiltinBodyInput) -> BuiltinBodyResult {
     let candidate = &input.candidate;
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
 
     if mat.arity != 1 {
-        return MetaPrimitiveExecution::Diagnostic(
+        return BuiltinBodyResult::Diagnostic(
             Diagnostic::hard_error(
                 format!(
                     "IdentityType: expected exactly 1 type argument, got {}",
@@ -526,7 +519,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
     let type_value = match mat.known_type_values.first().and_then(|value| *value) {
         Some(value) => value,
         None => {
-            return MetaPrimitiveExecution::Diagnostic(
+            return BuiltinBodyResult::Diagnostic(
                 Diagnostic::hard_error(
                     "IdentityType: argument is not a classified complete type value",
                     Some(input.provenance.clone()),
@@ -545,7 +538,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
                 .or_else(|| raw.type_observation())
         })
     else {
-        return MetaPrimitiveExecution::Diagnostic(
+        return BuiltinBodyResult::Diagnostic(
             Diagnostic::hard_error(
                 "IdentityType requires an exact canonical type observation",
                 Some(input.provenance.clone()),
@@ -554,14 +547,14 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
         );
     };
 
-    MetaPrimitiveExecution::Material(MetaExecutionMaterial::IdentityType(IdentityTypeMaterial {
+    BuiltinBodyResult::Material(BuiltinBodyMaterial::IdentityType(IdentityTypeMaterial {
         type_value,
         type_observation,
         provenance: input.provenance.clone(),
     }))
 }
 
-fn invoke_struct_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecution {
+fn invoke_struct_construction(input: &BuiltinBodyInput) -> BuiltinBodyResult {
     let candidate = &input.candidate;
     let mat =
         CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
@@ -571,7 +564,7 @@ fn invoke_struct_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecu
         .as_ref()
         .is_some_and(|decoded| decoded.type_pattern_expr.is_pure_pattern_without_value());
     if mat.arity == 0 && !pure_pattern_without_value {
-        return MetaPrimitiveExecution::Diagnostic(
+        return BuiltinBodyResult::Diagnostic(
             Diagnostic::hard_error(
                 "struct: expected at least one `Expr name` field or a pure no-value Pattern such as `(() t)` or `if | else`",
                 Some(input.provenance.clone()),
@@ -586,7 +579,7 @@ fn invoke_struct_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecu
         &input.provenance,
     ) {
         Ok(fields) => fields,
-        Err(diagnostic) => return MetaPrimitiveExecution::Diagnostic(diagnostic),
+        Err(diagnostic) => return BuiltinBodyResult::Diagnostic(diagnostic),
     };
 
     let fields = field_signature_material
@@ -620,7 +613,7 @@ fn invoke_struct_construction(input: &MetaInvocationInput) -> MetaPrimitiveExecu
         canonical_pattern_override: None,
         provenance: input.provenance.clone(),
     };
-    MetaPrimitiveExecution::Material(MetaExecutionMaterial::StructConstructionMaterial(value))
+    BuiltinBodyResult::Material(BuiltinBodyMaterial::StructConstructionMaterial(value))
 }
 
 fn field_signature_material_from_candidate(

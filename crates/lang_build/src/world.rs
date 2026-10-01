@@ -6,14 +6,14 @@ use lang_syntax::{
 };
 
 use crate::{
+    builtin_callable::expand_struct_construction_material,
     core::{core_declared_pair, install_core_bootstrap},
     discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
     manifest::{BuildManifest, NamespaceMount},
-    meta::expand_struct_construction_material,
     model::{
-        CoreTypeProjection, Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceNode,
+        CallableDeclaration, CoreTypeProjection, Diagnostic, DiagnosticSeverity, NamespaceNode,
         NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
-        SourceCallableObject, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
+        SourceCallableSyntax, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
     },
     policy_pair::{
         declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
@@ -32,7 +32,6 @@ use crate::{
     },
     semantic_world::{SemanticDeclarationEntry, SemanticNamespaceDelta, SemanticWorld},
     source::SourceFragment,
-    verify::evaluate_source_verifications as evaluate_verify_forms,
 };
 
 /// One resolved source target together with the COMPLETE host chain it was
@@ -854,8 +853,6 @@ impl CompilationWorld {
             self.consume_source_unit(unit, unit_namespace)?;
         }
 
-        self.evaluate_source_verifications()?;
-
         Ok(())
     }
 
@@ -978,30 +975,6 @@ impl CompilationWorld {
         Ok(())
     }
 
-    fn evaluate_source_verifications(&mut self) -> Result<(), BuildError> {
-        let mut diagnostics = Vec::new();
-        for fragment in &self.source_fragments {
-            let context = ResolverContext::with_mounts(
-                fragment.namespace,
-                vec![self.semantic_world.namespace_index().root_node()],
-                vec![self.core_node],
-            );
-            diagnostics.extend(evaluate_verify_forms(
-                &self.semantic_world,
-                fragment.namespace,
-                &fragment.normalized,
-                &context,
-            )?);
-        }
-
-        if diagnostics.is_empty() {
-            Ok(())
-        } else {
-            self.diagnostics.extend(diagnostics.clone());
-            Err(BuildError { diagnostics })
-        }
-    }
-
     fn harvest_program(
         &mut self,
         namespace: NamespaceNodeId,
@@ -1025,7 +998,15 @@ impl CompilationWorld {
             match form {
                 NormForm::Let(decl) => staged.harvest_let(namespace, decl, file)?,
                 NormForm::Alias(decl) => staged.harvest_alias(namespace, decl, file)?,
-                NormForm::Expr(_) => {}
+                NormForm::Expr(expr) => {
+                    return Err(BuildError::single(Diagnostic::hard_error(
+                        "source expression completion requires common E, which is not connected",
+                        Some(
+                            Provenance::file("source expression frontier", file)
+                                .with_span(norm_expr_span(expr)),
+                        ),
+                    )));
+                }
                 NormForm::ReturnEvent(return_ev) => {
                     return Err(BuildError::single(Diagnostic::hard_error(
                         "source contribution error: unbound return event reached declaration harvesting after return target binding",
@@ -1413,13 +1394,13 @@ impl CompilationWorld {
                         ))
                     })?;
                     if let Some(material) = value.construction_material {
-                        self.bind_connected_meta_material_result(
+                        self.bind_connected_struct_material_result(
                             namespace,
                             binder_name,
                             namespace_declaration,
                             &selected,
-                            crate::MetaExecutionMaterial::StructConstructionMaterial(material),
-                            Some(complete_type),
+                            material,
+                            complete_type,
                             provenance,
                         )
                     } else {
@@ -1461,35 +1442,21 @@ impl CompilationWorld {
         }
     }
 
-    /// Installation of replayable meta construction material.
+    /// Graph projection of the connected builtin struct result's material.
     ///
     /// The selected ordinary result (including a complete tau value) is the
     /// semantic authority.  This helper only expands graph/projection material
     /// required by the current namespace renderer.
-    fn bind_connected_meta_material_result(
+    fn bind_connected_struct_material_result(
         &mut self,
         namespace: NamespaceNodeId,
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        value: crate::MetaExecutionMaterial,
-        semantic_complete_type: Option<&crate::CompleteTypeValue>,
+        material: crate::StructConstructionMaterial,
+        complete_type: &crate::CompleteTypeValue,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
-        let (material, complete_type) = match (value, semantic_complete_type) {
-            (
-                crate::MetaExecutionMaterial::StructConstructionMaterial(material),
-                Some(complete_type),
-            ) => (material, complete_type),
-            (material, _) => {
-                return Err(BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "meta execution material has no canonical binding projection: {material:?}"
-                    ),
-                    Some(provenance),
-                )));
-            }
-        };
         let canonical_type = material.canonical_type;
         let result_view = uniform_result_policy_view(selected);
         let mut expansion = expand_struct_construction_material(
@@ -2738,7 +2705,7 @@ fn source_callable_delta(
     let mut delta = snapshot.empty_delta();
     let symbol_id = delta.allocate_symbol_id();
     // Return targets are validated during source harvesting. Bound return
-    // events are not stored in SourceCallableObject; execution wiring remains
+    // events are not stored in SourceCallableSyntax; execution wiring remains
     // outside this source-harvesting boundary.
     let return_target_report = elaborate_return_targets_in_returnable_closure(
         closure,
@@ -2756,7 +2723,7 @@ fn source_callable_delta(
     let mut symbol = SymbolObject::new(
         symbol_id,
         name,
-        SymbolKind::MetaFunction,
+        SymbolKind::Callable,
         SourceCategory::DeclaredSymbol,
         Some(parent),
         provenance.clone(),
@@ -2764,10 +2731,9 @@ fn source_callable_delta(
     symbol.policy_view = Some(derived_function_view.clone());
     symbol.visibility_metadata.namespace_visibility = namespace_declaration.visibility;
     symbol.visibility_metadata.export_root = namespace_declaration.export_root;
-    symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
+    symbol.payload = SymbolPayload::Callable(CallableDeclaration {
         function_symbol_id: symbol_id,
-        primitive: None,
-        source_callable: Some(SourceCallableObject {
+        implementation: crate::CallableImplementation::Source(SourceCallableSyntax {
             closure: closure.clone(),
             provenance: provenance.clone(),
         }),
@@ -2805,13 +2771,12 @@ fn ordinary_invocation_failure_diagnostic(
 ) -> Diagnostic {
     match failure {
         crate::OrdinaryInvocationFailure::SelectedDelete { diagnostic, .. }
-        | crate::OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, .. }
+        | crate::OrdinaryInvocationFailure::SelectedImplementation { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::DynamicLegality { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::CyclicVal2 { diagnostic, .. }
-        | crate::OrdinaryInvocationFailure::MetaReturnTypeRootMismatch { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedBody {
-            failure: crate::SourceBodyEvaluationFailure { diagnostic, .. },
+            failure: crate::SourceBodyFrontierFailure { diagnostic, .. },
             ..
         } => diagnostic,
         crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
@@ -2841,7 +2806,7 @@ fn ordinary_invocation_failure_diagnostic(
             "ordinary invocation has multiple maximal candidates",
             Some(provenance),
         )
-        .with_code(ResolverCode::AmbiguousMetaCandidate),
+        .with_code(ResolverCode::AmbiguousCallableCandidate),
         crate::OrdinaryInvocationFailure::ResultTypeHasNoPattern { type_value, .. } => {
             Diagnostic::hard_error(
                 format!(
@@ -2951,7 +2916,7 @@ fn projection_matches_expectation(object: &SymbolObject, expectation: ResolveExp
         ResolveExpectation::NamespaceSubspace => object.kind == SymbolKind::Namespace,
         ResolveExpectation::NamespaceCapableParent => object.namespace_node().is_some(),
         ResolveExpectation::CoreTypeProjection => object.kind == SymbolKind::CompleteTypeProjection,
-        ResolveExpectation::MetaFunction => object.kind == SymbolKind::MetaFunction,
+        ResolveExpectation::Callable => object.kind == SymbolKind::Callable,
         ResolveExpectation::FieldFunction => object.kind == SymbolKind::FieldFunction,
     }
 }
@@ -2989,6 +2954,26 @@ fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
         annotation.map(|annotation| &annotation.pattern),
         Some(NormPattern::Name { name, .. }) if name == "type"
     )
+}
+
+fn norm_expr_span(expr: &NormExpr) -> lang_syntax::Span {
+    let origin = match expr {
+        NormExpr::PolicyLet { origin, .. }
+        | NormExpr::Call { origin, .. }
+        | NormExpr::Name { origin, .. }
+        | NormExpr::Literal { origin, .. }
+        | NormExpr::Nav { origin, .. }
+        | NormExpr::OperatorTarget { origin, .. }
+        | NormExpr::Unsupported { origin, .. } => origin,
+        NormExpr::Product(product) => &product.origin,
+        NormExpr::Closure(closure) => &closure.origin,
+        NormExpr::Error(error) => &error.origin,
+    };
+    match origin {
+        NormOrigin::Source(span)
+        | NormOrigin::Generated { span, .. }
+        | NormOrigin::Derived { span, .. } => *span,
+    }
 }
 
 fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
@@ -3046,7 +3031,7 @@ mod initializer_residual_boundary_tests {
         // install the ordinary result tau_C of a closure expression.
         world
             .semantic_world
-            .install_callable_member_value(
+            .install_callable_fixture(
                 world.package_root_node(),
                 "f",
                 crate::SymbolId(900000),
@@ -3411,6 +3396,59 @@ mod initializer_residual_boundary_tests {
 #[cfg(test)]
 mod source_closure_frontier_tests {
     use super::*;
+
+    #[test]
+    fn verification_source_calls_require_ordinary_completion_without_publication() {
+        for source in [
+            "(uint8) exists::verify::core;",
+            "let result = (uint8) exists::verify::core;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let namespace = world.package_root_node();
+            let before = format!("{:?}", world.semantic_world);
+            let parsed = lang_syntax::parse(source);
+            assert!(
+                parsed.diagnostics.is_empty(),
+                "{source}: {:?}",
+                parsed.diagnostics
+            );
+            let normalized = lang_syntax::normalize_program(&parsed.program);
+            let file = Path::new("verification-frontier.lang");
+            let error = world
+                .harvest_program(namespace, &normalized, file)
+                .unwrap_err();
+            let message = if source.starts_with("let") {
+                "builtin `verify` applicability relation consumer is not connected"
+            } else {
+                "source expression completion requires common E"
+            };
+            assert!(
+                error
+                    .diagnostics
+                    .iter()
+                    .any(|d| d.message.contains(message)),
+                "{error:?}"
+            );
+            assert_eq!(before, format!("{:?}", world.semantic_world));
+            assert!(world
+                .semantic_world
+                .symbol_in_namespace(namespace, "result")
+                .is_none());
+            if !source.starts_with("let") {
+                assert_eq!(
+                    error.diagnostics[0]
+                        .provenance
+                        .as_ref()
+                        .unwrap()
+                        .file
+                        .as_deref(),
+                    Some(file)
+                );
+            }
+        }
+    }
 
     #[test]
     fn closure_declarations_fail_without_installing_callable_value_or_type() {

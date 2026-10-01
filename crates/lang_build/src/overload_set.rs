@@ -7,10 +7,9 @@ use lang_syntax::{
 };
 
 use crate::{
-    meta_body::selected_meta_delete_diagnostic,
-    meta_invocation::MetaExecutionMaterial,
+    callable_diagnostic::selected_callable_delete_diagnostic,
     model::{
-        Diagnostic, DiagnosticSeverity, Provenance, ResolverCode, SourceCallableObject,
+        Diagnostic, DiagnosticSeverity, Provenance, ResolverCode, SourceCallableSyntax,
         SymbolObject,
     },
     overload_pattern::{OverloadArgShape, SpecificityTuple},
@@ -18,9 +17,7 @@ use crate::{
         solve_parameter_product_relation, NamedPatternObservation, PatternApplicabilityProof,
         PatternRelationContext, PatternRelationFailure,
     },
-    semantic_name_index::ResolverContext,
     semantic_owner::SemanticOwnerId,
-    type_argument::{BodyLocalInitializerCheck, TypeResolutionEnv},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -33,25 +30,27 @@ pub enum VisibilityView {
 #[derive(Clone, Debug)]
 pub(crate) struct SelectedSourceBody {
     pub(crate) symbol: SymbolObject,
-    pub(crate) source_callable: SourceCallableObject,
+    pub(crate) source_callable: SourceCallableSyntax,
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
 }
 
+/// Diagnostic from the selected source-body frontier; no evaluation result
+/// or successful completion is established by this carrier.
 #[derive(Clone, Debug)]
-pub struct SourceBodyEvaluationFailure {
+pub struct SourceBodyFrontierFailure {
     pub diagnostic: Diagnostic,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct ApplicableCandidate {
     pub(crate) symbol: SymbolObject,
-    pub(crate) source_callable: SourceCallableObject,
+    pub(crate) source_callable: SourceCallableSyntax,
     pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
     pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub(crate) specificity: SpecificityTuple,
     /// Proof-relevant result of the canonical Pattern relation. The name-keyed
-    /// maps above are one-way body-evaluator transport derived from
+    /// maps above are future source-completion transport derived from
     /// this proof and never participate in applicability.
     pub(crate) pattern_proof: PatternApplicabilityProof,
     pub(crate) overload_strategy: NormOverloadStrategy,
@@ -76,7 +75,7 @@ pub(crate) fn applicable_candidate_from_closure(
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
     applicable_candidate_from_source_callable(
         symbol,
-        SourceCallableObject {
+        SourceCallableSyntax {
             closure: closure.clone(),
             provenance: provenance.clone(),
         },
@@ -88,7 +87,7 @@ pub(crate) fn applicable_candidate_from_closure(
 
 fn applicable_candidate_from_source_callable(
     symbol: &SymbolObject,
-    source_callable: SourceCallableObject,
+    source_callable: SourceCallableSyntax,
     args: &[OverloadArgShape],
     callable_owner: SemanticOwnerId,
     resolve_named_pattern: Option<&dyn Fn(&str) -> Option<NamedPatternObservation>>,
@@ -272,38 +271,37 @@ pub fn declared_result_class_from_closure(
     }
 }
 
-pub(crate) fn evaluate_selected_source_body(
-    type_env: &dyn TypeResolutionEnv,
-    resolver_context: &ResolverContext,
+/// Report the current selected source-body frontier without a success carrier.
+/// Source execution must eventually produce ordinary semantic completion through
+/// common E; builtin private material cannot cross this interface.
+pub(crate) fn check_selected_source_body_frontier(
     selected: &SelectedSourceBody,
-) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
+) -> SourceBodyFrontierFailure {
     match &selected.source_callable.closure.body {
         NormClosureBody::Delete(delete) => {
-            let diagnostic = selected_meta_delete_diagnostic(
+            let diagnostic = selected_callable_delete_diagnostic(
                 delete,
                 selected.source_callable.provenance.clone(),
             )
             .with_code(ResolverCode::UnsupportedSelectedSourceBody);
-            Err(SourceBodyEvaluationFailure { diagnostic })
+            SourceBodyFrontierFailure { diagnostic }
         }
         NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
-            evaluate_block_body(type_env, resolver_context, selected, program)
+            check_block_body_frontier(selected, program)
         }
-        NormClosureBody::Defaulted { .. } => Err(selected_body_failure(
+        NormClosureBody::Defaulted { .. } => selected_body_failure(
             selected,
             ResolverCode::UnsupportedSelectedSourceBody,
             "selected defaulted callable requires compiler default-implementation materialization",
-        )),
+        ),
     }
 }
 
-fn evaluate_body_local_let(
-    type_env: &dyn TypeResolutionEnv,
-    resolver_context: &ResolverContext,
+fn check_body_local_let_frontier(
     selected: &SelectedSourceBody,
     local_names: &BTreeSet<String>,
     slot: &lang_syntax::NormBindingSlot,
-) -> Result<(), SourceBodyEvaluationFailure> {
+) -> Result<(), SourceBodyFrontierFailure> {
     // Execution gap — a body-local `let x:symbol = ...` outside the
     // return-slot position has no defined meaning yet: symbol-rank
     // local construction is an undefined future construct, so it is
@@ -330,46 +328,24 @@ fn evaluate_body_local_let(
                 "selected source-body local bindings are not connected to execution",
             ));
         }
-        match type_env.check_body_local_initializer(
-            selected.symbol.parent,
-            initializer,
-            resolver_context,
-            Provenance::from_norm_origin("selected source-body local let", &slot.origin),
-        ) {
-            BodyLocalInitializerCheck::Accepted => {}
-            BodyLocalInitializerCheck::Residual { reason, provenance } => {
-                return Err(SourceBodyEvaluationFailure {
-                    diagnostic: Diagnostic::hard_error(
-                        format!(
-                            "ResidualNotAllowedAtBoundary: selected source-body local initializer remains residual ({reason})"
-                        ),
-                        Some(provenance),
-                    )
-                    .with_code(ResolverCode::ResidualNotAllowedAtBoundary),
-                });
-            }
-            BodyLocalInitializerCheck::Rejected(diagnostic) => {
-                return Err(SourceBodyEvaluationFailure { diagnostic });
-            }
-        }
     }
     Ok(())
 }
 
-fn evaluate_block_body(
-    type_env: &dyn TypeResolutionEnv,
-    resolver_context: &ResolverContext,
+fn check_block_body_frontier(
     selected: &SelectedSourceBody,
     program: &lang_syntax::NormProgram,
-) -> Result<MetaExecutionMaterial, SourceBodyEvaluationFailure> {
-    // Validate connected local forms without inventing expression completion.
+) -> SourceBodyFrontierFailure {
+    // Inspect source/frontier shape without deciding initializer semantics.
     // Shared continuation execution must supply UnitDiscard and tail inference.
     let mut local_names = BTreeSet::new();
 
     for form in &program.forms {
         match form {
             NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) => {
-                evaluate_body_local_let(type_env, resolver_context, selected, &local_names, slot)?;
+                if let Err(failure) = check_body_local_let_frontier(selected, &local_names, slot) {
+                    return failure;
+                }
                 if let Some(name) = binding_slot_name(slot) {
                     local_names.insert(name);
                 }
@@ -377,27 +353,27 @@ fn evaluate_block_body(
             NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
                 if lexical_alias_operator_shape(expr) {
-                    return Err(bare_alias_spelling_failure(selected));
+                    return bare_alias_spelling_failure(selected);
                 }
-                return Err(unsupported_body(
+                return unsupported_body(
                     selected,
                     ResolverCode::UnsupportedSelectedSourceBody,
                     "serial expression completion requires the shared continuation consumer; UnitDiscard and implicit ReturnEvent are not yet executable",
-                ));
+                );
             }
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
             | NormForm::Alias(lang_syntax::NormDecl::Alias { .. }) => {
-                return Err(unsupported_lexical_alias_failure(selected));
+                return unsupported_lexical_alias_failure(selected);
             }
             NormForm::Let(lang_syntax::NormDecl::Error(_))
             | NormForm::Alias(lang_syntax::NormDecl::Let { .. })
             | NormForm::Alias(lang_syntax::NormDecl::Error(_))
             | NormForm::Error(_) => {
-                return Err(unsupported_body(
+                return unsupported_body(
                     selected,
                     ResolverCode::UnsupportedSelectedSourceBody,
                     "selected source body contains an unsupported non-terminal form before its terminal",
-                ));
+                );
             }
         }
     }
@@ -405,14 +381,14 @@ fn evaluate_block_body(
     let report = crate::control_flow_end::compute_control_flow_end_report(program);
 
     if !report.diagnostics.is_empty() {
-        return Err(unsupported_body(
+        return unsupported_body(
             selected,
             ResolverCode::UnsupportedSelectedSourceBody,
             "statement after terminal block form in selected source body",
-        ));
+        );
     }
 
-    Err(unsupported_body(
+    unsupported_body(
         selected,
         ResolverCode::UnsupportedSelectedSourceBody,
         match report.terminal {
@@ -421,7 +397,7 @@ fn evaluate_block_body(
             }
             None => "serial block completion is not yet executable",
         },
-    ))
+    )
 }
 
 /// Shape test for an illegal expression use of the lexical-alias delimiter.
@@ -440,11 +416,11 @@ fn lexical_alias_operator_shape(expr: &NormExpr) -> bool {
 
 /// Expression spellings cannot become a back door to the lexical-alias
 /// declaration mechanism.
-fn bare_alias_spelling_failure(selected: &SelectedSourceBody) -> SourceBodyEvaluationFailure {
+fn bare_alias_spelling_failure(selected: &SelectedSourceBody) -> SourceBodyFrontierFailure {
     unsupported_lexical_alias_failure(selected)
 }
 
-fn unsupported_lexical_alias_failure(selected: &SelectedSourceBody) -> SourceBodyEvaluationFailure {
+fn unsupported_lexical_alias_failure(selected: &SelectedSourceBody) -> SourceBodyFrontierFailure {
     selected_body_failure(
         selected,
         ResolverCode::UnsupportedLexicalAlias,
@@ -456,7 +432,7 @@ fn unsupported_body(
     selected: &SelectedSourceBody,
     code: ResolverCode,
     message: impl Into<String>,
-) -> SourceBodyEvaluationFailure {
+) -> SourceBodyFrontierFailure {
     selected_body_failure(selected, code, message)
 }
 
@@ -476,7 +452,7 @@ fn selected_body_failure(
     selected: &SelectedSourceBody,
     code: ResolverCode,
     message: impl Into<String>,
-) -> SourceBodyEvaluationFailure {
+) -> SourceBodyFrontierFailure {
     let diagnostic = Diagnostic::new(
         DiagnosticSeverity::Error,
         message,
@@ -484,7 +460,7 @@ fn selected_body_failure(
     )
     .with_symbol_context(selected.symbol.id)
     .with_code(code);
-    SourceBodyEvaluationFailure { diagnostic }
+    SourceBodyFrontierFailure { diagnostic }
 }
 
 fn binding_slot_name(slot: &lang_syntax::NormBindingSlot) -> Option<String> {

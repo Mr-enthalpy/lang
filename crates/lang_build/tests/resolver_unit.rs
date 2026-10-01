@@ -3,14 +3,49 @@ use support::*;
 
 use lang_build::{
     ChildLink, ChildNameRole, CompilationWorld, NamespaceMount, NamespaceNodeKind, Provenance,
-    ResolverContext, SemanticNameIndex, SourceCategory, SymbolKind,
+    ResolverContext, SemanticNameIndex, SourceCategory, SymbolKind, SymbolPayload,
 };
 
 #[test]
+fn verification_namespace_is_ordinary_and_operations_have_associated_call_entries() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).unwrap();
+    let capability = world.namespace_projection().capability();
+    let namespace = capability
+        .resolve_str("verify::core", &world.package_context())
+        .unwrap();
+    assert_eq!(namespace.kind, SymbolKind::Namespace);
+    assert!(matches!(namespace.payload, SymbolPayload::Namespace { .. }));
+    let operation = capability
+        .resolve_callable("exists::verify::core", &world.package_context())
+        .unwrap();
+    assert_eq!(operation.kind, SymbolKind::Callable);
+    let SymbolPayload::Callable(declaration) = &operation.payload else {
+        panic!("ordinary callable declaration projection");
+    };
+    assert!(matches!(
+        declaration.implementation,
+        lang_build::CallableImplementation::Builtin(lang_build::BuiltinCallableImpl::Verify(_))
+    ));
+    let binding = world
+        .semantic_world()
+        .symbol_in_namespace(namespace.namespace_node().unwrap(), "exists")
+        .unwrap();
+    let value = binding.ordinary_value().unwrap();
+    let entries = world.semantic_world().callable_entries_for_value(value);
+    assert!(!entries.is_empty());
+    for entry in entries {
+        let lang_build::SemanticValuePayload::CallEntry(entry) =
+            &world.semantic_world().value(entry).unwrap().payload
+        else {
+            panic!("associated () must contain terminal call entries");
+        };
+        assert!(entry.source_closure().is_none());
+    }
+}
+
+#[test]
 fn short_and_explicit_core_paths_share_symbol_identity() {
-    // Compiler-internal resolver invariant: source verification observes both
-    // paths and kinds; this checks resolver identity preservation.
-    // Missing capability: verify.same_symbol_identity.
+    // Short and explicit paths preserve the same resolved graph identity.
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let context = world.package_context();
     let capability = world.namespace_projection().capability();
@@ -63,9 +98,7 @@ fn explicit_dependency_mounts_are_visible_as_paths() {
 
 #[test]
 fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
-    // Compiler-internal invariant: source verification observes both paths;
-    // SymbolId identity and diagnostic labels are graph internals.
-    // Missing capability: verify.distinct_symbol_identity.
+    // Equal spelling in distinct namespaces does not merge graph identities.
     let world = build_single_fixture_world("same_name_distinct_namespaces", "app");
     let left = world
         .namespace_projection()
@@ -85,8 +118,7 @@ fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
 
 #[test]
 fn typed_resolver_helpers_select_expected_kind() {
-    // API-specific: source verification covers ordinary core symbol facts; this
-    // checks typed resolver helper behavior.
+    // Typed helpers check the role of the fixed resolved graph entry.
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let capability = world.namespace_projection().capability();
     let context = world.package_context();
@@ -97,13 +129,13 @@ fn typed_resolver_helpers_select_expected_kind() {
     assert_eq!(type_symbol.kind, SymbolKind::CompleteTypeProjection);
 
     let meta_symbol = capability
-        .resolve_meta_function("struct", &context)
-        .expect("struct is a meta function");
-    assert_eq!(meta_symbol.kind, SymbolKind::MetaFunction);
+        .resolve_callable("struct", &context)
+        .expect("struct is a builtin callable");
+    assert_eq!(meta_symbol.kind, SymbolKind::Callable);
 
     let error = capability
         .resolve_complete_type_projection("struct", &context)
-        .expect_err("struct is a MetaFunction, not a Type");
+        .expect_err("struct is a Callable, not a Type");
     assert!(error.message.contains("resolver error"));
 }
 

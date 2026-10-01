@@ -40,12 +40,12 @@
 mod support;
 
 use lang_build::{
-    classify_type_arguments_env_with_report, compute_meta_invocation_material_key,
+    classify_type_arguments_env_with_report, compute_meta_instance_material_key,
     extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr,
-    DeclaredResultClass, MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
-    ObservationHorizon, OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId,
-    PolicyMode, PolicyPair, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
-    RawArgValueClass, ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId,
+    DeclaredResultClass, NamespaceNodeId, NonValueArgKind, ObjectPlaceId, ObservationHorizon,
+    OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId, PolicyMode, PolicyPair,
+    ProductAtom, Provenance, RawArgShape, RawArgValueClass, ResolverContext,
+    SelectedCallableIdentity, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId,
     SemanticWorld, Stage, SymbolId, TypeResolutionEnv, TypeValueId,
 };
 use support::initializer_from_source;
@@ -311,21 +311,21 @@ fn successor_vtau_does_not_redefine_object_val2() {
         panic!("closure");
     };
     let view = lang_build::declared_policy_view(Stage::Compile, PolicyMode::Plain);
-    let builtin_member = world
-        .install_callable_member_value(
-            NamespaceNodeId(0),
-            "call_member",
-            SymbolId(99900),
-            &closure,
-            None,
-            view.clone(),
-            view,
-            None,
-            lang_build::DeclaredResultClass::OrdinaryValue,
-            Provenance::new("ordinary type-call member"),
-        )
-        .unwrap()
-        .function_value;
+    let builtin_member = support::install_callable_receiver_fixture(
+        &mut world,
+        NamespaceNodeId(0),
+        "call_member",
+        SymbolId(99900),
+        &closure,
+        None,
+        view.clone(),
+        view,
+        None,
+        lang_build::DeclaredResultClass::OrdinaryValue,
+        Provenance::new("ordinary type-call member"),
+    )
+    .unwrap()
+    .function_value;
 
     world
         .admit_direct_type_member(pattern, pattern, "vtau_only", builtin_member)
@@ -369,7 +369,7 @@ fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key
         ..
     } = carriers();
     let t_place = place_of(&world, t);
-    let meta_fn = MetaCallableIdentity {
+    let meta_fn = SelectedCallableIdentity {
         selected_function_value: SemanticValueId(7),
         selected_call_entry: SemanticValueId(70),
     };
@@ -380,7 +380,7 @@ fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key
         let args = world
             .canonical_arguments_product_address(&[raw], &[atom])
             .expect("acyclic Val2 normalizes");
-        compute_meta_invocation_material_key(meta_fn, args, provenance.clone())
+        compute_meta_instance_material_key(meta_fn, args, provenance.clone())
     };
 
     // let f::t = X;  let A = t |> meta_fn;
@@ -427,26 +427,26 @@ fn unit_is_terminal_leaf() {
     let lang_syntax::NormExpr::Closure(closure) = initializer else {
         panic!("callable fixture initializer is a closure");
     };
-    let registered = world
-        .install_callable_member_value(
-            NamespaceNodeId(0),
-            "f",
-            SymbolId(90),
-            &closure,
-            None,
-            lang_build::PolicyView {
-                pair: stage_pair(Stage::Meta),
-                mode: PolicyMode::Plain,
-            },
-            lang_build::PolicyView {
-                pair: stage_pair(Stage::Meta),
-                mode: PolicyMode::Plain,
-            },
-            None,
-            DeclaredResultClass::OrdinaryValue,
-            provenance.clone(),
-        )
-        .expect("ordinary callable substrate member is installed");
+    let registered = support::install_callable_receiver_fixture(
+        &mut world,
+        NamespaceNodeId(0),
+        "f",
+        SymbolId(90),
+        &closure,
+        None,
+        lang_build::PolicyView {
+            pair: stage_pair(Stage::Meta),
+            mode: PolicyMode::Plain,
+        },
+        lang_build::PolicyView {
+            pair: stage_pair(Stage::Meta),
+            mode: PolicyMode::Plain,
+        },
+        None,
+        DeclaredResultClass::OrdinaryValue,
+        provenance.clone(),
+    )
+    .expect("ordinary callable substrate member is installed");
     let (entry_pattern, entry_type) = {
         let entry = world
             .value(registered.call_entry)
@@ -678,8 +678,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
     // Meta-argument context: `let B = (f::T) meta_fn`.
     let initializer = initializer_from_source("let B = (f::T) meta_fn;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call");
-    let shape =
-        call_site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let shape = call_site.to_arg_product_shape();
     let report =
         classify_type_arguments_env_with_report(&shape, &SemanticTypeEnv::new(&world), &context);
     assert!(

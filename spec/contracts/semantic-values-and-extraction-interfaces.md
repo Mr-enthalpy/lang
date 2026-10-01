@@ -44,9 +44,30 @@ Same-spelled source declarations do not establish contribution authority. The
 source closure-to-tau formation and common-snapshot contribution consumers are
 unavailable. A named source closure declaration fails before installing any
 resident or graph callable record; it cannot bind c_C in place of tau_C.
-The explicit ordinary callable-member substrate builder is not a source let
-consumer. Callable registration and selection tests remain substrate evidence, not proof of complete
+`install_callable_fixture` is crate-private and compiled only for unit tests.
+Integration tests assemble ordinary receivers and associated entries in test-local
+helpers. Neither path is a source let consumer. Callable registration and selection tests remain substrate evidence, not proof of complete
 source closure formation or general body execution.
+
+Callable source syntax and declaration records are distinct from Object identity.
+Declaration, call-entry and prepared-selection carriers retain one implementation
+variant each, with stage/Policy facts independent of implementation kind.
+Builtin preparation consumes the actual call entry's declared planes and fixed
+identity; it creates no synthetic graph Object and derives no Policy from the
+implementation enum. An incomplete applicability relation stops the candidate
+family before maxima. In particular, Assert/Verify currently have unconnected
+parameter relations; they cannot be removed to select a known runner-up.
+Builtin body handling returns private material to the ordinary declared-result
+consumer. Source completion remains unavailable; no separate meta block evaluator
+supplies a substitute result. Preparation supplies no Ready or common commit proof.
+`BuiltinBodyMaterial` belongs only to selected builtin leaves. The source-body
+frontier has a diagnostic-only interface and cannot produce that private material.
+It provides no body-local initializer evaluation hook. Standalone source expression
+completion reports the common E frontier. The `verify` namespace and its builtin
+entries are ordinary graph entries; no source post-pass interprets verification
+calls. Verify applicability and selected body consumers remain unavailable.
+An inner builtin call must form its semantic result at its own invocation boundary
+before future common E source-body completion can consume it.
 
 ## Shared action and lifecycle handoff
 

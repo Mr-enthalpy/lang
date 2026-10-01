@@ -124,8 +124,7 @@ fn readable_const_actual_keeps_binding_mode_over_caller_plain_default() {
         panic!("ordinary call entry");
     };
     let formal = &entry
-        .closure
-        .as_ref()
+        .source_closure()
         .unwrap()
         .head
         .as_ref()
@@ -167,8 +166,7 @@ fn trace_of<'a>(
         | Err(OrdinaryInvocationFailure::DynamicLegality { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedDelete { trace, .. })
         | Err(OrdinaryInvocationFailure::SelectedBody { trace, .. })
-        | Err(OrdinaryInvocationFailure::SelectedCoreBody { trace, .. })
-        | Err(OrdinaryInvocationFailure::MetaReturnTypeRootMismatch { trace, .. })
+        | Err(OrdinaryInvocationFailure::SelectedImplementation { trace, .. })
         | Err(OrdinaryInvocationFailure::ResultTypeHasNoPattern { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationResultTypeChanged { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed { trace })
@@ -219,8 +217,7 @@ fn unknown_actual_uses_primitive_plain_and_never_world_fabricated_const() {
         panic!("probe selection is an ordinary call entry");
     };
     let formal = entry
-        .closure
-        .as_ref()
+        .source_closure()
         .and_then(|closure| closure.head.as_ref())
         .and_then(|head| head.formal_frame().explicit_parameters.first())
         .expect("one explicit formal");
@@ -281,7 +278,7 @@ fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
 
 // ---------------------------------------------------------------------------
 #[test]
-fn callable_member_owns_function_object_and_terminal_call_entry() {
+fn ordinary_receiver_owns_terminal_call_entry() {
     let world = support::AssociatedFamily::new(&[
         "let member = (self, t:type):meta -> let r:type => { t; };",
     ]);
@@ -294,7 +291,7 @@ fn callable_member_owns_function_object_and_terminal_call_entry() {
         .expect("function object value");
     assert!(matches!(
         function_obj.payload,
-        SemanticValuePayload::FunctionObject { .. }
+        SemanticValuePayload::PlainValue
     ));
 
     let entries = world

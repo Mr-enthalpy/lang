@@ -1,3 +1,0 @@
-let T: type = uint8;
-
-verify kind T field_function;

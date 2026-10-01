@@ -313,8 +313,8 @@ pub struct PolicyResultEntry<V, P> {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct WpreRoots<T> {
     pub exported_symbols: Vec<T>,
-    pub materialized_results_of_exported_meta_functions: Vec<T>,
-    pub parameter_dependencies_of_exported_meta_functions: Vec<T>,
+    pub materialized_results_of_exported_callables: Vec<T>,
+    pub parameter_dependencies_of_exported_callables: Vec<T>,
 }
 
 pub fn compute_wpre<T: Clone + Ord>(
@@ -324,8 +324,8 @@ pub fn compute_wpre<T: Clone + Ord>(
     let mut closure = BTreeSet::new();
     let mut queue = VecDeque::new();
     queue.extend(roots.exported_symbols);
-    queue.extend(roots.materialized_results_of_exported_meta_functions);
-    queue.extend(roots.parameter_dependencies_of_exported_meta_functions);
+    queue.extend(roots.materialized_results_of_exported_callables);
+    queue.extend(roots.parameter_dependencies_of_exported_callables);
 
     while let Some(symbol) = queue.pop_front() {
         if !closure.insert(symbol.clone()) {

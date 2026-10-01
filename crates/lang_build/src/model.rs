@@ -69,7 +69,7 @@ pub enum SymbolKind {
     /// Namespace-graph rendering of a carried complete type value. This is a
     /// projection role, never the ontology or identity of the type itself.
     CompleteTypeProjection,
-    MetaFunction,
+    Callable,
     FieldFunction,
     /// An object-name slot without a specialized graph projection kind.
     Object,
@@ -189,7 +189,7 @@ pub enum ResolverCode {
     Ambiguous,
     /// Cross-root conflict — same symbol found in multiple search roots.
     Conflict,
-    AmbiguousMetaCandidate,
+    AmbiguousCallableCandidate,
     NoCallCandidate,
     UnsupportedInitializerContinuation,
     /// Explicit Pin stage constraints are canonical, but their per-position
@@ -383,9 +383,7 @@ impl SymbolObject {
 
     pub fn namespace_node(&self) -> Option<NamespaceNodeId> {
         match &self.payload {
-            SymbolPayload::Namespace { node } | SymbolPayload::VerificationNamespace { node } => {
-                Some(*node)
-            }
+            SymbolPayload::Namespace { node } => Some(*node),
             SymbolPayload::CompleteTypeProjection(type_projection) => {
                 type_projection.type_associated_namespace
             }
@@ -397,7 +395,7 @@ impl SymbolObject {
         match self.kind {
             SymbolKind::Namespace => ChildNameRole::NamespaceSubspace,
             SymbolKind::CompleteTypeProjection
-            | SymbolKind::MetaFunction
+            | SymbolKind::Callable
             | SymbolKind::FieldFunction
             | SymbolKind::Object => ChildNameRole::Object,
         }
@@ -418,11 +416,8 @@ pub enum SymbolPayload {
     Namespace {
         node: NamespaceNodeId,
     },
-    VerificationNamespace {
-        node: NamespaceNodeId,
-    },
     CompleteTypeProjection(CoreTypeProjection),
-    MetaFunction(MetaFunctionObject),
+    Callable(CallableDeclaration),
     FieldFunction(FieldObject),
     /// No specialized graph projection is attached to this Symbol.
     None,
@@ -501,12 +496,12 @@ pub enum FieldProjection {
     Share,
 }
 
-/// Core meta-function payload resolved through the namespace graph.
+/// Callable declaration projection, not a semantic Object.
+/// Stage and privilege are independent declared facts, not callable species.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MetaFunctionObject {
+pub struct CallableDeclaration {
     pub function_symbol_id: SymbolId,
-    pub primitive: Option<CoreMetaFunction>,
-    pub source_callable: Option<SourceCallableObject>,
+    pub implementation: CallableImplementation,
     pub function_policy: crate::policy_pair::PolicyView,
     pub body_entry_policy: crate::policy_pair::PolicyView,
     pub return_object_policy: crate::policy_pair::PolicyView,
@@ -519,18 +514,25 @@ pub struct MetaFunctionObject {
     pub privilege: crate::policy_pair::CallablePrivilege,
 }
 
-/// Source-declared callable/meta-function payload harvested from normalized
+/// Callable source syntax harvested from normalized
 /// source. The closure remains structural Normalized AST; overload selection
 /// and selected source-body execution consume it later without graph mutation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SourceCallableObject {
+pub struct SourceCallableSyntax {
     pub closure: NormClosure,
     pub provenance: Provenance,
 }
 
-/// Compiler-seeded core meta-function implementations.
+/// Exactly one implementation carried by a graph declaration.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CallableImplementation {
+    Source(SourceCallableSyntax),
+    Builtin(BuiltinCallableImpl),
+}
+
+/// Compiler-seeded implementation leaves behind ordinary callable selection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CoreMetaFunction {
+pub enum BuiltinCallableImpl {
     Struct,
     Assert,
     Verify(VerificationPrimitive),
@@ -637,7 +639,7 @@ pub struct ChildLink {
     pub provenance: Provenance,
 }
 
-/// Closed syntax object passed to early meta-functions.
+/// Closed source syntax carrier.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SyntaxObject {
     pub kind: SyntaxObjectKind,

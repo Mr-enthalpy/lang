@@ -15,7 +15,7 @@ use lang_syntax::NormExpr;
 
 use crate::{
     identity::SemanticValueId,
-    model::{Diagnostic, NamespaceNodeId, Provenance, SymbolId},
+    model::{Diagnostic, Provenance, SymbolId},
     policy_pair::PolicyResultEntry,
     product_shape::{ArgProductShape, ProductAtom, RawArgValueClass},
     semantic_name_index::ResolverContext,
@@ -62,18 +62,6 @@ pub struct NamedTypeResolution {
     pub complete_type_observation: Option<crate::CanonicalValueAddr>,
 }
 
-/// Outcome of checking a selected source-body local `let` initializer against
-/// the environment's evaluation discipline.
-#[derive(Clone, Debug)]
-pub enum BodyLocalInitializerCheck {
-    Accepted,
-    Residual {
-        reason: String,
-        provenance: Provenance,
-    },
-    Rejected(Diagnostic),
-}
-
 /// Type-resolution environment boundary.
 ///
 /// The canonical build/invocation spine resolves type names through the
@@ -113,15 +101,6 @@ pub trait TypeResolutionEnv {
         context: &ResolverContext,
         provenance: &Provenance,
     ) -> Result<(SymbolId, TypeValueId), Diagnostic>;
-
-    /// Check a selected source-body local `let` initializer.
-    fn check_body_local_initializer(
-        &self,
-        declaration_namespace: Option<NamespaceNodeId>,
-        initializer: &NormExpr,
-        context: &ResolverContext,
-        provenance: Provenance,
-    ) -> BodyLocalInitializerCheck;
 }
 
 /// Canonical semantic-world environment. Resolution flows through recursive
@@ -212,19 +191,6 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
             })?,
             resolution.represented_type,
         ))
-    }
-
-    fn check_body_local_initializer(
-        &self,
-        _declaration_namespace: Option<NamespaceNodeId>,
-        _initializer: &NormExpr,
-        _context: &ResolverContext,
-        _provenance: Provenance,
-    ) -> BodyLocalInitializerCheck {
-        // The semantic world has no best-effort graph evaluator. Local
-        // bindings that selected source-body execution later references are rejected at
-        // the reference site; unreferenced locals impose no residual check.
-        BodyLocalInitializerCheck::Accepted
     }
 }
 

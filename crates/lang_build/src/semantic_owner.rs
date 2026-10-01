@@ -10,7 +10,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::meta_key::MetaInvocationMaterialKey;
+use crate::meta_key::{MetaInstanceMaterialKey, MetaInstanceRootKey};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PackageId(pub u64);
@@ -175,7 +175,7 @@ pub enum SemanticOwnerKind {
         placement: CallableOwnerPlacement,
     },
     MetaInstance {
-        material_key: MetaInvocationMaterialKey,
+        material_key: MetaInstanceMaterialKey,
     },
     Generated {
         local_generation: LocalGenerationIdentity,
@@ -190,12 +190,6 @@ pub struct SemanticOwnerNode {
     pub kind: SemanticOwnerKind,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct MetaInstanceInternKey {
-    parent: SemanticOwnerId,
-    material_key: MetaInvocationMaterialKey,
-}
-
 /// One build-snapshot-local semantic owner forest.
 ///
 /// IDs are stable for the lifetime of this graph. A persistent cache may later
@@ -208,7 +202,7 @@ pub struct SemanticOwnerGraph {
     package_roots: BTreeMap<PackageId, SemanticOwnerId>,
     namespaces: BTreeMap<(SemanticOwnerId, String), SemanticOwnerId>,
     callables: BTreeMap<(SemanticOwnerId, LocalCallableIdentity), SemanticOwnerId>,
-    meta_instances: BTreeMap<MetaInstanceInternKey, SemanticOwnerId>,
+    meta_instances: BTreeMap<MetaInstanceRootKey, SemanticOwnerId>,
     generated: BTreeMap<(SemanticOwnerId, LocalGenerationIdentity), SemanticOwnerId>,
     next_owner: u64,
 }
@@ -316,24 +310,16 @@ impl SemanticOwnerGraph {
     /// key returns the same owner. Different canonical arguments — or a
     /// different selected function value under the same carrier Symbol —
     /// produce a distinct owner.
-    pub fn meta_instance(
-        &mut self,
-        parent: SemanticOwnerId,
-        material_key: MetaInvocationMaterialKey,
-    ) -> SemanticOwnerId {
-        let key = MetaInstanceInternKey {
-            parent,
-            material_key,
-        };
+    pub fn meta_instance(&mut self, key: MetaInstanceRootKey) -> SemanticOwnerId {
         if let Some(existing) = self.meta_instances.get(&key) {
             return *existing;
         }
-        let package = self.package_of(parent);
+        let package = self.package_of(key.parent_owner);
         let owner = self.allocate(
-            Some(parent),
+            Some(key.parent_owner),
             package,
             SemanticOwnerKind::MetaInstance {
-                material_key: key.material_key.clone(),
+                material_key: key.material.clone(),
             },
         );
         self.meta_instances.insert(key, owner);

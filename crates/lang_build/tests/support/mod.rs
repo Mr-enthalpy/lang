@@ -10,14 +10,97 @@ use std::{
 };
 
 use lang_build::{
-    prepare_meta_callable_candidate_with_declared_planes, ArgProductShape, BuildError,
-    BuildManifest, BuildSession, BuildWorkspace, CallableCandidateKind, CandidatePrepResult,
-    CandidatePreparationContext, CompilationWorld, CoreTypeProjection, NamespaceNodeId,
-    NormalizedCallSite, PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance,
-    SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload,
-    ToolchainGlobalSourceRoot,
+    prepare_callable_candidate_with_declared_planes, ArgProductShape, BuildError, BuildManifest,
+    BuildSession, BuildWorkspace, CandidatePrepResult, CandidatePreparationContext,
+    CompilationWorld, CoreTypeProjection, NamespaceNodeId, NormalizedCallSite, PackageBuildSpec,
+    ParameterShape, Provenance, SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind,
+    SymbolObject, SymbolPayload, ToolchainGlobalSourceRoot,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
+
+/// Test-local assembly of an ordinary receiver x:T and its associated ()
+/// implementation. This does not evaluate a closure expression or form tau_C.
+#[allow(clippy::too_many_arguments)]
+pub fn install_callable_receiver_fixture(
+    world: &mut lang_build::SemanticWorld,
+    namespace: NamespaceNodeId,
+    name: &str,
+    backing: lang_build::SymbolId,
+    closure: &lang_syntax::NormClosure,
+    outer: Option<lang_build::ExplicitP1Selection>,
+    view: lang_build::PolicyView,
+    p2: lang_build::PolicyView,
+    visibility: Option<lang_build::NamespaceVisibility>,
+    result_class: lang_build::DeclaredResultClass,
+    provenance: Provenance,
+) -> Result<lang_build::RegisteredCallable, BuildError> {
+    let canonical = lang_build::canonical_function_object_view(
+        outer.as_ref(),
+        &view,
+        &p2,
+        Some(closure),
+        &provenance,
+    )
+    .map_err(BuildError::single)?;
+    let receiver_type = numbered_type_lookup_fixture("ordinary-receiver", backing.0);
+    let rank = world.type_rank().unwrap_or(receiver_type);
+    let (_, _, pattern) = world
+        .register_type_symbol(
+            namespace,
+            &format!("{name}_fixture_type"),
+            backing,
+            receiver_type,
+            rank,
+            None,
+            canonical.pair.clone(),
+            provenance.clone(),
+        )
+        .expect("fixture classifier registers");
+    let entry = world.register_associated_call_entry(
+        pattern,
+        namespace,
+        backing,
+        closure,
+        outer,
+        view,
+        p2,
+        visibility,
+        lang_build::OrdinaryCandidateRole::Ordinary,
+        result_class,
+        provenance.clone(),
+    )?;
+    let receiver = world
+        .install_ordinary_value(receiver_type, canonical.clone(), provenance.clone())
+        .expect("fixture receiver has a registered Type");
+    for place in world.value_residencies(receiver) {
+        world
+            .associate_existing_value_in_place(place, "()", entry)
+            .unwrap();
+    }
+    let symbol = world
+        .bind_ordinary_new(
+            namespace,
+            name,
+            &[lang_build::PolicyResultEntry {
+                value: Some(lang_build::SemanticValueRef {
+                    id: receiver,
+                    type_value: receiver_type,
+                }),
+                pattern,
+                view: canonical,
+            }],
+            provenance,
+        )
+        .expect("fixture receiver binds once");
+    Ok(lang_build::RegisteredCallable {
+        symbol,
+        function_value: receiver,
+        function_type: receiver_type,
+        function_pattern: pattern,
+        pattern_scope: world.pattern(pattern).unwrap().scope,
+        call_entry: entry,
+    })
+}
 
 pub fn type_lookup_fixture(label: &'static str) -> lang_build::TypeValueId {
     static REGISTRY: OnceLock<
@@ -60,7 +143,7 @@ pub fn numbered_type_lookup_fixture(scope: &'static str, label: u64) -> lang_bui
 
 /// Test-side candidate preparation from a fixture-declared symbol payload.
 ///
-/// The production spine supplies callable kind, primitive, and body-entry /
+/// The production spine retains the selected implementation and supplies body-entry /
 /// return-object planes from its own declared facts; tests read those planes
 /// from the payload material they constructed themselves and call the
 /// declared-planes entry directly. This is fixture bookkeeping, not a graph
@@ -71,26 +154,21 @@ pub fn prepare_candidate_from_fixture_symbol(
     parameter_shape: ParameterShape,
     context: CandidatePreparationContext,
 ) -> CandidatePrepResult {
-    let (callable_kind, callee_primitive, body_entry_policy, return_object_policy) =
-        match &callee.payload {
-            SymbolPayload::MetaFunction(mf) => (
-                CallableCandidateKind::MetaFunction,
-                mf.primitive,
-                mf.body_entry_policy.clone(),
-                mf.return_object_policy.clone(),
-            ),
-            SymbolPayload::FieldFunction(field) => (
-                CallableCandidateKind::FieldFunction,
-                None,
-                field.callable_policy.body_entry_policy.clone(),
-                field.callable_policy.return_object_policy.clone(),
-            ),
-            _ => panic!("fixture callee must carry a callable payload"),
-        };
-    prepare_meta_callable_candidate_with_declared_planes(
-        callee,
-        callable_kind,
-        callee_primitive,
+    let (body_entry_policy, return_object_policy) = match &callee.payload {
+        SymbolPayload::Callable(mf) => (
+            mf.body_entry_policy.clone(),
+            mf.return_object_policy.clone(),
+        ),
+        SymbolPayload::FieldFunction(field) => (
+            field.callable_policy.body_entry_policy.clone(),
+            field.callable_policy.return_object_policy.clone(),
+        ),
+        _ => panic!("fixture callee must carry a callable payload"),
+    };
+    prepare_callable_candidate_with_declared_planes(
+        callee.id,
+        &callee.name,
+        callee.policy_view.clone().expect("fixture callable Policy"),
         body_entry_policy,
         return_object_policy,
         arg_product_shape,
@@ -492,14 +570,10 @@ pub fn fixture_call_site(name: &str) -> NormalizedCallSite {
 /// Produce an `ArgProductShape` from a committed product-shape fixture.
 ///
 /// The fixture is expected to normalize to a single call expression.
-/// The call site source product is wrapped in a `ProductObject` with the
-/// given role and shaped.
-pub fn fixture_arg_product_shape(
-    name: &str,
-    role: ProductMaterialRole,
-) -> lang_build::ArgProductShape {
+/// The call site source product is wrapped in a `ProductObject` and shaped.
+pub fn fixture_arg_product_shape(name: &str) -> lang_build::ArgProductShape {
     let site = fixture_call_site(name);
-    site.to_arg_product_shape(role)
+    site.to_arg_product_shape()
 }
 
 /// Build the candidate fixture world (`candidate_world` / `app`).
@@ -600,7 +674,8 @@ impl AssociatedFamily {
                     )
                     .unwrap();
             } else {
-                receiver = Some(world.install_callable_member_value(
+                receiver = Some(install_callable_receiver_fixture(
+                    &mut world,
                     namespace,
                     "receiver",
                     lang_build::SymbolId(900000),

@@ -1,4 +1,0 @@
-verify kind uint8::core type;
-verify kind struct::core meta_function;
-verify kind verify::core namespace;
-verify kind exists::verify::core meta_function;

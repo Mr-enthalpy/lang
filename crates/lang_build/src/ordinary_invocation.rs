@@ -32,15 +32,15 @@ use lang_syntax::{NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicy
 
 use crate::{
     body_entry_visible_at,
+    callable_body::{BuiltinBodyInput, BuiltinBodyMaterial},
     identity::{SemanticValueId, TypeValueId},
     invocation_frame::{InvocationCallableRef, InvocationFrame, SelfPosition},
-    meta_invocation::{MetaExecutionMaterial, MetaInvocationInput},
     model::{Diagnostic, Provenance, SourceCategory, SymbolId, SymbolKind, SymbolObject},
     overload_pattern::{overload_args_from_classified_shape, SpecificityTuple},
     overload_set::{
-        applicable_candidate_from_closure, evaluate_selected_source_body, ApplicableCandidate,
-        CandidateApplicabilityFailure, SelectedSourceBody, SourceBodyEvaluationFailure,
-        VisibilityView,
+        applicable_candidate_from_closure, check_selected_source_body_frontier,
+        ApplicableCandidate, CandidateApplicabilityFailure, SelectedSourceBody,
+        SourceBodyFrontierFailure, VisibilityView,
     },
     policy_migration::{
         compare_migration_endpoint_coordinates, project_migration_input_endpoint,
@@ -57,13 +57,13 @@ use crate::{
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductObject, ProductAtom,
-        ProductMaterialRole, RawArgValueClass,
+        RawArgValueClass,
     },
     semantic_name_index::ResolverContext,
     semantic_owner::{SemanticOwnerId, SemanticSymbolIdentity},
     semantic_world::{
-        ObjectPlaceId, OrdinaryCallEntry, OrdinaryCandidateRole, PatternValueId,
-        SemanticValuePayload, SemanticWorld, WritableContext,
+        ObjectPlaceId, OrdinaryCallEntry, OrdinaryCallableImplementation, OrdinaryCandidateRole,
+        PatternValueId, SemanticValuePayload, SemanticWorld, WritableContext,
     },
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
     DeclaredResultClass, InvocationResidual, NormalizedCallSite,
@@ -203,9 +203,7 @@ pub struct PreparedCallCandidate {
     pub function_object_view: PolicyView,
     pub capability_realization: CapabilityRealization,
     pub formal_policy_frame: PolicyFormalFrame,
-    pub(crate) source_shape: Option<ApplicableCandidate>,
-    pub(crate) core_invocation: Option<MetaInvocationInput>,
-    pub(crate) intrinsic_body: Option<crate::semantic_world::OrdinaryIntrinsicBody>,
+    implementation: PreparedImplementation,
     pub declared_result_class: DeclaredResultClass,
     pub candidate_role: OrdinaryCandidateRole,
     pub overload_strategy: NormOverloadStrategy,
@@ -219,32 +217,41 @@ pub struct PreparedCallCandidate {
     pub migration_output_endpoint: Option<PolicyPair>,
 }
 
+#[derive(Clone, Debug)]
+enum PreparedImplementation {
+    Source(ApplicableCandidate),
+    Builtin(BuiltinBodyInput),
+    Intrinsic(crate::semantic_world::OrdinaryIntrinsicBody),
+}
+
 impl PreparedCallCandidate {
     pub fn specificity(&self) -> SpecificityTuple {
-        self.source_shape
-            .as_ref()
-            .map(|source| source.specificity)
-            .unwrap_or_default()
+        match &self.implementation {
+            PreparedImplementation::Source(source) => source.specificity,
+            _ => SpecificityTuple::default(),
+        }
     }
 
     pub fn is_delete(&self) -> bool {
-        self.source_shape.as_ref().is_some_and(|source| {
-            matches!(
+        match &self.implementation {
+            PreparedImplementation::Source(source) => matches!(
                 source.source_callable.closure.body,
                 lang_syntax::NormClosureBody::Delete(_)
-            )
-        }) || matches!(
-            self.intrinsic_body,
-            Some(crate::semantic_world::OrdinaryIntrinsicBody::Delete)
-        )
+            ),
+            PreparedImplementation::Intrinsic(
+                crate::semantic_world::OrdinaryIntrinsicBody::Delete,
+            ) => true,
+            _ => false,
+        }
     }
 
     /// Proof-relevant Pattern applicability result for source candidates.
     /// Core/compiler candidates have no source Pattern query in this slice.
     pub fn pattern_applicability(&self) -> Option<&crate::PatternApplicabilityProof> {
-        self.source_shape
-            .as_ref()
-            .map(|source| &source.pattern_proof)
+        match &self.implementation {
+            PreparedImplementation::Source(source) => Some(&source.pattern_proof),
+            _ => None,
+        }
     }
 }
 
@@ -529,7 +536,7 @@ pub enum ReturnedSemanticEntity {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SelectedBodyOutput {
-    Material(MetaExecutionMaterial),
+    BuiltinMaterial(BuiltinBodyMaterial),
     OrdinaryValue(SemanticValueId),
 }
 
@@ -578,21 +585,12 @@ pub enum OrdinaryInvocationFailure {
         trace: OrdinaryPipelineTrace,
     },
     SelectedBody {
-        failure: SourceBodyEvaluationFailure,
+        failure: SourceBodyFrontierFailure,
         trace: OrdinaryPipelineTrace,
     },
-    SelectedCoreBody {
-        diagnostic: Diagnostic,
-        trace: OrdinaryPipelineTrace,
-    },
-    /// Meta-return self-root enforcement.  The unique type
-    /// result of a meta invocation must be rooted at the meta
-    /// function itself plus its normalized input arguments
-    /// (`MetaTypeRoot = MetaFunctionIdentity + Normalize(Arguments)`).
-    /// Forwarding an existing type root out of the body is a hard
-    /// diagnostic; no automatic re-rooting or wrapper construction is
-    /// performed.
-    MetaReturnTypeRootMismatch {
+    /// The sealed implementation or its declared-result realization failed.
+    /// This failure is terminal and never reopens candidate selection.
+    SelectedImplementation {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
@@ -653,7 +651,7 @@ fn ambient_struct_collision_message(binder: Option<&crate::AmbientTypeBinder>) -
 /// surfaces the same rejection as canonical instance-key normalization.
 fn attach_candidate_type_observations(
     semantic_world: &mut SemanticWorld,
-    input: &mut crate::MetaInvocationInput,
+    input: &mut crate::BuiltinBodyInput,
     trace: &OrdinaryPipelineTrace,
 ) -> Result<(), OrdinaryInvocationFailure> {
     let shape = &mut input.candidate.arg_product_shape;
@@ -672,17 +670,17 @@ fn attach_candidate_type_observations(
 fn canonical_meta_instance_key_for_selected(
     semantic_world: &mut SemanticWorld,
     shape: &ArgProductShape,
-    callable: crate::MetaCallableIdentity,
+    callable: crate::SelectedCallableIdentity,
     provenance: &Provenance,
     trace: &OrdinaryPipelineTrace,
-) -> Result<crate::MetaInvocationMaterialKey, OrdinaryInvocationFailure> {
+) -> Result<crate::MetaInstanceMaterialKey, OrdinaryInvocationFailure> {
     let arguments_product_addr = semantic_world
         .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
         .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
             diagnostic,
             trace: trace.clone(),
         })?;
-    Ok(crate::compute_meta_invocation_material_key(
+    Ok(crate::compute_meta_instance_material_key(
         callable,
         arguments_product_addr,
         provenance.clone(),
@@ -896,7 +894,7 @@ pub fn invoke_resolved_binding_ordinary(
         target_places,
         None,
         Some(call_site),
-        call_site.to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct),
+        call_site.to_arg_product_shape(),
         resolver_context,
         context,
         provenance,
@@ -1220,9 +1218,8 @@ pub(crate) fn invoke_target_values(
         // environment (`declaration_name` / `declaration_namespace`); the
         // A-stage never looks the backing declaration up in the name index.
         // Body-entry admissibility is judged on the call entry's own
-        // declaration-local P2; the declaration identity below is rebuilt
-        // from the entry's declared facts for the shared candidate and
-        // body-evaluator carriers.
+        // declaration-local P2. Source preparation uses the entry's declared
+        // identity; builtin preparation consumes the call entry directly.
         // This exposure test is not Ready evidence. The full common E
         // readiness/Pre/commit consumer remains a separate implementation gate;
         // visibility must not authorize additional body execution paths.
@@ -1233,15 +1230,6 @@ pub(crate) fn invoke_target_values(
             });
             continue;
         }
-        let declaration_identity = SymbolObject::new(
-            entry.backing_declaration,
-            entry.declaration_name.clone(),
-            SymbolKind::Object,
-            SourceCategory::DeclaredSymbol,
-            entry.declaration_namespace,
-            entry.provenance.clone(),
-        );
-
         let target = semantic_world
             .value(target_value)
             .cloned()
@@ -1250,277 +1238,293 @@ pub(crate) fn invoke_target_values(
         if entry.receiver_type != target.type_value {
             continue;
         }
-        let (
-            source_shape,
-            core_invocation,
-            intrinsic_body,
-            formal_policy_frame,
-            self_policy,
-            overload_strategy,
-            frame_args,
-        ) = if let Some(entry_closure) = &entry.closure {
-            let declaration_pattern_context = ResolverContext {
-                current_namespace: entry.declaration_namespace.unwrap_or_else(|| {
-                    resolver_context
-                        .explicit_mount_roots
-                        .first()
-                        .copied()
-                        .unwrap_or(resolver_context.current_namespace)
-                }),
-                explicit_mount_roots: resolver_context.explicit_mount_roots.clone(),
-                default_mounts: resolver_context.default_mounts.clone(),
-            };
-            if let Some(migration) = context.migration {
-                // same-Type is hard migration applicability. A source
-                // candidate whose declared result Type cannot be observed,
-                // or whose Core differs from the source Core, never enters A
-                // and therefore cannot win only to fail after execution.
-                let declared_result_type = match declared_value_result_type(
-                    entry_closure,
-                    semantic_world,
-                    &declaration_pattern_context,
-                    provenance.clone(),
-                ) {
-                    Ok(Some(result_type)) => result_type,
-                    Ok(None) => continue,
-                    Err(diagnostic) => {
-                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                            diagnostic,
-                            trace,
-                        });
+        let (implementation, formal_policy_frame, self_policy, overload_strategy, frame_args) =
+            match &entry.implementation {
+                OrdinaryCallableImplementation::Source(entry_closure) => {
+                    let declaration_identity = SymbolObject::new(
+                        entry.backing_declaration,
+                        entry.declaration_name.clone(),
+                        SymbolKind::Object,
+                        SourceCategory::DeclaredSymbol,
+                        entry.declaration_namespace,
+                        entry.provenance.clone(),
+                    );
+                    let declaration_pattern_context = ResolverContext {
+                        current_namespace: entry.declaration_namespace.unwrap_or_else(|| {
+                            resolver_context
+                                .explicit_mount_roots
+                                .first()
+                                .copied()
+                                .unwrap_or(resolver_context.current_namespace)
+                        }),
+                        explicit_mount_roots: resolver_context.explicit_mount_roots.clone(),
+                        default_mounts: resolver_context.default_mounts.clone(),
+                    };
+                    if let Some(migration) = context.migration {
+                        // same-Type is hard migration applicability. A source
+                        // candidate whose declared result Type cannot be observed,
+                        // or whose Core differs from the source Core, never enters A
+                        // and therefore cannot win only to fail after execution.
+                        let declared_result_type = match declared_value_result_type(
+                            entry_closure,
+                            semantic_world,
+                            &declaration_pattern_context,
+                            provenance.clone(),
+                        ) {
+                            Ok(Some(result_type)) => result_type,
+                            Ok(None) => continue,
+                            Err(diagnostic) => {
+                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                    diagnostic,
+                                    trace,
+                                });
+                            }
+                        };
+                        match same_type_core(
+                            semantic_world,
+                            migration.request.source_type(),
+                            declared_result_type,
+                        ) {
+                            Ok(true) => {}
+                            Ok(false) => continue,
+                            Err(diagnostic) => {
+                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                    diagnostic,
+                                    trace,
+                                });
+                            }
+                        }
                     }
-                };
-                match same_type_core(
-                    semantic_world,
-                    migration.request.source_type(),
-                    declared_result_type,
-                ) {
-                    Ok(true) => {}
-                    Ok(false) => continue,
-                    Err(diagnostic) => {
-                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                            diagnostic,
-                            trace,
-                        });
+                    let world_view: &SemanticWorld = semantic_world;
+                    let resolve_named_pattern = |name: &str| {
+                        SemanticTypeEnv::new(world_view)
+                            .resolve_type_name(name, &declaration_pattern_context)
+                            .and_then(|resolution| {
+                                let pattern =
+                                    world_view.type_value(resolution.represented_type)?.pattern;
+                                let core = resolution.complete_type_observation.and_then(|whole| {
+                                    world_view
+                                        .complete_type_by_whole_observation(whole)
+                                        .map(|complete| complete.core())
+                                });
+                                Some(crate::NamedPatternObservation { pattern, core })
+                            })
+                    };
+                    let mut source_shape = match applicable_candidate_from_closure(
+                        &declaration_identity,
+                        entry_closure,
+                        &entry.provenance,
+                        &args,
+                        entry.callable_owner,
+                        Some(&resolve_named_pattern),
+                    ) {
+                        Ok(candidate) => candidate,
+                        Err(CandidateApplicabilityFailure::Inapplicable(diagnostic)) => {
+                            first_diagnostic.get_or_insert(diagnostic);
+                            continue;
+                        }
+                        Err(CandidateApplicabilityFailure::Unsupported(diagnostic)) => {
+                            return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                diagnostic,
+                                trace,
+                            });
+                        }
+                    };
+                    if let Err(failure) = apply_self_formal_structure(
+                        &mut source_shape,
+                        &entry,
+                        &target,
+                        semantic_world,
+                        resolver_context,
+                        provenance.clone(),
+                    ) {
+                        match failure {
+                            CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
+                                first_diagnostic.get_or_insert(diagnostic);
+                                continue;
+                            }
+                            CandidateApplicabilityFailure::Unsupported(diagnostic) => {
+                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                    diagnostic,
+                                    trace,
+                                });
+                            }
+                        }
                     }
+                    if let Err(failure) = validate_explicit_value_type_annotations(
+                        &entry,
+                        &classified.classified_shape,
+                        semantic_world,
+                        resolver_context,
+                        provenance.clone(),
+                    ) {
+                        match failure {
+                            CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
+                                first_diagnostic.get_or_insert(diagnostic);
+                                continue;
+                            }
+                            CandidateApplicabilityFailure::Unsupported(diagnostic) => {
+                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                    diagnostic,
+                                    trace,
+                                });
+                            }
+                        }
+                    }
+                    let formal_policy_frame = match formal_policy_frame(&entry, provenance.clone())
+                    {
+                        Ok(frame) => frame,
+                        Err(CandidateApplicabilityFailure::Inapplicable(diagnostic)) => {
+                            first_diagnostic.get_or_insert(diagnostic);
+                            continue;
+                        }
+                        Err(CandidateApplicabilityFailure::Unsupported(diagnostic)) => {
+                            return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                diagnostic,
+                                trace,
+                            });
+                        }
+                    };
+                    // The canonical P1 was already normalized at the declaration
+                    // boundary by `canonical_function_object_p1`.  P1(function
+                    // object) = P1(slot0/self) = P1(let ()).  Do not re-derive from
+                    // the closure AST at invocation time.
+                    let self_policy = entry.callable_view.pair.clone();
+                    let strategy = source_shape.overload_strategy.clone();
+                    (
+                        PreparedImplementation::Source(source_shape),
+                        formal_policy_frame,
+                        self_policy,
+                        strategy,
+                        classified.classified_shape.clone(),
+                    )
                 }
-            }
-            let world_view: &SemanticWorld = semantic_world;
-            let resolve_named_pattern = |name: &str| {
-                SemanticTypeEnv::new(world_view)
-                    .resolve_type_name(name, &declaration_pattern_context)
-                    .and_then(|resolution| {
-                        let pattern = world_view.type_value(resolution.represented_type)?.pattern;
-                        let core = resolution.complete_type_observation.and_then(|whole| {
-                            world_view
-                                .complete_type_by_whole_observation(whole)
-                                .map(|complete| complete.core())
-                        });
-                        Some(crate::NamedPatternObservation { pattern, core })
-                    })
-            };
-            let mut source_shape = match applicable_candidate_from_closure(
-                &declaration_identity,
-                entry_closure,
-                &entry.provenance,
-                &args,
-                entry.callable_owner,
-                Some(&resolve_named_pattern),
-            ) {
-                Ok(candidate) => candidate,
-                Err(CandidateApplicabilityFailure::Inapplicable(diagnostic)) => {
-                    first_diagnostic.get_or_insert(diagnostic);
-                    continue;
-                }
-                Err(CandidateApplicabilityFailure::Unsupported(diagnostic)) => {
-                    return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                        diagnostic,
-                        trace,
-                    });
-                }
-            };
-            if let Err(failure) = apply_self_formal_structure(
-                &mut source_shape,
-                &entry,
-                &target,
-                semantic_world,
-                resolver_context,
-                provenance.clone(),
-            ) {
-                match failure {
-                    CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
-                        first_diagnostic.get_or_insert(diagnostic);
+                OrdinaryCallableImplementation::Builtin(_) => {
+                    if context.migration.is_some() {
+                        // The connected slice has no declared ordinary result-Type
+                        // observation for core primitives. They cannot be admitted
+                        // as same-Type migration candidates by assumption.
                         continue;
                     }
-                    CandidateApplicabilityFailure::Unsupported(diagnostic) => {
-                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                            diagnostic,
-                            trace,
-                        });
-                    }
-                }
-            }
-            if let Err(failure) = validate_explicit_value_type_annotations(
-                &entry,
-                &classified.classified_shape,
-                semantic_world,
-                resolver_context,
-                provenance.clone(),
-            ) {
-                match failure {
-                    CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
-                        first_diagnostic.get_or_insert(diagnostic);
-                        continue;
-                    }
-                    CandidateApplicabilityFailure::Unsupported(diagnostic) => {
-                        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                            diagnostic,
-                            trace,
-                        });
-                    }
-                }
-            }
-            let formal_policy_frame = match formal_policy_frame(&entry, provenance.clone()) {
-                Ok(frame) => frame,
-                Err(CandidateApplicabilityFailure::Inapplicable(diagnostic)) => {
-                    first_diagnostic.get_or_insert(diagnostic);
-                    continue;
-                }
-                Err(CandidateApplicabilityFailure::Unsupported(diagnostic)) => {
-                    return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                        diagnostic,
-                        trace,
-                    });
-                }
-            };
-            // The canonical P1 was already normalized at the declaration
-            // boundary by `canonical_function_object_p1`.  P1(function
-            // object) = P1(slot0/self) = P1(let ()).  Do not re-derive from
-            // the closure AST at invocation time.
-            let self_policy = entry.callable_view.pair.clone();
-            let strategy = source_shape.overload_strategy.clone();
-            (
-                Some(source_shape),
-                None,
-                None,
-                formal_policy_frame,
-                self_policy,
-                strategy,
-                classified.classified_shape.clone(),
-            )
-        } else if let Some(primitive) = entry.core_primitive {
-            if context.migration.is_some() {
-                // The connected slice has no declared ordinary result-Type
-                // observation for core primitives. They cannot be admitted
-                // as same-Type migration candidates by assumption.
-                continue;
-            }
-            let Some(call_site) = source_call_site else {
-                first_diagnostic.get_or_insert_with(|| {
-                    Diagnostic::hard_error(
+                    let Some(call_site) = source_call_site else {
+                        first_diagnostic.get_or_insert_with(|| {
+                            Diagnostic::hard_error(
                         "core ordinary call entry requires its already-normalized source call site",
                         Some(provenance.clone()),
                     )
-                });
-                continue;
-            };
-            let core_invocation = match crate::meta::prepare_resolved_core_meta_call_with_primitive(
-                &declaration_identity,
-                primitive,
-                call_site,
-                &SemanticTypeEnv::new(&*semantic_world),
-                resolver_context,
-                context.horizon,
-                provenance.clone(),
-            ) {
-                Ok(candidate) => candidate,
-                Err(error) => {
-                    if let Some(diagnostic) = error.diagnostics.into_iter().next() {
-                        first_diagnostic.get_or_insert(diagnostic);
-                    }
-                    continue;
+                        });
+                        continue;
+                    };
+                    let core_invocation =
+                        match crate::builtin_callable::prepare_resolved_builtin_call(
+                            &entry,
+                            call_site,
+                            &SemanticTypeEnv::new(&*semantic_world),
+                            resolver_context,
+                            context.horizon,
+                            provenance.clone(),
+                        ) {
+                            Ok(candidate) => candidate,
+                            Err(
+                                crate::builtin_callable::BuiltinPreparationFailure::Incomplete(
+                                    diagnostic,
+                                ),
+                            ) => {
+                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                    diagnostic,
+                                    trace,
+                                });
+                            }
+                            Err(
+                                crate::builtin_callable::BuiltinPreparationFailure::Diagnostic(
+                                    error,
+                                ),
+                            ) => {
+                                if let Some(diagnostic) = error.diagnostics.into_iter().next() {
+                                    first_diagnostic.get_or_insert(diagnostic);
+                                }
+                                continue;
+                            }
+                        };
+                    let frame_args = core_invocation.candidate.arg_product_shape.clone();
+                    (
+                        PreparedImplementation::Builtin(core_invocation),
+                        PolicyFormalFrame {
+                            self_mode: PolicyMode::Plain,
+                            explicit_parameter_modes: vec![PolicyMode::Plain; frame_args.arity],
+                        },
+                        // Core and source candidates use the same P1 coordinate. The
+                        // core candidate's function-object view is its declared
+                        // canonical P1 (`callable_value_policy`).
+                        entry.callable_view.pair.clone(),
+                        NormOverloadStrategy::Ordinary,
+                        frame_args,
+                    )
                 }
-            };
-            let frame_args = core_invocation.candidate.arg_product_shape.clone();
-            (
-                None,
-                Some(core_invocation),
-                None,
-                PolicyFormalFrame {
-                    self_mode: PolicyMode::Plain,
-                    explicit_parameter_modes: vec![PolicyMode::Plain; frame_args.arity],
-                },
-                // Core and source candidates use the same P1 coordinate. The
-                // core candidate's function-object view is its declared
-                // canonical P1 (`callable_value_policy`).
-                entry.callable_view.pair.clone(),
-                NormOverloadStrategy::Ordinary,
-                frame_args,
-            )
-        } else if let Some(intrinsic) = &entry.intrinsic_body {
-            if context.migration.is_some() {
-                // Construction intrinsics are type-changing operations, not
-                // same-Type Policy migration candidates.
-                continue;
-            }
-            let Some(target_snapshot) = context.construction_target else {
-                first_diagnostic.get_or_insert_with(|| {
-                    Diagnostic::hard_error(
+                OrdinaryCallableImplementation::Intrinsic(intrinsic) => {
+                    if context.migration.is_some() {
+                        // Construction intrinsics are type-changing operations, not
+                        // same-Type Policy migration candidates.
+                        continue;
+                    }
+                    let Some(target_snapshot) = context.construction_target else {
+                        first_diagnostic.get_or_insert_with(|| {
+                            Diagnostic::hard_error(
                         "ordinary construction intrinsic requires an exact complete target Type",
                         Some(provenance.clone()),
                     )
-                });
-                continue;
-            };
-            let SemanticValuePayload::CoreTypeProjection {
-                represented_type: receiver_target,
-                ..
-            } = &target.payload
-            else {
-                continue;
-            };
-            let [ProductAtom::SemanticValue {
-                value: source_value,
-                ..
-            }] = classified.classified_shape.flattened.atoms.as_slice()
-            else {
-                continue;
-            };
-            let Some(source) = semantic_world.value(*source_value) else {
-                continue;
-            };
-            let SemanticValuePayload::AbstractLiteral { family, .. } = &source.payload else {
-                continue;
-            };
-            let applicable = match intrinsic {
-                crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(spec) => {
-                    spec.source_family == *family
-                        && spec.target_type == *receiver_target
-                        && target_snapshot.lookup_key() == *receiver_target
+                        });
+                        continue;
+                    };
+                    let SemanticValuePayload::CoreTypeProjection {
+                        represented_type: receiver_target,
+                        ..
+                    } = &target.payload
+                    else {
+                        continue;
+                    };
+                    let [ProductAtom::SemanticValue {
+                        value: source_value,
+                        ..
+                    }] = classified.classified_shape.flattened.atoms.as_slice()
+                    else {
+                        continue;
+                    };
+                    let Some(source) = semantic_world.value(*source_value) else {
+                        continue;
+                    };
+                    let SemanticValuePayload::AbstractLiteral { family, .. } = &source.payload
+                    else {
+                        continue;
+                    };
+                    let applicable = match intrinsic {
+                        crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(
+                            spec,
+                        ) => {
+                            spec.source_family == *family
+                                && spec.target_type == *receiver_target
+                                && target_snapshot.lookup_key() == *receiver_target
+                        }
+                        crate::semantic_world::OrdinaryIntrinsicBody::Delete
+                        | crate::semantic_world::OrdinaryIntrinsicBody::FailSelected => {
+                            target_snapshot.lookup_key() == *receiver_target
+                        }
+                    };
+                    if !applicable {
+                        continue;
+                    }
+                    (
+                        PreparedImplementation::Intrinsic(intrinsic.clone()),
+                        PolicyFormalFrame {
+                            self_mode: PolicyMode::Plain,
+                            explicit_parameter_modes: vec![PolicyMode::Plain],
+                        },
+                        entry.callable_view.pair.clone(),
+                        NormOverloadStrategy::Ordinary,
+                        classified.classified_shape.clone(),
+                    )
                 }
-                crate::semantic_world::OrdinaryIntrinsicBody::Delete
-                | crate::semantic_world::OrdinaryIntrinsicBody::FailSelected => {
-                    target_snapshot.lookup_key() == *receiver_target
-                }
             };
-            if !applicable {
-                continue;
-            }
-            (
-                None,
-                None,
-                Some(intrinsic.clone()),
-                PolicyFormalFrame {
-                    self_mode: PolicyMode::Plain,
-                    explicit_parameter_modes: vec![PolicyMode::Plain],
-                },
-                entry.callable_view.pair.clone(),
-                NormOverloadStrategy::Ordinary,
-                classified.classified_shape.clone(),
-            )
-        } else {
-            continue;
-        };
         // Compute stable migration endpoint coordinates once at
         // A-stage.  A only checks admissibility (is None?); Bp' later does
         // preference product comparison on the SAME coordinates.  No
@@ -1532,8 +1536,7 @@ pub(crate) fn invoke_target_values(
         let (migration_input_endpoint, migration_output_endpoint) = match context.migration {
             Some(migration) => {
                 let source_formal_p1 = match entry
-                    .closure
-                    .as_ref()
+                    .source_closure()
                     .and_then(|c| c.head.as_ref())
                     .and_then(|head| head.formal_frame().explicit_parameters.first())
                     .and_then(|elem| match elem {
@@ -1611,9 +1614,7 @@ pub(crate) fn invoke_target_values(
             candidate_role: entry.candidate_role,
             declared_result_class: entry.declared_result_class.clone(),
             overload_strategy,
-            source_shape,
-            core_invocation,
-            intrinsic_body,
+            implementation,
             migration_input_endpoint,
             migration_output_endpoint,
         });
@@ -1730,16 +1731,13 @@ pub(crate) fn invoke_target_values(
         legality,
     };
 
-    let canonical_callable_identity = crate::MetaCallableIdentity {
+    let canonical_callable_identity = crate::SelectedCallableIdentity {
         selected_function_value: selected.target_value,
         selected_call_entry: selected.call_entry_value,
     };
     let is_ambient_struct = matches!(
-        selected
-            .core_invocation
-            .as_ref()
-            .and_then(|core| core.candidate.callee_primitive),
-        Some(crate::CoreMetaFunction::Struct)
+        &selected.implementation,
+        PreparedImplementation::Builtin(input) if input.implementation == crate::BuiltinCallableImpl::Struct
     );
     let ambient_construction_owner = context
         .ambient_construction_owner
@@ -1758,7 +1756,7 @@ pub(crate) fn invoke_target_values(
     // instead of silently misrouting the result into a single-member or
     // name binding.
     if selected.declared_result_class == DeclaredResultClass::Unit {
-        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+        return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
                 "invocation of a Unit result is future work: \
                  the declaration is validated, but no executable producer exists yet",
@@ -1768,55 +1766,46 @@ pub(crate) fn invoke_target_values(
         });
     }
 
-    let returned = if let Some(source_shape) = &selected.source_shape {
-        // This arm constructs the selected source body's execution carrier.
-        let selected_body_input = SelectedSourceBody {
-            symbol: source_shape.symbol.clone(),
-            source_callable: source_shape.source_callable.clone(),
-            bindings: source_shape.bindings.clone(),
-            pack_bindings: source_shape.pack_bindings.clone(),
-        };
-        if !selected.is_delete() {
-            match evaluate_selected_source_body(
-                &SemanticTypeEnv::new(&*semantic_world),
-                resolver_context,
-                &selected_body_input,
-            ) {
-                Ok(value) => SelectedBodyOutput::Material(value),
-                Err(failure) => {
-                    return Err(OrdinaryInvocationFailure::SelectedBody { failure, trace });
+    let returned = match &selected.implementation {
+        PreparedImplementation::Source(source_shape) => {
+            // Source completion is unavailable; this arm has no successful
+            // output or route to builtin private material.
+            let selected_body_input = SelectedSourceBody {
+                symbol: source_shape.symbol.clone(),
+                source_callable: source_shape.source_callable.clone(),
+                bindings: source_shape.bindings.clone(),
+                pack_bindings: source_shape.pack_bindings.clone(),
+            };
+            let failure = check_selected_source_body_frontier(&selected_body_input);
+            return Err(if selected.is_delete() {
+                OrdinaryInvocationFailure::SelectedDelete {
+                    selected: selected.call_entry_value,
+                    diagnostic: failure.diagnostic,
+                    trace,
                 }
-            }
-        } else {
-            match evaluate_selected_source_body(
-                &SemanticTypeEnv::new(&*semantic_world),
-                resolver_context,
-                &selected_body_input,
-            ) {
-                Ok(value) => SelectedBodyOutput::Material(value),
-                Err(failure) => {
-                    return Err(OrdinaryInvocationFailure::SelectedDelete {
-                        selected: selected.call_entry_value,
-                        diagnostic: failure.diagnostic,
+            } else {
+                OrdinaryInvocationFailure::SelectedBody { failure, trace }
+            });
+        }
+        PreparedImplementation::Builtin(core) => {
+            let mut core_input = core.clone();
+            attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
+            match crate::callable_body::invoke_selected_builtin_body(core_input) {
+                crate::BuiltinBodyResult::Material(value) => {
+                    SelectedBodyOutput::BuiltinMaterial(value)
+                }
+                crate::BuiltinBodyResult::Diagnostic(diagnostic) => {
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
+                        diagnostic,
                         trace,
                     });
                 }
             }
         }
-    } else if let Some(core) = &selected.core_invocation {
-        let mut core_input = core.clone();
-        attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
-        match crate::meta_invocation::invoke_meta_callable(core_input) {
-            crate::MetaPrimitiveExecution::Material(value) => SelectedBodyOutput::Material(value),
-            crate::MetaPrimitiveExecution::Diagnostic(diagnostic) => {
-                return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
-            }
-        }
-    } else if let Some(intrinsic) = &selected.intrinsic_body {
-        match intrinsic {
+        PreparedImplementation::Intrinsic(intrinsic) => match intrinsic {
             crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(_) => {
                 let Some(target) = context.construction_target else {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
                         diagnostic: Diagnostic::hard_error(
                             "selected literal constructor lost its exact complete target Type",
                             Some(provenance.clone()),
@@ -1834,7 +1823,7 @@ pub(crate) fn invoke_target_values(
                     .atoms
                     .as_slice()
                 else {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
                         diagnostic: Diagnostic::hard_error(
                             "selected literal constructor requires exactly one abstract source value",
                             Some(provenance.clone()),
@@ -1848,7 +1837,7 @@ pub(crate) fn invoke_target_values(
                     selected.complete_result_view.clone(),
                     provenance.clone(),
                 ) else {
-                    return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                    return Err(OrdinaryInvocationFailure::SelectedImplementation {
                         diagnostic: Diagnostic::hard_error(
                             "selected literal constructor failed to realize its result",
                             Some(provenance.clone()),
@@ -1869,7 +1858,7 @@ pub(crate) fn invoke_target_values(
                 });
             }
             crate::semantic_world::OrdinaryIntrinsicBody::FailSelected => {
-                return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+                return Err(OrdinaryInvocationFailure::SelectedImplementation {
                     diagnostic: Diagnostic::hard_error(
                         "selected literal construction candidate failed to realize its result",
                         Some(provenance.clone()),
@@ -1877,16 +1866,14 @@ pub(crate) fn invoke_target_values(
                     trace,
                 });
             }
-        }
-    } else {
-        unreachable!("a prepared candidate has exactly one ordinary implementation body")
+        },
     };
 
     if canonical_instance_key.is_none()
         && !is_ambient_struct
         && matches!(
             returned,
-            SelectedBodyOutput::Material(MetaExecutionMaterial::StructConstructionMaterial(_))
+            SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(_))
         )
     {
         canonical_instance_key = Some(canonical_meta_instance_key_for_selected(
@@ -1906,12 +1893,14 @@ pub(crate) fn invoke_target_values(
             .flatten(),
         returned,
     )
-    .map_err(|diagnostic| OrdinaryInvocationFailure::SelectedCoreBody {
-        diagnostic,
-        trace: trace.clone(),
-    })?;
+    .map_err(
+        |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+            diagnostic,
+            trace: trace.clone(),
+        },
+    )?;
     let Some((result_type, pattern, returned_value, returned)) = identity else {
-        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+        return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
                 "selected callable did not form a canonical semantic result",
                 Some(provenance),
@@ -1923,7 +1912,7 @@ pub(crate) fn invoke_target_values(
         let source = migration.request.source_type();
         let same_type =
             same_type_core(semantic_world, source, result_type).map_err(|diagnostic| {
-                OrdinaryInvocationFailure::SelectedCoreBody {
+                OrdinaryInvocationFailure::SelectedImplementation {
                     diagnostic,
                     trace: trace.clone(),
                 }
@@ -1955,7 +1944,7 @@ pub(crate) fn invoke_target_values(
     if (selected.declared_result_class == DeclaredResultClass::CompleteType)
         != semantic_complete_type.is_some()
     {
-        return Err(OrdinaryInvocationFailure::SelectedCoreBody {
+        return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
                 "declared CompleteType result did not materialize an exact complete tau",
                 Some(provenance.clone()),
@@ -2066,8 +2055,7 @@ fn formal_policy_frame(
     provenance: Provenance,
 ) -> Result<PolicyFormalFrame, CandidateApplicabilityFailure> {
     let head = entry
-        .closure
-        .as_ref()
+        .source_closure()
         .and_then(|closure| closure.head.as_ref())
         .ok_or_else(|| {
             CandidateApplicabilityFailure::Unsupported(Diagnostic::hard_error(
@@ -2123,8 +2111,7 @@ fn apply_self_formal_structure(
     provenance: Provenance,
 ) -> Result<(), CandidateApplicabilityFailure> {
     let Some(head) = entry
-        .closure
-        .as_ref()
+        .source_closure()
         .and_then(|closure| closure.head.as_ref())
     else {
         return Err(CandidateApplicabilityFailure::Unsupported(
@@ -2284,8 +2271,7 @@ fn validate_explicit_value_type_annotations(
     provenance: Provenance,
 ) -> Result<(), CandidateApplicabilityFailure> {
     let Some(head) = entry
-        .closure
-        .as_ref()
+        .source_closure()
         .and_then(|closure| closure.head.as_ref())
     else {
         return Ok(());
@@ -2498,7 +2484,7 @@ fn ordering_from_advantages(left: bool, right: bool) -> PolicyPartialOrdering {
 fn ordinary_result_identity(
     semantic_world: &mut SemanticWorld,
     selected: &PreparedCallCandidate,
-    canonical_key: Option<&crate::MetaInvocationMaterialKey>,
+    canonical_key: Option<&crate::MetaInstanceMaterialKey>,
     ambient_struct_owner: Option<SemanticOwnerId>,
     returned: SelectedBodyOutput,
 ) -> Result<
@@ -2511,7 +2497,7 @@ fn ordinary_result_identity(
     Diagnostic,
 > {
     match returned {
-        SelectedBodyOutput::Material(MetaExecutionMaterial::IdentityType(value)) => {
+        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::IdentityType(value)) => {
             let represented = value.type_value;
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
@@ -2546,7 +2532,7 @@ fn ordinary_result_identity(
                 }),
             )))
         }
-        SelectedBodyOutput::Material(MetaExecutionMaterial::StructConstructionMaterial(
+        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(
             mut value,
         )) => {
             let installed = if let Some(ambient_owner) = ambient_struct_owner {
@@ -2573,13 +2559,12 @@ fn ordinary_result_identity(
                 else {
                     return Ok(None);
                 };
-                let meta_root = crate::MetaInstanceRoot {
-                    meta_callable: canonical_key.callable,
-                    placement_parent,
+                let meta_root = crate::MetaInstanceRootKey {
+                    parent_owner: placement_parent,
+                    material: canonical_key.clone(),
                 };
                 semantic_world.install_meta_struct_complete_type(
-                    &meta_root,
-                    canonical_key.clone(),
+                    meta_root,
                     value.material_id,
                     value.canonical_pattern_value(),
                     selected.complete_result_view.pair.clone(),

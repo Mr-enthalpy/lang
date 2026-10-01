@@ -241,9 +241,11 @@ engineering facilities after their inputs and effects obey the source model.
   propagate output opening-source meets. Implement P1 meta qualification before
   mut-view acquisition and plain completion/closure. Ordinary payload policy,
   borrowing and lifetime checks remain independent.
-  The current `semantic_world::meta_type_roots` cache stores only a type lookup
-  id and struct construction material. It does not yet retain general instance
-  state with ordinary Val2 payload Places and P1 meta/plain completion rules. `canonical_arguments_product_address` records value observations;
+  The current `semantic_world::MetaInstanceId` registry interns instance identity
+  independently of result formation. Its optional struct-result record retains
+  the type lookup and formation material; reacquisition observes current ordinary
+  storage. General instance member residency, dependencies and P1 meta/plain
+  completion rules remain unconnected. `canonical_arguments_product_address` records value observations;
   it does not supply the general identity-sensitive dependency boundary.
 - Implement generic meta result-name/cache residency with construction status,
   current reads, ordinary writes, effects and dependency revalidation. Repeated
@@ -392,11 +394,11 @@ is claimed by a successful existing Rust test suite.
 | Ordinary ADL | Raw DotName normalizes to ordinary name::adl navigation | Connect the ordinary forwarder through generative Path/name relations; no normalizer helper. 106-AD |
 | General dependency realization | NormCapture/BindingSlot preserve explicit formation; source callable carriers retain NormClosure | Needs -> semantic realization -> layout; common name environment, ordered effects, once-per-formation, no recapture or hidden semantic storage. 106-DP |
 | Meta declaration boundary | Generic closure carriers preserve captures/placement; full generative declaration consumers remain pending | Require ordinary => and absent capture clause at the MetaDecl layer. Mask unpassed locals; admit only input dependency closure and established stable definition/instance relations. No CapturedEnv key axis. 106-MD |
-| Universal closure and file installation | `lang_build/src/model.rs` SourceCallableObject and `semantic_world.rs` OrdinaryCallEntry retain closure carriers | struct Material_C -> tau_C/c_C/A_C/() with finite leaf and same-formation callable; retain homes/roles and automatic dependency formation with ordinary operation checks. File package-root installation distinct from lexical binding. 106-CL/NS |
+| Universal closure and file installation | `lang_build/src/model.rs` SourceCallableSyntax and `semantic_world.rs` OrdinaryCallEntry retain closure carriers | struct Material_C -> tau_C/c_C/A_C/() with finite leaf and same-formation callable; retain homes/roles and automatic dependency formation with ordinary operation checks. File package-root installation distinct from lexical binding. 106-CL/NS |
 | Lifetime integration | Existing lifecycle substrate supplies continuation/Pre/Post primitives | Preserve actual dependencies and action obligations. Further region/escape/state refinement is handed off, not a PR106 blocker. 106-LF |
 
 Paths in this table are relative to `crates/`. Full ordinary meta body
-execution also remains unsupported/deferred in `lang_build/src/meta_body.rs`;
+execution also remains unsupported in `lang_build/src/overload_set.rs`;
 new closures and general expression bodies must not silently use a substitute
 evaluator. Consumer tests must cover positive/negative cases, identity/equality,
 no-reopen, non-derivability, authority uniqueness and observable effects.
@@ -578,6 +580,42 @@ blocked by earlier cleanup and producer-fact rollback on any affected Pre/Post
 failure. These gates remain unconnected and do not reopen the completed
 lifecycle interface cleanup.
 
-The next independent cleanup cut separates callable source records and general
-meta-instance identity from body execution. This is implementation retirement,
-not a new semantic choice.
+Callable interface cleanup distinguishes `SourceCallableSyntax` from semantic
+Objects and retains ordinary `CallableDeclaration` records with stage/Policy
+facts. Builtin preparation reads declared call-entry Policy planes, never
+implementation-derived defaults or a synthetic graph Object. Assert/Verify's
+parameter relations remain unavailable; unknown applicability stops the whole
+candidate family before maxima rather than selecting a runner-up. Connected
+relations participate normally and selected body failures never reopen selection.
+Declaration, call-entry and prepared-selection carriers each retain one
+implementation variant; source syntax, builtin leaves and intrinsic bodies do
+not form optional parallel implementation authorities. Ordinary selection retains
+the actual self and selected implementation. Selected delete diagnostics preserve
+source provenance and selected failure never reopens candidate search.
+
+Builtin implementation handling lives in `callable_body.rs`; it produces private
+`BuiltinBodyMaterial` for the existing declared-result consumer. The selected
+source-body frontier returns a diagnostic, with no success route to that material.
+Future source completion must consume ordinary semantic results; an inner builtin
+call completes its own result formation instead of leaking private material to
+the outer source body. There is no separate source
+meta body evaluator or block-deferral result. Source blocks remain unavailable
+until the shared serial/completion consumer is connected; visibility and argument
+preparation do not establish Ready or a transaction witness. Callable fixture
+installation is crate-private under `cfg(test)`, not closure-expression evaluation.
+Integration tests construct ordinary receivers through test-local helpers. Source
+frontiers expose no body-local initializer evaluation hook. Standalone expressions
+require common E; the ordinary Verify entries have no connected selected consumer
+and no source-scanning evaluator supplies one.
+
+The instance registry maps the full root key to `MetaInstanceId`, which reuses
+the existing semantic owner independently of TypeValueId. Owner interning and
+struct-result installation accept only `MetaInstanceRootKey` as identity input;
+it contains one `SelectedCallableIdentity` through `MetaInstanceMaterialKey`.
+The connected struct
+consumer adds formation material under that identity, rejects conflicting bodies
+without splitting the root, and observes current type/Val2 storage on reuse.
+Its staged storage publication is not proof of common E producer transactions.
+General ordinary meta member Places, retained dependency/access authority,
+P1 completion and source formation/body execution remain consumer gates.
+The two preceding cleanup/producer-transaction gates remain required for E wiring.

@@ -1,8 +1,8 @@
 use crate::{
     model::{
-        CoreMetaFunction, CoreTypeProjection, MetaFunctionObject, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, Provenance, SemanticNameDelta, SourceCategory, SymbolId, SymbolKind,
-        SymbolObject, SymbolPayload, VerificationPrimitive,
+        BuiltinCallableImpl, CallableDeclaration, CoreTypeProjection, NamespaceNode,
+        NamespaceNodeId, NamespaceNodeKind, Provenance, SemanticNameDelta, SourceCategory,
+        SymbolId, SymbolKind, SymbolObject, SymbolPayload, VerificationPrimitive,
     },
     policy_pair::{PolicyMode, PolicyPair, PolicyView, Stage},
     semantic_name_index::{namespace_symbol, BuildError, SemanticNameIndex},
@@ -18,7 +18,7 @@ pub(crate) struct CoreCallableRegistration {
     pub(crate) namespace: NamespaceNodeId,
     pub(crate) name: String,
     pub(crate) backing: SymbolId,
-    pub(crate) primitive: CoreMetaFunction,
+    pub(crate) primitive: BuiltinCallableImpl,
     pub(crate) function_view: PolicyView,
     pub(crate) body_entry_view: PolicyView,
     pub(crate) result_view: PolicyView,
@@ -72,31 +72,31 @@ pub(crate) fn install_core_bootstrap(
         }
     }
 
-    insert_meta_function(
+    insert_builtin_callable(
         &mut delta,
         &mut core_callables,
         core_node,
         "struct",
-        CoreMetaFunction::Struct,
-        Provenance::new("core meta-function `struct`"),
+        BuiltinCallableImpl::Struct,
+        Provenance::new("core builtin callable `struct`"),
         core_declared_view(Stage::Meta),
     );
-    insert_meta_function(
+    insert_builtin_callable(
         &mut delta,
         &mut core_callables,
         core_node,
         "assert",
-        CoreMetaFunction::Assert,
-        Provenance::new("core meta-function `assert`"),
+        BuiltinCallableImpl::Assert,
+        Provenance::new("core builtin callable `assert`"),
         core_declared_view(Stage::Meta),
     );
-    insert_meta_function(
+    insert_builtin_callable(
         &mut delta,
         &mut core_callables,
         core_node,
         "IdentityType",
-        CoreMetaFunction::IdentityType,
-        Provenance::new("core meta-function `IdentityType`"),
+        BuiltinCallableImpl::IdentityType,
+        Provenance::new("core builtin callable `IdentityType`"),
         core_declared_view(Stage::Meta),
     );
     insert_verification_namespace(&mut delta, &mut core_callables, core_node);
@@ -142,33 +142,18 @@ fn core_declared_view(stage: Stage) -> PolicyView {
     crate::declared_policy_view(stage, PolicyMode::Plain)
 }
 
-/// Declared body-entry / return-object planes of one
-/// core built-in, spelled at the declaration site.  The invocation spine
-/// obtains these planes from the primitive identity instead of reading the
-/// graph `SymbolPayload::MetaFunction` payload.
-pub(crate) fn core_primitive_callable_planes(
-    primitive: CoreMetaFunction,
-) -> (PolicyView, PolicyView) {
-    let return_view = match primitive {
-        CoreMetaFunction::Struct => core_declared_view(Stage::Meta),
-        CoreMetaFunction::Assert | CoreMetaFunction::Verify(_) | CoreMetaFunction::IdentityType => {
-            core_declared_view(Stage::Meta)
-        }
-    };
-    (core_declared_view(Stage::Meta), return_view)
-}
-
-fn insert_meta_function(
+fn insert_builtin_callable(
     delta: &mut SemanticNameDelta,
     core_callables: &mut Vec<CoreCallableRegistration>,
     parent: NamespaceNodeId,
     name: &str,
-    primitive: CoreMetaFunction,
+    primitive: BuiltinCallableImpl,
     provenance: Provenance,
     function_view: PolicyView,
 ) {
     let symbol_id = delta.allocate_symbol_id();
-    let (body_entry_policy, return_object_policy) = core_primitive_callable_planes(primitive);
+    let body_entry_policy = core_declared_view(Stage::Meta);
+    let return_object_policy = core_declared_view(Stage::Meta);
     // Independent result-class/privilege coordinates for each built-in:
     // `struct` and `identity_type` return complete type values;
     // `assert` / `verify` return a single
@@ -176,17 +161,17 @@ fn insert_meta_function(
     // may consume raw/meta material); privilege implies nothing about the
     // result class and neither coordinate is re-derived at call time.
     let declared_result_class = match primitive {
-        CoreMetaFunction::Struct | CoreMetaFunction::IdentityType => {
+        BuiltinCallableImpl::Struct | BuiltinCallableImpl::IdentityType => {
             crate::DeclaredResultClass::CompleteType
         }
-        CoreMetaFunction::Assert | CoreMetaFunction::Verify(_) => {
+        BuiltinCallableImpl::Assert | BuiltinCallableImpl::Verify(_) => {
             crate::DeclaredResultClass::OrdinaryValue
         }
     };
     let mut symbol = SymbolObject::new(
         symbol_id,
         name,
-        SymbolKind::MetaFunction,
+        SymbolKind::Callable,
         SourceCategory::CoreBootstrap,
         Some(parent),
         provenance,
@@ -197,10 +182,9 @@ fn insert_meta_function(
     // enter ordinary overload as normal candidates (no call-time bypass).
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;
-    symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
+    symbol.payload = SymbolPayload::Callable(CallableDeclaration {
         function_symbol_id: symbol_id,
-        primitive: Some(primitive),
-        source_callable: None,
+        implementation: crate::CallableImplementation::Builtin(primitive),
         function_policy: function_view,
         body_entry_policy,
         return_object_policy,
@@ -218,7 +202,7 @@ fn insert_meta_function(
         primitive,
         function_view: PolicyView {
             pair: match primitive {
-                CoreMetaFunction::Struct => core_declared_pair(Stage::Meta, true),
+                BuiltinCallableImpl::Struct => core_declared_pair(Stage::Meta, true),
                 _ => core_declared_pair(Stage::Meta, true),
             },
             mode: PolicyMode::Plain,
@@ -229,10 +213,10 @@ fn insert_meta_function(
         },
         result_view: PolicyView {
             pair: match primitive {
-                CoreMetaFunction::Struct => core_declared_pair(Stage::Meta, false),
-                CoreMetaFunction::Assert
-                | CoreMetaFunction::Verify(_)
-                | CoreMetaFunction::IdentityType => core_declared_pair(Stage::Meta, false),
+                BuiltinCallableImpl::Struct => core_declared_pair(Stage::Meta, false),
+                BuiltinCallableImpl::Assert
+                | BuiltinCallableImpl::Verify(_)
+                | BuiltinCallableImpl::IdentityType => core_declared_pair(Stage::Meta, false),
             },
             mode: PolicyMode::Plain,
         },
@@ -272,7 +256,6 @@ fn insert_verification_namespace(
     symbol.policy_view = Some(core_declared_view(Stage::Meta));
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;
-    symbol.payload = SymbolPayload::VerificationNamespace { node: node_id };
     delta.insert_symbol(core_node, symbol);
 
     for (name, primitive) in [
@@ -297,12 +280,12 @@ fn insert_verification_namespace(
         ("return_policy", VerificationPrimitive::ReturnPolicy),
         ("not_return_policy", VerificationPrimitive::NotReturnPolicy),
     ] {
-        insert_meta_function(
+        insert_builtin_callable(
             delta,
             core_callables,
             node_id,
             name,
-            CoreMetaFunction::Verify(primitive),
+            BuiltinCallableImpl::Verify(primitive),
             Provenance::new(format!("core verification operation `verify::{name}`")),
             core_declared_view(Stage::Meta),
         );
@@ -338,7 +321,7 @@ pub(crate) fn insert_core_type(
         provenance.clone(),
     );
     symbol.policy_view = Some(policy_view);
-    // Declaration-boundary export fact, mirroring `insert_meta_function`:
+    // Declaration-boundary export fact, mirroring `insert_builtin_callable`:
     // core type symbols are public members of the toolchain package.
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;

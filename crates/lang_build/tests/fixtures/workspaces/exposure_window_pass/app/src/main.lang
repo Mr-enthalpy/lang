@@ -8,5 +8,3 @@ compile let narrow =
 };
 
 compile let X: type = int narrow;
-
-verify kind X type;
