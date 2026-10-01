@@ -3420,7 +3420,7 @@ mod source_closure_frontier_tests {
                 .harvest_program(namespace, &normalized, file)
                 .unwrap_err();
             let message = if source.starts_with("let") {
-                "selected builtin verification consumer is not connected"
+                "builtin `verify` applicability relation consumer is not connected"
             } else {
                 "source expression completion requires common E"
             };

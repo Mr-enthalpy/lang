@@ -142,22 +142,6 @@ fn core_declared_view(stage: Stage) -> PolicyView {
     crate::declared_policy_view(stage, PolicyMode::Plain)
 }
 
-/// Declared body-entry / return-object planes of one
-/// core built-in, spelled at the declaration site.  The invocation spine
-/// obtains these planes from the primitive identity instead of reading the
-/// graph `SymbolPayload::Callable` payload.
-pub(crate) fn core_primitive_callable_planes(
-    primitive: BuiltinCallableImpl,
-) -> (PolicyView, PolicyView) {
-    let return_view = match primitive {
-        BuiltinCallableImpl::Struct => core_declared_view(Stage::Meta),
-        BuiltinCallableImpl::Assert
-        | BuiltinCallableImpl::Verify(_)
-        | BuiltinCallableImpl::IdentityType => core_declared_view(Stage::Meta),
-    };
-    (core_declared_view(Stage::Meta), return_view)
-}
-
 fn insert_builtin_callable(
     delta: &mut SemanticNameDelta,
     core_callables: &mut Vec<CoreCallableRegistration>,
@@ -168,7 +152,8 @@ fn insert_builtin_callable(
     function_view: PolicyView,
 ) {
     let symbol_id = delta.allocate_symbol_id();
-    let (body_entry_policy, return_object_policy) = core_primitive_callable_planes(primitive);
+    let body_entry_policy = core_declared_view(Stage::Meta);
+    let return_object_policy = core_declared_view(Stage::Meta);
     // Independent result-class/privilege coordinates for each built-in:
     // `struct` and `identity_type` return complete type values;
     // `assert` / `verify` return a single

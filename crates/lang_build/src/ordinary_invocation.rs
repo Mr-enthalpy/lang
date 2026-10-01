@@ -670,17 +670,17 @@ fn attach_candidate_type_observations(
 fn canonical_meta_instance_key_for_selected(
     semantic_world: &mut SemanticWorld,
     shape: &ArgProductShape,
-    callable: crate::MetaCallableIdentity,
+    callable: crate::SelectedCallableIdentity,
     provenance: &Provenance,
     trace: &OrdinaryPipelineTrace,
-) -> Result<crate::MetaInvocationMaterialKey, OrdinaryInvocationFailure> {
+) -> Result<crate::MetaInstanceMaterialKey, OrdinaryInvocationFailure> {
     let arguments_product_addr = semantic_world
         .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
         .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
             diagnostic,
             trace: trace.clone(),
         })?;
-    Ok(crate::compute_meta_invocation_material_key(
+    Ok(crate::compute_meta_instance_material_key(
         callable,
         arguments_product_addr,
         provenance.clone(),
@@ -1218,9 +1218,8 @@ pub(crate) fn invoke_target_values(
         // environment (`declaration_name` / `declaration_namespace`); the
         // A-stage never looks the backing declaration up in the name index.
         // Body-entry admissibility is judged on the call entry's own
-        // declaration-local P2; the declaration identity below is rebuilt
-        // from the entry's declared facts for the shared candidate and
-        // future source-completion carriers.
+        // declaration-local P2. Source preparation uses the entry's declared
+        // identity; builtin preparation consumes the call entry directly.
         // This exposure test is not Ready evidence. The full common E
         // readiness/Pre/commit consumer remains a separate implementation gate;
         // visibility must not authorize additional body execution paths.
@@ -1231,15 +1230,6 @@ pub(crate) fn invoke_target_values(
             });
             continue;
         }
-        let declaration_identity = SymbolObject::new(
-            entry.backing_declaration,
-            entry.declaration_name.clone(),
-            SymbolKind::Object,
-            SourceCategory::DeclaredSymbol,
-            entry.declaration_namespace,
-            entry.provenance.clone(),
-        );
-
         let target = semantic_world
             .value(target_value)
             .cloned()
@@ -1251,6 +1241,14 @@ pub(crate) fn invoke_target_values(
         let (implementation, formal_policy_frame, self_policy, overload_strategy, frame_args) =
             match &entry.implementation {
                 OrdinaryCallableImplementation::Source(entry_closure) => {
+                    let declaration_identity = SymbolObject::new(
+                        entry.backing_declaration,
+                        entry.declaration_name.clone(),
+                        SymbolKind::Object,
+                        SourceCategory::DeclaredSymbol,
+                        entry.declaration_namespace,
+                        entry.provenance.clone(),
+                    );
                     let declaration_pattern_context = ResolverContext {
                         current_namespace: entry.declaration_namespace.unwrap_or_else(|| {
                             resolver_context
@@ -1401,7 +1399,7 @@ pub(crate) fn invoke_target_values(
                         classified.classified_shape.clone(),
                     )
                 }
-                OrdinaryCallableImplementation::Builtin(primitive) => {
+                OrdinaryCallableImplementation::Builtin(_) => {
                     if context.migration.is_some() {
                         // The connected slice has no declared ordinary result-Type
                         // observation for core primitives. They cannot be admitted
@@ -1419,8 +1417,7 @@ pub(crate) fn invoke_target_values(
                     };
                     let core_invocation =
                         match crate::builtin_callable::prepare_resolved_builtin_call(
-                            &declaration_identity,
-                            *primitive,
+                            &entry,
                             call_site,
                             &SemanticTypeEnv::new(&*semantic_world),
                             resolver_context,
@@ -1428,7 +1425,21 @@ pub(crate) fn invoke_target_values(
                             provenance.clone(),
                         ) {
                             Ok(candidate) => candidate,
-                            Err(error) => {
+                            Err(
+                                crate::builtin_callable::BuiltinPreparationFailure::Incomplete(
+                                    diagnostic,
+                                ),
+                            ) => {
+                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                                    diagnostic,
+                                    trace,
+                                });
+                            }
+                            Err(
+                                crate::builtin_callable::BuiltinPreparationFailure::Diagnostic(
+                                    error,
+                                ),
+                            ) => {
                                 if let Some(diagnostic) = error.diagnostics.into_iter().next() {
                                     first_diagnostic.get_or_insert(diagnostic);
                                 }
@@ -1720,7 +1731,7 @@ pub(crate) fn invoke_target_values(
         legality,
     };
 
-    let canonical_callable_identity = crate::MetaCallableIdentity {
+    let canonical_callable_identity = crate::SelectedCallableIdentity {
         selected_function_value: selected.target_value,
         selected_call_entry: selected.call_entry_value,
     };
@@ -2473,7 +2484,7 @@ fn ordering_from_advantages(left: bool, right: bool) -> PolicyPartialOrdering {
 fn ordinary_result_identity(
     semantic_world: &mut SemanticWorld,
     selected: &PreparedCallCandidate,
-    canonical_key: Option<&crate::MetaInvocationMaterialKey>,
+    canonical_key: Option<&crate::MetaInstanceMaterialKey>,
     ambient_struct_owner: Option<SemanticOwnerId>,
     returned: SelectedBodyOutput,
 ) -> Result<
@@ -2548,13 +2559,12 @@ fn ordinary_result_identity(
                 else {
                     return Ok(None);
                 };
-                let meta_root = crate::MetaInstanceRoot {
-                    meta_callable: canonical_key.callable,
-                    placement_parent,
+                let meta_root = crate::MetaInstanceRootKey {
+                    parent_owner: placement_parent,
+                    material: canonical_key.clone(),
                 };
                 semantic_world.install_meta_struct_complete_type(
-                    &meta_root,
-                    canonical_key.clone(),
+                    meta_root,
                     value.material_id,
                     value.canonical_pattern_value(),
                     selected.complete_result_view.pair.clone(),

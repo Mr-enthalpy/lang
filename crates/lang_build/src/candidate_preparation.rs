@@ -16,7 +16,7 @@
 use crate::{
     body_entry_visible_at,
     identity::TypeValueId,
-    model::{Diagnostic, Provenance, SymbolId, SymbolObject},
+    model::{Diagnostic, Provenance, SymbolId},
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
     ObservationHorizon, PolicyView,
 };
@@ -79,7 +79,7 @@ pub struct CandidatePreparationContext {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePolicyPlanes {
     pub horizon: ObservationHorizon,
-    pub symbol_policy_view: Option<PolicyView>,
+    pub callable_view: PolicyView,
     pub body_entry_policy: PolicyView,
     pub return_object_policy: PolicyView,
 }
@@ -223,11 +223,12 @@ pub enum CandidatePrepDeferredReason {
 /// This is the only candidate-preparation entry. The canonical spine supplies
 /// the body-entry/return-object planes
 /// from its own declared facts (the core bootstrap roster or the semantic call
-/// entry); no `SymbolPayload` is read here. The callee `SymbolObject` remains
-/// identity/visibility material.
+/// entry); no graph payload or synthetic graph Object is required here.
 #[allow(clippy::too_many_arguments)]
 pub fn prepare_callable_candidate_with_declared_planes(
-    callee: &SymbolObject,
+    callee_symbol_id: SymbolId,
+    callee_name: &str,
+    callable_view: PolicyView,
     body_entry_policy: PolicyView,
     return_object_policy: PolicyView,
     arg_product_shape: ArgProductShape,
@@ -236,13 +237,13 @@ pub fn prepare_callable_candidate_with_declared_planes(
 ) -> CandidatePrepResult {
     let policy_planes = CandidatePolicyPlanes {
         horizon: context.horizon,
-        symbol_policy_view: callee.policy_view.clone(),
+        callable_view,
         body_entry_policy,
         return_object_policy,
     };
     let candidate = PreparedCallableCandidate {
-        callee_symbol_id: callee.id,
-        callee_name: callee.name.clone(),
+        callee_symbol_id,
+        callee_name: callee_name.to_string(),
         arg_product_shape,
         parameter_shape,
         policy_planes,

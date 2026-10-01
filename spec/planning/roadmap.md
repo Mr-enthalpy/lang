@@ -582,7 +582,12 @@ lifecycle interface cleanup.
 
 Callable interface cleanup distinguishes `SourceCallableSyntax` from semantic
 Objects and retains ordinary `CallableDeclaration` records with stage/Policy
-facts. Declaration, call-entry and prepared-selection carriers each retain one
+facts. Builtin preparation reads declared call-entry Policy planes, never
+implementation-derived defaults or a synthetic graph Object. Assert/Verify's
+parameter relations remain unavailable; unknown applicability stops the whole
+candidate family before maxima rather than selecting a runner-up. Connected
+relations participate normally and selected body failures never reopen selection.
+Declaration, call-entry and prepared-selection carriers each retain one
 implementation variant; source syntax, builtin leaves and intrinsic bodies do
 not form optional parallel implementation authorities. Ordinary selection retains
 the actual self and selected implementation. Selected delete diagnostics preserve
@@ -604,7 +609,10 @@ require common E; the ordinary Verify entries have no connected selected consume
 and no source-scanning evaluator supplies one.
 
 The instance registry maps the full root key to `MetaInstanceId`, which reuses
-the existing semantic owner independently of TypeValueId. The connected struct
+the existing semantic owner independently of TypeValueId. Owner interning and
+struct-result installation accept only `MetaInstanceRootKey` as identity input;
+it contains one `SelectedCallableIdentity` through `MetaInstanceMaterialKey`.
+The connected struct
 consumer adds formation material under that identity, rejects conflicting bodies
 without splitting the root, and observes current type/Val2 storage on reuse.
 Its staged storage publication is not proof of common E producer transactions.

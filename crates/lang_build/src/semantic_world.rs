@@ -33,9 +33,9 @@ use crate::{
         CanonicalPatternNorm, CanonicalPatternValue, CanonicalProductConstructor,
         CanonicalTypeCallSpaceNorm, CanonicalVal1Norm, CanonicalValueAddr, ExtractionPatternParent,
     },
-    identity::{MetaCallableIdentity, SemanticValueId, TypeValueId},
+    identity::{SemanticValueId, TypeValueId},
     invocation_result::DeclaredResultClass,
-    meta_key::MetaInvocationMaterialKey,
+    meta_key::MetaInstanceRootKey,
     model::{
         BuiltinCallableImpl, NamespaceNodeId, Provenance, SemanticNameDelta, SymbolId, SymbolKind,
     },
@@ -54,21 +54,6 @@ use crate::{
         SemanticSymbolIdentity,
     },
 };
-
-/// Storage key for one complete meta-instance root. Root identity is scoped by
-/// the stable parent owner in addition to the selected callable and canonical
-/// whole argument Product; body material never participates.
-/// The normalized struct body is content *under* the root: replaying the
-/// same root key with an equal body is an idempotent reuse, while a
-/// different body under one root key is a construction conflict — never a
-/// second root.  Two meta functions `f` and `g` whose bodies produce the
-/// same normalized body from the same arguments still get distinct keys
-/// (distinct roots) whose body material compares equal.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct MetaInstanceRootKey {
-    pub parent_owner: SemanticOwnerId,
-    pub material: MetaInvocationMaterialKey,
-}
 
 /// Instance identity reuses the existing interned semantic owner, independently
 /// of the currently connected result consumer. It is not a TypeValueId.
@@ -104,29 +89,6 @@ pub struct MetaStructResultState {
     pub type_value: TypeValueId,
     pub normalized_body: StructConstructionMaterialId,
     pub formation_pattern: CanonicalPatternValue,
-}
-
-/// Placement + identity bundle for one meta instance root.
-///
-/// `meta_callable` is the selected function object **value** identity.
-/// `placement_parent` is the stable semantic owner under which this instance
-/// is established. Together with the selected callable and canonical argument
-/// Product held by `MetaInvocationMaterialKey`, both coordinates participate in root identity. Neither a
-/// graph declaration Symbol nor a result binding/Place participates.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct MetaInstanceRoot {
-    pub meta_callable: MetaCallableIdentity,
-    pub placement_parent: SemanticOwnerId,
-}
-
-impl MetaInstanceRoot {
-    /// Root-level Policy is an identity invariant, not a contextual default
-    /// and not a position overlay. Stable ownership supplies global
-    /// consistency; `plain` must not be replaced by `const` or interpreted as
-    /// a Writable grant.
-    pub const fn policy_mode(&self) -> PolicyMode {
-        PolicyMode::Plain
-    }
 }
 
 /// Snapshot-local identity of one semantic Pattern value.
@@ -955,8 +917,7 @@ pub enum OwnerStrategy {
 pub enum ConstructionAuthority {
     BuildRoot,
     MetaInvocation {
-        meta_callable: MetaCallableIdentity,
-        canonical_key: crate::meta_key::MetaInvocationMaterialKey,
+        root: MetaInstanceRootKey,
     },
     /// An ambient-scope construction (`AmbientStructScope`): the owning
     /// authority is the declaration environment itself, not a meta
@@ -3860,33 +3821,19 @@ impl SemanticWorld {
     /// or establish a completed instance result, residency, or authority.
     pub fn intern_meta_instance(
         &mut self,
-        root: &MetaInstanceRoot,
-        material: MetaInvocationMaterialKey,
+        key: MetaInstanceRootKey,
         provenance: Provenance,
     ) -> Result<MetaInstanceId, crate::Diagnostic> {
-        if material.callable != root.meta_callable {
-            return Err(crate::Diagnostic::hard_error(
-                "meta root callable disagrees with the invocation material key",
-                Some(provenance),
-            ));
-        }
-        if self.owners.node(root.placement_parent).is_none() {
+        if self.owners.node(key.parent_owner).is_none() {
             return Err(crate::Diagnostic::hard_error(
                 "meta instance parent owner is not in this world",
                 Some(provenance),
             ));
         }
-        let key = MetaInstanceRootKey {
-            parent_owner: root.placement_parent,
-            material,
-        };
         if let Some(id) = self.meta_instance_index.get(&key) {
             return Ok(*id);
         }
-        let id = MetaInstanceId(
-            self.owners
-                .meta_instance(key.parent_owner, key.material.clone()),
-        );
+        let id = MetaInstanceId(self.owners.meta_instance(key.clone()));
         self.meta_instance_index.insert(key.clone(), id);
         self.meta_instances.insert(
             id,
@@ -3912,7 +3859,7 @@ impl SemanticWorld {
     /// Staging prevents partial storage publication; it supplies no common E
     /// producer witness, readiness proof, or lifecycle Post handoff.
     ///
-    /// `MetaRootKey = ParentSemanticOwner + MetaCallableIdentity +
+    /// `MetaRootKey = ParentSemanticOwner + SelectedCallableIdentity +
     /// Normalize(Arguments)`: the
     /// instance is keyed by [`MetaInstanceRootKey`], which never
     /// includes body material.  `normalized_body` is
@@ -3924,8 +3871,7 @@ impl SemanticWorld {
     /// prerequisites (absent type rank or missing result storage).
     pub fn install_meta_struct_complete_type(
         &mut self,
-        root: &MetaInstanceRoot,
-        canonical_key: MetaInvocationMaterialKey,
+        key: MetaInstanceRootKey,
         normalized_body: StructConstructionMaterialId,
         canonical_pattern: CanonicalPatternValue,
         policy: PolicyPair,
@@ -3934,8 +3880,7 @@ impl SemanticWorld {
     {
         let mut staged = self.clone();
         let result = staged.install_meta_struct_result_in_staged_world(
-            root,
-            canonical_key,
+            key,
             normalized_body,
             canonical_pattern,
             policy,
@@ -3949,8 +3894,7 @@ impl SemanticWorld {
 
     fn install_meta_struct_result_in_staged_world(
         &mut self,
-        root: &MetaInstanceRoot,
-        canonical_key: MetaInvocationMaterialKey,
+        key: MetaInstanceRootKey,
         normalized_body: StructConstructionMaterialId,
         canonical_pattern: CanonicalPatternValue,
         policy: PolicyPair,
@@ -3960,7 +3904,7 @@ impl SemanticWorld {
         let Some(type_rank) = self.type_rank else {
             return Ok(None);
         };
-        let instance = self.intern_meta_instance(root, canonical_key, provenance.clone())?;
+        let instance = self.intern_meta_instance(key, provenance.clone())?;
         let canonical_type = match self.meta_instances[&instance].struct_result.as_ref() {
             Some(existing) => {
                 if existing.normalized_body != normalized_body
@@ -3968,7 +3912,7 @@ impl SemanticWorld {
                 {
                     // Same root, conflicting body: the root is never split.
                     return Err(crate::Diagnostic::hard_error(
-                        "meta construction conflict: the same meta function and normalized \
+                        "meta construction conflict: the same selected callable and normalized \
                          arguments produced a different normalized body; a conflicting body \
                          never allocates a second root",
                         Some(provenance),
@@ -4030,7 +3974,7 @@ impl SemanticWorld {
                 type_value: type_rank,
                 pattern,
                 policy: policy.clone(),
-                mode: root.policy_mode(),
+                mode: PolicyMode::Plain,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type: canonical_type,
@@ -5602,6 +5546,7 @@ mod tests {
         canonical_literal_content, canonical_literal_norm, CanonicalFullNavigation,
         CanonicalLiteralFamily, CanonicalPatternAtom, CanonicalPatternValue,
     };
+    use crate::SelectedCallableIdentity;
     use crate::Stage;
     use lang_syntax::{NormDecl, NormForm, NormLiteralKind};
     use std::sync::{Mutex, OnceLock};
@@ -5677,43 +5622,38 @@ mod tests {
             .function_value
     }
 
-    fn instance_fixture(
-        world: &mut SemanticWorld,
-    ) -> (MetaInstanceRoot, MetaInvocationMaterialKey) {
+    fn instance_fixture(world: &mut SemanticWorld) -> MetaInstanceRootKey {
         let callable = test_callable(world);
         let implementation = world.callable_entries_for_value(callable)[0];
-        let identity = MetaCallableIdentity {
+        let identity = SelectedCallableIdentity {
             selected_function_value: callable,
             selected_call_entry: implementation,
         };
         let arguments = world.canonical_arguments_product_address(&[], &[]).unwrap();
-        let key = crate::compute_meta_invocation_material_key(
+        let key = crate::compute_meta_instance_material_key(
             identity,
             arguments,
             Provenance::new("instance fixture"),
         );
-        (
-            MetaInstanceRoot {
-                meta_callable: identity,
-                placement_parent: world.package_owner(),
-            },
-            key,
-        )
+        MetaInstanceRootKey {
+            parent_owner: world.package_owner(),
+            material: key,
+        }
     }
 
     #[test]
     fn instance_identity_is_independent_of_struct_result_and_provenance() {
         let mut world = SemanticWorld::new("instances");
-        let (root, mut key) = instance_fixture(&mut world);
+        let mut key = instance_fixture(&mut world);
         let counts = (world.types.len(), world.patterns.len(), world.places.len());
         let first = world
-            .intern_meta_instance(&root, key.clone(), Provenance::new("first"))
+            .intern_meta_instance(key.clone(), Provenance::new("first"))
             .unwrap();
-        key.provenance = Provenance::new("another source file");
+        key.material.provenance = Provenance::new("another source file");
         assert_eq!(
             first,
             world
-                .intern_meta_instance(&root, key.clone(), Provenance::new("again"))
+                .intern_meta_instance(key.clone(), Provenance::new("again"))
                 .unwrap()
         );
         assert!(world
@@ -5726,42 +5666,34 @@ mod tests {
             (world.types.len(), world.patterns.len(), world.places.len())
         );
         let parent = world.owners.namespace(world.package_owner(), "other");
-        let other_root = MetaInstanceRoot {
-            placement_parent: parent,
-            ..root
+        let other_root = MetaInstanceRootKey {
+            parent_owner: parent,
+            ..key.clone()
         };
         assert_ne!(
             first,
             world
-                .intern_meta_instance(&other_root, key.clone(), Provenance::new("other parent"))
+                .intern_meta_instance(other_root, Provenance::new("other parent"))
                 .unwrap()
         );
         let second_callable = test_callable(&mut world);
         let mut other_entry_key = key.clone();
-        other_entry_key.callable.selected_call_entry =
+        other_entry_key.material.callable.selected_call_entry =
             world.callable_entries_for_value(second_callable)[0];
-        let other_entry_root = MetaInstanceRoot {
-            meta_callable: other_entry_key.callable,
-            ..root
-        };
         assert_ne!(
             first,
             world
-                .intern_meta_instance(
-                    &other_entry_root,
-                    other_entry_key,
-                    Provenance::new("other implementation")
-                )
+                .intern_meta_instance(other_entry_key, Provenance::new("other implementation"))
                 .unwrap()
         );
         let mut other_arguments_key = key.clone();
         let member = world
             .canonical_member_value_address(
-                root.meta_callable.selected_function_value,
+                key.material.callable.selected_function_value,
                 &mut Val2NormState::default(),
             )
             .unwrap();
-        other_arguments_key.arguments =
+        other_arguments_key.material.arguments =
             world.intern_canonical_value(CanonicalNormForm::Object(CanonicalObjectNorm {
                 val1: Some(CanonicalVal1Norm::Product {
                     members: vec![member],
@@ -5774,22 +5706,14 @@ mod tests {
         assert_ne!(
             first,
             world
-                .intern_meta_instance(
-                    &root,
-                    other_arguments_key,
-                    Provenance::new("other arguments")
-                )
+                .intern_meta_instance(other_arguments_key, Provenance::new("other arguments"))
                 .unwrap()
         );
-        key.callable.selected_function_value = second_callable;
-        let other_root = MetaInstanceRoot {
-            meta_callable: key.callable,
-            ..root
-        };
+        key.material.callable.selected_function_value = second_callable;
         assert_ne!(
             first,
             world
-                .intern_meta_instance(&other_root, key, Provenance::new("other receiver"))
+                .intern_meta_instance(key, Provenance::new("other receiver"))
                 .unwrap()
         );
     }
@@ -5797,10 +5721,9 @@ mod tests {
     #[test]
     fn struct_instance_failure_publishes_no_identity_or_result() {
         let mut world = SemanticWorld::new("instances");
-        let (root, key) = instance_fixture(&mut world);
+        let key = instance_fixture(&mut world);
         let before = format!("{world:?}");
         let result = world.install_meta_struct_complete_type(
-            &root,
             key.clone(),
             StructConstructionMaterialId(1),
             CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Unit),
@@ -5812,26 +5735,23 @@ mod tests {
         // The narrow fixture supplies a registered rank only to exercise result storage.
         world.type_rank = Some(
             world
-                .value(root.meta_callable.selected_function_value)
+                .value(key.material.callable.selected_function_value)
                 .unwrap()
                 .type_value,
         );
-        let wrong_root = MetaInstanceRoot {
-            meta_callable: MetaCallableIdentity {
-                selected_call_entry: SemanticValueId(u64::MAX),
-                ..root.meta_callable
-            },
-            ..root
+        let foreign = SemanticWorld::new("foreign");
+        let wrong_root = MetaInstanceRootKey {
+            parent_owner: foreign.package_owner(),
+            ..key
         };
         let before = format!("{world:?}");
         assert!(world
             .install_meta_struct_complete_type(
-                &wrong_root,
-                key,
+                wrong_root,
                 StructConstructionMaterialId(1),
                 CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Unit),
                 crate::declared_policy_view(Stage::Meta, PolicyMode::Plain).pair,
-                Provenance::new("wrong callable")
+                Provenance::new("foreign parent")
             )
             .is_err());
         assert_eq!(format!("{world:?}"), before);
@@ -5840,10 +5760,10 @@ mod tests {
     #[test]
     fn struct_payload_conflict_cannot_split_or_replace_instance() {
         let mut world = SemanticWorld::new("instances");
-        let (root, key) = instance_fixture(&mut world);
+        let key = instance_fixture(&mut world);
         world.type_rank = Some(
             world
-                .value(root.meta_callable.selected_function_value)
+                .value(key.material.callable.selected_function_value)
                 .unwrap()
                 .type_value,
         );
@@ -5851,7 +5771,6 @@ mod tests {
         let policy = crate::declared_policy_view(Stage::Meta, PolicyMode::Plain).pair;
         let first = world
             .install_meta_struct_complete_type(
-                &root,
                 key.clone(),
                 StructConstructionMaterialId(1),
                 pattern.clone(),
@@ -5862,7 +5781,6 @@ mod tests {
             .unwrap();
         let same = world
             .install_meta_struct_complete_type(
-                &root,
                 key.clone(),
                 StructConstructionMaterialId(1),
                 pattern.clone(),
@@ -5883,7 +5801,6 @@ mod tests {
             let before = format!("{world:?}");
             assert!(world
                 .install_meta_struct_complete_type(
-                    &root,
                     key.clone(),
                     body,
                     pattern,
@@ -5898,10 +5815,10 @@ mod tests {
     #[test]
     fn instance_reacquisition_reads_current_val2_and_preserves_places_and_old_snapshots() {
         let mut world = SemanticWorld::new("instances");
-        let (root, key) = instance_fixture(&mut world);
+        let key = instance_fixture(&mut world);
         world.type_rank = Some(
             world
-                .value(root.meta_callable.selected_function_value)
+                .value(key.material.callable.selected_function_value)
                 .unwrap()
                 .type_value,
         );
@@ -5909,7 +5826,6 @@ mod tests {
         let policy = crate::declared_policy_view(Stage::Meta, PolicyMode::Plain).pair;
         let first = world
             .install_meta_struct_complete_type(
-                &root,
                 key.clone(),
                 StructConstructionMaterialId(1),
                 pattern.clone(),
@@ -5930,7 +5846,6 @@ mod tests {
         let before_places = world.places.len();
         let current = world
             .install_meta_struct_complete_type(
-                &root,
                 key.clone(),
                 StructConstructionMaterialId(1),
                 pattern.clone(),
@@ -5964,7 +5879,6 @@ mod tests {
         let before = format!("{world:?}");
         assert!(world
             .install_meta_struct_complete_type(
-                &root,
                 key,
                 StructConstructionMaterialId(1),
                 pattern,
@@ -6626,17 +6540,16 @@ mod tests {
 
         let masked = ConstructionEvaluationContext::from_frames([
             ConstructionAuthority::MetaInvocation {
-                meta_callable: MetaCallableIdentity {
-                    selected_function_value: SemanticValueId(99),
-                    selected_call_entry: SemanticValueId(100),
-                },
-                canonical_key: crate::MetaInvocationMaterialKey {
-                    callable: MetaCallableIdentity {
-                        selected_function_value: SemanticValueId(99),
-                        selected_call_entry: SemanticValueId(100),
+                root: MetaInstanceRootKey {
+                    parent_owner: owner,
+                    material: crate::MetaInstanceMaterialKey {
+                        callable: SelectedCallableIdentity {
+                            selected_function_value: SemanticValueId(99),
+                            selected_call_entry: SemanticValueId(100),
+                        },
+                        arguments: CanonicalValueAddr(99),
+                        provenance: Provenance::new("masking meta frame"),
                     },
-                    arguments: CanonicalValueAddr(99),
-                    provenance: Provenance::new("masking meta frame"),
                 },
             },
             authority.clone(),

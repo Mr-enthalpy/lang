@@ -79,7 +79,7 @@ pub use discovery::{
 };
 pub use fingerprint::{fnv1a64_hex, Fnv1a64};
 pub use identity::{
-    MetaCallableIdentity, PlaceId, SemanticValueId, TypeLookupIndexAllocator, TypeValueId,
+    PlaceId, SelectedCallableIdentity, SemanticValueId, TypeLookupIndexAllocator, TypeValueId,
 };
 pub use initializer_eval::{
     binding_assertion_annotation_context, residual_diagnostic, AnnotationContext, ResidualReason,
@@ -104,7 +104,9 @@ pub use literal_semantics::{
     NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
-pub use meta_key::{compute_meta_invocation_material_key, MetaInvocationMaterialKey};
+pub use meta_key::{
+    compute_meta_instance_material_key, MetaInstanceMaterialKey, MetaInstanceRootKey,
+};
 pub use model::{
     BuiltinCallableImpl, CallableDeclaration, CallableImplementation, CallablePolicyViews,
     ChildBucket, ChildLink, ChildNameRole, CoreTypeProjection, Diagnostic, DiagnosticSeverity,
@@ -202,15 +204,15 @@ pub use semantic_world::{
     canonical_function_object_view, AmbientTypeBinder, BindConflict, BorrowFormationFailure,
     BorrowKind, BorrowOperand, BorrowView, BorrowViewId, CompleteTypeValue, ConstructionAuthority,
     ConstructionEvaluationContext, ImmutableTypeCallSpace, MemberCreationProof, MetaInstanceId,
-    MetaInstanceRoot, MetaInstanceRootKey, MetaInstanceState, MetaStructResultState, ObjectPlace,
-    ObjectPlaceId, OpenHereFailure, OpenHereProof, OrdinaryCallEntry, OrdinaryCandidateRole,
-    OwnerStrategy, PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector,
-    ProjectionSlot, ProjectionSlotContents, ProjectionSlotIdentity, PurePMember,
-    RegisteredCallable, ResidentGeneration, ResidentIdentity, ResolvedExtractionTarget,
-    ResolvedPatternScope, ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId,
-    SemanticPatternValue, SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot,
-    SemanticValueObject, SemanticValuePayload, SemanticWorld, StableBorrowTarget,
-    TypeMemberSnapshotEntry, WritableContext,
+    MetaInstanceState, MetaStructResultState, ObjectPlace, ObjectPlaceId, OpenHereFailure,
+    OpenHereProof, OrdinaryCallEntry, OrdinaryCandidateRole, OwnerStrategy, PatternHostMember,
+    PatternValueId, PlaceMutationFailure, ProjectionSelector, ProjectionSlot,
+    ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
+    ResidentGeneration, ResidentIdentity, ResolvedExtractionTarget, ResolvedPatternScope,
+    ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId, SemanticPatternValue,
+    SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot, SemanticValueObject,
+    SemanticValuePayload, SemanticWorld, StableBorrowTarget, TypeMemberSnapshotEntry,
+    WritableContext,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{

@@ -88,7 +88,11 @@ prove neither Ready nor execution legality.
 `MetaInstanceId` reuses the interned semantic owner and is independent of
 TypeValueId. Identity admission alone establishes no Object, Place, openness or
 completed result. The registry's currently supported struct-result record is a
-specific payload under that identity. Equal full keys preserve the instance;
+specific payload under that identity. `SelectedCallableIdentity` keeps the actual
+receiver and selected implementation. `MetaInstanceMaterialKey` combines that
+pair with canonical arguments. The complete `MetaInstanceRootKey` is the sole
+identity input to owner interning and struct-result installation, with no second
+callable or half-root parameter to reconcile. Equal full keys preserve the instance;
 conflicting formation material cannot split or replace it. Reacquisition reads
 current ordinary type/Val2 storage and preserves old complete-type snapshots.
 Missing prerequisites and formation conflicts publish no partial instance/result

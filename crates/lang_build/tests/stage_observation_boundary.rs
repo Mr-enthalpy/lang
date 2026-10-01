@@ -67,7 +67,9 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
             },
         });
         let prepared = prepare_callable_candidate_with_declared_planes(
-            &callee,
+            callee.id,
+            &callee.name,
+            callee.policy_view.clone().unwrap(),
             body.clone(),
             result.clone(),
             args.clone(),
@@ -94,8 +96,8 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
         };
         assert_eq!(candidate.policy_planes.horizon, horizon);
         assert_eq!(
-            candidate.policy_planes.symbol_policy_view,
-            callee.policy_view
+            candidate.policy_planes.callable_view,
+            callee.policy_view.clone().unwrap()
         );
         assert_eq!(candidate.policy_planes.body_entry_policy, body);
         assert_eq!(candidate.policy_planes.return_object_policy, result);

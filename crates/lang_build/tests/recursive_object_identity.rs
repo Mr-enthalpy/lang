@@ -40,13 +40,13 @@
 mod support;
 
 use lang_build::{
-    classify_type_arguments_env_with_report, compute_meta_invocation_material_key,
+    classify_type_arguments_env_with_report, compute_meta_instance_material_key,
     extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr,
-    DeclaredResultClass, MetaCallableIdentity, NamespaceNodeId, NonValueArgKind, ObjectPlaceId,
-    ObservationHorizon, OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId,
-    PolicyMode, PolicyPair, ProductAtom, Provenance, RawArgShape, RawArgValueClass,
-    ResolverContext, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId, SemanticWorld,
-    Stage, SymbolId, TypeResolutionEnv, TypeValueId,
+    DeclaredResultClass, NamespaceNodeId, NonValueArgKind, ObjectPlaceId, ObservationHorizon,
+    OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId, PolicyMode, PolicyPair,
+    ProductAtom, Provenance, RawArgShape, RawArgValueClass, ResolverContext,
+    SelectedCallableIdentity, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId,
+    SemanticWorld, Stage, SymbolId, TypeResolutionEnv, TypeValueId,
 };
 use support::initializer_from_source;
 
@@ -369,7 +369,7 @@ fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key
         ..
     } = carriers();
     let t_place = place_of(&world, t);
-    let meta_fn = MetaCallableIdentity {
+    let meta_fn = SelectedCallableIdentity {
         selected_function_value: SemanticValueId(7),
         selected_call_entry: SemanticValueId(70),
     };
@@ -380,7 +380,7 @@ fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key
         let args = world
             .canonical_arguments_product_address(&[raw], &[atom])
             .expect("acyclic Val2 normalizes");
-        compute_meta_invocation_material_key(meta_fn, args, provenance.clone())
+        compute_meta_instance_material_key(meta_fn, args, provenance.clone())
     };
 
     // let f::t = X;  let A = t |> meta_fn;

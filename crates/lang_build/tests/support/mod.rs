@@ -166,7 +166,9 @@ pub fn prepare_candidate_from_fixture_symbol(
         _ => panic!("fixture callee must carry a callable payload"),
     };
     prepare_callable_candidate_with_declared_planes(
-        callee,
+        callee.id,
+        &callee.name,
+        callee.policy_view.clone().expect("fixture callable Policy"),
         body_entry_policy,
         return_object_policy,
         arg_product_shape,
