@@ -1413,13 +1413,13 @@ impl CompilationWorld {
                         ))
                     })?;
                     if let Some(material) = value.construction_material {
-                        self.bind_connected_meta_material_result(
+                        self.bind_connected_struct_material_result(
                             namespace,
                             binder_name,
                             namespace_declaration,
                             &selected,
-                            crate::CallableBodyMaterial::StructConstructionMaterial(material),
-                            Some(complete_type),
+                            material,
+                            complete_type,
                             provenance,
                         )
                     } else {
@@ -1461,35 +1461,21 @@ impl CompilationWorld {
         }
     }
 
-    /// Installation of replayable meta construction material.
+    /// Graph projection of the connected builtin struct result's material.
     ///
     /// The selected ordinary result (including a complete tau value) is the
     /// semantic authority.  This helper only expands graph/projection material
     /// required by the current namespace renderer.
-    fn bind_connected_meta_material_result(
+    fn bind_connected_struct_material_result(
         &mut self,
         namespace: NamespaceNodeId,
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
         selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        value: crate::CallableBodyMaterial,
-        semantic_complete_type: Option<&crate::CompleteTypeValue>,
+        material: crate::StructConstructionMaterial,
+        complete_type: &crate::CompleteTypeValue,
         provenance: Provenance,
     ) -> Result<(), BuildError> {
-        let (material, complete_type) = match (value, semantic_complete_type) {
-            (
-                crate::CallableBodyMaterial::StructConstructionMaterial(material),
-                Some(complete_type),
-            ) => (material, complete_type),
-            (material, _) => {
-                return Err(BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "meta execution material has no canonical binding projection: {material:?}"
-                    ),
-                    Some(provenance),
-                )));
-            }
-        };
         let canonical_type = material.canonical_type;
         let result_view = uniform_result_policy_view(selected);
         let mut expansion = expand_struct_construction_material(

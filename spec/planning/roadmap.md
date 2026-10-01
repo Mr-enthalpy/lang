@@ -589,7 +589,11 @@ the actual self and selected implementation. Selected delete diagnostics preserv
 source provenance and selected failure never reopens candidate search.
 
 Builtin implementation handling lives in `callable_body.rs`; it produces private
-material for the existing declared-result consumer. There is no separate source
+`BuiltinBodyMaterial` for the existing declared-result consumer. The selected
+source-body frontier returns a diagnostic, with no success route to that material.
+Future source completion must consume ordinary semantic results; an inner builtin
+call completes its own result formation instead of leaking private material to
+the outer source body. There is no separate source
 meta body evaluator or block-deferral result. Source blocks remain unavailable
 until the shared serial/completion consumer is connected; visibility and argument
 preparation do not establish Ready or a transaction witness. Callable fixture

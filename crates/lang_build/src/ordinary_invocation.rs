@@ -32,15 +32,15 @@ use lang_syntax::{NormOverloadStrategy, NormPattern, NormPatternElem, NormPolicy
 
 use crate::{
     body_entry_visible_at,
-    callable_body::{BuiltinBodyInput, CallableBodyMaterial},
+    callable_body::{BuiltinBodyInput, BuiltinBodyMaterial},
     identity::{SemanticValueId, TypeValueId},
     invocation_frame::{InvocationCallableRef, InvocationFrame, SelfPosition},
     model::{Diagnostic, Provenance, SourceCategory, SymbolId, SymbolKind, SymbolObject},
     overload_pattern::{overload_args_from_classified_shape, SpecificityTuple},
     overload_set::{
-        applicable_candidate_from_closure, evaluate_selected_source_body, ApplicableCandidate,
-        CandidateApplicabilityFailure, SelectedSourceBody, SourceBodyEvaluationFailure,
-        VisibilityView,
+        applicable_candidate_from_closure, check_selected_source_body_frontier,
+        ApplicableCandidate, CandidateApplicabilityFailure, SelectedSourceBody,
+        SourceBodyEvaluationFailure, VisibilityView,
     },
     policy_migration::{
         compare_migration_endpoint_coordinates, project_migration_input_endpoint,
@@ -536,7 +536,7 @@ pub enum ReturnedSemanticEntity {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SelectedBodyOutput {
-    Material(CallableBodyMaterial),
+    BuiltinMaterial(BuiltinBodyMaterial),
     OrdinaryValue(SemanticValueId),
 }
 
@@ -1766,46 +1766,36 @@ pub(crate) fn invoke_target_values(
 
     let returned = match &selected.implementation {
         PreparedImplementation::Source(source_shape) => {
-            // This arm constructs the selected source body's execution carrier.
+            // Source completion is unavailable; this arm has no successful
+            // output or route to builtin private material.
             let selected_body_input = SelectedSourceBody {
                 symbol: source_shape.symbol.clone(),
                 source_callable: source_shape.source_callable.clone(),
                 bindings: source_shape.bindings.clone(),
                 pack_bindings: source_shape.pack_bindings.clone(),
             };
-            if !selected.is_delete() {
-                match evaluate_selected_source_body(
-                    &SemanticTypeEnv::new(&*semantic_world),
-                    resolver_context,
-                    &selected_body_input,
-                ) {
-                    Ok(value) => SelectedBodyOutput::Material(value),
-                    Err(failure) => {
-                        return Err(OrdinaryInvocationFailure::SelectedBody { failure, trace });
-                    }
+            let failure = check_selected_source_body_frontier(
+                &SemanticTypeEnv::new(&*semantic_world),
+                resolver_context,
+                &selected_body_input,
+            );
+            return Err(if selected.is_delete() {
+                OrdinaryInvocationFailure::SelectedDelete {
+                    selected: selected.call_entry_value,
+                    diagnostic: failure.diagnostic,
+                    trace,
                 }
             } else {
-                match evaluate_selected_source_body(
-                    &SemanticTypeEnv::new(&*semantic_world),
-                    resolver_context,
-                    &selected_body_input,
-                ) {
-                    Ok(value) => SelectedBodyOutput::Material(value),
-                    Err(failure) => {
-                        return Err(OrdinaryInvocationFailure::SelectedDelete {
-                            selected: selected.call_entry_value,
-                            diagnostic: failure.diagnostic,
-                            trace,
-                        });
-                    }
-                }
-            }
+                OrdinaryInvocationFailure::SelectedBody { failure, trace }
+            });
         }
         PreparedImplementation::Builtin(core) => {
             let mut core_input = core.clone();
             attach_candidate_type_observations(semantic_world, &mut core_input, &trace)?;
             match crate::callable_body::invoke_selected_builtin_body(core_input) {
-                crate::BuiltinBodyResult::Material(value) => SelectedBodyOutput::Material(value),
+                crate::BuiltinBodyResult::Material(value) => {
+                    SelectedBodyOutput::BuiltinMaterial(value)
+                }
                 crate::BuiltinBodyResult::Diagnostic(diagnostic) => {
                     return Err(OrdinaryInvocationFailure::SelectedCoreBody { diagnostic, trace });
                 }
@@ -1882,7 +1872,7 @@ pub(crate) fn invoke_target_values(
         && !is_ambient_struct
         && matches!(
             returned,
-            SelectedBodyOutput::Material(CallableBodyMaterial::StructConstructionMaterial(_))
+            SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(_))
         )
     {
         canonical_instance_key = Some(canonical_meta_instance_key_for_selected(
@@ -2504,7 +2494,7 @@ fn ordinary_result_identity(
     Diagnostic,
 > {
     match returned {
-        SelectedBodyOutput::Material(CallableBodyMaterial::IdentityType(value)) => {
+        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::IdentityType(value)) => {
             let represented = value.type_value;
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
@@ -2539,7 +2529,7 @@ fn ordinary_result_identity(
                 }),
             )))
         }
-        SelectedBodyOutput::Material(CallableBodyMaterial::StructConstructionMaterial(
+        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(
             mut value,
         )) => {
             let installed = if let Some(ambient_owner) = ambient_struct_owner {

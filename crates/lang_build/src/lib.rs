@@ -51,7 +51,7 @@ pub use build::{
     PackageBuildMetadata, PackageBuildSpec, SourceRootMetadata, SourceUnitBuildMetadata,
     StaticDependencySpec, SyntheticSymbolBuildMetadata,
 };
-pub(crate) use callable_body::{BuiltinBodyInput, BuiltinBodyResult, CallableBodyMaterial};
+pub(crate) use callable_body::{BuiltinBodyInput, BuiltinBodyResult};
 pub use callable_body::{StructConstructionMaterial, StructConstructionMaterialId};
 pub use callable_diagnostic::selected_callable_delete_diagnostic;
 pub use candidate_preparation::{

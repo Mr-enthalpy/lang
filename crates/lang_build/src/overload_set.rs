@@ -7,7 +7,6 @@ use lang_syntax::{
 };
 
 use crate::{
-    callable_body::CallableBodyMaterial,
     callable_diagnostic::selected_callable_delete_diagnostic,
     model::{
         Diagnostic, DiagnosticSeverity, Provenance, ResolverCode, SourceCallableSyntax,
@@ -272,11 +271,14 @@ pub fn declared_result_class_from_closure(
     }
 }
 
-pub(crate) fn evaluate_selected_source_body(
+/// Report the current selected source-body frontier without a success carrier.
+/// Source execution must eventually produce ordinary semantic completion through
+/// common E; builtin private material cannot cross this interface.
+pub(crate) fn check_selected_source_body_frontier(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
-) -> Result<CallableBodyMaterial, SourceBodyEvaluationFailure> {
+) -> SourceBodyEvaluationFailure {
     match &selected.source_callable.closure.body {
         NormClosureBody::Delete(delete) => {
             let diagnostic = selected_callable_delete_diagnostic(
@@ -284,20 +286,20 @@ pub(crate) fn evaluate_selected_source_body(
                 selected.source_callable.provenance.clone(),
             )
             .with_code(ResolverCode::UnsupportedSelectedSourceBody);
-            Err(SourceBodyEvaluationFailure { diagnostic })
+            SourceBodyEvaluationFailure { diagnostic }
         }
         NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
-            evaluate_block_body(type_env, resolver_context, selected, program)
+            check_block_body_frontier(type_env, resolver_context, selected, program)
         }
-        NormClosureBody::Defaulted { .. } => Err(selected_body_failure(
+        NormClosureBody::Defaulted { .. } => selected_body_failure(
             selected,
             ResolverCode::UnsupportedSelectedSourceBody,
             "selected defaulted callable requires compiler default-implementation materialization",
-        )),
+        ),
     }
 }
 
-fn evaluate_body_local_let(
+fn check_body_local_let_frontier(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
@@ -356,12 +358,12 @@ fn evaluate_body_local_let(
     Ok(())
 }
 
-fn evaluate_block_body(
+fn check_block_body_frontier(
     type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedSourceBody,
     program: &lang_syntax::NormProgram,
-) -> Result<CallableBodyMaterial, SourceBodyEvaluationFailure> {
+) -> SourceBodyEvaluationFailure {
     // Validate connected local forms without inventing expression completion.
     // Shared continuation execution must supply UnitDiscard and tail inference.
     let mut local_names = BTreeSet::new();
@@ -369,7 +371,15 @@ fn evaluate_block_body(
     for form in &program.forms {
         match form {
             NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) => {
-                evaluate_body_local_let(type_env, resolver_context, selected, &local_names, slot)?;
+                if let Err(failure) = check_body_local_let_frontier(
+                    type_env,
+                    resolver_context,
+                    selected,
+                    &local_names,
+                    slot,
+                ) {
+                    return failure;
+                }
                 if let Some(name) = binding_slot_name(slot) {
                     local_names.insert(name);
                 }
@@ -377,27 +387,27 @@ fn evaluate_block_body(
             NormForm::ReturnEvent(_) => break,
             NormForm::Expr(expr) => {
                 if lexical_alias_operator_shape(expr) {
-                    return Err(bare_alias_spelling_failure(selected));
+                    return bare_alias_spelling_failure(selected);
                 }
-                return Err(unsupported_body(
+                return unsupported_body(
                     selected,
                     ResolverCode::UnsupportedSelectedSourceBody,
                     "serial expression completion requires the shared continuation consumer; UnitDiscard and implicit ReturnEvent are not yet executable",
-                ));
+                );
             }
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
             | NormForm::Alias(lang_syntax::NormDecl::Alias { .. }) => {
-                return Err(unsupported_lexical_alias_failure(selected));
+                return unsupported_lexical_alias_failure(selected);
             }
             NormForm::Let(lang_syntax::NormDecl::Error(_))
             | NormForm::Alias(lang_syntax::NormDecl::Let { .. })
             | NormForm::Alias(lang_syntax::NormDecl::Error(_))
             | NormForm::Error(_) => {
-                return Err(unsupported_body(
+                return unsupported_body(
                     selected,
                     ResolverCode::UnsupportedSelectedSourceBody,
                     "selected source body contains an unsupported non-terminal form before its terminal",
-                ));
+                );
             }
         }
     }
@@ -405,14 +415,14 @@ fn evaluate_block_body(
     let report = crate::control_flow_end::compute_control_flow_end_report(program);
 
     if !report.diagnostics.is_empty() {
-        return Err(unsupported_body(
+        return unsupported_body(
             selected,
             ResolverCode::UnsupportedSelectedSourceBody,
             "statement after terminal block form in selected source body",
-        ));
+        );
     }
 
-    Err(unsupported_body(
+    unsupported_body(
         selected,
         ResolverCode::UnsupportedSelectedSourceBody,
         match report.terminal {
@@ -421,7 +431,7 @@ fn evaluate_block_body(
             }
             None => "serial block completion is not yet executable",
         },
-    ))
+    )
 }
 
 /// Shape test for an illegal expression use of the lexical-alias delimiter.

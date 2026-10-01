@@ -2,7 +2,7 @@
 //!
 //! Consumes a fixed builtin implementation and its prepared argument material.
 //! This step is graph-installation-free and binding-free:
-//! it produces a `CallableBodyMaterial` but does **not** install
+//! it produces a `BuiltinBodyMaterial` but does **not** install
 //! `NamespaceDelta`, bind declared symbols, or mutate the namespace graph. It
 //! does not allocate graph or Pattern-relation state.
 //!
@@ -12,10 +12,10 @@
 //! CandidatePrepResult::Applicable
 //!   → BuiltinBodyInput
 //!   → invoke_selected_builtin_body
-//!   → BuiltinBodyResult::Material(CallableBodyMaterial)
+//!   → BuiltinBodyResult::Material(BuiltinBodyMaterial)
 //!     (no semantic result, graph installation, or binding)
 //!
-//! CallableBodyMaterial
+//! BuiltinBodyMaterial
 //!   → ordinary invocation's declared-result consumer
 //! ```
 //!
@@ -242,8 +242,9 @@ fn complete_pattern_navigation(
     )
 }
 
-/// Replayable execution material produced behind the unified invocation
-/// result boundary.
+/// Private material produced only by selected builtin implementation leaves.
+/// Source bodies have no route to this carrier; their future common E consumer
+/// must deliver ordinary semantic completion.
 ///
 /// `IdentityTypeMaterial` records an `IdentityType` proof for later result
 /// formation.
@@ -252,7 +253,7 @@ fn complete_pattern_navigation(
 /// callable.  The world-connected invocation path installs the material and
 /// returns a complete type value.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CallableBodyMaterial {
+pub(crate) enum BuiltinBodyMaterial {
     IdentityType(IdentityTypeMaterial),
     StructConstructionMaterial(StructConstructionMaterial),
 }
@@ -268,7 +269,7 @@ pub enum CallableBodyMaterial {
 /// [`crate::DeclaredResultClass::CompleteType`] may be formed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BuiltinBodyResult {
-    Material(CallableBodyMaterial),
+    Material(BuiltinBodyMaterial),
     Diagnostic(Diagnostic),
 }
 
@@ -487,7 +488,7 @@ pub(crate) fn invoke_selected_builtin_body(input: BuiltinBodyInput) -> BuiltinBo
         primitive => BuiltinBodyResult::Diagnostic(
             Diagnostic::hard_error(
                 format!(
-                    "meta invocation: primitive {:?} is not callable through formal invocation",
+                    "selected builtin implementation {:?} has no connected body consumer",
                     primitive
                 ),
                 Some(input.provenance),
@@ -546,7 +547,7 @@ fn invoke_identity_type(input: &BuiltinBodyInput) -> BuiltinBodyResult {
         );
     };
 
-    BuiltinBodyResult::Material(CallableBodyMaterial::IdentityType(IdentityTypeMaterial {
+    BuiltinBodyResult::Material(BuiltinBodyMaterial::IdentityType(IdentityTypeMaterial {
         type_value,
         type_observation,
         provenance: input.provenance.clone(),
@@ -612,7 +613,7 @@ fn invoke_struct_construction(input: &BuiltinBodyInput) -> BuiltinBodyResult {
         canonical_pattern_override: None,
         provenance: input.provenance.clone(),
     };
-    BuiltinBodyResult::Material(CallableBodyMaterial::StructConstructionMaterial(value))
+    BuiltinBodyResult::Material(BuiltinBodyMaterial::StructConstructionMaterial(value))
 }
 
 fn field_signature_material_from_candidate(

@@ -389,7 +389,7 @@ pub(crate) fn expand_struct_construction_material(
     if expected != value.material_id {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: StructConstructionMaterial has mismatched material identity (expected {}, got {})",
+                "struct projection: construction material has mismatched material identity (expected {}, got {})",
                 expected.as_u64(),
                 value.material_id.as_u64()
             ),

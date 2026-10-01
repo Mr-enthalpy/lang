@@ -54,6 +54,10 @@ variant each, with stage/Policy facts independent of implementation kind.
 Builtin body handling returns private material to the ordinary declared-result
 consumer. Source completion remains unavailable; no separate meta block evaluator
 supplies a substitute result. Preparation supplies no Ready or common commit proof.
+`BuiltinBodyMaterial` belongs only to selected builtin leaves. The source-body
+frontier has a diagnostic-only interface and cannot produce that private material.
+An inner builtin call must form its semantic result at its own invocation boundary
+before future common E source-body completion can consume it.
 
 ## Shared action and lifecycle handoff
 

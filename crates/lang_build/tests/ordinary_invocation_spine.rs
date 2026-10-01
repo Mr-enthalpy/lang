@@ -56,6 +56,65 @@ fn struct_binding_carries_exact_tau_independently_of_core_projection() {
 }
 
 #[test]
+fn source_body_frontiers_never_produce_builtin_material_or_reopen_selection() {
+    for (tail, message, deleted) in [
+        (
+            "{ (uint8 field) struct; }",
+            "shared continuation consumer",
+            false,
+        ),
+        (
+            "named { (uint8 field) struct; }",
+            "shared continuation consumer",
+            false,
+        ),
+        ("default", "default-implementation materialization", false),
+        (
+            "(\"selected frontier\") delete",
+            "selected delete: selected frontier",
+            true,
+        ),
+    ] {
+        let selected_source =
+            format!("let chosen = (self, _ uint8: type): compile -> let r: type => {tail};");
+        let mut world = support::AssociatedFamily::new(&[
+            "let fallback = (self, t: type): compile -> let r: type => (\"must not reopen\") delete;",
+            &selected_source,
+        ]);
+        let before = format!("{:?}", world.semantic_world());
+        let call =
+            extract_single_call_site(&initializer_from_source("let R = uint8 pick;")).unwrap();
+        let failure = world
+            .invoke_ordinary_call(
+                world.package_root_node(),
+                &call,
+                OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+                Provenance::new("source private-material boundary"),
+            )
+            .expect_err("source bodies have only a diagnostic frontier");
+        let (diagnostic, trace) = match failure {
+            lang_build::OrdinaryInvocationFailure::SelectedBody { failure, trace } if !deleted => {
+                (failure.diagnostic, trace)
+            }
+            lang_build::OrdinaryInvocationFailure::SelectedDelete {
+                diagnostic, trace, ..
+            } if deleted => (diagnostic, trace),
+            other => panic!("expected the uniquely selected source frontier for {tail}: {other:?}"),
+        };
+        assert!(diagnostic.message.contains(message), "{diagnostic:?}");
+        assert_eq!(trace.a_fully_admissible.len(), 2);
+        assert_eq!(trace.b3_pattern_specific.len(), 1);
+        assert!(trace.selected.is_some());
+        assert!(trace.dynamic_legality.is_some());
+        assert_eq!(
+            format!("{:?}", world.semantic_world()),
+            before,
+            "source frontier must not execute its inner struct or publish a result"
+        );
+    }
+}
+
+#[test]
 fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
     let mut world = support::AssociatedFamily::new(&[
         "let first = (self, t: type): compile -> let r: type => { t; };",
@@ -954,7 +1013,7 @@ fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
     // Pattern owner is the ambient declaration environment (the caller's
     // package root), not a MetaInstance.
     let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
-        panic!("world-connected struct must return complete tau, not private meta material");
+        panic!("world-connected struct must return complete tau, not private builtin material");
     };
     assert_eq!(
         result.complete_type.as_ref(),

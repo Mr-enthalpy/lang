@@ -3,9 +3,10 @@
 Status: semantic handoff with source-consumer migration pending
 
 Meta construction uses the shared semantic universe and ordinary invocation
-boundary. A selected primitive or source body may produce private execution
-material. That material is installed under the selected call's stable
-`SemanticOwner`, after which the declared semantic entity is returned through:
+boundary. Selected builtin leaves produce private material consumed at their
+own declared-result boundary under the call's specified `SemanticOwner`.
+Source bodies require ordinary semantic completion through common E; they do
+not forward builtin private material. The declared semantic entity is returned through:
 
 ```text
 InvocationResult
@@ -77,6 +78,10 @@ The connected substrate uses ordinary `CallableDeclaration` records and one
 selected implementation coordinate. `SourceCallableSyntax` holds normalized
 syntax, not an Object. Builtin leaves produce private construction material;
 source blocks require the shared completion consumer and remain unavailable.
+The source-body frontier returns diagnostics only, with no success carrier for
+builtin material. Inner builtin invocations consume `BuiltinBodyMaterial` into
+their own complete semantic result; future source execution must deliver ordinary
+semantic completion through common E rather than forward that private material.
 There is no separate meta body evaluator. Preparation and horizon visibility
 prove neither Ready nor execution legality.
 
