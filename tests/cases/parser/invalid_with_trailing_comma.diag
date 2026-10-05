@@ -1,1 +1,1 @@
-error ExpectedName "expected Path material after `,` in with clause" @ 1:23 [22..23]
+error ExpectedPathMaterial "expected Path material after `,` in with clause" @ 1:23 [22..23]

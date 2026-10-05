@@ -5,7 +5,7 @@ NormProgram origin=Source@1:1[0..14]
         binder:
           Name "A" origin=Source@1:5[4..5]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@1:11[10..14]
+          PathMaterial origin=Generated(PathMaterialPreserve)@1:11[10..14]
             PatternNav terminated=false origin=Source@1:11[10..14]
               components:
                 Name "B" origin=Source@1:11[10..11]

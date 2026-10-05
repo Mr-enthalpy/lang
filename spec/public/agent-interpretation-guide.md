@@ -150,7 +150,7 @@ See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
   clauses, body, and inherited nested callables. Exact Norm binding covers
   Pattern/policy occurrences; value-side names/navigation remain unresolved.
   `_` is an anonymous hole, not a named ref.
-- Alias right-hand sides stay unresolved Path material (dump label `AliasPreserve`),
+- Alias right-hand sides stay unresolved Path material (dump label `PathMaterialPreserve`),
   never `NormExpr`.
 - Pattern-side names are not ordinary call targets and must not fall back to
   ordinary value/function lookup.

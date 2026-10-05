@@ -1107,6 +1107,7 @@ pub enum NormRule {
     BracketCallLowering,
     MemberViewAnnotationLowering,
     AliasPreserve,
+    PathMaterialPreserve,
     ClosureNormalize,
     CaptureNameInference,
     PatternNormalize,
@@ -3424,7 +3425,7 @@ fn normalize_path_material(path: &PathMaterialAst) -> NormPathMaterial {
     NormPathMaterial {
         pattern: Box::new(normalize_expr_as_pattern(&path.expression, &[])),
         origin: NormOrigin::Generated {
-            rule: NormRule::AliasPreserve,
+            rule: NormRule::PathMaterialPreserve,
             span: path.span,
         },
     }
@@ -4545,6 +4546,7 @@ fn rule_label(rule: NormRule) -> &'static str {
         NormRule::BracketCallLowering => "BracketCallLowering",
         NormRule::MemberViewAnnotationLowering => "MemberViewAnnotationLowering",
         NormRule::AliasPreserve => "AliasPreserve",
+        NormRule::PathMaterialPreserve => "PathMaterialPreserve",
         NormRule::ClosureNormalize => "ClosureNormalize",
         NormRule::CaptureNameInference => "CaptureNameInference",
         NormRule::PatternNormalize => "PatternNormalize",

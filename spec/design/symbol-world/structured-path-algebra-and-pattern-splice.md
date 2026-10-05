@@ -400,7 +400,11 @@ has no fixity, associativity or operator entry.
 
 Empty colon and comma slots use the same unit completion law. There is no
 missing-endpoint ontology. Ordinary `slice` structure is formed through Product
-Pattern items and ordinary struct; container, Path, string and user callable
+Pattern items and ordinary struct:
+
+    slice = ((product items) slice) |> struct
+
+Container, Path, string and user callable
 families extract it using R_Gamma. Each family defines admissible item Patterns
 and boundary interpretation, including unit. Those ordinary declarations do
 not introduce Slice_Omega, SliceIR, protocol or another evaluator. Their missing

@@ -1119,7 +1119,8 @@ Generated:
   BracketCallLowering
   PatternNormalize        (binding-site / annotation / extraction-pattern normalization; §9)
   ClosureNormalize        (closure head normalization; §9)
-  AliasPreserve           (alias declaration + Path material preservation; §10)
+  AliasPreserve           (outer alias declaration preservation; §10)
+  PathMaterialPreserve    (shared alias / with Path material preservation; §10)
   Unsupported             (node surfaced explicitly; origin Generated(Unsupported))
 
 Derived:

@@ -271,7 +271,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "short" origin=Source@19:5[208..213]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@19:15[218..228]
+          PathMaterial origin=Generated(PathMaterialPreserve)@19:15[218..228]
             PatternNav terminated=false origin=Source@19:15[218..228]
               components:
                 Name "long" origin=Source@19:15[218..222]
@@ -281,7 +281,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "projected" origin=Source@20:5[234..243]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@20:19[248..259]
+          PathMaterial origin=Generated(PathMaterialPreserve)@20:19[248..259]
             PatternNav terminated=false origin=Source@20:19[248..259]
               components:
                 component PatternSplice origin=Source@20:19[248..252]
@@ -429,7 +429,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "open" origin=Source@26:5[402..406]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@26:14[411..413]
+          PathMaterial origin=Generated(PathMaterialPreserve)@26:14[411..413]
             PatternNav terminated=true origin=Source@26:14[411..413]
               components:
                 component PatternSplice origin=Source@26:14[411..413]
@@ -439,7 +439,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "relative" origin=Source@27:5[421..429]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@27:18[434..438]
+          PathMaterial origin=Generated(PathMaterialPreserve)@27:18[434..438]
             PatternNav terminated=true origin=Source@27:18[434..438]
               components:
                 component PatternSplice origin=Source@27:18[434..438]
@@ -484,7 +484,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "grouped" origin=Source@30:5[476..483]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@30:17[488..500]
+          PathMaterial origin=Generated(PathMaterialPreserve)@30:17[488..500]
             PatternNav terminated=false origin=Source@30:17[488..500]
               components:
                 Name "name" origin=Source@30:17[488..492]
@@ -495,7 +495,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "injected" origin=Source@31:5[507..515]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@31:18[520..533]
+          PathMaterial origin=Generated(PathMaterialPreserve)@31:18[520..533]
             PatternNav terminated=false origin=Source@31:18[520..533]
               components:
                 Name "name" origin=Source@31:18[520..524]
@@ -613,7 +613,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "navigation_splice" origin=Source@35:5[676..693]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@35:27[698..707]
+          PathMaterial origin=Generated(PathMaterialPreserve)@35:27[698..707]
             PatternSplice origin=Source@35:27[698..707]
               Nav origin=Source@35:27[698..705]
                 components:
@@ -634,7 +634,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "bracket_splice" origin=Source@36:5[713..727]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@36:24[732..741]
+          PathMaterial origin=Generated(PathMaterialPreserve)@36:24[732..741]
             PatternSplice origin=Source@36:24[732..741]
               Call origin=Generated(BracketCallLowering)@36:24[732..740]
                 source:
@@ -760,7 +760,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "resumed_pattern" origin=Source@40:5[831..846]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@40:25[851..866]
+          PathMaterial origin=Generated(PathMaterialPreserve)@40:25[851..866]
             PatternNav terminated=false origin=Source@40:25[851..866]
               components:
                 component PatternSplice origin=Source@40:25[851..860]
@@ -788,7 +788,7 @@ NormProgram origin=Source@1:1[0..901]
         binder:
           Name "postfix_splice" origin=Source@41:5[873..887]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@41:24[892..899]
+          PathMaterial origin=Generated(PathMaterialPreserve)@41:24[892..899]
             PatternSplice origin=Source@41:24[892..899]
               Call origin=Generated(OperatorLowering)@41:24[892..898]
                 source:

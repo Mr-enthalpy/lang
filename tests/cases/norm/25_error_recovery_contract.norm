@@ -35,7 +35,7 @@ NormProgram origin=Source@1:1[0..127]
         binder:
           Name "A" origin=Source@4:5[25..26]
         target:
-          PathMaterial origin=Generated(AliasPreserve)@4:11[31..34]
+          PathMaterial origin=Generated(PathMaterialPreserve)@4:11[31..34]
             Pattern Error
               Error "Path material cannot start with `::`" origin=Source@4:11[31..34]
     Form Let

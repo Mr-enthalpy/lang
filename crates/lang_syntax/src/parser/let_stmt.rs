@@ -885,7 +885,7 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
         if parser.cursor.at_symbol(Symbol::Comma) || parser.is_form_boundary() {
             let span = parser.cursor.current_span();
             parser.error(
-                DiagnosticCode::ExpectedName,
+                DiagnosticCode::ExpectedPathMaterial,
                 "expected Path material in with clause",
                 span,
             );
@@ -906,7 +906,7 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
         if parser.cursor.at_symbol(Symbol::RBrace) {
             let span = parser.cursor.current_span();
             parser.error(
-                DiagnosticCode::ExpectedName,
+                DiagnosticCode::ExpectedPathMaterial,
                 "expected Path material after `,` in with clause",
                 span,
             );
