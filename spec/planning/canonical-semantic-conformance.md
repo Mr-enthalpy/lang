@@ -47,7 +47,7 @@ from generic failure or an absent diagnostic. Mixed body observations retain
 ordinary visible-candidate ambiguity and terminal selected failure.
 Resolved argument bindings whose Val1 is hidden stop before applicability,
 preference and selection at the common-continuation frontier. They never fall
-back to unknown-expression Plain, even with a readable Pattern or a supplied
+back to unknown-expression default mode, even with a readable Pattern or a supplied
 argument mode. Readable binding observations retain their mode; genuinely
 unknown expressions remain a separate case. Stage and horizon carriers expose
 no enum-order preference, and facet observation defines no alternate resolver.
@@ -398,7 +398,7 @@ substrate tests do not establish either gate:
 | 106-PT19 | Index ((field::adl)#)[0] | Return relative field:: path_pattern, not string or a path retaining the adl endpoint. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT20 | Equal segment strings with different endpoints or explicit roots | Omega retains endpoint distinctions and actual root material, not an extra dependency coordinate. Ordinary dependency/lifetime obligations remain in force; strings cannot recover identity or authority. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT21 | Reconstruct a Path whose target became unavailable | Surrounding Read_resident checks current access/validity without reopening or deriving authority from projection. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT22 | Future slices versus defined indexing | Indexing yields a relative single-name path_pattern. Slice_Omega, boundaries, empty slices and root/endpoint retention remain open, including whether singleton slicing equals indexing. Do not infer either equality or inequality. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT22 | Ordinary slice construction versus indexing | Indexing yields a relative single-name path_pattern. RHS colon forms ordinary Product |> slice; empty colon/comma slots are unit. Path/container families define ordinary Pattern extraction and boundary interpretation, with no Slice_Omega primitive. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
 
 The PR106 extension contains **132 cases**. Each acceptance or rejection depends
 on its owner's premises; schematic source is not an unconditional theorem.

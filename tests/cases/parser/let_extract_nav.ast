@@ -28,10 +28,16 @@ Program
                   None
                 pattern:
                   PatternSkeleton
-                    CanonicalNavPath
-                      names:
-                        Cons
-                        List
+                    PatternExpression
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                NavPath
+                                  components:
+                                    component Name Cons
+                                    component Name List
                 annotation:
                   None
                 with_clause:

@@ -7,7 +7,7 @@ Status: implementation-mapping companion. Canonical semantics are owned by
 
 ```text
 PolicyPair = Pv:Pp
-PolicyMode = const | plain | mut
+PolicyMode = const | mut
 ```
 
 Pv and Pp are internal observations of one source edge, not a public colon
@@ -82,7 +82,7 @@ stage view may use the applicable stage-only default completion in §2 and is th
 checked against this table. Therefore `compile`/`runtime` exposure does not
 require `PolicyLet`; that syntax remains an optional explicit result boundary.
 Stage-only default completion does not choose whole-slot mode: no written
-constraint, explicit plain/const/mut and an explicit hole remain distinct. Result demand must be
+constraint, explicit const/mut and an explicit hole remain distinct. Result demand must be
 resolved from the actual context/completion before maxima; inner selection seals.
 
 Resolution and exposure are distinct. A name binding whose resident has a
@@ -149,10 +149,10 @@ Pv = absent
   => no value-stage coordinate in this observation
   && SemanticValueId = none
 
-PolicyMode(absent:Pp slot) ∈ {const, plain, mut}
+PolicyMode(absent:Pp slot) ∈ {const, mut}
 ```
 
-`const`, `plain`, and `mut` therefore all remain meaningful for a pure
+`const` and `mut` therefore all remain meaningful for a pure
 type/Pattern slot. Stable external membership is decided by export-retention
 closure plus public path reachability, not by a universal const projection or a
 future consumer demand. Direct-root namespace-declaration elaboration may
@@ -196,9 +196,10 @@ a future custom `?` design owns richer extraction-interface construction.
 The following carriers are implementation inventory, not evidence that the
 full R_vis/C_sigma model is connected. Resolved observations carry one Stage
 atom, while omitted query coordinates remain separate. The mapping below is
-not normative algebra. Existing helpers that insert Plain
-for every omitted binding or call demand need alignment; operator-Pattern policy
-deduction and the joint Pin/Pout solution relation remain pending consumers.
+not normative algebra. Omission remains separate until contextual completion:
+meta with known current OpenHere yields mut, otherwise const. Missing required
+OpenHere evidence is unavailable. Operator-Pattern policy deduction and the joint
+Pin/Pout solution relation remain pending consumers.
 
 The typed substrate currently provides:
 

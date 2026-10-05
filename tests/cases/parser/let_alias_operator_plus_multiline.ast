@@ -3,7 +3,24 @@ Program
     binder:
       Operator +
     target:
-      EntityRef
-        components:
-          component Operator +
-          component Name checked_int
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                NavPath
+                  components:
+                    component Operator +
+                    component Name checked_int
+              OperatorExpr
+                Atom
+                  Name let
+              OperatorExpr
+                Atom
+                  Name x
+              OperatorExpr
+                Atom
+                  Name type
+              OperatorExpr
+                Atom
+                  Name y

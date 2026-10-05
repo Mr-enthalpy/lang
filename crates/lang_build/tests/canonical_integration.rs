@@ -27,7 +27,7 @@ fn family_with_const_actual(
 
     let mut world = support::AssociatedFamily::new(&[
         "let first = (self, const let x): compile -> let r => { x; };",
-        "let second = (self, let x): compile -> let r => { x; };",
+        "let second = (self, mut let x): compile -> let r => { x; };",
     ]);
     let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
     let pattern = world
@@ -67,11 +67,11 @@ fn family_with_const_actual(
 }
 
 #[test]
-fn resolved_hidden_const_actual_cannot_fall_back_to_plain_or_seal_selection() {
+fn resolved_hidden_const_actual_cannot_default_mode_or_seal_selection() {
     use lang_build::{expose_policy_slice, read_pattern, read_value, ObservationHorizon, Stage};
 
     for stage in [Stage::Runtime, Stage::Seal] {
-        for modes in [vec![], vec![PolicyMode::Plain], vec![PolicyMode::Const]] {
+        for modes in [vec![], vec![PolicyMode::Const], vec![PolicyMode::Mut]] {
             let (mut world, binding) = family_with_const_actual(stage);
             let symbol = world.semantic_world().symbol(binding).unwrap();
             let entry = &symbol.member_views[0];
@@ -108,13 +108,13 @@ fn resolved_hidden_const_actual_cannot_fall_back_to_plain_or_seal_selection() {
 }
 
 #[test]
-fn readable_const_actual_keeps_binding_mode_over_caller_plain_default() {
+fn readable_const_actual_keeps_binding_mode_over_caller_mut_context() {
     let (mut world, _) = family_with_const_actual(lang_build::Stage::Compile);
     let call = extract_single_call_site(&initializer_from_source("let r = a probe;")).unwrap();
     let result = world.invoke_ordinary_call(
         world.package_root_node(),
         &call,
-        OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Mut]),
         Provenance::new("readable const argument"),
     );
     let selected = trace_of(&result).selected.expect("readable actual selects");
@@ -192,22 +192,21 @@ fn invoke(
 }
 
 #[test]
-fn unknown_actual_uses_primitive_plain_and_never_world_fabricated_const() {
+fn unit_argument_mode_completes_const_under_close() {
     let mut world = support::AssociatedFamily::new(&[
         "let first = (self, const let x): compile -> let r => { x; };",
-        "let second = (self, let x): compile -> let r => { x; };",
+        "let second = (self, mut let x): compile -> let r => { x; };",
     ]);
     let no_fabricated_modes = [];
-    let call =
-        extract_single_call_site(&initializer_from_source("let r = mystery probe;")).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let r = () probe;")).unwrap();
     let result = world.invoke_ordinary_call(
         world.package_root_node(),
         &call,
         OrdinaryInvocationContext::open_static(&no_fabricated_modes),
-        Provenance::new("unknown actual defaults to Plain"),
+        Provenance::new("omitted occurrence mode under close"),
     );
     let selected = trace_of(&result).selected.unwrap_or_else(|| {
-        panic!("selection must seal before the unknown body result is diagnosed: {result:?}")
+        panic!("the unit argument has decided omission before maxima: {result:?}")
     });
     let selected = world
         .semantic_world()
@@ -225,8 +224,154 @@ fn unknown_actual_uses_primitive_plain_and_never_world_fabricated_const() {
         panic!("probe formal is a binding slot");
     };
     assert!(
-        formal.policy.is_none(),
-        "Plain formal must beat the const formal for an unknown actual; a fabricated const would select the other candidate"
+        formal.policy.is_some(),
+        "close completes omitted occurrence mode to const before maxima"
+    );
+}
+
+#[test]
+fn unknown_argument_policy_never_defaults_selects_or_publishes() {
+    for qualification in [
+        lang_build::MetaInstancePolicy::Close,
+        lang_build::MetaInstancePolicy::Meta,
+    ] {
+        let mut world = support::AssociatedFamily::new(&[
+            "let first = (self, const let x): compile -> let r => { x; };",
+            "let second = (self, mut let x): compile -> let r => { x; };",
+        ]);
+        let before = format!("{:?}", world.semantic_world());
+        let call =
+            extract_single_call_site(&initializer_from_source("let r = mystery probe;")).unwrap();
+        let mut context = OrdinaryInvocationContext::open_static(&[]);
+        context.omitted_argument_policy = qualification;
+        let failure = world
+            .invoke_ordinary_call(
+                world.package_root_node(),
+                &call,
+                context,
+                Provenance::new("unknown is not omission"),
+            )
+            .unwrap_err();
+        let OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, trace } = failure
+        else {
+            panic!("{failure:?}");
+        };
+        assert!(diagnostic
+            .message
+            .contains("unknown material is not omitted Mode"));
+        assert!(trace.bp_prime.is_empty());
+        assert!(trace.selected.is_none());
+        assert!(trace.dynamic_legality.is_none());
+        assert_eq!(format!("{:?}", world.semantic_world()), before);
+    }
+}
+
+#[test]
+fn pure_type_binding_mode_survives_classification_and_preference() {
+    let (mut world, _) = family_with_const_actual(lang_build::Stage::Compile);
+    let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let pattern = world
+        .semantic_world()
+        .symbol_in_namespace(base.core_node(), "uint8")
+        .unwrap()
+        .pure_p_pattern()
+        .unwrap();
+    world
+        .semantic_world_mut()
+        .bind_ordinary_new(
+            base.root_context().current_namespace,
+            "T",
+            &[lang_build::PolicyResultEntry {
+                value: None,
+                pattern,
+                view: lang_build::declared_policy_view(lang_build::Stage::Compile, PolicyMode::Mut),
+            }],
+            Provenance::new("mut pure type observation"),
+        )
+        .unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let r = T probe;")).unwrap();
+    let result = world.invoke_ordinary_call(
+        world.package_root_node(),
+        &call,
+        OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+        Provenance::new("known mode prevails"),
+    );
+    let selected = trace_of(&result)
+        .selected
+        .expect("observed type binding can select");
+    let SemanticValuePayload::CallEntry(entry) =
+        &world.semantic_world().value(selected).unwrap().payload
+    else {
+        panic!("call entry");
+    };
+    let lang_syntax::NormPatternElem::BindingSlot(formal) = &entry
+        .source_closure()
+        .unwrap()
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters[0]
+    else {
+        panic!("formal");
+    };
+    assert!(
+        matches!(&formal.policy.as_ref().unwrap().constraint.atoms[0], lang_syntax::NormPolicyAtom::Name { text, .. } if text == "mut")
+    );
+}
+
+#[test]
+fn receiver_binding_mode_survives_shared_value_identity() {
+    let mut world = support::AssociatedFamily::new(&[
+        "const let first = (self, x): compile -> let r => (\"const self\") delete;",
+        "mut let second = (self, x): compile -> let r => (\"mut self\") delete;",
+    ]);
+    let receiver = world.target_binding().ordinary_value().unwrap();
+    let record = world.semantic_world().value(receiver).unwrap().clone();
+    assert_eq!(record.mode, PolicyMode::Const);
+    let expected = world.semantic_world().callable_entries_for_value(receiver)[1];
+    let namespace = world.package_root_node();
+    let binding = world
+        .semantic_world_mut()
+        .bind_ordinary_new(
+            namespace,
+            "observed",
+            &[lang_build::PolicyResultEntry {
+                value: Some(lang_build::SemanticValueRef {
+                    id: receiver,
+                    type_value: record.type_value,
+                }),
+                pattern: record.pattern,
+                view: lang_build::declared_policy_view(lang_build::Stage::Compile, PolicyMode::Mut),
+            }],
+            Provenance::new("mut binding of same receiver"),
+        )
+        .unwrap();
+    let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let r = () observed;")).unwrap();
+    let before = format!("{:?}", world.semantic_world());
+    let failure = lang_build::invoke_resolved_binding_ordinary(
+        world.semantic_world_mut(),
+        &[],
+        binding,
+        &call,
+        &base.root_context(),
+        OrdinaryInvocationContext::open_static(&[]),
+        Provenance::new("receiver edge mode"),
+    )
+    .unwrap_err();
+    let OrdinaryInvocationFailure::SelectedDelete {
+        diagnostic, trace, ..
+    } = failure
+    else {
+        panic!("{failure:?}");
+    };
+    assert!(diagnostic.message.contains("mut self"));
+    assert_eq!(trace.selected, Some(expected));
+    assert_eq!(format!("{:?}", world.semantic_world()), before);
+    assert_eq!(
+        world.semantic_world().value(receiver).unwrap().mode,
+        PolicyMode::Const
     );
 }
 
@@ -394,8 +539,8 @@ fn unwired_lexical_alias_creates_no_semantic_entity() {
     );
     assert!(error.diagnostics[0]
         .message
-        .contains("lexical alias resolution is not implemented"));
+        .contains("lexical Path alias formation/composition consumer is unavailable"));
     assert!(error.diagnostics[0]
         .message
-        .contains("must not install or forward a semantic entity"));
+        .contains("without installing or forwarding a semantic entity"));
 }

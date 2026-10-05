@@ -424,7 +424,7 @@ fn unsupported_lexical_alias_failure(selected: &SelectedSourceBody) -> SourceBod
     selected_body_failure(
         selected,
         ResolverCode::UnsupportedLexicalAlias,
-        "block-local lexical alias resolution is not implemented; `===` must not create or forward a semantic entity",
+        "lexical Path alias formation/composition consumer is unavailable; `===` must preserve material without creating or forwarding a semantic entity",
     )
 }
 

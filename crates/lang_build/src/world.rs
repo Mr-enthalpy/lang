@@ -437,7 +437,7 @@ impl CompilationWorld {
             )
         } else {
             let mut explicit_modes = Vec::with_capacity(1 + context.explicit_argument_modes.len());
-            explicit_modes.push(crate::PolicyMode::Plain);
+            explicit_modes.push(crate::PolicyMode::Const);
             explicit_modes.extend_from_slice(context.explicit_argument_modes);
             let named_context = crate::OrdinaryInvocationContext {
                 explicit_argument_modes: &explicit_modes,
@@ -610,7 +610,7 @@ impl CompilationWorld {
                 Provenance::new(format!("builtin {:?} literal constructor", spec.target_key));
             let view = PolicyView {
                 pair: crate::compile_literal_policy(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             };
             let backing = crate::SymbolId(self.next_intrinsic_backing);
             self.next_intrinsic_backing = self
@@ -622,6 +622,7 @@ impl CompilationWorld {
                 CONSTRUCT_OR_CONVERT_SELECTOR,
                 backing,
                 crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(spec),
+                view.clone(),
                 view.clone(),
                 view,
                 provenance,
@@ -1143,6 +1144,12 @@ impl CompilationWorld {
             declaration_provenance.clone(),
         )
         .map_err(BuildError::single)?;
+        if namespace_declaration.meta_instance_policy == crate::MetaInstancePolicy::Meta {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "MetaInstance result delivery and completion consumer is unavailable",
+                Some(declaration_provenance),
+            )));
+        }
         // One complete binding result demand is formed before the RHS is
         // evaluated. The root producer consumes this same demand before
         // C2/A/Bp/maxima; binding projection/transfer may inspect it only
@@ -2043,7 +2050,7 @@ impl CompilationWorld {
                             pattern,
                             view: PolicyView {
                                 pair: policy,
-                                mode: PolicyMode::Plain,
+                                mode: PolicyMode::Const,
                             },
                         }],
                         complete_type: None,
@@ -2066,12 +2073,9 @@ impl CompilationWorld {
                 .resolve_semantic_source_target(namespace, &call_site.target)
                 .is_some()
             {
-                // Unknown actuals have the primitive Plain view. A concrete
-                // argument resolved by the ordinary classifier replaces this
-                // default with its own PolicyView.mode; the world never
-                // fabricates Const.
-                let explicit_modes =
-                    vec![crate::PolicyMode::Plain; call_site.source_product.elements.len()];
+                // Actual modes come from resident observation; unresolved material
+                // supplies no concrete default preference.
+                let explicit_modes = [];
                 // B8: a world-level connected declaration's environment is the
                 // namespace level itself (no enclosing callable), so the
                 // ambient construction owner is supplied explicitly here.  A
@@ -2123,7 +2127,16 @@ impl CompilationWorld {
         operand: &NormExpr,
         provenance: Provenance,
     ) -> ConnectedInitializerOutcome {
-        let demand = match elaborate_binding_result_demand(Some(policy), provenance.clone()) {
+        let demand = match elaborate_binding_result_demand(Some(policy), provenance.clone())
+            .and_then(|pending| {
+                if pending.meta_instance_policy == crate::MetaInstancePolicy::Meta {
+                    return Err(Diagnostic::hard_error(
+                        "MetaInstance result delivery and completion consumer is unavailable",
+                        Some(provenance.clone()),
+                    ));
+                }
+                pending.complete(crate::OpenHereAvailability::Unavailable, provenance.clone())
+            }) {
             Ok(demand) => demand,
             Err(diagnostic) => return ConnectedInitializerOutcome::Diagnostic(diagnostic),
         };
@@ -2133,8 +2146,7 @@ impl CompilationWorld {
                 .resolve_semantic_source_target(namespace, &call_site.target)
                 .is_some()
             {
-                let explicit_modes =
-                    vec![PolicyMode::Plain; call_site.source_product.elements.len()];
+                let explicit_modes = [];
                 let mut context = crate::OrdinaryInvocationContext::open_static(&explicit_modes)
                     .with_result_policy_demand(demand.clone());
                 context.ambient_construction_owner = self.semantic_world.namespace_owner(namespace);
@@ -2336,7 +2348,7 @@ impl CompilationWorld {
         };
         Err(BuildError::single(
             Diagnostic::hard_error(
-                "block-local lexical alias resolution is not implemented; `===` is preserved by the frontend and must not install or forward a semantic entity",
+                "lexical Path alias formation/composition consumer is unavailable; `===` preserves Path material without installing or forwarding a semantic entity",
                 Some(Provenance::from_norm_origin("alias declaration", origin)),
             )
             .with_code(ResolverCode::UnsupportedLexicalAlias),
@@ -2992,6 +3004,7 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::Sequence { origin, .. }
         | NormPattern::Skeleton { origin, .. }
         | NormPattern::BindingSlot { origin, .. }
+        | NormPattern::Splice { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
     }
@@ -3059,7 +3072,7 @@ mod initializer_residual_boundary_tests {
 
     #[test]
     fn invocation_reports_hidden_observation_before_both_initializer_boundaries() {
-        for source in ["let result = () f;", "let result = plain let () f;"] {
+        for source in ["let result = () f;", "let result = close let () f;"] {
             let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             assert!(world
@@ -3106,7 +3119,7 @@ mod initializer_residual_boundary_tests {
             .semantic_world
             .install_plain_value(
                 type_value,
-                declared_policy_view(Stage::Compile, PolicyMode::Plain).pair,
+                declared_policy_view(Stage::Compile, PolicyMode::Const).pair,
                 Provenance::new("noncallable ordinary value"),
             )
             .unwrap();
@@ -3154,7 +3167,7 @@ mod initializer_residual_boundary_tests {
         };
         assert_eq!(trace.c2_horizon_values, vec![value]);
         assert!(trace.c3_call_entries.is_empty());
-        for source in ["let result = () f;", "let result = plain let () f;"] {
+        for source in ["let result = () f;", "let result = close let () f;"] {
             assert!(matches!(evaluate(&mut world, source),
                 ConnectedInitializerOutcome::Diagnostic(diagnostic)
                     if diagnostic.code == Some(ResolverCode::NoCallCandidate)));
@@ -3172,7 +3185,7 @@ mod initializer_residual_boundary_tests {
                     presence: crate::ValuePresence::Present,
                 },
             },
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         };
         let call = crate::extract_single_call_site(&expression).unwrap();
         assert!(matches!(
@@ -3208,7 +3221,7 @@ mod initializer_residual_boundary_tests {
 
     #[test]
     fn reached_candidate_error_is_not_residual_completion() {
-        for source in ["let result = () f;", "let result = plain let () f;"] {
+        for source in ["let result = () f;", "let result = close let () f;"] {
             let mut world = world_with_member("let f = (receiver, x:type):meta => { (); };");
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             let failure = world
@@ -3236,7 +3249,7 @@ mod initializer_residual_boundary_tests {
 
     #[test]
     fn selected_delete_remains_a_terminal_diagnostic_at_both_initializer_boundaries() {
-        for source in ["let result = () f;", "let result = plain let () f;"] {
+        for source in ["let result = () f;", "let result = close let () f;"] {
             let mut world =
                 world_with_member("let f = (receiver, x):meta => (\"selected rejection\") delete;");
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
@@ -3262,7 +3275,7 @@ mod initializer_residual_boundary_tests {
     }
     #[test]
     fn exact_empty_type_callspace_is_terminal_no_candidate() {
-        for source in ["let result = () type;", "let result = plain let () type;"] {
+        for source in ["let result = () type;", "let result = close let () type;"] {
             let mut world =
                 CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
                     .unwrap();
@@ -3311,7 +3324,7 @@ mod initializer_residual_boundary_tests {
             "let result = () f;",
             "runtime let result = () f;",
             "seal let result = () f;",
-            "let result = plain let () f;",
+            "let result = close let () f;",
             "let result:type = () f;",
         ] {
             let mut world = world_with_member("let f = (receiver, x):seal => { (); };");
@@ -3539,7 +3552,8 @@ mod literal_construction_tests {
                 CONSTRUCT_OR_CONVERT_SELECTOR,
                 backing,
                 body,
-                view.clone(),
+                declared_policy_view(Stage::Compile, PolicyMode::Const),
+                declared_policy_view(Stage::Compile, PolicyMode::Const),
                 view,
                 Provenance::new("test literal constructor candidate"),
             )
@@ -3583,7 +3597,7 @@ mod literal_construction_tests {
     #[test]
     fn complete_type_without_constructor_is_not_constructible() {
         let mut world = world();
-        let request = request(&mut world, "type", PolicyMode::Plain);
+        let request = request(&mut world, "type", PolicyMode::Const);
         let before = constructed_count(&world);
         let error = world
             .invoke_literal_construction_request(
@@ -3598,14 +3612,14 @@ mod literal_construction_tests {
     }
 
     #[test]
-    fn selected_constructor_failure_does_not_run_plain_runner_up() {
+    fn selected_constructor_failure_does_not_run_opposite_mode_runner_up() {
         let mut world = world();
         let target = world.resolve_type_value("uint16").expect("uint16 resolves");
-        let request = request(&mut world, "uint16", PolicyMode::Const);
+        let request = request(&mut world, "uint16", PolicyMode::Mut);
         add_test_candidate(
             &mut world,
             target,
-            PolicyMode::Const,
+            PolicyMode::Mut,
             crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
         );
         let before = constructed_count(&world);
@@ -3619,7 +3633,7 @@ mod literal_construction_tests {
         assert_eq!(
             constructed_count(&world),
             before,
-            "the runnable plain builtin was not retried"
+            "the runnable const builtin was not retried"
         );
     }
 
@@ -3655,11 +3669,11 @@ mod literal_construction_tests {
             target_key: crate::NumericTypeKey::new(crate::NumericFamily::Uint, 16),
             target_type: target,
         };
-        let ambiguous_request = request(&mut ambiguous, "uint16", PolicyMode::Plain);
+        let ambiguous_request = request(&mut ambiguous, "uint16", PolicyMode::Const);
         add_test_candidate(
             &mut ambiguous,
             target,
-            PolicyMode::Plain,
+            PolicyMode::Const,
             crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(builtin_spec),
         );
         let before = constructed_count(&ambiguous);

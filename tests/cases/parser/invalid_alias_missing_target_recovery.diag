@@ -1,1 +1,2 @@
-error UnexpectedAliasRhsExpression "unexpected token `y` after entity reference" @ 2:5 [14..15]
+error UnexpectedToken "unexpected token `:`" @ 2:6 [15..16]
+error UnexpectedToken "unexpected token `=`" @ 2:13 [22..23]

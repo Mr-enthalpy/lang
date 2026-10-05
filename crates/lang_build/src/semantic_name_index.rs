@@ -767,7 +767,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         );
         symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
             crate::Stage::Meta,
-            crate::PolicyMode::Plain,
+            crate::PolicyMode::Const,
         ));
         delta.insert_node(node);
         delta.insert_symbol(parent, symbol);
@@ -870,7 +870,7 @@ pub(crate) fn namespace_symbol(
     );
     symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
         crate::Stage::Meta,
-        crate::PolicyMode::Plain,
+        crate::PolicyMode::Const,
     ));
     delta.insert_node(node);
     delta.insert_symbol(parent, symbol);

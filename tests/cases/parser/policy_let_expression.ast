@@ -23,7 +23,7 @@ Program
         policy:
           PolicySpec
             PolicyConjunction
-                PolicyAtom Name "plain"
+                PolicyAtom Name "close"
         operand:
           Expr
             Pipe
@@ -147,7 +147,13 @@ Program
     binder:
       Name A
     target:
-      EntityRef
-        components:
-          component Name B
-          component Name C
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  NavPath
+                    components:
+                      component Name B
+                      component Name C

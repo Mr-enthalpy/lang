@@ -616,14 +616,15 @@ ActiveEvaluation_kappa(x)
   := x lies on the currently running stage-kappa evaluation flow.
 
 OpenEvalReentry_kappa(x)
-  iff OpenHere_Σ(x)
-  and ActiveEvaluation_kappa(x)
-  and NextEvaluationStep_kappa enters x
+  iff ActiveEvaluation_kappa(x)
+  and NextEvaluationEdge_kappa = EnterBody(x)
 ```
 
 A symbolic reference never establishes an `ActiveEvaluation`: the existence of
 a `SymbolicReferenceEdge` to a value at the same stage does not mean the
-current computation flow re-traverses that value. Openness plus a stored
+current computation flow enters that evaluator/body again. ReadName,
+ReadResident, Pattern and Policy observations of its current complete snapshot
+do not establish EnterBody. Openness plus a stored
 reference is not reentry; only an `EvaluationEdge_κ` on the live flow can
 reenter. Therefore `Self_τ` inside a stored `V_τ` is legal under static-eval:
 it is a binder back-reference (symbolic anchoring), not an evaluation cycle,
@@ -1486,7 +1487,7 @@ An ordinary meta instance name is its instance type value tau_M, with
 Root(Core(tau_M)) = M. It cannot directly carry an arbitrary value, borrow, or
 external type instead. Such payloads belong in ordinary Val2 and retain their
 own type/root or target/escape obligations. P1 meta retains the instance under
-OpenHere, which governs acquisition of its mut view; plain let completes and
+OpenHere, which governs acquisition of its mut view; close let completes and
 closes it. Ordinary names and payload Places retain their independent policy
 and value facts. See the construction owner, section 4.4.
 
@@ -1958,8 +1959,8 @@ and `ref share`) remain valid (§5.3), as does the separately specified implicit
 The borrow-forming defaults inside the formed borrow type's callspace are not
 an ad hoc pair of builtins; they are generated instance families with a fixed
 policy matrix for resident value operands. The `ref` family has two input shapes (`T`, `T ref`), two
-member result-policies (`mut`, `const`), and three formal PolicyMode patterns
-(`mut`, `const`, `plain`):
+member result-policies (`mut`, `const`), and two formal PolicyMode patterns
+(`mut`, `const`):
 
 ```text
 GeneratedRefInstanceFamily(T):
@@ -1968,11 +1969,9 @@ member  formal  actual T       actual T ref
 -------------------------------------------------
 mut     mut     default        ref fixed-point
 mut     const   delete         delete
-mut     plain   delete         delete
 
 const   mut     default        ref fixed-point
 const   const   default        ref fixed-point
-const   plain   default        ref fixed-point
 ```
 
 `ref fixed-point` is not "borrow again". It is the ordinary candidate
@@ -2562,17 +2561,16 @@ PolicyModeOrthogonalToObjectShape:
 
 default ref/write-family realization:
   Write(const ref) = delete
-  Write(plain ref) = delete
   Write(mut ref)   = default
 ```
 
 The table is a theorem of the builtin ref/write family, not a Policy axiom.
-Here const/plain/mut describe the selected reference view, not the declaration
+Here const/mut describe the selected reference view, not the declaration
 policy of a possibly uninitialized target name. The ordinary initial-borrow
 realization in §7.1 can supply a mut reference view with initialization-only
 capability even for a const-declared name. It does not turn a selected delete
 into default or grant replacement through that reference.
-Another family may mark any 3×3 coordinate absent or realize it with
+Another family may mark any 2×2 coordinate absent or realize it with
 `default`, `delete`, or `custom`. In particular `mut` selected for a non-ref
 object does not automatically make any place writable.
 
@@ -2685,7 +2683,7 @@ Uninitialized is non-Object Place state, never a None value or fresh-name value.
 
 Successful authorized fresh typed-Place formation establishes a pending
 initialization authority for that actual Place in its creation context,
-regardless of const/plain/mut declaration policy. This is ordinary Place state
+regardless of const/mut declaration policy. This is ordinary Place state
 and authority, not a token Object or an additional PolicyMode. It is neither
 inferred from Uninitialized alone nor transferred by equal type/value identity.
 The original authority source, actual Place access, applicable construction constraints
@@ -2757,7 +2755,7 @@ The first line creates x and explicitly borrows its Place using the pending
 initialization authority, not a const resident. The second initializes it.
 Subsequent x views follow its const declaration; a saved r has no replacement
 right from its consumed initial capability. The same construction works for
-plain or mut declarations; neither mode supplies authority by itself. Without
+const or mut declarations; neither mode supplies authority by itself. Without
 live initialization authority, the first write fails even if the name is mut.
 
 ### 7.1.2 Closure and contribution handoff

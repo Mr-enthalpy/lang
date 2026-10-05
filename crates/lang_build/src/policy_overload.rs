@@ -12,7 +12,7 @@ pub struct PolicyOverloadCandidate<I> {
 pub struct PolicyFormalFrame {
     /// Policy Pattern of callable-frame slot 0. The first source-written
     /// formal occupies this position. If no formal is written, the implicit
-    /// self-position remains and uses the primitive `plain` mode.
+    /// self-position remains and uses its completed observation mode.
     pub self_mode: PolicyMode,
     /// Policy Patterns for source-written positions after the first one.
     /// These consume the explicit call-site Product.
@@ -41,7 +41,7 @@ impl<I> PolicyOverloadCandidate<I> {
         is_delete: bool,
     ) -> Self {
         let mut modes = parameters.iter().map(formal_policy_mode);
-        let self_mode = modes.next().unwrap_or(PolicyMode::Plain);
+        let self_mode = modes.next().unwrap_or(PolicyMode::Const);
         Self {
             id,
             formal_frame: PolicyFormalFrame {
@@ -179,14 +179,7 @@ fn compare_position(left: PolicyMode, right: PolicyMode, actual: PolicyMode) -> 
 /// Migration endpoint projections must reuse this relation rather than treating
 /// opposite const/mut Patterns as hard-incompatible Policy domains.
 pub(crate) fn policy_mode_preference_rank(candidate: PolicyMode, demand: PolicyMode) -> u8 {
-    match (candidate, demand) {
-        (PolicyMode::Const, PolicyMode::Const)
-        | (PolicyMode::Plain, PolicyMode::Plain)
-        | (PolicyMode::Mut, PolicyMode::Mut) => 2,
-        (PolicyMode::Plain, PolicyMode::Const | PolicyMode::Mut)
-        | (PolicyMode::Const | PolicyMode::Mut, PolicyMode::Plain) => 1,
-        (PolicyMode::Const, PolicyMode::Mut) | (PolicyMode::Mut, PolicyMode::Const) => 0,
-    }
+    u8::from(candidate == demand)
 }
 
 /// Shared maximal-element selection for ordinary typed partial orders.

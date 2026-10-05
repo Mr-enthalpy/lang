@@ -51,7 +51,7 @@ use lang_build::{
 use support::initializer_from_source;
 
 fn stage_pair(stage: Stage) -> PolicyPair {
-    lang_build::declared_policy_view(stage, PolicyMode::Plain).pair
+    lang_build::declared_policy_view(stage, PolicyMode::Const).pair
 }
 
 struct Carriers {
@@ -310,7 +310,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
     let lang_syntax::NormExpr::Closure(closure) = closure_expr else {
         panic!("closure");
     };
-    let view = lang_build::declared_policy_view(Stage::Compile, PolicyMode::Plain);
+    let view = lang_build::declared_policy_view(Stage::Compile, PolicyMode::Const);
     let builtin_member = support::install_callable_receiver_fixture(
         &mut world,
         NamespaceNodeId(0),
@@ -436,11 +436,11 @@ fn unit_is_terminal_leaf() {
         None,
         lang_build::PolicyView {
             pair: stage_pair(Stage::Meta),
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
         lang_build::PolicyView {
             pair: stage_pair(Stage::Meta),
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
         None,
         DeclaredResultClass::OrdinaryValue,

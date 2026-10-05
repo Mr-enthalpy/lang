@@ -38,7 +38,7 @@ Program
               policy:
                 PolicySpec
                   PolicyConjunction
-                      PolicyAtom Name "plain"
+                      PolicyAtom Name "close"
               operand:
                 Expr
                   Pipe
@@ -83,7 +83,7 @@ Program
                           policy:
                             PolicySpec
                               PolicyConjunction
-                                  PolicyAtom Name "plain"
+                                  PolicyAtom Name "close"
                           operand:
                             Expr
                               Pipe

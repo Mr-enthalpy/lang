@@ -205,7 +205,7 @@ fn classify_decoded_struct_field_arguments(
             continue;
         };
         match type_env.resolve_field_type_path(&path.segments, context, &field_provenance) {
-            Ok(identity) => resolved.push(identity),
+            Ok(resolution) => resolved.push((path.segments.join("::"), resolution)),
             Err(diagnostic) => diagnostics.push(diagnostic),
         }
     }
@@ -222,10 +222,15 @@ fn classify_decoded_struct_field_arguments(
     };
     let mut shape = ArgProductShape::from_flattened(flattened);
     debug_assert_eq!(shape.raw_args.len(), resolved.len());
-    for (raw_arg, (carrier_symbol, represented_type)) in shape.raw_args.iter_mut().zip(resolved) {
-        *raw_arg = raw_arg
-            .clone()
-            .as_complete_type_projection_with_identity(carrier_symbol, represented_type);
+    for (raw_arg, (name, resolution)) in shape.raw_args.iter_mut().zip(resolved) {
+        *raw_arg = raw_arg.clone().as_complete_type_projection_named(
+            name,
+            resolution.represented_type,
+            resolution.carrier_symbol,
+            resolution.effective_view,
+            resolution.carrier_place,
+            resolution.complete_type_observation,
+        );
     }
     Ok(shape)
 }
@@ -314,7 +319,7 @@ fn insert_projection_namespace(
         Some(parent),
         provenance,
     );
-    namespace_symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
+    namespace_symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Const));
     delta.insert_symbol(parent, namespace_symbol);
     insert_field_projection_layer(
         delta,
@@ -347,7 +352,7 @@ fn insert_field_projection_layer(
             Some(parent),
             provenance.clone(),
         );
-        symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
+        symbol.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Const));
         symbol.visibility_metadata.namespace_visibility = Some(match field.visibility {
             StructuralMemberVisibility::Default | StructuralMemberVisibility::Public => {
                 NamespaceVisibility::Public
@@ -367,8 +372,8 @@ fn insert_field_projection_layer(
             field_type_symbol_id: field.type_carrier_symbol,
             projection,
             callable_policy: CallablePolicyViews {
-                body_entry_policy: declared_policy_view(Stage::Runtime, PolicyMode::Plain),
-                return_object_policy: declared_policy_view(Stage::Runtime, PolicyMode::Plain),
+                body_entry_policy: declared_policy_view(Stage::Runtime, PolicyMode::Const),
+                return_object_policy: declared_policy_view(Stage::Runtime, PolicyMode::Const),
             },
             provenance,
         });
@@ -430,7 +435,7 @@ pub(crate) fn expand_struct_construction_material(
         Some(parent_namespace),
         provenance.clone(),
     );
-    type_projection.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Plain));
+    type_projection.policy_view = Some(declared_policy_view(Stage::Meta, PolicyMode::Const));
     type_projection.node_kind = Some(NamespaceNodeKind::Virtual);
     type_projection.generation_origin = Some("core::struct construction".to_string());
     type_projection.cache_key_fragment = None;
@@ -518,7 +523,7 @@ mod preparation_policy_tests {
         let mut world = base.semantic_world().clone();
         let callable = declared_policy_view(Stage::Compile, PolicyMode::Const);
         let body = declared_policy_view(Stage::Seal, PolicyMode::Mut);
-        let result = declared_policy_view(Stage::Runtime, PolicyMode::Plain);
+        let result = declared_policy_view(Stage::Runtime, PolicyMode::Const);
         let installed = world
             .register_core_callable(
                 base.package_root_node(),

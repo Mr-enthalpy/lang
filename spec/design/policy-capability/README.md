@@ -8,11 +8,12 @@ The semantic coordinates are:
 
 ```text
 PolicyView = <PolicyPair, PolicyMode>
-PolicyMode = const | plain | mut
+PolicyMode = const | mut
+MetaInstancePolicy = meta | close
 ResultPolicyDemand = <P1Projection, PolicyMode, ...future dimensions>
 ```
 
-`PolicyPair`, whole-slot `PolicyMode`, 3×3 `CapabilityRealization`,
+`PolicyPair`, whole-slot `PolicyMode`, derived two-mode finite `CapabilityRealization` view,
 DynamicLegality, namespace visibility, and export-root identity are orthogonal.
 No coordinate is inferred from another.
 

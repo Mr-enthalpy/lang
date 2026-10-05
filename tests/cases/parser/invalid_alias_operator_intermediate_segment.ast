@@ -3,8 +3,14 @@ Program
     binder:
       Name x
     target:
-      EntityRef
-        components:
-          component Name a
-          component Error "operator cannot be an outer navigation component"
-          component Name b
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  NavPath
+                    components:
+                      component Name a
+                      component Error "operator cannot be an outer navigation component"
+                      component Name b

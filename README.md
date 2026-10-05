@@ -26,7 +26,7 @@ The semantic layer is organized around these independent coordinates:
 - complete type values `tau = bind alpha.<Core(tau), V_tau[alpha]>`;
 - distinct NameBinding, named type, OverloadGroup, Place, resident generation,
   and lookup IDs;
-- `PolicyPair`, primitive `PolicyMode = {const, plain, mut}`, capability
+- `PolicyPair`, primitive `PolicyMode = {const, mut}`, capability
   realization, and post-selection DynamicLegality;
 - one resolved target, R_vis evidence, ordinary C_sigma realizations and sealed
   selection shared by static projections and runtime residue;
@@ -35,7 +35,7 @@ The semantic layer is organized around these independent coordinates:
 - construction authority, `OpenHere`, Writable, `extend`, and `inject`;
 - continuation-relative lifecycle facts, Region generations, Pre/Post, and an
   extensible directed Color algebra;
-- meta instance names/types, P1 meta retention versus plain completion/closure,
+- meta instance names/types, P1 meta retention versus close completion/closure,
   dependency-derived openness, ordinary Val2 payloads, generic instance caching,
   derived associated state A, and witnessed closure re-instantiation;
 - unsafe semantic axiom admission and ordinary host-capability Objects;

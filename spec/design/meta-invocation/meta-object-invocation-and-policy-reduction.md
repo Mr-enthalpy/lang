@@ -137,8 +137,8 @@ current legality of using that input remain independent.
 
 Every meta-instance root is a stable semantic owner. Its retained instance
 uses the P1 `meta` policy described in §3: OpenHere governs acquisition of its
-mutable view. There is no independent root const/mut gate. A carrier's internal
-plain marker is not the semantic policy of the instance. Stable identity does
+mutable view. Its explicit or deduced const/mut mode remains independent from
+MetaInstancePolicy. Stable identity does
 not imply global lifetime, current visibility, or an open construction window.
 
 ### 2.0.1 Invocation ownership and structural ownership
@@ -221,15 +221,18 @@ nor the ordinary closure automatic-dependency mechanism may transport an
 unpassed local around this input boundary. Stable definition relations are
 already fixed by callee identity/owner; they are not caller-frame captures.
 
-For the instance's P1 `meta` policy, openness is the governing qualification:
+For the instance's P1 `meta` policy, openness governs current construction
+authority and contextual completion of a finally omitted Mode:
 
 ```text
-MetaMutationQualification(n, Sigma) iff OpenHere(n, Sigma)
+OmittedMode(n, Sigma) =
+  (MetaInstancePolicy(n, Sigma)=meta and OpenHere(n, Sigma)) ? mut : const
 AcquireMutView(n, Sigma) requires OpenHere(n, Sigma)
 ```
 
-There is no additional independent const/mut permission on that instance. The
-selected operation must still exist and satisfy its ordinary typing, actual
+Explicit or deduced const/mut is preserved independently from MetaInstancePolicy;
+required unknown OpenHere is unavailable. The selected operation must still
+exist and satisfy its ordinary Policy/capability, typing, actual
 Place, access and lifetime premises. Every write Pre rechecks OpenHere; a saved
 mut view is not enduring authority. An ordinary Val2 payload remains an ordinary
 value/name with its own policy. A borrow stored there retains its original
@@ -238,7 +241,7 @@ target and that target's rules; containing it never transfers write authority.
 ### 2.0.3 Result completion, lifetime, and cache reuse
 
 Ordinary meta constructs tau_M under M. P1 `meta` preserves its admitted
-input-derived opening source through completion; classic `plain let` completes
+input-derived opening source through completion; classic `close let` completes
 and closes this instance (§3). Completion and Close are distinct events in the
 retained form. Neither form closes external inputs or borrow targets merely
 because they occur in Val2.
@@ -272,9 +275,19 @@ type or member snapshot. Ordinary member writes, moves, and invalidations
 retain their meaning. An unavailable/consumed payload is not resurrected by
 cache lookup. Previously copied complete types keep their immutable snapshots;
 cache lookup is current name observation, not mutation of those copied values.
-An active construction cannot be read as a completed result; symbolic references
-to its root remain distinct from forbidden active evaluation reentry. Failure
-does not publish a partially initialized result.
+The current self-name is an ordinary Name/Value observation and may read its
+current complete tau_M snapshot even during open construction. ReadName,
+ReadResident, Pattern or Policy observation are not EnterBody. Only a next
+EnterBody edge into an actively executing evaluation is open-evaluation reentry.
+Failure publishes no incomplete Object.
+
+OpenHere governs mutation qualification, not lifecycle: the instance root's
+region need not be inside the body region. Ordinary lifecycle decides survival,
+movement, escape and dependencies. Read self -> ReturnEvent -> ordinary result
+assignment/replacement is a real boundary, even for equal resident values.
+Only after successful ordinary delivery may outward close Complete and Close;
+meta completion retains the existing opening source. No self-return primitive
+or result-identity optimization can remove that event or assignment.
 
 Value/material caches may coexist, but their reuse must preserve current reads,
 effects, dependency validity and Pre checks. Cache replay cannot supply a stale
@@ -318,9 +331,10 @@ between two pass kinds. A legal Preserve Move does not call clone. Observing the
 an implicit Move of the stored instance resident out of q_M. Explicit moves
 and payload invalidations keep their ordinary checked effects.
 
-If a later `plain let c = t |> A` successfully completes the producer with
-Close, the shared instance construction subject closes before the outer
-destination transfer. References still targeting its state then fail the
+If a later `close let c = t |> A` successfully completes the producer with
+Close, ordinary return-result delivery has already succeeded. The shared
+instance construction subject then closes before the separate outer destination
+transfer. References still targeting its state then fail the
 opening-source check on write; external t itself is not closed by that event.
 A subsequent destination-transfer failure does not by itself undo an already
 committed producer Close. Only an existing enclosing transaction can provide
@@ -369,7 +383,7 @@ P1 and P2 are independent; Pin and Pout are derived:
     Pin = ElabIn(P2, Delta_in)
     Pout = ElabOut(P1, Delta_out)
     bare let -> empty overlay
-    written plain/const/mut -> explicit mode override
+    written const/mut -> explicit mode override
     formal-local <p> p let -> ordinary Pattern solution for Mode=p
 
 Input and output constraints belong to one invocation relation; neither policy
@@ -382,27 +396,26 @@ participates in the ordinary invocation pipeline.
 
 For ordinary names, binding policy and the resident value's OpenHere are
 independent because name and value are distinct. The meta instance identifies
-its name with its own type value. Here OpenHere dominates the weaker const/mut
-qualification; retaining two independent mutation gates would misdescribe the
-entity. P1 therefore admits a `meta` marker:
+its name with its own type value. Current OpenHere is an additional premise
+for mutable operations; it never overrides an explicit or deduced const/mut
+mode. P1 independently admits a `meta` completion qualification:
 
 ```lang
 meta let f = expression;
-plain let g = expression;
+close let g = expression;
 ```
 
-When expression constructs an ordinary meta instance, `meta let` retains that
-instance with its dependency-bounded openness. OpenHere must hold before a mut
-view can be acquired, and again at write Pre. `plain let` retains the classic
-complete-and-close invocation: after completion its instance cannot acquire a
-mut view. Bare let supplies no override; plain behavior requires a separate applicable
-DefaultModeCompletion when no inherited/contextual constraint supplies one. Neither form extends the
-input window, and reacquiring a closed instance with `meta let` cannot reopen it.
+MetaInstancePolicy = {meta, close} is independent of PolicyMode = {const, mut}.
+meta preserves the established opening source. close completes and closes the
+instance after ordinary result delivery, without closing external inputs or
+borrow targets. Bare omission contributes no written mode override. Only a
+finally omitted mode completes as mut under meta + current OpenHere, and const
+otherwise. Explicit/deduced modes and ordinary Pattern holes are preserved.
+Unknown OpenHere needed by meta completion remains unavailable.
 
-P1 `meta` describes the instance policy; P2 `meta` describes the callable's
-evaluation horizon. Their positions are distinct. P1 `meta` is not an alias for
-ordinary `mut`, a fourth point in its 3×3 capability table, or permission to
-execute arbitrary runtime expressions at meta stage. The
+P1 meta is qualification, P2 meta is Stage. Neither grants Writable, capability,
+execution permission or lifetime extension. Reacquisition cannot reopen Close.
+The
 [policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md#3-contextual-elaboration-of-p1)
 owns its contextual elaboration, whose narrow openness domain also includes
 ordinary `type` and `type ref`. That qualification preserves an existing
@@ -420,7 +433,7 @@ an uninitialized name remains a separate one-shot initialization capability.
 
 Value observation remains the default. Explicit type-Place borrowing is distinct
 from `t ref` forming a borrow type. For ordinary Val2 members, explicit borrowing,
-const/plain/mut demand, same-Type migration and mechanical passing continue to
+const/mut demand, same-Type migration and mechanical passing continue to
 use the ordinary rules. These observations neither change the instance root nor
 turn the meta call into a direct borrow producer. Selected failure never reopens
 selection or a closed construction window.
@@ -530,8 +543,8 @@ type-forming versus borrow-forming distinction.
 | Realize a generated member on a closed type | Ordinary Val2 result only; registered Pattern/V_tau structure stays fixed and no construction window reopens |
 | Read a group-valued Val2 member without ref | Ordinary group value observation; the meta call itself returns tau_M |
 | Explicitly borrow a result name | Ordinary actual-Place/capability/lifetime checks; no implicit borrowing |
-| P1 meta while OpenHere holds | Retain the instance; derive mut qualification from OpenHere |
-| Classic plain let of a meta invocation | Complete and close its instance; later meta let cannot reopen it |
+| P1 meta while OpenHere holds | Retain the instance; complete only finally omitted Mode to mut, preserving explicit or deduced const/mut |
+| Classic close let of a meta invocation | Complete and close its instance; later meta let cannot reopen it |
 | Ordinary member demand or same-Type migration | Ordinary selected result and destination rules |
 | Selected migration, borrow or write fails | Diagnostic without producer reselection or runner-up execution |
 | Fresh result-owned type with a valid open input source | Result construction subject retains the derived source after body exit; no dead frame or local revival is required |
@@ -548,7 +561,7 @@ type-forming versus borrow-forming distinction.
 | Save a mut reference, then close its opening source | Later write Pre fails even after cache/name reacquisition |
 | Replace the original input carrier | Saved result references retain the original dependency and Place |
 | Reacquire after a legal member write, move or invalidation | Observe current ordinary state; never restore initialization |
-| Re-enter an active result construction as a completed value | Reject active evaluation reentry; symbolic root references stay distinct |
+| EnterBody of an actively executing instance | Reject/validate actual evaluator reentry; ordinary self-name/resident reads are not EnterBody |
 | Conflicting sibling result-place replacements | Ordinary unordered conflict; cache scheduling cannot pick a winner |
 
 Implement the general input identity, result-name residency and opening-source

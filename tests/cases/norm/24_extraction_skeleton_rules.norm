@@ -132,8 +132,10 @@ NormProgram origin=Source@1:1[0..210]
               elements:
                 PatternSkeleton origin=Generated(PatternNormalize)@4:9[103..104]
                   SkeletonWildcard origin=Source@4:9[103..104]
-                PatternSkeleton origin=Generated(PatternNormalize)@4:11[105..114]
-                  SkeletonNav ["Pair", "std"] origin=Source@4:11[105..114]
+                PatternNav terminated=false origin=Source@4:11[105..114]
+                  components:
+                    Name "Pair" origin=Source@4:11[105..109]
+                    Name "std" origin=Source@4:17[111..114]
           annotation:
             None
           with_clause:
@@ -151,8 +153,10 @@ NormProgram origin=Source@1:1[0..210]
             PatternSequence origin=Generated(PatternNormalize)@5:9[128..141]
               elements:
                 HoleRef "T" origin=Source@5:9[128..129]
-                PatternSkeleton origin=Generated(PatternNormalize)@5:11[130..139]
-                  SkeletonNav ["Pair", "std"] origin=Source@5:11[130..139]
+                PatternNav terminated=false origin=Source@5:11[130..139]
+                  components:
+                    Name "Pair" origin=Source@5:11[130..134]
+                    Name "std" origin=Source@5:17[136..139]
           annotation:
             None
           with_clause:
@@ -170,8 +174,8 @@ NormProgram origin=Source@1:1[0..210]
             None
           with_clause:
             WithClause explicit_empty=false origin=Source@6:7[151..161]
-              names:
-                "A"
+              paths:
+                PatternName "A" origin=Source@6:14[158..159]
           initializer:
             Name "y" origin=Source@6:20[164..165]
     Form Let
@@ -185,9 +189,9 @@ NormProgram origin=Source@1:1[0..210]
             None
           with_clause:
             WithClause explicit_empty=false origin=Source@7:7[173..186]
-              names:
-                "A"
-                "B"
+              paths:
+                PatternName "A" origin=Source@7:14[180..181]
+                PatternName "B" origin=Source@7:17[183..184]
           initializer:
             Name "y" origin=Source@7:23[189..190]
     Form Let

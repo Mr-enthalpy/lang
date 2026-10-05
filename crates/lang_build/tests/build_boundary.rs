@@ -54,7 +54,7 @@ fn declared_policy_view_is_preserved_by_namespace_installation() {
         .values_mut()
         .next()
         .expect("declared symbol in delta");
-    symbol.policy_view = Some(declared_policy_view(Stage::Compile, PolicyMode::Plain));
+    symbol.policy_view = Some(declared_policy_view(Stage::Compile, PolicyMode::Const));
 
     let snapshot = snapshot
         .install_delta(delta)
@@ -65,7 +65,7 @@ fn declared_policy_view_is_preserved_by_namespace_installation() {
         .expect("resolve policy symbol");
     let view = symbol.policy_view.as_ref().expect("policy view");
     assert!(view.pair.value.stage() == Some(Stage::Compile));
-    assert_eq!(view.mode, PolicyMode::Plain);
+    assert_eq!(view.mode, PolicyMode::Const);
     assert!(symbol.visibility_metadata.slots.is_empty());
 }
 

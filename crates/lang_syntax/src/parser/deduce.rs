@@ -127,7 +127,7 @@ fn parse_annotation_term_in_deduce(parser: &mut Parser<'_>) -> AnnotationTermAst
         ));
     }
 
-    let expr = super::expr::parse_expr_until(parser, |p| {
+    let expr = super::expr::parse_pattern_expr_until(parser, |p| {
         p.cursor.at_symbol(Symbol::Comma)
             || p.cursor.at_symbol(Symbol::Greater)
             || p.cursor.at_symbol(Symbol::Equal)

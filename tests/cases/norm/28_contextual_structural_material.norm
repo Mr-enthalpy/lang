@@ -1,0 +1,809 @@
+NormProgram origin=Source@1:1[0..901]
+  forms:
+    Form Expr
+      Call origin=Generated(ColonLowering)@1:2[1..4]
+        source:
+          Product origin=Source@1:2[1..4]
+            elements:
+              ExprElem
+                Name "a" origin=Source@1:2[1..2]
+              ExprElem
+                Name "b" origin=Source@1:4[3..4]
+        target:
+          Name "slice" origin=Source@1:2[1..4]
+    Form Expr
+      Call origin=Generated(ColonLowering)@2:2[8..13]
+        source:
+          Product origin=Source@2:2[8..13]
+            elements:
+              ExprElem
+                Name "a" origin=Source@2:2[8..9]
+              ExprElem
+                Name "b" origin=Source@2:4[10..11]
+              ExprElem
+                Name "c" origin=Source@2:6[12..13]
+        target:
+          Name "slice" origin=Source@2:2[8..13]
+    Form Expr
+      Call origin=Generated(ColonLowering)@3:2[17..19]
+        source:
+          Product origin=Source@3:2[17..19]
+            elements:
+              Unit origin=Source@3:2[17..18]
+              ExprElem
+                Name "a" origin=Source@3:3[18..19]
+        target:
+          Name "slice" origin=Source@3:2[17..19]
+    Form Expr
+      Call origin=Generated(ColonLowering)@4:2[23..25]
+        source:
+          Product origin=Source@4:2[23..25]
+            elements:
+              ExprElem
+                Name "a" origin=Source@4:2[23..24]
+              Unit origin=Source@4:3[24..25]
+        target:
+          Name "slice" origin=Source@4:2[23..25]
+    Form Expr
+      Call origin=Generated(ColonLowering)@5:2[29..30]
+        source:
+          Product origin=Source@5:2[29..30]
+            elements:
+              Unit origin=Source@5:2[29..30]
+              Unit origin=Source@5:2[29..30]
+        target:
+          Name "slice" origin=Source@5:2[29..30]
+    Form Expr
+      Call origin=Generated(ColonLowering)@6:2[34..38]
+        source:
+          Product origin=Source@6:2[34..38]
+            elements:
+              Unit origin=Source@6:2[34..35]
+              ExprElem
+                Name "a" origin=Source@6:3[35..36]
+              ExprElem
+                Name "b" origin=Source@6:5[37..38]
+        target:
+          Name "slice" origin=Source@6:2[34..38]
+    Form Expr
+      Call origin=Generated(ColonLowering)@7:2[42..46]
+        source:
+          Product origin=Source@7:2[42..46]
+            elements:
+              ExprElem
+                Name "a" origin=Source@7:2[42..43]
+              ExprElem
+                Name "b" origin=Source@7:4[44..45]
+              Unit origin=Source@7:5[45..46]
+        target:
+          Name "slice" origin=Source@7:2[42..46]
+    Form Expr
+      Call origin=Generated(ColonLowering)@8:2[50..53]
+        source:
+          Product origin=Source@8:2[50..53]
+            elements:
+              Unit origin=Source@8:2[50..51]
+              ExprElem
+                Name "a" origin=Source@8:3[51..52]
+              Unit origin=Source@8:4[52..53]
+        target:
+          Name "slice" origin=Source@8:2[50..53]
+    Form Expr
+      Product origin=Source@9:1[56..62]
+        elements:
+          ExprElem
+            Name "a" origin=Source@9:2[57..58]
+          Unit origin=Source@9:4[59..60]
+          ExprElem
+            Name "b" origin=Source@9:5[60..61]
+    Form Expr
+      Call origin=Generated(ColonLowering)@10:2[65..71]
+        source:
+          Product origin=Source@10:2[65..71]
+            elements:
+              ExprElem
+                Nav origin=Source@10:2[65..69]
+                  components:
+                    Name "a" origin=Source@10:2[65..66]
+                    Name "b" origin=Source@10:5[68..69]
+              ExprElem
+                Name "c" origin=Source@10:7[70..71]
+        target:
+          Name "slice" origin=Source@10:2[65..71]
+    Form Expr
+      Product origin=Source@11:1[74..82]
+        elements:
+          ExprElem
+            Call origin=Generated(ColonLowering)@11:2[75..78]
+              source:
+                Product origin=Source@11:2[75..78]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@11:2[75..76]
+                    ExprElem
+                      Name "b" origin=Source@11:4[77..78]
+              target:
+                Name "slice" origin=Source@11:2[75..78]
+          ExprElem
+            Name "c" origin=Source@11:7[80..81]
+    Form Expr
+      Product origin=Source@12:1[84..92]
+        elements:
+          ExprElem
+            Name "a" origin=Source@12:2[85..86]
+          ExprElem
+            Call origin=Generated(ColonLowering)@12:5[88..91]
+              source:
+                Product origin=Source@12:5[88..91]
+                  elements:
+                    ExprElem
+                      Name "b" origin=Source@12:5[88..89]
+                    ExprElem
+                      Name "c" origin=Source@12:7[90..91]
+              target:
+                Name "slice" origin=Source@12:5[88..91]
+    Form Expr
+      Call origin=Generated(ColonLowering)@13:2[95..102]
+        source:
+          Product origin=Source@13:2[95..102]
+            elements:
+              ExprElem
+                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@13:2[95..98]
+                  source:
+                    Product origin=Generated(ProductLift)@13:2[95..96]
+                      elements:
+                        ExprElem
+                          Name "a" origin=Source@13:2[95..96]
+                  target:
+                    Name "f" origin=Source@13:4[97..98]
+              ExprElem
+                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@13:6[99..102]
+                  source:
+                    Product origin=Generated(ProductLift)@13:6[99..100]
+                      elements:
+                        ExprElem
+                          Name "b" origin=Source@13:6[99..100]
+                  target:
+                    Name "g" origin=Source@13:8[101..102]
+        target:
+          Name "slice" origin=Source@13:2[95..102]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@14:1[105..111]
+        source:
+          Product origin=Generated(BracketCallLowering)@14:1[105..111]
+            elements:
+              ExprElem
+                Name "x" origin=Source@14:1[105..106]
+              ExprElem
+                Call origin=Generated(ColonLowering)@14:3[107..110]
+                  source:
+                    Product origin=Source@14:3[107..110]
+                      elements:
+                        ExprElem
+                          Name "a" origin=Source@14:3[107..108]
+                        ExprElem
+                          Name "b" origin=Source@14:5[109..110]
+                  target:
+                    Name "slice" origin=Source@14:3[107..110]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@14:2[106..111]
+    Form Let
+      Decl Let origin=Source@15:1[113..136]
+        BindingSlot let=true origin=Generated(PatternNormalize)@15:5[117..136]
+          deduce:
+            None
+          value_pattern:
+            Binder "annotated" origin=Source@15:5[117..126]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@15:15[127..128]
+              PatternName "T" origin=Source@15:15[127..128]
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(ColonLowering)@15:20[132..135]
+              source:
+                Product origin=Source@15:20[132..135]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@15:20[132..133]
+                    ExprElem
+                      Name "b" origin=Source@15:22[134..135]
+              target:
+                Name "slice" origin=Source@15:20[132..135]
+    Form Let
+      Decl Let origin=Source@16:1[138..159]
+        BindingSlot let=true origin=Generated(PatternNormalize)@16:5[142..159]
+          deduce:
+            None
+          value_pattern:
+            PatternSplice origin=Source@16:8[145..151]
+              Call origin=Generated(ColonLowering)@16:9[146..149]
+                source:
+                  Product origin=Source@16:9[146..149]
+                    elements:
+                      ExprElem
+                        Name "a" origin=Source@16:9[146..147]
+                      ExprElem
+                        Name "b" origin=Source@16:11[148..149]
+                target:
+                  Name "slice" origin=Source@16:9[146..149]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@16:17[154..159]
+    Form Let
+      Decl Let origin=Source@17:1[161..177]
+        BindingSlot let=true origin=Generated(PatternNormalize)@17:5[165..177]
+          deduce:
+            None
+          value_pattern:
+            PatternSplice origin=Source@17:8[168..169]
+              Nav origin=Source@17:8[168..169]
+                components:
+                  Operator "+" origin=Source@17:8[168..169]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@17:12[172..177]
+    Form Let
+      Decl Let origin=Source@18:1[179..202]
+        BindingSlot let=true origin=Generated(PatternNormalize)@18:5[183..202]
+          deduce:
+            None
+          value_pattern:
+            PatternNav terminated=false origin=Source@18:8[186..194]
+              components:
+                component PatternSplice origin=Source@18:8[186..188]
+                  Name "a" origin=Source@18:8[186..187]
+                Name "path" origin=Source@18:12[190..194]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@18:19[197..202]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@19:1[204..228]
+        binder:
+          Name "short" origin=Source@19:5[208..213]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@19:15[218..228]
+            PatternNav terminated=false origin=Source@19:15[218..228]
+              components:
+                Name "long" origin=Source@19:15[218..222]
+                Name "root" origin=Source@19:21[224..228]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@20:1[230..259]
+        binder:
+          Name "projected" origin=Source@20:5[234..243]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@20:19[248..259]
+            PatternNav terminated=false origin=Source@20:19[248..259]
+              components:
+                component PatternSplice origin=Source@20:19[248..252]
+                  Name "n" origin=Source@20:20[249..250]
+                Name "scope" origin=Source@20:25[254..259]
+    Form Let
+      Decl Let origin=Source@21:1[261..301]
+        BindingSlot let=true origin=Generated(PatternNormalize)@21:5[265..301]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@21:5[265..266]
+          annotation:
+            None
+          with_clause:
+            WithClause explicit_empty=false origin=Source@21:7[267..293]
+              paths:
+                PatternNav terminated=false origin=Source@21:13[273..285]
+                  components:
+                    Name "future" origin=Source@21:13[273..279]
+                    Name "path" origin=Source@21:21[281..285]
+                PatternName "short" origin=Source@21:27[287..292]
+          initializer:
+            Name "value" origin=Source@21:36[296..301]
+    Form Let
+      Decl Let origin=Source@22:1[303..321]
+        BindingSlot let=true origin=Generated(PatternNormalize)@22:5[307..321]
+          deduce:
+            None
+          value_pattern:
+            Binder "future" origin=Source@22:5[307..313]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@22:14[316..321]
+    Form Expr
+      Call origin=Generated(ColonLowering)@23:2[324..337]
+        source:
+          Product origin=Source@23:2[324..337]
+            elements:
+              ExprElem
+                Name "a" origin=Source@23:2[324..325]
+              ExprElem
+                PolicyLet origin=Generated(PolicyLetPreserve)@23:4[326..337]
+                  policy:
+                    PolicySpec
+                      PolicyConjunction
+                          PolicyAtom Name "close"
+                  operand:
+                    Name "b" origin=Source@23:14[336..337]
+        target:
+          Name "slice" origin=Source@23:2[324..337]
+    Form Expr
+      Call origin=Generated(ColonLowering)@24:2[341..354]
+        source:
+          Product origin=Source@24:2[341..354]
+            elements:
+              ExprElem
+                PolicyLet origin=Generated(PolicyLetPreserve)@24:2[341..352]
+                  policy:
+                    PolicySpec
+                      PolicyConjunction
+                          PolicyAtom Name "close"
+                  operand:
+                    Name "a" origin=Source@24:12[351..352]
+              ExprElem
+                Name "b" origin=Source@24:14[353..354]
+        target:
+          Name "slice" origin=Source@24:2[341..354]
+    Form Let
+      Decl Let origin=Source@25:1[357..396]
+        BindingSlot let=true origin=Generated(PatternNormalize)@25:5[361..396]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@25:5[361..362]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@25:9[365..396]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@25:9[365..388]
+                  deduce:
+                    None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@25:10[366..370]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "self" origin=Source@25:10[366..370]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@25:16[372..378]
+                        deduce:
+                          None
+                        value_pattern:
+                          PatternSplice origin=Source@25:16[372..378]
+                            Call origin=Generated(ColonLowering)@25:17[373..376]
+                              source:
+                                Product origin=Source@25:17[373..376]
+                                  elements:
+                                    ExprElem
+                                      Name "a" origin=Source@25:17[373..374]
+                                    ExprElem
+                                      Name "b" origin=Source@25:19[375..376]
+                              target:
+                                Name "slice" origin=Source@25:17[373..376]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@25:24[380..384]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "next" origin=Source@25:24[380..384]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+              body:
+                NormBody origin=Source@25:33[389..396]
+                  forms:
+                    Form Expr
+                      Product origin=Source@25:35[391..393]
+                        elements:
+                          Unit origin=Source@25:35[391..393]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@26:1[398..413]
+        binder:
+          Name "open" origin=Source@26:5[402..406]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@26:14[411..413]
+            PatternNav terminated=true origin=Source@26:14[411..413]
+              components:
+                component PatternSplice origin=Source@26:14[411..413]
+                  Name "p" origin=Source@26:14[411..412]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@27:1[417..438]
+        binder:
+          Name "relative" origin=Source@27:5[421..429]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@27:18[434..438]
+            PatternNav terminated=true origin=Source@27:18[434..438]
+              components:
+                component PatternSplice origin=Source@27:18[434..438]
+                  Name "p" origin=Source@27:19[435..436]
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@28:6[447..448]
+        source:
+          Product origin=Generated(ProductLift)@28:1[442..443]
+            elements:
+              ExprElem
+                Nav origin=Source@28:1[442..443]
+                  components:
+                    Operator "+" origin=Source@28:1[442..443]
+        target:
+          Name "f" origin=Source@28:6[447..448]
+    Form Let
+      Decl Let origin=Source@29:1[450..470]
+        BindingSlot let=true origin=Generated(PatternNormalize)@29:5[454..470]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@29:5[454..455]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@29:7[456..462]
+              PatternSplice origin=Source@29:7[456..462]
+                Call origin=Generated(ColonLowering)@29:8[457..460]
+                  source:
+                    Product origin=Source@29:8[457..460]
+                      elements:
+                        ExprElem
+                          Name "a" origin=Source@29:8[457..458]
+                        ExprElem
+                          Name "b" origin=Source@29:10[459..460]
+                  target:
+                    Name "slice" origin=Source@29:8[457..460]
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@29:16[465..470]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@30:1[472..500]
+        binder:
+          Name "grouped" origin=Source@30:5[476..483]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@30:17[488..500]
+            PatternNav terminated=false origin=Source@30:17[488..500]
+              components:
+                Name "name" origin=Source@30:17[488..492]
+                PatternGroup origin=Source@30:24[495..500]
+                  PatternName "scope" origin=Source@30:24[495..500]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@31:1[503..533]
+        binder:
+          Name "injected" origin=Source@31:5[507..515]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@31:18[520..533]
+            PatternNav terminated=false origin=Source@31:18[520..533]
+              components:
+                Name "name" origin=Source@31:18[520..524]
+                component PatternSplice origin=Source@31:25[527..533]
+                  Name "scope" origin=Source@31:25[527..532]
+    Form Let
+      Decl Let origin=Source@32:1[536..593]
+        BindingSlot let=true origin=Generated(PatternNormalize)@32:5[540..593]
+          deduce:
+            None
+          value_pattern:
+            Binder "operator_paths" origin=Source@32:5[540..554]
+          annotation:
+            None
+          with_clause:
+            WithClause explicit_empty=false origin=Source@32:20[555..585]
+              paths:
+                PatternSplice origin=Source@32:26[561..562]
+                  Nav origin=Source@32:26[561..562]
+                    components:
+                      Operator "+" origin=Source@32:26[561..562]
+                PatternSplice origin=Source@32:29[564..566]
+                  Nav origin=Source@32:29[564..566]
+                    components:
+                      Operator "[]" origin=Source@32:29[564..566]
+                PatternName "short" origin=Source@32:33[568..573]
+                PatternNav terminated=false origin=Source@32:40[575..584]
+                  components:
+                    component PatternSplice origin=Source@32:40[575..577]
+                      Name "p" origin=Source@32:40[575..576]
+                    Name "scope" origin=Source@32:44[579..584]
+          initializer:
+            Name "value" origin=Source@32:53[588..593]
+    Form Let
+      Decl Let origin=Source@33:1[595..617]
+        BindingSlot let=true origin=Generated(PatternNormalize)@33:5[599..617]
+          deduce:
+            None
+          value_pattern:
+            PatternSplice origin=Source@33:8[602..609]
+              Product origin=Source@33:8[602..608]
+                elements:
+                  ExprElem
+                    Name "a" origin=Source@33:9[603..604]
+                  Unit origin=Source@33:11[605..606]
+                  ExprElem
+                    Name "b" origin=Source@33:12[606..607]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@33:18[612..617]
+    Form Let
+      Decl Let origin=Source@34:1[619..670]
+        BindingSlot let=true origin=Generated(PatternNormalize)@34:5[623..670]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@34:5[623..624]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@34:9[627..670]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@34:9[627..662]
+                  deduce:
+                    HoleDecl "T" origin=Generated(PatternNormalize)@34:10[628..629]
+                      annotation:
+                        None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@34:13[631..635]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "self" origin=Source@34:13[631..635]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@34:19[637..648]
+                        deduce:
+                          None
+                        value_pattern:
+                          PatternNav terminated=false origin=Source@34:22[640..648]
+                            components:
+                              Name "name" origin=Source@34:22[640..644]
+                              PatternGroup origin=Source@34:29[647..648]
+                                HoleRef "T" origin=Source@34:29[647..648]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                  call_policy:
+                    PolicySpec
+                      PolicyConjunction
+                          PolicyAtom Name "compile"
+              body:
+                NormBody origin=Source@34:45[663..670]
+                  forms:
+                    Form Expr
+                      Product origin=Source@34:47[665..667]
+                        elements:
+                          Unit origin=Source@34:47[665..667]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@35:1[672..707]
+        binder:
+          Name "navigation_splice" origin=Source@35:5[676..693]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@35:27[698..707]
+            PatternSplice origin=Source@35:27[698..707]
+              Nav origin=Source@35:27[698..705]
+                components:
+                  Name "a" origin=Source@35:27[698..699]
+                  Group origin=Source@35:31[702..705]
+                    Call origin=Generated(ColonLowering)@35:31[702..705]
+                      source:
+                        Product origin=Source@35:31[702..705]
+                          elements:
+                            ExprElem
+                              Name "b" origin=Source@35:31[702..703]
+                            ExprElem
+                              Name "c" origin=Source@35:33[704..705]
+                      target:
+                        Name "slice" origin=Source@35:31[702..705]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@36:1[709..741]
+        binder:
+          Name "bracket_splice" origin=Source@36:5[713..727]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@36:24[732..741]
+            PatternSplice origin=Source@36:24[732..741]
+              Call origin=Generated(BracketCallLowering)@36:24[732..740]
+                source:
+                  Product origin=Generated(BracketCallLowering)@36:24[732..740]
+                    elements:
+                      ExprElem
+                        Name "a" origin=Source@36:24[732..733]
+                      ExprElem
+                        Call origin=Generated(ColonLowering)@36:27[735..738]
+                          source:
+                            Product origin=Source@36:27[735..738]
+                              elements:
+                                ExprElem
+                                  Name "b" origin=Source@36:27[735..736]
+                                ExprElem
+                                  Name "c" origin=Source@36:29[737..738]
+                          target:
+                            Name "slice" origin=Source@36:27[735..738]
+                target:
+                  OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@36:25[733..740]
+    Form Let
+      Decl Let origin=Source@37:1[743..760]
+        BindingSlot let=true origin=Generated(PatternNormalize)@37:5[747..760]
+          deduce:
+            None
+          value_pattern:
+            PatternSplice origin=Source@37:8[750..752]
+              Nav origin=Source@37:8[750..752]
+                components:
+                  Operator "[]" origin=Source@37:8[750..752]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@37:13[755..760]
+    Form Let
+      Decl Let origin=Source@38:1[762..785]
+        BindingSlot let=true origin=Generated(PatternNormalize)@38:5[766..785]
+          deduce:
+            None
+          value_pattern:
+            PatternNav terminated=false origin=Source@38:8[769..776]
+              components:
+                Name "a" origin=Source@38:8[769..770]
+                PatternGroup origin=Source@38:12[773..776]
+                  PatternSequence origin=Generated(PatternNormalize)@38:12[773..776]
+                    elements:
+                      PatternName "b" origin=Source@38:12[773..774]
+                      PatternName "c" origin=Source@38:14[775..776]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@38:19[780..785]
+    Form Let
+      Decl Let origin=Source@39:1[787..825]
+        BindingSlot let=true origin=Generated(PatternNormalize)@39:5[791..825]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@39:5[791..792]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@39:9[795..825]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@39:9[795..817]
+                  deduce:
+                    None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@39:10[796..800]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "self" origin=Source@39:10[796..800]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@39:16[802..807]
+                        deduce:
+                          None
+                        value_pattern:
+                          PatternSplice origin=Source@39:19[805..807]
+                            Nav origin=Source@39:19[805..807]
+                              components:
+                                Operator "[]" origin=Source@39:19[805..807]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@39:23[809..813]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "next" origin=Source@39:23[809..813]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+              body:
+                NormBody origin=Source@39:32[818..825]
+                  forms:
+                    Form Expr
+                      Product origin=Source@39:34[820..822]
+                        elements:
+                          Unit origin=Source@39:34[820..822]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@40:1[827..866]
+        binder:
+          Name "resumed_pattern" origin=Source@40:5[831..846]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@40:25[851..866]
+            PatternNav terminated=false origin=Source@40:25[851..866]
+              components:
+                component PatternSplice origin=Source@40:25[851..860]
+                  Nav origin=Source@40:25[851..858]
+                    components:
+                      Name "a" origin=Source@40:25[851..852]
+                      Group origin=Source@40:29[855..858]
+                        Call origin=Generated(ColonLowering)@40:29[855..858]
+                          source:
+                            Product origin=Source@40:29[855..858]
+                              elements:
+                                ExprElem
+                                  Name "b" origin=Source@40:29[855..856]
+                                ExprElem
+                                  Name "c" origin=Source@40:31[857..858]
+                          target:
+                            Name "slice" origin=Source@40:29[855..858]
+                PatternGroup origin=Source@40:37[863..866]
+                  PatternSequence origin=Generated(PatternNormalize)@40:37[863..866]
+                    elements:
+                      PatternName "d" origin=Source@40:37[863..864]
+                      PatternName "e" origin=Source@40:39[865..866]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@41:1[869..899]
+        binder:
+          Name "postfix_splice" origin=Source@41:5[873..887]
+        target:
+          PathMaterial origin=Generated(PathMaterialPreserve)@41:24[892..899]
+            PatternSplice origin=Source@41:24[892..899]
+              Call origin=Generated(OperatorLowering)@41:24[892..898]
+                source:
+                  Product origin=Generated(ProductLift)@41:25[893..896]
+                    elements:
+                      ExprElem
+                        Call origin=Generated(ColonLowering)@41:25[893..896]
+                          source:
+                            Product origin=Source@41:25[893..896]
+                              elements:
+                                ExprElem
+                                  Name "a" origin=Source@41:25[893..894]
+                                ExprElem
+                                  Name "b" origin=Source@41:27[895..896]
+                          target:
+                            Name "slice" origin=Source@41:25[893..896]
+                target:
+                  OperatorTarget spelling="!" fixity=Postfix arity=1 origin=Source@41:29[897..898]

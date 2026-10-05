@@ -13,7 +13,7 @@ This reading index introduces no separate value or execution ontology.
       -> Writable
     meta callable / normalized inputs and name dependencies
       -> stable invocation instance name/type tau_M
-      -> P1 meta + dependency-derived OpenHere, or plain completion/closure
+      -> P1 meta + dependency-derived OpenHere, or close completion/closure
       -> ordinary Val2 payload navigation / explicit compile extraction
       -> associated-state instance with ordinary group member n_A(t)
     meta invocation registry/cache
@@ -79,7 +79,8 @@ level and blocks only resident reading. name::path preserves construction/
 extraction direction; bare inherited Pattern navigation differs from evaluated
 $ reinjection in extraction. (n#)$ reconstructs structure under the Path consumer only;
 indexing yields a relative single-name
-path_pattern and general slicing remains open. Textual roots resolve at
+path_pattern. RHS colon constructs ordinary Product |> slice; empty structural
+slots are unit. Slice families use ordinary overload/Pattern extraction. Textual roots resolve at
 resident use; explicit roots retain dependencies. General $ splices ready
 Pattern material without implicit Path conversion.
 All directly named Product entries form an unordered layer; a bare entry makes

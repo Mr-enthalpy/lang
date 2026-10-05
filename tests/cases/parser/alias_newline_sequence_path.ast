@@ -1,0 +1,18 @@
+Program
+  LetAlias
+    binder:
+      Name A
+    target:
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  Name B
+              OperatorExpr
+                Atom
+                  NavPath
+                    components:
+                      component Name C
+                      component Name D

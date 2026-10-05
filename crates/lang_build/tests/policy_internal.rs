@@ -39,7 +39,7 @@ fn value_and_pattern_facets_have_independent_visibility_without_policy_changes()
         let entry = PolicyResultEntry {
             value: Some(7),
             pattern: 11,
-            view: declared_policy_view(stage, PolicyMode::Plain),
+            view: declared_policy_view(stage, PolicyMode::Const),
         };
         let observed = expose_policy_slice(&entry, horizon);
         assert_eq!(read_value(&observed).is_some(), value_visible);
@@ -62,7 +62,7 @@ fn horizon_projection_does_not_define_symbol_existence() {
         Some(world.package_root_node()),
         Provenance::new("runtime observation fixture"),
     );
-    symbol.policy_view = Some(declared_policy_view(Stage::Runtime, PolicyMode::Plain));
+    symbol.policy_view = Some(declared_policy_view(Stage::Runtime, PolicyMode::Const));
     delta.insert_symbol(world.package_root_node(), symbol);
     let snapshot = world
         .namespace_projection()
@@ -122,7 +122,7 @@ fn seal_horizon_projection_reads_concrete_policy_views() {
             Some(world.package_root_node()),
             Provenance::new(name),
         );
-        symbol.policy_view = Some(declared_policy_view(stage, PolicyMode::Plain));
+        symbol.policy_view = Some(declared_policy_view(stage, PolicyMode::Const));
         delta.insert_symbol(world.package_root_node(), symbol);
     }
     let snapshot = world
@@ -167,7 +167,7 @@ fn hidden_observation_cannot_suppress_a_search_root_conflict() {
             Some(root),
             Provenance::new("distinct root binding"),
         );
-        symbol.policy_view = Some(declared_policy_view(stage, PolicyMode::Plain));
+        symbol.policy_view = Some(declared_policy_view(stage, PolicyMode::Const));
         delta.insert_symbol(root, symbol);
     }
     let snapshot = world.namespace_projection().install_delta(delta).unwrap();

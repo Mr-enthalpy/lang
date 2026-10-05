@@ -136,10 +136,10 @@ pub(crate) fn install_core_bootstrap(
 /// Bootstrap declarations are meta-formed resolved observations.
 /// Runtime use requires a separately admitted ordinary migration, not a union.
 pub(crate) fn core_declared_pair(stage: Stage, _export_root: bool) -> PolicyPair {
-    crate::declared_policy_view(stage, PolicyMode::Plain).pair
+    crate::declared_policy_view(stage, PolicyMode::Const).pair
 }
 fn core_declared_view(stage: Stage) -> PolicyView {
-    crate::declared_policy_view(stage, PolicyMode::Plain)
+    crate::declared_policy_view(stage, PolicyMode::Const)
 }
 
 fn insert_builtin_callable(
@@ -205,11 +205,11 @@ fn insert_builtin_callable(
                 BuiltinCallableImpl::Struct => core_declared_pair(Stage::Meta, true),
                 _ => core_declared_pair(Stage::Meta, true),
             },
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
         body_entry_view: PolicyView {
             pair: core_declared_pair(Stage::Meta, false),
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
         result_view: PolicyView {
             pair: match primitive {
@@ -218,7 +218,7 @@ fn insert_builtin_callable(
                 | BuiltinCallableImpl::Verify(_)
                 | BuiltinCallableImpl::IdentityType => core_declared_pair(Stage::Meta, false),
             },
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
         declared_result_class,
         visibility: Some(crate::NamespaceVisibility::Public),

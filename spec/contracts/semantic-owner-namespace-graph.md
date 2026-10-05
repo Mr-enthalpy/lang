@@ -100,7 +100,7 @@ are checked at use; identity reuse does not freeze a value or grant authority. T
 [invocation owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md)
 defines the full law: the direct result is tau_M rooted at M; arbitrary Val2
 payloads use ordinary navigation. P1 meta retains dependency-derived OpenHere
-and plain let completes/closes the instance. P2 meta is its evaluation horizon. Stable owner ancestry creates no active
+and close let completes/closes the instance. P2 meta is its evaluation horizon. Stable owner ancestry creates no active
 MetaDom; actual stack frames impose meta/seal dominance.
 
 Source navigation remains inner-to-outer. A generated meta-call scope used as

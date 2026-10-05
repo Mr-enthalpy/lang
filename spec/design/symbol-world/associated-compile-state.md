@@ -48,8 +48,9 @@ let group_ref = (state::instance) ref;
 
 P1 meta retains the instance under its input-derived source. Its name is its type
 value, so OpenHere governs its mutation qualification and must hold before
-acquiring an instance mut view. There is no additional independent const/mut gate
-on that instance. Classic plain let instead completes and closes the instance;
+acquiring an instance mut view. Only finally omitted Mode becomes mut under
+meta + current OpenHere; explicit or deduced const/mut remains independent.
+Classic close let instead completes and closes the instance;
 meta let cannot reopen it later.
 
 The state member is an ordinary group name/value. Its declared ordinary member
@@ -90,7 +91,7 @@ Before an explicit Close of the instance, the general output meet specializes:
 The ordinary state member is constructed with this same source. This is the
 member's declared dependency, not a general parent-to-child OpenHere implication.
 Every group write requires its ordinary policy/capability/Place/lifetime facts
-and rechecks that source. Explicit instance closure (including plain completion)
+and rechecks that source. Explicit instance closure (including close completion)
 ends this instance's construction window and its associated state write window.
 Input closure likewise makes their write Pre fail. Saved mut views freeze neither.
 

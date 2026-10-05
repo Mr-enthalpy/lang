@@ -67,8 +67,8 @@ alternate relation or identity.
 - `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
 - `|> P { ... }` preserves the callable head (self, <> P).
 - Value-side expressions and Pattern-side material remain distinct.
-- `let binder === EntityRef` is syntax preservation only until its local
-  lexical resolver consumer is connected; it creates no semantic entity.
+- `let binder === PathMaterial` preserves a lexical Path alias: form the RHS once
+  in the old Path environment, store material, never cache terminal binding identity.
 - `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
   `type`, `meta`, `runtime`, `compile`, `namespace`, and `struct` are not lexer
   keywords.
@@ -133,7 +133,7 @@ alternate relation or identity.
   Pattern-role registration are independent; neither follows from Val2 presence.
   Input identity retains observed name/subject dependencies; output openness follows
   their meet. P1 meta let retains the instance under OpenHere, which governs mut
-  acquisition; plain let completes/closes it. P2 meta remains evaluation stage.
+  acquisition; close let completes/closes it. P2 meta remains evaluation stage.
   Invocation caches retain instances/member Places and current state. A consumes
   these facilities; saved references recheck the original source at write Pre.
   MetaDecl requires Ordinary placement, => and no capture clause. It admits no
@@ -156,7 +156,9 @@ alternate relation or identity.
   NameCoord. This is distinct from TypeMemberScope(T)=/tau(T).
   V_tau registration, Val2 residency, Pattern registration and ConstructEdge
   remain independent; no self-construction witness proves type callability.
-- `PolicyMode = {const, plain, mut}`; plain is a primitive point.
+- `PolicyMode = {const, mut}`; `MetaInstancePolicy = {meta, close}` is independent.
+  Complete only omitted mode: meta + current OpenHere yields mut, otherwise const.
+  Unknown required OpenHere is unavailable, never a negative proof.
 - Policy preference, CapabilityRealization, Writable, and DynamicLegality are
   independent judgments.
 - Output demand is total before maxima; selected failure never reopens.
@@ -185,7 +187,7 @@ alternate relation or identity.
   Optimizer rewrites require revalidation by affected semantic projections.
 - P1/P2 are independent; Pin permits explicit stage/mode constraints and holes
   over P2; Pout.stage=P1.stage. Bare let writes no override;
-  written plain is explicit, and a formal-local hole is ordinary Pattern deduction.
+  written const/mut are explicit, and a formal-local hole is ordinary Pattern deduction.
   Default completion is separate. Inner-call selection seals before outer use.
   Omitted ReturnTarget selects the outermost enclosing function layer after an event
   exists. Implicit ReturnEvent is separate: non-tail expressions require unit via
@@ -227,7 +229,10 @@ alternate relation or identity.
   name::a == name::(a$) is not an unconditional extraction rewrite.
   (n#)$ reconstructs structure only under the Path consumer; p[i] yields
   relative single-name path_pattern.
-  General Slice_Omega remains open. Textual roots resolve at resident use;
+  RHS colon forms ordinary Product |> slice; empty colon/comma slots are unit.
+  LHS colon remains annotation; FullExpr > : > comma structurally, :: > : lexically.
+  with items are Path material and forward references are legal; instantiate cleanup
+  relations conditionally per actual Self/navigation layer after complete control flow. Textual roots resolve at resident use;
   explicit roots retain anchors/dependencies. General $ inserts no implicit
   Path projection and preserves Hole identities. ADL uses ((a#)[0])$::t.
 - Public Policy pair syntax is retired; internal value/type observations remain

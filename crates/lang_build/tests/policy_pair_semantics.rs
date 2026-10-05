@@ -53,7 +53,7 @@ fn result_entry<V, P>(
                     stage: pattern_stage,
                 },
             },
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
     }
 }
@@ -66,31 +66,34 @@ fn policy_pair_and_whole_slot_mode_are_orthogonal_facts() {
             stage: Stage::Compile,
         },
     };
-    let plain = PolicyView {
+    let mutable = PolicyView {
         pair: pair.clone(),
-        mode: PolicyMode::Plain,
+        mode: PolicyMode::Mut,
     };
     let constant = PolicyView {
         pair: pair.clone(),
         mode: PolicyMode::Const,
     };
-    assert_ne!(plain, constant, "same pair does not erase whole-slot mode");
+    assert_ne!(
+        mutable, constant,
+        "same pair does not erase whole-slot mode"
+    );
 
     let mut different_pair = pair;
     different_pair.value = ValueComponentPolicy::Present(Stage::Runtime);
     assert_ne!(
         PolicyView {
             pair: different_pair,
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
-        plain,
+        constant,
         "same mode does not erase pair coordinates"
     );
 
     let omitted = elaborate_binding_result_demand(None, Provenance::new("omitted mode"))
         .expect("omitted demand is total");
     assert_eq!(omitted.pair_query, P1Projection::Infer);
-    assert_eq!(omitted.mode, PolicyMode::Plain);
+    assert_eq!(omitted.mode, None);
 }
 
 #[test]
@@ -190,11 +193,11 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         Provenance::new("formal inherited P2"),
     )
     .expect("valid inherited P2");
-    let plain =
-        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("plain formal"))
+    let omitted =
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("omitted formal"))
             .expect("omitted formal policy inherits P2");
-    assert_eq!(plain.effective_pair, inherited_p2.pair);
-    assert_eq!(plain.mode, PolicyMode::Plain);
+    assert_eq!(omitted.effective_pair, inherited_p2.pair);
+    assert_eq!(omitted.mode, PolicyMode::Const);
 
     let formal = elaborate_formal_policy_pattern(
         Some(&policy_spec("const")),
@@ -256,7 +259,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         panic!("single namespace policy must elaborate as value-dominant P1");
     };
     assert_eq!(value.stage, Some(Stage::Runtime));
-    assert_eq!(declaration.mode, PolicyMode::Plain);
+    assert_eq!(declaration.mode, PolicyMode::Const);
     let Some(P1Projection::ValueDominant {
         value: external_value,
     }) = &declaration.external_projection
@@ -265,7 +268,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     };
     assert_eq!(external_value, value);
     let function_declaration = function_object_declaration_policy(&declaration);
-    assert_eq!(function_declaration.mode, PolicyMode::Plain);
+    assert_eq!(function_declaration.mode, PolicyMode::Const);
 
     let explicit_const = elaborate_namespace_declaration_policy(
         Some(&policy_spec("export + const + runtime")),
@@ -480,7 +483,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
                     identity: 1,
                     export_root: true,
                     internal_policy: runtime_value(),
-                    mode: PolicyMode::Plain,
+                    mode: PolicyMode::Const,
                 },
                 Candidate {
                     identity: 2,
@@ -496,7 +499,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
                 identity: 4,
                 export_root: false,
                 internal_policy: runtime_value(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             }],
         ),
         (
@@ -505,7 +508,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
                 identity: 3,
                 export_root: false,
                 internal_policy: runtime_value(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             }],
         ),
         (
@@ -514,7 +517,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
                 identity: 7,
                 export_root: false,
                 internal_policy: runtime_value(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             }],
         ),
         (
@@ -523,7 +526,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
                 identity: 5,
                 export_root: false,
                 internal_policy: type_only(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             }],
         ),
         (
@@ -532,7 +535,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
                 identity: 8,
                 export_root: false,
                 internal_policy: runtime_value(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             }],
         ),
     ]);
@@ -723,7 +726,7 @@ fn omitted_p1_completes_to_one_p2_stage() {
     let object = derive_function_object_p1(&compile, &FunctionObjectDeclarationPolicy::default());
     assert_eq!(object.pair.value.stage(), Some(Stage::Runtime));
     assert_eq!(object.pair.pattern.stage, Stage::Compile);
-    assert_eq!(object.mode, PolicyMode::Plain);
+    assert_eq!(object.mode, PolicyMode::Const);
     let const_projection = elaborate_binding_p1_projection(
         Some(&policy_spec("const")),
         Provenance::new("const function-object P1"),
@@ -738,7 +741,7 @@ fn omitted_p1_completes_to_one_p2_stage() {
     assert_eq!(selected.len(), 1);
     assert_eq!(
         selected[0].view.mode,
-        PolicyMode::Plain,
+        PolicyMode::Const,
         "a pair projection does not manufacture or rewrite whole-slot mode"
     );
 }
@@ -758,9 +761,9 @@ fn namespace_attributes_never_change_the_canonical_function_object_pair() {
         )
         .expect("valid namespace declaration")
     };
-    let public = elaborate("public + meta");
-    let private = elaborate("private + meta");
-    let export = elaborate("export + public + meta");
+    let public = elaborate("public + compile");
+    let private = elaborate("private + compile");
+    let export = elaborate("export + public + compile");
 
     let public_p1 =
         derive_function_object_p1(&result, &function_object_declaration_policy(&public));
@@ -898,10 +901,10 @@ fn candidate(
     PolicyOverloadCandidate {
         id,
         formal_frame: PolicyFormalFrame {
-            self_mode: frame_patterns.next().unwrap_or(PolicyMode::Plain),
+            self_mode: frame_patterns.next().unwrap_or(PolicyMode::Const),
             explicit_parameter_modes: frame_patterns.collect(),
         },
-        result_policy: PolicyMode::Plain,
+        result_policy: PolicyMode::Const,
         is_delete,
     }
 }
@@ -920,7 +923,6 @@ fn actual_frame(
 fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     let single = vec![
         candidate("const", vec![PolicyMode::Const], false),
-        candidate("plain", vec![PolicyMode::Plain], false),
         candidate("mut", vec![PolicyMode::Mut], false),
     ];
     assert_eq!(
@@ -941,8 +943,8 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     );
 
     let crossed = vec![
-        candidate("left", vec![PolicyMode::Const, PolicyMode::Plain], false),
-        candidate("right", vec![PolicyMode::Plain, PolicyMode::Const], false),
+        candidate("left", vec![PolicyMode::Const, PolicyMode::Mut], false),
+        candidate("right", vec![PolicyMode::Mut, PolicyMode::Const], false),
     ];
     assert!(matches!(
         select_by_policy_product(
@@ -955,7 +957,7 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
 
     let delete = vec![
         candidate("const-delete", vec![PolicyMode::Const], true),
-        candidate("plain", vec![PolicyMode::Plain], false),
+        candidate("mut", vec![PolicyMode::Mut], false),
     ];
     assert_eq!(
         select_by_policy_product(
@@ -980,9 +982,10 @@ fn formal_p2_policy_mode_slice_is_exported_to_the_overload_product_order() {
         Provenance::new("const formal"),
     )
     .expect("const formal");
-    let plain_formal =
-        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("plain formal"))
-            .expect("plain formal");
+    let omitted_formal =
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("omitted formal"))
+            .expect("omitted formal");
+    assert_eq!(omitted_formal.mode, PolicyMode::Const);
     let mut_formal = elaborate_formal_policy_pattern(
         Some(&policy_spec("mut")),
         &inherited_p2,
@@ -993,7 +996,7 @@ fn formal_p2_policy_mode_slice_is_exported_to_the_overload_product_order() {
     let split = PolicyOverloadCandidate::from_formal_patterns(
         "split",
         &[const_formal.clone(), mut_formal.clone()],
-        PolicyMode::Plain,
+        PolicyMode::Const,
         false,
     );
     assert_eq!(
@@ -1009,19 +1012,13 @@ fn formal_p2_policy_mode_slice_is_exported_to_the_overload_product_order() {
         PolicyOverloadCandidate::from_formal_patterns(
             "const",
             &[const_formal],
-            PolicyMode::Plain,
-            false,
-        ),
-        PolicyOverloadCandidate::from_formal_patterns(
-            "plain",
-            &[plain_formal],
-            PolicyMode::Plain,
+            PolicyMode::Const,
             false,
         ),
         PolicyOverloadCandidate::from_formal_patterns(
             "mut",
             &[mut_formal],
-            PolicyMode::Plain,
+            PolicyMode::Const,
             false,
         ),
     ];
@@ -1050,7 +1047,7 @@ fn total_output_mode_demand_orders_candidate_results() {
         PolicyOverloadCandidate {
             id: "const-result",
             formal_frame: PolicyFormalFrame {
-                self_mode: PolicyMode::Plain,
+                self_mode: PolicyMode::Const,
                 explicit_parameter_modes: vec![],
             },
             result_policy: PolicyMode::Const,
@@ -1059,7 +1056,7 @@ fn total_output_mode_demand_orders_candidate_results() {
         PolicyOverloadCandidate {
             id: "mut-result",
             formal_frame: PolicyFormalFrame {
-                self_mode: PolicyMode::Plain,
+                self_mode: PolicyMode::Const,
                 explicit_parameter_modes: vec![],
             },
             result_policy: PolicyMode::Mut,
@@ -1072,7 +1069,7 @@ fn total_output_mode_demand_orders_candidate_results() {
             &actual_frame(PolicyMode::Const, vec![]),
             OutputModeDemand::default()
         ),
-        PolicyOverloadSelection::Ambiguous(_)
+        PolicyOverloadSelection::Selected("const-result")
     ));
     assert_eq!(
         select_by_policy_product(
@@ -1085,49 +1082,35 @@ fn total_output_mode_demand_orders_candidate_results() {
 }
 
 #[test]
-fn policy_mode_is_a_real_three_point_preference_and_plain_is_not_a_wildcard() {
-    let candidates = [PolicyMode::Const, PolicyMode::Plain, PolicyMode::Mut]
+fn policy_mode_has_two_points_with_no_neutral_preference() {
+    let candidates = [PolicyMode::Const, PolicyMode::Mut]
         .into_iter()
         .map(|mode| PolicyOverloadCandidate {
             id: mode,
             formal_frame: PolicyFormalFrame {
-                self_mode: PolicyMode::Plain,
+                self_mode: PolicyMode::Const,
                 explicit_parameter_modes: vec![],
             },
             result_policy: mode,
             is_delete: false,
         })
         .collect::<Vec<_>>();
-    let actual = actual_frame(PolicyMode::Plain, vec![]);
-
-    for demand in [PolicyMode::Const, PolicyMode::Plain, PolicyMode::Mut] {
+    for mode in [PolicyMode::Const, PolicyMode::Mut] {
         assert_eq!(
-            select_by_policy_product(&candidates, &actual, OutputModeDemand(demand),),
-            PolicyOverloadSelection::Selected(demand),
-            "the exact point must win for every total output demand"
+            select_by_policy_product(
+                &candidates,
+                &actual_frame(PolicyMode::Const, vec![]),
+                OutputModeDemand(mode)
+            ),
+            PolicyOverloadSelection::Selected(mode)
         );
     }
-
-    let endpoints_only = candidates
-        .iter()
-        .filter(|candidate| candidate.result_policy != PolicyMode::Plain)
-        .cloned()
-        .collect::<Vec<_>>();
-    assert!(matches!(
-        select_by_policy_product(
-            &endpoints_only,
-            &actual,
-            OutputModeDemand(PolicyMode::Plain),
-        ),
-        PolicyOverloadSelection::Ambiguous(ref ids)
-            if ids.contains(&PolicyMode::Const) && ids.contains(&PolicyMode::Mut)
-    ));
 }
 
 #[test]
-fn capability_realization_is_a_complete_policy_orthogonal_three_by_three_grid() {
+fn capability_realization_is_a_derived_two_mode_view() {
     let mut realization = CapabilityRealization::default();
-    assert_eq!(realization.iter().count(), 9);
+    assert_eq!(realization.iter().count(), 4);
     assert!(realization
         .iter()
         .all(|(_, cell)| cell == CapabilityRealizationCell::Absent));
@@ -1143,8 +1126,8 @@ fn capability_realization_is_a_complete_policy_orthogonal_three_by_three_grid() 
         CapabilityRealizationCell::Custom,
     );
     realization.set(
-        PolicyMode::Plain,
-        PolicyMode::Plain,
+        PolicyMode::Const,
+        PolicyMode::Const,
         CapabilityRealizationCell::Default,
     );
 
@@ -1157,7 +1140,7 @@ fn capability_realization_is_a_complete_policy_orthogonal_three_by_three_grid() 
         CapabilityRealizationCell::Custom
     );
     assert_eq!(
-        realization.cell(PolicyMode::Plain, PolicyMode::Plain),
+        realization.cell(PolicyMode::Const, PolicyMode::Const),
         CapabilityRealizationCell::Default
     );
     assert_eq!(

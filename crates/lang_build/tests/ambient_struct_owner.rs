@@ -255,6 +255,11 @@ fn one_shot_inner_field_and_later_explicit_navigation_have_one_pattern_value() {
     let resident_type = world
         .resolve_type_value("uint8")
         .expect("core uint8 type resolves semantically");
+    let resident_place = world
+        .semantic_world()
+        .symbol_in_namespace(world.core_node(), "uint8")
+        .expect("the same named type carrier")
+        .pure_p_place();
     let outcome = invoke_struct(
         &mut world,
         "let t: type = ((uint8 inner) t) |> struct;",
@@ -268,7 +273,7 @@ fn one_shot_inner_field_and_later_explicit_navigation_have_one_pattern_value() {
     // its resident leaf is an OBSERVED `Addr(Norm_type)`; interning is
     // content-idempotent, so replaying the observation yields that address.
     let later_addr = world
-        .canonical_type_core_observation_address(resident_type, None)
+        .canonical_type_core_observation_address(resident_type, resident_place)
         .expect("uint8 type observation normalizes");
     let resident_observation = CanonicalTypeObservation::Observed(later_addr);
     let mut later_injection =

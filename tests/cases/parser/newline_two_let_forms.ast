@@ -19,21 +19,26 @@ Program
           None
         initializer:
           Expr
-            PolicyLet
-              policy:
-                PolicySpec
-                  PolicyConjunction
-                      PolicyAtom Name "a"
-              operand:
-                Expr
-                  Pipe
-                    Segment has_incoming=false
-                      OperatorExpr
-                        Atom
-                          Name y
-                      OperatorExpr
-                        Atom
-                          Name type
-                      OperatorExpr
-                        Atom
-                          Name b
+            ColonSlots
+              Expr
+                PolicyLet
+                  policy:
+                    PolicySpec
+                      PolicyConjunction
+                          PolicyAtom Name "a"
+                  operand:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name y
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name type
+                    OperatorExpr
+                      Atom
+                        Name b

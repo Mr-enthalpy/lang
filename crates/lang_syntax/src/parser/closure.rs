@@ -27,6 +27,8 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
         .expect("parse_body_block at `{`");
 
     parser.enter_nesting();
+    let previous_context = parser.pattern_context;
+    parser.pattern_context = false;
     let mut forms = Vec::new();
     let mut seen_terminal = false;
 
@@ -70,6 +72,7 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
     };
 
     parser.leave_nesting();
+    parser.pattern_context = previous_context;
     BodyBlockAst {
         forms,
         span: lbrace.span.join(end),
@@ -107,6 +110,17 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         ));
     }
 
+    // A grouped value followed by a bracketed closure argument is not a
+    // callable head. Only a complete local strategy tail supplies that anchor.
+    let (class, after) = parser.cursor.classify_paren_at_segment_position();
+    if class == super::cursor::ParenClassification::Group
+        && after.is_some_and(|index| {
+            token_index_starts_strategy_annotation_candidate(parser, index)
+                && !token_index_starts_complete_strategy_tail(parser, index)
+        })
+    {
+        return None;
+    }
     let saved = parser.cursor.current_index();
     parser.gate_diagnostics();
     let head = match parse_fn_head_prefix(parser) {

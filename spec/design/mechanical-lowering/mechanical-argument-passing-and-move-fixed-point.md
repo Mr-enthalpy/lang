@@ -181,7 +181,7 @@ Two additional invariants close the Policy-mode boundary:
 
 ```text
 PlainMaterializationPrinciple:
-  destination PolicyMode ∈ {const, plain, mut}
+  destination PolicyMode ∈ {const, mut}
   ordinary T:
     share(source) -> selected clone -> fresh complete result -> Move(result)
   T ref | T share:
@@ -192,7 +192,7 @@ NoPreMoveBeforeCopy:
   terminal Move transports the fresh complete result, not x
 ```
 
-The const, plain, and mut destination cases use this same ordinary realization. The
+The const and mut destination cases use this same ordinary realization. The
 destination mode may affect candidate preference or capability realization,
 but it does not introduce three different kinds of copy and never consumes
 `x` before the selected clone has completed. Nor does transfer relabel the
@@ -355,17 +355,26 @@ The documents below own the adjacent relations consumed by this model.
 
 ## 15. Cleanup placement and with
 
-Cleanup is placed before @ or other lifetime observation. Omitted with always
-uses the ordinary NLL default; explicit empty with{} anchors cleanup at the
-lexical boundary. Neither supplies missing access, borrow, capture, type or
-construction authority.
+Cleanup is placed before @ or other lifetime observation. Omitted with uses
+ordinary NLL; explicit empty with{} anchors cleanup at the lexical boundary.
+WithItem is full Path material, interpreted through navigation inheritance,
+lexical Path aliases, Self hierarchy and the ordinary $ boundary.
 
-```text
-x with{a,b}  =>  x -> a and x -> b
-Touch(x) = Use(x) ∪ Consume(x) ∪ Destroy(x)
-UseForPlacement(a)
-  = OrdinaryRequiredUses(a) ∪ ⋃{Touch(x) | x -> a}
-```
+A declaration records subject + Path-relative cleanup relation. It reads no
+resident and creates no borrow, access/value-dependency edge, LifeName or
+generation. Forward references are permitted. After declarations, Self/navigation
+hierarchy and ordinary control flow are complete, resolve each Path per layer:
+
+    ResolveWithPath_K(p,lambda) = n   if that layer has an actual object
+                                 bottom otherwise
+
+A missing object produces **no constraint** in that layer, not an error or
+placeholder. Existing objects supply actual LifeName/generation facts under the
+ordinary cleanup algebra:
+
+    higher -> lower  => Drop(higher) < Drop(lower), when both events exist
+    Touch(x) = Use(x) union Consume(x) union Destroy(x)
+    UseForPlacement(a) = OrdinaryRequiredUses(a) union {Touch(x) | x -> a}
 
 Only actual continuation events belong to Touch. Each outgoing edge makes the
 dependency a survive the dependent x's required touches. If both destruction
@@ -398,10 +407,15 @@ priority among still-unordered available events at that cut. It is not a
 placement constraint and never advances or delays a cleanup point.
 
 ```text
-ordinary control/liveness facts -> cleanup constraints -> points fixed
+complete declarations / Self hierarchy / control flow
+  -> conditionally instantiated Path relations / actual lifecycle facts
+  -> cleanup constraints -> points fixed
   -> same-point reverse-declaration linearization -> complete sequence fixed
   -> lifecycle observation / @
 ```
+
+No source-scan destructor insertion, future-value placeholder or future LifeName
+is required. with has no independent name resolver or lifetime interpreter.
 
 No alternative-cleanup observational-equivalence question remains. There is no
 cleanup/lifetime solver loop.

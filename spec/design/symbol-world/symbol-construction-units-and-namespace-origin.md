@@ -111,7 +111,7 @@ visibility across a masking meta frame is not Close. Meta result completion
 transfers only owned material under the actual result region and checks external
 and borrow dependencies. Global publication additionally requires global
 stability and closure of the non-generative registered structure. An inherited outer opening source is
-not closed merely by retained P1 meta completion; classic plain let closes
+not closed merely by retained P1 meta completion; classic close let closes
 the instance. Source composition replaces none of these laws.
 
 ## 6. Transactions and implementation

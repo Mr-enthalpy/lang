@@ -3,6 +3,19 @@ Program
     binder:
       Name x
     target:
-      EntityRef
-        components:
-          component Name let
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  Name let
+              OperatorExpr
+                Atom
+                  Name y
+              OperatorExpr
+                Atom
+                  Name type
+              OperatorExpr
+                Atom
+                  Name z

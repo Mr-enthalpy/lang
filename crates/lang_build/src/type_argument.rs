@@ -93,14 +93,14 @@ pub trait TypeResolutionEnv {
         }
     }
 
-    /// Resolve a struct field type path, producing the field-type carrier
-    /// Symbol (non-identity installation material) and represented type.
+    /// Resolve a struct field type path once, retaining the selected carrier's
+    /// identity, complete observation and declared Policy view together.
     fn resolve_field_type_path(
         &self,
         path: &[String],
         context: &ResolverContext,
         provenance: &Provenance,
-    ) -> Result<(SymbolId, TypeValueId), Diagnostic>;
+    ) -> Result<NamedTypeResolution, Diagnostic>;
 }
 
 /// Canonical semantic-world environment. Resolution flows through recursive
@@ -171,7 +171,7 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
         path: &[String],
         context: &ResolverContext,
         provenance: &Provenance,
-    ) -> Result<(SymbolId, TypeValueId), Diagnostic> {
+    ) -> Result<NamedTypeResolution, Diagnostic> {
         let type_path_str = path.join("::");
         let resolution = self.resolve_path_carrier(path, context).ok_or_else(|| {
             Diagnostic::hard_error(
@@ -182,15 +182,13 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
         // Field-type graph projection used for namespace installation only;
         // it is non-identity material (see
         // `FieldSignatureMaterial::field_type_carrier_symbol`).
-        Ok((
-            resolution.carrier_symbol.ok_or_else(|| {
-                Diagnostic::hard_error(
-                    "resolved struct field type has no graph declaration projection",
-                    Some(provenance.clone()),
-                )
-            })?,
-            resolution.represented_type,
-        ))
+        resolution.carrier_symbol.ok_or_else(|| {
+            Diagnostic::hard_error(
+                "resolved struct field type has no graph declaration projection",
+                Some(provenance.clone()),
+            )
+        })?;
+        Ok(resolution)
     }
 }
 

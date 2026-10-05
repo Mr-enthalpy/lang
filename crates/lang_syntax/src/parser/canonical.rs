@@ -65,6 +65,44 @@ fn parse_canonical_element(
 ) -> Option<CanonicalSkeletonAst> {
     let token = parser.cursor.peek_non_trivia();
 
+    let grouped_splice = parser
+        .cursor
+        .classify_paren_at_segment_position()
+        .1
+        .is_some_and(|index| {
+            matches!(
+                parser.cursor.peek_at_skip_trivia(index).1.kind,
+                TokenKind::Operator(OperatorSpelling::Dollar)
+            )
+        });
+    let name_splice = matches!(
+        parser.cursor.peek_next_non_trivia().kind,
+        TokenKind::Operator(OperatorSpelling::Dollar)
+    );
+    let navigation = matches!(token.kind, TokenKind::Name)
+        && parser.cursor.peek_next_non_trivia().kind == TokenKind::Symbol(Symbol::ColonColon);
+    let bracket_operator = token.kind == TokenKind::Symbol(Symbol::LBracket)
+        && parser.cursor.peek_next_non_trivia().kind == TokenKind::Symbol(Symbol::RBracket);
+    if grouped_splice
+        || name_splice
+        || navigation
+        || bracket_operator
+        || token.kind.is_operator_spelling()
+    {
+        let expression = super::expr::parse_pattern_expr_until(parser, |p| {
+            p.cursor.at_symbol(Symbol::Equal)
+                || p.cursor.at_name("with")
+                || p.cursor.at_symbol(Symbol::Comma)
+                || p.cursor.at_symbol(Symbol::RParen)
+                || p.cursor.at_symbol(Symbol::Colon)
+                || p.is_form_boundary()
+        });
+        return Some(CanonicalSkeletonAst::Expression {
+            span: expression.span,
+            expression: Box::new(expression),
+        });
+    }
+
     match &token.kind {
         TokenKind::Symbol(Symbol::Ellipsis) => Some(parse_canonical_pack(parser, deduce)),
         TokenKind::Symbol(Symbol::LParen) => Some(parse_canonical_product_extract(parser, deduce)),
@@ -254,7 +292,8 @@ fn recover_to_canonical_boundary(parser: &mut Parser<'_>) {
 
 fn canonical_skeleton_span(skeleton: &CanonicalSkeletonAst) -> crate::Span {
     match skeleton {
-        CanonicalSkeletonAst::Segment { span, .. }
+        CanonicalSkeletonAst::Expression { span, .. }
+        | CanonicalSkeletonAst::Segment { span, .. }
         | CanonicalSkeletonAst::Pack { span, .. }
         | CanonicalSkeletonAst::ProductExtract { span, .. }
         | CanonicalSkeletonAst::Wildcard { span }

@@ -33,10 +33,16 @@ Program
                                           CanonicalSegment
                                             elements:
                                               CanonicalName role=Hole name=val
-                                              CanonicalNavPath
-                                                names:
-                                                  option
-                                                  Sum
+                                              PatternExpression
+                                                Expr
+                                                  Pipe
+                                                    Segment has_incoming=false
+                                                      OperatorExpr
+                                                        Atom
+                                                          NavPath
+                                                            components:
+                                                              component Name option
+                                                              component Name Sum
                                       annotation:
                                         None
                                       with_clause:
@@ -71,10 +77,16 @@ Program
                                           CanonicalSegment
                                             elements:
                                               CanonicalWildcard _
-                                              CanonicalNavPath
-                                                names:
-                                                  option
-                                                  None
+                                              PatternExpression
+                                                Expr
+                                                  Pipe
+                                                    Segment has_incoming=false
+                                                      OperatorExpr
+                                                        Atom
+                                                          NavPath
+                                                            components:
+                                                              component Name option
+                                                              component Name None
                                       annotation:
                                         None
                                       with_clause:

@@ -1,15 +1,14 @@
 use crate::{
     token::operator_spelling_in_expr_context, AliasBinderAst, AnnotationTermAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, CanonicalSkeletonAst, DeduceListAst,
-    DiagnosticCode, EntityRefAst, ErrorAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
-    NameAst, NavComponentAst, OperatorNameAst, PolicySpecAst, ProductExtractAst,
-    ProductExtractElementAst, Span, Symbol, TokenKind, WithClauseAst, WithClauseKind,
+    DiagnosticCode, ErrorAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst, NameAst,
+    OperatorNameAst, PathMaterialAst, PolicySpecAst, ProductExtractAst, ProductExtractElementAst,
+    Span, Symbol, TokenKind, WithClauseAst, WithClauseKind,
 };
 
 use super::{
-    atom::parse_nav_group_component, canonical::parse_canonical_skeleton,
-    deduce::parse_deduce_list, expr::parse_expr_until, form::Parser,
-    policy::try_parse_policy_spec_before_let,
+    canonical::parse_canonical_skeleton, deduce::parse_deduce_list, expr::parse_expr_until,
+    form::Parser, policy::try_parse_policy_spec_before_let,
 };
 
 #[derive(Clone, Copy)]
@@ -382,6 +381,25 @@ fn parse_binding_pattern(
         return BindingPatternAst::Error(parser.error_ast(message, token.span));
     }
 
+    let grouped_splice = parser
+        .cursor
+        .classify_paren_at_segment_position()
+        .1
+        .is_some_and(|index| {
+            matches!(
+                parser.cursor.peek_at_skip_trivia(index).1.kind,
+                TokenKind::Operator(crate::OperatorSpelling::Dollar)
+            )
+        });
+    if grouped_splice {
+        let expression = super::expr::parse_pattern_expr_until(parser, |p| {
+            at_binding_pattern_boundary(p, context) || p.cursor.at_name("with")
+        });
+        return BindingPatternAst::Skeleton(CanonicalSkeletonAst::Expression {
+            span: expression.span,
+            expression: Box::new(expression),
+        });
+    }
     if parser.cursor.at_symbol(Symbol::LParen) {
         let element_context = match context {
             BindingSlotContext::Return => BindingSlotContext::Return,
@@ -552,7 +570,7 @@ fn parse_binding_annotation(
     {
         let hole = parser.cursor.bump_non_trivia();
         parser.cursor.consume_symbol(Symbol::Colon);
-        let right = parse_expr_until(parser, |p| annotation_stop(p, context));
+        let right = super::expr::parse_pattern_expr_until(parser, |p| annotation_stop(p, context));
         if super::form::expression_contains_name(&right, "return") {
             parser.error(
                 DiagnosticCode::ReturnExpressionNotAllowed,
@@ -568,7 +586,7 @@ fn parse_binding_annotation(
         });
     }
 
-    let left_or_expr = parse_expr_until(parser, |p| {
+    let left_or_expr = super::expr::parse_pattern_expr_until(parser, |p| {
         p.cursor.at_symbol(Symbol::Colon) || annotation_stop(p, context)
     });
     if super::form::expression_contains_name(&left_or_expr, "return") {
@@ -580,7 +598,7 @@ fn parse_binding_annotation(
     }
 
     if parser.cursor.consume_symbol(Symbol::Colon).is_some() {
-        let right = parse_expr_until(parser, |p| annotation_stop(p, context));
+        let right = super::expr::parse_pattern_expr_until(parser, |p| annotation_stop(p, context));
         if super::form::expression_contains_name(&right, "return") {
             parser.error(
                 DiagnosticCode::ReturnExpressionNotAllowed,
@@ -682,7 +700,7 @@ fn parse_alias_let_body(
 
     parser.cursor.consume_symbol(Symbol::TripleEqual);
 
-    let target = parse_entity_ref(parser);
+    let target = parse_path_material(parser, |p| p.is_alias_rhs_boundary());
     let span = span_start.join(target.span);
     LetAliasAst {
         policy,
@@ -722,7 +740,7 @@ fn alias_binder_followed_by_triple_equal(parser: &mut Parser<'_>) -> bool {
 }
 
 // Recognize the paired empty brackets `[]` as the operator spelling `[]` in
-// operator-name positions (binder, alias binder, entity-ref inner component).
+// operator-name positions (binder, alias binder, Path inner component).
 // `[` followed by content is not the `[]` operator and is left untouched.
 fn try_consume_bracket_operator_name(parser: &mut Parser<'_>) -> Option<OperatorNameAst> {
     if !parser.cursor.at_symbol(Symbol::LBracket) {
@@ -788,172 +806,49 @@ fn is_valid_alias_binder(kind: &TokenKind) -> bool {
     matches!(kind, TokenKind::Name) || operator_spelling_in_expr_context(kind).is_some()
 }
 
-fn parse_entity_ref(parser: &mut Parser<'_>) -> EntityRefAst {
-    let start = parser.cursor.current_raw_span();
-    let mut components: Vec<NavComponentAst> = Vec::new();
-
-    if is_entity_ref_boundary(parser) {
-        parser.error(
-            DiagnosticCode::ExpectedAliasTarget,
-            "expected entity reference after `===`",
-            start,
-        );
-        return EntityRefAst {
-            components: vec![NavComponentAst::Error(
-                parser.error_ast("expected entity reference", start),
-            )],
-            span: start,
-        };
-    }
-
-    let Some(first) = parse_entity_inner_component(parser) else {
-        let span = parser.cursor.current_span();
-        let (code, message, node_message) = if parser.cursor.at_symbol(Symbol::LParen) {
-            (
-                DiagnosticCode::InvalidEntityRef,
-                "grouped expression cannot be an innermost navigation component",
-                "grouped expression cannot be an innermost navigation component",
-            )
-        } else {
-            (
-                DiagnosticCode::ExpectedAliasTarget,
-                "expected entity reference after `===`",
-                "expected entity reference",
-            )
-        };
-        parser.error(code, message, span);
-        parser.cursor.bump_non_trivia();
-        parser.recover_to_form_boundary();
-        return EntityRefAst {
-            components: vec![NavComponentAst::Error(parser.error_ast(node_message, span))],
-            span: start.join(span),
-        };
-    };
-
-    let mut span = start.join(nav_component_span(&first));
-    components.push(first);
-
-    while !is_entity_ref_boundary(parser)
-        && parser.cursor.consume_symbol(Symbol::ColonColon).is_some()
-    {
-        if is_entity_ref_boundary(parser) {
-            let error_span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::ExpectedAliasTarget,
-                "expected navigation component after `::`",
-                error_span,
-            );
-            span = span.join(error_span);
-            components.push(NavComponentAst::Error(
-                parser.error_ast("expected navigation component", error_span),
-            ));
-            break;
-        }
-
-        let Some(component) = parse_entity_outer_component(parser) else {
-            let error_span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::InvalidEntityRef,
-                "expected navigation component after `::`",
-                error_span,
-            );
-            parser.cursor.bump_non_trivia();
-            parser.recover_to_form_boundary();
-            span = span.join(error_span);
-            components.push(NavComponentAst::Error(
-                parser.error_ast("expected navigation component", error_span),
-            ));
-            break;
-        };
-
-        span = span.join(nav_component_span(&component));
-        components.push(component);
-    }
-
-    finish_entity_ref(parser, components, span)
-}
-
-fn finish_entity_ref(
+fn parse_path_material(
     parser: &mut Parser<'_>,
-    components: Vec<NavComponentAst>,
-    span: Span,
-) -> EntityRefAst {
-    if parser.is_alias_rhs_boundary() {
-        return EntityRefAst { components, span };
+    mut stop: impl FnMut(&mut Parser<'_>) -> bool,
+) -> PathMaterialAst {
+    if parser.is_form_boundary() || stop(parser) {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::ExpectedPathMaterial,
+            "expected Path material",
+            span,
+        );
+        return PathMaterialAst {
+            span,
+            expression: Box::new(ExprAst {
+                kind: ExprKind::Error(parser.error_ast("expected Path material", span)),
+                span,
+            }),
+        };
     }
-
-    let next = parser.cursor.peek_non_trivia();
-    parser.error(
-        DiagnosticCode::UnexpectedAliasRhsExpression,
-        format!("unexpected token `{}` after entity reference", next.text),
-        next.span,
-    );
-    parser.recover_to_form_boundary();
-    EntityRefAst { components, span }
-}
-
-fn parse_entity_inner_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
-    if let Some(operator) = try_consume_bracket_operator_name(parser) {
-        return Some(NavComponentAst::Operator(operator));
+    if parser.cursor.at_symbol(Symbol::ColonColon) {
+        let invalid = parser.cursor.bump_non_trivia().span;
+        parser.error(
+            DiagnosticCode::UnexpectedToken,
+            "Path material cannot start with `::`",
+            invalid,
+        );
+        let recovered = super::expr::parse_pattern_expr_until(parser, stop);
+        let span = invalid.join(recovered.span);
+        return PathMaterialAst {
+            span,
+            expression: Box::new(ExprAst {
+                kind: ExprKind::Error(
+                    parser.error_ast("Path material cannot start with `::`", span),
+                ),
+                span,
+            }),
+        };
     }
-    let token = parser.cursor.peek_non_trivia();
-    match token.kind {
-        TokenKind::Name => {
-            let token = parser.cursor.bump_non_trivia();
-            Some(NavComponentAst::Text(NameAst {
-                text: token.text.clone(),
-                span: token.span,
-            }))
-        }
-        _ => {
-            let spelling = operator_spelling_in_expr_context(&token.kind)?;
-            let token = parser.cursor.bump_non_trivia();
-            Some(NavComponentAst::Operator(OperatorNameAst {
-                spelling: spelling.as_source_text().to_string(),
-                span: token.span,
-            }))
-        }
+    let expression = super::expr::parse_pattern_expr_until(parser, stop);
+    PathMaterialAst {
+        span: expression.span,
+        expression: Box::new(expression),
     }
-}
-
-fn parse_entity_outer_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
-    let token = parser.cursor.peek_non_trivia();
-    match token.kind {
-        TokenKind::Name => {
-            let token = parser.cursor.bump_non_trivia();
-            Some(NavComponentAst::Text(NameAst {
-                text: token.text.clone(),
-                span: token.span,
-            }))
-        }
-        TokenKind::Symbol(Symbol::LParen) => parse_nav_group_component(parser),
-        _ if token.kind.is_operator_spelling() => {
-            let token = parser.cursor.bump_non_trivia();
-            parser.error(
-                DiagnosticCode::InvalidEntityRef,
-                "operator cannot be an outer navigation component",
-                token.span,
-            );
-            Some(NavComponentAst::Error(parser.error_ast(
-                "operator cannot be an outer navigation component",
-                token.span,
-            )))
-        }
-        _ => None,
-    }
-}
-
-fn nav_component_span(component: &NavComponentAst) -> Span {
-    match component {
-        NavComponentAst::Text(name) => name.span,
-        NavComponentAst::Operator(operator) => operator.span,
-        NavComponentAst::Group(expr) => expr.span,
-        NavComponentAst::Error(error) => error.span,
-    }
-}
-
-fn is_entity_ref_boundary(parser: &mut Parser<'_>) -> bool {
-    parser.cursor.is_form_boundary()
 }
 
 fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
@@ -987,23 +882,22 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
     }
 
     loop {
-        let token = parser.cursor.peek_non_trivia();
-        if !matches!(token.kind, TokenKind::Name) {
+        if parser.cursor.at_symbol(Symbol::Comma) || parser.is_form_boundary() {
+            let span = parser.cursor.current_span();
             parser.error(
-                DiagnosticCode::ExpectedName,
-                "expected name in with clause",
-                token.span,
+                DiagnosticCode::ExpectedPathMaterial,
+                "expected Path material in with clause",
+                span,
             );
-            invalid_span = Some(token.span);
+            invalid_span = Some(span);
             recover_to_with_block_end(parser);
             break;
         }
-
-        let token = parser.cursor.bump_non_trivia();
-        items.push(NameAst {
-            text: token.text.clone(),
-            span: token.span,
-        });
+        items.push(parse_path_material(parser, |p| {
+            p.cursor.at_symbol(Symbol::Comma)
+                || p.cursor.at_symbol(Symbol::RBrace)
+                || p.cursor.at_symbol(Symbol::Equal)
+        }));
 
         if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
             break;
@@ -1012,8 +906,8 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
         if parser.cursor.at_symbol(Symbol::RBrace) {
             let span = parser.cursor.current_span();
             parser.error(
-                DiagnosticCode::ExpectedName,
-                "expected name after `,` in with clause",
+                DiagnosticCode::ExpectedPathMaterial,
+                "expected Path material after `,` in with clause",
                 span,
             );
             invalid_span = Some(span);
@@ -1097,6 +991,7 @@ fn binding_annotation_span(annotation: &BindingAnnotationAst) -> Span {
 
 fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
     match skeleton {
+        CanonicalSkeletonAst::Expression { span, .. } => *span,
         CanonicalSkeletonAst::Segment { span, .. } => *span,
         CanonicalSkeletonAst::Pack { span, .. } => *span,
         CanonicalSkeletonAst::ProductExtract { span, .. } => *span,

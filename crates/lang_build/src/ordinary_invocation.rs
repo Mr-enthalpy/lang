@@ -51,9 +51,9 @@ use crate::{
         maximal_candidates, policy_mode_preference_rank, PolicyActualFrame, PolicyFormalFrame,
     },
     policy_pair::{
-        elaborate_explicit_p1, elaborate_formal_policy_pattern, project_p1, CapabilityRealization,
-        ExplicitP1Position, ObservationHorizon, OutputModeDemand, P1Projection, PolicyMode,
-        PolicyPair, PolicyResultEntry, PolicyView, ResultPolicyDemand,
+        elaborate_formal_policy_pattern, project_p1, CapabilityRealization, ObservationHorizon,
+        OutputModeDemand, P1Projection, PolicyMode, PolicyPair, PolicyResultEntry, PolicyView,
+        ResultPolicyDemand,
     },
     product_shape::{
         ArgProductShape, FlattenedProductInvariant, FlattenedProductMaterial, ProductAtom,
@@ -83,8 +83,10 @@ pub struct OrdinaryInvocationContext<'a> {
     /// The single observation coordinate for this invocation's consumers.
     /// Each consumer still checks its own facts; visibility does not prove Ready.
     pub horizon: ObservationHorizon,
-    pub caller_mode: PolicyMode,
     pub explicit_argument_modes: &'a [PolicyMode],
+    /// Completion context for omitted source occurrence modes. A known resident
+    /// mode takes precedence; this never changes an observed mode.
+    pub omitted_argument_policy: crate::MetaInstancePolicy,
     /// Total before candidate maxima. Pair/stage coordinates are hard
     /// admissibility; the concrete mode coordinate participates in Bp.
     pub result_policy_demand: ResultPolicyDemand,
@@ -110,8 +112,8 @@ impl<'a> OrdinaryInvocationContext<'a> {
     pub fn open_static(explicit_argument_modes: &'a [PolicyMode]) -> Self {
         Self {
             horizon: ObservationHorizon::OpenStatic,
-            caller_mode: PolicyMode::Plain,
             explicit_argument_modes,
+            omitted_argument_policy: crate::MetaInstancePolicy::Close,
             result_policy_demand: ResultPolicyDemand::default(),
             visibility: VisibilityView::Internal,
             migration: None,
@@ -203,6 +205,8 @@ pub struct PreparedCallCandidate {
     pub function_object_view: PolicyView,
     pub capability_realization: CapabilityRealization,
     pub formal_policy_frame: PolicyFormalFrame,
+    /// Actual observations for this receiver and prepared projection.
+    pub actual_policy_frame: PolicyActualFrame,
     implementation: PreparedImplementation,
     pub declared_result_class: DeclaredResultClass,
     pub candidate_role: OrdinaryCandidateRole,
@@ -756,8 +760,8 @@ pub fn invoke_policy_migration(
         migration_args,
         resolver_context,
         OrdinaryInvocationContext {
+            omitted_argument_policy: crate::MetaInstancePolicy::Close,
             horizon: ObservationHorizon::OpenStatic,
-            caller_mode: PolicyMode::Plain,
             explicit_argument_modes: &no_explicit_modes,
             result_policy_demand: request.target_demand().clone(),
             visibility: VisibilityView::Internal,
@@ -1154,19 +1158,30 @@ pub(crate) fn invoke_target_values(
                 semantic_world.value(entry).map(|value| &value.payload),
                 Some(SemanticValuePayload::CallEntry(_))
             ) {
-                c3.push((entry, receiver_value));
+                let Some(receiver) = semantic_world.value(receiver_value) else {
+                    continue;
+                };
+                c3.push((entry, receiver_value, receiver.mode));
             }
         }
     } else {
-        for target in &callable_targets {
+        for view in &c2_views {
+            let Some(target) = callable_targets
+                .iter()
+                .find(|target| Some(target.callable_value) == view.value)
+            else {
+                continue;
+            };
             for entry in &target.call_entries {
-                c3.push((*entry, target.callable_value));
+                // The receiver is observed through this binding/member edge.
+                // Its mode is not recoverable from the shared value identity.
+                c3.push((*entry, target.callable_value, view.view.mode));
             }
         }
     }
     c3.sort();
     c3.dedup();
-    trace.c3_call_entries = c3.iter().map(|(entry, _)| *entry).collect();
+    trace.c3_call_entries = c3.iter().map(|(entry, _, _)| *entry).collect();
 
     if let Err(residual) = classify_semantic_value_arguments(
         &mut arg_shape,
@@ -1194,7 +1209,7 @@ pub(crate) fn invoke_target_values(
     // A: hard structural and horizon/body-entry applicability.
     let mut prepared = Vec::new();
     let mut first_diagnostic = None;
-    for (call_entry_value, target_value) in c3 {
+    for (call_entry_value, target_value, receiver_mode) in c3 {
         let Some(entry_value) = semantic_world.value(call_entry_value) else {
             continue;
         };
@@ -1450,8 +1465,11 @@ pub(crate) fn invoke_target_values(
                     (
                         PreparedImplementation::Builtin(core_invocation),
                         PolicyFormalFrame {
-                            self_mode: PolicyMode::Plain,
-                            explicit_parameter_modes: vec![PolicyMode::Plain; frame_args.arity],
+                            self_mode: entry.callable_view.mode,
+                            explicit_parameter_modes: vec![
+                                entry.body_entry_view.mode;
+                                frame_args.arity
+                            ],
                         },
                         // Core and source candidates use the same P1 coordinate. The
                         // core candidate's function-object view is its declared
@@ -1516,8 +1534,8 @@ pub(crate) fn invoke_target_values(
                     (
                         PreparedImplementation::Intrinsic(intrinsic.clone()),
                         PolicyFormalFrame {
-                            self_mode: PolicyMode::Plain,
-                            explicit_parameter_modes: vec![PolicyMode::Plain],
+                            self_mode: entry.callable_view.mode,
+                            explicit_parameter_modes: vec![entry.body_entry_view.mode],
                         },
                         entry.callable_view.pair.clone(),
                         NormOverloadStrategy::Ordinary,
@@ -1596,6 +1614,20 @@ pub(crate) fn invoke_target_values(
                 continue;
             }
         };
+        let explicit_arguments =
+            match observed_argument_modes(&frame.explicit_arg_product, &context, &provenance) {
+                Ok(modes) => modes,
+                Err(diagnostic) => {
+                    return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                        diagnostic,
+                        trace,
+                    })
+                }
+            };
+        let actual_policy_frame = PolicyActualFrame {
+            caller_value: receiver_mode,
+            explicit_arguments,
+        };
         prepared.push(PreparedCallCandidate {
             origin: origin.clone(),
             target_value,
@@ -1611,6 +1643,7 @@ pub(crate) fn invoke_target_values(
             },
             capability_realization: entry.capability_realization.clone(),
             formal_policy_frame,
+            actual_policy_frame,
             candidate_role: entry.candidate_role,
             declared_result_class: entry.declared_result_class.clone(),
             overload_strategy,
@@ -1656,32 +1689,12 @@ pub(crate) fn invoke_target_values(
         .map(|candidate| candidate.call_entry_value)
         .collect();
 
-    let actual_frame = PolicyActualFrame {
-        caller_value: context.caller_mode,
-        explicit_arguments: classified
-            .classified_shape
-            .raw_args
-            .iter()
-            .enumerate()
-            .map(|(index, argument)| {
-                argument.known_value_mode.unwrap_or_else(|| {
-                    context
-                        .explicit_argument_modes
-                        .get(index)
-                        .copied()
-                        .unwrap_or(PolicyMode::Plain)
-                })
-            })
-            .collect(),
-    };
-
     // Bp': ordinary coordinates and optional migration endpoint coordinates
     // are compared in one product.  No maxima pass runs in between them.
     let bp = maximal_candidates(&af, |better, worse| {
         bp_prime_dominates(
             better,
             worse,
-            &actual_frame,
             OutputModeDemand(context.result_policy_demand.mode),
             context.migration,
         )
@@ -2064,26 +2077,9 @@ fn formal_policy_frame(
             ))
         })?;
     let frame = head.formal_frame();
-    let self_mode = match frame.self_formal {
-        // The self-slot policy is explicit P1 material: stage /
-        // presence / Pattern atoms are legal there and are
-        // reconciled by `canonical_function_object_p1` at registration.
-        // The Bₚ' Policy-mode frame only consumes the PolicyMode coordinate.
-        Some(element) => match elaborate_explicit_p1(
-            element_policy(element),
-            &entry.callable_view.pair,
-            ExplicitP1Position::WrittenSelf,
-            provenance.clone(),
-        )
-        .map_err(CandidateApplicabilityFailure::Unsupported)?
-        .and_then(|selection| selection.mode)
-        {
-            Some(PolicyMode::Const) => PolicyMode::Const,
-            Some(PolicyMode::Mut) => PolicyMode::Mut,
-            _ => PolicyMode::Plain,
-        },
-        None => PolicyMode::Plain,
-    };
+    // Registration already reconciled the self spelling with outer P1.
+    // Invocation consumes that unique declaration plane without defaulting again.
+    let self_mode = entry.callable_view.mode;
     let explicit_parameter_modes = frame
         .explicit_parameters
         .iter()
@@ -2348,7 +2344,6 @@ fn formal_policy_mode(
 fn bp_prime_dominates(
     better: &PreparedCallCandidate,
     worse: &PreparedCallCandidate,
-    actual: &PolicyActualFrame,
     output_demand: OutputModeDemand,
     migration: Option<MigrationInvocationContext<'_>>,
 ) -> bool {
@@ -2356,7 +2351,8 @@ fn bp_prime_dominates(
     match compare_policy_frames(
         &better.formal_policy_frame,
         &worse.formal_policy_frame,
-        actual,
+        &better.actual_policy_frame,
+        &worse.actual_policy_frame,
     ) {
         PolicyPartialOrdering::Less | PolicyPartialOrdering::Incomparable => return false,
         PolicyPartialOrdering::Greater => strictly_better = true,
@@ -2408,49 +2404,84 @@ fn bp_prime_dominates(
     strictly_better
 }
 
+fn observed_argument_modes(
+    shape: &ArgProductShape,
+    context: &OrdinaryInvocationContext<'_>,
+    provenance: &Provenance,
+) -> Result<Vec<PolicyMode>, Diagnostic> {
+    shape
+        .raw_args
+        .iter()
+        .enumerate()
+        .map(|(index, argument)| {
+            if let Some(mode) = argument
+                .known_value_mode
+                .or_else(|| {
+                    argument
+                        .known_type_member_view
+                        .as_ref()
+                        .map(|entry| entry.view.mode)
+                })
+                .or_else(|| context.explicit_argument_modes.get(index).copied())
+            {
+                return Ok(mode);
+            }
+            if argument.value_class
+                == RawArgValueClass::NonValue(crate::NonValueArgKind::ProductUnit)
+            {
+                return crate::PendingResultPolicyDemand {
+                    pair_query: P1Projection::Infer,
+                    mode: None,
+                    meta_instance_policy: context.omitted_argument_policy,
+                }
+                .complete(crate::OpenHereAvailability::Unavailable, provenance.clone())
+                .map(|demand| demand.mode);
+            }
+            Err(Diagnostic::hard_error(
+                "argument Policy observation is unavailable; unknown material is not omitted Mode",
+                Some(argument.provenance.clone()),
+            ))
+        })
+        .collect()
+}
+
 fn compare_policy_frames(
     left: &PolicyFormalFrame,
     right: &PolicyFormalFrame,
-    actual: &PolicyActualFrame,
+    actual_left: &PolicyActualFrame,
+    actual_right: &PolicyActualFrame,
 ) -> PolicyPartialOrdering {
-    if left.explicit_parameter_modes.len() != actual.explicit_arguments.len()
-        || right.explicit_parameter_modes.len() != actual.explicit_arguments.len()
+    if left.explicit_parameter_modes.len() != actual_left.explicit_arguments.len()
+        || right.explicit_parameter_modes.len() != actual_right.explicit_arguments.len()
+        || left.explicit_parameter_modes.len() != right.explicit_parameter_modes.len()
     {
         return PolicyPartialOrdering::Incomparable;
     }
     let mut left_better = false;
     let mut right_better = false;
-    compare_policy_mode_position(
-        left.self_mode,
-        right.self_mode,
-        actual.caller_value,
-        &mut left_better,
-        &mut right_better,
+    let left_positions = std::iter::once((left.self_mode, actual_left.caller_value)).chain(
+        left.explicit_parameter_modes
+            .iter()
+            .copied()
+            .zip(actual_left.explicit_arguments.iter().copied()),
     );
-    for ((left, right), actual) in left
-        .explicit_parameter_modes
-        .iter()
-        .zip(&right.explicit_parameter_modes)
-        .zip(&actual.explicit_arguments)
-    {
-        compare_policy_mode_position(*left, *right, *actual, &mut left_better, &mut right_better);
+    let right_positions = std::iter::once((right.self_mode, actual_right.caller_value)).chain(
+        right
+            .explicit_parameter_modes
+            .iter()
+            .copied()
+            .zip(actual_right.explicit_arguments.iter().copied()),
+    );
+    for ((left, actual_left), (right, actual_right)) in left_positions.zip(right_positions) {
+        match policy_mode_preference_rank(left, actual_left)
+            .cmp(&policy_mode_preference_rank(right, actual_right))
+        {
+            std::cmp::Ordering::Greater => left_better = true,
+            std::cmp::Ordering::Less => right_better = true,
+            std::cmp::Ordering::Equal => {}
+        }
     }
     ordering_from_advantages(left_better, right_better)
-}
-
-fn compare_policy_mode_position(
-    left: PolicyMode,
-    right: PolicyMode,
-    actual: PolicyMode,
-    left_better: &mut bool,
-    right_better: &mut bool,
-) {
-    match policy_mode_preference_rank(left, actual).cmp(&policy_mode_preference_rank(right, actual))
-    {
-        std::cmp::Ordering::Greater => *left_better = true,
-        std::cmp::Ordering::Less => *right_better = true,
-        std::cmp::Ordering::Equal => {}
-    }
 }
 
 fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> bool {

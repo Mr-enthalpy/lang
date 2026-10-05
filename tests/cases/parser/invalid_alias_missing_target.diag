@@ -1,1 +1,1 @@
-error ExpectedAliasTarget "expected entity reference after `===`" @ 1:10 [9..10]
+error ExpectedPathMaterial "expected Path material" @ 2:1 [10..10]

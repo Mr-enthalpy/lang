@@ -831,6 +831,7 @@ fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
         | NormPattern::Sequence { origin, .. }
         | NormPattern::Skeleton { origin, .. }
         | NormPattern::BindingSlot { origin, .. }
+        | NormPattern::Splice { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
     }

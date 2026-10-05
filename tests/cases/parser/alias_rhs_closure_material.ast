@@ -1,0 +1,21 @@
+Program
+  LetAlias
+    binder:
+      Name x
+    target:
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  Closure InPlace
+                    BodyBlock
+                      forms:
+                        ExprForm
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name body

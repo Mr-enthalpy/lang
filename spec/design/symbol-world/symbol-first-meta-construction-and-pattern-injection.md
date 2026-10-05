@@ -408,7 +408,7 @@ After selection the producer's concrete ResultPolicyMode is frozen. Ordinary
 pair projection and destination mode completion do not rewrite that producer;
 Terminal Move, including after a selected ordinary clone realization, keeps
 the two slot facts separate. See the canonical binding judgment in
-`symbol-policy-and-compile-flow-projection.md` §3.1. Omission does not itself demand plain or make runtime the only way to obtain
+`symbol-policy-and-compile-flow-projection.md` §3.1. Omission preserves the contextual mode-completion boundary and does not make runtime the only way to obtain
 a runtime binding.
 
 Policy migration does not reinterpret a P1 query as an exact target. Any
@@ -719,8 +719,9 @@ identity, authority and lifetime remain independent obligations.
     Root(Core(tau_M)) = M
 
 The instance name is its type value. P1 `meta let` retains its dependency-bounded
-opening source; OpenHere governs acquisition of a mut view, without an
-independent const/mut gate on the instance. Classic `plain let` completes and
+opening source; OpenHere governs acquisition of a mut view and completes only
+finally omitted Mode under meta to mut. Explicit or deduced const/mut remains
+independent. Classic `close let` completes and
 closes it. P2 `meta` remains the callable's stage. Ordinary Val2 payloads retain
 ordinary policy, migration and borrow rules; they do not widen the direct meta
 result class beyond CompleteType.
@@ -982,7 +983,7 @@ name and fresh result-owned construction subjects may continue with admitted
 input-derived sources established before completion. Their identity stays under
 M; authority follows those sources without requiring M's body frame to stay
 active or reviving a closed subject.
-P1 meta preserves this qualified result window; P1 plain completes and closes
+P1 meta preserves this qualified result window; P1 close completes and closes
 the instance. Neither form closes external inputs or borrowed targets.
 
 Closed fresh type construction has the following publication obligation:
@@ -1300,7 +1301,7 @@ layers:
 ```
 
 InitWriteLegal and authority consumption are defined by the Place owner §7.1.1.
-The original creation authority, not const/plain/mut, permits initial borrowing
+The original creation authority, not const/mut, permits initial borrowing
 and writing. The state is rechecked at the actual write Pre; a saved initial
 reference cannot replace an initialized resident merely because it still has a
 mut view. Failure preserves the state and never retries a different candidate.
@@ -1852,9 +1853,9 @@ ref/share type construction
 
 every contributed callable retains its complete type and owner.
 Their selection uses the ordinary context-indexed preference relations. In a
-plain context `succ_plain: plain > const = mut`; if no `plain` candidate is
-admissible, a surviving `const` and `mut` pair remains ambiguous rather than
-being resolved by generation order.
+const context const > mut; in a mut context mut > const. Crossed product
+advantages and distinct tied candidates remain ambiguous; generation order
+cannot choose a winner.
 
 Where the field policy permits mutation, the same generator also contributes
 field write candidates shaped `T ref × A`. They form a field-specific setter

@@ -1,0 +1,22 @@
+Program
+  LetAlias
+    binder:
+      Name A
+    target:
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  Name B
+              OperatorExpr
+                Atom
+                  Name C
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name D

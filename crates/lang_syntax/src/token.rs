@@ -73,7 +73,7 @@ pub enum OperatorSpelling {
     GreaterGreaterEqual,
     TripleEqual,
     // Paired bracket operator `[]`. Recognized contextually in operator-name
-    // positions (binder, alias binder, entity-ref inner component) and used as
+    // positions (binder, alias binder, Path inner component) and used as
     // the operator identity of bracket-call sugar. Never produced by the lexer
     // as a single token.
     BracketCall,

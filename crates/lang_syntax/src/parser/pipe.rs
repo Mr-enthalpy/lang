@@ -309,7 +309,11 @@ fn parse_segment_element(
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }
                 let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
-                if matches!(after.kind, TokenKind::Symbol(Symbol::LBracket)) {
+                if matches!(
+                    after.kind,
+                    TokenKind::Symbol(Symbol::LBracket)
+                        | TokenKind::Operator(crate::OperatorSpelling::Dollar)
+                ) {
                     // A Product followed by `[...]` remains in the ordinary
                     // postfix-expression path. This preserves cases such as
                     // `()[[capture] => { ... }]`; only a complete

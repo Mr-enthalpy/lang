@@ -1,1 +1,0 @@
-error InvalidEntityRef "grouped expression cannot be an innermost navigation component" @ 1:11 [10..11]

@@ -103,20 +103,20 @@ fn source_closure_frontier_precedes_binding_demand() {
 #[test]
 fn result_mode_preference_is_sealed_independently_of_callable_mode() {
     let mut world = support::AssociatedFamily::new(&[
-        "plain let first = (self, t: type): const + compile -> let r: type => { t; };",
-        "plain let second = (self, t: type): mut + compile -> let r: type => { t; };",
+        "close let first = (const let self, const let t: type): const + compile -> let r: type => { t; };",
+        "close let second = (const let self, const let t: type): mut + compile -> let r: type => { t; };",
     ]);
     let call = extract_single_call_site(&initializer_from_source("let x = uint8 choose;"))
         .expect("normalized call");
     for (result_mode, callable_mode) in [
-        (PolicyMode::Mut, PolicyMode::Plain),
-        (PolicyMode::Const, PolicyMode::Plain),
+        (PolicyMode::Mut, PolicyMode::Const),
+        (PolicyMode::Const, PolicyMode::Const),
     ] {
         let failure = world
             .invoke_ordinary_call(
                 world.package_root_node(),
                 &call,
-                OrdinaryInvocationContext::open_static(&[PolicyMode::Plain])
+                OrdinaryInvocationContext::open_static(&[PolicyMode::Const])
                     .with_result_policy_demand(lang_build::ResultPolicyDemand {
                         pair_query: lang_build::P1Projection::Infer,
                         mode: result_mode,

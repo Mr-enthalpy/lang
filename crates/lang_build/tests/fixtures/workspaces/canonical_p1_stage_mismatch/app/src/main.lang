@@ -1,4 +1,4 @@
-meta let bad =
+seal let bad =
   (compile let self, _ uint8: type): compile
     -> let result: uint8 =>
 {

@@ -49,10 +49,10 @@ MetaInstanceRootKey
 
 Every MetaInstance is a stable semantic owner whose name denotes its instance
 type tau_M. P1 meta retains it under dependency-derived OpenHere, which governs
-mut acquisition; plain let completes and closes it. Ordinary payloads live in
+mut acquisition; close let completes and closes it. Ordinary payloads live in
 Val2 and keep their ordinary policies. The general cache preserves instance and
-member Place identity, current observations and checked dependencies. An internal
-plain root marker cannot substitute for the P1 meta qualification.
+member Place identity, current observations and checked dependencies. Value mode
+cannot substitute for the P1 meta qualification.
 
 ## Policy and visibility
 

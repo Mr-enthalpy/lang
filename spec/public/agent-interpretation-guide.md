@@ -150,7 +150,7 @@ See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
   clauses, body, and inherited nested callables. Exact Norm binding covers
   Pattern/policy occurrences; value-side names/navigation remain unresolved.
   `_` is an anonymous hole, not a named ref.
-- Alias right-hand sides stay unresolved `EntityRef` (dump label `AliasPreserve`),
+- Alias right-hand sides stay unresolved Path material (dump label `PathMaterialPreserve`),
   never `NormExpr`.
 - Pattern-side names are not ordinary call targets and must not fall back to
   ordinary value/function lookup.
@@ -193,7 +193,7 @@ Binding / annotation / extraction position? Use NormPattern.
 DeduceList-declared name inside annotation? HoleRef.
 Undeclared annotation name? PatternName, not NormExpr::Name.
 Annotation nav? PatternNav, not value-side Nav.
-Alias RHS? EntityRef, not NormExpr.
+Alias RHS? NormPathMaterial with Pattern interpretation; never terminal BindingId.
 Expression-like sugar in annotation/pattern context? Keep pattern-side or surface PatternUnsupported; do not lower as value call.
 ```
 
@@ -300,7 +300,7 @@ Home(TypeOf(v)) = TypeMemberScope(T). [Witnessed anchored replication](../design
 creates a new closure identity and preserves capture obligations; it never
 reparents the RHS. Pin elaborates P2 with explicit stage/mode constraints or holes; Pout inherits
 P1's stage and may refine mode. Bare let writes no override. Explicit
-plain is a concrete constraint, distinct from contextual default completion. Implicit return targets the outermost enclosing
+const/mut are concrete constraints, distinct from contextual default completion. Implicit return targets the outermost enclosing
 function layer; the active-frame binder implements that target query.
 
 Follow the [semantic spine](../design/semantic-spine.md) for A, lifecycle/unsafe,
