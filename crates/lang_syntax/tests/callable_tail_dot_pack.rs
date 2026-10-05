@@ -753,6 +753,7 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
                 CanonicalSkeletonAst::Wildcard { .. }
                 | CanonicalSkeletonAst::NavPath { .. }
                 | CanonicalSkeletonAst::Literal { .. }
+                | CanonicalSkeletonAst::Expression { .. }
                 | CanonicalSkeletonAst::Error(_) => false,
             }
         }
@@ -790,6 +791,7 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
             | NormPattern::Nav { .. }
             | NormPattern::Skeleton { .. }
             | NormPattern::Error(_)
+            | NormPattern::Splice { .. }
             | NormPattern::Unsupported { .. } => false,
         }
     }
@@ -954,8 +956,12 @@ fn find_generated_closure(expr: &NormExpr, rule: NormRule) -> Option<&lang_synta
         }),
         NormExpr::Nav { components, .. } => {
             components.iter().find_map(|component| match component {
-                NormNavComponent::Group { expr, .. } => find_generated_closure(expr, rule),
-                NormNavComponent::Name { .. }
+                NormNavComponent::Group { expr, .. }
+                | NormNavComponent::Splice { operand: expr, .. } => {
+                    find_generated_closure(expr, rule)
+                }
+                NormNavComponent::PatternGroup { .. }
+                | NormNavComponent::Name { .. }
                 | NormNavComponent::Operator { .. }
                 | NormNavComponent::Error(_) => None,
             })

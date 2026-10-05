@@ -22,9 +22,9 @@ source policy syntax
 
 The ordinary slot/view laws below apply where a name and its resident value are
 distinct. P1 also admits `meta` for the invocation instance whose name is its
-own type value (§3.0). For that instance OpenHere governs mut qualification;
-ordinary const/mut modes do not supply a second independent gate. This marker
-is contextual P1 policy, not another atom of ordinary PolicyMode's 3×3 tables.
+own type value (§3.0). OpenHere governs current mutation authority and completes
+only finally omitted Mode under meta to mut. Explicit or deduced const/mut is
+preserved independently from MetaInstancePolicy, which is a separate P1 coordinate.
 P2 meta continues to specify the callable's evaluation horizon.
 
 Language computation remains one object flow. Every object has the same three
@@ -51,7 +51,7 @@ SafetyPolicy = safe | unsafe is independent of PolicyMode and the pair.
 Its semantic-admission boundary is defined in
 [unsafe admission](../lifetime/unsafe-semantic-admission.md); it grants neither
 write authority nor a substitute for action Pre. The mode comparisons below
-remain their existing three-point relations.
+remain their existing two-point relations.
 
 Policy preference, capability realization, and dynamic legality must not be
 collapsed:
@@ -71,7 +71,7 @@ DynamicLegality_Γ(
 ```
 
 `CapabilityRealization` is stable candidate/family metadata. It records how a
-3×3 cell is realized and may therefore be retained with a candidate snapshot.
+derived two-mode cell is realized and may therefore be retained with a candidate snapshot.
 `DynamicLegality_Γ` is formed only for the selected invocation in the current
 consumer context. Place writability, lifetime validity, construction authority,
 access, escape, and `OpenHere` are premises of that legality judgment rather
@@ -120,7 +120,7 @@ Pv != Pp  =>  Val1?(x) != null
 
 Pv = absent  does not imply  Val1?(x) = null
 
-PolicyMode_Γ(slot) ∈ { const, plain, mut }
+PolicyMode_Γ(slot) ∈ { const, mut }
 PolicyMode_Γ(slot) is independent of Val1?(x), Pv, and Pp
 ```
 
@@ -139,14 +139,13 @@ PolicyModeOrthogonalToObjectShape:
 
 Val1?(x) = null
   =/> PolicyMode_Γ(slot) = const
-  =/> PolicyMode_Γ(slot) = plain
   =/> PolicyMode_Γ(slot) = mut
 ```
 
 `Pv = Pp` says only that the value-side and Pattern-side stage/exposure facts
 cannot split for a pure Object. It does not erase the PolicyMode of the binding,
 formal, argument, or result slot that carries that Object. The same pure value
-may therefore occupy const, plain, and mut slots without changing its Object
+may therefore occupy const and mut slots without changing its Object
 identity or introducing a fourth Object component.
 
 Policy dimensions are typed and orthogonal:
@@ -154,7 +153,7 @@ Policy dimensions are typed and orthogonal:
 ```text
 pair/view stage              meta / compile / seal / runtime
 pair/view presence           present / optional / absent
-whole-slot PolicyMode        const / plain / mut
+whole-slot PolicyMode        const / mut
 ordinary namespace visibility public / private
 export-root attribute        yes / no
 ```
@@ -201,8 +200,8 @@ Writable(place)
 PolicyMode(view_slot) = mut
 ```
 
-`const let` / `plain let` / `mut let` on a formal parameter are first an overload
-preference coordinate (the `succ_const` / `succ_mut` / `succ_plain` partial
+`const let` / `mut let` on a formal parameter are first an overload
+preference coordinate (the `succ_const` / `succ_mut` partial
 orders of §3.2). A `mut` candidate being preferred and the selected operation
 actually exposing a write are two different facts. Real write capability comes
 from the conjunction:
@@ -229,14 +228,14 @@ rather than redefining a second PolicyMode system).
 A typed Uninitialized Place has a declared type and pending initialization
 authority from its authorized formation, but no resident Object to observe.
 PolicyView(slot,x), P(x), and resident compatibility are not evaluated for a
-missing x. The declaration's const/plain/mut mode determines the initialized
+missing x. The declaration's const/mut mode determines the initialized
 name's views; it neither creates nor removes the separate first-write authority.
 
 The ordinary explicit initial-borrow realization uses that live authority and
 actual Place/access/lifetime checks to supply a reference capability for the
 first write. It can supply a mut T ref view for a const-declared name; the
 reference view's mode and the target name's declared mode are distinct. The
-existing const/ plain reference delete cells remain delete. Selecting a mut
+existing const reference delete cells remain delete. Selecting a mut
 reference default still requires the applicable capability and current legality.
 
 First write uses InitWriteLegal; replacement uses the initialized resident and
@@ -359,32 +358,11 @@ If the inner ordinary invocation fails, the failure is final for this
 candidate: the resolver does not go back and re-select another global
 `const` / `mut` overload.
 
-The three symmetric Policy preference points do not require three symmetric
-global reconstruction operators:
-
-```text
-NoPlainReconstructorRequirement:
-
-PolicyMode = {const, plain, mut}
-  !=>
-source language exposes one global reconstructor per mode
-
-global const / mut
-  = explicit ordinary reconstruction operations
-
-plain materialization
-  = normally a plain destination plus terminal Move after the selected ordinary producer path
-```
-
-There is no language requirement for a global `val plain` dispatcher. This is
-compatible with a full 3x3 capability space: selection coordinates and the
-surface inventory of explicit reconstruction operations are different facts.
-The normative action meaning is owned by
-[`CanonicalMechanicalPassCore`](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md#0-canonical-pass-action-core):
-copy uses ordinary share then the selected clone for ordinary `T`, or ordinary
-rebind then the selected clone for `T ref` / `T share`. The fresh complete
-result travels through terminal Move, with no pre-move of the source. Lowering
-preserves those selected ordinary actions without an opaque copy-producing step.
+PolicyMode has two points, const and mut. MetaInstance completion uses the
+independent MetaInstancePolicy = {meta, close}; it is not a reconstruction
+operator inventory. Copying uses ordinary share/rebind, selected clone, a fresh
+complete result and terminal Move, as owned by
+[mechanical passing](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md).
 
 ## 2. Pattern alternative and policy operators
 
@@ -538,172 +516,75 @@ PolicyOverload(
 ```
 
 These operation names describe consumers of one ordinary Pattern relation,
-not separate inference ontologies. Plain is an atom, not a hole or omission.
+not separate inference ontologies. Concrete modes, holes and omission remain distinct.
 Declaration and call contexts supply observations of the same joint relation.
 
 ### 3.0 Meta-instance P1 policy
 
-The contextual openness qualification has the narrow domain `type` and
-`type ref`: `meta type` and `meta type ref` are admitted, not arbitrary
-`meta X ref`. This is not a fourth PolicyMode point. Qualifying an ordinary
-type preserves its existing opening subject; it does not manufacture a meta
-invocation identity, a construction window, or a writable Place. P2 `meta`
-continues to denote evaluation stage.
+    PolicyMode = {const, mut}
+    MetaInstancePolicy = {meta, close}
 
-For initialized type names, both direct `NameExpr -> mut type ref` and explicit
-`NameExpr -> meta type ref -> mut type ref` remain available ordinary routes.
-A meta ref records its actual Place, borrowed generation and OpeningSubject;
-its writable candidates require current OpenHere of that subject, independent
-Writable of the target, and the selected capability/access/type/lifetime checks.
-It contains no permanent writable proof. `ConfirmMut` is an explicit ordinary
-candidate that confirms these facts, preserving target/generation and never
-amplifying capability. Where both routes are legal at the same continuation
-position they have the same target and realizable mut capability. Coherence
-does not authorize implicit chaining, candidate retry, or reopen.
+P1 meta retains an already established opening source. P1 close completes the
+instance and performs Close **after ordinary result delivery**. P2 meta remains
+an evaluation Stage. Neither coordinate implies the other. The contextual
+qualification domain remains type/type ref; it creates no instance, opening
+window, Writable proof or lifetime extension.
 
-Close defeats direct mut acquisition, meta-to-mut confirmation and later
-writes through saved refs. A replacement resident does not retarget a saved
-opening subject. An uninitialized typed Place instead uses the separate
-one-shot initial-borrow/write rules; `InitialTypeSlotRef` is not `meta type ref`.
-The [type/ref owner](type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation)
-gives the precise judgments. The instance-specific retention behavior is:
+Mode deduction is completed only after explicit const/mut constraints and
+ordinary Pattern deduction. Explicit Hole identities remain distinct from omission:
 
-```lang
-meta let f = expression;
-plain let g = expression;
-```
+    DefaultMode_K(x) =
+      mut   if MetaInstancePolicy_K(x)=meta and OpenHere_K(x)
+      const otherwise
 
-When expression denotes an ordinary meta instance, P1 meta retains it. Its
-instance name is its own type value tau_M; the narrow policy domain does not
-broaden the direct result class to arbitrary payloads or external types.
-In this policy, OpenHere is the governing mutation qualification:
+This applies only to a still-omitted mode. Unknown OpenHere facts are unavailable,
+not a proof of the otherwise branch. A mode derived as mut is a current
+continuation-relative observation, never a permanent property of an instance root.
 
-```text
-MetaInstanceMutationQualification(f, Sigma) iff OpenHere(f, Sigma)
-AcquireMutView(f, Sigma) requires OpenHere(f, Sigma)
-```
+The body executes under meta; successful ordinary result assignment/replacement
+precedes outward completion/Close. Later omitted mode completes const when
+meta + OpenHere no longer holds. close is not const. Completion retained under
+meta preserves the established opening source, not a new one.
 
-Unlike an ordinary slot containing a distinct value, there are not independent
-instance const/mut and value openness coordinates to combine. OpenHere is the
-stronger fact: first establish it, then acquire the mut view. Such a view is
-still explicit and its write Pre rechecks the current window. The selected
-operation must exist and satisfy independent target Writable and ordinary type,
-access, capability and lifetime
-rules; meta does not synthesize missing operations or make expired targets live.
+Direct initialized-name mut borrowing and explicit meta-ref-to-mut confirmation
+retain their actual Place, borrowed generation and opening subject. Both require
+current OpenHere, target Writable and ordinary capability/access/type/lifetime.
+Close defeats mutable acquisition and saved-ref writes. One-shot initial type
+slot authority remains independent. See the
+[type/ref owner](type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
 
-The marker retains the invocation's dependency-bounded source through completion.
-Explicit plain let, or a context separately completed to plain, selects the classic
-complete-and-close meta invocation. This closes the instance, not external input
-subjects or external borrow targets. A later meta let of the same cached instance
-cannot reopen it. A temporary non-OpenHere context is not itself Close.
-
-This is a P1 policy selection, distinct from P2 meta evaluation stage. It is not
-ordinary mut, a choice between const/mut, a new ordinary mode-preference point,
-or an implicit request to change evaluation stage. Incompatible ordinary-mode
-and meta-instance demands cannot be combined to create a stronger authority.
-No new parser shape or Object coordinate is introduced.
-
-Ordinary Val2 payload names still carry distinct values. Their const/plain/mut
-policies, result demand, migration, and borrowing remain ordinary. Meta invocation
-itself directly returns CompleteType; payload navigation and ordinary compile
-extraction, not another meta result class, expose other values. The
+OpenHere controls construction/mutation qualification, not the instance lifetime.
+Instance survival, movement, escape and dependencies remain ordinary lifecycle
+relations. Ordinary Val2 payload policies remain independent. The
 [invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
-defines instance identity, openness meet, completion and cache behavior.
+owns self-name observation, ordinary delivery, identity and current storage reads.
 
 ### 3.1 Ordinary binding projection
 
-P1 let x = expr is a complete lexical binding. Omission contributes no override,
-not a request to rewrite the producer's mode to plain. Destination type inference
-and policy completion are distinct ordinary relations.
+P1 let x = expr forms a complete lexical binding. Written const/mut, explicit
+Hole, deduced mode and omission are distinct inputs. The independent completion
+qualification defaults to close unless the established context retains meta.
 
-```text
-OrdinaryBindingElaboration(prefix, expr, destination):
-  kappa := CurrentEvaluationPhase
-  written := WrittenPolicyConstraints(prefix)
-  // no mode atom -> NoWrittenModeConstraint, not WrittenModeDemand(plain)
-  demand := CallSitePolicyDemandFormation(binding_context, written)
-  // inherited/contextual constraints first; required defaults second
-  R := ResolveAndEvaluate(expr, kappa, demand)  // demand precedes root maxima
-  mu_produced := ResultPolicyMode(SelectedCandidate(R))  // frozen
-  PairView(destination) := ElabP1(demand.pair_query, R)
-  mu_destination := CompleteDestinationMode(written, inherited_context, R)
-  mechanical_pass := Move  // terminal transport; preserve selected producer actions
-  TransferToDestination(
-    source = PairView(destination), produced_mode = mu_produced,
-    destination, destination_mode = mu_destination, mechanical_pass)
-```
+    written := WrittenPolicyConstraints(prefix)
+    pending := FormCandidateIndependentDemand(written, immediate_context)
+    mode := CompleteOnlyOmittedMode(pending, MetaInstancePolicy, current OpenHere)
+    demand := CompleteResultPolicyDemand(pending, mode)
+    result := ordinary E(expr, demand)  // demand precedes root maxima
+    producer_mode := frozen selected result mode
+    destination_view := ordinary projection and satisfaction
+    transfer := selected ordinary realization followed by terminal Move
 
-A completed destination has one concrete mode. Completion uses ordinary
-inheritance/context and, where needed and otherwise unconstrained, the default
-plain point. Written plain is an explicit source constraint; omitted mode is
-not. Producer and destination remain separate: transfer never rewrites the
-selected producer's mode. Pair-view projection and terminal Move retain their
-ordinary rules, with no implicit ref or policy cast.
+Missing OpenHere needed by meta completion diagnoses unavailable; it cannot
+supply a concrete preference. The total output demand must exist before maxima.
+An unresolved outer candidate cannot send formal constraints into an inner call.
+Selected body, extraction, migration, delete or transfer failure never reopens it.
 
-CanonicalMechanicalPassCore preserves the selected ordinary producer path and
-terminates in Move. Copy-derived share/rebind plus clone is an ordinary
-realization before that terminal transport, not an automatic second pass kind.
-A const producer
-may win under an explicit plain output preference without becoming plain itself;
-ordinary transfer installs its result in the independently completed destination.
-For an existing source that must be preserved, the source declaration below
-is followed by its semantic action trace:
-
-    plain let y = x copy
-      -> share(x) -> selected clone    for ordinary T
-         rebind(x) -> selected clone   for T ref / T share
-      -> tmp := fresh complete result of that selected clone
-      -> Move(tmp) -> y with PolicyMode=plain
-
-There is no move of x before the selected clone and no implicit policy conversion.
-Changing the omission rule changes neither that mechanical core nor the sealed
-producer/destination distinction.
-
-    WrittenModeDemand(mu)
-    NoWrittenModeConstraint
-    ExplicitModeHole(h)
-
-These are distinct elaboration inputs, not new PolicyMode points. A hole is
-solved through the ordinary candidate relation; a missing atom is no hole.
-
-    DefaultModeCompletion applies only when the context requires completion
-      and no written/inherited/contextual constraint already supplies the mode.
-    DefaultStageCompletion follows §5 and returns one stage atom.
-    Neither is a general P1-from-P2 or P2-from-P1 semantic deduction.
-
-The current phase always constrains evaluation. Candidate-local stage
-completion may use §5 when the relevant stage is omitted;
-explicit P1 is never overwritten. ImplicitEvaluationP1StageView names exposure
-of the resulting candidate view in kappa, not another outward authority.
-
-```text
-CallLocalPolicyClosure:
-  1. form ResultPolicyDemand(c), including omission/completion state, before maxima(c)
-  2. use only already available candidate-independent immediate-consumer constraints
-  3. never use an unresolved outer candidate's formal policy as inner demand
-  4. use plain only through an applicable DefaultModeCompletion;
-     omission itself imposes no plain constraint
-  5. after unique selection, ResultPolicyMode(c)=mu_c is frozen
-  6. the outer call consumes that result and never reopens c
-
-EvaluationStageContext(c) = kappa
-OutputModeDemand(c) = written/inherited/contextual mode demand
-                   | separately completed mode demand
-                   | NoWrittenModeConstraint
-TargetResultConstraint(c) = optional expected pair/type/rank constraints
-```
-
-Demand formation is total: absence is recorded rather than replaced by a
-fabricated written atom. A resolved concrete mode contributes its preference
-coordinate; no constraint contributes no invented preference. Supplied hard
-result constraints participate in applicability. Completion cannot defer a
-known consumer constraint until after root-call selection.
-
-In the semantic metanotation g(f()) (not source call syntax), f closes under
-its own immediate context. If that context
-requires otherwise-unconstrained completion, it uses plain through
-DefaultModeCompletion. Then g consumes the frozen mu_f and its independently
-formed demand; it cannot change f's solution.
+Mode preference does not change the selected producer mode. Existing exact
+outward views satisfy first; otherwise one direct same-Type selected migration
+owns coherent PolicyProjection and ValueRealization. Copy-derived delivery
+retains share/rebind -> clone -> fresh complete result -> Move. Preserve Move
+is not copying and invokes no clone. Destination assignment and MetaInstance
+Complete/Close are distinct boundaries; completion policy supplies no value cast.
 
 ### 3.1.1 Explicit expression result-Policy context
 
@@ -787,7 +668,7 @@ The slot is not an anonymous variable and creates no source entity. It is the
 ordinary result carrier through which a completed expression view is exposed
 to its parent expression. The outward view exposes exactly the concrete
 whole-slot mode completed under the local context. Omission is not an explicit
-plain constraint; typed coordinate legality still applies to written Patterns. Any
+const constraint; typed coordinate legality still applies to written Patterns. Any
 residual `Pv:Pp` constraints remain part of `pi`; each solved stage is one atom.
 
 Producer preference and outward acceptance are different relations:
@@ -800,8 +681,8 @@ ExistingOutwardModeAccepted(mu_demand, mu_result)
   iff mu_result = mu_demand
 ```
 
-Thus a `const` producer may uniquely win under a `plain` output preference, but
-its `const` result is not already an outward singleton-`plain` view. The
+Thus a `mut` producer may uniquely win under a `const` output preference, but
+its `mut` result is not already an outward singleton-`const` view. The
 producer fact remains frozen while the expression-result slot receives its own
 mode.
 
@@ -837,42 +718,9 @@ action. None of those bodies independently defines the Policy edge.
 to select a unique migration, execute its value realization, or establish
 coherence is a typed post-producer failure and never reopens operand selection.
 
-Singleton `plain` has a closed ordinary realization without a global
-reconstructor:
-
-```text
-PlainPolicyLetResultTransfer:
-
-ProducedMode(r) = mu_r
-sigma_plain = ExpressionResultSlot(plain let e)
-PolicyMode(sigma_plain) = plain
-
-S := SourcePolicy(r)
-T := PolicyOf(sigma_plain)
-C := PreparePolicyMigrationCandidates(S, T, ResultPolicyDemand)
-m_plain := Unique(PolicyOverload(C, PolicyMigrationDemand(S, T)))
-
-PolicyProjection(m_plain, r, sigma_plain) = rho_plain
-ValueRealization(m_plain, r, sigma_plain)
-  = TransferToExpressionResult(SelectedOrdinaryRealization(m_plain, r), sigma_plain, Move)
-
-CoherentPolicyMigrationResult(m_plain, rho_plain, ValueRealization(m_plain, r, sigma_plain))
-  uses CanonicalMechanicalPassCore
-  preserves ProducedMode(r) = mu_r
-  exposes the transferred result through sigma_plain
-```
-
-SelectedOrdinaryRealization above abbreviates the already selected candidate's
-ordinary producer actions; it is not a new primitive, search pass or evaluator.
-Every transport ends in Move with its fixed Kill or Preserve effect. A selected
-clone-derived realization first produces a fresh complete result through
-share/rebind plus clone, then moves it. Requiring source survival alone does
-not imply cloning: legal Preserve Move is distinct and invokes no clone.
-The selected migration candidate gives both the plain Policy
-projection and this value realization. If no such candidate is uniquely
-selected, outward completion fails after the producer is frozen; that failure
-does not erase `sigma`, expose the producer's wrong mode, or reopen producer
-selection. This is why no global `val plain` dispatcher is required.
+Transport preserves the selected ordinary realization and fixed MoveEffect.
+Failure after producer selection is terminal; outward completion cannot expose
+an unsatisfied view or reopen the producer.
 
 ```text
 PolicyMigrationNotDerivedFromValueCall:
@@ -896,7 +744,7 @@ operand root call is selected. A Val2 operation may be the selected migration
 candidate's `ValueRealization`, but it cannot retroactively create that demand
 or independently establish the candidate's declared Policy edge. Policy
 migration is not the forbidden in-place `mutate-policy-tag(source)` operation
-of §1.2. `plain` satisfaction does not imply a global `val plain` dispatcher.
+of §1.2. `const` satisfaction does not imply a global `val const` dispatcher.
 
 ```text
 NoCrossCallPolicyPropagation:
@@ -1021,7 +869,6 @@ Pin and Pout have independent parents and different stage rules:
     <p> p let -> mode overlay containing the formal-local HoleBinderId p
 
     let x          -> Pin=P2
-    plain let x    -> Overlay(P2, Mode=plain)
     const let x    -> Overlay(P2, Mode=const)
     mut let x      -> Overlay(P2, Mode=mut)
     <p> p let x    -> Overlay(P2, Mode=rho(p))
@@ -1036,19 +883,16 @@ SafetyPolicy retains its own independent consumer meaning.
 
 The selected PolicyMode is a formal preference input. It is not an ordinary P1
 query applied to the actual argument. Consequently an oppositely qualified
-actual is not removed before the product order. The three context-indexed
+actual is not removed before the product order. The two context-indexed
 relations are:
 
 ```text
-succ_const: const > plain > mut
-succ_mut:   mut > plain > const
-succ_plain: plain > const = mut
+succ_const: const > mut
+succ_mut:   mut > const
 ```
 
-The equality in `succ_plain` is semantic: if the fully admissible set contains
-one `const` and one `mut` candidate but no `plain` candidate, both are
-co-maximal and selection is ambiguous. An implementation may not choose either
-one arbitrarily or use declaration order to break the tie.
+No neutral preference point exists. Distinct tied candidates remain ambiguous;
+declaration order cannot choose one.
 
 The elaborated formal view is not body-local policy metadata. Candidate
 formation exports its whole-slot PolicyMode into the callable's parameter
@@ -1062,7 +906,7 @@ FormalPolicyMode(parameter)
 
 Thus the elaborated Pin governs each body's input observation, while its
 whole-slot mode participates in comparison against fully admissible overloads.
-Implementations must not collapse `plain` back into an unspecified carrier.
+Implementations must not collapse `const` back into an unspecified carrier.
 
 #### 3.2.1 Return policy refinement inherits P1
 
@@ -1082,7 +926,6 @@ pair unchanged:
 
 ```text
 return let x        -> P1 unchanged
-return plain let x  -> inherited P1, PolicyMode = plain
 return const let x  -> inherited P1, PolicyMode = const
 return mut let x    -> inherited P1, PolicyMode = mut
 ```
@@ -1125,10 +968,10 @@ Pv = absent
 
 The review matrix is therefore complete rather than shape-dependent:
 
-| Observed Val1 | const | plain | mut |
-|---|---:|---:|---:|
-| present | valid mode coordinate | valid mode coordinate | valid mode coordinate |
-| absent | valid mode coordinate | valid mode coordinate | valid mode coordinate |
+| Observed Val1 | const | mut |
+|---|---:|---:|
+| present | valid mode coordinate | valid mode coordinate |
+| absent | valid mode coordinate | valid mode coordinate |
 
 The cells assert only that the mode coordinate exists. They do not manufacture
 a value stage or any operation capability.
@@ -1188,10 +1031,10 @@ SatisfyPolicyDemand(demand, result):
 
 When `Q` contains a whole-slot ModeAtom, an existing outward view is accepted
 only when its concrete mode equals that point. The
-`succ_const` / `succ_plain` / `succ_mut` relations rank producer candidates;
+`succ_const` / `succ_mut` relations rank producer candidates;
 they do not widen the set of concrete modes accepted by outward satisfaction.
-In particular, a `const` producer that wins under `plain` preference is not an
-existing singleton-`plain` outward view.
+In particular, a `mut` producer that wins under `const` preference is not an
+existing singleton-`const` outward view.
 
 The two result projections are inseparable outputs of the selected migration:
 
@@ -1453,7 +1296,7 @@ Transparent coordinates inherit. Coordinates requiring extraction or
 correlation use explicit holes; one HoleBinderId constrains the corresponding
 positions to agree, and require constrains legal combinations. Omission is
 not an implicit generic variable over every dimension. Declarations need not
-enumerate const/plain/mut by compile/runtime cells.
+enumerate const/mut by compile/runtime cells.
 
 PolicyMode preference, capability realization, stage admissibility, Ready and
 DynamicLegality remain independent. Forwarding a Policy fact creates no write
@@ -1503,7 +1346,7 @@ Meta instance P1 retains the contextual openness rules of §3.0; it is not a
 fourth mode or a stage union. Explicit P1 is never overwritten by the table.
 A bare ordinary let completes its stage at its formation context; it is not
 a wildcard that later uses can reinterpret. Default mode completion remains
-separate and considers written/inherited/contextual constraints before plain.
+separate and considers written/inherited/contextual constraints before const.
 
 Pin may explicitly constrain stage or deduce a stage hole. Pout.stage is
 P1.stage; output mode refinement creates no independent output stage vector.
@@ -1783,7 +1626,7 @@ candidate from Σ_export
   -> accept or reject without reopening the candidate set
 ```
 
-Const, plain, and mut coordinates may be independently defaulted, deleted, or
+Const and mut coordinates may be independently defaulted, deleted, or
 given a custom realization by that consumer family. No candidate is included
 or excluded from the stable namespace view merely because of its mode or a
 future caller's demand.
@@ -1929,9 +1772,8 @@ collapse merely because their values/types normalize equally.
 For each whole-slot PolicyMode comparison position:
 
 ```text
-succ_const: const > plain > mut
-succ_mut:   mut > plain > const
-succ_plain: plain > const = mut
+succ_const: const > mut
+succ_mut:   mut > const
 ```
 
 This order is a *preference* among candidates that are already fully admissible.
@@ -1939,9 +1781,7 @@ Being higher in the order never grants a capability, and being lower never
 removes one: the order chooses between existing candidates and does not decide
 whether a candidate exists. Nor does it propagate: the selected candidate's
 PolicyMode describes that one slot edge and is not pushed into the argument's
-other members (§1.1). `const = mut` in `succ_plain` leaves two co-maximal
-candidates and therefore an ambiguity if no `plain` candidate is available; it
-never means “pick either”.
+other members (§1.1). Tied distinct candidates remain co-maximal and ambiguous.
 
 Multiple positions form a product partial order: `f` dominates `g` iff `f` is
 not worse at every participating position and is strictly better at at least
@@ -1954,24 +1794,17 @@ as hard admissibility in `A`; they are not the output-mode coordinate. The
 separately total EvaluationStageContext constrains R_vis evidence. Stage
 completion creates no hidden mode constraint.
 
-Preference and capability are separate relations. Relational declarations with
-mode holes have the following finite 3×3 explanatory expansion:
+Preference and capability are independent. A finite representation is only the
+derived expansion of a general relational declaration in the current domain:
 
-```text
-                  input
-              const   plain   mut
-output const    C<-C    C<-P    C<-M
-output plain    P<-C    P<-P    P<-M
-output mut      M<-C    M<-P    M<-M
-```
+    input          const   mut
+    output const   C<-C    C<-M
+    output mut     M<-C    M<-M
 
-Each solved coordinate may be default, delete, custom or absent. The table is
-a derived view, not required source declarations or a primitive. One formal-local
-<p> p let covers three inputs; shared/independent output holes and require
-express correlations. A family need not admit all nine solutions. In
-particular, a Policy preference may select a mut candidate whose requested
-operation is deleted or whose target is not writable; capability facts never
-flow backward into the Policy order.
+Cells may independently be default, delete, custom or absent. The four-cell
+view is not a semantic primitive, required source inventory or execution proof.
+Formal-local holes, correlation and require retain ordinary Pattern semantics.
+Selection never derives capability or Writable from preference.
 
 For the one compiler-inserted atomic runtime-migration call, its selected input
 and required output Policy endpoints add two coordinates to this same Bp

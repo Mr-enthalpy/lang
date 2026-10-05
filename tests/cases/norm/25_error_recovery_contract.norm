@@ -31,14 +31,13 @@ NormProgram origin=Source@1:1[0..127]
           NavComponent Error
             Error "operator cannot be an outer navigation component" origin=Source@3:4[18..19]
     Form Alias
-      Decl Alias origin=Generated(AliasPreserve)@4:1[21..33]
+      Decl Alias origin=Generated(AliasPreserve)@4:1[21..34]
         binder:
           Name "A" origin=Source@4:5[25..26]
         target:
-          EntityRef origin=Generated(AliasPreserve)@4:10[30..33]
-            components:
-              NavComponent Error
-                Error "expected entity reference" origin=Source@4:11[31..33]
+          PathMaterial origin=Generated(AliasPreserve)@4:11[31..34]
+            Pattern Error
+              Error "Path material cannot start with `::`" origin=Source@4:11[31..34]
     Form Let
       Decl Let origin=Source@5:1[36..52]
         BindingSlot let=true origin=Generated(PatternNormalize)@5:5[40..52]

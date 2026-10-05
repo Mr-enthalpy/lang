@@ -101,7 +101,60 @@ fn parse_prefix_expr(
         return None;
     }
 
+    if parser.cursor.at_symbol(Symbol::LBracket) {
+        let (close_index, close) = parser
+            .cursor
+            .peek_at_skip_trivia(parser.cursor.current_index() + 1);
+        if matches!(close.kind, TokenKind::Symbol(Symbol::RBracket)) {
+            let (_, after) = parser.cursor.peek_at_skip_trivia(close_index + 1);
+            if !token_index_starts_closure_head_continuation(parser, close_index + 1)
+                && matches!(
+                    after.kind,
+                    TokenKind::Eof
+                        | TokenKind::Symbol(
+                            Symbol::ColonColon
+                                | Symbol::Colon
+                                | Symbol::Comma
+                                | Symbol::Semicolon
+                                | Symbol::Equal
+                                | Symbol::RParen
+                                | Symbol::RBrace
+                                | Symbol::PipeGreater
+                        )
+                )
+            {
+                let open_span = parser.cursor.bump_non_trivia().span;
+                let close_span = parser.cursor.peek_non_trivia().span;
+                return Some(parse_operator_nav_path(
+                    parser,
+                    CurrentOperator {
+                        spelling: OperatorSpelling::BracketCall,
+                        span: open_span.join(close_span),
+                    },
+                ));
+            }
+        }
+    }
+
     if let Some(current) = current_operator(parser) {
+        let next_index = parser.cursor.current_index() + 1;
+        let (_, next) = parser.cursor.peek_at_skip_trivia(next_index);
+        if matches!(
+            next.kind,
+            TokenKind::Eof
+                | TokenKind::Symbol(
+                    Symbol::RParen
+                        | Symbol::RBrace
+                        | Symbol::RBracket
+                        | Symbol::Comma
+                        | Symbol::Semicolon
+                        | Symbol::Colon
+                        | Symbol::Equal
+                        | Symbol::PipeGreater
+                )
+        ) {
+            return Some(parse_operator_nav_path(parser, current));
+        }
         if current.spelling == OperatorSpelling::Less {
             if let Some(expr) = parse_postfix_expr(parser, stop) {
                 return Some(expr);
@@ -197,6 +250,87 @@ fn parse_postfix_expr(
     parser: &mut Parser<'_>,
     stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
 ) -> Option<OperatorExprAst> {
+    // `$` assigns RHS interpretation to its whole syntactic operand, including
+    // navigation groups and bracket payloads. This lookahead reads only tokens.
+    let previous_context = parser.pattern_context;
+    if previous_context && postfix_operand_has_splice(parser) {
+        parser.pattern_context = false;
+    }
+    let result = parse_postfix_expr_in_context(parser, stop, previous_context);
+    parser.pattern_context = previous_context;
+    result
+}
+
+fn postfix_operand_has_splice(parser: &Parser<'_>) -> bool {
+    fn after_primary(parser: &Parser<'_>, index: usize) -> Option<usize> {
+        let (index, token) = parser.cursor.peek_at_skip_trivia(index);
+        match token.kind {
+            TokenKind::Symbol(Symbol::LParen | Symbol::LBracket | Symbol::LBrace) => {
+                let mut stack = Vec::new();
+                let mut next = index;
+                loop {
+                    let (at, token) = parser.cursor.peek_at_skip_trivia(next);
+                    match token.kind {
+                        TokenKind::Symbol(Symbol::LParen) => stack.push(Symbol::RParen),
+                        TokenKind::Symbol(Symbol::LBracket) => stack.push(Symbol::RBracket),
+                        TokenKind::Symbol(Symbol::LBrace) => stack.push(Symbol::RBrace),
+                        TokenKind::Symbol(
+                            close @ (Symbol::RParen | Symbol::RBracket | Symbol::RBrace),
+                        ) => {
+                            if stack.pop() != Some(close) {
+                                return None;
+                            }
+                            if stack.is_empty() {
+                                return Some(at + 1);
+                            }
+                        }
+                        TokenKind::Eof => return None,
+                        _ => {}
+                    }
+                    next = at + 1;
+                }
+            }
+            TokenKind::Name
+            | TokenKind::IntLiteral
+            | TokenKind::FloatLiteral
+            | TokenKind::StringLiteral
+            | TokenKind::Operator(_) => Some(index + 1),
+            _ => None,
+        }
+    }
+
+    let Some(mut next) = after_primary(parser, parser.cursor.current_index()) else {
+        return false;
+    };
+    loop {
+        let (index, token) = parser.cursor.peek_at_skip_trivia(next);
+        match token.kind {
+            TokenKind::Operator(OperatorSpelling::Dollar) => return true,
+            TokenKind::Operator(spelling) if is_postfix_operator(spelling) => {
+                next = index + 1;
+            }
+            TokenKind::Symbol(Symbol::ColonColon | Symbol::Dot | Symbol::DotDot) => {
+                let Some(after) = after_primary(parser, index + 1) else {
+                    return false;
+                };
+                next = after;
+            }
+            TokenKind::Symbol(Symbol::LBracket) => {
+                let Some(after) = after_primary(parser, index) else {
+                    return false;
+                };
+                next = after;
+            }
+            _ => return false,
+        }
+    }
+}
+
+fn parse_postfix_expr_in_context(
+    parser: &mut Parser<'_>,
+    stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
+    enclosing_pattern_context: bool,
+) -> Option<OperatorExprAst> {
     let mut expr = parse_operand(parser, stop)?;
 
     loop {
@@ -207,6 +341,11 @@ fn parse_postfix_expr(
         if let Some(current) = current_operator(parser) {
             if is_postfix_operator(current.spelling) {
                 let operator = bump_operator(parser, current);
+                if current.spelling == OperatorSpelling::Dollar {
+                    // RHS interpretation ends at the reinjection boundary.
+                    // Navigation to its right resumes the enclosing context.
+                    parser.pattern_context = enclosing_pattern_context;
+                }
                 let span = expr.span.join(operator.span);
                 expr = OperatorExprAst {
                     kind: OperatorExprKind::OperatorSugar {
@@ -384,6 +523,28 @@ fn extend_operator_nav_path(expr: OperatorExprAst, component: NavComponentAst) -
                 span,
             }
         }
+        OperatorExprKind::OperatorSugar { ref operator, .. } if operator.spelling == "$" => {
+            let span = expr.span.join(component_span);
+            let expression = crate::ExprAst {
+                span: expr.span,
+                kind: crate::ExprKind::Pipe(crate::PipeExprAst {
+                    span: expr.span,
+                    segments: vec![crate::SegmentAst {
+                        span: expr.span,
+                        has_incoming: false,
+                        elements: vec![crate::SegmentElementAst::OperatorExpr(expr)],
+                    }],
+                }),
+            };
+            OperatorExprAst {
+                span,
+                kind: OperatorExprKind::NavPath {
+                    components: vec![NavComponentAst::Group(Box::new(expression)), component],
+                    span,
+                    explicit_terminated: false,
+                },
+            }
+        }
         _ => {
             let span = expr.span.join(component_span);
             OperatorExprAst {
@@ -416,6 +577,28 @@ fn terminate_operator_nav_path(_parser: &mut Parser<'_>, expr: OperatorExprAst) 
             },
             span,
         },
+        OperatorExprKind::OperatorSugar { ref operator, .. } if operator.spelling == "$" => {
+            let span = expr.span;
+            let expression = crate::ExprAst {
+                span,
+                kind: crate::ExprKind::Pipe(crate::PipeExprAst {
+                    span,
+                    segments: vec![crate::SegmentAst {
+                        span,
+                        has_incoming: false,
+                        elements: vec![crate::SegmentElementAst::OperatorExpr(expr)],
+                    }],
+                }),
+            };
+            OperatorExprAst {
+                span,
+                kind: OperatorExprKind::NavPath {
+                    components: vec![NavComponentAst::Group(Box::new(expression))],
+                    span,
+                    explicit_terminated: true,
+                },
+            }
+        }
         _ => OperatorExprAst {
             kind: OperatorExprKind::NavPath {
                 components: vec![NavComponentAst::Error(crate::ErrorAst {

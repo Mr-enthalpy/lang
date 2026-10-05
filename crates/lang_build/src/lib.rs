@@ -165,9 +165,10 @@ pub use policy_pair::{
     project_resolved_export_view, publicly_reachable, CallablePrivilege, CapabilityRealization,
     CapabilityRealizationCell, DeclarationVisibility, ExplicitP1Position, ExplicitP1Selection,
     ExportAdmission, ExportCandidateView, FormalPolicyPattern, FunctionObjectDeclarationPolicy,
-    NamespaceCandidateSetRef, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
-    ObservationHorizon, OutputModeDemand, P1Projection, PatternComponentPolicy, PolicyMode,
+    MetaInstancePolicy, NamespaceCandidateSetRef, NamespaceDeclarationPolicy,
+    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceOverloadSets,
+    NamespaceResolveAuthority, NamespaceVisibility, ObservationHorizon, OpenHereAvailability,
+    OutputModeDemand, P1Projection, PatternComponentPolicy, PendingResultPolicyDemand, PolicyMode,
     PolicyPair, PolicyResultEntry, PolicyView, ResolvedCandidatePolicy, ResultPolicyDemand,
     ReturnPolicyPattern, Stage, ValueComponentPolicy, ValuePolicyQuery, ValuePresence, WpreRoots,
 };

@@ -204,12 +204,12 @@ Stage, presence, Pp capability, Type, and structural applicability remain hard
 conditions.
 
 As an explanatory model rather than frozen surface syntax, one type name binding may
-carry the pure Pattern member `:t` plus ordinary value members over all nine
+carry the pure Pattern member `:t` plus ordinary value members over the four current
 `output PolicyMode <- input PolicyMode` coordinates. Every coordinate is
 expressible, but no coordinate is required to exist: each may be absent or
 realized by `default`, `delete`, or `custom`. More specific Pattern members may
-refine or delete regions of that capability relation. This 3×3 relation is not
-the three-point Policy preference order.
+refine or delete regions of that capability relation. This derived 2×2 view is not
+the two-point Policy preference order.
 
 Those ordinary transport members have concrete declared input/output endpoints
 or ordinary stage holes solved to concrete endpoints. A selected compile:compile
@@ -471,14 +471,14 @@ compile to compile; meta qualification follows its own owner. Explicit P1
 is never overwritten. The completed view must supply legal self material.
 
 Pin = ElabIn(P2, Delta_in). Omission inherits the applicable base; explicit
-plain/const/mut refines mode, and explicit stage atoms/holes constrain stage.
+const/mut refines mode, and explicit stage atoms/holes constrain stage.
 Thus a runtime callable may have heterogeneous compile and runtime Pins.
 Pout = ElabOut(P1, Delta_out), with Pout.stage = P1.stage. A mode qualifier
 remains an overload-order Pattern, not ordinary binding P1 projection that
 deletes an oppositely qualified actual before ranking.
 
 Candidate preparation also carries that qualifier outward as the parameter's
-three-point product-order position. It therefore affects selection between
+two-point product-order position. It therefore affects selection between
 callable objects as well as the effective parameter pair seen after entry.
 
 ### 6.1 Callable owner, receiver type, and local pattern construction
@@ -522,7 +522,7 @@ does not manufacture a meta-style canonical-arguments owner.
 An ordinary meta invocation constructs an ordinary result name under
 MetaInstanceRoot(parent, callee, CanonicalizeInvocationInputs(In)). Its direct
 result is the instance type tau_M rooted at M; arbitrary values and borrows may
-be ordinary Val2 payloads. P1 meta retains the instance under OpenHere; plain let
+be ordinary Val2 payloads. P1 meta retains the instance under OpenHere; close let
 completes and closes it. Member value/ref observation and migration are ordinary. The
 [invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
 defines result-name identity, dependency-derived openness and residency/cache
@@ -545,8 +545,9 @@ type equality do not replace those judgments.
 
 The binding created by `let fn = () => { ... }` has no written mode override.
 Inherited/contextual constraints are considered before a separate applicable
-DefaultModeCompletion can choose plain. Omission is neither an explicit plain
-constraint nor a deduction hole; P1 mode is not generally copied from P2. An
+DefaultModeCompletion chooses mut only under meta + current OpenHere, const
+otherwise. Required missing evidence is unavailable. Omission is neither an
+explicit mode constraint nor a deduction hole; P1 mode is not generally copied from P2. An
 explicit declaration P1 supplies its written constraint. The
 namespace-declaration spelling `export let fn = ...` does not change this
 complete internal view. Export elaboration derives a stable, identity-preserving

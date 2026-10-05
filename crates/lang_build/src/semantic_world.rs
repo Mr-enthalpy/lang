@@ -723,7 +723,7 @@ pub struct OrdinaryCallEntry {
     /// endpoint coordinate. It is deliberately distinct from both the
     /// declaration-local P2 and the produced-result position view.
     pub callable_view: PolicyView,
-    /// Orthogonal 3x3 realization facts. Policy comparison never derives or
+    /// Orthogonal realization facts with a derived two-mode finite view. Policy comparison never derives or
     /// modifies these cells.
     pub capability_realization: CapabilityRealization,
     /// Current source construction always installs `Ordinary`.  The
@@ -825,6 +825,12 @@ pub fn canonical_function_object_view(
         .into_iter()
         .flatten()
     {
+        if selection.meta_instance_policy == Some(crate::MetaInstancePolicy::Meta) {
+            return Err(crate::Diagnostic::hard_error(
+                "meta-qualified callable requires the canonical MetaInstance opening/completion consumer, which is unavailable",
+                Some(provenance.clone()),
+            ));
+        }
         if selection.presence == Some(crate::ValuePresence::Absent)
             && selection.value_stage.is_some()
         {
@@ -2705,7 +2711,7 @@ impl SemanticWorld {
 
     /// Install candidate-local capability realization metadata on an already
     /// materialized terminal call entry. Policy mode is deliberately absent
-    /// from the authorization rule: the table is an independent 3x3 fact.
+    /// from the authorization rule: relation declarations supply the derived two-mode table.
     pub fn configure_call_entry_capability_realization(
         &mut self,
         id: SemanticValueId,
@@ -3744,7 +3750,7 @@ impl SemanticWorld {
                     type_value: type_rank,
                     pattern: represented_pattern,
                     policy: policy.clone(),
-                    mode: PolicyMode::Plain,
+                    mode: PolicyMode::Const,
                     namespace_visibility: None,
                     payload: SemanticValuePayload::CoreTypeProjection {
                         represented_type,
@@ -3800,7 +3806,7 @@ impl SemanticWorld {
             pattern: represented_pattern,
             view: PolicyView {
                 pair: policy,
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             },
         };
         if !cell.member_views.contains(&pure_p_view) {
@@ -3975,7 +3981,7 @@ impl SemanticWorld {
                 type_value: type_rank,
                 pattern,
                 policy: policy.clone(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type: canonical_type,
@@ -4072,7 +4078,7 @@ impl SemanticWorld {
                 type_value: type_rank,
                 pattern,
                 policy,
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type: canonical_type,
@@ -4230,6 +4236,7 @@ impl SemanticWorld {
         backing_declaration: SymbolId,
         body: OrdinaryIntrinsicBody,
         callable_view: PolicyView,
+        body_entry_view: PolicyView,
         complete_result_view: PolicyView,
         provenance: Provenance,
     ) -> Result<SemanticValueId, BuildError> {
@@ -4270,7 +4277,7 @@ impl SemanticWorld {
             callable_owner,
             receiver_type,
             callable_view.clone(),
-            complete_result_view.clone(),
+            body_entry_view,
             complete_result_view,
             callable_view,
             None,
@@ -4788,7 +4795,7 @@ impl SemanticWorld {
             type_value,
             PolicyView {
                 pair: policy,
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             },
             provenance,
         )
@@ -4851,7 +4858,7 @@ impl SemanticWorld {
             pattern,
             object: SemanticObjectId(0),
             policy,
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
             namespace_visibility: None,
             payload: SemanticValuePayload::AbstractLiteral {
                 family,
@@ -4882,7 +4889,7 @@ impl SemanticWorld {
             pattern,
             object: SemanticObjectId(0),
             policy,
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
             namespace_visibility: None,
             payload: SemanticValuePayload::LifetimeValue(lifetime),
             provenance,
@@ -5603,7 +5610,7 @@ mod tests {
         let view = crate::derive_function_object_view(
             &p2,
             &crate::FunctionObjectDeclarationPolicy {
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             },
         );
         world
@@ -5728,7 +5735,7 @@ mod tests {
             key.clone(),
             StructConstructionMaterialId(1),
             CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Unit),
-            crate::declared_policy_view(Stage::Meta, PolicyMode::Plain).pair,
+            crate::declared_policy_view(Stage::Meta, PolicyMode::Const).pair,
             Provenance::new("missing rank"),
         );
         assert!(result.unwrap().is_none());
@@ -5751,7 +5758,7 @@ mod tests {
                 wrong_root,
                 StructConstructionMaterialId(1),
                 CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Unit),
-                crate::declared_policy_view(Stage::Meta, PolicyMode::Plain).pair,
+                crate::declared_policy_view(Stage::Meta, PolicyMode::Const).pair,
                 Provenance::new("foreign parent")
             )
             .is_err());
@@ -5769,7 +5776,7 @@ mod tests {
                 .type_value,
         );
         let pattern = CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Unit);
-        let policy = crate::declared_policy_view(Stage::Meta, PolicyMode::Plain).pair;
+        let policy = crate::declared_policy_view(Stage::Meta, PolicyMode::Const).pair;
         let first = world
             .install_meta_struct_complete_type(
                 key.clone(),
@@ -5824,7 +5831,7 @@ mod tests {
                 .type_value,
         );
         let pattern = CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Unit);
-        let policy = crate::declared_policy_view(Stage::Meta, PolicyMode::Plain).pair;
+        let policy = crate::declared_policy_view(Stage::Meta, PolicyMode::Const).pair;
         let first = world
             .install_meta_struct_complete_type(
                 key.clone(),
@@ -6120,7 +6127,7 @@ mod tests {
         let mut world = base.semantic_world().clone();
         let ty = base.resolve_type_value("uint8").unwrap();
         let pattern = world.type_value(ty).unwrap().pattern;
-        let view = crate::declared_policy_view(crate::Stage::Compile, PolicyMode::Plain);
+        let view = crate::declared_policy_view(crate::Stage::Compile, PolicyMode::Const);
         let source = world
             .install_plain_value(
                 ty,
@@ -6713,7 +6720,7 @@ mod tests {
                 type_value: type_rank,
                 pattern,
                 policy: policy.clone(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::CoreTypeProjection {
                     represented_type,
@@ -6772,7 +6779,7 @@ mod tests {
             pattern: leaf_pattern,
             object: SemanticObjectId(0),
             policy: policy.clone(),
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
             namespace_visibility: None,
             payload: SemanticValuePayload::SimpleLiteral {
                 family: CanonicalLiteralFamily::Int,
@@ -6843,7 +6850,7 @@ mod tests {
                 pattern,
                 object: SemanticObjectId(0),
                 policy: policy.clone(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
                 namespace_visibility: None,
                 payload: SemanticValuePayload::SimpleLiteral {
                     family: CanonicalLiteralFamily::Int,
@@ -6871,7 +6878,7 @@ mod tests {
             pattern: leaf_pattern,
             object: SemanticObjectId(0),
             policy,
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
             namespace_visibility: None,
             payload: SemanticValuePayload::SimpleLiteral {
                 family: CanonicalLiteralFamily::Int,
@@ -6983,7 +6990,7 @@ mod tests {
         let function_view = crate::policy_pair::derive_function_object_view(
             &result_p2,
             &crate::policy_pair::FunctionObjectDeclarationPolicy {
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             },
         );
         let delta = SemanticNamespaceDelta {
@@ -7223,7 +7230,7 @@ mod tests {
             pattern,
             view: PolicyView {
                 pair: policy.clone(),
-                mode: PolicyMode::Plain,
+                mode: PolicyMode::Const,
             },
         });
         world

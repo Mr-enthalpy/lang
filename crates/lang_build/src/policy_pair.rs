@@ -35,14 +35,54 @@ impl Stage {
     }
 }
 
-/// Concrete overload-visible Policy point. `Plain` is neither omission nor an
-/// unconstrained set; every evaluated object/call context carries one point.
+/// Concrete value mode, independent of MetaInstance completion policy.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PolicyMode {
-    Const,
     #[default]
-    Plain,
+    Const,
     Mut,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum MetaInstancePolicy {
+    Meta,
+    #[default]
+    Close,
+}
+
+/// Missing construction evidence cannot be interpreted as a closed window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OpenHereAvailability {
+    Known(bool),
+    Unavailable,
+}
+
+/// Source omission survives elaboration until contextual completion.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PendingResultPolicyDemand {
+    pub pair_query: P1Projection,
+    pub mode: Option<PolicyMode>,
+    pub meta_instance_policy: MetaInstancePolicy,
+}
+
+impl PendingResultPolicyDemand {
+    pub fn complete(
+        self,
+        open_here: OpenHereAvailability,
+        provenance: Provenance,
+    ) -> Result<ResultPolicyDemand, Diagnostic> {
+        let mode = match (self.mode, self.meta_instance_policy, open_here) {
+            (Some(mode), _, _) => mode,
+            (None, MetaInstancePolicy::Close, _) => PolicyMode::Const,
+            (None, MetaInstancePolicy::Meta, OpenHereAvailability::Known(true)) => PolicyMode::Mut,
+            (None, MetaInstancePolicy::Meta, OpenHereAvailability::Known(false)) => PolicyMode::Const,
+            (None, MetaInstancePolicy::Meta, OpenHereAvailability::Unavailable) => return Err(policy_error("omitted mode under meta requires current OpenHere; the canonical construction consumer is unavailable", provenance)),
+        };
+        Ok(ResultPolicyDemand {
+            pair_query: self.pair_query,
+            mode,
+        })
+    }
 }
 
 /// One resolved value observation and its independently formed Pattern stage.
@@ -79,7 +119,8 @@ pub enum CapabilityRealizationCell {
     Custom,
 }
 
-/// Candidate-local, Policy-orthogonal input-mode x output-mode realization.
+/// Derived finite view of candidate-local relational capability declarations.
+/// The current const/mut domain does not introduce a separate table primitive.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CapabilityRealization {
     cells: BTreeMap<(PolicyMode, PolicyMode), CapabilityRealizationCell>,
@@ -88,8 +129,8 @@ pub struct CapabilityRealization {
 impl Default for CapabilityRealization {
     fn default() -> Self {
         let mut cells = BTreeMap::new();
-        for input in [PolicyMode::Const, PolicyMode::Plain, PolicyMode::Mut] {
-            for output in [PolicyMode::Const, PolicyMode::Plain, PolicyMode::Mut] {
+        for input in [PolicyMode::Const, PolicyMode::Mut] {
+            for output in [PolicyMode::Const, PolicyMode::Mut] {
                 cells.insert((input, output), CapabilityRealizationCell::Absent);
             }
         }
@@ -240,7 +281,7 @@ impl Default for ResultPolicyDemand {
     fn default() -> Self {
         Self {
             pair_query: P1Projection::Infer,
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         }
     }
 }
@@ -277,6 +318,8 @@ pub struct NamespaceDeclarationPolicy {
     pub projection: P1Projection,
     /// Whole-slot declaration mode, factored before `projection` is formed.
     pub mode: PolicyMode,
+    /// Independent completion qualification, retained through declaration elaboration.
+    pub meta_instance_policy: MetaInstancePolicy,
     /// Root-local external projection derived when this declaration directly
     /// writes `export`. This is an early validation/preview only:
     /// `None` does not prove that the declaration is absent from the eventual
@@ -291,14 +334,14 @@ pub struct NamespaceDeclarationPolicy {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionObjectDeclarationPolicy {
-    /// Concrete whole-slot mode. Omitted source syntax forms `plain`.
+    /// Concrete whole-slot mode, after contextual completion of omission.
     pub mode: PolicyMode,
 }
 
 impl Default for FunctionObjectDeclarationPolicy {
     fn default() -> Self {
         Self {
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         }
     }
 }
@@ -547,12 +590,14 @@ pub fn externally_visible<I: Ord>(
 struct ComponentAtoms {
     stage: Option<Stage>,
     mode_atoms: BTreeSet<PolicyMode>,
+    meta_instance_policy: Option<MetaInstancePolicy>,
     namespace: BTreeSet<NamespaceVisibility>,
     export_root: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum PolicyDimension {
+    MetaInstancePolicy,
     Stage,
     Mode,
     NamespaceVisibility,
@@ -562,6 +607,9 @@ enum PolicyDimension {
 impl ComponentAtoms {
     fn dimensions(&self) -> BTreeSet<PolicyDimension> {
         let mut result = BTreeSet::new();
+        if self.meta_instance_policy.is_some() {
+            result.insert(PolicyDimension::MetaInstancePolicy);
+        }
         if self.stage.is_some() {
             result.insert(PolicyDimension::Stage);
         }
@@ -595,11 +643,15 @@ pub fn normalize_p2_policy(
 pub fn elaborate_binding_result_demand(
     policy: Option<&NormPolicySpec>,
     provenance: Provenance,
-) -> Result<ResultPolicyDemand, Diagnostic> {
+) -> Result<PendingResultPolicyDemand, Diagnostic> {
     let Some(policy) = policy else {
-        return Ok(ResultPolicyDemand::default());
+        return Ok(PendingResultPolicyDemand {
+            pair_query: P1Projection::Infer,
+            mode: None,
+            meta_instance_policy: MetaInstancePolicy::Close,
+        });
     };
-    let (pair_query, mode, namespace, export_root) =
+    let (pair_query, mode, meta_instance_policy, namespace, export_root) =
         elaborate_p1_components(policy, provenance.clone())?;
     if !namespace.is_empty() || export_root {
         return Err(policy_error(
@@ -607,7 +659,11 @@ pub fn elaborate_binding_result_demand(
             provenance,
         ));
     }
-    Ok(ResultPolicyDemand { pair_query, mode })
+    Ok(PendingResultPolicyDemand {
+        pair_query,
+        mode,
+        meta_instance_policy,
+    })
 }
 
 pub fn elaborate_formal_policy_pattern(
@@ -692,6 +748,7 @@ pub struct ExplicitP1Selection {
     pub presence: Option<ValuePresence>,
     pub pattern_stage: Option<Stage>,
     pub mode: Option<PolicyMode>,
+    pub meta_instance_policy: Option<MetaInstancePolicy>,
 }
 
 impl ExplicitP1Selection {
@@ -700,6 +757,7 @@ impl ExplicitP1Selection {
             && self.presence.is_none()
             && self.pattern_stage.is_none()
             && self.mode.is_none()
+            && self.meta_instance_policy.is_none()
     }
 
     /// A fully explicit selection carrying every dimension of `pair`.
@@ -711,6 +769,7 @@ impl ExplicitP1Selection {
             presence: Some(view.pair.value.presence()),
             pattern_stage: Some(view.pair.pattern.stage),
             mode: Some(view.mode),
+            meta_instance_policy: None,
         }
     }
 }
@@ -732,7 +791,8 @@ pub fn elaborate_explicit_p1(
     };
     let mut selection = ExplicitP1Selection::default();
 
-    let value_atoms = parse_component(&policy.constraint, provenance.clone())?;
+    let value_atoms = parse_p1_component(&policy.constraint, provenance.clone())?;
+    selection.meta_instance_policy = value_atoms.meta_instance_policy;
     match position {
         // Visibility/export atoms in the outer prefix are namespace
         // declaration attributes, separate from the function-object P1.
@@ -762,14 +822,22 @@ pub fn elaborate_namespace_declaration_policy(
     let Some(policy) = policy else {
         return Ok(NamespaceDeclarationPolicy {
             projection: P1Projection::Infer,
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
             external_projection: None,
+            meta_instance_policy: MetaInstancePolicy::Close,
             visibility: None,
             export_root: false,
         });
     };
-    let (projection, mode, namespace, export_root) =
+    let (projection, mode, meta_instance_policy, namespace, export_root) =
         elaborate_p1_components(policy, provenance.clone())?;
+    let mode = PendingResultPolicyDemand {
+        pair_query: projection.clone(),
+        mode,
+        meta_instance_policy,
+    }
+    .complete(OpenHereAvailability::Unavailable, provenance.clone())?
+    .mode;
     let visibility = one_namespace(&namespace, provenance.clone())?;
     if export_root && position != NamespaceDeclarationPosition::DirectTopLevel {
         return Err(policy_error(
@@ -783,6 +851,7 @@ pub fn elaborate_namespace_declaration_policy(
     Ok(NamespaceDeclarationPolicy {
         projection,
         mode,
+        meta_instance_policy,
         external_projection,
         visibility,
         export_root,
@@ -816,20 +885,31 @@ fn elaborate_p1_components(
 ) -> Result<
     (
         P1Projection,
-        PolicyMode,
+        Option<PolicyMode>,
+        MetaInstancePolicy,
         BTreeSet<NamespaceVisibility>,
         bool,
     ),
     Diagnostic,
 > {
-    let atoms = parse_component(&policy.constraint, provenance.clone())?;
-    let mode = concrete_mode_atom(&atoms, "P1", provenance.clone())?;
+    let atoms = parse_p1_component(&policy.constraint, provenance.clone())?;
+    let mode = if atoms.mode_atoms.is_empty() {
+        None
+    } else {
+        Some(explicit_mode_atom(&atoms, "P1", provenance.clone())?)
+    };
     let value = ValuePolicyQuery {
         stage: atoms.stage,
         presence: ValuePresence::Present,
     };
     let projection = P1Projection::ValueDominant { value };
-    Ok((projection, mode, atoms.namespace, atoms.export_root))
+    Ok((
+        projection,
+        mode,
+        atoms.meta_instance_policy.unwrap_or_default(),
+        atoms.namespace,
+        atoms.export_root,
+    ))
 }
 
 pub fn function_object_declaration_policy(
@@ -927,27 +1007,45 @@ fn parse_component(
     conjunction: &NormPolicyConjunction,
     provenance: Provenance,
 ) -> Result<ComponentAtoms, Diagnostic> {
+    parse_positioned_component(conjunction, false, provenance)
+}
+
+fn parse_p1_component(
+    conjunction: &NormPolicyConjunction,
+    provenance: Provenance,
+) -> Result<ComponentAtoms, Diagnostic> {
+    parse_positioned_component(conjunction, true, provenance)
+}
+
+fn parse_positioned_component(
+    conjunction: &NormPolicyConjunction,
+    p1: bool,
+    provenance: Provenance,
+) -> Result<ComponentAtoms, Diagnostic> {
     let mut result = ComponentAtoms::default();
     for atom in &conjunction.atoms {
-        let next = parse_atom(atom, provenance.clone())?;
+        let next = parse_atom(atom, p1, provenance.clone())?;
         merge_conjunction(&mut result, next, provenance.clone())?;
     }
     Ok(result)
 }
 
-fn parse_atom(atom: &NormPolicyAtom, provenance: Provenance) -> Result<ComponentAtoms, Diagnostic> {
+fn parse_atom(
+    atom: &NormPolicyAtom,
+    p1: bool,
+    provenance: Provenance,
+) -> Result<ComponentAtoms, Diagnostic> {
     let mut atoms = ComponentAtoms::default();
     match atom {
         NormPolicyAtom::Name { text, .. } => match text.as_str() {
+            "meta" if p1 => atoms.meta_instance_policy = Some(MetaInstancePolicy::Meta),
+            "close" if p1 => atoms.meta_instance_policy = Some(MetaInstancePolicy::Close),
             "meta" => atoms.stage = Some(Stage::Meta),
             "compile" => atoms.stage = Some(Stage::Compile),
             "seal" => atoms.stage = Some(Stage::Seal),
             "runtime" => atoms.stage = Some(Stage::Runtime),
             "const" => {
                 atoms.mode_atoms.insert(PolicyMode::Const);
-            }
-            "plain" => {
-                atoms.mode_atoms.insert(PolicyMode::Plain);
             }
             "mut" => {
                 atoms.mode_atoms.insert(PolicyMode::Mut);
@@ -973,7 +1071,7 @@ fn parse_atom(atom: &NormPolicyAtom, provenance: Provenance) -> Result<Component
             ));
         }
         NormPolicyAtom::Group { conjunction, .. } => {
-            return parse_component(conjunction, provenance);
+            return parse_positioned_component(conjunction, p1, provenance);
         }
         NormPolicyAtom::Error(_) => {
             return Err(policy_error("invalid policy AST", provenance));
@@ -998,6 +1096,7 @@ fn merge_conjunction(
             provenance,
         ));
     }
+    result.meta_instance_policy = result.meta_instance_policy.or(next.meta_instance_policy);
     result.stage = result.stage.or(next.stage);
     result.mode_atoms.extend(next.mode_atoms);
     result.namespace.extend(next.namespace);
@@ -1011,7 +1110,7 @@ fn concrete_mode_atom(
     provenance: Provenance,
 ) -> Result<PolicyMode, Diagnostic> {
     match atoms.mode_atoms.len() {
-        0 => Ok(PolicyMode::Plain),
+        0 => Ok(PolicyMode::Const),
         1 => Ok(*atoms.mode_atoms.iter().next().expect("one mode atom")),
         _ => Err(policy_error(
             format!(
@@ -1029,7 +1128,7 @@ fn explicit_mode_atom(
 ) -> Result<PolicyMode, Diagnostic> {
     if atoms.mode_atoms.is_empty() {
         return Err(policy_error(
-            format!("{context} must select one of const, plain, or mut"),
+            format!("{context} must select one of const or mut"),
             provenance,
         ));
     }

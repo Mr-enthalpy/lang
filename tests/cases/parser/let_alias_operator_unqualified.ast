@@ -3,6 +3,11 @@ Program
     binder:
       Operator +
     target:
-      EntityRef
-        components:
-          component Operator +
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                NavPath
+                  components:
+                    component Operator +

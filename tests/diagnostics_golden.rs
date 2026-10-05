@@ -31,6 +31,11 @@ fn invalid_token() {
 }
 
 #[test]
+fn structural_colon_recovery() {
+    assert_diagnostics_case("structural_colon_recovery");
+}
+
+#[test]
 fn unclosed_string() {
     assert_diagnostics_case("unclosed_string");
 }

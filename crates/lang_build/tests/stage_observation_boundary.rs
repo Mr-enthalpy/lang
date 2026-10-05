@@ -29,14 +29,14 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
         Provenance::new("horizon fixture"),
     );
     // Callee exposure and body entry observe different facts after resolution.
-    symbol.policy_view = Some(declared_policy_view(Stage::Compile, PolicyMode::Plain));
+    symbol.policy_view = Some(declared_policy_view(Stage::Compile, PolicyMode::Const));
     delta.insert_symbol(world.package_root_node(), symbol);
     let snapshot = world.namespace_projection().install_delta(delta).unwrap();
     let capability = snapshot.capability();
     let path = ["candidate".to_string()];
     let resolver = world.package_context();
     let callee = capability.resolve(&path, &resolver).unwrap();
-    let body = declared_policy_view(Stage::Seal, PolicyMode::Plain);
+    let body = declared_policy_view(Stage::Seal, PolicyMode::Const);
     let result = declared_policy_view(Stage::Runtime, PolicyMode::Const);
 
     for (horizon, callee_value_visible, body_visible) in [
@@ -166,7 +166,7 @@ fn hidden_facets_retain_the_same_resolved_observation() {
 
 #[test]
 fn explicit_absence_cannot_silently_drop_an_explicit_stage() {
-    let derived = declared_policy_view(Stage::Compile, PolicyMode::Plain);
+    let derived = declared_policy_view(Stage::Compile, PolicyMode::Const);
     let selection = ExplicitP1Selection {
         presence: Some(ValuePresence::Absent),
         value_stage: Some(Stage::Compile),
@@ -185,8 +185,7 @@ fn explicit_absence_cannot_silently_drop_an_explicit_stage() {
 
 #[test]
 fn explicit_pin_stage_stops_selection_until_input_admissibility_is_connected() {
-    let call =
-        extract_single_call_site(&initializer_from_source("let result = mystery f;")).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for stage in ["meta", "compile", "seal", "runtime", "const + compile"] {
         let constrained =
             format!("let constrained = (self, {stage} let x):runtime -> let r => {{ x; }};");
@@ -260,7 +259,7 @@ fn ordinary_pipeline_does_not_rank_static_stage_atoms() {
 #[test]
 fn hidden_body_observation_is_an_explicit_invocation_frontier() {
     // P1 is visible; the actual declared P2 observation is hidden.
-    let mut family = AssociatedFamily::new(&["meta let f = (receiver, x):seal => { (); };"]);
+    let mut family = AssociatedFamily::new(&["compile let f = (receiver, x):seal => { (); };"]);
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     let outcome = family.invoke_ordinary_call(
         family.package_root_node(),
@@ -277,7 +276,7 @@ fn hidden_body_observation_is_an_explicit_invocation_frontier() {
 #[test]
 fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
     let visible = "let f = (receiver, x):meta => (\"visible rejection\") delete;";
-    let hidden = "meta let f = (receiver, x):seal => { (); };";
+    let hidden = "compile let f = (receiver, x):seal => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [
         vec![visible, hidden],
@@ -312,7 +311,7 @@ fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
 #[test]
 fn hidden_body_does_not_override_a_reached_applicability_diagnostic() {
     let visible = "let f = (receiver, x:type):meta => { (); };";
-    let hidden = "meta let f = (receiver, x):seal => { (); };";
+    let hidden = "compile let f = (receiver, x):seal => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [[visible, hidden], [hidden, visible]] {
         let mut family = AssociatedFamily::new(&sources);
@@ -350,7 +349,7 @@ fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
         let hidden = world
             .install_plain_value(
                 classifier,
-                declared_policy_view(Stage::Seal, PolicyMode::Plain).pair,
+                declared_policy_view(Stage::Seal, PolicyMode::Const).pair,
                 Provenance::new("hidden receiver"),
             )
             .unwrap();

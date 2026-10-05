@@ -64,16 +64,19 @@ same-Type Policy migration are separate ordinary operations.
 - Which effect/error/panic/resource capability dimensions are added to
   DynamicLegality?
 
-Primitive PolicyMode={const,plain,mut}, demand formation before maxima,
-three-point preference, capability realization, unique selection and no reopen
+PolicyMode={const,mut} and independent MetaInstancePolicy={meta,close},
+demand formation before maxima,
+two-point preference, capability realization, unique selection and no reopen
 are fixed. Stage is one atom; the static trio is pairwise incomparable. P2 is
 horizon, P1/Pout producer visibility. Pin admits explicit stage constraints and
 holes; Pout.stage=P1.stage. InputAdmissible, migration and Ready are separate.
 Runtime P2 defaults omitted P1 to runtime; seal defaults to seal. Bare let
 supplies no override; written concrete mode and explicit hole are distinct.
 Policy deduction uses ordinary operator Pattern relations, HoleBinderId and
-require. The 3×3 tables are finite explanatory views of relational declarations,
-not a separate inference primitive. Default completion is not a source constraint.
+require. The 2×2 tables are finite explanatory views of relational declarations,
+not a separate inference primitive. Default completion is not a source constraint: only finally omitted Mode
+becomes mut under meta + current OpenHere, const otherwise. It preserves explicit
+and deduced modes; unknown required OpenHere is unavailable, not false.
 
 ## Residual and serial evaluation
 
@@ -112,7 +115,7 @@ continuation-path consumer alignment is roadmap work.
   aggregation laws (with BucketEq(T1,T2) iff Norm_type(T1)=Norm_type(T2)) without erasing entries through an
   unrelated cache/value-identity quotient? This is not an open semantic codomain.
 - What IR represents the already defined construction-window termination,
-  meta completion, plain closure and registered-structure closure events?
+  meta completion, close completion/closure and registered-structure closure events?
 - What public spelling should the builtin associated-state callable A use?
 - Which values beyond ordinary callable members from closure formation can prove a
   location-parametric ReinstantiationWitness? The initial domain is fixed;
@@ -129,7 +132,7 @@ candidates, not an implicit chain. Both recheck OpenHere, target Writable and
 ordinary capability/access/lifetime. Saved refs preserve their borrowed subject
 and cannot evade Close. These are closed laws; consumer encoding remains pending.
 Explicit borrowing and ordinary first write initialize the Place. Initialization
-authority is independent of const/plain/mut and is consumed on the successful
+authority is independent of const/mut and is consumed on the successful
 first commit; later replacement has separate capability and resident
 compatibility checks. Close requires
 initialized retained members being published, not realization of every coordinate.
@@ -144,7 +147,7 @@ Pattern-registered structural changes use extend/inject; ordinary name writes
 may independently change Val2(Core). Ordinary group mutation needs its own Writable,
 not OpenHere of its contained types. Meta invocation constructs ordinary result
 instance names/types with dependency-derived openness. P1 meta retains that
-qualification; plain let completes/closes the instance. Arbitrary Val2 payloads
+qualification; close let completes/closes the instance. Arbitrary Val2 payloads
 use ordinary navigation and policy; V_tau and Pattern registration are independent.
 Its input normalization retains semantically observed name/subject identities;
 its registry/cache preserves instance/member Places and current state.
@@ -243,11 +246,14 @@ segments and endpoint/root material in Omega. Indexing p[i] is a relative
 single-name path_pattern, never a string. Default ADL forwards through
 ((a#)[0])$::t. Concrete representations and source wiring remain pending.
 
-General slicing p[i:j]:path_pattern is a small open question: define
-Slice_Omega endpoint/root retention, admissible boundaries and empty slices
-without copying stale endpoints or inventing an empty-Path unit. Indexing is
-fixed as relative single-name selection; whether singleton slicing agrees with
-indexing remains undecided, including when a slice touches a root endpoint.
+Colon construction is closed: RHS (items separated by :) normalizes to an
+ordinary Product |> slice; empty colon/comma slots complete to unit. Slice is
+ordinary struct/Pattern material. Concrete Path/container overload families and
+their extraction consumers remain roadmap work, not a Slice_Omega primitive or
+missing-endpoint design question. Lexical === aliases formed Path material.
+with admits full Path and forward references, with conditional instantiation on
+actual Self/navigation-layer objects after complete control-flow formation.
+
 The public Product ordinal API remains separately open; neither gap permits
 implicit sorting or opaque-only Path semantics.
 `#` is already defined for any expression with applicable path_pattern projection;

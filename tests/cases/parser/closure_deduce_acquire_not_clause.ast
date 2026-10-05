@@ -14,14 +14,19 @@ Program
                 Atom
                   Group
                     Expr
-                      Pipe
-                        Segment has_incoming=false
-                          OperatorExpr
-                            Atom
-                              Name x
-                          OperatorExpr
-                            Atom
-                              Name T
+                      ColonSlots
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name x
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name T
           OperatorExpr
             Atom
               Name acquire

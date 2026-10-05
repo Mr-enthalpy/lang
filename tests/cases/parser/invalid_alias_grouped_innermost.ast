@@ -3,6 +3,13 @@ Program
     binder:
       Name x
     target:
-      EntityRef
-        components:
-          component Error "grouped expression cannot be an innermost navigation component"
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  NavPath
+                    components:
+                      component Error "grouped expression cannot be an innermost navigation component"
+                      component Name ns

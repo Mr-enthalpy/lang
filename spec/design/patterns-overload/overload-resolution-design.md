@@ -87,8 +87,8 @@ types normalize equally; equality and interning cannot quotient those entries.
 ResultPolicyDemand is total before maxima, recording absence when unconstrained. Omitted mode
 preserves NoWrittenModeConstraint; inherited/contextual constraints or an
 applicable DefaultModeCompletion may resolve a mode demand. Omission alone is
-not explicit plain. Pair/stage result demand is a hard candidate constraint;
-a resolved whole-slot mode supplies the three-point preference coordinate.
+not an explicit const/mut atom. Pair/stage result demand is a hard candidate constraint;
+a resolved whole-slot mode supplies the two-point preference coordinate.
 Capability realization and dynamic legality do not grant preference.
 
 ## 4. Pattern applicability

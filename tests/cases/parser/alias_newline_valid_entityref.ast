@@ -1,9 +1,0 @@
-Program
-  LetAlias
-    binder:
-      Name A
-    target:
-      EntityRef
-        components:
-          component Name B
-          component Name C

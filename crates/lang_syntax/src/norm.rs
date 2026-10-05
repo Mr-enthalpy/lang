@@ -14,9 +14,9 @@ use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
     BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole, CanonicalProductElementAst,
     CanonicalSkeletonAst, CaptureItemAst, ClosureAst, ClosureBodyAst, ClosurePlacementAst,
-    DeduceListAst, EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
-    HeadClauseAst, LetAliasAst, LetAst, MemberVisibilityAst, NavComponentAst, OperatorExprAst,
-    OperatorExprKind, OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst,
+    DeduceListAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst,
+    LetAliasAst, LetAst, MemberVisibilityAst, NavComponentAst, OperatorExprAst, OperatorExprKind,
+    OperatorFixity, OperatorNameAst, ParamClauseAst, PathMaterialAst, PipeExprAst, PolicyAtomAst,
     PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
     ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
     SelectorAst, Span, WithClauseAst, WithClauseKind,
@@ -86,7 +86,7 @@ pub enum NormDecl {
     Alias {
         policy: Option<NormPolicySpec>,
         binder: NormAliasBinder,
-        target: NormEntityRef,
+        target: NormPathMaterial,
         origin: NormOrigin,
     },
     Error(NormError),
@@ -199,6 +199,11 @@ pub enum NormPattern {
         skeleton: NormSkeleton,
         origin: NormOrigin,
     },
+    /// RHS operand evaluated once, then reinjected by the current Pattern consumer.
+    Splice {
+        operand: Box<NormExpr>,
+        origin: NormOrigin,
+    },
     BindingSlot {
         slot: Box<NormBindingSlot>,
         origin: NormOrigin,
@@ -307,6 +312,7 @@ pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPat
         | NormPattern::Name { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Nav { .. }
+        | NormPattern::Splice { .. }
         | NormPattern::Skeleton { .. }
         | NormPattern::Error(_)
         | NormPattern::Unsupported { .. } => Ok(()),
@@ -379,7 +385,7 @@ fn collect_decl_pack_errors(decl: &NormDecl, errors: &mut Vec<PatternValidationE
     match decl {
         NormDecl::Let { slot, .. } => collect_slot_pack_errors(slot, errors),
         NormDecl::Alias { target, .. } => {
-            collect_nav_component_pack_errors(&target.components, errors);
+            collect_pattern_pack_errors(&target.pattern, errors);
         }
         NormDecl::Error(_) => {}
     }
@@ -446,6 +452,7 @@ fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PatternVa
             }
             collect_pattern_pack_errors(inner, errors);
         }
+        NormPattern::Splice { operand, .. } => collect_expr_pack_errors(operand, errors),
         NormPattern::BindingSlot { slot, .. } => collect_slot_pack_errors(slot, errors),
         NormPattern::Nav { components, .. } => {
             collect_nav_component_pack_errors(components, errors);
@@ -604,8 +611,12 @@ fn collect_nav_component_pack_errors(
     errors: &mut Vec<PatternValidationError>,
 ) {
     for component in components {
-        if let NormNavComponent::Group { expr, .. } = component {
+        if let NormNavComponent::Group { expr, .. }
+        | NormNavComponent::Splice { operand: expr, .. } = component
+        {
             collect_expr_pack_errors(expr, errors);
+        } else if let NormNavComponent::PatternGroup { pattern, .. } = component {
+            collect_pattern_pack_errors(pattern, errors);
         }
     }
 }
@@ -819,7 +830,7 @@ enum VisibleHoleKey {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormWithClause {
-    pub names: Vec<String>,
+    pub items: Vec<NormPathMaterial>,
     pub explicit_empty: bool,
     pub error: Option<NormError>,
     pub origin: NormOrigin,
@@ -954,8 +965,8 @@ pub enum NormHeadClause {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NormEntityRef {
-    pub components: Vec<NormNavComponent>,
+pub struct NormPathMaterial {
+    pub pattern: Box<NormPattern>,
     pub origin: NormOrigin,
 }
 
@@ -974,6 +985,14 @@ pub enum NormAliasBinder {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormNavComponent {
+    PatternGroup {
+        pattern: Box<NormPattern>,
+        origin: NormOrigin,
+    },
+    Splice {
+        operand: Box<NormExpr>,
+        origin: NormOrigin,
+    },
     Name {
         name: String,
         origin: NormOrigin,
@@ -1075,6 +1094,7 @@ pub enum NormOrigin {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NormRule {
     PolicyLetPreserve,
+    ColonLowering,
     ProductLift,
     ProductMerge,
     PipeFallback,
@@ -1227,7 +1247,11 @@ impl HoleAlphaNormalizer {
             if let Some(policy) = policy {
                 self.normalize_policy_spec(policy, holes);
             }
-            self.normalize_nav_components(&mut target.components, holes, owner);
+            let root = PatternRootId {
+                owner,
+                local_root: 0,
+            };
+            self.normalize_pattern(&mut target.pattern, holes, root, &mut BTreeMap::new());
         }
     }
 
@@ -1251,6 +1275,11 @@ impl HoleAlphaNormalizer {
         self.normalize_pattern(&mut slot.value_pattern, &visible, root, declared);
         if let Some(annotation) = &mut slot.annotation {
             self.normalize_pattern(&mut annotation.pattern, &visible, root, declared);
+        }
+        if let Some(with_clause) = &mut slot.with_clause {
+            for item in &mut with_clause.items {
+                self.normalize_pattern(&mut item.pattern, &visible, root, declared);
+            }
         }
         if let Some(initializer) = &mut slot.initializer {
             self.normalize_expr(initializer, &visible, root.owner);
@@ -1465,7 +1494,18 @@ impl HoleAlphaNormalizer {
                 }
             }
             NormPattern::Nav { components, .. } => {
-                self.normalize_nav_components(components, holes, root.owner);
+                for component in components {
+                    match component {
+                        NormNavComponent::PatternGroup { pattern, .. } => {
+                            self.normalize_pattern(pattern, holes, root, declared)
+                        }
+                        NormNavComponent::Group { expr, .. }
+                        | NormNavComponent::Splice { operand: expr, .. } => {
+                            self.normalize_expr(expr, holes, root.owner)
+                        }
+                        _ => {}
+                    }
+                }
             }
             NormPattern::Sequence { elements, .. } => {
                 for element in elements {
@@ -1475,6 +1515,7 @@ impl HoleAlphaNormalizer {
             NormPattern::Skeleton { skeleton, .. } => {
                 self.normalize_skeleton(skeleton, holes, root.owner);
             }
+            NormPattern::Splice { operand, .. } => self.normalize_expr(operand, holes, root.owner),
             NormPattern::BindingSlot { slot, .. } => {
                 self.normalize_slot(slot, holes, root, declared);
             }
@@ -1551,7 +1592,9 @@ impl HoleAlphaNormalizer {
         owner: NormSemanticOwnerId,
     ) {
         for component in components {
-            if let NormNavComponent::Group { expr, .. } = component {
+            if let NormNavComponent::Group { expr, .. }
+            | NormNavComponent::Splice { operand: expr, .. } = component
+            {
                 self.normalize_expr(expr, holes, owner);
             }
         }
@@ -1699,7 +1742,7 @@ fn normalize_alias_decl(alias: &LetAliasAst) -> NormDecl {
     NormDecl::Alias {
         policy,
         binder,
-        target: normalize_entity_ref(&alias.target),
+        target: normalize_path_material(&alias.target),
         origin: NormOrigin::Generated {
             rule: NormRule::AliasPreserve,
             span: alias.span,
@@ -1752,6 +1795,23 @@ fn normalize_expr(expr: &ExprAst) -> NormExpr {
                 span: policy_let.span,
             },
         },
+        ExprKind::Colon { slots } => {
+            let product = ProductExprAst {
+                elements: slots.clone(),
+                span: expr.span,
+            };
+            make_call(
+                normalize_product_expr(&product, false),
+                NormExpr::Name {
+                    text: "slice".to_string(),
+                    origin: NormOrigin::Source(expr.span),
+                },
+                NormOrigin::Generated {
+                    rule: NormRule::ColonLowering,
+                    span: expr.span,
+                },
+            )
+        }
         ExprKind::Pipe(pipe) => normalize_pipe(pipe),
         ExprKind::Product(product) => NormExpr::Product(normalize_product_expr(product, true)),
         ExprKind::Error(error) => NormExpr::Error(normalize_error(error)),
@@ -2039,6 +2099,15 @@ fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
         OperatorExprKind::Product(product) => {
             NormExpr::Product(normalize_product_expr(product, true))
         }
+        OperatorExprKind::OperatorSugar {
+            operator,
+            args: _,
+            span,
+            ..
+        } if operator.spelling == "$" => NormExpr::Unsupported {
+            raw_kind_summary: "Pattern splice outside a Pattern/Path consumer".into(),
+            origin: NormOrigin::Source(*span),
+        },
         OperatorExprKind::OperatorSugar {
             operator,
             fixity,
@@ -2572,7 +2641,9 @@ fn collect_free_non_call_names_expr(
         }
         NormExpr::Nav { components, .. } => {
             for component in components {
-                if let NormNavComponent::Group { expr, .. } = component {
+                if let NormNavComponent::Group { expr, .. }
+                | NormNavComponent::Splice { operand: expr, .. } = component
+                {
                     collect_free_non_call_names_expr(expr, bound, false, names);
                 }
             }
@@ -2642,11 +2713,7 @@ fn collect_free_non_call_names_program(
                 collect_pattern_binder_names(&slot.value_pattern, bound);
             }
             NormForm::Alias(NormDecl::Alias { binder, target, .. }) => {
-                for component in &target.components {
-                    if let NormNavComponent::Group { expr, .. } = component {
-                        collect_free_non_call_names_expr(expr, bound, false, names);
-                    }
-                }
+                collect_path_value_observations(&target.pattern, bound, names);
                 if let NormAliasBinder::Name { name, .. } = binder {
                     bound.insert(name.clone());
                 }
@@ -2706,6 +2773,7 @@ fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<Stri
         | NormPattern::Name { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Nav { .. }
+        | NormPattern::Splice { .. }
         | NormPattern::Skeleton { .. }
         | NormPattern::Error(_)
         | NormPattern::Unsupported { .. } => {}
@@ -2899,6 +2967,9 @@ fn normalize_canonical_pattern(
     holes: &[VisibleHole],
 ) -> NormPattern {
     match skeleton {
+        CanonicalSkeletonAst::Expression { expression, .. } => {
+            normalize_expr_as_pattern(expression, holes)
+        }
         CanonicalSkeletonAst::Segment { elements, span } => NormPattern::Sequence {
             elements: elements
                 .iter()
@@ -3075,6 +3146,10 @@ fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[VisibleHole]) -> NormPatte
     // Pattern-side lowering for raw expression-shaped syntax in annotation or
     // extraction contexts. Names become PatternName/HoleRef, not NormExpr::Name.
     match &expr.kind {
+        ExprKind::Colon { .. } => NormPattern::Unsupported {
+            raw_kind_summary: "RHS structural colon outside a splice operand".to_string(),
+            origin: NormOrigin::Source(expr.span),
+        },
         ExprKind::PolicyLet(policy_let) => NormPattern::Unsupported {
             raw_kind_summary: "policy-let expression in pattern context".to_string(),
             origin: NormOrigin::Generated {
@@ -3153,6 +3228,25 @@ fn normalize_operator_expr_as_pattern(
     // Unsupported sugar is surfaced explicitly instead of silently becoming a
     // value-side expression.
     match &expr.kind {
+        OperatorExprKind::OperatorSugar {
+            operator,
+            args,
+            span,
+            ..
+        } if operator.spelling == "$" && args.len() == 1 => NormPattern::Splice {
+            operand: Box::new(normalize_operator_expr(&args[0])),
+            origin: NormOrigin::Source(*span),
+        },
+        OperatorExprKind::NavPath {
+            components,
+            explicit_terminated: false,
+            ..
+        } if matches!(components.as_slice(), [NavComponentAst::Operator(_)]) => {
+            NormPattern::Splice {
+                operand: Box::new(normalize_operator_expr(expr)),
+                origin: NormOrigin::Source(expr.span),
+            }
+        }
         OperatorExprKind::Atom(atom) => normalize_atom_as_pattern(atom, holes),
         OperatorExprKind::Product(product) => normalize_expr_as_pattern(
             &ExprAst {
@@ -3166,7 +3260,10 @@ fn normalize_operator_expr_as_pattern(
             span,
             explicit_terminated,
         } => NormPattern::Nav {
-            components: components.iter().map(normalize_nav_component).collect(),
+            components: components
+                .iter()
+                .map(|component| normalize_pattern_nav_component(component, holes))
+                .collect(),
             explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(*span),
         },
@@ -3211,7 +3308,10 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPatte
             components,
             explicit_terminated,
         } => NormPattern::Nav {
-            components: components.iter().map(normalize_nav_component).collect(),
+            components: components
+                .iter()
+                .map(|component| normalize_pattern_nav_component(component, holes))
+                .collect(),
             explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(atom.span),
         },
@@ -3234,19 +3334,19 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPatte
 fn normalize_with_clause(with_clause: &WithClauseAst) -> NormWithClause {
     match &with_clause.kind {
         WithClauseKind::Empty => NormWithClause {
-            names: Vec::new(),
+            items: Vec::new(),
             explicit_empty: true,
             error: None,
             origin: NormOrigin::Source(with_clause.span),
         },
         WithClauseKind::Items { items } => NormWithClause {
-            names: items.iter().map(|item| item.text.clone()).collect(),
+            items: items.iter().map(normalize_path_material).collect(),
             explicit_empty: false,
             error: None,
             origin: NormOrigin::Source(with_clause.span),
         },
         WithClauseKind::Error(error) => NormWithClause {
-            names: Vec::new(),
+            items: Vec::new(),
             explicit_empty: false,
             error: Some(normalize_error(error)),
             origin: NormOrigin::Source(with_clause.span),
@@ -3256,6 +3356,10 @@ fn normalize_with_clause(with_clause: &WithClauseAst) -> NormWithClause {
 
 fn normalize_canonical_skeleton(skeleton: &CanonicalSkeletonAst) -> NormSkeleton {
     match skeleton {
+        CanonicalSkeletonAst::Expression { span, .. } => NormSkeleton::Error(NormError {
+            message: "expression-shaped Pattern must normalize through NormPattern".into(),
+            origin: NormOrigin::Source(*span),
+        }),
         CanonicalSkeletonAst::Segment { elements, span } => NormSkeleton::Segment {
             elements: elements.iter().map(normalize_canonical_skeleton).collect(),
             origin: NormOrigin::Source(*span),
@@ -3316,17 +3420,29 @@ fn normalize_canonical_role(role: CanonicalNameRole) -> NormCanonicalNameRole {
     }
 }
 
-fn normalize_entity_ref(entity_ref: &EntityRefAst) -> NormEntityRef {
-    NormEntityRef {
-        components: entity_ref
-            .components
-            .iter()
-            .map(normalize_nav_component)
-            .collect(),
+fn normalize_path_material(path: &PathMaterialAst) -> NormPathMaterial {
+    NormPathMaterial {
+        pattern: Box::new(normalize_expr_as_pattern(&path.expression, &[])),
         origin: NormOrigin::Generated {
             rule: NormRule::AliasPreserve,
-            span: entity_ref.span,
+            span: path.span,
         },
+    }
+}
+
+fn normalize_pattern_nav_component(
+    component: &NavComponentAst,
+    holes: &[VisibleHole],
+) -> NormNavComponent {
+    match component {
+        NavComponentAst::Group(expr) => match normalize_expr_as_pattern(expr, holes) {
+            NormPattern::Splice { operand, origin } => NormNavComponent::Splice { operand, origin },
+            pattern => NormNavComponent::PatternGroup {
+                pattern: Box::new(pattern),
+                origin: NormOrigin::Source(expr.span),
+            },
+        },
+        _ => normalize_nav_component(component),
     }
 }
 
@@ -3340,10 +3456,16 @@ fn normalize_nav_component(component: &NavComponentAst) -> NormNavComponent {
             spelling: operator.spelling.clone(),
             origin: NormOrigin::Source(operator.span),
         },
-        NavComponentAst::Group(expr) => NormNavComponent::Group {
-            expr: Box::new(normalize_expr(expr)),
-            origin: NormOrigin::Source(expr.span),
-        },
+        NavComponentAst::Group(expr) => {
+            if let NormPattern::Splice { operand, origin } = normalize_expr_as_pattern(expr, &[]) {
+                NormNavComponent::Splice { operand, origin }
+            } else {
+                NormNavComponent::Group {
+                    expr: Box::new(normalize_expr(expr)),
+                    origin: NormOrigin::Source(expr.span),
+                }
+            }
+        }
         NavComponentAst::Error(error) => NormNavComponent::Error(normalize_error(error)),
     }
 }
@@ -3517,7 +3639,8 @@ fn origin_span(origin: &NormOrigin) -> Span {
 
 fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
     match skeleton {
-        CanonicalSkeletonAst::Segment { span, .. }
+        CanonicalSkeletonAst::Expression { span, .. }
+        | CanonicalSkeletonAst::Segment { span, .. }
         | CanonicalSkeletonAst::Pack { span, .. }
         | CanonicalSkeletonAst::ProductExtract { span, .. }
         | CanonicalSkeletonAst::Wildcard { span }
@@ -3621,7 +3744,7 @@ fn dump_norm_decl(output: &mut String, decl: &NormDecl, indent: usize) {
             line(output, indent + 1, "binder:");
             dump_alias_binder(output, binder, indent + 2);
             line(output, indent + 1, "target:");
-            dump_entity_ref(output, target, indent + 2);
+            dump_path_material(output, target, indent + 2);
         }
         NormDecl::Error(error) => {
             line(output, indent, "Decl Error");
@@ -3968,6 +4091,14 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
             );
             dump_skeleton(output, skeleton, indent + 1);
         }
+        NormPattern::Splice { operand, origin } => {
+            line(
+                output,
+                indent,
+                &format!("PatternSplice {}", origin_inline(origin)),
+            );
+            dump_norm_expr(output, operand, indent + 1);
+        }
         NormPattern::BindingSlot { slot, origin } => {
             line(
                 output,
@@ -4081,7 +4212,9 @@ fn dump_skeleton(output: &mut String, skeleton: &NormSkeleton, indent: usize) {
                     .map(|c| match c {
                         NormNavComponent::Name { name, .. } => format!("\"{}\"", escape_text(name)),
                         NormNavComponent::Operator { spelling, .. } => spelling.clone(),
-                        NormNavComponent::Group { .. } => "(...)".to_string(),
+                        NormNavComponent::PatternGroup { .. } | NormNavComponent::Group { .. } =>
+                            "(...)".to_string(),
+                        NormNavComponent::Splice { .. } => "(...)$".to_string(),
                         NormNavComponent::Error(_) => "<?>".to_string(),
                     })
                     .collect::<Vec<_>>()
@@ -4115,10 +4248,10 @@ fn dump_with_clause(output: &mut String, with_clause: &NormWithClause, indent: u
             origin_inline(&with_clause.origin)
         ),
     );
-    if !with_clause.names.is_empty() {
-        line(output, indent + 1, "names:");
-        for name in &with_clause.names {
-            line(output, indent + 2, &format!("\"{}\"", escape_text(name)));
+    if !with_clause.items.is_empty() {
+        line(output, indent + 1, "paths:");
+        for item in &with_clause.items {
+            dump_pattern(output, &item.pattern, indent + 2);
         }
     }
     if let Some(error) = &with_clause.error {
@@ -4294,16 +4427,13 @@ fn dump_alias_binder(output: &mut String, binder: &NormAliasBinder, indent: usiz
     }
 }
 
-fn dump_entity_ref(output: &mut String, entity_ref: &NormEntityRef, indent: usize) {
+fn dump_path_material(output: &mut String, path: &NormPathMaterial, indent: usize) {
     line(
         output,
         indent,
-        &format!("EntityRef {}", origin_inline(&entity_ref.origin)),
+        &format!("PathMaterial {}", origin_inline(&path.origin)),
     );
-    line(output, indent + 1, "components:");
-    for component in &entity_ref.components {
-        dump_nav_component(output, component, indent + 2);
-    }
+    dump_pattern(output, &path.pattern, indent + 1);
 }
 
 fn dump_nav_component(output: &mut String, component: &NormNavComponent, indent: usize) {
@@ -4322,6 +4452,22 @@ fn dump_nav_component(output: &mut String, component: &NormNavComponent, indent:
                 origin_inline(origin)
             ),
         ),
+        NormNavComponent::Splice { operand, origin } => {
+            line(
+                output,
+                indent,
+                &format!("component PatternSplice {}", origin_inline(origin)),
+            );
+            dump_norm_expr(output, operand, indent + 1);
+        }
+        NormNavComponent::PatternGroup { pattern, origin } => {
+            line(
+                output,
+                indent,
+                &format!("PatternGroup {}", origin_inline(origin)),
+            );
+            dump_pattern(output, pattern, indent + 1);
+        }
         NormNavComponent::Group { expr, origin } => {
             line(output, indent, &format!("Group {}", origin_inline(origin)));
             dump_norm_expr(output, expr, indent + 1);
@@ -4386,6 +4532,7 @@ fn line(output: &mut String, indent: usize, text: &str) {
 fn rule_label(rule: NormRule) -> &'static str {
     match rule {
         NormRule::PolicyLetPreserve => "PolicyLetPreserve",
+        NormRule::ColonLowering => "ColonLowering",
         NormRule::ProductLift => "ProductLift",
         NormRule::ProductMerge => "ProductMerge",
         NormRule::PipeFallback => "PipeFallback",
@@ -4460,4 +4607,33 @@ fn escape_text(text: &str) -> String {
     }
 
     escaped
+}
+
+fn collect_path_value_observations(
+    pattern: &NormPattern,
+    bound: &BTreeSet<String>,
+    names: &mut BTreeSet<String>,
+) {
+    match pattern {
+        NormPattern::Splice { operand, .. } => {
+            collect_free_non_call_names_expr(operand, bound, false, names)
+        }
+        NormPattern::Sequence { elements, .. } => {
+            for item in elements {
+                collect_path_value_observations(item, bound, names);
+            }
+        }
+        NormPattern::Nav { components, .. } => {
+            for item in components {
+                if let NormNavComponent::Group { expr, .. }
+                | NormNavComponent::Splice { operand: expr, .. } = item
+                {
+                    collect_free_non_call_names_expr(expr, bound, false, names);
+                } else if let NormNavComponent::PatternGroup { pattern, .. } = item {
+                    collect_path_value_observations(pattern, bound, names);
+                }
+            }
+        }
+        _ => {}
+    }
 }

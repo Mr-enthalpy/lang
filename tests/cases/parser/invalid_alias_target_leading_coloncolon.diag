@@ -1,1 +1,1 @@
-error ExpectedAliasTarget "expected entity reference after `===`" @ 1:11 [10..12]
+error UnexpectedToken "Path material cannot start with `::`" @ 1:11 [10..12]

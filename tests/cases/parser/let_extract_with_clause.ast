@@ -15,7 +15,12 @@ Program
           None
         with_clause:
           Items
-            dep
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name dep
         initializer:
           Expr
             Pipe

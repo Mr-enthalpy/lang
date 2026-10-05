@@ -653,7 +653,7 @@ impl AssociatedFamily {
             let view = lang_build::derive_function_object_view(
                 &p2,
                 &lang_build::FunctionObjectDeclarationPolicy {
-                    mode: lang_build::PolicyMode::Plain,
+                    mode: lang_build::PolicyMode::Const,
                 },
             );
             let result_class = lang_build::declared_result_class_from_closure(closure).unwrap();

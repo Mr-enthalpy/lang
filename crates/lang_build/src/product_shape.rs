@@ -347,6 +347,7 @@ impl RawArgShape {
         Self {
             known_type_pattern_name: Some(top_pattern_name),
             known_type_symbol_id: carrier_symbol,
+            known_value_mode: member_view.as_ref().map(|entry| entry.view.mode),
             known_type_member_view: member_view,
             known_type_carrier_place: carrier_place,
             known_complete_type_observation: complete_type_observation,

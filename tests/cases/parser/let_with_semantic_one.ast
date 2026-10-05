@@ -17,7 +17,12 @@ Program
                       Name type
         with_clause:
           Items
-            a
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name a
         initializer:
           Expr
             Pipe

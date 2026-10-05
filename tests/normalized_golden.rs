@@ -46,6 +46,68 @@ fn norm_dump_from_source(source: &str) -> String {
     lang_syntax::dump_norm_program(&normalized)
 }
 
+#[test]
+fn contextual_structural_material() {
+    assert_norm_case("28_contextual_structural_material", false);
+}
+
+#[test]
+fn navigation_group_preserves_pattern_context_until_explicit_splice() {
+    let normalized = norm_program_from_source("let a === name::(scope); let b === name::(scope$);");
+    let targets = normalized
+        .forms
+        .iter()
+        .map(|form| {
+            let NormForm::Alias(NormDecl::Alias { target, .. }) = form else {
+                panic!("alias");
+            };
+            let NormPattern::Nav { components, .. } = target.pattern.as_ref() else {
+                panic!("Path");
+            };
+            &components[1]
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        matches!(targets[0], NormNavComponent::PatternGroup { pattern, .. } if matches!(pattern.as_ref(), NormPattern::Name { name, .. } if name == "scope"))
+    );
+    assert!(
+        matches!(targets[1], NormNavComponent::Splice { operand, .. } if matches!(operand.as_ref(), NormExpr::Name { text, .. } if text == "scope"))
+    );
+}
+
+#[test]
+fn splice_operand_is_rhs_and_navigation_after_it_resumes_pattern_context() {
+    let output = lang_syntax::parse("let short === a::(b:c)$::(d e);");
+    assert!(output.diagnostics.is_empty());
+    let normalized = lang_syntax::normalize_program(&output.program);
+    let NormForm::Alias(NormDecl::Alias { target, .. }) = &normalized.forms[0] else {
+        panic!("alias");
+    };
+    let NormPattern::Nav { components, .. } = target.pattern.as_ref() else {
+        panic!("navigation");
+    };
+    let NormNavComponent::Splice { operand, .. } = &components[0] else {
+        panic!("splice");
+    };
+    let NormExpr::Nav {
+        components: rhs, ..
+    } = operand.as_ref()
+    else {
+        panic!("RHS navigation");
+    };
+    let NormNavComponent::Group { expr, .. } = &rhs[1] else {
+        panic!("RHS group");
+    };
+    let NormExpr::Call { target, .. } = expr.as_ref() else {
+        panic!("ordinary slice call");
+    };
+    assert!(matches!(target.as_ref(), NormExpr::Name { text, .. } if text == "slice"));
+    assert!(
+        matches!(&components[1], NormNavComponent::PatternGroup { pattern, .. }
+        if matches!(pattern.as_ref(), NormPattern::Sequence { .. }))
+    );
+}
+
 fn norm_program_from_source(source: &str) -> NormProgram {
     let output = lang_syntax::parse(source);
     lang_syntax::normalize_program(&output.program)
@@ -431,13 +493,15 @@ fn pattern_and_value_names_have_distinct_dump_labels() {
 }
 
 #[test]
-fn alias_target_remains_entity_ref_not_expression() {
+fn alias_target_preserves_path_material() {
     let output = lang_syntax::parse("let A === B::C");
     let normalized = lang_syntax::normalize_program(&output.program);
 
     match normalized.forms.as_slice() {
         [lang_syntax::NormForm::Alias(lang_syntax::NormDecl::Alias { target, .. })] => {
-            assert_eq!(target.components.len(), 2);
+            assert!(
+                matches!(target.pattern.as_ref(), lang_syntax::NormPattern::Nav { components, .. } if components.len() == 2)
+            );
         }
         other => panic!("expected alias declaration, got {other:#?}"),
     }
@@ -677,10 +741,7 @@ fn recovered_errors_stay_in_family_local_normalized_nodes() {
     let NormForm::Alias(NormDecl::Alias { target, .. }) = alias_form else {
         panic!("expected recovered alias form, got {alias_form:#?}");
     };
-    assert!(target
-        .components
-        .iter()
-        .any(|component| matches!(component, NormNavComponent::Error(_))));
+    assert!(matches!(target.pattern.as_ref(), NormPattern::Error(_)));
 
     let NormForm::Let(NormDecl::Let { slot, .. }) = with_form else {
         panic!("expected recovered with let form, got {with_form:#?}");

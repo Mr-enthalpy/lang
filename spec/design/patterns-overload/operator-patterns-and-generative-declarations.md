@@ -108,10 +108,13 @@ ordinary payloads and closure material enter through legal instance formation.
 ## 2. Grammar facts and ordinary operator dispatch
 
 Grammar fixes OpTok spelling, fixity, precedence and parse associativity.
-Semantic dispatch preserves three distinct forms:
+Contextual elaboration distinguishes RHS value expressions from LHS/Pattern
+interpretation. $ interprets its whole left operand as RHS before reinjection.
+Bare LHS names retain navigation inheritance. Semantic dispatch preserves:
 
 ```text
-naked OperatorUse(op) -> operator[op]
+RHS naked OperatorUse(op) -> operator[op]
+LHS naked operator      -> (operator[op])$
 dot operator .op     -> op::adl
 explicit path        -> the written ordinary path
 ```

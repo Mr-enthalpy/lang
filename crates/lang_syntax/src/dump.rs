@@ -1,9 +1,10 @@
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
-    BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode, EntityRefAst, ExprAst, ExprKind,
-    FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst, PolicyAtomAst,
-    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProgramAst, SegmentAst,
-    SegmentElementAst, Symbol, Token, TokenKind, TriviaKind, WithClauseKind,
+    BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode, ExprAst, ExprKind, FormAst,
+    HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PathMaterialAst, PipeExprAst,
+    PolicyAtomAst, PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst,
+    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
+    WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -159,7 +160,7 @@ fn dump_with_clause(
             WithClauseKind::Items { items } => {
                 line(output, indent, "Items");
                 for item in items {
-                    line(output, indent + 1, &item.text);
+                    dump_expr(output, &item.expression, indent + 1);
                 }
             }
             WithClauseKind::Error(error) => line(
@@ -180,7 +181,7 @@ fn dump_alias_let(output: &mut String, alias: &LetAliasAst, indent: usize) {
     line(output, indent + 1, "binder:");
     dump_alias_binder(output, &alias.binder, indent + 2);
     line(output, indent + 1, "target:");
-    dump_entity_ref(output, &alias.target, indent + 2);
+    dump_path_material(output, &alias.target, indent + 2);
 }
 
 fn dump_alias_binder(output: &mut String, binder: &AliasBinderAst, indent: usize) {
@@ -199,12 +200,9 @@ fn dump_alias_binder(output: &mut String, binder: &AliasBinderAst, indent: usize
     }
 }
 
-fn dump_entity_ref(output: &mut String, entity_ref: &EntityRefAst, indent: usize) {
-    line(output, indent, "EntityRef");
-    line(output, indent + 1, "components:");
-    for component in &entity_ref.components {
-        dump_nav_component(output, component, indent + 2);
-    }
+fn dump_path_material(output: &mut String, path: &PathMaterialAst, indent: usize) {
+    line(output, indent, "PathMaterial");
+    dump_expr(output, &path.expression, indent + 1);
 }
 
 fn dump_binder_name(output: &mut String, name: &BinderNameAst, indent: usize) {
@@ -244,6 +242,10 @@ fn dump_canonical_skeleton(
     indent: usize,
 ) {
     match skeleton {
+        crate::CanonicalSkeletonAst::Expression { expression, .. } => {
+            line(output, indent, "PatternExpression");
+            dump_expr(output, expression, indent + 1);
+        }
         crate::CanonicalSkeletonAst::Segment { elements, .. } => {
             line(output, indent, "CanonicalSegment");
             line(output, indent + 1, "elements:");
@@ -357,6 +359,15 @@ fn dump_expr(output: &mut String, expr: &ExprAst, indent: usize) {
             dump_policy_spec(output, &policy_let.policy, indent + 3);
             line(output, indent + 2, "operand:");
             dump_expr(output, &policy_let.operand, indent + 3);
+        }
+        ExprKind::Colon { slots } => {
+            line(output, indent + 1, "ColonSlots");
+            for slot in slots {
+                match slot {
+                    crate::ProductElementAst::Expr(expr) => dump_expr(output, expr, indent + 2),
+                    crate::ProductElementAst::Unit { .. } => line(output, indent + 2, "Unit"),
+                }
+            }
         }
         ExprKind::Pipe(pipe) => dump_pipe(output, pipe, indent + 1),
         ExprKind::Product(product) => dump_product(output, product, indent + 1),
@@ -908,11 +919,9 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidNavComponent => "InvalidNavComponent",
         DiagnosticCode::TopLevelComma => "TopLevelComma",
         DiagnosticCode::UnusedClosureAst => "UnusedClosureAst",
-        DiagnosticCode::ExpectedAliasTarget => "ExpectedAliasTarget",
+        DiagnosticCode::ExpectedPathMaterial => "ExpectedPathMaterial",
         DiagnosticCode::InvalidAliasBinder => "InvalidAliasBinder",
         DiagnosticCode::InvalidAliasPosition => "InvalidAliasPosition",
-        DiagnosticCode::InvalidEntityRef => "InvalidEntityRef",
-        DiagnosticCode::UnexpectedAliasRhsExpression => "UnexpectedAliasRhsExpression",
         DiagnosticCode::InvalidNumericLiteral => "InvalidNumericLiteral",
         DiagnosticCode::ReturnRequiresValue => "ReturnRequiresValue",
         DiagnosticCode::StatementAfterTerminalBlockForm => "StatementAfterTerminalBlockForm",

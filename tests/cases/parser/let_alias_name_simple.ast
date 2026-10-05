@@ -3,8 +3,14 @@ Program
     binder:
       Name Vec
     target:
-      EntityRef
-        components:
-          component Name Vector
-          component Name collections
-          component Name std
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  NavPath
+                    components:
+                      component Name Vector
+                      component Name collections
+                      component Name std

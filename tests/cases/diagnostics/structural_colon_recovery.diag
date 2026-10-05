@@ -1,0 +1,2 @@
+error UnclosedParen "unclosed parentheses" @ 1:1 [0..1]
+error ExpectedPathMaterial "expected Path material" @ 2:15 [20..21]

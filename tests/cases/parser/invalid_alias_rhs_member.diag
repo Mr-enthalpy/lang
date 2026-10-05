@@ -1,1 +1,0 @@
-error UnexpectedAliasRhsExpression "unexpected token `.` after entity reference" @ 1:12 [11..12]

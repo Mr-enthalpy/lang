@@ -248,16 +248,15 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
 #[test]
 fn mut_policy_mode_does_not_grant_writable() {
     let mut world = support::AssociatedFamily::new(&[
-        "let first = (self, t: type): compile -> let r: type => { t; };",
-        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+        "mut let first = (self, t: type): compile -> let r: type => { t; };",
+        "mut let second = (self, _ uint8: type): compile -> let r: type => { self; };",
     ]);
     let initializer = initializer_from_source("let R: type = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
     let writable = WritableContext::default();
-    let mut context =
+    let context =
         OrdinaryInvocationContext::open_static(&actual).requiring_target_writable(&writable);
-    context.caller_mode = PolicyMode::Mut;
     let failure = world
         .invoke_ordinary_call(
             world.package_root_node(),
@@ -293,7 +292,7 @@ fn actual_callable_binding_place_authorizes_target_sensitive_legality() {
         .invoke_ordinary_call(
             world.package_root_node(),
             &call,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain])
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const])
                 .requiring_target_writable(&writable),
             Provenance::new("actual binding Place"),
         )
@@ -1075,7 +1074,7 @@ fn unsupported_pattern_query_terminates_before_candidate_selection() {
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("canonical Pattern query frontier"),
         )
         .expect_err("an unanswered Pattern query makes the candidate set incomplete");
@@ -1109,7 +1108,7 @@ fn wildcard_unit_return_pattern_reaches_selection_before_execution_frontier() {
         .invoke_ordinary_call(
             world.package_root_node(),
             &call_site,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Plain]),
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
             Provenance::new("unit result selection"),
         )
         .expect_err("Unit execution is an explicit implementation frontier");

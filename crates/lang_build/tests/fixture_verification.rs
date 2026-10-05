@@ -127,7 +127,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
         "alias_external_injection_future",
         "app",
-        "block-local lexical alias resolution is not implemented",
+        "lexical Path alias formation/composition consumer is unavailable",
     ),
     (
         "diagnostic_source_contribution_prefix",

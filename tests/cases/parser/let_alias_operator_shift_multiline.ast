@@ -3,7 +3,24 @@ Program
     binder:
       Operator <<
     target:
-      EntityRef
-        components:
-          component Operator <<
-          component Name xxx_bit
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                NavPath
+                  components:
+                    component Operator <<
+                    component Name xxx_bit
+              OperatorExpr
+                Atom
+                  Name let
+              OperatorExpr
+                Atom
+                  Name x
+              OperatorExpr
+                Atom
+                  Name type
+              OperatorExpr
+                Atom
+                  Name y

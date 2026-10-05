@@ -47,8 +47,9 @@ semantic vocabulary:
   snapshots;
 - separate name-binding, semantic value, Place, resident generation, and
   ProjectionSlot identities;
-- `PolicyPair`, primitive `PolicyMode = {const, plain, mut}`,
-  `ResultPolicyDemand`, and independent 3×3 `CapabilityRealization`;
+- `PolicyPair`, `PolicyMode = {const, mut}`,
+  independent `MetaInstancePolicy = {meta, close}`, pending omission completion,
+  `ResultPolicyDemand`, and derived two-mode `CapabilityRealization`;
 - one name-resolution result followed by context projection;
 - value → exact complete type → associated `()` call projection;
 - sealed candidate selection, post-selection DynamicLegality, and no reopen;
@@ -75,12 +76,12 @@ semantic relations above.
 | base R_Gamma and Hole valuation | relational proof | ordinary parameter A-stage | Implemented |
 | DirectPatternChild + StructuralDefault | relation interfaces | protected structural extraction | Consumer pending |
 | PolicyMode / demand / preference | explicit PolicyView and ResultPolicyDemand | ordinary selection, migration, PolicyLet | Implemented |
-| CapabilityRealization | candidate-local 3×3 table | selected operation premise formation | Consumer pending |
+| CapabilityRealization | candidate-local derived two-mode relation view | selected operation premise formation | Consumer pending |
 | Place / resident generation | Place and ProjectionSlot | binding, Writable and borrow substrate | Implemented; source operation coverage pending |
 | DynamicLegality | sealed post-selection validator | supplied capability/place/lifecycle premises | Implemented; automatic premise formation pending |
 | InvocationResult | declared result class + semantic payload/residual/diagnostic | connected ordinary and core/meta invocation | Implemented; residual transport remains Open |
 | OpenHere / construction | explicit window facts, authority, Writable and write algebra | authority/window revalidation and inject substrate | Checks implemented; source WindowLive establishment, generation-coordinate control dispositions and invocation dependency propagation pending |
-| Meta instances | instance name/type + P1 meta/plain + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
+| Meta instances | instance name/type + P1 meta/close + dependency sources | instance/member current-state lookup and derived A | Consumer pending |
 | abstract literals | exact abstract values and construction requests | annotated construction and Policy migration | Implemented |
 | SemanticContinuation | shared action transaction with separate LifecycleState and event ledger | world-owned continuation and stable LifeName discovery without fabricated formation/origin facts; supplied lifecycle Pre in ordinary calls | Joint Pre/commit/Post substrate, cleanup boundary Pre and linearization of fixed points implemented; full ReifyLife continuation, source actions/E and cleanup-point derivation pending |
 | Color/access | extensible directed relations and provider interface | lifecycle Pre validation | access-tree construction Open |
@@ -101,7 +102,8 @@ relations under the alignment gates below:
 6. Residual and Diagnostic transport through the unified invocation boundary;
 7. derived associated forwarding that captures the base complete-type
    snapshot and creates anchored forwarding instances;
-8. block-local `let ===` lexical entries that create no semantic entity.
+8. block-local `let ===` entries retaining formed Path material in the old
+   environment, with no terminal BindingId cache or semantic entity.
 
 Each wiring step must preserve unique selection and no reopen.
 
@@ -213,7 +215,7 @@ engineering facilities after their inputs and effects obey the source model.
   rules at a lexical destination. Preserve P let name=rhs as a complete binding
   with RHS inference, not a default-:type declaration plus assignment.
   Connect initial borrow/write authority independently of DeclaredPolicy;
-  test const/plain/mut first initialization, missing/expired authority, failed
+  test const/mut first initialization, missing/expired authority, failed
   Pre without consumption, same-Place aliases and saved-ref rejection after
   initialization. Replacement alone observes old-resident compatibility.
   Derive TypeRole(Q) from purity, independently of SelfConstructible, and check
@@ -239,12 +241,12 @@ engineering facilities after their inputs and effects obey the source model.
   input value observations and semantic name/subject/borrow dependencies;
   construct the direct instance name/type tau_M and ordinary Val2 payload Places;
   propagate output opening-source meets. Implement P1 meta qualification before
-  mut-view acquisition and plain completion/closure. Ordinary payload policy,
+  mut-view acquisition and close completion/closure. Ordinary payload policy,
   borrowing and lifetime checks remain independent.
   The current `semantic_world::MetaInstanceId` registry interns instance identity
   independently of result formation. Its optional struct-result record retains
   the type lookup and formation material; reacquisition observes current ordinary
-  storage. General instance member residency, dependencies and P1 meta/plain
+  storage. General instance member residency, dependencies and P1 meta/close
   completion rules remain unconnected. `canonical_arguments_product_address` records value observations;
   it does not supply the general identity-sensitive dependency boundary.
 - Implement generic meta result-name/cache residency with construction status,
@@ -264,19 +266,19 @@ engineering facilities after their inputs and effects obey the source model.
   chosen compile-error semantics. Count actual Val2, not callspace or visibility
   projections; preserve access checks. No implicit projection or borrow is added.
   Cover direct-meta type/root rejection, independent Val2/V_tau/Pattern roles,
-  meta retention, plain closure, mut-after-OpenHere, and no-reopen on cache reuse.
+  meta retention, close completion/closure, mut-after-OpenHere, and no-reopen on cache reuse.
 - Connect Pin=ElabIn(P2,Delta_in) and Pout=ElabOut(P1,Delta_out), with independent
   P1/P2, explicit Pin stage atoms/holes, and Pout.stage=P1.stage. Explicit Pin
   stage atoms currently report UnsupportedInputAdmissibleStage before selection;
   this is an unconnected consumer, not an illegal stage override. Migration
   endpoint elaboration transports the diagnostic instead of falling back to P2.
   Existing formal mode inheritance is compatible with bare omission; do
-  not replace it with unconditional Plain. Audit binding_result_policy_demand,
+  not replace it with unconditional concrete mode. Audit binding_result_policy_demand,
   policy_let_target_demand and ordinary-invocation defaults for the distinction
   between omitted constraint, explicit concrete atom and explicit HoleRef.
   Use registered operator Pattern extraction plus require to solve the joint
-  relation; the 3×3 table is a derived view. Test formal-local holes, shared and
-  independent holes, inherited mode, explicit plain override, contextual/default
+  relation; the 2×2 table is a derived view. Test formal-local holes, shared and
+  independent holes, inherited mode, explicit const/mut override, contextual/default
   completion, output demand before maxima, sealed inner calls and no reopen.
 - Connect NameCoord before Retained/Place realization. The resident-generation
   ProjectionSlotIdentity carrier is not automatically the stable coordinate.
@@ -331,7 +333,7 @@ they cannot authorize an alternate implementation of these rules.
 | Gate | Existing evidence | Required consumer and acceptance coverage |
 |---|---|---|
 | Single-stage positions | lang_build/src/policy_pair.rs has single Stage atoms and separate omitted query coordinates | Connect ordinary deduction with unresolved valuations; preserve position omission/atom/hole, heterogeneous Pin and Pout authority. S01–S08, S12 |
-| Two rounds and origin | ordinary_invocation.rs routes the ordinary trunk; resolved horizon-hidden argument Val1 stops before A/maxima, without unknown/Plain fallback. policy_observation.rs only exposes existing facets and performs no name lookup | Connect R_vis evidence, lazy C_sigma family, ordinary A/D/Policy/Pattern selection and shared selected origin. S09–S11 |
+| Two rounds and origin | ordinary_invocation.rs routes the ordinary trunk; resolved horizon-hidden argument Val1 stops before A/maxima, without unknown/default-mode fallback. policy_observation.rs only exposes existing facets and performs no name lookup | Connect R_vis evidence, lazy C_sigma family, ordinary A/D/Policy/Pattern selection and shared selected origin. S09–S11 |
 | Runtime entry and Seal | CLI exposes frontend commands; horizon visibility supplies no readiness or scheduling consumer | Connect EntryContinuation, runtime main, active dominance, real readiness dependencies, pending seal formation and scheduler invariance. E01–E09 |
 | Instance lifecycle and cleanup | lifecycle checks supplied instance/frontier facts; Move has fixed Kill/Preserve; common action witness fixes all projection identities/cuts. Fixed cleanup points use precedence then reverse-declaration linearization; Raw/Norm preserve with shape | Connect ordinary Killable/MoveEffect/Movable formation, uniform type/meta instances, directed Touch closure, default NLL and lexical empty-with to the shared transaction. L01–L08, W01–W08 |
 | Chain and residual boundary | InvocationResult residual is an opaque class/provenance carrier; no separate static/runtime flow carries completion | Connect restricted Split/D proofs, internal chain/target completion, result Pattern delivery and separate residual escape. P01–P08 |
@@ -351,14 +353,21 @@ origin retention without a complete runtime backend. Do not make old carrier
 tests pass by relaxing the canonical acceptance scenarios. Full residual IR,
 ABI/layout, effect/error/sync interfaces and arbitrary Pattern algebra remain
 outside this revision. Structured Path semantics are defined; their source and
-evaluator consumers remain pending. General Slice_Omega endpoint rules and
-the separate public Product ordinal API remain open.
+evaluator consumers remain pending. RHS colon syntax already normalizes to ordinary Product |> slice with unit
+empty slots. Slice families require ordinary overload/Pattern consumers, not
+a new slicing algebra. The separate public Product ordinal API remains open.
 
 
 ## Documentation alignment before implementation migration
 
-The current revision changes documents only. Canonical meaning is fixed by
-the existing owners; no Rust, parser, normalizer, tests or lowering are changed.
+Canonical meaning is fixed by the owners. The pre-wiring adjustment aligns
+Policy carriers and contextual frontend syntax; it does not connect common E.
+MetaInstance InvokeName/resident observation, actual EnterBody reentry checks,
+self-return delivery and meta/close completion still require that consumer.
+Explicit mode never supplies a completion witness. Source meta qualifications
+requiring this missing consumer report unavailable. Alias and with carriers
+preserve Path material; old-environment formation/composition and conditional
+per-Self-layer late cleanup placement remain consumer work.
 
 - Preserve P |> E == P E without exchanging operands. Label mathematical call
   notation explicitly; keep ordinary dot ADL separate from structural extraction.

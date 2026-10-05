@@ -48,7 +48,7 @@ pub struct WithClauseAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WithClauseKind {
     Empty,
-    Items { items: Vec<NameAst> },
+    Items { items: Vec<PathMaterialAst> },
     Error(ErrorAst),
 }
 
@@ -160,6 +160,10 @@ pub enum CanonicalNameRole {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CanonicalSkeletonAst {
+    Expression {
+        expression: Box<ExprAst>,
+        span: Span,
+    },
     Segment {
         elements: Vec<CanonicalSkeletonAst>,
         span: Span,
@@ -210,6 +214,10 @@ pub struct ExprAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExprKind {
     PolicyLet(PolicyLetAst),
+    /// RHS structural slots; normalization forms an ordinary slice call.
+    Colon {
+        slots: Vec<ProductElementAst>,
+    },
     Pipe(PipeExprAst),
     Product(ProductExprAst),
     Error(ErrorAst),
@@ -515,7 +523,7 @@ pub struct LetAliasAst {
     // `BindingSlotAst`).
     pub policy: Option<PolicySpecAst>,
     pub binder: AliasBinderAst,
-    pub target: EntityRefAst,
+    pub target: PathMaterialAst,
     pub span: Span,
 }
 
@@ -527,7 +535,7 @@ pub enum AliasBinderAst {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EntityRefAst {
-    pub components: Vec<NavComponentAst>,
+pub struct PathMaterialAst {
+    pub expression: Box<ExprAst>,
     pub span: Span,
 }

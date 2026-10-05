@@ -331,7 +331,7 @@ fn pure_p_entry(
                     stage: pattern_stage,
                 },
             },
-            mode: PolicyMode::Plain,
+            mode: PolicyMode::Const,
         },
     }
 }
@@ -342,14 +342,14 @@ fn expose_preserves_matching_single_stage_and_independent_mode() {
     let outward = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
     let complete = vec![value_entry(
         Stage::Compile,
-        PolicyMode::Plain,
+        PolicyMode::Const,
         Stage::Compile,
     )];
     let exposed = ExposedInvocationResult::expose(outward.pair, &complete);
     assert_eq!(exposed.material.len(), 1);
     let entry = &exposed.material[0];
     assert_eq!(entry.view.pair.value.stage(), Some(Stage::Compile));
-    assert_eq!(entry.view.mode, PolicyMode::Plain);
+    assert_eq!(entry.view.mode, PolicyMode::Const);
     assert_eq!(entry.view.pair.pattern.stage, Stage::Compile);
 }
 
@@ -358,10 +358,10 @@ fn expose_preserves_matching_single_stage_and_independent_mode() {
 #[test]
 fn expose_hides_entries_whose_window_vanishes() {
     let stage_disjoint = ExposedInvocationResult::expose(
-        exposure_window(Stage::Meta, PolicyMode::Plain, Stage::Meta).pair,
+        exposure_window(Stage::Meta, PolicyMode::Const, Stage::Meta).pair,
         &[value_entry(
             Stage::Compile,
-            PolicyMode::Plain,
+            PolicyMode::Const,
             Stage::Compile,
         )],
     );
@@ -380,11 +380,11 @@ fn expose_hides_entries_whose_window_vanishes() {
 fn expose_is_identity_under_the_same_stage_observation() {
     let complete = vec![value_entry(
         Stage::Compile,
-        PolicyMode::Plain,
+        PolicyMode::Const,
         Stage::Compile,
     )];
     let exposed = ExposedInvocationResult::expose(
-        exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile).pair,
+        exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile).pair,
         &complete,
     );
     assert_eq!(exposed.material, complete);
@@ -394,7 +394,7 @@ fn expose_is_identity_under_the_same_stage_observation() {
 #[test]
 fn expose_does_not_clip_a_pure_object_into_a_different_stage() {
     let exposed = ExposedInvocationResult::expose(
-        exposure_window(Stage::Runtime, PolicyMode::Plain, Stage::Compile).pair,
+        exposure_window(Stage::Runtime, PolicyMode::Const, Stage::Compile).pair,
         &[pure_p_entry(Stage::Compile, Stage::Compile)],
     );
     assert!(
@@ -445,7 +445,7 @@ fn pattern_stage_dimension_mismatch_is_hard_error() {
     let lang_syntax::NormExpr::Closure(self_formal) = initializer else {
         panic!("closure")
     };
-    let derived = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
+    let derived = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
     let error = canonical_function_object_view(
         Some(&outer),
         &derived,
@@ -465,7 +465,7 @@ fn explicit_absent_observation_has_no_stage_coordinate() {
         ..ExplicitP1Selection::default()
     };
     let derived = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
-    let p2 = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
+    let p2 = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
     let provenance = Provenance::new("presence-dimension acceptance");
     let selected =
         canonical_function_object_view(Some(&outer_explicit), &derived, &p2, None, &provenance)
@@ -479,7 +479,7 @@ fn explicit_absent_observation_has_no_stage_coordinate() {
 #[test]
 fn full_omission_derives_every_dimension_from_p2() {
     let derived = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
-    let p2 = exposure_window(Stage::Compile, PolicyMode::Plain, Stage::Compile);
+    let p2 = exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile);
     let provenance = Provenance::new("full-omission acceptance");
     let canonical = canonical_function_object_view(None, &derived, &p2, None, &provenance)
         .expect("full omission elaborates without error");

@@ -3,6 +3,6 @@ Program
     binder:
       Name x
     target:
-      EntityRef
-        components:
-          component Error "expected entity reference"
+      PathMaterial
+        Expr
+          Error "expected Path material"

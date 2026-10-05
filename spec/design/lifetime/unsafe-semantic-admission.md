@@ -5,7 +5,7 @@ Status: canonical semantics; source/projection integration pending.
 ## 1. Orthogonal safety policy
 
     SafetyPolicy = safe | unsafe
-    PolicyMode = const | plain | mut
+    PolicyMode = const | mut
 
 These are independent dimensions. mut does not imply unsafe, and unsafe does
 not imply mut, Writable, OpenHere, construction authority, or valid borrowing.

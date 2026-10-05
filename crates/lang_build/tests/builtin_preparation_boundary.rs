@@ -29,7 +29,7 @@ fn unknown_builtin_applicability_cannot_remove_a_candidate_and_select_a_runner_u
         ) else {
             panic!("fixture closure");
         };
-        let view = declared_policy_view(Stage::Meta, PolicyMode::Plain);
+        let view = declared_policy_view(Stage::Meta, PolicyMode::Const);
         world
             .register_associated_call_entry(
                 pattern,
@@ -80,7 +80,7 @@ fn unknown_builtin_applicability_cannot_remove_a_candidate_and_select_a_runner_u
 fn builtin_selected_result_preserves_call_entry_declared_policy() {
     let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
     let mut world = base.semantic_world().clone();
-    let callable = declared_policy_view(Stage::Seal, PolicyMode::Plain);
+    let callable = declared_policy_view(Stage::Seal, PolicyMode::Const);
     let body = declared_policy_view(Stage::Seal, PolicyMode::Mut);
     let result = declared_policy_view(Stage::Seal, PolicyMode::Const);
     let installed = world

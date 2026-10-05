@@ -50,13 +50,15 @@ it is not a first-class Object, constructor value, or borrowable wrapper. It has
 no implicit .type field. Resolving a name selects its binding; a value read reads
 the ordinary resident, and a borrow addresses the typed Place without requiring
 that a first resident already exists.
-Lexical aliases map to the same binding without becoming values themselves.
+Lexical aliases retain formed Path material without becoming values themselves.
+They compose through Path algebra, preserving roots and dependencies; they do
+not cache a terminal binding identity.
 
 Meta invocation also constructs ordinary names. Their formation owner is the
 invocation identity, and they are not structural children of input values.
 The direct instance name denotes its instance type tau_M itself. Arbitrary
 values and borrows reside in ordinary Val2, accessed through name::path.
-P1 meta retains the instance under OpenHere; plain let closes it on completion.
+P1 meta retains the instance under OpenHere; close let closes it on completion.
 Explicit borrowing uses the selected actual Place; it is not the direct result
 of meta invocation. NameBinding gains no Object wrapper or extra value algebra.
 [Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)

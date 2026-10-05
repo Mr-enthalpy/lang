@@ -4,9 +4,7 @@ use crate::{
 };
 
 use super::{
-    cursor::Cursor,
-    expr::{parse_expr_until, parse_policy_let_after_policy},
-    let_stmt::parse_let_form,
+    cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form,
     policy::try_parse_policy_spec_before_let,
 };
 
@@ -16,6 +14,7 @@ pub struct Parser<'tokens> {
     nesting_depth: usize,
     diagnostic_gates: Vec<Vec<Diagnostic>>,
     active_holes: Vec<BinderDeclAst>,
+    pub(super) pattern_context: bool,
 }
 
 impl<'tokens> Parser<'tokens> {
@@ -26,6 +25,7 @@ impl<'tokens> Parser<'tokens> {
             nesting_depth: 0,
             diagnostic_gates: Vec::new(),
             active_holes: Vec::new(),
+            pattern_context: false,
         }
     }
 
@@ -82,13 +82,15 @@ impl<'tokens> Parser<'tokens> {
             return parse_let_form(self, None);
         }
 
+        let expression_start = self.cursor.current_index();
         let expr = if let Some(policy) = try_parse_policy_spec_before_let(self, |parser| {
             parser.is_form_boundary() || parser.cursor.at_name("return")
         }) {
             if policy_prefixed_form_has_binding_delimiter(&self.cursor) {
                 return parse_let_form(self, Some(policy));
             }
-            parse_policy_let_after_policy(self, policy, |parser| {
+            self.cursor.set_index(expression_start);
+            parse_expr_until(self, |parser| {
                 parser.is_form_boundary() || parser.cursor.at_name("return")
             })
         } else {
@@ -270,7 +272,7 @@ fn is_empty_expression(expr: &ExprAst) -> bool {
     match &expr.kind {
         ExprKind::PolicyLet(policy_let) => is_empty_expression(&policy_let.operand),
         ExprKind::Pipe(pipe) => pipe.segments.iter().all(|s| s.elements.is_empty()),
-        ExprKind::Product(_) => false,
+        ExprKind::Product(_) | ExprKind::Colon { .. } => false,
         ExprKind::Error(_) => true,
     }
 }
@@ -372,6 +374,10 @@ fn extract_return_target_from_operator(
 pub(crate) fn expression_contains_name(expr: &ExprAst, name: &str) -> bool {
     match &expr.kind {
         ExprKind::PolicyLet(policy_let) => expression_contains_name(&policy_let.operand, name),
+        ExprKind::Colon { slots } => slots.iter().any(|slot| match slot {
+            crate::ProductElementAst::Expr(expr) => expression_contains_name(expr, name),
+            crate::ProductElementAst::Unit { .. } => false,
+        }),
         ExprKind::Pipe(pipe) => pipe.segments.iter().any(|seg| {
             seg.elements
                 .iter()

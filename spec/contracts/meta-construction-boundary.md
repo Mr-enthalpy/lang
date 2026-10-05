@@ -32,7 +32,7 @@ and every semantically observed name/subject/borrow dependency identity. The
 result name is not an input structural child and changes neither input Val2 nor
 Norm. Its openness source is the meet over AccessClosure_out(In); open inputs
 are admitted with ordinary identity, access and lifetime checks. P1 meta retains the instance under OpenHere, which governs mut acquisition;
-plain let completes and closes it. P2 meta remains the evaluation horizon. Global persistence requires the stronger
+close let completes and closes it. P2 meta remains the evaluation horizon. Global persistence requires the stronger
 global stability/escape judgments.
 
 The invocation registry/cache associates the full key with the same result

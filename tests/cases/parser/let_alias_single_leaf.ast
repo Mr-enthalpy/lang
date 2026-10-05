@@ -3,6 +3,10 @@ Program
     binder:
       Name local
     target:
-      EntityRef
-        components:
-          component Name some_entity
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  Name some_entity

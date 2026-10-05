@@ -383,13 +383,30 @@ does not copy the original root endpoint or anchor into the relative result.
 It reads no external resident and grants no authority. Its evaluation retains
 ordinary source/dependency checks; projection does not extend anchor lifetimes.
 
-General p[i:j]:path_pattern is reserved. Slice_Omega, admissible boundaries,
-empty slices and root/endpoint retention remain a small
-[open question](../../planning/open-questions.md). Only indexing is fixed here;
-whether a singleton slice agrees with indexing is undecided. For field::root,
-index [1] yields relative root::, without deciding whether slice [1:2] retains
-the original TextRoot endpoint. No default copies omega or invents an
-empty-Path unit.
+RHS colon is ordinary structural construction, not a new Path or slicing
+primitive. Lexing uses maximal munch `:: > :`. Value parsing uses
+`FullExpr > : > ,`: each colon slot consumes its full ordinary expression,
+one colon layer assembles all slots, then comma assembles the Product. Colon
+has no fixity, associativity or operator entry.
+
+    (e1:e2:...:en) = (e1,e2,...,en) |> slice
+    (:a) = ((),a) |> slice
+    (a:) = (a,()) |> slice
+    (:) = ((),()) |> slice
+    (a,,b) = (a,(),b)
+    (a::b:c) = (a::b,c) |> slice
+    (a:b,c) = ((a,b) |> slice,c)
+    (a,b:c) = (a,(b,c) |> slice)
+
+Empty colon and comma slots use the same unit completion law. There is no
+missing-endpoint ontology. Ordinary `slice` structure is formed through Product
+Pattern items and ordinary struct; container, Path, string and user callable
+families extract it using R_Gamma. Each family defines admissible item Patterns
+and boundary interpretation, including unit. Those ordinary declarations do
+not introduce Slice_Omega, SliceIR, protocol or another evaluator. Their missing
+consumers are roadmap frontier, not an open slicing algebra.
+
+LHS, BindingSlot, callable head and Pattern `x:T` remain annotations.
 
 ## 3. Late textual roots and explicit anchors
 
@@ -453,11 +470,17 @@ an already completed read.
 For the current Pattern consumer A:
 
 ```text
-Gamma; Sigma |- e => v
+Gamma; Sigma |- e =>_RHS v
 Admissible_A(v)
 -------------------------------
 Gamma; Sigma |- e$ =>_A Interpret_A(v)
 ```
+
+In LHS/Pattern interpretation, $ declares its entire left operand to be RHS
+expression material, then reinjects that value into the current algebra. It is
+not an ordinary postfix value operation. Bare single names retain inherited
+navigation: a_LHS != a$_LHS. Bare operators elaborate as (operator[op])$
+in LHS and as operator[op] in RHS.
 
 Path, Policy and ordinary extraction heads use this interface. Different
 consumers accept different structures; general splice does not make every

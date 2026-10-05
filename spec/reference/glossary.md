@@ -173,8 +173,8 @@ and explicit ConfirmMut require current OpenHere plus independent target
 Writable and ordinary capability/access/lifetime; no authority is amplified.
 
 `meta let f = expression` retains an ordinary meta instance under its derived
-OpenHere. The instance name is its type value, so OpenHere governs acquisition
-of mut qualification without an independent instance const/mut gate. Plain let
+OpenHere. The instance name is its type value. Only finally omitted Mode becomes
+mut under meta + current OpenHere; explicit or deduced const/mut remains independent. Close let
 completes/closes it; later meta let cannot reopen it. P2 meta independently names
 the callable's evaluation horizon. Ordinary Val2 payload policies remain ordinary.
 
@@ -223,27 +223,33 @@ bound type value has a new edge. Mode and safety remain independent.
 
 ### PolicyMode
 
-The primitive three-point set `{const, plain, mut}`. Plain is neither omission
-nor a union of endpoints.
+The value-mode domain `{const, mut}`, independent of Object shape and completion.
+
+### MetaInstancePolicy
+
+The independent `{meta, close}` coordinate. meta retains the established opening
+source; close completes/closes after ordinary result delivery. Finally omitted
+mode is mut under meta + current OpenHere, const otherwise. Required missing
+OpenHere evidence is unavailable. Explicit/deduced modes and holes are preserved.
 
 ### PolicyView
 
 One observed view with independent PolicyPair, PolicyMode and SafetyPolicy
 coordinates. Pin overlays P2 and Pout overlays P1; omission is no override,
-explicit plain is a constraint, and an explicit hole is Pattern deduction.
+explicit const/mut are constraints, and an explicit hole is Pattern deduction.
 
 ### ResultPolicyDemand
 
 The candidate-independent output demand formed before maxima. Pair/stage
-coordinates constrain admissibility; mode participates in the three-point
-preference relation.
+coordinates constrain admissibility; mode participates in the current two-point
+preference relation after contextual completion.
 
 ### CapabilityRealization
 
 A candidate/family fact with absent/default/delete/custom realizations,
-independent of preference. A 3x3 input/output-mode table is a finite derived
+independent of preference. An input/output-mode table on the current two-mode domain is a finite derived
 explanatory view; relational declarations with ordinary Pattern holes need not
-be written as nine primitive declarations.
+be written as four primitive declarations.
 
 ### Operator Pattern and policy deduction
 
@@ -420,7 +426,7 @@ internal identities are consistently renamed. The original owner is unchanged.
 
 ### SafetyPolicy and unsafe admission
 
-safe/unsafe is orthogonal to const/plain/mut. Unsafe admits compatible external
+safe/unsafe is orthogonal to const/mut. Unsafe admits compatible external
 facts after successful commit; it cannot satisfy a missing Pre or revoke
 history. The admitted axioms form the program's trusted semantic base; UB is
 external reality failing to satisfy an explicit unsafe admission.
@@ -529,8 +535,9 @@ including computed operands and calls. name::path is fixed by construction/
 extraction isomorphism. In extraction, bare navigation inheritance differs
 from evaluated reinjection a$; the non-extraction equality is not a rewrite. The Path consumer interprets (n#)$
 to reconstruct structure; general $ supplies no implicit Path decoding. Indexing
-returns relative single-name path_pattern, not string; general Slice_Omega
-remains open. General $ splices ready Pattern material without implicit Path
+returns relative single-name path_pattern, not string. RHS colon constructs
+ordinary Product |> slice, with empty colon/comma slots completed to unit. In LHS, e$ interprets its entire operand in RHS/value context before
+reinjection; bare operators elaborate as (operator[op])$. General $ splices ready Pattern material without implicit Path
 projection, preserves Hole identities and performs no textual substitution.
 PathShaped admits finite name chains with a textual/open root endpoint, or
 inward names followed by exactly one terminal explicit root. Endpoint shape
@@ -551,3 +558,12 @@ Resolved explicit capture binders replace corresponding outer observations;
 other free observations may form automatic dependencies in ordinary closures.
 These rules exclude the identity-establishing MetaDecl layer's capture channel.
 Persistence and escape use the lifetime owner's refinement handoff.
+
+### With Path relation
+
+WithItem is full Path material under LHS navigation inheritance. A with declaration
+reads no resident and forms no borrow/access/value dependency or LifeName. Complete
+declarations, Self hierarchy and control flow precede conditional instantiation
+on layers with an actual target; absent layers add no constraint. Forward references
+are supported. Actual LifeName/generation facts precede fixed cleanup placement,
+same-point ordering and lifetime observation. Drop(higher) precedes Drop(lower).

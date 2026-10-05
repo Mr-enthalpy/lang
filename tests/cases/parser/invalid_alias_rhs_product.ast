@@ -1,8 +1,0 @@
-Program
-  LetAlias
-    binder:
-      Name x
-    target:
-      EntityRef
-        components:
-          component Error "grouped expression cannot be an innermost navigation component"

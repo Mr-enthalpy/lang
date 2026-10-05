@@ -295,7 +295,8 @@ a!
 The operator becomes an unresolved `OperatorTarget` carrying its spelling,
 fixity, and arity. No operator lookup or overload resolution occurs.
 
-The canonical semantic handoff distinguishes naked OperatorUse -> operator[op],
+The canonical semantic handoff distinguishes RHS naked OperatorUse -> operator[op],
+LHS naked operator -> (operator[op])$ with its operand interpreted on the RHS,
 OperatorNameValue (ordinary name read without recursive dispatch), dot .op ->
 op::adl, and explicit paths as written. Grammar vocabulary, precedence and
 parse associativity cannot be modified by source meta evaluation. The current
@@ -833,7 +834,7 @@ binding shape. Its `meta` atom remains a Name. Contextual meta qualification is
 currently limited to type/type ref, with instance retention as one consumer;
 it is not a fourth PolicyMode. P1 openness qualification and P2
 meta evaluation horizon are distinguished by later contextual policy elaboration;
-normalization establishes neither instance identity nor OpenHere. Plain let
+normalization establishes neither instance identity nor OpenHere. Close let
 uses the same syntax shape; its classic meta completion/closure behavior is
 likewise a semantic rule, not a frontend rewrite.
 
@@ -1066,55 +1067,21 @@ ordinary navigation; they do not create a closure or a placement flag.
 
 ## 10. Alias Preservation
 
-```text
-Alias-let is declaration-side material, not expression-side call material.
-```
+    let binder === PathMaterial
 
-The shape:
+Normalization preserves an unresolved lexical Path alias:
 
-```text
-let binder === EntityRef
-```
+    Decl Alias
+      binder: Name or Operator
+      target: NormPathMaterial { pattern: NormPattern }
 
-normalizes as an unresolved alias declaration.
-
-```text
-Conceptual rule: alias preservation
-Dump label:      AliasPreserve
-```
-
-The right-hand side remains an `EntityRef`. It is **not**:
-
-```text
-NormExpr
-Product
-PipeExpr
-runtime equality
-runtime assignment
-import
-operator call
-```
-
-Examples (verified against `tests/cases/norm/`):
-
-```text
-let A === B::C
-  Decl Alias
-    binder: Name "A"
-    target: EntityRef[ "B", "C" ]
-
-let + === Add::std
-  Decl Alias
-    binder: Operator "+"
-    target: EntityRef[ "Add", "std" ]
-```
-
-The binder may be a `Name` or an `Operator`, and an optional `NormPolicySpec`
-prefix is preserved. No alias target resolution, scope semantics, namespace resolution,
-operator-alias identity validation, or runtime behavior occurs at the normalized
-layer. (A hypothetical target such as `operators::plus` would be preserved the
-same way; only forms covered by the parser / normalizer / golden tests are used
-as primary examples here.)
+The optional NormPolicySpec is preserved. Path formation occurs once in the
+old Path environment at the semantic consumer, before installation. Later uses
+compose the saved material; explicit roots/anchors/dependencies survive and
+textual/open roots retain ordinary resident-use resolution. No terminal binding
+cache, recursive thunk, NameBinding, Object, Place, value or lifecycle is created.
+The frontend performs no formation, lookup, candidate selection or evaluation.
+See [alias owner](../design/symbol-world/entity-alias-design.md).
 
 ## 11. Origin, Generated Nodes, Derived Nodes, and Unsupported
 
@@ -1152,7 +1119,7 @@ Generated:
   BracketCallLowering
   PatternNormalize        (binding-site / annotation / extraction-pattern normalization; §9)
   ClosureNormalize        (closure head normalization; §9)
-  AliasPreserve           (alias declaration + EntityRef preservation; §10)
+  AliasPreserve           (alias declaration + Path material preservation; §10)
   Unsupported             (node surfaced explicitly; origin Generated(Unsupported))
 
 Derived:
@@ -1282,7 +1249,7 @@ and `P let (self,args) f => B` preserve the same declaration material. This is
 a syntax/semantic handoff requirement, not a claim that the current parser has
 connected the latter form. Neither form normalizes by resolving a name or
 solving a Pattern. Likewise bare `let` preserves an absent override, written
-`plain` a concrete constraint, and `<p> p let` an explicit deduction hole;
+`const` / `mut` concrete constraints, and `<p> p let` an explicit deduction hole;
 later elaboration computes Pin/Pout overlays and any default completion.
 
 Qualified formation resolves a structural root identity and observes the current
@@ -1331,9 +1298,14 @@ belong to ordinary semantic invocation, not normalization. Missing source
 forms remain pending and need golden coverage when connected.
 
 The existing with carrier's explicit-empty/items distinction feeds mechanical
-placement: omitted means default NLL, empty means lexical cleanup, and
-x with{a} adds x's actual touches to a's placement requirements. It does not
-create borrow/access edges or a second lifetime interpreter.
+placement: omitted means default NLL, empty means lexical cleanup.
+With items preserve full Path material, including aliases and navigation
+inheritance. The declaration reads no resident and creates no borrow, access,
+value dependency or LifeName. After complete declarations/Self/control-flow are
+known, instantiate each relation only in layers where its actual target exists;
+absence adds no constraint. Forward references are supported. Fix cleanup points
+globally before same-point ordering and lifetime observation; do not insert
+destructors during source scanning. Higher objects die before lower objects.
 
 Every legal completed closure expression evaluates to full tau_C. File
 implementation-layer let installs at the established package structural root;
@@ -1353,11 +1325,14 @@ observing only the first level for NameExpr after that full computation.
 It does not capture AST or stop operand evaluation. name::path keeps the same
 construction/extraction direction; :: is Pattern/path composition. Bare a
 inherits navigation in extraction, while evaluated a$ reinjects material;
-non-extraction name::a == name::(a$) is not an unconditional Pattern rewrite. General $ splices ready material
+non-extraction name::a == name::(a$) is not an unconditional Pattern rewrite. In LHS, e$ interprets the entire operand in RHS expression context and
+reinjects its value; bare operators elaborate to (operator[op])$. General $ splices ready material
 without implicit Path conversion, retaining Hole identities. The round-trip
 (n#)$ reconstructs n's structure under the Path consumer, not through a general
 splice decoding rule. Index p[i] yields relative single-name
-path_pattern; general slicing remains a bounded open question. Textual roots
+path_pattern. RHS colon forms ordinary Product |> slice; empty structural
+colon/comma slots are unit. Slice consumers use ordinary overload/Pattern
+extraction, without a separate slicing primitive. Textual roots
 resolve at resident use, while explicit roots retain their dependencies.
 Current source consumers remain pending, including # and general splice.
 

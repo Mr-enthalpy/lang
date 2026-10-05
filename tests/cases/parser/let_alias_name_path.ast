@@ -3,8 +3,14 @@ Program
     binder:
       Name map
     target:
-      EntityRef
-        components:
-          component Name map
-          component Name iter
-          component Name std
+      PathMaterial
+        Expr
+          Pipe
+            Segment has_incoming=false
+              OperatorExpr
+                Atom
+                  NavPath
+                    components:
+                      component Name map
+                      component Name iter
+                      component Name std

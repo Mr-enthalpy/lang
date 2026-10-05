@@ -76,6 +76,11 @@ fn expr_name() {
 }
 
 #[test]
+fn contextual_structural_material() {
+    assert_parser_case("contextual_structural_material", false);
+}
+
+#[test]
 fn member_int_base() {
     assert_parser_case("member_int_base", false);
 }
@@ -1515,23 +1520,23 @@ fn invalid_alias_missing_target() {
 }
 
 #[test]
-fn invalid_alias_rhs_pipe() {
-    assert_parser_case("invalid_alias_rhs_pipe", true);
+fn alias_rhs_pipe_material() {
+    assert_parser_case("alias_rhs_pipe_material", false);
 }
 
 #[test]
-fn invalid_alias_rhs_closure() {
-    assert_parser_case("invalid_alias_rhs_closure", true);
+fn alias_rhs_closure_material() {
+    assert_parser_case("alias_rhs_closure_material", false);
 }
 
 #[test]
-fn invalid_alias_rhs_product() {
-    assert_parser_case("invalid_alias_rhs_product", true);
+fn alias_rhs_product_material() {
+    assert_parser_case("alias_rhs_product_material", false);
 }
 
 #[test]
-fn invalid_alias_rhs_operator_expr() {
-    assert_parser_case("invalid_alias_rhs_operator_expr", true);
+fn alias_rhs_operator_expr_material() {
+    assert_parser_case("alias_rhs_operator_expr_material", false);
 }
 
 #[test]
@@ -1585,23 +1590,23 @@ fn let_alias_following_form() {
 }
 
 #[test]
-fn alias_newline_residual_single() {
-    assert_parser_case("alias_newline_residual_single", true);
+fn alias_newline_sequence_single() {
+    assert_parser_case("alias_newline_sequence_single", false);
 }
 
 #[test]
-fn alias_newline_residual_semicolon() {
-    assert_parser_case("alias_newline_residual_semicolon", true);
+fn alias_newline_sequence_semicolon() {
+    assert_parser_case("alias_newline_sequence_semicolon", false);
 }
 
 #[test]
-fn alias_newline_valid_entityref() {
-    assert_parser_case("alias_newline_valid_entityref", false);
+fn alias_newline_path_material() {
+    assert_parser_case("alias_newline_path_material", false);
 }
 
 #[test]
-fn alias_newline_residual_path() {
-    assert_parser_case("alias_newline_residual_path", true);
+fn alias_newline_sequence_path() {
+    assert_parser_case("alias_newline_sequence_path", false);
 }
 
 #[test]
@@ -1615,18 +1620,18 @@ fn invalid_alias_missing_target_recovery() {
 }
 
 #[test]
-fn invalid_alias_rhs_member() {
-    assert_parser_case("invalid_alias_rhs_member", true);
+fn alias_rhs_member_material() {
+    assert_parser_case("alias_rhs_member_material", false);
 }
 
 #[test]
-fn invalid_alias_rhs_doubledot() {
-    assert_parser_case("invalid_alias_rhs_doubledot", true);
+fn alias_rhs_doubledot_material() {
+    assert_parser_case("alias_rhs_doubledot_material", false);
 }
 
 #[test]
-fn invalid_alias_target_trailing_coloncolon() {
-    assert_parser_case("invalid_alias_target_trailing_coloncolon", true);
+fn alias_explicit_terminated_path() {
+    assert_parser_case("alias_explicit_terminated_path", false);
 }
 
 #[test]

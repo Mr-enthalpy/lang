@@ -35,7 +35,7 @@ default
 delete
 strategy identifiers
 meta / compile / seal / runtime
-const / plain / mut / let
+const / mut / meta / close / let
 ```
 
 are not lexer keywords.
@@ -590,13 +590,17 @@ into the frontend. See [name/type semantics](../design/symbol-world/names-and-ov
 ## Semantic revision handoff and preserved carriers
 
 The current OperatorTarget preserves spelling/fixity/arity. Future connected
-consumers must distinguish OperatorUse from OperatorNameValue: naked use
-selects operator[op], the selector argument reads the ordinary name, dot .op
+consumers must distinguish OperatorUse from OperatorNameValue: RHS naked use
+selects operator[op]; LHS naked operator elaborates to (operator[op])$ with its
+whole operand interpreted on the RHS. The selector argument reads the ordinary name, dot .op
 uses op::adl, and explicit paths stay as written. This is an evaluator handoff,
 not a claim that current direct operator-name bindings or OG_s execution work.
 
-WithClauseAst already preserves Empty, Items and Error; Norm retains names,
-explicit_empty, error and origin. No new with AST is required. Directed Touch
+WithClauseAst preserves Empty, Items of PathMaterialAst, and Error.
+NormWithClause retains Path items, explicit_empty, error and origin.
+The declaration reads no resident; forward references are recorded as Path-relative
+cleanup relations and conditionally instantiated per actual Self/navigation layer
+after declarations/control flow are complete. Directed Touch
 placement, lexical empty-with and default NLL are semantic consumers, not parser
 interpretation. See the mechanical/lifetime owners.
 
@@ -620,9 +624,10 @@ Pattern splice are distinct. `runtime let` introduces no `runtime` hole.
 
 Read_name/Read_resident, path_pattern projection (#), relative single-name
 indexing and general $ consumer wiring are pending. # observes values rather
-than source AST; general $ does not insert Path conversion. General slicing
-is reserved, not implemented merely by retaining a bracket carrier.
-The existing Dollar token alone implements neither splice readiness nor
-PatternRoot/HoleBinderId preservation. Optional generator heads, HoleRef
+than source AST; general $ does not insert Path conversion. RHS colon slots
+normalize to ordinary Product |> slice, empty colon/comma slots complete to unit,
+and no Slice node enters semantic IR. LHS colon remains annotation.
+NormPattern::Splice and navigation splice components preserve the RHS operand
+and alpha-bound holes without proving semantic evaluation or readiness. Optional generator heads, HoleRef
 requested-name selectors and expression bodies require ordinary source
 span/recovery coverage when wired. Semantic rules never feed back into parsing.

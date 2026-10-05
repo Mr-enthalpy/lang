@@ -1,5 +1,5 @@
 const let a |> f;
-plain let a |> f |> g;
+close let a |> f |> g;
 (mut let a |> f) |> g;
 (const let a) |> f;
 (public + compile) let a |> f;
