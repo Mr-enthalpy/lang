@@ -9,6 +9,7 @@ that the corresponding source semantics is implemented.
 
 | Topic | Owner |
 | --- | --- |
+| Static evaluation, compile instances, open/close, NameExpr result shape, interpretation polarity, structural type formation, file/name production, dot/ADL | [static, name, and structural semantics](unified-static-name-and-structural-semantics.md) |
 | NameValue, two-level Read, Path projection/indexing and Pattern splice | [Path algebra](symbol-world/structured-path-algebra-and-pattern-splice.md) |
 | General dependencies, semantic realization and one-time formation | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
@@ -51,7 +52,8 @@ tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
 
 ## Reading order
 
-    Object / complete pattern value / Place
+    static / name / structural semantics
+      -> Object / complete pattern value / Place
       -> name existence and named-type / group algebra
       -> construction / OpenHere / anchored replication
       -> Pattern relation / policy / exact-self call / invocation-generated names
