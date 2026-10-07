@@ -14,7 +14,10 @@ spec/planning/open-questions.md
 ```
 
 For semantic work, also read `spec/design/README.md` and every canonical topic
-owner named there for the concepts being changed. For implementation
+owner named there for the concepts being changed. Static evaluation, compile
+instances, name production, structural interpretation/type formation and dot
+navigation are jointly owned by
+`spec/design/unified-static-name-and-structural-semantics.md`. For implementation
 sequencing, read `spec/planning/roadmap.md`.
 
 Documents under `spec/history/**` are non-authoritative and are read only when
@@ -114,38 +117,24 @@ alternate relation or identity.
   iff WellFormedTau(tau). HasRegisteredSelfConstruction defines only
   SelfConstructible, not type identity. Complete tau consistency checks both registered
   closure roles' /tau homes separately.
-- Contextual meta qualification is limited to type/type ref, not a fourth
-  PolicyMode. Initialized type names retain direct mut borrowing and explicit
-  meta-ref-to-mut confirmation; both require current OpenHere, target Writable
-  and ordinary capability/access/lifetime. Same-position routes are coherent,
-  not implicit chains. Meta refs retain their actual Place and original borrowed
-  generation/opening subject. Close defeats both mutable routes and saved-ref
-  writes. InitialTypeSlotRef remains separate one-shot initialization authority.
-  Frozen generated Val2 realization after Close invokes none of these ref paths.
+- OpenPolicy = {open, close} is independent from PolicyMode = {const, mut}.
+  An omitted mode completes to mut exactly when OpenPolicy=open and current
+  OpenHere is available; otherwise it completes to const. Unknown required
+  OpenHere is unavailable. OpenHere, Writable, PolicyMode, construction
+  authority and lifetime remain independent judgments.
 - Type +=/-= changes only V_tau under Writable, OpenHere, complete-type /tau
   classifier home and non-generative registration. Named Val2 residency is neither
   required nor implied; classifier navigation is not callable-value navigation.
   Witnessed anchored replication never reparents an existing value.
-- OverloadGroup aggregation buckets whole bound type snapshots, never Core classes,
-  has its own entry algebra and requires Writable.
-  Ordinary meta constructs an instance name/type tau_M outside input structure;
-  arbitrary payloads occupy ordinary Val2. V_tau callability registration and
-  Pattern-role registration are independent; neither follows from Val2 presence.
-  Input identity retains observed name/subject dependencies; output openness follows
-  their meet. P1 meta let retains the instance under OpenHere, which governs mut
-  acquisition; close let completes/closes it. P2 meta remains evaluation stage.
-  Invocation caches retain instances/member Places and current state. A consumes
-  these facilities; saved references recheck the original source at write Pre.
-  MetaDecl requires Ordinary placement, => and no capture clause. It admits no
-  automatic closure dependency on an unpassed enclosing local. Such locals are
-  masked; invocation dependence enters In or established stable meta-owner
-  relations. MetaInstanceRootKey has no CapturedEnv axis. Nested ordinary
-  closures may use only material legally available inside the invocation.
-- Stage is one atom; static stages are pairwise incomparable. P2 is horizon,
-  P1/Pout producer visibility; InputAdmissible, migration and Ready are separate.
+- Every compile call forms a stable CompileInstance from parent owner, selected
+  CompilePartner and canonical inputs. Its ordinary self-name is readable without
+  reentry. Result kind is determined by result structure: an instance-open type
+  may escape only as the single self-rooted complete type, which exposes the
+  instance NameExpr. In-place closures retain ordinary lexical/Self/navigation
+  boundaries and use admitted dependencies to reach enclosing instances.
+- Stage = {compile, seal, runtime}. P2 is evaluation horizon; P1/Pout producer
+  visibility, OpenPolicy, InputAdmissible, migration and Ready are independent.
   Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
-- Main has runtime horizon; stable roots imply no active MetaDom. Actual
-  meta/seal frames exclude seal/meta work through helpers and cache hits.
 - Name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
@@ -156,18 +145,16 @@ alternate relation or identity.
   NameCoord. This is distinct from TypeMemberScope(T)=/tau(T).
   V_tau registration, Val2 residency, Pattern registration and ConstructEdge
   remain independent; no self-construction witness proves type callability.
-- `PolicyMode = {const, mut}`; `MetaInstancePolicy = {meta, close}` is independent.
-  Complete only omitted mode: meta + current OpenHere yields mut, otherwise const.
-  Unknown required OpenHere is unavailable, never a negative proof.
 - Policy preference, CapabilityRealization, Writable, and DynamicLegality are
   independent judgments.
 - Output demand is total before maxima; selected failure never reopens.
 - Policy migration is direct, same-Type, candidate-driven, and existing-first.
 - Abstract literals form before concrete construction.
-- `OpenHere`, Writable, PolicyMode, and construction authority do not imply one
-  another. `extend` is pure; `inject` is read + extend + write.
-- `InvocationResult` is the single semantic result envelope; `struct` returns
-  complete tau.
+- Structural interpretation forms complete types directly. struct:type->type
+  adds standard ordinary helpers while preserving structural registration;
+  *:type x type->type composes types and *=:type ref x type->unit performs the
+  ordinary read-transform-write update under its normal Pre premises.
+- InvocationResult is the single semantic result envelope.
 - Lifecycle facts are relative to one SemanticContinuation. Killable is instance-local, MoveEffect is fixed, Movable is frontier legality.
   Move does not imply Kill; Preserve Move is not copy and invokes no clone.
   Pass=Move; copy-derived paths are share/rebind -> selected clone -> fresh complete result -> Move.
@@ -204,16 +191,14 @@ alternate relation or identity.
 - NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
   Ordinary name writes may change Val2(Core) without either registration.
   Pattern-registered extension uses extend/inject; TypeAdd changes V_tau only.
-- Meta call/value and Pattern/name declarations are equal surface projections.
-  Grammar-fixed operator use selects operator[op]; dot .op selects op::adl;
-  explicit paths remain explicit. OperatorNameValue reads without recursive
-  dispatch. OG_s retains spelling and selects the current slot. Ordinary
-  call/extract/generative relations apply;
-  generated occurrences supply no Pattern or V_tau registration evidence.
-  x.field == x |> .field == x |> field::adl is an ordinary call, not NameExpr
-  or a private Place projection. A finite generator answers an unbounded name family
-  without infinite predeclaration/reopening. A T -> F accessor is affine value access;
-  it does not imply parent death or leave a partial aggregate.
+- Requested-name producers are ordinary compile computations over a requested
+  NameValue and may realize any ordinary resident. Dot enters the generative
+  field::adl overload family: receiver candidates perform ordinary method calls,
+  type-valued receiver candidates advance NameExpr paths. x.field lowers through
+  x |> .field to field::adl. e..field(args) is exactly e |> .field(args).
+  Generated occurrences supply no structural-registration evidence. A T -> F
+  accessor is affine value access; it does not imply parent death or leave a
+  partial aggregate.
 - Close freezes non-generative registered structure, not future ordinary generated
   Val2 realization. Such results reopen no construction view and do not alter old
   snapshots. Current Norm/only_val2 observations remain continuation-relative.
@@ -221,20 +206,13 @@ alternate relation or identity.
 - Product layers with all direct entries named are unordered; any bare entry
   makes that whole layer ordered. Nested layers decide independently. Unordered
   to bare sequence requires named extraction and explicit ordered assembly.
-- Read_name completes full NameExpr computation to NameValue, including ordinary,
-  meta and compile subexpressions. e# projects that result and blocks only resident
-  reading; it is neither quotation nor an evaluation stop. name::path preserves
-  Pattern/path construction/extraction direction. Bare a inherits navigation in
-  extraction; evaluated a$ reinjects material, so the non-extraction equality
-  name::a == name::(a$) is not an unconditional extraction rewrite.
-  (n#)$ reconstructs structure only under the Path consumer; p[i] yields
-  relative single-name path_pattern.
-  RHS colon forms ordinary Product |> slice; empty colon/comma slots are unit.
-  LHS colon remains annotation; FullExpr > : > comma structurally, :: > : lexically.
-  with items are Path material and forward references are legal; instantiate cleanup
-  relations conditionally per actual Self/navigation layer after complete control flow. Textual roots resolve at resident use;
-  explicit roots retain anchors/dependencies. General $ inserts no implicit
-  Path projection and preserves Hole identities. ADL uses ((a#)[0])$::t.
+- Read_name completes full NameExpr computation to NameValue. e# projects that
+  result and blocks only resident reading. Structural bare names share one
+  navigation-completion law across Path and extraction consumers. $ is a stable
+  interpretation-polarity flip: Interpret(e$,C)=Interpret(e,Flip(C)), Flip^2=Id,
+  with arbitrary source nesting. $ is independent from resident Read and Stage.
+  Path support preserves Hole identities; ADL dynamic path segments use
+  ((field#)[0])$::t.
 - Public Policy pair syntax is retired; internal value/type observations remain
   independent and share the source evaluation edge only for direct projections.
   Concrete atoms, omission, holes and splice remain distinct.
