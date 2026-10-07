@@ -1,12 +1,11 @@
-# Unified Static, Name, and Structural Semantics
+# Static, Name, and Structural Semantics
 
 **Status: canonical ontology owner.**
 
-This document defines the shared ontology used by static evaluation, name
+This document defines the canonical relations used by static evaluation, name
 production, structural interpretation, type formation, and dot navigation.
-Topic owners may specialize these relations but must not introduce a parallel
-instance kind, evaluation universe, structural material universe, or member
-lookup mechanism.
+Topic owners specialize these relations while preserving their identities and
+composition laws.
 
 ## 1. One evaluator and three orthogonal coordinates
 
@@ -172,14 +171,12 @@ A canonical nested example is:
 
 When the whole expression occurs in ordinary RHS context, the outer `$`
 enters structural interpretation and the inner `$` returns
-`args Mytypefun` to ordinary value interpretation. No additional evaluation
-stage is introduced.
+`args Mytypefun` to ordinary value interpretation. The enclosing evaluation horizon is preserved.
 
 ## 5. Pattern is structural registration over Val2
 
 Structural identity is represented by registrations over actual members in
-`Val2`; there is no separate bare structural-value universe required for type
-formation.
+`Val2`.
 
 ```text
 StructuralRole_P(x) => x in Val2
@@ -215,8 +212,7 @@ complete type value directly:
 ```
 
 The formation transaction establishes the minimum Val2 witnesses and their
-structural registrations together. There is no intermediate semantic result
-between the structural expression and the complete type.
+structural registrations together, producing the complete type as its result.
 
 `struct` is an ordinary type-to-type function:
 
@@ -324,7 +320,7 @@ other ordinary residents.
 
 ## 9. Dot is ordinary ADL over a generative overload family
 
-Dot syntax enters one ordinary `adl` name family. A canonical source
+Dot syntax enters one ordinary `adl` name family. Its canonical source
 definition is:
 
 ```text
@@ -338,7 +334,7 @@ adl/
 
 The first candidate implements ordinary receiver calls. The second implements
 type-path progression. Existing overload applicability and specificity choose
-between them; dot syntax introduces no additional lookup or priority mechanism.
+between them.
 
 Thus:
 
@@ -361,8 +357,8 @@ the canonical Path representation remains `name::path`:
 foo.bar.baz =_Path baz::bar::foo
 ```
 
-Dot syntax supplies no structural extraction evidence, Place projection,
-mutation authority, or special member identity.
+Dot syntax supplies the ordinary `field::adl` requested name and receiver
+material; subsequent authority and behavior come from the selected candidate.
 
 ## 10. Double-dot is only pipeline-dot contraction
 
@@ -374,9 +370,7 @@ express..field(args)
 express |> .field(args)
 ```
 
-After this rewrite, the ordinary dot/ADL rules apply. Double-dot creates no
-in-place closure, Self binding, OpenHere fact, mutability, borrow, or distinct
-invocation form.
+After this rewrite, the ordinary dot/ADL rules apply.
 
 ## 11. Static self-modification and generated design patterns
 
@@ -392,28 +386,14 @@ section 1. The expression can then use the normal type/reference/operator
 algebra to update its current value. No extraction of a hidden auxiliary
 payload is required.
 
-Trait-like and automatically generated design patterns are therefore ordinary
-compile programs assembled from requested-name production, overload
-applicability, self-name observation, `open/close`, OpenHere, and ordinary type
-operations.
+Trait-like and automatically generated design patterns are ordinary compile
+programs assembled from requested-name production, overload applicability,
+self-name observation, `open/close`, OpenHere, and ordinary type operations.
 
-## 12. Canonical hygiene
+## 12. Canonical consistency
 
-The active tree has one name and one relation for each semantic concept.
-
-- Reusable implementation assets are renamed to their canonical role when the
-  role changes.
-- Compatibility aliases, adapter enums, duplicate registries, shadow
-  evaluators, and comments that explain obsolete semantic categories are not
-  retained.
-- Tests and fixtures use current positive terminology.
-- Public and canonical documentation states only current semantics.
-- Historical explanations belong only under `spec/history/**` and repository
-  history.
-- A source convenience lowers to the lowest existing relation that explains it;
-  no convenience may create a parallel semantic ontology.
-
-A migration is complete only when source, normalized interfaces, semantic
-carriers, diagnostics, tests, fixtures, contracts, planning documents, public
-guides, glossary, and agent instructions all expose the same vocabulary and
-equations.
+The active tree uses one canonical name and relation for each semantic concept.
+Source, normalized interfaces, semantic carriers, diagnostics, tests, fixtures,
+contracts, planning documents, public guides, glossary, and agent instructions
+use the vocabulary and equations defined by their topic owners. Source
+conveniences lower to the lowest existing relation that explains them.
