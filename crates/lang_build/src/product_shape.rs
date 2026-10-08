@@ -160,8 +160,8 @@ pub struct RawArgShape {
     pub known_type_symbol_id: Option<SymbolId>,
     /// Source-level pattern name recorded when a semantic type resolution
     /// classified this argument without a graph carrier Symbol. This is
-    /// naming/navigation material for binder substitution only; identity
-    /// still flows through `known_first_order_type_value`.
+    /// naming/navigation material for binder substitution only. The lookup
+    /// key classifies the argument; canonical observations determine equality.
     pub known_type_pattern_name: Option<String>,
     pub known_first_order_type_value: Option<TypeValueId>,
     /// The resolved carrier's own binding-level pure-P member view, when this
@@ -175,23 +175,17 @@ pub struct RawArgShape {
     /// The resolved carrier's own object place, when this argument was
     /// classified from a named type carrier.
     ///
-    /// A pure P is a real object, so two carriers of one Pattern can hold
-    /// different Val2.  The place is the observation coordinate that decides
-    /// *which* Val2 the canonicalizer reads — it is deliberately NOT identity
-    /// material and never enters a normal form:
-    ///
-    /// ```text
-    /// Norm_type(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩
-    /// place(x)     ↦ Val2_x                (observation only)
-    /// ```
+    /// The Place selects the original resident observation. After that read,
+    /// the complete immutable tau carries its own Core and V_tau. The argument
+    /// consumer uses that snapshot, rather than rereading this Place. Place
+    /// identity is not itself a complete type value's normal-form coordinate.
     pub known_type_carrier_place: Option<ObjectPlaceId>,
     /// Complete immutable `tau` snapshot carried by the resolved binding.
     /// This is distinct from `known_type_observation`, which is the core-only
     /// coordinate used by Pattern structural identity.
     pub known_complete_type_observation: Option<CanonicalValueAddr>,
-    /// The interned `Addr(Norm_type)` of this type argument's observation —
-    /// the recursive P + Val2 normal form read at the carrier place — attached
-    /// at a world-connected invocation boundary.
+    /// The interned Core observation projected from the carried complete tau
+    /// at a world-connected invocation boundary. It is not a fresh carrier read.
     ///
     /// When present, structural type-identity positions (struct pattern
     /// leaves, field signatures, extraction fields) consume this address
@@ -253,7 +247,7 @@ impl RawArgShape {
     /// The type observation carried by this argument for structural
     /// type-identity positions.
     ///
-    /// `Observed(addr)` is authoritative `Addr(Norm_type)` material. A bare
+    /// `Observed(addr)` is authoritative `Addr(Norm(Core(tau)))` material. A bare
     /// `TypeValueId` never produces an observation.
     pub fn type_observation(&self) -> Option<CanonicalTypeObservation> {
         self.known_type_observation

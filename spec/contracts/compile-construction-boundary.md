@@ -97,6 +97,14 @@ retains the actual receiver/call-entry pair; canonical arguments and parent
 complete `CompileInstanceKey`. Body/result material and provenance supply no
 identity coordinate. Connected external-type delivery retains the input's exact
 complete snapshot and leaves instance self residency uninitialized.
+Canonical argument formation consumes a carried complete tau, and structural
+Core observations project that same tau. Missing, unregistered or semantically
+mismatched snapshots diagnose before body entry. Opaque lookup indices are
+classification projections; their allocation equality is not type equality.
+Current carrier material and the current global callspace cannot replace a
+previously read snapshot. Argument material
+and observation rosters must agree in length and position; omitted positions
+cannot disappear from an invocation key.
 
 General instance residency, accessible-result closure, opening-source meets,
 P1 completion and source body execution require their common E consumers.

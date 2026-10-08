@@ -250,7 +250,7 @@ fn trace_of<'a>(
         | Err(OrdinaryInvocationFailure::MigrationResultTypeChanged { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed { trace })
         | Err(OrdinaryInvocationFailure::ObservationUnavailable { trace, .. })
-        | Err(OrdinaryInvocationFailure::CyclicVal2 { trace, .. }) => trace,
+        | Err(OrdinaryInvocationFailure::ArgumentNormalization { trace, .. }) => trace,
     }
 }
 

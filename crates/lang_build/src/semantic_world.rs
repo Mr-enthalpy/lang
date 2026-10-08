@@ -1621,30 +1621,17 @@ impl SemanticWorld {
     /// identity-stable opaque Val1 leaf preserves a normal form without
     /// claiming content equality.
     ///
-    /// A type argument normalizes through
-    /// `Norm_type(x) = ⟨none, Norm_P(P_x), Norm_Val2(Val2_x)⟩`, where the Val2 is
-    /// read from the argument's own carrier place when the resolution carried
-    /// one.  Two carriers of one Pattern with equal recursive Val2 therefore
-    /// share one address even though their places differ, and one open type
-    /// observed before and after a member write does not.
+    /// A type argument contributes the complete immutable tau carried by its
+    /// read. The lookup key and carrier Place cannot reconstruct that snapshot.
     pub fn canonical_argument_address(
         &mut self,
         raw: &RawArgShape,
         atom: &ProductAtom,
     ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
         let mut state = Val2NormState::default();
-        if let Some(value) = raw.known_semantic_value {
-            return self.canonical_member_value_address(value, &mut state);
-        }
         match &raw.value_class {
             RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection) => {
-                if let Some(type_value) = raw.known_first_order_type_value {
-                    if let Some(whole) = raw.known_complete_type_observation {
-                        return Ok(whole);
-                    }
-                    let place = raw.known_type_carrier_place;
-                    return Ok(self.observe_complete_type(type_value, place)?.whole());
-                }
+                return Ok(self.complete_type_argument_observation(raw)?.whole());
             }
             RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => {
                 return Ok(self.intern_canonical_value(CanonicalNormForm::Object(
@@ -1657,6 +1644,9 @@ impl SemanticWorld {
             }
             _ => {}
         }
+        if let Some(value) = raw.known_semantic_value {
+            return self.canonical_member_value_address(value, &mut state);
+        }
         if let ProductAtom::Expression { expr, .. } = atom {
             if let NormExpr::Literal { kind, text, .. } = expr {
                 return Ok(self.intern_canonical_value(canonical_literal_norm(*kind, text)));
@@ -1666,6 +1656,36 @@ impl SemanticWorld {
             "ordinary Object normalization requires observable Val1, Pattern, and Val2 material",
             None,
         ))
+    }
+
+    fn complete_type_argument_observation(
+        &self,
+        raw: &RawArgShape,
+    ) -> Result<&CompleteTypeValue, crate::Diagnostic> {
+        let complete = raw
+            .known_complete_type_observation
+            .and_then(|whole| self.complete_types.get(&whole))
+            .ok_or_else(|| {
+                crate::Diagnostic::hard_error(
+                    "complete type argument snapshot is unavailable",
+                    Some(raw.provenance.clone()),
+                )
+            })?;
+        let classified_pattern = raw
+            .known_first_order_type_value
+            .and_then(|lookup| self.types.get(&lookup))
+            .and_then(|ty| self.canonical_pattern_norm(ty.pattern));
+        let observed_pattern = match self.canonical_normal_form(complete.core()) {
+            Some(CanonicalNormForm::Object(core)) if core.val1.is_none() => Some(&core.pattern),
+            _ => None,
+        };
+        if classified_pattern.as_ref() != observed_pattern || observed_pattern.is_none() {
+            return Err(crate::Diagnostic::hard_error(
+                "complete type argument snapshot differs from its classified Core Pattern",
+                Some(raw.provenance.clone()),
+            ));
+        }
+        Ok(complete)
     }
 
     /// `Addr(Norm_type(type_value, place))` — the interned observation
@@ -1810,34 +1830,53 @@ impl SemanticWorld {
         self.complete_types.get(&whole)
     }
 
-    /// Attach `Addr(Norm_type)` observations to the type arguments of an
-    /// invocation at a world-connected boundary.
+    /// Project `Addr(Norm(Core(tau)))` from the complete type arguments of an
+    /// invocation without reading current residency or interning a new type.
     ///
     /// Only `NonValue(CoreTypeProjection)` arguments receive an observation; other
-    /// argument classes keep `known_type_observation = None` so their
-    /// projections stay `Detached` (under-merge only).  Failure surfaces the
-    /// same cyclic-Val2 diagnostics as canonical argument normalization.
+    /// argument classes keep their existing observations. All required
+    /// observations are validated before any argument material is updated.
     pub fn attach_canonical_type_observations(
-        &mut self,
+        &self,
         raw_args: &mut [RawArgShape],
-        _atoms: &[ProductAtom],
+        atoms: &[ProductAtom],
     ) -> Result<(), crate::Diagnostic> {
-        for raw in raw_args.iter_mut() {
-            if matches!(
-                raw.value_class,
-                RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
-            ) {
-                let addr = self.canonical_type_core_observation_address(
-                    raw.known_first_order_type_value.ok_or_else(|| {
-                        crate::Diagnostic::hard_error(
-                            "classified type argument has no core lookup key",
-                            None,
-                        )
-                    })?,
-                    raw.known_type_carrier_place,
-                )?;
-                raw.known_type_observation = Some(addr);
+        Self::validate_input_material(raw_args, atoms)?;
+        let observations = raw_args
+            .iter()
+            .map(|raw| {
+                if matches!(
+                    raw.value_class,
+                    RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
+                ) {
+                    Ok(Some(self.complete_type_argument_observation(raw)?.core()))
+                } else {
+                    Ok(None)
+                }
+            })
+            .collect::<Result<Vec<_>, crate::Diagnostic>>()?;
+        for (raw, observed) in raw_args.iter_mut().zip(observations) {
+            if let Some(core) = observed {
+                raw.known_type_observation = Some(core);
             }
+        }
+        Ok(())
+    }
+
+    fn validate_input_material(
+        raw_args: &[RawArgShape],
+        atoms: &[ProductAtom],
+    ) -> Result<(), crate::Diagnostic> {
+        if raw_args.len() != atoms.len()
+            || raw_args
+                .iter()
+                .enumerate()
+                .any(|(index, raw)| raw.index != index)
+        {
+            return Err(crate::Diagnostic::hard_error(
+                "canonical invocation input material differs from its observation roster",
+                None,
+            ));
         }
         Ok(())
     }
@@ -1846,15 +1885,15 @@ impl SemanticWorld {
     ///
     /// The invocation parentheses ARE a Product value, so the arguments of
     /// a compile invocation normalize through the ordinary Product normal
-    /// form: `Addr(Product(a1..an))` with ordered member addresses.
-    /// Top-level argument equivalence is position-sensitive by
-    /// construction — it inherits the Product's positional identity
-    /// instead of using an ad-hoc sequence encoding.
+    /// form: `Addr(Product(a1..an))`. This slice consumes a bare positional
+    /// argument layer. Named or nested semantic Products retain their own
+    /// normal forms when supplied as ordinary value arguments.
     pub fn canonical_arguments_product_address(
         &mut self,
         raw_args: &[RawArgShape],
         atoms: &[ProductAtom],
     ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
+        Self::validate_input_material(raw_args, atoms)?;
         let members = raw_args
             .iter()
             .zip(atoms.iter())
@@ -5857,8 +5896,78 @@ mod tests {
         );
     }
 
-    /// `distinct Pattern allocations + equivalent normalized P → same
-    /// address` — and the nominal counter-case stays allocation-distinct.
+    #[test]
+    fn unavailable_type_input_never_enters_the_selected_body_or_publishes_an_instance() {
+        let compilation = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let core = compilation.core_node();
+        let target = compilation
+            .semantic_world()
+            .symbol_in_namespace(core, "IdentityType")
+            .unwrap()
+            .identity;
+        let input = compilation
+            .semantic_world()
+            .symbol_in_namespace(core, "uint8")
+            .unwrap()
+            .identity;
+        let other = compilation
+            .semantic_world()
+            .symbol_in_namespace(core, "uint16")
+            .unwrap()
+            .pure_p()
+            .unwrap()
+            .complete_type;
+        let parsed = lang_syntax::parse("let result = uint8 IdentityType::core;");
+        assert!(parsed.diagnostics.is_empty());
+        let normalized = lang_syntax::normalize_program(&parsed.program);
+        let NormForm::Let(NormDecl::Let { slot, .. }) = &normalized.forms[0] else {
+            panic!("binding");
+        };
+        let call = crate::extract_single_call_site(slot.initializer.as_deref().unwrap()).unwrap();
+        let mut resolver = crate::ResolverContext::new(compilation.package_root_node());
+        resolver.default_mounts.push(core);
+        for snapshot in [None, Some(CanonicalValueAddr(u64::MAX)), other] {
+            let mut world = compilation.semantic_world().clone();
+            let Some(BindingResident::Type(member)) =
+                &mut world.symbols.get_mut(&input).unwrap().resident
+            else {
+                panic!("initialized type input");
+            };
+            member.complete_type = snapshot;
+            let before = format!("{world:?}");
+            let failure = crate::invoke_resolved_binding_ordinary(
+                &mut world,
+                &[],
+                target,
+                &call,
+                &resolver,
+                crate::OrdinaryInvocationContext::open_static(&[]),
+                Provenance::new("type input observation boundary"),
+            )
+            .unwrap_err();
+            let crate::OrdinaryInvocationFailure::ArgumentNormalization { diagnostic, trace } =
+                failure
+            else {
+                panic!("input normalization failure: {failure:?}");
+            };
+            assert!(
+                diagnostic
+                    .message
+                    .contains("complete type argument snapshot"),
+                "{diagnostic:?}"
+            );
+            assert!(trace.selected.is_some());
+            assert!(trace.compile_instance.is_none());
+            assert_eq!(format!("{world:?}"), before);
+        }
+    }
+
+    /// Distinct equivalent Pattern/lookup allocations share one observation;
+    /// nominally distinct declarations retain distinct observations.
     #[test]
     fn distinct_pattern_allocations_with_equivalent_normalized_p_share_one_address() {
         let mut world = SemanticWorld::new("app");
@@ -5893,6 +6002,59 @@ mod tests {
             val2: BTreeMap::new(),
         }));
         assert_eq!(a1, a2, "equivalent normalized P interns to one address");
+
+        let mut type_inputs = Vec::new();
+        let atom = ProductAtom::Unsupported {
+            summary: "supplied complete type observation".into(),
+            provenance: Provenance::new("type input normalization fixture"),
+        };
+        for (index, pattern) in [p1, p2].into_iter().enumerate() {
+            let lookup = world.allocate_type_lookup_index();
+            world.types.insert(
+                lookup,
+                SemanticTypeValue {
+                    id: lookup,
+                    pattern,
+                    provenance: Provenance::new("normalization-only type fixture"),
+                },
+            );
+            world.pattern_types.insert(pattern, lookup);
+            let place = world.pattern_place(pattern);
+            let complete = world.observe_complete_type(lookup, place).unwrap();
+            type_inputs.push(
+                RawArgShape::from_product_atom(index, &atom).as_complete_type_projection_named(
+                    "type input".into(),
+                    lookup,
+                    None,
+                    None,
+                    place,
+                    Some(complete.whole()),
+                ),
+            );
+        }
+        assert_ne!(
+            type_inputs[0].known_first_order_type_value,
+            type_inputs[1].known_first_order_type_value
+        );
+        assert_eq!(
+            type_inputs[0].known_complete_type_observation,
+            type_inputs[1].known_complete_type_observation
+        );
+        assert_eq!(
+            world
+                .canonical_argument_address(&type_inputs[0], &atom)
+                .unwrap(),
+            world
+                .canonical_argument_address(&type_inputs[1], &atom)
+                .unwrap()
+        );
+        world
+            .attach_canonical_type_observations(&mut type_inputs, &[atom.clone(), atom])
+            .unwrap();
+        assert_eq!(
+            type_inputs[0].known_type_observation,
+            type_inputs[1].known_type_observation
+        );
 
         // Counter-case: nominal declaration patterns (no recorded structural
         // material) normalize by their declaration root — distinct

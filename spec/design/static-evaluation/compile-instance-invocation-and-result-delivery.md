@@ -28,6 +28,10 @@ instance. Parent-neutral material caches cannot determine semantic roots.
 Canonical input observations retain ordinary values, complete snapshots where
 required, observed Name/subject identities, reference targets and admitted
 dependency closure. Equal Core never merges subjects or borrowed generations.
+An input carrying a complete type snapshot contributes that exact tau to the
+key. Its Core projection comes from the same immutable snapshot. A bare lookup
+index or a carrier Place supplies neither the snapshot nor permission to
+reconstruct it from current V_tau. Missing required snapshots are unavailable.
 An authorized subject update preserves that subject identity; value-sensitive
 keys still observe their actual input snapshots. Dependencies legally embodied
 in the selected callable or an input retain their ordinary identity and

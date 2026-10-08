@@ -132,9 +132,14 @@ fn place_of(world: &SemanticWorld, symbol: SemanticSymbolIdentity) -> ObjectPlac
         .expect("a pure P is a real object with its own place")
 }
 
-/// One type argument as the call pipeline would hand it over: the resolved
-/// TypeValue plus the resolving carrier's own observation place.
-fn type_arg(type_value: TypeValueId, place: Option<ObjectPlaceId>) -> (RawArgShape, ProductAtom) {
+/// Explicitly observe a current complete snapshot for this substrate fixture,
+/// then pass it across the same argument boundary as a completed type read.
+fn type_arg(
+    world: &mut SemanticWorld,
+    type_value: TypeValueId,
+    place: Option<ObjectPlaceId>,
+) -> Result<(RawArgShape, ProductAtom), lang_build::Diagnostic> {
+    let complete = world.observe_complete_type(type_value, place)?;
     let atom = ProductAtom::Unsupported {
         summary: "type argument under test".to_string(),
         provenance: Provenance::new("recursive type identity"),
@@ -145,9 +150,9 @@ fn type_arg(type_value: TypeValueId, place: Option<ObjectPlaceId>) -> (RawArgSha
         None,
         None,
         place,
-        None,
+        Some(complete.whole()),
     );
-    (raw, atom)
+    Ok((raw, atom))
 }
 
 /// `Norm_type` of the pure type Object observed from `place`.
@@ -165,7 +170,7 @@ fn try_type_addr(
     type_value: TypeValueId,
     place: Option<ObjectPlaceId>,
 ) -> Result<CanonicalValueAddr, lang_build::Diagnostic> {
-    let (raw, atom) = type_arg(type_value, place);
+    let (raw, atom) = type_arg(world, type_value, place)?;
     world.canonical_argument_address(&raw, &atom)
 }
 
@@ -306,6 +311,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
         .observe_complete_type(type_value, Some(t_place))
         .expect("initial complete tau observes")
         .whole();
+    let (mut old_input, old_atom) = type_arg(&mut world, type_value, Some(t_place)).unwrap();
     let closure_expr = initializer_from_source("let f = (self): compile -> let r => { self; };");
     let lang_syntax::NormExpr::Closure(closure) = closure_expr else {
         panic!("closure");
@@ -339,6 +345,36 @@ fn successor_vtau_does_not_redefine_object_val2() {
         tau_before, tau_after,
         "V_tau changed the whole tau snapshot"
     );
+    let (mut new_input, new_atom) = type_arg(&mut world, type_value, Some(t_place)).unwrap();
+    assert_eq!(
+        world
+            .canonical_argument_address(&old_input, &old_atom)
+            .unwrap(),
+        tau_before
+    );
+    assert_eq!(
+        world
+            .canonical_argument_address(&new_input, &new_atom)
+            .unwrap(),
+        tau_after
+    );
+    world
+        .attach_canonical_type_observations(
+            std::slice::from_mut(&mut old_input),
+            std::slice::from_ref(&old_atom),
+        )
+        .unwrap();
+    world
+        .attach_canonical_type_observations(
+            std::slice::from_mut(&mut new_input),
+            std::slice::from_ref(&new_atom),
+        )
+        .unwrap();
+    assert_eq!(
+        old_input.known_type_observation,
+        new_input.known_type_observation
+    );
+    assert_eq!(old_input.known_type_observation, Some(object_before));
     assert_eq!(
         object_before,
         world
@@ -346,6 +382,124 @@ fn successor_vtau_does_not_redefine_object_val2() {
             .expect("Object core re-observes"),
         "V_tau is not SemanticVal2Snapshot(x)"
     );
+}
+
+#[test]
+fn held_type_input_projects_its_saved_core_after_current_carrier_changes() {
+    let Carriers {
+        mut world,
+        t,
+        member,
+        type_value,
+        ..
+    } = carriers();
+    let place = place_of(&world, t);
+    let (mut raw, atom) = type_arg(&mut world, type_value, Some(place)).unwrap();
+    let whole = raw.known_complete_type_observation.unwrap();
+    let saved_core = world
+        .complete_type_by_whole_observation(whole)
+        .unwrap()
+        .core();
+    world
+        .associate_existing_symbol_in_place(place, "later", member)
+        .unwrap();
+    let current = world
+        .observe_complete_type(type_value, Some(place))
+        .unwrap();
+    assert_ne!(current.core(), saved_core);
+    assert_ne!(current.whole(), whole);
+    let before = format!("{world:?}");
+    world
+        .attach_canonical_type_observations(
+            std::slice::from_mut(&mut raw),
+            std::slice::from_ref(&atom),
+        )
+        .unwrap();
+    assert_eq!(raw.known_type_observation, Some(saved_core));
+    assert_eq!(
+        world.canonical_argument_address(&raw, &atom).unwrap(),
+        whole
+    );
+    assert_eq!(format!("{world:?}"), before);
+}
+
+#[test]
+fn missing_unknown_or_mismatched_type_snapshots_cannot_form_input_observations() {
+    let Carriers {
+        mut world,
+        t,
+        member,
+        type_value,
+        ..
+    } = carriers();
+    let place = place_of(&world, t);
+    let (valid, atom) = type_arg(&mut world, type_value, Some(place)).unwrap();
+    let other_type = world
+        .type_for_pattern(world.symbol(member).unwrap().pure_p_pattern().unwrap())
+        .unwrap();
+    let cases = [
+        RawArgShape {
+            known_complete_type_observation: None,
+            ..valid.clone()
+        },
+        RawArgShape {
+            known_complete_type_observation: Some(CanonicalValueAddr(u64::MAX)),
+            ..valid.clone()
+        },
+        RawArgShape {
+            known_first_order_type_value: Some(other_type),
+            ..valid.clone()
+        },
+    ];
+    let before_world = format!("{world:?}");
+    for invalid in cases {
+        let mut inputs = vec![
+            valid.clone(),
+            RawArgShape {
+                index: 1,
+                ..invalid.clone()
+            },
+        ];
+        let before_inputs = inputs.clone();
+        assert!(world.canonical_argument_address(&invalid, &atom).is_err());
+        assert!(world
+            .attach_canonical_type_observations(&mut inputs, &[atom.clone(), atom.clone()])
+            .is_err());
+        assert_eq!(
+            inputs, before_inputs,
+            "a later unavailable observation does not partially update earlier input material"
+        );
+        assert_eq!(format!("{world:?}"), before_world);
+    }
+}
+
+#[test]
+fn invocation_key_rejects_missing_extra_and_mispositioned_argument_material() {
+    let Carriers {
+        mut world,
+        t,
+        type_value,
+        ..
+    } = carriers();
+    let place = place_of(&world, t);
+    let (raw, atom) = type_arg(&mut world, type_value, Some(place)).unwrap();
+    let cases = [
+        (vec![raw.clone()], vec![]),
+        (vec![], vec![atom.clone()]),
+        (vec![RawArgShape { index: 1, ..raw }], vec![atom]),
+    ];
+    let before = format!("{world:?}");
+    for (mut inputs, atoms) in cases {
+        let before_inputs = inputs.clone();
+        assert!(world
+            .canonical_arguments_product_address(&inputs, &atoms)
+            .is_err());
+        assert!(world
+            .attach_canonical_type_observations(&mut inputs, &atoms)
+            .is_err());
+        assert_eq!(inputs, before_inputs);
+        assert_eq!(format!("{world:?}"), before);
+    }
 }
 
 /// One open pure type Object observed BEFORE and AFTER a Val2 member write produces
@@ -376,7 +530,7 @@ fn open_type_projection_observed_before_and_after_member_write_changes_its_compi
     let provenance = Provenance::new("open construction compile key");
 
     let key_of = |world: &mut SemanticWorld| {
-        let (raw, atom) = type_arg(type_value, Some(t_place));
+        let (raw, atom) = type_arg(world, type_value, Some(t_place)).unwrap();
         let args = world
             .canonical_arguments_product_address(&[raw], &[atom])
             .expect("acyclic Val2 normalizes");

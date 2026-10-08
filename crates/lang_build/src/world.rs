@@ -2637,7 +2637,7 @@ fn ordinary_invocation_failure_diagnostic(
         crate::OrdinaryInvocationFailure::SelectedDelete { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedImplementation { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::DynamicLegality { diagnostic, .. }
-        | crate::OrdinaryInvocationFailure::CyclicVal2 { diagnostic, .. }
+        | crate::OrdinaryInvocationFailure::ArgumentNormalization { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedBody {
             failure: crate::SourceBodyFrontierFailure { diagnostic, .. },
@@ -2960,7 +2960,11 @@ mod initializer_consumer_boundary_tests {
             complete.core()
         );
 
-        harvest_source(&mut world, "let V = U; let value:U = 7;").unwrap();
+        harvest_source(
+            &mut world,
+            "let V = U; let Forward = U IdentityType::core; let value:U = 7;",
+        )
+        .unwrap();
         let new = world
             .semantic_world
             .symbol_in_namespace(namespace, "V")
@@ -2970,6 +2974,14 @@ mod initializer_consumer_boundary_tests {
         assert_ne!(new.place, old.place);
         assert_ne!(new.object, old.object);
         assert_eq!(new.complete_type, old.complete_type);
+        let forwarded = world
+            .semantic_world
+            .symbol_in_namespace(namespace, "Forward")
+            .unwrap()
+            .pure_p()
+            .unwrap();
+        assert_eq!(forwarded.complete_type, old.complete_type);
+        assert_ne!(forwarded.place, old.place);
         assert_eq!(
             world
                 .semantic_world

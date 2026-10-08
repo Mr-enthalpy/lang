@@ -571,11 +571,9 @@ pub enum OrdinaryInvocationFailure {
         obstruction: ObservationObstruction,
         trace: OrdinaryPipelineTrace,
     },
-    /// Argument normalization hit an illegal cyclic Val2: Val2 normalization
-    /// is well-founded finite recursion, so an object reached again while its
-    /// own Val2 is still being normalized has no normal form and the
-    /// invocation is rejected before any instance key exists.
-    CyclicVal2 {
+    /// Canonical input observation failed, for example due to unavailable
+    /// complete snapshots, inconsistent material or an illegal cyclic Val2.
+    ArgumentNormalization {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
@@ -608,25 +606,26 @@ pub enum OrdinaryInvocationFailure {
     },
 }
 
-/// Attach `Addr(Norm_type)` observations to the candidate's classified type
+/// Attach `Addr(Norm(Core(tau)))` observations to the candidate's classified type
 /// arguments before crossing the formal invocation boundary.
 ///
-/// Candidate preparation runs behind an immutable `SemanticTypeEnv` and
-/// cannot intern observation addresses; the world-connected invoke sites are
-/// the earliest point with a `&mut SemanticWorld` channel.  A cyclic Val2
-/// surfaces the same rejection as canonical instance-key normalization.
+/// Prepared material retains its completed type read. The handoff projects
+/// that snapshot's Core through this world's immutable observation registry;
+/// it neither reads current carrier material nor interns a successor tau.
 fn attach_candidate_type_observations(
-    semantic_world: &mut SemanticWorld,
+    semantic_world: &SemanticWorld,
     input: &mut crate::BuiltinBodyInput,
     trace: &OrdinaryPipelineTrace,
 ) -> Result<(), OrdinaryInvocationFailure> {
     let shape = &mut input.candidate.arg_product_shape;
     semantic_world
         .attach_canonical_type_observations(&mut shape.raw_args, &shape.flattened.atoms)
-        .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
-            diagnostic,
-            trace: trace.clone(),
-        })
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ArgumentNormalization {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )
 }
 
 /// Normalize inputs for a selected compile partner, independently of its result.
@@ -639,10 +638,12 @@ fn canonical_compile_instance_key_for_selected(
 ) -> Result<crate::CompileInvocationMaterialKey, OrdinaryInvocationFailure> {
     let arguments_product_addr = semantic_world
         .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
-        .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
-            diagnostic,
-            trace: trace.clone(),
-        })?;
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ArgumentNormalization {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )?;
     Ok(crate::compute_compile_instance_material_key(
         callable,
         arguments_product_addr,
@@ -2538,7 +2539,7 @@ fn ordinary_result_identity(
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
             };
-            let crate::CanonicalTypeObservation::Observed(whole) = value.type_observation;
+            let whole = value.complete_type_observation;
             let complete_type = semantic_world
                 .complete_type_by_whole_observation(whole)
                 .cloned()

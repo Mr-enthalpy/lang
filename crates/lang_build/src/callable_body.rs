@@ -87,7 +87,7 @@ pub struct IdentityTypeMaterial {
     pub type_value: crate::TypeValueId,
     /// The type observation carried by this result. Semantic equality
     /// consumes this, never the bare `type_value` projection.
-    pub type_observation: crate::CanonicalTypeObservation,
+    pub complete_type_observation: crate::CanonicalValueAddr,
     pub provenance: Provenance,
 }
 
@@ -138,19 +138,15 @@ fn invoke_identity_type(input: &BuiltinBodyInput) -> BuiltinBodyResult {
             );
         }
     };
-    let Some(type_observation) = candidate
+    let Some(complete_type_observation) = candidate
         .arg_product_shape
         .raw_args
         .first()
-        .and_then(|raw| {
-            raw.known_complete_type_observation
-                .map(crate::CanonicalTypeObservation::Observed)
-                .or_else(|| raw.type_observation())
-        })
+        .and_then(|raw| raw.known_complete_type_observation)
     else {
         return BuiltinBodyResult::Diagnostic(
             Diagnostic::hard_error(
-                "IdentityType requires an exact canonical type observation",
+                "IdentityType requires an exact complete type snapshot",
                 Some(input.provenance.clone()),
             )
             .with_symbol_context(candidate.callee_symbol_id),
@@ -159,7 +155,7 @@ fn invoke_identity_type(input: &BuiltinBodyInput) -> BuiltinBodyResult {
 
     BuiltinBodyResult::Material(BuiltinBodyMaterial::IdentityType(IdentityTypeMaterial {
         type_value,
-        type_observation,
+        complete_type_observation,
         provenance: input.provenance.clone(),
     }))
 }
