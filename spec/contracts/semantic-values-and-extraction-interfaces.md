@@ -76,6 +76,7 @@ is a projection, with no private continuation or action-commit API.
 
 ```text
 selected action + fixed continuation cut
+  -> common cleanup gate on the current state and continuation
   -> all affected projection Pre checks on the current state
   -> one common transaction commit
   -> joint Post publication at that same action identity/cut
@@ -104,12 +105,12 @@ the complete prefix through k, including empty cuts, without shifting any point.
 It linearizes same-point events while preserving all previously fixed order.
 New generations may receive placements strictly beyond that prefix and the
 committed frontier. Future material remains a separate, unfinalized suffix;
-`cleanup()` exposes only the fixed sequence. Every lifecycle Pre requires its
-requested cut to be covered by the fixed prefix.
+`cleanup()` exposes only the fixed sequence. Every common transaction requires
+its requested cut to be covered by the fixed prefix.
 At the scheduled cut cleanup submits Drop,
 not a separate lifecycle event. A committed Kill/Drop discharges the generation's
-obligation. Every lifecycle action's Pre rejects crossing any earlier fixed
-cleanup point whose obligation remains outstanding, even for another subject.
+obligation. The common transaction rejects crossing any earlier fixed cleanup
+point whose obligation remains outstanding, even for another subject.
 Failure leaves the fixed Drop executable at its original cut; neither the cut
 nor the ordinal advances. At its own fixed endpoint, Use/Preserve fail; Drop
 and a Kill replacing that Drop must follow the fixed sequence. Kill before
@@ -119,13 +120,18 @@ at a cut already containing Use/Preserve of that subject, even without a
 scheduled Drop. Action ordinals do not enlarge Region membership.
 Preserve discharges no cleanup obligation.
 
-Full E integration must enforce the outstanding-cleanup boundary for every
-semantic action, including actions without a lifecycle projection. Currently
-that check resides in `LifecycleState::check_pre`; `commit_action` does not
-perform it automatically. Before any action commits at k, every fixed cleanup
-strictly before k must have been committed or its obligation discharged.
-The shared scheduler or common transaction must enforce this gate; inclusion
-of lifecycle Pre by an individual caller is not sufficient integration evidence.
+`commit_action` enforces this boundary before projection Pre for every action,
+including actions without a lifecycle projection. Its state implements the
+`CleanupObligations` observation relation relative to the supplied continuation.
+Every fixed cleanup strictly before k must be discharged. Outstanding blocks
+the action; missing, foreign or future facts report unavailable and also block
+it. Roster discovery and absence from active storage prove no discharge.
+Lifecycle storage validates continuation identity, committed event ordinals and
+positions, and generation birth before exposing an observation. The common
+transaction depends on this relation, not a concrete lifecycle storage type.
+Same-cut endpoint and ending-event precedence remain lifecycle Pre obligations.
+Source actions still require the common E consumer to enter this transaction;
+passing transaction tests supplies no source scheduling or readiness witness.
 
 Roster discovery establishes only the stable value-to-LifeName map. It supplies
 neither Alive nor a Region nor an origin proposition. Formation consumes an

@@ -180,8 +180,9 @@ pub use return_target::{
     UnresolvedReturnTargetForm,
 };
 pub use semantic_continuation::{
-    CleanupPlacement, CommittedSemanticAction, ContinuationFailure, ContinuationIdentity,
-    SemanticActionIdentity, SemanticCommitFailure, SemanticContinuation, SemanticPosition,
+    CleanupGateFailure, CleanupObligation, CleanupObligations, CleanupPlacement,
+    CommittedSemanticAction, ContinuationFailure, ContinuationIdentity, SemanticActionIdentity,
+    SemanticCommitFailure, SemanticContinuation, SemanticPosition,
 };
 pub use semantic_name_index::{
     BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex, SemanticNameInstallError,

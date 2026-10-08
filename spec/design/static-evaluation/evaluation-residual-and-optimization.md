@@ -64,6 +64,13 @@ only. Cleanup is fixed by the existing control/ownership/end-event semantics
 before lifecycle observation; lifetime checking does not move cleanup to make
 a constraint succeed.
 
+Every action checks fixed cleanup strictly before its cut, including actions
+without a lifecycle projection. Outstanding cleanup blocks commit; unavailable
+cleanup observations supply no permission. An established Drop or Kill can
+discharge its generation's obligation. Preserve cannot. Same-cut endpoint and
+ending-event precedence still belong to ordinary lifecycle Pre. This gate uses
+the current continuation and projection facts before any affected Pre or Post.
+
 InvocationResult remains the single result envelope. A residual carrier is a
 representation of the remaining common continuation, not a separate result
 ontology or an evaluator with private interpretation rules.

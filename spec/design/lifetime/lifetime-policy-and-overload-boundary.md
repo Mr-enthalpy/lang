@@ -5,6 +5,9 @@ lifetime/ordinary-overload boundary. `LifecycleState` stores LifeName, Region,
 Color and lifecycle observations; it checks Pre and consumes the shared
 `SemanticContinuation` transaction's committed-action witness for Post.
 Linearization and Pre boundaries of already fixed cleanup points are implemented.
+The common transaction checks earlier cleanup for every action through a
+continuation-relative observation relation. Outstanding or unavailable facts
+block commit even when the action has no lifecycle projection.
 The substrate fixes continuation-relative cleanup prefixes, leaving future
 generations' suffix placements available. Same-cut Use/Preserve cannot occupy
 their own half-open endpoint; scheduled Drop and boundary Kill follow fixed order.

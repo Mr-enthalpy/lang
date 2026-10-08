@@ -60,7 +60,7 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Instance identity | Parent/selected-partner/canonical-input interning; independent ordinary self-name coordinate and exact selected frame; connected external-type delivery | Initialized self residency, accessible-result closure, dependency-sensitive current storage and general completion require common consumers |
 | Structural relations | Layer-local schema normalization and a DirectPatternChild observer requiring both registration and current actual Val2 membership | Source type formation, struct helpers and ordinary * / *= require common producer Pre/Post and real role/call entries |
 | Place | Binding/resident generations, Writable and borrow substrate | Source ref/share/rebind, initialization and invalidation require common transactions |
-| Lifecycle | SemanticContinuation, LifeName, Region, supplied Pre, Kill/Preserve, fixed cleanup and Color | Source producer facts, NLL/with, ReifyLife and destructors need ordinary control-flow facts |
+| Lifecycle | SemanticContinuation, LifeName, Region, supplied Pre, Kill/Preserve, fixed cleanup and Color; common transactions gate every action on earlier cleanup observations | Source producer facts, NLL/with, ReifyLife and destructors need ordinary control-flow facts; source actions must enter the common transaction |
 | Physical source | Discovery/decoding/provenance and normalized fragments | EntryContinuation, inherited navigation, sibling overlays and dependency projection need E composition |
 | InvocationResult | Semantic result, residual and diagnostic transport | Residual requires a real remaining continuation; serial completion and residual ABI remain separate |
 
@@ -82,8 +82,11 @@ Every semantic action obeys the cleanup gate:
 OutstandingCleanupBefore(k) => action may not commit across that point
 ```
 
-This includes actions without a lifecycle projection. The common scheduler or
-transaction checks it before publication. Formation, origin and Color Post
+This includes actions without a lifecycle projection. The common transaction
+checks a fixed cleanup prefix and current obligation observations before Pre;
+unknown, foreign or future facts cannot grant permission. Source scheduler
+integration must route every action through this transaction. Formation, origin
+and Color Post
 publish in the producer's same scratch transaction with every other affected
 projection. Commit followed by separate fact mutation is not a producer handoff.
 Storage staging alone proves neither Ready, Pre, common commit nor joint Post.
