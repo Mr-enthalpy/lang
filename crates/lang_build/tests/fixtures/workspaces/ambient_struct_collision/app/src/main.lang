@@ -1,2 +1,0 @@
-let A: type = (uint8 a) struct;
-let B: type = (uint8 a) struct;

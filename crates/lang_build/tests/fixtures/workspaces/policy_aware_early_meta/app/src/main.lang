@@ -1,2 +1,0 @@
-mut + runtime let not_meta: uint8 = 1;
-let T: type = (uint8 a) |> struct;

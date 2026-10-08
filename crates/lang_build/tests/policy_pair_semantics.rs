@@ -126,7 +126,7 @@ fn policy_algebra_rejects_same_dimension_conjunction() {
     for source in [
         "const + mut",
         "public + private",
-        "meta + compile",
+        "compile + compile",
         "compile + seal",
         "runtime + compile",
     ] {
@@ -140,7 +140,6 @@ fn policy_algebra_rejects_same_dimension_conjunction() {
 #[test]
 fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
     let cases = [
-        ("meta", Stage::Meta, Stage::Meta),
         ("compile", Stage::Compile, Stage::Compile),
         ("seal", Stage::Seal, Stage::Seal),
         ("runtime", Stage::Runtime, Stage::Compile),
@@ -307,10 +306,10 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
 
 #[test]
 fn explicit_pin_stages_report_unconnected_input_admissibility() {
-    for inherited in ["meta", "compile", "seal", "runtime"] {
+    for inherited in ["compile", "seal", "runtime"] {
         let p2 = normalize_p2_policy(&policy_spec(inherited), Provenance::new(inherited)).unwrap();
         let original = p2.clone();
-        for source in ["meta", "runtime", "compile", "seal", "const + runtime"] {
+        for source in ["runtime", "compile", "seal", "const + runtime"] {
             let provenance = Provenance::new(source);
             let diagnostic = elaborate_formal_policy_pattern(
                 Some(&policy_spec(source)),
@@ -372,7 +371,7 @@ fn omitted_pin_inherits_p2_and_pout_inherits_p1_stage() {
     assert_eq!(mut_return.effective_view.pair, inherited_p1.pair);
     assert_eq!(mut_return.effective_view.mode, PolicyMode::Mut);
 
-    for forbidden in ["meta", "compile", "runtime", "seal", "mut + runtime"] {
+    for forbidden in ["compile", "compile", "runtime", "seal", "mut + runtime"] {
         assert!(
             elaborate_return_policy_pattern(
                 Some(&policy_spec(forbidden)),
@@ -749,8 +748,8 @@ fn omitted_p1_completes_to_one_p2_stage() {
 #[test]
 fn namespace_attributes_never_change_the_canonical_function_object_pair() {
     let result = normalize_p2_policy(
-        &policy_spec("meta"),
-        Provenance::new("meta result for declaration-attribute separation"),
+        &policy_spec("compile"),
+        Provenance::new("compile result for declaration-attribute separation"),
     )
     .expect("valid result policy");
     let elaborate = |source: &str| {
@@ -779,8 +778,6 @@ fn namespace_attributes_never_change_the_canonical_function_object_pair() {
 
 #[test]
 fn horizon_visibility_uses_visibility_domains_not_atom_intersection() {
-    assert!(Stage::Meta.visible_at(ObservationHorizon::OpenStatic));
-    assert!(!Stage::Meta.visible_at(ObservationHorizon::SealStatic));
     assert!(Stage::Compile.visible_at(ObservationHorizon::OpenStatic));
     assert!(Stage::Compile.visible_at(ObservationHorizon::SealStatic));
     assert!(!Stage::Compile.visible_at(ObservationHorizon::Runtime));

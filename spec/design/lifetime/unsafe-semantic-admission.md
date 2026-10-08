@@ -60,7 +60,7 @@ ownership description can require unsafe.
 
 Rewritten continuations undergo all affected projection checks again. Facts
 about the old continuation's names and positions are not transplanted to a new
-one. See [evaluation and optimization](../meta-invocation/evaluation-residual-and-optimization.md).
+one. See [evaluation and optimization](../static-evaluation/evaluation-residual-and-optimization.md).
 
 ## 5. Trusted semantic base and UB
 

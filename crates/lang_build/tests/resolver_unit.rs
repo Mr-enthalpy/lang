@@ -128,10 +128,10 @@ fn typed_resolver_helpers_select_expected_kind() {
         .expect("uint8 is a pure type Object");
     assert_eq!(type_symbol.kind, SymbolKind::CompleteTypeProjection);
 
-    let meta_symbol = capability
+    let compile_symbol = capability
         .resolve_callable("struct", &context)
         .expect("struct is a builtin callable");
-    assert_eq!(meta_symbol.kind, SymbolKind::Callable);
+    assert_eq!(compile_symbol.kind, SymbolKind::Callable);
 
     let error = capability
         .resolve_complete_type_projection("struct", &context)

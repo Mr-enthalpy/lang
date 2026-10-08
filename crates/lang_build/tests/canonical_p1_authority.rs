@@ -165,10 +165,9 @@ fn invocation_candidate_function_object_p1_matches_declared_p1() {
         "call entry object policy and candidate function_object_p1 are the same canonical P1"
     );
 
-    // P2 stays a separately stored result-domain authority. This particular
-    // pure-meta core declaration happens to give P1 and P2 equal values after
-    // declaration visibility/export were removed from PolicyPair; equality of
-    // the values does not create a third policy coordinate.
+    // P2 is a separately stored result-domain authority. Equal P1/P2 values in
+    // this declaration keep those two coordinates independent. Namespace
+    // visibility and export have their own declarations.
     assert_eq!(
         selected.complete_result_view.pair, entry.complete_result_view.pair,
         "candidate result P2 must read the declared complete result policy"
@@ -358,12 +357,8 @@ fn expose_preserves_matching_single_stage_and_independent_mode() {
 #[test]
 fn expose_hides_entries_whose_window_vanishes() {
     let stage_disjoint = ExposedInvocationResult::expose(
-        exposure_window(Stage::Meta, PolicyMode::Const, Stage::Meta).pair,
-        &[value_entry(
-            Stage::Compile,
-            PolicyMode::Const,
-            Stage::Compile,
-        )],
+        exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile).pair,
+        &[value_entry(Stage::Seal, PolicyMode::Const, Stage::Seal)],
     );
     assert!(stage_disjoint.material.is_empty());
 
@@ -410,7 +405,7 @@ fn expose_does_not_clip_a_pure_object_into_a_different_stage() {
 // single elaboration point; only full omission derives from P2.
 // ---------------------------------------------------------------------------
 
-/// Outer explicit `meta` vs self explicit `compile let self`
+/// Outer explicit `seal` vs self explicit `compile let self`
 /// disagree on the value-stage dimension: hard error at elaboration.
 #[test]
 fn value_stage_dimension_mismatch_is_hard_error() {
@@ -438,7 +433,7 @@ fn value_stage_dimension_mismatch_is_hard_error() {
 #[test]
 fn pattern_stage_dimension_mismatch_is_hard_error() {
     let outer = ExplicitP1Selection {
-        pattern_stage: Some(Stage::Meta),
+        pattern_stage: Some(Stage::Seal),
         ..ExplicitP1Selection::default()
     };
     let initializer = initializer_from_source("let f = (compile let self): compile => { (); };");

@@ -147,36 +147,32 @@ Buckets compare complete bound type snapshots, never Core equality.
 ### SemanticOwner
 
 A node in the typed parent-linked owner graph. Source-established namespace
-owners, callable owners, canonical meta-instance owners, and generated owners
+owners, callable owners, canonical compile-instance owners, and generated owners
 qualify their local identities. A package graph supplies no semantic owner.
 
-### MetaInstance
+### CompileInstance
 
 A semantic owner identified by parent owner, selected callable identity, and
 canonical invocation input identity, preserving its declared value observations
 and semantically observed name/subject/borrow dependencies.
 
-### Invocation-generated result name
+### Invocation self-name and result NameExpr
 
-The ordinary meta instance name denotes its instance type tau_M, rooted at its
-invocation owner. It is not an input structural child or an arbitrary payload
-wrapper. Ordinary Val2 contains arbitrary payloads accessed by name::path. Its
-opening source is the meet over actual semantic input dependencies. The cache
-retains the instance and member Places/current state, not a frozen first value.
+InvokeName(I) is an ordinary NameValue. Initialized resident reads observe its
+current complete storage without EnterBody. Every compile call forms I before
+body evaluation, independently of result kind and P2. Only a direct single
+instance-open self-root complete type result supplies its computed NameExpr;
+external types and ordinary results preserve their own identity. Accessible
+result closure includes captures, aggregates and ref/share targets.
 
-### P1 meta policy
+### OpenPolicy
 
-Contextual openness qualification, currently limited to type and type ref,
-not a fourth PolicyMode or arbitrary meta X ref. Meta refs preserve the actual
-Place and original borrowed generation/opening subject. Writable candidates
-and explicit ConfirmMut require current OpenHere plus independent target
-Writable and ordinary capability/access/lifetime; no authority is amplified.
-
-`meta let f = expression` retains an ordinary meta instance under its derived
-OpenHere. The instance name is its type value. Only finally omitted Mode becomes
-mut under meta + current OpenHere; explicit or deduced const/mut remains independent. Close let
-completes/closes it; later meta let cannot reopen it. P2 meta independently names
-the callable's evaluation horizon. Ordinary Val2 payload policies remain ordinary.
+OpenPolicy={open,close} is independent of Mode={const,mut} and Stage.
+Open preserves an established opening source; close performs Complete and Close
+after ordinary result delivery. Only omitted mode completes to mut under open
+plus known current OpenHere, const otherwise. Required unknown OpenHere is
+unavailable. Borrowed open type refs retain actual Place, original generation
+and opening subject; ConfirmMut checks all ordinary writable-view premises.
 
 ### Place
 
@@ -217,7 +213,7 @@ extraction. Ordinary member access does not receive this family filter.
 ### PolicyPair
 
 An internal pair of independent value/Pattern observations, containing stage
-and presence facts. Public `Pv:Pp` syntax is retired. Direct source Policy and
+and presence facts. Direct source Policy uses ordinary single-carrier material. Direct source Policy and
 Policy of its direct type projection observe one evaluation edge; a separately
 bound type value has a new edge. Mode and safety remain independent.
 
@@ -225,11 +221,11 @@ bound type value has a new edge. Mode and safety remain independent.
 
 The value-mode domain `{const, mut}`, independent of Object shape and completion.
 
-### MetaInstancePolicy
+### OpenPolicy
 
-The independent `{meta, close}` coordinate. meta retains the established opening
+The independent `{open, close}` coordinate. open retains the established opening
 source; close completes/closes after ordinary result delivery. Finally omitted
-mode is mut under meta + current OpenHere, const otherwise. Required missing
+mode is mut under open + current OpenHere, const otherwise. Required missing
 OpenHere evidence is unavailable. Explicit/deduced modes and holes are preserved.
 
 ### PolicyView
@@ -319,15 +315,17 @@ construction authority. It is independent of Writable and PolicyMode.
 
 A context-indexed Place judgment. `mut` does not imply Writable.
 
-### `extend`
+### Type composition and update
 
-A pure transformation that returns a new complete value/snapshot without
-writing a Place.
+* : type x type -> type is an ordinary selected operator. *= : type ref x type
+-> unit performs checked read-transform-write under current OpenHere, actual
+Writable, capability, access, lifecycle and continuation legality.
 
-### `inject`
+### Structural formation and struct helpers
 
-`read + extend + write` at an existing writable target. Member creation,
-member write, assignment, inject, and rebind remain distinct operations.
+S interpretation atomically forms a complete type with actual Val2 witnesses
+and registered structural roles. struct:type->type adds ordinary helpers,
+preserving DirectPatternChild, ConstructEdge, ExtractEdge and FieldView.
 
 ### Abstract literal
 
@@ -386,11 +384,11 @@ resident type's OpenHere, selector validity, non-retention and ordinary
 access/path/type legality. It requires no parent Writable or parent mut type ref.
 Equal type values do not merge structural root/name/Place identities. Borrowing
 is a separate Place-side judgment. Initialized type names admit direct mut
-borrowing or explicit meta type ref followed by ConfirmMut, subject to the same
+borrowing or explicit open type ref followed by ConfirmMut, subject to the same
 current OpenHere, target Writable, capability and lifetime checks. These coherent
 routes introduce no implicit chain; saved refs retain their borrowed generation
 and cannot write after Close. Initial refs remain initialization-only. See the
-[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-open-references-and-mut-confirmation).
 
 Initializer-free P let name:t and P let name::path:t create typed NameExpr
 using lexical and structural destinations respectively, with non-Object
@@ -401,19 +399,18 @@ ref borrows the Place using its declared type without reading. Ordinary write
 initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
-replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires retained structural names being published to be
+replacement capability and resident compatibility. A qualified let with RHS forms a complete binding using RHS inference. Close requires retained structural names being published to be
 initialized, not every future generated coordinate realized. Ordinary lexical
 let remains unchanged.
 
 ### Associated compile state A
 
-A derived meta invocation returning an instance type with ordinary Val2 group
+A derived compile invocation returning an instance type with ordinary Val2 group
 member n_A(t). Invocation normalization retains t's construction subject, whose
 source bounds the retained instance and group write window. Member value/ref and
 policy rules remain ordinary. Saved group references preserve their member Place
 and dependency across input-carrier replacement; every write Pre rechecks it.
-The general meta cache supplies instance/member residency, without an A-specific
+The general compile cache supplies instance/member residency, without an A-specific
 global map primitive.
 
 ### Anchored replication
@@ -434,7 +431,7 @@ external reality failing to satisfy an explicit unsafe admission.
 ### HostCapability
 
 An otherwise unavailable host capability returning ordinary Object. Its source
-meta use determines acquisition and target-machine facts; no build side input
+compile use determines acquisition and target-machine facts; no build side input
 or private optimizer assumptions supply them.
 
 ### E, O1, O2 and planner
@@ -446,7 +443,7 @@ projections. The planner controls search, never meaning.
 
 ### Stage, horizon, producer visibility and readiness
 
-Stage={meta,compile,seal,runtime}, one atom per resolved coordinate. Static
+Stage={compile,seal,runtime}, one atom per resolved coordinate. Static
 atoms are pairwise incomparable; only identity and static-to-runtime edges
 exist. P2 is evaluation horizon; P1/Pout is producer visibility; InputAdmissible
 is position-sensitive acceptance and Ready is frontier execution legality.
@@ -460,11 +457,12 @@ ordinary Policy/Pattern selection. Selected=(c*,sigma*,frame) fixes the shared
 origin of all projections and runtime residue. No speculative bodies or
 runtime reselection occur.
 
-### Active MetaDom / SealDom
+### Active evaluation and readiness
 
-Restrictions imposed by actual active frames, propagated through helpers.
-MetaDom excludes seal; SealDom excludes meta invocation, including cache hits.
-Stable owner history does not establish active dominance. Main has runtime P2.
+Main has runtime P2. CompileInstance identity is compatible with seal P2.
+Read_name and Read_resident do not EnterBody. Visibility, Ready and execution
+legality are independent facts; helper calls and cache acquisition obey them.
+Only EnterBody of a currently active instance establishes evaluation reentry.
 
 ### Killable / MoveEffect / Movable
 
@@ -496,18 +494,18 @@ The complete sequence precedes lifetime observation and grants no access edge.
 Split_Gamma(A,S)=<H,R,delta> is a restricted proof-relevant split; D returns R.
 Done_chi(v) is internal chain completion, never an Object or user Pattern.
 Target return has no fabricated local unit. CanEscape_Sigma(R,B) is a separate
-fixed consumer of current ordinary meta payload facts, not a universal
+fixed consumer of current ordinary compile payload facts, not a universal
 empty-residual rule or a new trait ontology.
 
 ### Closure formation
 
-Every legal completed closure expression returns full tau_C through ordinary
-struct ClosureMaterial(C). tau_C, its callable c_C, A_C=Type(c_C) and the ()
+Every legal completed closure expression forms full tau_C atomically from
+ClosureMaterial(C). tau_C, its callable c_C, A_C=Type(c_C) and the ()
 entry are distinct. Ordinary singleton/file installation and lexical binding
 install tau_C:type. An established same-name bucket consumes the separate
 CallabilityContribution(T,C)=c_C^T projection, with one target-anchored member
 per declaration. Siblings form jointly; no first RHS, tau_C insertion or bulk
-V_tau import is implied. ClosureMaterial is metanotation, not a new Object.
+V_tau import is implied. ClosureMaterial is notation, not a new Object.
 In-place syntax uses automatic dependency formation and produces an ordinary
 first-class result. Binding, transfer and outer writes depend on actual
 dependencies, access, capability and lifetime; invocation does not recapture.
@@ -515,16 +513,14 @@ Placement supplies no applicability, specificity or preference evidence after
 formation. Ordinary => closures may combine explicit and automatic dependency
 occurrences; in-place forms have automatic occurrences only.
 
-### MetaDecl capture boundary
+### CompilePartner dependencies
 
-The callable establishing MetaInvoke identity requires ordinary => and no
-capture clause. It cannot acquire automatic dependencies from unpassed enclosing
-locals. Invocation dependence uses In and its admitted dependency closure or
-established stable definition/instance relations. MetaInstanceRootKey has no
-CapturedEnv coordinate. Ordinary closures nested in the body may depend on
-material legally available there, without bypassing masked outer locals.
+Selected ordinary callable dependencies retain their source, identity and
+lifetime. Instance identity has parent, actual selected receiver/call-entry pair
+and canonical inputs, without a hidden caller-environment coordinate. Every
+closure preserves lexical/Self/navigation layers and uses admitted dependencies.
 
-### Structured Path and Pattern splice
+### Structured Path and opposite-context interpretation
 
 Path is ordinary extractable linked material (NameNode, ValueRoot/RefRoot,
 Link/End and endpoint shape). Read_name obtains full NameValue; value-expected
@@ -537,8 +533,9 @@ from evaluated reinjection a$; the non-extraction equality is not a rewrite. The
 to reconstruct structure; general $ supplies no implicit Path decoding. Indexing
 returns relative single-name path_pattern, not string. RHS colon constructs
 ordinary Product |> slice, with empty colon/comma slots completed to unit. In LHS, e$ interprets its entire operand in RHS/value context before
-reinjection; bare operators elaborate as (operator[op])$. General $ splices ready Pattern material without implicit Path
-projection, preserves Hole identities and performs no textual substitution.
+reinjection; bare operators elaborate as (operator[op])$. Interpret(e$,C)=Interpret(e,Flip(C)), Flip^2=Id, permits arbitrary nesting.
+The flip preserves Hole identities and supplies no Read, Stage change or
+implicit Path projection.
 PathShaped admits finite name chains with a textual/open root endpoint, or
 inward names followed by exactly one terminal explicit root. Endpoint shape
 and root position are semantic constraints. The name family's explicit string
@@ -556,7 +553,7 @@ pre-capture name scope and ordinary effect order; projections do not recapture.
 ExplicitDeps and AutomaticDeps are classified by occurrence, not placement.
 Resolved explicit capture binders replace corresponding outer observations;
 other free observations may form automatic dependencies in ordinary closures.
-These rules exclude the identity-establishing MetaDecl layer's capture channel.
+Selected CompilePartner dependencies obey these same ordinary formation rules.
 Persistence and escape use the lifetime owner's refinement handoff.
 
 ### With Path relation

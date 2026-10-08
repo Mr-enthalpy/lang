@@ -16,7 +16,7 @@ not a namespace member or export. Callable use retains ordinary lexical/dependen
 
 Explicit roots, anchors and dependencies remain part of p. Textual/open roots retain
 their ordinary late resident-use resolution. Subsequent use composes p through the
-[Path algebra](structured-path-algebra-and-pattern-splice.md), in `name::path` direction.
+[Path algebra](structured-path-algebra-and-interpretation-polarity.md), in `name::path` direction.
 It never caches terminal BindingId or bypasses Path composition or no-reopen after
 an actual name identity is fixed. Formation precedes installation; no recursive
 AliasRef thunk or independent recursion semantics exists.

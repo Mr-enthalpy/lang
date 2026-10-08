@@ -1,0 +1,2 @@
+mut + runtime let not_compile: uint8 = 1;
+let T: type = (uint8 a) |> struct;

@@ -1,5 +1,5 @@
 let make_type =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   let r = (t inner) |> struct;
@@ -7,7 +7,7 @@ let make_type =
 };
 
 let forward_type =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   let r = t;
@@ -15,7 +15,7 @@ let forward_type =
 };
 
 let no_terminal =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   let r = (t inner) |> struct;
@@ -29,14 +29,14 @@ let keep =
 };
 
 let effect_free_ordinary_result =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   r;
 };
 
 let refactor_kept =
-  (self, t: type): meta
+  (self, t: type): compile
     -> let r: type =>
 {
   let r = t;
@@ -44,14 +44,14 @@ let refactor_kept =
 };
 
 let bare_alias =
-  (self, t: type): meta
+  (self, t: type): compile
     -> let r: type =>
 {
   r === t;
 };
 
-let bare_alias_meta =
-  (self, t: type): meta
+let bare_alias_compile =
+  (self, t: type): compile
     -> r: symbol =>
 {
   r === t;

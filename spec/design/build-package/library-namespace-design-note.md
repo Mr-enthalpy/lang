@@ -3,7 +3,7 @@
 Status: canonical boundary; concrete acquisition APIs remain future work.
 
 A library is presented to its users as a first-class Object with ordinary
-navigation. Source meta evaluation can acquire resources, validate them,
+navigation. Source compile evaluation can acquire resources, validate them,
 construct their representation, specialize them and expose ordinary members.
 
     HostCapability(args) -> Object
@@ -34,6 +34,6 @@ authority. Mutable target references and OpenHere do that work. The externally
 visible name set is closed before external navigation observes a construction
 result. Stable externally supplied members do not authorize later reopening.
 
-See [host capabilities](../meta-invocation/host-capabilities-and-machine-objects.md),
+See [host capabilities](../static-evaluation/host-capabilities-and-machine-objects.md),
 [source normalization](build-system-design.md) and
 [construction composition](../symbol-world/symbol-construction-units-and-namespace-origin.md).

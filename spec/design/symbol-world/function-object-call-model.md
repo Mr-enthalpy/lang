@@ -59,10 +59,10 @@ absent Val1; ConstructEdge witnesses structural construction, not type identity
 or type-callee projection.
 
 Every closure expression's legal completed evaluation returns a complete tau_C,
-whether ordinary, in-place, generated, file-level or local. Formation is ordinary
-struct construction of head/body/dependency material; equivalent material can
-participate in extend/inject under their own premises. See
-[construction](symbol-first-meta-construction-and-pattern-injection.md#211-v_τ-closure-materialization-derived-semantics).
+whether ordinary, in-place, generated, file-level or local. Formation atomically constructs the complete type and its structural witnesses
+from head/body/dependency material. Complete types can participate in ordinary
+* / *= under their own premises. See
+[construction](structural-type-formation-and-composition.md#7-closures-and-anchored-contributions).
 This is not an extra conversion of a type into a value, nor a promise of readiness
 or lifetime permission in every context.
 
@@ -323,7 +323,7 @@ late adaptation.
 
 The compiler-authorized stage migration of §2.1 (static-value-to-runtime-value)
 and the explicit `const` / `mut` reconstruction of
-`symbol-policy-and-compile-flow-projection.md` §1.2 are distinct:
+`policy-and-static-flow-projection.md` §1.2 are distinct:
 
 ```text
 compiler-authorized stage migration
@@ -429,7 +429,7 @@ a standalone value.
 
 ## 6. Implicit `self`
 
-Every callable, including ordinary, in-place, meta, and compiler-generated
+Every callable, including ordinary, in-place, and compiler-generated
 closures, has an implicit first parameter position for the caller object.
 When the source writes any formal position, the first written formal explicitly
 declares the Pattern/binder for that position. Its spelling is unrestricted;
@@ -467,7 +467,7 @@ not bind that object to a source Pattern.
 
 No separate self-policy plane is required. P1/P2 are independent. For
 omitted ordinary P1 stage, runtime P2 defaults to runtime, seal to seal, and
-compile to compile; meta qualification follows its own owner. Explicit P1
+compile to compile; open qualification follows its own owner. Explicit P1
 is never overwritten. The completed view must supply legal self material.
 
 Pin = ElabIn(P2, Delta_in). Omission inherits the applicable base; explicit
@@ -515,23 +515,17 @@ identity and does not assert that each receiver type is anonymous. Canonical
 ownership contains no synthetic `__inner_space` or `__inner_namespace`
 component.
 
-A local `struct` evaluated by an ordinary or `compile` callable uses the
-current callable owner as its ambient Pattern owner. A `compile` invocation
-does not manufacture a meta-style canonical-arguments owner.
+Every compile call forms a CompileInstance from the current parent semantic
+owner, selected CompilePartner and canonical inputs before EnterBody. The
+result may be any declared ordinary value; a single direct instance-open
+self-root type provides a computed NameExpr. The [invocation owner](../static-evaluation/compile-instance-invocation-and-result-delivery.md)
+owns result reachability, delivery, current storage and open/close completion.
 
-An ordinary meta invocation constructs an ordinary result name under
-MetaInstanceRoot(parent, callee, CanonicalizeInvocationInputs(In)). Its direct
-result is the instance type tau_M rooted at M; arbitrary values and borrows may
-be ordinary Val2 payloads. P1 meta retains the instance under OpenHere; close let
-completes and closes it. Member value/ref observation and migration are ordinary. The
-[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
-defines result-name identity, dependency-derived openness and residency/cache
-reuse. All of these use the implicit-self mechanics above.
-
-A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct`,
-`extend`, or `inject`, also has a function object, type, associated `()`, and implicit self,
-but may use its specified special owner/scope rule instead of creating an
-ordinary externally navigable `MetaInstanceScope`.
+struct is an ordinary type-to-type helper call. Structural formation belongs
+to S interpretation, with actual Val2 role witnesses published atomically.
+Every ordinary and in-place closure keeps its own lexical/Self/navigation layer.
+Selected semantic call entries supply implementation, Policy and privilege;
+graph declarations remain rendering projections.
 
 ## 7. ZST function objects
 
@@ -545,7 +539,7 @@ type equality do not replace those judgments.
 
 The binding created by `let fn = () => { ... }` has no written mode override.
 Inherited/contextual constraints are considered before a separate applicable
-DefaultModeCompletion chooses mut only under meta + current OpenHere, const
+DefaultModeCompletion chooses mut only under open + current OpenHere, const
 otherwise. Required missing evidence is unavailable. Omission is neither an
 explicit mode constraint nor a deduction hole; P1 mode is not generally copied from P2. An
 explicit declaration P1 supplies its written constraint. The
@@ -596,7 +590,7 @@ FreeExternalObservation(C, d) and not ReplacedByExplicitCapture(C, d)
     => d in AutomaticDeps(C)
     => Needs(Form(C), Source(d), observation, Gamma, Sigma)
 DependencyRequirement -> DependencyRealization
-ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial(C))
+ClosureFormation(C) = FormCompleteType(Head_C, Body_C, DependencyMaterial(C))
 
 InPlace(C) => ExplicitDeps(C) = empty
 AutomaticDeps(C) != empty does not imply InPlace(C)
@@ -604,12 +598,11 @@ AutomaticDeps(C) != empty does not imply InPlace(C)
 Eval(InPlaceClosure_C) = tau_C
 ```
 
-These occurrence rules apply to ordinary non-MetaDecl closures. An ordinary
-`=>` closure may combine an explicit clause with automatic dependencies for
-other free observations. A resolved capture binder replaces its corresponding
-outer occurrence; source spelling alone does not deduplicate dependencies.
-MetaDecl has no explicit capture clause or unpassed-local automatic capture
-channel; its ordinary `=>` form follows the meta owner's input/definition scope.
+These occurrence rules apply to all closures. An ordinary => closure may
+combine explicit and automatic dependencies for distinct occurrences. Resolved
+capture binders replace the corresponding outer observations. CompilePartner
+selection preserves these established dependencies and their ordinary identity.
+Invocation preserves the actual lexical owner and admitted dependency coordinates.
 
 Free external observations are handled at formation through ordinary resolution
 and dependency realization fixed by the source occurrence's selected ordinary
@@ -675,7 +668,7 @@ DynamicLegality -> Ready execution or retained continuation
 ```
 
 The two rounds are owned by
-[Policy §12](symbol-policy-and-compile-flow-projection.md#12-unified-binding-and-overload-selection).
+[Policy §12](policy-and-static-flow-projection.md#12-unified-binding-and-overload-selection).
 Round one executes no speculative body or migration. Round two is ordinary
 overload selection. Unresolved projection evidence retains a continuation.
 Each nested producer seals under candidate-independent immediate-consumer
@@ -695,12 +688,11 @@ It hides unreadable runtime Val1 without erasing an argument, its Pattern,
 Val2 or semantic identity. Every projection and runtime residue retains the
 sealed (c*,sigma*,frame); runtime does not reselect.
 
-Generic meta partner M(F) has a separate symbolic anchor and invocation
-identity. It is not C_sigma(F). A cached companion entry records a derivation;
-it neither creates semantic callability nor grants a second dispatch route.
-Existing ordinary source-call and associated-entry carriers implement only
-the connected slice recorded in the roadmap; they do not establish the full
-R_vis/C_sigma consumer.
+Each C_sigma(c) is a realization of the selected CompilePartner, retaining the
+source receiver/call-entry pair and sealed projection/frame. It forms its
+CompileInstance through the common invocation relation, independently of result
+kind and P2. Cached correspondence supplies neither callability nor execution
+permission; source and projection consumers obey the same ordinary relations.
 
 ## 9. Normalized call-site handoff
 
@@ -753,16 +745,13 @@ Current source carriers do not implement this full consumer.
 - In-place syntax forms dependencies automatically and returns ordinary tau.
   Invocation uses those dependencies without recapture. Binding, transfer and
   outer writes depend on actual access/capability/lifetime, not source placement.
-- Ordinary and built-in privileged meta functions follow the same
-  function-object and implicit-self call model.
-- Ordinary/compile local pattern construction uses the function-object internal
-  Self frame; compile does not create a MetaInstanceScope.
-- Ordinary meta construction is anchored by the canonical MetaInstance anchor
-  `M` (a symbolic-navigation layer); its direct result is `τ_M` rooted at `M`;
-  built-in privileged AST meta functions may instead use their declared special
-  scope/owner rule.
-- `.name` uses ordinary name::adl generation/forwarding; E.name shares that
-  entrance, while ..name retains its direct-call surface. Private normalized
-  forwarding-body generation is a legacy carrier, not canonical authority.
+- Every compile call forms a CompileInstance before body evaluation, independent
+  of result kind and P2; selected call entries retain their ordinary self.
+- Every closure keeps its lexical/Self/navigation/dependency layer.
+- struct adds ordinary type helpers while preserving structural registration.
+- .name enters name::adl; receiver and type-path candidates use ordinary
+  applicability/specificity. e..name(args) equals e |> .name(args).
+
+
 - Callable-tail named strategy metadata operates only on fully admissible
   candidates and cannot reopen ordinary overload enumeration.

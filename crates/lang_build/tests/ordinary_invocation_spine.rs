@@ -3,7 +3,7 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
     CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
-    PolicyMode, Provenance, SemanticOwnerKind, SemanticValuePayload, WritableContext,
+    PolicyMode, Provenance, SemanticValuePayload, WritableContext,
 };
 
 use support::{build_single_fixture_world, initializer_from_source};
@@ -31,12 +31,12 @@ fn type_projection_is_not_an_ordinary_resident() {
 }
 
 #[test]
-fn struct_binding_carries_exact_tau_independently_of_core_projection() {
-    let world = build_single_fixture_world("struct_single_field", "app");
+fn forwarded_type_binding_carries_exact_tau_independently_of_core_projection() {
+    let world = build_single_fixture_world("single_package_type_binding", "app");
     let binding = world
         .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "T")
-        .expect("struct result is bound as T");
+        .symbol_in_namespace(world.package_root_node(), "PatternResult")
+        .expect("forwarded type result is bound");
     let member = binding
         .pure_p()
         .expect("T carries the returned pure type Object");
@@ -106,6 +106,10 @@ fn source_body_frontiers_never_produce_builtin_material_or_reopen_selection() {
         assert_eq!(trace.b3_pattern_specific.len(), 1);
         assert!(trace.selected.is_some());
         assert!(trace.dynamic_legality.is_some());
+        assert!(
+            trace.compile_instance.is_some(),
+            "identity admission precedes selected body failure"
+        );
         assert_eq!(
             format!("{:?}", world.semantic_world()),
             before,
@@ -495,12 +499,12 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
 }
 
 #[test]
-fn rebound_type_value_is_canonical_struct_field_material() {
+fn rebound_type_value_keeps_complete_identity_and_distinct_carriers() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let direct = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "Direct")
-        .expect("struct whose field spells uint8");
+        .expect("Direct type binding");
     let rebound = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "Rebound")
@@ -532,11 +536,10 @@ fn rebound_type_value_is_canonical_struct_field_material() {
         rebound_type.carrier_symbol_id
     );
     assert_eq!(direct_type.represented_type, rebound_type.represented_type);
-    // Field material lives on the complete type result's own projection; a
-    // carrier rebinding is a bare reference and carries no field material
-    // of its own.
-    assert!(!direct_type.field_type_values.is_empty());
-    assert!(rebound_type.field_type_values.is_empty());
+    let direct_snapshot = direct.pure_p().unwrap().complete_type.unwrap();
+    let rebound_snapshot = rebound.pure_p().unwrap().complete_type.unwrap();
+    assert_eq!(direct_snapshot, rebound_snapshot);
+    assert_ne!(direct.pure_p_place(), rebound.pure_p_place());
 }
 
 #[test]
@@ -715,6 +718,31 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
         identity.ordinary_value().into_iter().collect::<Vec<_>>()
     );
     assert_eq!(result.trace.c3_call_entries.len(), 1);
+    let instance = result
+        .trace
+        .compile_instance
+        .expect("external type result has an instance");
+    let state = world.semantic_world().compile_instance(instance).unwrap();
+    assert_eq!(
+        state.root.parent_owner,
+        world
+            .semantic_world()
+            .namespace_owner(world.package_root_node())
+            .unwrap()
+    );
+    assert!(
+        world
+            .semantic_world()
+            .symbol(state.invoke_name())
+            .unwrap()
+            .pure_p()
+            .is_none(),
+        "returning an existing type does not install it as the instance self resident"
+    );
+    assert_eq!(
+        state.delivered_result().unwrap().complete_type,
+        result.complete_type.as_ref().map(|ty| ty.whole())
+    );
 
     let uint8 = world
         .semantic_world()
@@ -966,100 +994,71 @@ fn explicit_call_target_is_one_symbol_and_never_falls_back() {
 }
 
 #[test]
-fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
+fn selected_type_forwarder_delivers_exact_external_snapshot() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
-            .expect("core semantic world builds");
-    let initializer = initializer_from_source("let T: type = (uint8 a) struct;");
-    let call_site = extract_single_call_site(&initializer).expect("normalized struct call");
-    let actual_mutability = [PolicyMode::Const];
+            .unwrap();
+    let input = world
+        .semantic_world()
+        .symbol_in_namespace(world.core_node(), "uint8")
+        .unwrap()
+        .pure_p()
+        .unwrap();
+    let source = initializer_from_source("let T = uint8 IdentityType::core;");
+    let call = extract_single_call_site(&source).unwrap();
     let result = world
         .invoke_ordinary_call(
             world.package_root_node(),
-            &call_site,
-            OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("core struct ordinary invocation"),
+            &call,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("external type forwarding"),
         )
-        .expect("privileged AST decoding is an ordinary call-entry body capability");
+        .unwrap();
     let lang_build::InvocationResult::SemanticResult {
         value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
         ..
     } = result
     else {
-        panic!("struct has the unified CompleteType result class");
+        panic!("ordinary complete result");
     };
-
-    // No overload bypass: the caller package differs from the toolchain
-    // package, so this call goes through the external member view, and
-    // `struct` is still selected through the normal
-    // C0 -> C1 -> C2 -> Cc -> C3 -> A -> Bp' -> B3 spine.
     assert_eq!(result.trace.c0_target_values.len(), 1);
     assert_eq!(
-        result.trace.c1_visible_values, result.trace.c0_target_values,
-        "core struct is a declaration-boundary public export; External C1 keeps it"
+        result.trace.c1_visible_values,
+        result.trace.c0_target_values
     );
     assert_eq!(result.trace.c3_call_entries.len(), 1);
-    assert!(
-        result.trace.selected.is_some(),
-        "privilege applies only to the selected body, after ordinary selection"
-    );
-
-    // The selected result is a complete tau value.  Replayable construction
-    // material may remain attached for namespace projection, but it is not
-    // the semantic result authority.  `struct` is a
-    // builtin privileged meta function: it never creates a
-    // `MetaInstance(struct, arguments)` scope of its own, so the generated
-    // Pattern owner is the ambient declaration environment (the caller's
-    // package root), not a MetaInstance.
+    assert!(result.trace.selected.is_some());
+    let instance = result.trace.compile_instance.unwrap();
     let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
-        panic!("world-connected struct must return complete tau, not private builtin material");
+        panic!("exact tau");
     };
-    assert_eq!(
-        result.complete_type.as_ref(),
-        Some(&returned.complete_type),
-        "every CompleteType semantic success carries its exact whole tau explicitly"
-    );
-    let view = &result.complete_result[0];
-    assert!(
-        view.value.is_some(),
-        "complete tau is an ordinary first-class semantic value"
-    );
-    let owner = world
-        .semantic_world()
-        .pattern_owner(returned.pattern)
-        .expect("complete type Pattern has a resolved owner")
-        .owner;
-    let ambient_owner = world
-        .semantic_world()
-        .namespace_owner(world.package_root_node())
-        .expect("package root has a semantic owner");
-    assert_eq!(
-        owner, ambient_owner,
-        "direct `struct` attaches its complete type to the ambient declaration environment"
-    );
-    assert_eq!(
-        returned.complete_type.lookup_key(),
-        world
-            .semantic_world()
-            .type_for_pattern(returned.pattern)
-            .expect("returned tau core has a registered Pattern"),
-    );
+    assert_eq!(result.complete_type.as_ref(), Some(&returned.complete_type));
+    assert_eq!(returned.pattern, input.pattern);
     assert_eq!(
         world
             .semantic_world()
             .complete_type_by_whole_observation(returned.complete_type.whole()),
-        Some(&returned.complete_type),
-        "the ordinary result carries the interned whole-snapshot observation"
+        Some(&returned.complete_type)
     );
-    assert!(matches!(
+    assert_ne!(
         world
             .semantic_world()
-            .owners()
-            .node(owner)
-            .expect("generated Pattern owner exists")
-            .kind,
-        SemanticOwnerKind::PackageRoot { .. }
-    ));
+            .pattern_owner(returned.pattern)
+            .unwrap()
+            .owner,
+        instance.owner()
+    );
+    let self_name = world
+        .semantic_world()
+        .compile_instance(instance)
+        .unwrap()
+        .invoke_name();
+    assert!(world
+        .semantic_world()
+        .symbol(self_name)
+        .unwrap()
+        .pure_p()
+        .is_none());
 }
 
 #[test]

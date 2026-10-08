@@ -1,16 +1,14 @@
-# Namespace Projection of Meta Evaluation
+# Namespace Projection of Evaluation
 
 Status: canonical semantic handoff; consumer alignment pending.
 
 ## 1. Source actions create the world
 
-Physical normalization supplies serial file blocks and unordered sibling
-blocks. Child-directory basenames become ordinary typed-name creation actions,
-explicit Place borrows, and ordinary one-shot directory type initialization,
-followed serially by the directory body under that reference. The selected root and filenames add no
-segments; [physical normalization](build-system-design.md) owns the desugaring.
-Their ordinary evaluation creates Objects, names, Places, and
-semantic owners. Namespace indices are projections of those committed actions.
+Physical normalization supplies serial files and unordered sibling blocks.
+Child directories extend inherited navigation; P let inner=rhs under a targets
+inner::a through the ordinary let consumer. Root and filenames add no segment
+or semantic type-composition action. Ordinary E creates semantic names, Places
+and Objects; namespace indices project only committed facts.
 
     normalized source action
       -> ordinary resolution and invocation
@@ -38,17 +36,16 @@ ref borrows the Place using its declared type without reading. Ordinary write
 initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
-replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires retained structural names being published to be
+replacement capability and resident compatibility. A qualified let with RHS forms a complete binding using RHS inference. Close requires retained structural names being published to be
 initialized, not every future generated coordinate realized. Ordinary lexical
 let remains unchanged. See [name semantics](../symbol-world/names-and-overload-groups.md).
 
-Every legal completed closure expression returns tau_C through ordinary struct.
+Every legal completed closure expression returns tau_C through atomic complete-type formation.
 File implementation-layer let installs at the established package structural root;
 a true lexical local let binds the evaluated RHS. Only established structural
 contribution roles join by ordinary type-contribution/effect algebra. Equal NameCoord or callable RHS alone does
 not reclassify a legal binding/shadow/write. Entry has runtime P2; stable root
-ownership establishes no permanent active MetaDom.
+ownership establishes no ambient active evaluator/body edge.
 Conflicting writes are not repaired by file order. File ownership, one-type-slot
 restrictions and package mounts provide no additional admission rules.
 
@@ -71,7 +68,7 @@ target's identity nor its authority. A configured mount is not a source action.
 
 Existing OpenHere, Writable, reference validity and construction authority govern
 ordinary construction mutation. External navigation follows completion of the
-selected meta call. Close freezes non-generative registered structure, while
+selected compile call. Close freezes non-generative registered structure, while
 ordinary generated Val2 results may still be realized without either registration.
 Anonymous classifiers stay under /tau; this grants no navigation to their values.
 Associated compile state closes under its source pattern value's existing

@@ -1,0 +1,133 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName a
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  DoubleDotSugar
+                    object:
+                      Product
+                        elements:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name e
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name f
+                    selector:
+                      TextName field
+                    args:
+                      Product
+                        elements:
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName b
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  DoubleDotSugar
+                    object:
+                      Product
+                        elements:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name e
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name f
+                    selector:
+                      TextName field
+                    args:
+                      Product
+                        elements:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name a
+                          Expr
+                            Product
+                              elements:
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name b
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name c
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName c
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  MemberSugar
+                    object:
+                      Product
+                        elements:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name e
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name f
+                    selector:
+                      TextName field

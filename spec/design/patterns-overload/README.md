@@ -31,17 +31,17 @@ The base Pattern relation, binderless Pattern semantics, direct structural
 incidence, annotation split, constructor/extractor family contracts, and the
 named-versus-positional normalization boundary are owned by
 `pattern-values-relational-semantics-and-extraction.md`. Named-type construction,
-`struct` forming complete type values, pure `extend`, and place-level `inject` are owned by
-`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` and
+direct complete type formation, `struct` helper augmentation, ordinary `*` and `*=` are owned by
+`../symbol-world/structural-type-formation-and-composition.md` and
 must satisfy that Pattern authority.
 Internal Policy observations, seal visibility, PolicyMode product order, compile-flow
 projection, derived compile companions, must-select semantics, match staging,
 and automatic require are owned by
-`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+`../symbol-world/policy-and-static-flow-projection.md`.
 
 This block distinguishes two layers explicitly:
 
-- the **earlier, narrower** candidate-preparation subset that serves formal meta
+- the **earlier, narrower** candidate-preparation subset that serves formal compile
   object invocation (pattern normalization + first-order type candidate shapes);
 - the **later, fuller** runtime overload resolution and pattern-space /
   extraction-chain semantics, which remain further out.
@@ -91,5 +91,5 @@ then the broader overload and residual/control-pattern documents.
 ## Dependencies
 
 Uses `TypeValueId` from `symbol-world/`. Produces the applicable candidate set
-consumed by `meta-invocation/`. Pass-mode adaptation is in
+consumed by `static-evaluation/`. Pass-mode adaptation is in
 `mechanical-lowering/` and is separate from type/rank compatibility.

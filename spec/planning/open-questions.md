@@ -9,7 +9,7 @@ wiring that applies a closed law is tracked in `roadmap.md`, not here.
 - What persistent representation should encode the opaque Core lookup index
   currently named `TypeValueId`?
 - How should persistent `SemanticOwnerId`, syntax-local keys, Pattern roots,
-  and MetaInstance roots be serialized and restored while preserving parent
+  and CompileInstance roots be serialized and restored while preserving parent
   homomorphism?
 - What concrete representation should carry resident generations and
   ProjectionSlot identity?
@@ -64,10 +64,10 @@ same-Type Policy migration are separate ordinary operations.
 - Which effect/error/panic/resource capability dimensions are added to
   DynamicLegality?
 
-PolicyMode={const,mut} and independent MetaInstancePolicy={meta,close},
+PolicyMode={const,mut} and independent OpenPolicy={open,close},
 demand formation before maxima,
 two-point preference, capability realization, unique selection and no reopen
-are fixed. Stage is one atom; the static trio is pairwise incomparable. P2 is
+are fixed. Stage is one atom; the two static atoms are incomparable. P2 is
 horizon, P1/Pout producer visibility. Pin admits explicit stage constraints and
 holes; Pout.stage=P1.stage. InputAdmissible, migration and Ready are separate.
 Runtime P2 defaults omitted P1 to runtime; seal defaults to seal. Bare let
@@ -75,7 +75,7 @@ supplies no override; written concrete mode and explicit hole are distinct.
 Policy deduction uses ordinary operator Pattern relations, HoleBinderId and
 require. The 2×2 tables are finite explanatory views of relational declarations,
 not a separate inference primitive. Default completion is not a source constraint: only finally omitted Mode
-becomes mut under meta + current OpenHere, const otherwise. It preserves explicit
+becomes mut under open + current OpenHere, const otherwise. It preserves explicit
 and deduced modes; unknown required OpenHere is unavailable, not false.
 
 ## Residual and serial evaluation
@@ -89,7 +89,7 @@ and deduced modes; unknown required OpenHere is unavailable, not false.
 - What concrete representation carries `Done`, targeted return, and result
   Pattern delivery?
 
-Runtime main and actual stack-relative MetaDom/SealDom, two-round R_vis then
+Runtime main and actual stack-relative evaluation horizons, two-round R_vis then
 ordinary C_sigma selection, no speculative candidate execution and retained
 selected origin are closed. Concrete witness/cache representation is open.
 
@@ -115,7 +115,7 @@ continuation-path consumer alignment is roadmap work.
   aggregation laws (with BucketEq(T1,T2) iff Norm_type(T1)=Norm_type(T2)) without erasing entries through an
   unrelated cache/value-identity quotient? This is not an open semantic codomain.
 - What IR represents the already defined construction-window termination,
-  meta completion, close completion/closure and registered-structure closure events?
+  open completion, close completion/closure and registered-structure closure events?
 - What public spelling should the builtin associated-state callable A use?
 - Which values beyond ordinary callable members from closure formation can prove a
   location-parametric ReinstantiationWitness? The initial domain is fixed;
@@ -126,8 +126,8 @@ continuation-path consumer alignment is roadmap work.
 Typed structural NameExpr creation establishes an uninitialized Place;
 qualified formation is value-side, using resolved structural root identity and
 current type OpenHere without parent Writable or parent mut type ref. Explicit
-borrowing is Place-side. Contextual meta qualification is closed for type/type
-ref only; direct mut and explicit meta-to-mut confirmation are coherent ordinary
+borrowing is Place-side. Contextual open qualification is closed for type/type
+ref only; direct mut and explicit open-to-mut confirmation are coherent ordinary
 candidates, not an implicit chain. Both recheck OpenHere, target Writable and
 ordinary capability/access/lifetime. Saved refs preserve their borrowed subject
 and cannot evade Close. These are closed laws; consumer encoding remains pending.
@@ -143,16 +143,16 @@ ordinary callable members. Extension reads only an already initialized resident.
 Named-contribution positions synthesize
 V_tau, while ordinary lexical let does not aggregate by spelling. Type +=/-=
 requires OpenHere and final anchored closure membership, changing only V_tau;
-Pattern-registered structural changes use extend/inject; ordinary name writes
+Pattern-registered structural changes use ordinary `*` / `*=`; ordinary name writes
 may independently change Val2(Core). Ordinary group mutation needs its own Writable,
-not OpenHere of its contained types. Meta invocation constructs ordinary result
-instance names/types with dependency-derived openness. P1 meta retains that
+not OpenHere of its contained types. Compile invocation constructs ordinary result
+instance names/types with dependency-derived openness. P1 open retains that
 qualification; close let completes/closes the instance. Arbitrary Val2 payloads
 use ordinary navigation and policy; V_tau and Pattern registration are independent.
 Its input normalization retains semantically observed name/subject identities;
 its registry/cache preserves instance/member Places and current state.
 A is a derived instance, with its construction subject retained through Close and
-input-carrier replacement. Generalization is settled by these meta invocation
+input-carrier replacement. Generalization is settled by these compile invocation
 laws; ordinary Core equality does not merge subjects or grant write authority.
 Persistent dependency/source encoding remains open, not the propagation law.
 
@@ -181,7 +181,7 @@ Color relations are explicit directed rows and Color inheritance is monotone.
 
 ## Owner, namespace, and infrastructure persistence
 
-- How are semantic owner roots, namespace snapshots, MetaInstance result names,
+- How are semantic owner roots, namespace snapshots, CompileInstance result names,
   current type/member observations, construction status and dependency effects persisted across
   incremental evaluation without extending dependency lifetimes?
 - What concrete IR represents invocation input identity observations and output
@@ -189,13 +189,13 @@ Color relations are explicit directed rows and Color inheritance is monotone.
 - What API expresses context-directed member projection after stable name
   resolution without turning consumer roles into name ontologies?
 - Are escaped field names needed outside the existing syntax?
-- What source library/API expresses trait-like laws as ordinary meta results?
+- What source library/API expresses trait-like laws as ordinary compile results?
 - What concrete host IO/FFI APIs expose ordinary Objects and policy views?
 - How do traversal/index consumers preserve Core equality while retaining
   captured complete callspaces in whole-snapshot observations?
 
-Physical normalization includes child-directory names desugaring to ordinary
-fresh-name/type actions followed by their body under the resulting reference;
+Physical normalization completes declaration navigation using child-directory
+names; under a, P let inner=rhs targets inner::a;
 the selected root and filenames add no segments. This law, main.lang anchoring,
 sibling overlays and post-hoc
 DependencyGraph projection are fixed. Manifests, mounts, registry solvers and
@@ -204,7 +204,7 @@ ordinary source/host work; their implementation does not create authority.
 
 ## Closure, control flow, and ownership
 
-- Which carrier realizes ordinary struct Material_C into full tau_C, its c_C,
+- Which carrier realizes ClosureMaterial(C) into full tau_C, its c_C,
   A_C and () roles, and represents already determined dependency realizations?
 - How are region/generation persistence, movement and escape checked for
   automatically formed closure dependencies?
@@ -220,8 +220,8 @@ extraction and generative invocation use ordinary relations. Source wiring
 remains roadmap work; structured Path and ordinary ADL are now closed by their
 topic owners.
 
-Every legal completed closure expression returns full tau_C through ordinary
-struct. File implementation-layer let installs under the established package
+Every legal completed closure expression returns full tau_C through atomic
+complete-type formation. File implementation-layer let installs under the established package
 root, while true lexical local let remains binding. Conservative contribution roles preserve
 legal ordinary actions and never retry failed execution. These are closed laws,
 not a pending choice based on RHS type or declaration count.
@@ -238,7 +238,7 @@ not a pending choice based on RHS type or declaration count.
 
 ### Structured Path representation and remaining surface scope
 
-[Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
+[Structured Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md)
 defines Read_name/Read_resident, full NameValue structure, path_pattern/# value
 projection and round-trip through the Path consumer of general $. Norm_path
 retains both its string
@@ -248,7 +248,7 @@ single-name path_pattern, never a string. Default ADL forwards through
 
 Colon construction is closed: RHS (items separated by :) normalizes to an
 ordinary Product |> slice; empty colon/comma slots complete to unit. Slice is
-ordinary struct/Pattern material. Concrete Path/container overload families and
+an ordinary complete structural type augmented by struct helpers. Concrete Path/container overload families and
 their extraction consumers remain roadmap work, not a Slice_Omega primitive or
 missing-endpoint design question. Lexical === aliases formed Path material.
 with admits full Path and forward references, with conditional instantiation on
@@ -267,7 +267,7 @@ their contribution effects, so no first-creator identity choice remains open.
 Generated occurrences supply ordinary Val2 residency only, never registration
 evidence.
 
-The former Close/realization question is closed: ordinary generated Val2 results
+After Close, ordinary generated Val2 results
 are permitted; neither V_tau nor Pattern registration can come from a generated
 occurrence. Close freezes non-generative registered structure, not all future
 Val2 realization. V_tau callable values need no val::path resident; classifier
@@ -281,7 +281,7 @@ For each compiler-provided operation, determine whether it is a bootstrap seed,
 a source definition still to be connected, an intrinsic observation, or a
 semantic primitive justified by non-bootstrappability. A permanent host primitive requires the unavailable-host-capability
 justification; existing representation/library mechanisms take priority. A's
-source definition uses a general meta instance type with an ordinary Val2 group
+source definition uses a general compile instance type with an ordinary Val2 group
 Place. The singleton-Val2 compile helper may also begin as a builtin and later
 use source enumeration and compile error expression; its public spelling and
 concrete error representation remain to be selected. Its current bootstrap notation creates no independent map primitive.
@@ -303,5 +303,5 @@ formed dependencies. In-place results are already ordinary first-class values.
 FormationLegal, LifetimeLegal, Pre/Post, MoveEffect/Movable, EscapeLegal and
 owned-transfer/promotion checks remain required. This does not block closure
 formation semantics and grants neither global lifetime to tau_C nor a blanket
-ban on every local dependency. Already established non-meta type survival
+ban on every local dependency. Already established ordinary type survival
 facts are retained in their domain.

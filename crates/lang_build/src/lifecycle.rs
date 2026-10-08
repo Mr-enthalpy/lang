@@ -9,8 +9,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-    CommittedSemanticAction, ContinuationIdentity, Diagnostic, Provenance, SemanticActionIdentity,
-    SemanticContinuation, SemanticPosition, SemanticValueId,
+    CleanupGateFailure, CleanupObligation, CleanupObligations, CommittedSemanticAction,
+    ContinuationIdentity, Diagnostic, Provenance, SemanticActionIdentity, SemanticContinuation,
+    SemanticPosition, SemanticValueId,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -247,6 +248,7 @@ pub struct LifecyclePost {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LifecycleFailure {
     CleanupPrefixNotFixed,
+    CleanupObservationUnavailable(LifeName),
     ForeignContinuation,
     UnknownValue(SemanticValueId),
     ValueAlreadyRegistered(SemanticValueId),
@@ -522,16 +524,17 @@ impl LifecycleState {
         provenance: &Provenance,
     ) -> Result<LifecyclePreProof, LifecycleFailure> {
         self.require_continuation(continuation)?;
-        if !continuation.cleanup_is_fixed_through(at) {
-            return Err(LifecycleFailure::CleanupPrefixNotFixed);
-        }
-        if let Some(placement) = continuation
-            .cleanup()
-            .iter()
-            .find(|entry| entry.at < at && !self.cleanup_obligation_discharged(entry.name))
-        {
-            return Err(LifecycleFailure::CleanupBoundaryPending(placement.name));
-        }
+        continuation
+            .check_cleanup_before(at, self)
+            .map_err(|failure| match failure {
+                CleanupGateFailure::PrefixNotFixed => LifecycleFailure::CleanupPrefixNotFixed,
+                CleanupGateFailure::Outstanding(name) => {
+                    LifecycleFailure::CleanupBoundaryPending(name)
+                }
+                CleanupGateFailure::ObservationUnavailable(name) => {
+                    LifecycleFailure::CleanupObservationUnavailable(name)
+                }
+            })?;
         let proof = validation
             .validate_pre(provenance)
             .map_err(|diagnostic| LifecycleFailure::PreRejected(diagnostic.message))?;
@@ -762,9 +765,10 @@ impl LifecycleState {
     }
 
     /// An already committed killing move or Drop discharges this generation's
-    /// scheduled Drop. The scheduler consumes this fact; it must not add another
-    /// destructor for the old generation.
-    pub fn cleanup_obligation_discharged(&self, name: LifeName) -> bool {
+    /// scheduled Drop. The continuation-relative query validates the event's K
+    /// before exposing discharge to the common transaction. No second destructor
+    /// is added for the old generation.
+    fn cleanup_obligation_discharged(&self, name: LifeName) -> bool {
         self.events.iter().any(|event| {
             event.name == name
                 && matches!(
@@ -776,6 +780,37 @@ impl LifecycleState {
                         }
                 )
         })
+    }
+}
+
+impl CleanupObligations for LifecycleState {
+    fn cleanup_obligation(
+        &self,
+        continuation: &SemanticContinuation,
+        name: LifeName,
+    ) -> CleanupObligation {
+        if self.continuation != *continuation.identity()
+            || self.pending_formations.contains(&name)
+            || self.events.iter().any(|event| {
+                event.action.continuation != *continuation.identity()
+                    || event.action.ordinal >= continuation.next_action_identity().ordinal
+                    || event.at > continuation.position()
+            })
+        {
+            return CleanupObligation::Unavailable;
+        }
+        if self.cleanup_obligation_discharged(name) {
+            return CleanupObligation::Discharged;
+        }
+        if self
+            .active
+            .get(&name)
+            .is_some_and(|region| region.contains(continuation.position()))
+        {
+            CleanupObligation::Outstanding
+        } else {
+            CleanupObligation::Unavailable
+        }
     }
 }
 
@@ -925,8 +960,8 @@ mod tests {
         let before = (state.clone(), k.clone());
         assert_eq!(
             commit(&mut k, &mut state, 2, LifecycleAction::Use(destination)),
-            Err(crate::SemanticCommitFailure::Pre(
-                LifecycleFailure::CleanupPrefixNotFixed
+            Err(crate::SemanticCommitFailure::Cleanup(
+                CleanupGateFailure::PrefixNotFixed
             ))
         );
         assert_eq!((state.clone(), k.clone()), before);
@@ -964,7 +999,7 @@ mod tests {
         k.freeze_cleanup_through(SemanticPosition(4)).unwrap();
         k.commit_action(
             SemanticPosition(4),
-            &mut (),
+            &mut state,
             (),
             |_, _, _, _| Ok::<_, ()>(()),
             |_, _, _| Ok::<_, ()>(()),
@@ -1224,8 +1259,8 @@ mod tests {
         ] {
             assert_eq!(
                 commit(&mut k, &mut state, 10, action),
-                Err(crate::SemanticCommitFailure::Pre(
-                    LifecycleFailure::CleanupBoundaryPending(source)
+                Err(crate::SemanticCommitFailure::Cleanup(
+                    CleanupGateFailure::Outstanding(source)
                 ))
             );
             assert_eq!(state, before_state);
@@ -1285,8 +1320,8 @@ mod tests {
             } else {
                 assert_eq!(
                     result,
-                    Err(crate::SemanticCommitFailure::Pre(
-                        LifecycleFailure::CleanupBoundaryPending(source)
+                    Err(crate::SemanticCommitFailure::Cleanup(
+                        CleanupGateFailure::Outstanding(source)
                     ))
                 );
                 assert_eq!(state, before_state);
@@ -1806,6 +1841,264 @@ mod tests {
         type_fact: u64,
         type_position: SemanticPosition,
         type_action: Option<SemanticActionIdentity>,
+    }
+
+    impl CleanupObligations for ProjectionState {
+        fn cleanup_obligation(
+            &self,
+            continuation: &SemanticContinuation,
+            name: LifeName,
+        ) -> CleanupObligation {
+            self.life.cleanup_obligation(continuation, name)
+        }
+    }
+
+    fn ordinary_type_action(
+        k: &mut SemanticContinuation,
+        state: &mut ProjectionState,
+        at: u64,
+    ) -> Result<(), crate::SemanticCommitFailure<LifecycleFailure>> {
+        k.commit_action(
+            SemanticPosition(at),
+            state,
+            "type action",
+            |_, _, _, _| Ok::<_, LifecycleFailure>(()),
+            |state, action, _| {
+                state.type_fact += 1;
+                state.type_position = action.position();
+                state.type_action = Some(action.identity().clone());
+                Ok(())
+            },
+        )
+    }
+
+    fn scheduled_projection() -> (SemanticContinuation, ProjectionState, LifeName) {
+        let mut k = SemanticContinuation::default();
+        let mut life = LifecycleState::new(&k);
+        let name = life
+            .admit_committed_formation_fact(
+                &k,
+                SemanticValueId(1),
+                SemanticPosition(0),
+                LifecycleOrigin::ExplicitNone,
+            )
+            .unwrap();
+        k.place_cleanup(crate::CleanupPlacement {
+            name,
+            at: SemanticPosition(5),
+            declaration_order: 1,
+        })
+        .unwrap();
+        k.freeze_cleanup_through(SemanticPosition(100)).unwrap();
+        (
+            k,
+            ProjectionState {
+                life,
+                type_fact: 0,
+                type_position: SemanticPosition(0),
+                type_action: None,
+            },
+            name,
+        )
+    }
+
+    #[test]
+    fn cleanup_gate_blocks_actions_without_lifecycle_projection_and_drop_discharges_it() {
+        let (mut k, mut state, name) = scheduled_projection();
+        ordinary_type_action(&mut k, &mut state, 4).unwrap();
+        let before = (k.clone(), state.clone());
+        let failure = k.commit_action(
+            SemanticPosition(6),
+            &mut state,
+            "type action",
+            |_, _, _, _| -> Result<(), LifecycleFailure> { panic!("gate must precede Pre") },
+            |_, _, _| -> Result<(), LifecycleFailure> { panic!("gate must precede Post") },
+        );
+        assert_eq!(
+            failure,
+            Err(crate::SemanticCommitFailure::Cleanup(
+                CleanupGateFailure::Outstanding(name)
+            ))
+        );
+        assert_eq!((k.clone(), state.clone()), before);
+        // The common before-cut gate permits unrelated actions at this cut.
+        // Lifecycle Pre still orders and validates the actual ending action.
+        ordinary_type_action(&mut k, &mut state, 5).unwrap();
+        k.commit_action(
+            SemanticPosition(5),
+            &mut state,
+            LifecycleAction::Drop(name),
+            |state, k, at, action| {
+                state.life.check_pre(
+                    k,
+                    at,
+                    action,
+                    &validation(&state.life, action),
+                    &Provenance::new("scheduled Drop"),
+                )
+            },
+            |state, action, proof| state.life.apply_post(action, proof),
+        )
+        .unwrap();
+        ordinary_type_action(&mut k, &mut state, 6).unwrap();
+        assert_eq!(state.type_fact, 3);
+        assert_eq!(state.life.events().len(), 1);
+        assert_eq!(state.type_action.unwrap().ordinal, 3);
+    }
+
+    #[test]
+    fn ordinary_action_after_cleanup_consumes_kill_discharge_but_not_preserve() {
+        for effect in [MoveEffect::Kill, MoveEffect::Preserve] {
+            let (mut k, mut state, name) = scheduled_projection();
+            commit(
+                &mut k,
+                &mut state.life,
+                1,
+                LifecycleAction::Move {
+                    source: name,
+                    destination: SemanticValueId(2),
+                    effect,
+                },
+            )
+            .unwrap();
+            let before = (k.clone(), state.clone());
+            let result = ordinary_type_action(&mut k, &mut state, 6);
+            if effect == MoveEffect::Kill {
+                result.unwrap();
+                assert_eq!(state.type_fact, 1);
+                assert_eq!(
+                    state.life.events().len(),
+                    1,
+                    "no old-generation Drop is inserted"
+                );
+            } else {
+                assert_eq!(
+                    result,
+                    Err(crate::SemanticCommitFailure::Cleanup(
+                        CleanupGateFailure::Outstanding(name)
+                    ))
+                );
+                assert_eq!((k, state), before);
+            }
+        }
+    }
+
+    #[test]
+    fn missing_foreign_and_future_cleanup_observations_cannot_authorize_an_action() {
+        let (k, state, name) = scheduled_projection();
+        let unknown = LifecycleState::new(&k);
+        let mut discovered = unknown.clone();
+        assert_eq!(
+            discovered.discover_value(&k, SemanticValueId(1)).unwrap(),
+            name
+        );
+        let foreign_k = SemanticContinuation::default();
+        let mut foreign = LifecycleState::new(&foreign_k);
+        assert_eq!(
+            foreign
+                .admit_committed_formation_fact(
+                    &foreign_k,
+                    SemanticValueId(1),
+                    SemanticPosition(0),
+                    LifecycleOrigin::ExplicitNone,
+                )
+                .unwrap(),
+            name
+        );
+        let mut future_k = k.clone();
+        let mut future_events = state.life.clone();
+        commit(
+            &mut future_k,
+            &mut future_events,
+            1,
+            LifecycleAction::Move {
+                source: name,
+                destination: SemanticValueId(2),
+                effect: MoveEffect::Kill,
+            },
+        )
+        .unwrap();
+        let mut future_birth = LifecycleState::new(&future_k);
+        assert_eq!(
+            future_birth
+                .admit_committed_formation_fact(
+                    &future_k,
+                    SemanticValueId(1),
+                    SemanticPosition(1),
+                    LifecycleOrigin::ExplicitNone,
+                )
+                .unwrap(),
+            name
+        );
+        for life in [unknown, discovered, foreign, future_events, future_birth] {
+            let mut k = k.clone();
+            let mut state = ProjectionState {
+                life,
+                ..state.clone()
+            };
+            let before = (k.clone(), state.clone());
+            let result = k.commit_action(
+                SemanticPosition(6),
+                &mut state,
+                "type action",
+                |_, _, _, _| -> Result<(), LifecycleFailure> {
+                    panic!("unavailable cleanup must block Pre")
+                },
+                |_, _, _| -> Result<(), LifecycleFailure> {
+                    panic!("unavailable cleanup must block Post")
+                },
+            );
+            assert_eq!(
+                result,
+                Err(crate::SemanticCommitFailure::Cleanup(
+                    CleanupGateFailure::ObservationUnavailable(name)
+                ))
+            );
+            assert_eq!((k, state), before);
+        }
+    }
+
+    #[test]
+    fn failed_joint_post_cannot_discharge_cleanup_or_publish_another_projection() {
+        let (mut k, mut state, name) = scheduled_projection();
+        let before = (k.clone(), state.clone());
+        let result = k.commit_action(
+            SemanticPosition(5),
+            &mut state,
+            LifecycleAction::Drop(name),
+            |state, k, at, action| {
+                state.life.check_pre(
+                    k,
+                    at,
+                    action,
+                    &validation(&state.life, action),
+                    &Provenance::new("joint Drop Pre"),
+                )
+            },
+            |state, action, proof| {
+                state.life.apply_post(action, proof)?;
+                state.type_fact = 42;
+                Err::<(), _>(LifecycleFailure::PreRejected(
+                    "another projection rejects publication".into(),
+                ))
+            },
+        );
+        assert!(matches!(
+            result,
+            Err(crate::SemanticCommitFailure::Projection(_))
+        ));
+        assert_eq!((k.clone(), state.clone()), before);
+        assert_eq!(
+            state.cleanup_obligation(&k, name),
+            CleanupObligation::Outstanding
+        );
+        assert_eq!(
+            ordinary_type_action(&mut k, &mut state, 6),
+            Err(crate::SemanticCommitFailure::Cleanup(
+                CleanupGateFailure::Outstanding(name)
+            ))
+        );
+        assert_eq!((k, state), before);
     }
 
     #[test]

@@ -50,7 +50,7 @@ impl SemanticValueId {
 
 /// Identity of the selected ordinary callable and implementation pair.
 ///
-/// Meta instance roots are keyed by the selected callable **value** plus the
+/// Compile instance roots are keyed by the selected callable **value** plus the
 /// selected `()` call entry, independently of a source name binding. Distinct
 /// callable values produce distinct instance roots, and because the model allows
 /// one function object Pattern to expose several `()` entries — two distinct
@@ -58,7 +58,7 @@ impl SemanticValueId {
 /// Formal binder names, source paths, body material, and provenance never
 /// participate in this identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SelectedCallableIdentity {
+pub struct CompilePartner {
     pub selected_function_value: SemanticValueId,
     pub selected_call_entry: SemanticValueId,
 }

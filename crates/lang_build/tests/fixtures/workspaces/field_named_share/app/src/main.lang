@@ -1,1 +1,0 @@
-let T: type = (uint8 share, uint8 a) |> struct;

@@ -1,5 +1,5 @@
 let member_value_p1 =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   const let r = (t inner) |> struct;

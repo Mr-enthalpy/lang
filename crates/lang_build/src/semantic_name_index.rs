@@ -726,7 +726,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         delta
     }
 
-    pub fn inject_child(
+    pub fn add_child_projection(
         &self,
         parent: NamespaceNodeId,
         symbol: NamespaceGraphSymbol,
@@ -766,7 +766,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             provenance,
         );
         symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-            crate::Stage::Meta,
+            crate::Stage::Compile,
             crate::PolicyMode::Const,
         ));
         delta.insert_node(node);
@@ -869,7 +869,7 @@ pub(crate) fn namespace_symbol(
         provenance,
     );
     symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-        crate::Stage::Meta,
+        crate::Stage::Compile,
         crate::PolicyMode::Const,
     ));
     delta.insert_node(node);

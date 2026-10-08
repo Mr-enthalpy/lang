@@ -14,6 +14,10 @@ pub fn parse_canonical_skeleton(
 
     while !parser.cursor.at_eof()
         && !parser.cursor.at_symbol(Symbol::Equal)
+        && !parser.cursor.at_symbol(Symbol::RParen)
+        && !parser.cursor.at_symbol(Symbol::RBracket)
+        && !parser.cursor.at_symbol(Symbol::Comma)
+        && !parser.cursor.at_symbol(Symbol::Colon)
         && !parser.cursor.at_name("with")
         && !parser.is_form_boundary()
     {
@@ -65,7 +69,7 @@ fn parse_canonical_element(
 ) -> Option<CanonicalSkeletonAst> {
     let token = parser.cursor.peek_non_trivia();
 
-    let grouped_splice = parser
+    let grouped_flip = parser
         .cursor
         .classify_paren_at_segment_position()
         .1
@@ -75,16 +79,17 @@ fn parse_canonical_element(
                 TokenKind::Operator(OperatorSpelling::Dollar)
             )
         });
-    let name_splice = matches!(
-        parser.cursor.peek_next_non_trivia().kind,
-        TokenKind::Operator(OperatorSpelling::Dollar)
-    );
+    let name_flip = matches!(token.kind, TokenKind::Name)
+        && matches!(
+            parser.cursor.peek_next_non_trivia().kind,
+            TokenKind::Operator(OperatorSpelling::Dollar)
+        );
     let navigation = matches!(token.kind, TokenKind::Name)
         && parser.cursor.peek_next_non_trivia().kind == TokenKind::Symbol(Symbol::ColonColon);
     let bracket_operator = token.kind == TokenKind::Symbol(Symbol::LBracket)
         && parser.cursor.peek_next_non_trivia().kind == TokenKind::Symbol(Symbol::RBracket);
-    if grouped_splice
-        || name_splice
+    if grouped_flip
+        || name_flip
         || navigation
         || bracket_operator
         || token.kind.is_operator_spelling()

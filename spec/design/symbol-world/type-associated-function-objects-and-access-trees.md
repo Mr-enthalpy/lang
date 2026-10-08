@@ -120,7 +120,7 @@ StructuralFamilyStability:
   ⇒ StructuralFamily(tau', name, A) = StructuralFamily(tau, name, A)
 ```
 
-An `extend` that adds unrelated virtual helpers (so `Q ≠ Q'` but
+An `*` that adds unrelated virtual helpers (so `Q ≠ Q'` but
 the authorized update preserves the complete bound implementation owner) therefore keeps every generated structural
 candidate's identity: P-internal extraction over the new snapshot still
 filters exactly the inherited generated cells. P-internal extraction
@@ -175,7 +175,7 @@ The universal assignment family remains exactly:
 
 ```text
 AssignmentFamily(U):
-    U ref × U -> unit        (canonical §4.5.1)
+    U ref × U -> unit        (construction §3.1)
 ```
 
 The two families never coincide, for any field type:
@@ -242,7 +242,7 @@ const > mut under const demand and mut > const under mut demand. Distinct
 tied candidates and crossed product advantages remain ambiguous.
 Open authority does not propagate along owned field relations; each
 PatternValue's `OpenHere_Σ` is determined independently by stack-relative
-coordinate equality (canonical §12.1.1). Mutability does not propagate:
+coordinate equality (construction §5). Mutability does not propagate:
 
 ```text
 mut(child) does not imply mut(parent)
@@ -264,15 +264,15 @@ The first-class surface constructor is:
 
 and denotes ordinary `field::adl`. Thus `E.field` means
 `E |> field::adl`; a stored selector uses the same ordinary call relations.
-The default ADL generator contributes an ordinary closure, whose receiver
-Pattern selects the associated family. It directly forwards under established
+The generative ADL family provides ordinary receiver-call and type-path
+candidates, chosen by applicability and specificity. It directly forwards under established
 P1/P2 and ReturnPattern/Pout demand before inner maxima. It introduces no
 normalizer-owned forwarding body, receiver coercion or private dispatch rule.
-`E..field(product)` remains direct member-call sugar. Derived forwarding and
+E..field(product) equals E |> .field(product), using the same ADL entrance. Derived forwarding and
 borrowed projection below remain separate ordinary operations. See
 [operator and ADL owner](../patterns-overload/operator-patterns-and-generative-declarations.md).
 
-An ordinary let-shaped declaration consumed by `struct` contributes its
+An ordinary let-shaped declaration consumed by structural interpretation contributes its
 initializer as Val2 material under the current Pattern owner:
 
 ```lang
@@ -458,7 +458,7 @@ forwards. This prevents write capability from leaking from `T ref` to
 share-admissible subset of inherited associated names, never the
 ref-only write family.
 
-The ordinary `inner::adl` generated closure resolves its receiver type and, for a
+The selected ordinary `inner::adl` method candidate resolves its receiver type and, for a
 borrowed receiver `r : X ref`, forwards to `r |> inner::(X ref)`. The connection
 
 ```text
@@ -542,9 +542,9 @@ The consequences that field/access-tree work must preserve:
   only `rebind` selects a new target.
 - `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. Writable
   alone cannot permit replacement through a type ref after Close: direct mut
-  refs and meta-ref writable candidates require OpenHere of their original
+  refs and open-ref writable candidates require OpenHere of their original
   borrowed generation. An open-window value may be extended purely without a
-  writable carrier. Explicit meta-to-mut confirmation preserves target and
+  writable carrier. Explicit open-to-mut confirmation preserves target and
   capability; it does not amplify authority or introduce implicit chaining.
 
 This is only a summary. For the canonical `TypeValueId` implementation index
@@ -591,5 +591,5 @@ This note does not implement or specify:
   defining-name binding or carrier-provenance recovery;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;
-- generic meta execution;
+- generic compile execution;
 - HIR or codegen.

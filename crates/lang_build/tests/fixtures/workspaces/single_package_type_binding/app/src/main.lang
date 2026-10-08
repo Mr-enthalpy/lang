@@ -1,6 +1,6 @@
 let T: type = uint8;
 let U: type = T;
-let Direct: type = (uint8 field) struct;
+let Direct: type = uint8;
 let Rebound: type = Direct;
 
 let PatternResult: type = T IdentityType::core;

@@ -2,7 +2,7 @@
 
 **Status:** canonical Path and alias laws are closed; general consumers remain roadmap work.
 
-Strong positions preserve [Path material](structured-path-algebra-and-pattern-splice.md).
+Strong positions preserve [Path material](structured-path-algebra-and-interpretation-polarity.md).
 Navigation runs in `name::path` direction with LHS/Pattern navigation inheritance.
 An explicit `$` operand uses RHS expression interpretation before reinjection.
 The frontend neither resolves a path nor fixes a terminal binding identity.

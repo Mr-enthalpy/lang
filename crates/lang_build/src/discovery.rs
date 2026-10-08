@@ -6,7 +6,7 @@
 //! content fingerprint, and diagnostic provenance.
 //!
 //! Discovery is intentionally non-semantic. It does **not** parse, normalize,
-//! resolve names, check types, check policy, expand meta-functions, forward
+//! resolve names, check types, check policy, expand compile-functions, forward
 //! aliases, handle imports, or solve package dependencies. Those concerns live
 //! in later layers:
 //!
@@ -14,7 +14,7 @@
 //! physical discovery   (this module)
 //!   -> namespace assembly       (world.rs: opens physical namespace nodes)
 //!   -> declaration harvesting   (world.rs: installs symbols / deltas)
-//!   -> resolver / policy / meta  (consume SemanticWorld)
+//!   -> resolver / policy / compile  (consume SemanticWorld)
 //! ```
 //!
 //! Semantic rule preserved here: physical directory structure contributes

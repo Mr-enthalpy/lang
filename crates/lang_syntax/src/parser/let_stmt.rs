@@ -381,7 +381,7 @@ fn parse_binding_pattern(
         return BindingPatternAst::Error(parser.error_ast(message, token.span));
     }
 
-    let grouped_splice = parser
+    let grouped_flip = parser
         .cursor
         .classify_paren_at_segment_position()
         .1
@@ -391,7 +391,7 @@ fn parse_binding_pattern(
                 TokenKind::Operator(crate::OperatorSpelling::Dollar)
             )
         });
-    if grouped_splice {
+    if grouped_flip {
         let expression = super::expr::parse_pattern_expr_until(parser, |p| {
             at_binding_pattern_boundary(p, context) || p.cursor.at_name("with")
         });

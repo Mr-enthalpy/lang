@@ -1,0 +1,2 @@
+let struct: type = uint8;
+let T = uint8 struct::core;

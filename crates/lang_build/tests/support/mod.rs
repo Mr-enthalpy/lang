@@ -89,6 +89,7 @@ pub fn install_callable_receiver_fixture(
                 pattern,
                 view: canonical,
             }],
+            None,
             provenance,
         )
         .expect("fixture receiver binds once");
@@ -179,7 +180,7 @@ pub fn prepare_candidate_from_fixture_symbol(
 
 /// Temporary on-disk tree for boundary-only tests.
 ///
-/// `TempProject` is boundary-only. Ordinary successful build/discovery/early-meta
+/// `TempProject` is boundary-only. Ordinary successful build/discovery/compile-invocation
 /// tests must use committed fixtures under `tests/fixtures/workspaces/`. Use
 /// `TempProject` only for mutation/cache-invalidation via copied committed
 /// fixtures, invalid-filesystem, invalid-bytes, or graph/model boundary tests.
@@ -231,7 +232,7 @@ pub fn empty_app_manifest() -> BuildManifest {
 // ---------------------------------------------------------------------------
 // Repository fixture helpers
 //
-// Build/discovery/early-meta integration tests point at committed physical
+// Build/discovery/compile-invocation integration tests point at committed physical
 // source trees under `tests/fixtures/workspaces/`, not strings written at test
 // time. These helpers still construct API-level `BuildManifest` / `BuildWorkspace`
 // values in Rust (there is no manifest-file parser); only the source trees are
@@ -324,7 +325,7 @@ pub fn bare_package_spec(name: &str) -> PackageBuildSpec {
 }
 
 /// Build a single-package fixture workspace through `BuildSession` and return its
-/// `CompilationWorld`. Used by early-meta / policy integration tests.
+/// `CompilationWorld`. Used by compile-invocation / policy integration tests.
 pub fn build_single_fixture_world(workspace: &str, package: &str) -> CompilationWorld {
     let mut session = BuildSession::new();
     let result = session

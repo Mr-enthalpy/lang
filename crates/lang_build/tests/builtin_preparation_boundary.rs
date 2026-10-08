@@ -9,7 +9,28 @@ use lang_build::{
 
 #[test]
 fn unknown_builtin_applicability_cannot_remove_a_candidate_and_select_a_runner_up() {
-    for target_path in ["assert::core", "exists::verify::core"] {
+    for (target_path, input, expected) in [
+        (
+            "assert::core",
+            "uint8",
+            "applicability relation consumer is not connected",
+        ),
+        (
+            "exists::verify::core",
+            "uint8",
+            "applicability relation consumer is not connected",
+        ),
+        (
+            "struct::core",
+            "(uint8 field)",
+            "parameter shape compatibility is not established",
+        ),
+        (
+            "IdentityType::core",
+            "(uint8 field)",
+            "parameter shape compatibility is not established",
+        ),
+    ] {
         let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
         let declaration = base
             .namespace_projection()
@@ -25,11 +46,11 @@ fn unknown_builtin_applicability_cannot_remove_a_candidate_and_select_a_runner_u
         let receiver = binding.ordinary_value().unwrap();
         let pattern = world.value(receiver).unwrap().pattern;
         let lang_syntax::NormExpr::Closure(fallback) = support::initializer_from_source(
-            "let fallback = (self, t:type):meta -> let r:type => (\"must not run\") delete;",
+            "let fallback = (self, t:type):compile -> let r:type => (\"must not run\") delete;",
         ) else {
             panic!("fixture closure");
         };
-        let view = declared_policy_view(Stage::Meta, PolicyMode::Const);
+        let view = declared_policy_view(Stage::Compile, PolicyMode::Const);
         world
             .register_associated_call_entry(
                 pattern,
@@ -48,7 +69,7 @@ fn unknown_builtin_applicability_cannot_remove_a_candidate_and_select_a_runner_u
         assert_eq!(world.callable_entries_for_value(receiver).len(), 2);
         let before = format!("{world:?}");
         let site = extract_single_call_site(&support::initializer_from_source(&format!(
-            "let result = uint8 {target_path};"
+            "let result = {input} {target_path};"
         )))
         .unwrap();
         let error = invoke_resolved_binding_ordinary(
@@ -65,9 +86,7 @@ fn unknown_builtin_applicability_cannot_remove_a_candidate_and_select_a_runner_u
         else {
             panic!("unknown applicability must stop the family: {error:?}");
         };
-        assert!(diagnostic
-            .message
-            .contains("applicability relation consumer is not connected"));
+        assert!(diagnostic.message.contains(expected));
         assert_eq!(trace.c3_call_entries.len(), 2);
         assert!(trace.bp_prime.is_empty());
         assert!(trace.selected.is_none());
@@ -110,7 +129,7 @@ fn builtin_selected_result_preserves_call_entry_declared_policy() {
         installed.symbol,
         &site,
         &base.package_context(),
-        context,
+        context.clone(),
         Provenance::new("declared Policy invocation"),
     )
     .unwrap();
@@ -135,4 +154,39 @@ fn builtin_selected_result_preserves_call_entry_declared_policy() {
         panic!("terminal call entry");
     };
     assert_eq!(entry.complete_result_view, result);
+    let instance = outcome
+        .trace
+        .compile_instance
+        .expect("seal body has a compile instance");
+    let state = world.compile_instance(instance).unwrap();
+    assert_eq!(
+        state.root.parent_owner,
+        world.namespace_owner(base.package_root_node()).unwrap()
+    );
+    assert!(!state.evaluation_active());
+    let delivered = state
+        .delivered_result()
+        .expect("ordinary result was delivered");
+    assert_eq!(
+        delivered.complete_type,
+        outcome.complete_type.as_ref().map(|ty| ty.whole())
+    );
+    let repeated = invoke_resolved_binding_ordinary(
+        &mut world,
+        &[],
+        installed.symbol,
+        &site,
+        &base.package_context(),
+        context,
+        Provenance::new("same inputs under seal"),
+    )
+    .unwrap();
+    let lang_build::InvocationResult::SemanticResult {
+        value: lang_build::ProjectedInvocationOutcome::SingleMember(repeated),
+        ..
+    } = repeated
+    else {
+        panic!("repeated ordinary result");
+    };
+    assert_eq!(repeated.trace.compile_instance, Some(instance));
 }

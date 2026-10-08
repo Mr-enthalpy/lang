@@ -1,0 +1,197 @@
+NormProgram origin=Source@1:1[0..178]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..18]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..18]
+          deduce:
+            None
+          value_pattern:
+            Binder "a" origin=Source@1:5[4..5]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(PipelineDotLowering)@1:9[8..18]
+              source:
+                Product origin=Generated(PipelineDotLowering)@1:9[8..18]
+                  elements:
+                    ExprElem
+                      Name "e" origin=Source@1:9[8..9]
+                    Unit origin=Source@1:17[16..18]
+              target:
+                Nav origin=Generated(DotNameLowering)@1:9[8..18]
+                  components:
+                    Name "field" origin=Generated(DotNameLowering)@1:9[8..18]
+                    Name "adl" origin=Generated(DotNameLowering)@1:9[8..18]
+    Form Let
+      Decl Let origin=Source@2:1[20..41]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[24..41]
+          deduce:
+            None
+          value_pattern:
+            Binder "b" origin=Source@2:5[24..25]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(ProductMerge; source-product continuation)@2:14[33..41]
+              source:
+                Product origin=Derived(ProductMerge; merged source product with continuation product)@2:14[33..41]
+                  elements:
+                    ExprElem
+                      Name "e" origin=Source@2:9[28..29]
+                    Unit origin=Source@2:20[39..41]
+              target:
+                Nav origin=Generated(DotNameLowering)@2:14[33..39]
+                  components:
+                    Name "field" origin=Generated(DotNameLowering)@2:14[33..39]
+                    Name "adl" origin=Generated(DotNameLowering)@2:14[33..39]
+    Form Let
+      Decl Let origin=Source@3:1[43..64]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[47..64]
+          deduce:
+            None
+          value_pattern:
+            Binder "c" origin=Source@3:5[47..48]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(PipelineDotLowering)@3:9[51..64]
+              source:
+                Product origin=Generated(PipelineDotLowering)@3:9[51..64]
+                  elements:
+                    ExprElem
+                      Name "e" origin=Source@3:9[51..52]
+                    ExprElem
+                      Name "a" origin=Source@3:18[60..61]
+                    ExprElem
+                      Name "b" origin=Source@3:20[62..63]
+              target:
+                Nav origin=Generated(DotNameLowering)@3:9[51..64]
+                  components:
+                    Name "field" origin=Generated(DotNameLowering)@3:9[51..64]
+                    Name "adl" origin=Generated(DotNameLowering)@3:9[51..64]
+    Form Let
+      Decl Let origin=Source@4:1[66..90]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[70..90]
+          deduce:
+            None
+          value_pattern:
+            Binder "d" origin=Source@4:5[70..71]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(ProductMerge; source-product continuation)@4:14[79..90]
+              source:
+                Product origin=Derived(ProductMerge; merged source product with continuation product)@4:14[79..90]
+                  elements:
+                    ExprElem
+                      Name "e" origin=Source@4:9[74..75]
+                    ExprElem
+                      Name "a" origin=Source@4:21[86..87]
+                    ExprElem
+                      Name "b" origin=Source@4:23[88..89]
+              target:
+                Nav origin=Generated(DotNameLowering)@4:14[79..85]
+                  components:
+                    Name "field" origin=Generated(DotNameLowering)@4:14[79..85]
+                    Name "adl" origin=Generated(DotNameLowering)@4:14[79..85]
+    Form Let
+      Decl Let origin=Source@5:1[92..121]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[96..121]
+          deduce:
+            None
+          value_pattern:
+            Binder "e" origin=Source@5:5[96..97]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(PipelineDotLowering)@5:9[100..121]
+              source:
+                Product origin=Generated(PipelineDotLowering)@5:9[100..121]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@5:10[101..102]
+                    ExprElem
+                      Name "b" origin=Source@5:12[103..104]
+                    ExprElem
+                      Name "c" origin=Source@5:22[113..114]
+                    ExprElem
+                      Product origin=Source@5:24[115..120]
+                        elements:
+                          ExprElem
+                            Name "d" origin=Source@5:25[116..117]
+                          ExprElem
+                            Name "e" origin=Source@5:27[118..119]
+              target:
+                Nav origin=Generated(DotNameLowering)@5:9[100..121]
+                  components:
+                    Name "field" origin=Generated(DotNameLowering)@5:9[100..121]
+                    Name "adl" origin=Generated(DotNameLowering)@5:9[100..121]
+    Form Let
+      Decl Let origin=Source@6:1[123..155]
+        BindingSlot let=true origin=Generated(PatternNormalize)@6:5[127..155]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@6:5[127..128]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(ProductMerge; source-product continuation)@6:18[140..155]
+              source:
+                Product origin=Derived(ProductMerge; merged source product with continuation product)@6:18[140..155]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@6:10[132..133]
+                    ExprElem
+                      Name "b" origin=Source@6:12[134..135]
+                    ExprElem
+                      Name "c" origin=Source@6:25[147..148]
+                    ExprElem
+                      Product origin=Source@6:27[149..154]
+                        elements:
+                          ExprElem
+                            Name "d" origin=Source@6:28[150..151]
+                          ExprElem
+                            Name "e" origin=Source@6:30[152..153]
+              target:
+                Nav origin=Generated(DotNameLowering)@6:18[140..146]
+                  components:
+                    Name "field" origin=Generated(DotNameLowering)@6:18[140..146]
+                    Name "adl" origin=Generated(DotNameLowering)@6:18[140..146]
+    Form Let
+      Decl Let origin=Source@7:1[157..176]
+        BindingSlot let=true origin=Generated(PatternNormalize)@7:5[161..176]
+          deduce:
+            None
+          value_pattern:
+            Binder "g" origin=Source@7:5[161..162]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(MemberLowering)@7:9[165..176]
+              source:
+                Product origin=Source@7:9[165..170]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@7:10[166..167]
+                    ExprElem
+                      Name "b" origin=Source@7:12[168..169]
+              target:
+                Nav origin=Generated(DotNameLowering)@7:9[165..176]
+                  components:
+                    Name "field" origin=Generated(DotNameLowering)@7:9[165..176]
+                    Name "adl" origin=Generated(DotNameLowering)@7:9[165..176]

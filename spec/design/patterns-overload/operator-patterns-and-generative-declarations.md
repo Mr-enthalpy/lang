@@ -1,50 +1,25 @@
-# Operator Patterns and Generative Meta Declarations
+# Operator Patterns and Requested-Name Producers
 
 Status: canonical semantics; source consumers remain pending.
 
 ## 1. One declaration, two surface projections
 
 ```lang
-P let f = (self,args):meta => { B }
+P let f = (self,args):compile => { B }
 P let (self,args) f => { B }
 ```
 
-These are equal projections of the same meta declaration:
+These are equal surface projections of ordinary compile callable material:
 
-    MetaDecl<Policy, NameHead, SelfPattern, ArgPattern, Body>
+    CallableDeclaration<Policy, NameHead, SelfPattern, ArgPattern, Body>
     Norm(Form_call_value) = Norm(Form_pattern_name)
 
-Neither form is a higher-level language implemented by the other. MetaDecl is
-notation for common declaration material, not a new Object axis or a mandate
-to introduce semantic declarations in Raw AST. Source normalization preserves
-the syntax-directed material; resolution, Pattern solving and realization
-remain evaluator work. The callable-value form still exposes the ordinary
-callable-object self. This equality applies to the displayed meta declaration,
-not arbitrary lexical bindings of non-meta RHS values.
-
-The callable layer establishing this declaration accepts only an ordinary
-`=>` implementation and has no capture slot:
-
-```text
-MetaDecl(C) => Placement(C) = Ordinary
-MetaDecl(C) => CaptureClause(C) = absent
-NoMetaCaptureAxis:
-  MetaDecl(C) => no ExplicitClosureCapture(C)
-  MetaDecl(C) => no AutomaticClosureDependencyFromUnpassedOuterLocal(C)
-```
-
-A capture-bearing meta callable is invalid MetaDecl material; it is not first
-formed as a captured ordinary closure and then reinterpreted as meta. A
-no-`=>` body is not an in-place spelling of MetaDecl. The same rules apply to
-both surface projections, including generative names. They concern the current
-declaration's identity layer, not ordinary closures legally defined inside B.
-
-Unpassed caller/enclosing locals remain masked. Material that must affect an
-invocation enters its admitted In dependency closure; stable definition
-relations already fixed by the selected callable/parent owner and lawful
-meta-instance state remain available under the
-[meta owner's boundary](../meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity).
-MetaInstanceRootKey has no CapturedEnv coordinate.
+The callable-value form preserves ordinary self; the name form receives a
+requested NameValue. Source normalization preserves syntax without lookup or
+semantic declarations. Both use ordinary dependency formation and selected
+CompilePartner identity. Requested-name observations enter canonical inputs.
+The established callable may retain legally formed dependencies; invocation
+uses only the actual self-name and admitted dependency material.
 
 Ordinary P let lhs = rhs has extractive polarity: the known RHS is matched by
 R_Gamma(lhs,rhs,rho). Generative P let H => B has the direction:
@@ -84,8 +59,8 @@ dependency closure; it is no hidden capture. Concrete heads beat unconstrained
 heads only by ordinary specificity.
 
 General expression bodies retain the required `=>`: `P let H { B }` is not a
-generative MetaDecl form. Omitted extraction heads do not create a capture slot
-or permit automatic acquisition of an unpassed enclosing local.
+requested-name producer form. All dependencies obey ordinary formation and
+legality; omitted extraction heads create no implicit actual or authority.
 
 ```text
 let <a> (self, object:t, ...args) a = expression
@@ -101,15 +76,16 @@ one whole unpositioned extraction on an unordered layer, multiple aligned
 extractions on an ordered layer. Name observation, layer and payload remain
 distinct. Pack restrictions remain intact.
 
-An ordinary meta implementation still directly returns its own instance tau_M.
-Expression-body freedom does not permit arbitrary foreign direct result types;
-ordinary payloads and closure material enter through legal instance formation.
+A requested-name producer accepts any ordinary declared result: scalar,
+Product, callable/closure, existing type or NameExpr. NameProducingAction is
+independent of NameExprResult. The instance-open self-root reachability check
+belongs to ordinary result delivery and applies equally to all producers.
 
 ## 2. Grammar facts and ordinary operator dispatch
 
 Grammar fixes OpTok spelling, fixity, precedence and parse associativity.
 Contextual elaboration distinguishes RHS value expressions from LHS/Pattern
-interpretation. $ interprets its whole left operand as RHS before reinjection.
+interpretation. $ flips interpretation polarity: Interpret(e$,C)=Interpret(e,Flip(C)).
 Bare LHS names retain navigation inheritance. Semantic dispatch preserves:
 
 ```text
@@ -120,7 +96,7 @@ explicit path        -> the written ordinary path
 ```
 
 Paths such as op::type remain ordinary library paths, not the grammar's
-hardwired target. Source cannot create tokens or change parsing by meta
+hardwired target. Source cannot create tokens or change parsing by compile
 evaluation. OperatorUse and OperatorNameValue are distinct roles: the op
 argument of operator[op] reads the ordinary operator name and does not
 recursively invoke operator[op]. Ordinary lookup, type, policy and lifetime
@@ -132,7 +108,7 @@ checks still apply; this rule is not a raw token bypass.
 OG_s = s |> OperatorOverloadGroup
 ```
 
-This ordinary string-to-type meta family accepts ASCII spellings in the
+This ordinary string-to-type compile family accepts ASCII spellings in the
 grammar's valid operator vocabulary. OG_s retains extractable spelling s.
 A formal a:b OperatorOverloadGroup uses an explicit HoleBinder for b; it
 extracts spelling independently of the ordinary value binder a.
@@ -173,7 +149,7 @@ and operator-name binding remain distinct syntax roles.
 
 Same-slot ordinary combination retains OG_s and its spelling. It does not
 implicitly combine different spellings, infer a selector from an arbitrary
-group, or recover semantic coordinates from String. The [Path owner](../symbol-world/structured-path-algebra-and-pattern-splice.md)
+group, or recover semantic coordinates from String. The [Path owner](../symbol-world/structured-path-algebra-and-interpretation-polarity.md)
 separately permits single-name structural construction and defines external Read.
 
 ## 3. Three projections of one application structure
@@ -228,7 +204,7 @@ window; it does not prohibit later ordinary generated Val2 realization. The
 defines current observations, retained snapshots and the unchanged no-reopen
 boundary. Frozen generative matching directly realizes an ordinary occurrence;
 it is not explicit NameExpr formation followed by ref acquisition and write.
-It implies no OpenHere, mut type ref or meta type ref, and cannot mutate a
+It implies no OpenHere, mut type ref or open type ref, and cannot mutate a
 registered witness. No separate closed-generative authority is introduced.
 
 This restriction belongs to the occurrence, not permanently to the value. The
@@ -237,13 +213,13 @@ non-generative declaration. Neither callspace registration nor Pattern role
 registration may depend on which generated names were queried later.
 
 The [name owner](../symbol-world/names-and-overload-groups.md) separates name
-coordinates, realization, Places and residents; the [meta owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+coordinates, realization, Places and residents; the [compile owner](../static-evaluation/compile-instance-invocation-and-result-delivery.md)
 owns invocation identity and result formation. Generative notation grants no
 extra construction, write or lifetime authority.
 
-## 5. Laws are ordinary meta results, with separate consumers
+## 5. Laws are ordinary compile results, with separate consumers
 
-Expressions such as op |> associative and op |> commutative are ordinary meta
+Expressions such as op |> associative and op |> commutative are ordinary compile
 invocations. Trait-like and auto-trait-like patterns use ordinary generative
 rules and overload specificity; there is no TraitObject, TraitAxis or automatic
 trait ontology. A fixed compiler consumer does not change the result's ontology.
@@ -256,13 +232,13 @@ These are distinct judgments. If Pattern semantics requires commutativity, it
 must already be present in the E interpretation of that operator relation.
 Optimizer queries cannot decide later whether a Pattern was unordered.
 O may rewrite only after Facts_E proves equivalence, with affected projections
-revalidated under the [ordinary E/O boundary](../meta-invocation/evaluation-residual-and-optimization.md).
+revalidated under the [ordinary E/O boundary](../static-evaluation/evaluation-residual-and-optimization.md).
 
 Policy + and ordinary Pattern deduction consume these same registered relations,
-HoleBinderId and require constraints. The [policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md)
+HoleBinderId and require constraints. The [policy owner](../symbol-world/policy-and-static-flow-projection.md)
 owns coordinate legality, omission/inheritance and the joint invocation relation.
 
-The ordinary law query's default state follows the meta owner's retained
+The ordinary law query's default state follows the compile owner's retained
 instance/member Place protocol. Customization requires current OpenHere and
 Writable; consumers observe the current committed payload, not a copied
 outer binding or an optimizer-private fact. Later writes do not change a
@@ -271,49 +247,26 @@ previous committed semantic decision.
 
 ## 6. Ordinary dot-name generation and forwarding
 
-### 6.1 Default generator skeleton
-
-The following name/call skeleton belongs in the adl namespace. Shared Policy
-holes must use the existing legal head forms; omission below is not a wildcard
-over every coordinate.
+### 6.1 Generative overload family
 
 ```text
 adl/
-    let <a> a =>
-        <t:type>(self, object:t, ...args) => {
-            (object, args)
-                |> ((a#)[0])$::t
-        };
+    let <field> (self, object:t, ...args) field
+        => ((object, args) |> ((field#)[0])$::t);
+    let <field> (self, t:type) field
+        => ((field#)[0])$::t;
 ```
 
-Its interpretation uses the established relations:
+The first candidate performs an ordinary receiver call. The second progresses
+a type-valued receiver's NameExpr path. Both receive the full requested
+NameValue; # projects structure, [0] selects the relative single-name segment,
+and $ flips polarity under the Path consumer. Ordinary applicability and
+specificity select; dot syntax provides no priority or receiver adaptation.
 
 ```text
-requested name field::adl
--> name-head extraction binds its full NameValue as a
--> a# projects its complete path_pattern
--> [0] selects relative single-name path_pattern
--> $ injects Path material
--> navigation under the explicit t
--> ordinary selected call
--> direct terminal result delivery
+T.field =_Path field::T
+foo.bar.baz =_Path baz::bar::foo
 ```
-
-For a field request:
-
-```text
-a = NameValue(field::adl)
-a# = PathPattern(field::adl)
-Interpret_Path(a#) =_Path a
-PathPatternProjection(Interpret_Path(a#)) = a#
-(a#)[0] = PathPattern(field::)
-((a#)[0])$::t =_Path field::t
-```
-
-The [Path index](../symbol-world/structured-path-algebra-and-pattern-splice.md#26-segment-observation-and-indexing)
-owns the relative single-segment result. It discards the original adl endpoint
-rather than copying it onto field::. Ordinary name-to-string projection remains
-available for text observation, but is not this Path truncation operation.
 
 ### 6.2 Canonical lowering
 
@@ -345,9 +298,9 @@ Each request still obeys ordinary name, input, selection and lifetime rules.
 A current namespace observation remains finite; frozen generative rules can
 answer later requests without revising a retained snapshot.
 
-When a meta instance supports generation, its direct result and ordinary
-payloads obey the existing instance model. ADL does not broaden the direct
-meta result class.
+A generated ordinary resident retains its own result identity. Name production
+and computed NameExpr results obey independent ordinary relations. Instance
+formation precedes the body, independent of result class or horizon.
 
 ### 6.4 Transparent Policy and self
 
@@ -374,6 +327,6 @@ the host Pattern's construction/extraction relation:
 OrdinaryADLCall != RegisteredStructuralExtraction
 ```
 
-Replacing compiler-private closure sugar preserves this semantic boundary.
-.field is neither a NameExpr nor a private field Place projection. Its selected
-ordinary callable may have structural-role evidence, but dot syntax supplies none.
+A selected type-path candidate produces a NameExpr; a receiver candidate
+delivers its ordinary result. Dot syntax alone supplies no structural role
+or private Place projection.

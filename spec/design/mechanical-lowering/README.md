@@ -32,7 +32,7 @@ pattern space. They produce a bool-protected control result:
 
 The bool construction supplies the ordinary condition Pattern. Residual
 control material can remain inside its chain; a separate CanEscape consumer
-checks forbidden boundary escape using ordinary meta facts. Pattern matching reads the bool
+checks forbidden boundary escape using ordinary compile facts. Pattern matching reads the bool
 symbol's Pattern layer directly:
 
 ```text
@@ -41,10 +41,10 @@ cond |> if { ... } |> else { ... }
 
 Explicit `cond?` is also valid when one top Pattern peel is desired, but `?` is
 not required to begin extraction and is not a special conditional entrance.
-Older examples in this block that spell `?` use that optional explicit view.
+Examples that spell `?` use that optional explicit view.
 
-## For compile/meta construction work, read
-`spec/contracts/meta-construction-boundary.md` first. Its ordinary instance boundary applies here: type/meta/Pattern material has
+## Compile construction boundary
+`spec/contracts/compile-construction-boundary.md` first. Its ordinary instance boundary applies here: type/compile/Pattern material has
 ordinary pass and lifecycle obligations. Stage and shape do not exempt it.
 The lifetime owner supplies Killable, fixed MoveEffect and frontier Movable.
 
@@ -69,4 +69,4 @@ Read in order: argument passing, then return normalization, then call modes.
 
 Consumes `RawArgShape` / `ParameterShape` from `patterns-overload/`, the layered
 symbol policy from `symbol-world/`, orthogonal error-policy mapping from
-`policy-capability/`, and the unified invocation from `meta-invocation/`.
+`policy-capability/`, and the unified invocation from `static-evaluation/`.

@@ -61,6 +61,7 @@ pub fn extract_single_call_site(expr: &NormExpr) -> Result<NormalizedCallSite, D
 
 fn expr_kind_name(expr: &NormExpr) -> &'static str {
     match expr {
+        NormExpr::InterpretationFlip { .. } => "InterpretationFlip",
         NormExpr::PolicyLet { .. } => "PolicyLet",
         NormExpr::Call { .. } => "Call",
         NormExpr::Name { .. } => "Name",

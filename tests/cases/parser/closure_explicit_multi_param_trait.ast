@@ -44,7 +44,7 @@ Program
                   call_policy:
                     PolicySpec
                       PolicyConjunction
-                          PolicyAtom Name "meta"
+                          PolicyAtom Name "compile"
                   returns:
                     ReturnClause
                       slot:

@@ -1,0 +1,13 @@
+let f =
+  (self, t: type): compile -> r: symbol =>
+{
+  let r = ((t inner) r)$ |> struct;
+  r;
+};
+
+let g =
+  (self, t: type): compile -> r: symbol =>
+{
+  let r = ((t inner) r)$ |> struct;
+  r;
+};

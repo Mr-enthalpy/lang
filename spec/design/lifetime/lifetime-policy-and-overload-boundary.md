@@ -5,6 +5,9 @@ lifetime/ordinary-overload boundary. `LifecycleState` stores LifeName, Region,
 Color and lifecycle observations; it checks Pre and consumes the shared
 `SemanticContinuation` transaction's committed-action witness for Post.
 Linearization and Pre boundaries of already fixed cleanup points are implemented.
+The common transaction checks earlier cleanup for every action through a
+continuation-relative observation relation. Outstanding or unavailable facts
+block commit even when the action has no lifecycle projection.
 The substrate fixes continuation-relative cleanup prefixes, leaving future
 generations' suffix placements available. Same-cut Use/Preserve cannot occupy
 their own half-open endpoint; scheduled Drop and boundary Kill follow fixed order.
@@ -16,7 +19,7 @@ This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md);
 construction authority (`OpenHere_Σ(value)`) is owned by
-[`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
+[`../symbol-world/structural-type-formation-and-composition.md`](../symbol-world/structural-type-formation-and-composition.md).
 
 ## 1. `@` is continuation-relative name observation
 
@@ -54,8 +57,7 @@ place (§2). A freshly computed temporary may receive a generated semantic
 LifeName even when it has no writable or borrowable Place, so
 `NoCarrierPlace(actual)` is not a general failure condition for `@`.
 
-`@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
-policy is not a fifth stage in that dimension. `@` is evaluated at a stage; it
+`@` is not a Stage atom. `@` is evaluated at a stage; it
 does not name one.
 
 ## 2. Privileged place acquisition belongs to `ref` and `share`
@@ -127,8 +129,8 @@ type-forming member makes `type |> ref` / `type |> share` a well-formed
 ordinary type construction through the ordinary type-as-callee / overload
 machinery; no `RefType` primitive is introduced:
 
-The `ref`/`share` family is not a single meta stage: the **type-forming**
-member is a **meta** member (`T : U_n ⊢ T |> ref = RefTy(T)`, producing the
+The `ref`/`share` family is not a single compile stage: the **type-forming**
+member is a **compile** member (`T : U_n ⊢ T |> ref = RefTy(T)`, producing the
 borrow TypeValue), while the **borrow-forming** member inside the formed
 borrow type's callspace has ordinary concrete-stage builtin/default realizations and
 is the only family member that may obtain `PrivilegedActualPlace`. The
@@ -139,12 +141,12 @@ live inside each formed borrow type's callspace (canonical owner
 ```lang
 let ref =
     <n>(self, t: n type):
-    meta
+    compile
     => default;
 
 let share =
     <n>(self, t: n type):
-    meta
+    compile
     => default;
 ```
 
@@ -334,7 +336,7 @@ admitted Move and ordinary clone realization as another value.
 
 #### 2.1.1 One semantic continuation
 
-All compile, runtime, meta, and lifetime activity is projected from one
+All compile, seal, runtime and lifetime activity is projected from one
 semantic continuation:
 
 ```text
@@ -343,7 +345,7 @@ SemanticContinuation K
 pi_runtime(K)
 pi_compile(K)
 pi_life(K)
-pi_meta?(K)
+pi_seal(K)
 
 Life : LifeName × Pos(K) -> LifetimeValue
 ```
@@ -540,7 +542,7 @@ Movable_K(n,m)                 -- legality at this action's frontier
 ```
 
 These are independent judgments. Killable is not a Type trait; equal type
-values, ZST layout, compile knowledge and meta provenance do not decide it.
+values, ZST layout, compile knowledge and compile provenance do not decide it.
 Movable requires the ordinary selected action's access, borrow, capability,
 origin and lifetime Pre. Movable_K(n,m) != Killable_K(n); Movable does not
 imply Kill, and Move does not definitionally mean death. Nonkillability proves
@@ -563,17 +565,17 @@ invalidate an established legal language fact, that Kill continuation is
 illegal and must be rejected at Pre, before any mutation.
 
 The ordinary realization is killing; Preserve is confined to that proved
-exception. A stable meta root or global Val2 resident cannot be killed merely
+exception. A stable compile root or global Val2 resident cannot be killed merely
 by local transport of its observation. Moving a local instance into a legal
 destination starts the destination generation; it never extends the old local
 name's lifetime into a global one. Failed Pre cannot switch the fixed effect.
 
-Compile, runtime, meta, type, Pattern and borrow instances all participate.
-An ordinary non-meta type instance in the established domain follows its existing global-survival rule; this is not generalized to every dependency-bearing closure-generated tau (§8).
-a meta-local type temporary can end. A stable meta result root, a local copy,
+Compile, runtime, compile, type, Pattern and borrow instances all participate.
+An ordinary ordinary type instance in the established domain follows its existing global-survival rule; this is not generalized to every dependency-bearing closure-generated tau (§8).
+a compile-local type temporary can end. A stable compile result root, a local copy,
 and a globally retained equal resident remain different lifecycle subjects.
 Construction OpenHere neither extends a lifetime nor makes a subject killable.
-The existing stable-instance rules include non-meta stable type values, meta
+The existing stable-instance rules include ordinary stable type values, compile
 type values outside the current OpenHere domain, still-accessible Val2
 residents of closed type structures and other stable/global residents.
 Their local transport cannot kill those stable subjects; legal movement uses
@@ -749,15 +751,15 @@ The destinations subject to this check are the ones that can outlive the origin:
 storing into a longer-lived place, returning from a callable, capturing into a
 materialized callable entity, and installing into global namespace material.
 
-Meta invocation-generated names obey this same check. Stable invocation identity
+Compile invocation-generated names obey this same check. Stable invocation identity
 and cache retention do not extend result residency or borrowed-target regions.
 Admitted open input dependencies may bound an output's opening qualification;
-that meet is not a replacement for ValidRegion. Ordinary meta directly returns
+that meet is not a replacement for ValidRegion. Ordinary compile directly returns
 its instance type; a borrow retained in its Val2 must be valid in the result's
 region. A borrow of an untransferred expiring local is rejected.
 Result completion transfers only owned material and never promotes targets along
 ref/share/rebind edges. See the
-[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md).
+[invocation owner](../static-evaluation/compile-instance-invocation-and-result-delivery.md).
 
 ### 3.1 `ValidRegion` is a borrow-lifetime judgment
 
@@ -779,9 +781,9 @@ The two views differ in write capability, not in whether their pointee is Open:
 
 Lifetime validity does not establish write permission after Close. Initialized
 type refs preserve their original borrowed generation/opening subject; direct
-mut and explicit meta-to-mut writes require current OpenHere as well as
+mut and explicit open-to-mut writes require current OpenHere as well as
 Writable. Close defeats both routes and saved-ref writes. Neither view makes
-a closed value admissible as extend's old value. See type/ref owner §5.2.2.
+a closed value admissible as the left input to `*`. See type/ref owner §5.2.2.
 
 ### 3.2 Borrow validity never discharges construction openness
 
@@ -800,9 +802,9 @@ establishes it. The reentry criteria are canonical in
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §2.1.1.
 
-A consumer that performs `extend` must query `OpenHere_Σ(old_value)` even when the
-value was read through `type ref`. The place-level `inject` wrapper in
-[`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md)
+A consumer that performs `*` must query `OpenHere_Σ(old_value)` even when the
+value was read through `type ref`. The place-level `*=` wrapper in
+[`../symbol-world/structural-type-formation-and-composition.md`](../symbol-world/structural-type-formation-and-composition.md)
 §8 performs two checks independently:
 
 ```text
@@ -811,7 +813,7 @@ Writable_Γ(Target(r))
 ```
 
 Returning or storing `type ref` asks only the ordinary escape question of this
-section. A later `inject` may fail because the then-current value's open
+section. A later `*=` may fail because the then-current value's open
 window has closed (`WindowLive_Σ(v) = false`) even
 though the reference remains lifetime-valid. Weakening to `share` surrenders
 write capability, but does not alter the value's anchor or window state and never extends the
@@ -905,7 +907,7 @@ ordinary resolver.
 Related canonical contracts:
 
 - [`../patterns-overload/overload-resolution-design.md`](../patterns-overload/overload-resolution-design.md)
-- [`../symbol-world/symbol-policy-and-compile-flow-projection.md`](../symbol-world/symbol-policy-and-compile-flow-projection.md)
+- [`../symbol-world/policy-and-static-flow-projection.md`](../symbol-world/policy-and-static-flow-projection.md)
 - [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 
 
@@ -915,7 +917,7 @@ Machine and lifecycle residue are projections of one continuation. After an
 optimizer changes that continuation, old lifecycle facts can guide candidate
 formation but cannot be copied to new positions. All affected projections
 repeat their Pre/commit/Post validation. See
-[evaluation and optimization](../meta-invocation/evaluation-residual-and-optimization.md).
+[evaluation and optimization](../static-evaluation/evaluation-residual-and-optimization.md).
 
 
 ## 8. Closure dependency lifetime refinement handoff
@@ -970,9 +972,9 @@ automatic dependency formation supplies no independent operation prohibition.
 TypeRole, ZST layout, Core equality, cache reuse and the absence of machine
 storage prove none of these capabilities.
 
-### 8.3 Established non-meta type survival
+### 8.3 Established ordinary type survival
 
-Existing global-survival rules for non-meta types remain in their established
+Existing global-survival rules for ordinary types remain in their established
 domain. Universal closure-to-tau formation must not mechanically extend those
 rules into a new theorem globalizing closure dependencies.
 

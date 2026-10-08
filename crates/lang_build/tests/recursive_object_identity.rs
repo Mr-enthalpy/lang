@@ -34,19 +34,19 @@
 //! ```
 //!
 //! Which binding a path denotes is NOT decided by whether the result is later
-//! used as a call target, a type, a value, or an injection target; only the
+//! used as a call target, a type, a value, or an member-write target; only the
 //! final facet projection differs.
 
 mod support;
 
 use lang_build::{
-    classify_type_arguments_env_with_report, compute_meta_instance_material_key,
-    extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr,
+    classify_type_arguments_env_with_report, compute_compile_instance_material_key,
+    extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr, CompilePartner,
     DeclaredResultClass, NamespaceNodeId, NonValueArgKind, ObjectPlaceId, ObservationHorizon,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId, PolicyMode, PolicyPair,
     ProductAtom, Provenance, RawArgShape, RawArgValueClass, ResolverContext,
-    SelectedCallableIdentity, SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId,
-    SemanticWorld, Stage, SymbolId, TypeResolutionEnv, TypeValueId,
+    SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId, SemanticWorld, Stage, SymbolId,
+    TypeResolutionEnv, TypeValueId,
 };
 use support::initializer_from_source;
 
@@ -64,7 +64,7 @@ struct Carriers {
     u: SemanticSymbolIdentity,
     /// `let V: type = base;` — likewise.
     v: SemanticSymbolIdentity,
-    /// A second type, used as the injected Val2 member.
+    /// A second type, used as the associated Val2 member.
     member: SemanticSymbolIdentity,
     /// A third type, used to make one carrier's Val2 differ by content.
     other: SemanticSymbolIdentity,
@@ -72,7 +72,7 @@ struct Carriers {
     type_value: TypeValueId,
 }
 
-/// Three carriers of one TypeValue plus two member types to inject.
+/// Three carriers of one TypeValue plus two member member types to associate.
 fn carriers() -> Carriers {
     let mut world = SemanticWorld::new("unit");
     world.bind_package_namespace(NamespaceNodeId(0));
@@ -86,7 +86,7 @@ fn carriers() -> Carriers {
                 support::numbered_type_lookup_fixture("recursive-object", represented),
                 support::numbered_type_lookup_fixture("recursive-object", 0),
                 None,
-                stage_pair(Stage::Meta),
+                stage_pair(Stage::Compile),
                 provenance.clone(),
             )
             .expect("type-rank symbol registers in the unit world")
@@ -132,9 +132,14 @@ fn place_of(world: &SemanticWorld, symbol: SemanticSymbolIdentity) -> ObjectPlac
         .expect("a pure P is a real object with its own place")
 }
 
-/// One type argument as the call pipeline would hand it over: the resolved
-/// TypeValue plus the resolving carrier's own observation place.
-fn type_arg(type_value: TypeValueId, place: Option<ObjectPlaceId>) -> (RawArgShape, ProductAtom) {
+/// Explicitly observe a current complete snapshot for this substrate fixture,
+/// then pass it across the same argument boundary as a completed type read.
+fn type_arg(
+    world: &mut SemanticWorld,
+    type_value: TypeValueId,
+    place: Option<ObjectPlaceId>,
+) -> Result<(RawArgShape, ProductAtom), lang_build::Diagnostic> {
+    let complete = world.observe_complete_type(type_value, place)?;
     let atom = ProductAtom::Unsupported {
         summary: "type argument under test".to_string(),
         provenance: Provenance::new("recursive type identity"),
@@ -145,9 +150,9 @@ fn type_arg(type_value: TypeValueId, place: Option<ObjectPlaceId>) -> (RawArgSha
         None,
         None,
         place,
-        None,
+        Some(complete.whole()),
     );
-    (raw, atom)
+    Ok((raw, atom))
 }
 
 /// `Norm_type` of the pure type Object observed from `place`.
@@ -165,7 +170,7 @@ fn try_type_addr(
     type_value: TypeValueId,
     place: Option<ObjectPlaceId>,
 ) -> Result<CanonicalValueAddr, lang_build::Diagnostic> {
-    let (raw, atom) = type_arg(type_value, place);
+    let (raw, atom) = type_arg(world, type_value, place)?;
     world.canonical_argument_address(&raw, &atom)
 }
 
@@ -213,7 +218,7 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
     // `let f::T = member_type` — T's observed Val2 now differs.
     world
         .associate_existing_symbol_in_place(t_place, "f", member)
-        .expect("the injection records a Val2 name on T's own object");
+        .expect("the member write records a Val2 name on T's own object");
     let t_with_f = type_addr(&mut world, type_value, Some(t_place));
     assert_ne!(
         t_with_f, t_addr,
@@ -222,13 +227,13 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
     assert_eq!(
         type_addr(&mut world, type_value, Some(u_place)),
         u_addr,
-        "U's own object never saw the injection"
+        "U's own object never saw the member write"
     );
 
     // `let f::U = other_type` — same NAME, different member content.
     world
         .associate_existing_symbol_in_place(u_place, "f", other)
-        .expect("the injection records a Val2 name on U's own object");
+        .expect("the member write records a Val2 name on U's own object");
     assert_ne!(
         type_addr(&mut world, type_value, Some(u_place)),
         t_with_f,
@@ -239,7 +244,7 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
     // the normal forms collapse back onto one address.
     world
         .associate_existing_symbol_in_place(v_place, "f", member)
-        .expect("the injection records a Val2 name on V's own object");
+        .expect("the member write records a Val2 name on V's own object");
     assert_eq!(
         type_addr(&mut world, type_value, Some(v_place)),
         t_with_f,
@@ -306,6 +311,7 @@ fn successor_vtau_does_not_redefine_object_val2() {
         .observe_complete_type(type_value, Some(t_place))
         .expect("initial complete tau observes")
         .whole();
+    let (mut old_input, old_atom) = type_arg(&mut world, type_value, Some(t_place)).unwrap();
     let closure_expr = initializer_from_source("let f = (self): compile -> let r => { self; };");
     let lang_syntax::NormExpr::Closure(closure) = closure_expr else {
         panic!("closure");
@@ -339,6 +345,36 @@ fn successor_vtau_does_not_redefine_object_val2() {
         tau_before, tau_after,
         "V_tau changed the whole tau snapshot"
     );
+    let (mut new_input, new_atom) = type_arg(&mut world, type_value, Some(t_place)).unwrap();
+    assert_eq!(
+        world
+            .canonical_argument_address(&old_input, &old_atom)
+            .unwrap(),
+        tau_before
+    );
+    assert_eq!(
+        world
+            .canonical_argument_address(&new_input, &new_atom)
+            .unwrap(),
+        tau_after
+    );
+    world
+        .attach_canonical_type_observations(
+            std::slice::from_mut(&mut old_input),
+            std::slice::from_ref(&old_atom),
+        )
+        .unwrap();
+    world
+        .attach_canonical_type_observations(
+            std::slice::from_mut(&mut new_input),
+            std::slice::from_ref(&new_atom),
+        )
+        .unwrap();
+    assert_eq!(
+        old_input.known_type_observation,
+        new_input.known_type_observation
+    );
+    assert_eq!(old_input.known_type_observation, Some(object_before));
     assert_eq!(
         object_before,
         world
@@ -348,18 +384,136 @@ fn successor_vtau_does_not_redefine_object_val2() {
     );
 }
 
-/// One open pure type Object observed BEFORE and AFTER a Val2 injection produces
-/// two normal forms and therefore two meta instance keys.
+#[test]
+fn held_type_input_projects_its_saved_core_after_current_carrier_changes() {
+    let Carriers {
+        mut world,
+        t,
+        member,
+        type_value,
+        ..
+    } = carriers();
+    let place = place_of(&world, t);
+    let (mut raw, atom) = type_arg(&mut world, type_value, Some(place)).unwrap();
+    let whole = raw.known_complete_type_observation.unwrap();
+    let saved_core = world
+        .complete_type_by_whole_observation(whole)
+        .unwrap()
+        .core();
+    world
+        .associate_existing_symbol_in_place(place, "later", member)
+        .unwrap();
+    let current = world
+        .observe_complete_type(type_value, Some(place))
+        .unwrap();
+    assert_ne!(current.core(), saved_core);
+    assert_ne!(current.whole(), whole);
+    let before = format!("{world:?}");
+    world
+        .attach_canonical_type_observations(
+            std::slice::from_mut(&mut raw),
+            std::slice::from_ref(&atom),
+        )
+        .unwrap();
+    assert_eq!(raw.known_type_observation, Some(saved_core));
+    assert_eq!(
+        world.canonical_argument_address(&raw, &atom).unwrap(),
+        whole
+    );
+    assert_eq!(format!("{world:?}"), before);
+}
+
+#[test]
+fn missing_unknown_or_mismatched_type_snapshots_cannot_form_input_observations() {
+    let Carriers {
+        mut world,
+        t,
+        member,
+        type_value,
+        ..
+    } = carriers();
+    let place = place_of(&world, t);
+    let (valid, atom) = type_arg(&mut world, type_value, Some(place)).unwrap();
+    let other_type = world
+        .type_for_pattern(world.symbol(member).unwrap().pure_p_pattern().unwrap())
+        .unwrap();
+    let cases = [
+        RawArgShape {
+            known_complete_type_observation: None,
+            ..valid.clone()
+        },
+        RawArgShape {
+            known_complete_type_observation: Some(CanonicalValueAddr(u64::MAX)),
+            ..valid.clone()
+        },
+        RawArgShape {
+            known_first_order_type_value: Some(other_type),
+            ..valid.clone()
+        },
+    ];
+    let before_world = format!("{world:?}");
+    for invalid in cases {
+        let mut inputs = vec![
+            valid.clone(),
+            RawArgShape {
+                index: 1,
+                ..invalid.clone()
+            },
+        ];
+        let before_inputs = inputs.clone();
+        assert!(world.canonical_argument_address(&invalid, &atom).is_err());
+        assert!(world
+            .attach_canonical_type_observations(&mut inputs, &[atom.clone(), atom.clone()])
+            .is_err());
+        assert_eq!(
+            inputs, before_inputs,
+            "a later unavailable observation does not partially update earlier input material"
+        );
+        assert_eq!(format!("{world:?}"), before_world);
+    }
+}
+
+#[test]
+fn invocation_key_rejects_missing_extra_and_mispositioned_argument_material() {
+    let Carriers {
+        mut world,
+        t,
+        type_value,
+        ..
+    } = carriers();
+    let place = place_of(&world, t);
+    let (raw, atom) = type_arg(&mut world, type_value, Some(place)).unwrap();
+    let cases = [
+        (vec![raw.clone()], vec![]),
+        (vec![], vec![atom.clone()]),
+        (vec![RawArgShape { index: 1, ..raw }], vec![atom]),
+    ];
+    let before = format!("{world:?}");
+    for (mut inputs, atoms) in cases {
+        let before_inputs = inputs.clone();
+        assert!(world
+            .canonical_arguments_product_address(&inputs, &atoms)
+            .is_err());
+        assert!(world
+            .attach_canonical_type_observations(&mut inputs, &atoms)
+            .is_err());
+        assert_eq!(inputs, before_inputs);
+        assert_eq!(format!("{world:?}"), before);
+    }
+}
+
+/// One open pure type Object observed BEFORE and AFTER a Val2 member write produces
+/// two normal forms and therefore two compile instance keys.
 ///
 /// ```text
-/// t_1 = ⟨P_t, {f}⟩         MetaKey(meta_fn, t_1)
-/// t_2 = ⟨P_t, {f, g}⟩      MetaKey(meta_fn, t_2)   ≠
+/// t_1 = ⟨P_t, {f}⟩         CompileInstanceKey(compile_partner, t_1)
+/// t_2 = ⟨P_t, {f, g}⟩      CompileInstanceKey(compile_partner, t_2)   ≠
 /// ```
 ///
 /// The observation coordinate is unchanged across both observations, so the
 /// only thing that can separate the keys is the recursive Val2 content.
 #[test]
-fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key() {
+fn open_type_projection_observed_before_and_after_member_write_changes_its_compile_key() {
     let Carriers {
         mut world,
         t,
@@ -369,21 +523,21 @@ fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key
         ..
     } = carriers();
     let t_place = place_of(&world, t);
-    let meta_fn = SelectedCallableIdentity {
+    let compile_partner = CompilePartner {
         selected_function_value: SemanticValueId(7),
         selected_call_entry: SemanticValueId(70),
     };
-    let provenance = Provenance::new("open construction meta key");
+    let provenance = Provenance::new("open construction compile key");
 
     let key_of = |world: &mut SemanticWorld| {
-        let (raw, atom) = type_arg(type_value, Some(t_place));
+        let (raw, atom) = type_arg(world, type_value, Some(t_place)).unwrap();
         let args = world
             .canonical_arguments_product_address(&[raw], &[atom])
             .expect("acyclic Val2 normalizes");
-        compute_meta_instance_material_key(meta_fn, args, provenance.clone())
+        compute_compile_instance_material_key(compile_partner, args, provenance.clone())
     };
 
-    // let f::t = X;  let A = t |> meta_fn;
+    // let f::t = X;  let A = t |> compile_partner;
     world
         .associate_existing_symbol_in_place(t_place, "f", member)
         .expect("`let f::t = X`");
@@ -398,7 +552,7 @@ fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key
     );
     assert_eq!(key_of(&mut world), first_key);
 
-    // let g::t = Y;  let B = t |> meta_fn;  — SAME callable, so only Val2
+    // let g::t = Y;  let B = t |> compile_partner;  — SAME callable, so only Val2
     // can separate the keys.
     world
         .associate_existing_symbol_in_place(t_place, "g", other)
@@ -411,7 +565,7 @@ fn open_type_projection_observed_before_and_after_injection_changes_its_meta_key
     assert_ne!(
         first_key,
         key_of(&mut world),
-        "MetaKey(meta_fn, t_1) != MetaKey(meta_fn, t_2)"
+        "CompileInstanceKey(compile_partner, t_1) != CompileInstanceKey(compile_partner, t_2)"
     );
 }
 
@@ -435,11 +589,11 @@ fn unit_is_terminal_leaf() {
         &closure,
         None,
         lang_build::PolicyView {
-            pair: stage_pair(Stage::Meta),
+            pair: stage_pair(Stage::Compile),
             mode: PolicyMode::Const,
         },
         lang_build::PolicyView {
-            pair: stage_pair(Stage::Meta),
+            pair: stage_pair(Stage::Compile),
             mode: PolicyMode::Const,
         },
         None,
@@ -596,10 +750,10 @@ fn shared_acyclic_subtree_is_allowed() {
 /// `f::T` denotes ONE terminal Symbol, and every use context only projects a
 /// different facet of it afterwards.
 ///
-/// Covered contexts: call target / injection RHS (`(…) |> f::T`,
+/// Covered contexts: call target / associated-member RHS (`(…) |> f::T`,
 /// `let g::U = f::T`), extraction completion (`g::f::T`), the type context
-/// (`let A: type = f::T`), and the meta-argument context
-/// (`let B = (f::T) meta_fn`) — where the classified argument must also
+/// (`let A: type = f::T`), and the compile-argument context
+/// (`let B = (f::T) compile_partner`) — where the classified argument must also
 /// normalize through the terminal Symbol's OWN place, tying this back to
 /// `Norm_type`.
 #[test]
@@ -649,11 +803,11 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
         "the host layer is T's pure-P Object"
     );
 
-    // Call target and injection RHS: `(…) |> f::T`, `let g::U = f::T`.
+    // Call target and associated-member RHS: `(…) |> f::T`, `let g::U = f::T`.
     assert_eq!(
         world
             .resolve_symbol_path(&f_t, NamespaceNodeId(0), &[], &[])
-            .expect("call/injection path resolution"),
+            .expect("call/member-write path resolution"),
         member,
     );
     // Extraction completion: `g::f::T` resolves its `f::T` prefix the same way.
@@ -675,8 +829,8 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
         "the type facet is observed from the terminal Symbol's own object"
     );
 
-    // Meta-argument context: `let B = (f::T) meta_fn`.
-    let initializer = initializer_from_source("let B = (f::T) meta_fn;");
+    // Compile-input context: `let B = (f::T) compile_partner`.
+    let initializer = initializer_from_source("let B = (f::T) compile_partner;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call");
     let shape = call_site.to_arg_product_shape();
     let report =
@@ -702,7 +856,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
     assert_eq!(
         classified.known_type_carrier_place,
         Some(member_place),
-        "the meta-argument context carries the terminal Symbol's own place"
+        "the compile-argument context carries the terminal Symbol's own place"
     );
     let atom = report
         .classified_shape
@@ -749,8 +903,8 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
 /// ```
 ///
 /// `g::f::T` navigates `[T, f]` as its host chain with `g` as the terminal
-/// Symbol.  A `meta`-only outer host `T` hides the whole call at
-/// `SealStatic`, even though the middle host `f` and the terminal `g` are
+/// Symbol.  A `seal`-only outer host `T` hides the whole call at
+/// `OpenStatic`, even though the middle host `f` and the terminal `g` are
 /// both `compile`-visible there. Every host contributes independently to the
 /// navigation judgment, so the terminal `g` is unreachable.
 #[test]
@@ -779,9 +933,9 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     let visible = stage_pair(Stage::Compile);
     // Seed the `type` rank before any carrier of it.
     let _ = register(&mut world, "type_root", 0, 0, visible.clone());
-    // T is the outer host and is meta-only, so it is hidden at SealStatic.
+    // T is the outer host and is seal-only, so it is hidden at OpenStatic.
     // f is the middle host and g the terminal, both compile-visible there.
-    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(Stage::Meta));
+    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(Stage::Seal));
     let (f, _, _) = register(&mut world, "f", 2, 2, visible.clone());
     let (g, _, _) = register(&mut world, "g", 3, 3, visible);
     let t_place = place_of(&world, t);
@@ -808,29 +962,28 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     assert_eq!(navigation.host_chain[0].symbol, Some(t));
     assert_eq!(navigation.host_chain[1].symbol, Some(f));
 
-    // Exposure facts: only the outer host `T` is hidden at SealStatic.
+    // Exposure facts: only the outer host `T` is hidden at OpenStatic.
     assert!(
-        !navigation.host_chain[0].exposed_at(ObservationHorizon::SealStatic),
-        "the meta-only outer host T is hidden at SealStatic"
+        !navigation.host_chain[0].exposed_at(ObservationHorizon::OpenStatic),
+        "the seal-only outer host T is hidden at OpenStatic"
     );
     assert!(
-        navigation.host_chain[1].exposed_at(ObservationHorizon::SealStatic),
-        "the middle host f is compile-visible at SealStatic"
+        navigation.host_chain[1].exposed_at(ObservationHorizon::OpenStatic),
+        "the middle host f is compile-visible at OpenStatic"
     );
     assert!(navigation
         .host_chain
         .iter()
-        .all(|host| host.exposed_at(ObservationHorizon::OpenStatic)));
+        .all(|host| host.exposed_at(ObservationHorizon::SealStatic)));
 
     let initializer = initializer_from_source("let probe = (0) g;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call site");
     let resolver = ResolverContext::new(NamespaceNodeId(0));
 
-    let mut sealed = OrdinaryInvocationContext::open_static(&[]);
-    sealed.horizon = ObservationHorizon::SealStatic;
+    let restricted = OrdinaryInvocationContext::open_static(&[]);
 
     // The whole chain is gated: `T` is hidden, so `g::f::T(...)` is
-    // unreachable at SealStatic. Resolution is already sealed, so the
+    // unreachable at OpenStatic. Resolution is already sealed, so the
     // projection reports the hidden observation without any outward fallback.
     let blocked = invoke_resolved_binding_ordinary(
         &mut world,
@@ -838,12 +991,15 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         g,
         &call_site,
         &resolver,
-        sealed.clone(),
+        restricted.clone(),
         provenance.clone(),
     );
     assert!(
-        matches!(blocked, Err(OrdinaryInvocationFailure::Residual { .. })),
-        "a hidden OUTER host hides the whole navigation at SealStatic: {blocked:?}"
+        matches!(
+            blocked,
+            Err(OrdinaryInvocationFailure::ObservationUnavailable { .. })
+        ),
+        "a hidden OUTER host hides the whole navigation at OpenStatic: {blocked:?}"
     );
 
     // Omitting the outer host reaches member processing instead, producing a
@@ -854,7 +1010,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         g,
         &call_site,
         &resolver,
-        sealed,
+        restricted,
         provenance.clone(),
     );
     assert!(
@@ -867,14 +1023,15 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
 
     // With every host exposed, the call reaches member processing (`g` carries
     // no callable value here).
-    let open = OrdinaryInvocationContext::open_static(&[]);
+    let mut complete = OrdinaryInvocationContext::open_static(&[]);
+    complete.horizon = ObservationHorizon::SealStatic;
     let passed = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain,
         g,
         &call_site,
         &resolver,
-        open,
+        complete,
         provenance,
     );
     assert!(
@@ -912,7 +1069,7 @@ fn distinct_associated_bindings_with_equal_resident_content_share_one_core_norma
             )
             .expect("type-rank symbol registers in the unit world")
     };
-    let policy = stage_pair(Stage::Meta);
+    let policy = stage_pair(Stage::Compile);
     // A type-rank root, two carriers T and U of ONE Pattern, and two DISTINCT
     // member carriers c_t and c_u of one SECOND Pattern (equal content).
     let _ = register(&mut world, "type_root", 0, 0, policy.clone());

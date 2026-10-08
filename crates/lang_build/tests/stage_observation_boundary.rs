@@ -186,7 +186,7 @@ fn explicit_absence_cannot_silently_drop_an_explicit_stage() {
 #[test]
 fn explicit_pin_stage_stops_selection_until_input_admissibility_is_connected() {
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
-    for stage in ["meta", "compile", "seal", "runtime", "const + compile"] {
+    for stage in ["compile", "seal", "runtime", "const + compile"] {
         let constrained =
             format!("let constrained = (self, {stage} let x):runtime -> let r => {{ x; }};");
         let ordinary = "let ordinary = (self, let x):runtime -> let r => { x; };";
@@ -225,18 +225,11 @@ fn explicit_pin_stage_stops_selection_until_input_admissibility_is_connected() {
 #[test]
 fn ordinary_pipeline_does_not_rank_static_stage_atoms() {
     // Explicit substrate material; this does not evaluate source closures.
-    let cases = [
-        (
-            "let f = (self, x):meta => { (); };",
-            "let f = (self, x):compile => { (); };",
-            ObservationHorizon::OpenStatic,
-        ),
-        (
-            "let f = (self, x):compile => { (); };",
-            "let f = (self, x):seal => { (); };",
-            ObservationHorizon::SealStatic,
-        ),
-    ];
+    let cases = [(
+        "let f = (self, x):compile => { (); };",
+        "let f = (self, x):seal => { (); };",
+        ObservationHorizon::SealStatic,
+    )];
     let expr = initializer_from_source("let result = () f;");
     let call = extract_single_call_site(&expr).unwrap();
     for (left, right, horizon) in cases {
@@ -257,6 +250,90 @@ fn ordinary_pipeline_does_not_rank_static_stage_atoms() {
 }
 
 #[test]
+fn seal_p2_forms_and_reuses_a_compile_instance_for_an_external_type() {
+    use lang_build::{
+        BuiltinCallableImpl, CompilationWorld, DeclaredResultClass, InvocationResult,
+        ProjectedInvocationOutcome, SymbolId,
+    };
+    let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let namespace = base.package_root_node();
+    let mut world = base.semantic_world().clone();
+    let seal = declared_policy_view(Stage::Seal, PolicyMode::Const);
+    let registered = world
+        .register_core_callable(
+            namespace,
+            "seal_identity",
+            SymbolId(900001),
+            BuiltinCallableImpl::IdentityType,
+            None,
+            DeclaredResultClass::CompleteType,
+            seal.clone(),
+            seal.clone(),
+            seal,
+            None,
+            Provenance::new("seal body and result planes"),
+        )
+        .unwrap();
+    let call = extract_single_call_site(&initializer_from_source(
+        "let result = uint8 seal_identity;",
+    ))
+    .unwrap();
+    let mut identities = Vec::new();
+    for label in ["first seal invocation", "same canonical inputs"] {
+        let mut context = OrdinaryInvocationContext::open_static(&[PolicyMode::Const]);
+        context.horizon = ObservationHorizon::SealStatic;
+        let result = lang_build::invoke_resolved_binding_ordinary(
+            &mut world,
+            &[],
+            registered.symbol,
+            &call,
+            &base.root_context(),
+            context,
+            Provenance::new(label),
+        )
+        .unwrap();
+        let InvocationResult::SemanticResult {
+            value: ProjectedInvocationOutcome::SingleMember(result),
+            ..
+        } = result
+        else {
+            panic!("ordinary external type result");
+        };
+        assert_eq!(
+            result.selected.body_entry_view.pair.pattern.stage,
+            Stage::Seal
+        );
+        assert_eq!(
+            result.selected.frame.horizon,
+            ObservationHorizon::SealStatic
+        );
+        let instance = result.trace.compile_instance.unwrap();
+        let state = world.compile_instance(instance).unwrap();
+        assert_eq!(
+            state.root.material.callable.selected_function_value,
+            registered.function_value
+        );
+        assert_eq!(
+            state.root.material.callable.selected_call_entry,
+            registered.call_entry
+        );
+        assert_eq!(
+            state.delivered_result().unwrap().complete_type,
+            result.complete_type.map(|ty| ty.whole())
+        );
+        assert!(!state.evaluation_active());
+        assert!(world
+            .symbol(state.invoke_name())
+            .unwrap()
+            .pure_p()
+            .is_none());
+        identities.push(instance);
+    }
+    assert_eq!(identities[0], identities[1]);
+    assert_eq!(world.compile_instances().count(), 1);
+}
+
+#[test]
 fn hidden_body_observation_is_an_explicit_invocation_frontier() {
     // P1 is visible; the actual declared P2 observation is hidden.
     let mut family = AssociatedFamily::new(&["compile let f = (receiver, x):seal => { (); };"]);
@@ -268,14 +345,14 @@ fn hidden_body_observation_is_an_explicit_invocation_frontier() {
         Provenance::new("visible callable, hidden body"),
     );
     assert!(
-        matches!(outcome, Err(OrdinaryInvocationFailure::Residual { residual, .. })
-        if residual.class == "hidden-body-entry-observation")
+        matches!(outcome, Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, .. })
+        if obstruction.class == "hidden-body-entry-observation")
     );
 }
 
 #[test]
 fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
-    let visible = "let f = (receiver, x):meta => (\"visible rejection\") delete;";
+    let visible = "let f = (receiver, x):compile => (\"visible rejection\") delete;";
     let hidden = "compile let f = (receiver, x):seal => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [
@@ -310,7 +387,7 @@ fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
 
 #[test]
 fn hidden_body_does_not_override_a_reached_applicability_diagnostic() {
-    let visible = "let f = (receiver, x:type):meta => { (); };";
+    let visible = "let f = (receiver, x:type):compile => { (); };";
     let hidden = "compile let f = (receiver, x):seal => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [[visible, hidden], [hidden, visible]] {
@@ -341,7 +418,7 @@ fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
         extract_single_call_site(&initializer_from_source("let result = () uint8;")).unwrap();
     for hidden_first in [false, true] {
         let mut family = AssociatedFamily::new(&[
-            "let f = (receiver, x):meta => (\"visible rejection\") delete;",
+            "let f = (receiver, x):compile => (\"visible rejection\") delete;",
         ]);
         let visible = family.target_binding().ordinary_value().unwrap();
         let world = family.semantic_world_mut();
