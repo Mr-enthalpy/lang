@@ -66,7 +66,7 @@ use crate::{
         PatternValueId, SemanticValuePayload, SemanticWorld, WritableContext,
     },
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
-    DeclaredResultClass, InvocationResidual, NormalizedCallSite,
+    DeclaredResultClass, NormalizedCallSite,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -86,7 +86,7 @@ pub struct OrdinaryInvocationContext<'a> {
     pub explicit_argument_modes: &'a [PolicyMode],
     /// Completion context for omitted source occurrence modes. A known resident
     /// mode takes precedence; this never changes an observed mode.
-    pub omitted_argument_policy: crate::MetaInstancePolicy,
+    pub omitted_argument_policy: crate::OpenPolicy,
     /// Total before candidate maxima. Pair/stage coordinates are hard
     /// admissibility; the concrete mode coordinate participates in Bp.
     pub result_policy_demand: ResultPolicyDemand,
@@ -99,13 +99,9 @@ pub struct OrdinaryInvocationContext<'a> {
     /// Post-selection capability/place demand. This coordinate never
     /// participates in candidate ordering and therefore cannot reopen maxima.
     pub dynamic_legality: DynamicLegalityDemand<'a>,
-    /// Semantic owner of the declaration environment that constructed
-    /// results attach to.  When the declaration sits
-    /// inside a callable body this must be the innermost enclosing
-    /// anonymous function object's Self scope owner — owner identity is
-    /// parent-linked, so this single node carries the whole Self chain.
-    /// Only a top-level declaration supplies its namespace-level owner.
-    pub ambient_construction_owner: Option<SemanticOwnerId>,
+    /// Current invocation parent. Callable bodies supply their actual lexical
+    /// owner; a top-level invocation uses the resolved namespace owner.
+    pub parent_semantic_owner: Option<SemanticOwnerId>,
 }
 
 impl<'a> OrdinaryInvocationContext<'a> {
@@ -113,20 +109,19 @@ impl<'a> OrdinaryInvocationContext<'a> {
         Self {
             horizon: ObservationHorizon::OpenStatic,
             explicit_argument_modes,
-            omitted_argument_policy: crate::MetaInstancePolicy::Close,
+            omitted_argument_policy: crate::OpenPolicy::Close,
             result_policy_demand: ResultPolicyDemand::default(),
             visibility: VisibilityView::Internal,
             migration: None,
             construction_target: None,
             dynamic_legality: DynamicLegalityDemand::default(),
-            ambient_construction_owner: None,
+            parent_semantic_owner: None,
         }
     }
 
-    /// Supply the declaration-environment owner (Self scope chain node or
-    /// namespace-level owner) that ambient constructions root under.
-    pub fn with_ambient_construction_owner(mut self, owner: SemanticOwnerId) -> Self {
-        self.ambient_construction_owner = Some(owner);
+    /// Supply the parent of this invocation's stable compile instance.
+    pub fn with_parent_semantic_owner(mut self, owner: SemanticOwnerId) -> Self {
+        self.parent_semantic_owner = Some(owner);
         self
     }
 
@@ -364,6 +359,7 @@ pub struct CallableTarget {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct OrdinaryPipelineTrace {
+    pub compile_instance: Option<crate::CompileInstanceId>,
     pub c0_target_values: Vec<SemanticValueId>,
     pub c1_visible_values: Vec<SemanticValueId>,
     pub c2_horizon_values: Vec<SemanticValueId>,
@@ -514,16 +510,11 @@ fn semantic_invocation_outcome(
 }
 
 /// Complete type value returned by a world-connected invocation.
-///
-/// `construction_material` is replay/install material for graph replay
-/// binding and namespace projection.  Semantic consumers use
-/// `complete_type`; the material never defines type identity or equality.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReturnedCompleteType {
     pub complete_type: crate::CompleteTypeValue,
     pub carrier_value: SemanticValueId,
     pub pattern: PatternValueId,
-    pub construction_material: Option<crate::StructConstructionMaterial>,
 }
 
 #[derive(Clone, Debug)]
@@ -542,6 +533,12 @@ pub enum ReturnedSemanticEntity {
 enum SelectedBodyOutput {
     BuiltinMaterial(BuiltinBodyMaterial),
     OrdinaryValue(SemanticValueId),
+}
+
+#[derive(Clone, Debug)]
+pub struct ObservationObstruction {
+    pub class: String,
+    pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug)]
@@ -568,11 +565,10 @@ pub enum OrdinaryInvocationFailure {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
-    /// Explicit remaining-observation material recorded at its source. This
-    /// frontier is not inferred from an ordinary no-candidate failure and
-    /// does not promise future applicability or assign an execution stage.
-    Residual {
-        residual: InvocationResidual,
+    /// An observation at the current horizon is unavailable. This fact supplies
+    /// neither a remaining continuation nor future applicability or Stage.
+    ObservationUnavailable {
+        obstruction: ObservationObstruction,
         trace: OrdinaryPipelineTrace,
     },
     /// Argument normalization hit an illegal cyclic Val2: Val2 normalization
@@ -612,40 +608,6 @@ pub enum OrdinaryInvocationFailure {
     },
 }
 
-/// Hard-error message for a second direct `struct` generation of the same
-/// normalized navigation shape at the same declaration level.  The recorded
-/// binder never feeds type identity; it only makes the guidance ergonomic:
-/// the first generation is source-visible at this level, so the collision
-/// points at its existing binding.
-fn ambient_struct_collision_message(binder: Option<&crate::AmbientTypeBinder>) -> String {
-    let base = "ambient struct collision: a type with the same navigation name and top pattern \
-                was already generated by `struct` at this level";
-    match binder {
-        Some(crate::AmbientTypeBinder::WholeSymbol(name)) => format!(
-            "{base}; its value is bound to symbol `{name}` here — use the existing `{name}` to \
-             continue the type computation"
-        ),
-        Some(crate::AmbientTypeBinder::ExtractionMembers(names)) => {
-            let members = names
-                .iter()
-                .map(|name| format!("`{name}`"))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!(
-                "{base}; its extraction binding exposes the member symbols {members} — use \
-                 these extracted symbols to continue the type computation"
-            )
-        }
-        Some(crate::AmbientTypeBinder::CallableParameter(name)) => format!(
-            "{base}; its value was only bound to the callable parameter `{name}`, which lives \
-             one level below this declaration environment and is not visible here — first bind \
-             the temporary value to a symbol at this level (e.g. `let t = ... struct;`), then \
-             use that symbol to continue the type computation"
-        ),
-        None => format!("{base}; use its existing binding to continue the type computation"),
-    }
-}
-
 /// Attach `Addr(Norm_type)` observations to the candidate's classified type
 /// arguments before crossing the formal invocation boundary.
 ///
@@ -667,24 +629,21 @@ fn attach_candidate_type_observations(
         })
 }
 
-/// Form an ordinary MetaInstance key only for an invocation whose declared
-/// result/owner rule actually establishes a MetaInstance.  Ordinary value
-/// forwarding, same-Type migration, and privileged `struct` do not acquire a
-/// hidden meta identity merely because they reuse the invocation trunk.
-fn canonical_meta_instance_key_for_selected(
+/// Normalize inputs for a selected compile partner, independently of its result.
+fn canonical_compile_instance_key_for_selected(
     semantic_world: &mut SemanticWorld,
     shape: &ArgProductShape,
-    callable: crate::SelectedCallableIdentity,
+    callable: crate::CompilePartner,
     provenance: &Provenance,
     trace: &OrdinaryPipelineTrace,
-) -> Result<crate::MetaInstanceMaterialKey, OrdinaryInvocationFailure> {
+) -> Result<crate::CompileInvocationMaterialKey, OrdinaryInvocationFailure> {
     let arguments_product_addr = semantic_world
         .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
         .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
             diagnostic,
             trace: trace.clone(),
         })?;
-    Ok(crate::compute_meta_instance_material_key(
+    Ok(crate::compute_compile_instance_material_key(
         callable,
         arguments_product_addr,
         provenance.clone(),
@@ -756,11 +715,10 @@ pub fn invoke_policy_migration(
         target_members,
         target_places,
         None,
-        None,
         migration_args,
         resolver_context,
         OrdinaryInvocationContext {
-            omitted_argument_policy: crate::MetaInstancePolicy::Close,
+            omitted_argument_policy: crate::OpenPolicy::Close,
             horizon: ObservationHorizon::OpenStatic,
             explicit_argument_modes: &no_explicit_modes,
             result_policy_demand: request.target_demand().clone(),
@@ -771,9 +729,8 @@ pub fn invoke_policy_migration(
             }),
             construction_target: None,
             dynamic_legality: DynamicLegalityDemand::default(),
-            // Migration transport never performs an ambient struct
-            // construction; no declaration-environment owner applies.
-            ambient_construction_owner: None,
+            // This migration occurs in the supplied caller environment.
+            parent_semantic_owner: None,
         },
         request.provenance().clone(),
     )?;
@@ -881,8 +838,8 @@ pub fn invoke_resolved_binding_ordinary(
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
     if hosts.iter().any(|host| !host.exposed_at(context.horizon)) {
-        return Err(OrdinaryInvocationFailure::Residual {
-            residual: InvocationResidual {
+        return Err(OrdinaryInvocationFailure::ObservationUnavailable {
+            obstruction: ObservationObstruction {
                 class: "hidden-navigation-host-observation".into(),
                 provenance,
             },
@@ -897,7 +854,6 @@ pub fn invoke_resolved_binding_ordinary(
         target_members,
         target_places,
         None,
-        Some(call_site),
         call_site.to_arg_product_shape(),
         resolver_context,
         context,
@@ -922,8 +878,8 @@ pub fn invoke_pattern_associated_ordinary(
         .host_member_for_pattern(pattern)
         .is_some_and(|host| !host.exposed_at(context.horizon))
     {
-        return Err(OrdinaryInvocationFailure::Residual {
-            residual: InvocationResidual {
+        return Err(OrdinaryInvocationFailure::ObservationUnavailable {
+            obstruction: ObservationObstruction {
                 class: "hidden-associated-host-observation".into(),
                 provenance,
             },
@@ -941,7 +897,6 @@ pub fn invoke_pattern_associated_ordinary(
         target_members,
         BTreeMap::new(),
         Some(receiver_value),
-        None,
         explicit_arg_product,
         resolver_context,
         context,
@@ -989,8 +944,8 @@ pub fn invoke_pattern_associated_value_ordinary(
         .host_member_for_pattern(pattern)
         .is_some_and(|host| !host.exposed_at(context.horizon))
     {
-        return Err(OrdinaryInvocationFailure::Residual {
-            residual: InvocationResidual {
+        return Err(OrdinaryInvocationFailure::ObservationUnavailable {
+            obstruction: ObservationObstruction {
                 class: "hidden-associated-host-observation".into(),
                 provenance,
             },
@@ -1007,7 +962,6 @@ pub fn invoke_pattern_associated_value_ordinary(
         OrdinaryCandidateOrigin::PatternAssociatedValue(pattern),
         target_members,
         BTreeMap::new(),
-        None,
         None,
         explicit_arg_product,
         resolver_context,
@@ -1053,7 +1007,38 @@ pub(crate) fn invoke_target_values(
     target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
     target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
     associated_receiver: Option<SemanticValueId>,
-    source_call_site: Option<&NormalizedCallSite>,
+    arg_shape: ArgProductShape,
+    resolver_context: &ResolverContext,
+    context: OrdinaryInvocationContext<'_>,
+    provenance: Provenance,
+) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
+    // Selection, instance admission and result storage publish together.
+    // Storage staging supplies no lifecycle, readiness or execution proof.
+    let mut scratch = semantic_world.clone();
+    let result = invoke_target_values_in_scratch(
+        &mut scratch,
+        origin,
+        target_members,
+        target_places,
+        associated_receiver,
+        arg_shape,
+        resolver_context,
+        context,
+        provenance,
+    )?;
+    if matches!(result, crate::InvocationResult::SemanticResult { .. }) {
+        *semantic_world = scratch;
+    }
+    Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn invoke_target_values_in_scratch(
+    semantic_world: &mut SemanticWorld,
+    origin: OrdinaryCandidateOrigin,
+    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
+    associated_receiver: Option<SemanticValueId>,
     mut arg_shape: ArgProductShape,
     resolver_context: &ResolverContext,
     context: OrdinaryInvocationContext<'_>,
@@ -1112,7 +1097,7 @@ pub(crate) fn invoke_target_values(
         .filter(|view| match view.view.pair.value.stage() {
             Some(stage) if stage.visible_at(context.horizon) => true,
             Some(_) => {
-                horizon_obstruction.get_or_insert_with(|| InvocationResidual {
+                horizon_obstruction.get_or_insert_with(|| ObservationObstruction {
                     class: "hidden-callee-observation".into(),
                     provenance: provenance.clone(),
                 });
@@ -1183,13 +1168,23 @@ pub(crate) fn invoke_target_values(
     c3.dedup();
     trace.c3_call_entries = c3.iter().map(|(entry, _, _)| *entry).collect();
 
-    if let Err(residual) = classify_semantic_value_arguments(
+    if c3.is_empty() {
+        if let Some(obstruction) = horizon_obstruction {
+            return Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace });
+        }
+        return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+            first_diagnostic: None,
+            trace,
+        });
+    }
+
+    if let Err(obstruction) = classify_semantic_value_arguments(
         &mut arg_shape,
         semantic_world,
         resolver_context,
         context.horizon,
     ) {
-        return Err(OrdinaryInvocationFailure::Residual { residual, trace });
+        return Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace });
     }
     let classified = classify_type_arguments_env_with_report(
         &arg_shape,
@@ -1239,7 +1234,7 @@ pub(crate) fn invoke_target_values(
         // readiness/Pre/commit consumer remains a separate implementation gate;
         // visibility must not authorize additional body execution paths.
         if !body_entry_visible_at(&entry.body_entry_view.pair, context.horizon) {
-            horizon_obstruction.get_or_insert_with(|| InvocationResidual {
+            horizon_obstruction.get_or_insert_with(|| ObservationObstruction {
                 class: "hidden-body-entry-observation".into(),
                 provenance: entry.provenance.clone(),
             });
@@ -1421,21 +1416,10 @@ pub(crate) fn invoke_target_values(
                         // as same-Type migration candidates by assumption.
                         continue;
                     }
-                    let Some(call_site) = source_call_site else {
-                        first_diagnostic.get_or_insert_with(|| {
-                            Diagnostic::hard_error(
-                        "core ordinary call entry requires its already-normalized source call site",
-                        Some(provenance.clone()),
-                    )
-                        });
-                        continue;
-                    };
                     let core_invocation =
                         match crate::builtin_callable::prepare_resolved_builtin_call(
                             &entry,
-                            call_site,
-                            &SemanticTypeEnv::new(&*semantic_world),
-                            resolver_context,
+                            classified.classified_shape.clone(),
                             context.horizon,
                             provenance.clone(),
                         ) {
@@ -1662,8 +1646,11 @@ pub(crate) fn invoke_target_values(
         // can reach this unavailable boundary; ordinary mismatches never create
         // it, and a reached diagnostic remains a diagnostic.
         if first_diagnostic.is_none() {
-            if let Some(residual) = horizon_obstruction {
-                return Err(OrdinaryInvocationFailure::Residual { residual, trace });
+            if let Some(obstruction) = horizon_obstruction {
+                return Err(OrdinaryInvocationFailure::ObservationUnavailable {
+                    obstruction,
+                    trace,
+                });
             }
         }
         return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
@@ -1744,25 +1731,57 @@ pub(crate) fn invoke_target_values(
         legality,
     };
 
-    let canonical_callable_identity = crate::SelectedCallableIdentity {
+    let canonical_callable_identity = crate::CompilePartner {
         selected_function_value: selected.target_value,
         selected_call_entry: selected.call_entry_value,
     };
-    let is_ambient_struct = matches!(
-        &selected.implementation,
-        PreparedImplementation::Builtin(input) if input.implementation == crate::BuiltinCallableImpl::Struct
-    );
-    let ambient_construction_owner = context
-        .ambient_construction_owner
-        .or_else(|| semantic_world.namespace_owner(resolver_context.current_namespace));
-
-    // Ordinary meta invocation identity is computed once for the selected
-    // candidate and shared by every ordinary meta construction path.  The
-    // privileged `struct` builtin is intentionally excluded: its canonical
-    // owner rule establishes no MetaInstance root, so forcing its private AST
-    // carrier through an ordinary meta material key would invent semantic
-    // identity that the language does not have.
-    let mut canonical_instance_key = None;
+    if selected
+        .body_entry_view
+        .pair
+        .value
+        .stage()
+        .unwrap_or(selected.body_entry_view.pair.pattern.stage)
+        != crate::Stage::Runtime
+    {
+        let parent_owner = context
+            .parent_semantic_owner
+            .or_else(|| semantic_world.namespace_owner(resolver_context.current_namespace))
+            .ok_or_else(|| OrdinaryInvocationFailure::SelectedImplementation {
+                diagnostic: Diagnostic::hard_error(
+                    "compile invocation requires its current semantic parent owner",
+                    Some(provenance.clone()),
+                ),
+                trace: trace.clone(),
+            })?;
+        let material = canonical_compile_instance_key_for_selected(
+            semantic_world,
+            &classified.classified_shape,
+            canonical_callable_identity,
+            &provenance,
+            &trace,
+        )?;
+        let key = crate::CompileInstanceKey {
+            parent_owner,
+            material,
+        };
+        let instance = semantic_world
+            .intern_compile_instance(key.clone(), provenance.clone())
+            .map_err(
+                |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+                    diagnostic,
+                    trace: trace.clone(),
+                },
+            )?;
+        trace.compile_instance = Some(instance);
+        semantic_world
+            .enter_compile_body(instance, selected.frame.clone(), provenance.clone())
+            .map_err(
+                |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+                    diagnostic,
+                    trace: trace.clone(),
+                },
+            )?;
+    }
 
     // A declared `Unit` result is validated at the declaration boundary but
     // has no executable producer yet: report the execution gap explicitly
@@ -1882,36 +1901,12 @@ pub(crate) fn invoke_target_values(
         },
     };
 
-    if canonical_instance_key.is_none()
-        && !is_ambient_struct
-        && matches!(
-            returned,
-            SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(_))
-        )
-    {
-        canonical_instance_key = Some(canonical_meta_instance_key_for_selected(
-            semantic_world,
-            &classified.classified_shape,
-            canonical_callable_identity,
-            &provenance,
-            &trace,
-        )?);
-    }
-    let identity = ordinary_result_identity(
-        semantic_world,
-        &selected,
-        canonical_instance_key.as_ref(),
-        is_ambient_struct
-            .then_some(ambient_construction_owner)
-            .flatten(),
-        returned,
-    )
-    .map_err(
-        |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+    let identity = ordinary_result_identity(semantic_world, returned).map_err(|diagnostic| {
+        OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic,
             trace: trace.clone(),
-        },
-    )?;
+        }
+    })?;
     let Some((result_type, pattern, returned_value, returned)) = identity else {
         return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
@@ -1976,6 +1971,19 @@ pub(crate) fn invoke_target_values(
     }];
 
     let declared_result_class = selected.declared_result_class.clone();
+    if let Some(instance) = trace.compile_instance {
+        let carrier = match &returned {
+            ReturnedSemanticEntity::CompleteType(value) => value.carrier_value,
+            ReturnedSemanticEntity::OrdinaryValue(value) => *value,
+        };
+        semantic_world.deliver_compile_result(
+            instance,
+            crate::semantic_world::CompileResultObservation {
+                value: carrier,
+                complete_type: semantic_complete_type.as_ref().map(|value| value.whole()),
+            },
+        );
+    }
     Ok(semantic_invocation_outcome(
         declared_result_class,
         ProjectedInvocationOutcome::SingleMember(SingleMemberResult {
@@ -1993,7 +2001,7 @@ fn classify_semantic_value_arguments(
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     horizon: ObservationHorizon,
-) -> Result<(), InvocationResidual> {
+) -> Result<(), ObservationObstruction> {
     for raw_arg in &mut shape.raw_args {
         if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
             continue;
@@ -2048,7 +2056,7 @@ fn classify_semantic_value_arguments(
             // expression, and neither a visible Pattern nor a caller-supplied
             // mode makes it readable. The common continuation consumer must
             // preserve this observation before applicability or preference.
-            return Err(InvocationResidual {
+            return Err(ObservationObstruction {
                 class: "hidden-argument-value-observation".to_string(),
                 provenance: raw_arg.provenance.clone(),
             });
@@ -2432,7 +2440,7 @@ fn observed_argument_modes(
                 return crate::PendingResultPolicyDemand {
                     pair_query: P1Projection::Infer,
                     mode: None,
-                    meta_instance_policy: context.omitted_argument_policy,
+                    open_policy: context.omitted_argument_policy,
                 }
                 .complete(crate::OpenHereAvailability::Unavailable, provenance.clone())
                 .map(|demand| demand.mode);
@@ -2514,9 +2522,6 @@ fn ordering_from_advantages(left: bool, right: bool) -> PolicyPartialOrdering {
 
 fn ordinary_result_identity(
     semantic_world: &mut SemanticWorld,
-    selected: &PreparedCallCandidate,
-    canonical_key: Option<&crate::MetaInstanceMaterialKey>,
-    ambient_struct_owner: Option<SemanticOwnerId>,
     returned: SelectedBodyOutput,
 ) -> Result<
     Option<(
@@ -2559,67 +2564,14 @@ fn ordinary_result_identity(
                     complete_type,
                     carrier_value,
                     pattern,
-                    construction_material: None,
                 }),
             )))
         }
-        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(
-            mut value,
-        )) => {
-            let installed = if let Some(ambient_owner) = ambient_struct_owner {
-                if let Some((_existing, binder)) =
-                    semantic_world.ambient_struct_collision(ambient_owner, value.material_id)
-                {
-                    return Err(Diagnostic::hard_error(
-                        ambient_struct_collision_message(binder),
-                        Some(value.provenance.clone()),
-                    ));
-                }
-                semantic_world.install_ambient_struct_type_value(
-                    ambient_owner,
-                    value.material_id,
-                    value.canonical_pattern_value(),
-                    selected.complete_result_view.pair.clone(),
-                    value.provenance.clone(),
-                )
-            } else {
-                let canonical_key = canonical_key
-                    .expect("meta struct result requires a canonical MetaInstance key");
-                let Some(placement_parent) =
-                    semantic_world.callable_declaration_environment(selected.call_entry_value)
-                else {
-                    return Ok(None);
-                };
-                let meta_root = crate::MetaInstanceRootKey {
-                    parent_owner: placement_parent,
-                    material: canonical_key.clone(),
-                };
-                semantic_world.install_meta_struct_complete_type(
-                    meta_root,
-                    value.material_id,
-                    value.canonical_pattern_value(),
-                    selected.complete_result_view.pair.clone(),
-                    value.provenance.clone(),
-                )?
-            };
-            let Some((carrier_value, pattern, complete_type)) = installed else {
-                return Err(Diagnostic::hard_error(
-                    "struct result installation could not form its complete type",
-                    Some(value.provenance.clone()),
-                ));
-            };
-            value.canonical_type = Some(complete_type.lookup_key());
-            Ok(Some((
-                complete_type.lookup_key(),
-                pattern,
-                Some(carrier_value),
-                ReturnedSemanticEntity::CompleteType(ReturnedCompleteType {
-                    complete_type,
-                    carrier_value,
-                    pattern,
-                    construction_material: Some(value),
-                }),
-            )))
+        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructHelpers(value)) => {
+            Err(Diagnostic::hard_error(
+                "struct helper formation consumer is unavailable for the complete input type",
+                Some(value.provenance),
+            ))
         }
         SelectedBodyOutput::OrdinaryValue(value_id) => {
             Ok(semantic_world.value(value_id).map(|value| {

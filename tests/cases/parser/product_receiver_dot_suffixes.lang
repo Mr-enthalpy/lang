@@ -1,0 +1,3 @@
+let a = (e,f)..field();
+let b = (e,f)..field(a,(b,c));
+let c = (e,f).field;

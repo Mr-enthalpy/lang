@@ -1,4 +1,4 @@
-NormProgram origin=Source@1:1[0..901]
+NormProgram origin=Source@1:1[0..895]
   forms:
     Form Expr
       Call origin=Generated(ColonLowering)@1:2[1..4]
@@ -216,7 +216,7 @@ NormProgram origin=Source@1:1[0..901]
           deduce:
             None
           value_pattern:
-            PatternSplice origin=Source@16:8[145..151]
+            InterpretationFlip S->V origin=Source@16:8[145..151]
               Call origin=Generated(ColonLowering)@16:9[146..149]
                 source:
                   Product origin=Source@16:9[146..149]
@@ -239,7 +239,7 @@ NormProgram origin=Source@1:1[0..901]
           deduce:
             None
           value_pattern:
-            PatternSplice origin=Source@17:8[168..169]
+            InterpretationFlip S->V origin=Source@17:8[168..169]
               Nav origin=Source@17:8[168..169]
                 components:
                   Operator "+" origin=Source@17:8[168..169]
@@ -257,7 +257,7 @@ NormProgram origin=Source@1:1[0..901]
           value_pattern:
             PatternNav terminated=false origin=Source@18:8[186..194]
               components:
-                component PatternSplice origin=Source@18:8[186..188]
+                component InterpretationFlip S->V origin=Source@18:8[186..188]
                   Name "a" origin=Source@18:8[186..187]
                 Name "path" origin=Source@18:12[190..194]
           annotation:
@@ -284,7 +284,7 @@ NormProgram origin=Source@1:1[0..901]
           PathMaterial origin=Generated(PathMaterialPreserve)@20:19[248..259]
             PatternNav terminated=false origin=Source@20:19[248..259]
               components:
-                component PatternSplice origin=Source@20:19[248..252]
+                component InterpretationFlip S->V origin=Source@20:19[248..252]
                   Name "n" origin=Source@20:20[249..250]
                 Name "scope" origin=Source@20:25[254..259]
     Form Let
@@ -388,7 +388,7 @@ NormProgram origin=Source@1:1[0..901]
                         deduce:
                           None
                         value_pattern:
-                          PatternSplice origin=Source@25:16[372..378]
+                          InterpretationFlip S->V origin=Source@25:16[372..378]
                             Call origin=Generated(ColonLowering)@25:17[373..376]
                               source:
                                 Product origin=Source@25:17[373..376]
@@ -432,7 +432,7 @@ NormProgram origin=Source@1:1[0..901]
           PathMaterial origin=Generated(PathMaterialPreserve)@26:14[411..413]
             PatternNav terminated=true origin=Source@26:14[411..413]
               components:
-                component PatternSplice origin=Source@26:14[411..413]
+                component InterpretationFlip S->V origin=Source@26:14[411..413]
                   Name "p" origin=Source@26:14[411..412]
     Form Alias
       Decl Alias origin=Generated(AliasPreserve)@27:1[417..438]
@@ -442,7 +442,7 @@ NormProgram origin=Source@1:1[0..901]
           PathMaterial origin=Generated(PathMaterialPreserve)@27:18[434..438]
             PatternNav terminated=true origin=Source@27:18[434..438]
               components:
-                component PatternSplice origin=Source@27:18[434..438]
+                component InterpretationFlip S->V origin=Source@27:18[434..438]
                   Name "p" origin=Source@27:19[435..436]
     Form Expr
       Call origin=Derived(PipeFallback; no following source product)@28:6[447..448]
@@ -464,7 +464,7 @@ NormProgram origin=Source@1:1[0..901]
             Binder "x" origin=Source@29:5[454..455]
           annotation:
             AnnotationPattern origin=Generated(PatternNormalize)@29:7[456..462]
-              PatternSplice origin=Source@29:7[456..462]
+              InterpretationFlip S->V origin=Source@29:7[456..462]
                 Call origin=Generated(ColonLowering)@29:8[457..460]
                   source:
                     Product origin=Source@29:8[457..460]
@@ -499,7 +499,7 @@ NormProgram origin=Source@1:1[0..901]
             PatternNav terminated=false origin=Source@31:18[520..533]
               components:
                 Name "name" origin=Source@31:18[520..524]
-                component PatternSplice origin=Source@31:25[527..533]
+                component InterpretationFlip S->V origin=Source@31:25[527..533]
                   Name "scope" origin=Source@31:25[527..532]
     Form Let
       Decl Let origin=Source@32:1[536..593]
@@ -513,18 +513,18 @@ NormProgram origin=Source@1:1[0..901]
           with_clause:
             WithClause explicit_empty=false origin=Source@32:20[555..585]
               paths:
-                PatternSplice origin=Source@32:26[561..562]
+                InterpretationFlip S->V origin=Source@32:26[561..562]
                   Nav origin=Source@32:26[561..562]
                     components:
                       Operator "+" origin=Source@32:26[561..562]
-                PatternSplice origin=Source@32:29[564..566]
+                InterpretationFlip S->V origin=Source@32:29[564..566]
                   Nav origin=Source@32:29[564..566]
                     components:
                       Operator "[]" origin=Source@32:29[564..566]
                 PatternName "short" origin=Source@32:33[568..573]
                 PatternNav terminated=false origin=Source@32:40[575..584]
                   components:
-                    component PatternSplice origin=Source@32:40[575..577]
+                    component InterpretationFlip S->V origin=Source@32:40[575..577]
                       Name "p" origin=Source@32:40[575..576]
                     Name "scope" origin=Source@32:44[579..584]
           initializer:
@@ -535,7 +535,7 @@ NormProgram origin=Source@1:1[0..901]
           deduce:
             None
           value_pattern:
-            PatternSplice origin=Source@33:8[602..609]
+            InterpretationFlip S->V origin=Source@33:8[602..609]
               Product origin=Source@33:8[602..608]
                 elements:
                   ExprElem
@@ -609,112 +609,112 @@ NormProgram origin=Source@1:1[0..901]
                         elements:
                           Unit origin=Source@34:47[665..667]
     Form Alias
-      Decl Alias origin=Generated(AliasPreserve)@35:1[672..707]
+      Decl Alias origin=Generated(AliasPreserve)@35:1[672..705]
         binder:
-          Name "navigation_splice" origin=Source@35:5[676..693]
+          Name "navigation_flip" origin=Source@35:5[676..691]
         target:
-          PathMaterial origin=Generated(PathMaterialPreserve)@35:27[698..707]
-            PatternSplice origin=Source@35:27[698..707]
-              Nav origin=Source@35:27[698..705]
+          PathMaterial origin=Generated(PathMaterialPreserve)@35:25[696..705]
+            InterpretationFlip S->V origin=Source@35:25[696..705]
+              Nav origin=Source@35:25[696..703]
                 components:
-                  Name "a" origin=Source@35:27[698..699]
-                  Group origin=Source@35:31[702..705]
-                    Call origin=Generated(ColonLowering)@35:31[702..705]
+                  Name "a" origin=Source@35:25[696..697]
+                  Group origin=Source@35:29[700..703]
+                    Call origin=Generated(ColonLowering)@35:29[700..703]
                       source:
-                        Product origin=Source@35:31[702..705]
+                        Product origin=Source@35:29[700..703]
                           elements:
                             ExprElem
-                              Name "b" origin=Source@35:31[702..703]
+                              Name "b" origin=Source@35:29[700..701]
                             ExprElem
-                              Name "c" origin=Source@35:33[704..705]
+                              Name "c" origin=Source@35:31[702..703]
                       target:
-                        Name "slice" origin=Source@35:31[702..705]
+                        Name "slice" origin=Source@35:29[700..703]
     Form Alias
-      Decl Alias origin=Generated(AliasPreserve)@36:1[709..741]
+      Decl Alias origin=Generated(AliasPreserve)@36:1[707..737]
         binder:
-          Name "bracket_splice" origin=Source@36:5[713..727]
+          Name "bracket_flip" origin=Source@36:5[711..723]
         target:
-          PathMaterial origin=Generated(PathMaterialPreserve)@36:24[732..741]
-            PatternSplice origin=Source@36:24[732..741]
-              Call origin=Generated(BracketCallLowering)@36:24[732..740]
+          PathMaterial origin=Generated(PathMaterialPreserve)@36:22[728..737]
+            InterpretationFlip S->V origin=Source@36:22[728..737]
+              Call origin=Generated(BracketCallLowering)@36:22[728..736]
                 source:
-                  Product origin=Generated(BracketCallLowering)@36:24[732..740]
+                  Product origin=Generated(BracketCallLowering)@36:22[728..736]
                     elements:
                       ExprElem
-                        Name "a" origin=Source@36:24[732..733]
+                        Name "a" origin=Source@36:22[728..729]
                       ExprElem
-                        Call origin=Generated(ColonLowering)@36:27[735..738]
+                        Call origin=Generated(ColonLowering)@36:25[731..734]
                           source:
-                            Product origin=Source@36:27[735..738]
+                            Product origin=Source@36:25[731..734]
                               elements:
                                 ExprElem
-                                  Name "b" origin=Source@36:27[735..736]
+                                  Name "b" origin=Source@36:25[731..732]
                                 ExprElem
-                                  Name "c" origin=Source@36:29[737..738]
+                                  Name "c" origin=Source@36:27[733..734]
                           target:
-                            Name "slice" origin=Source@36:27[735..738]
+                            Name "slice" origin=Source@36:25[731..734]
                 target:
-                  OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@36:25[733..740]
+                  OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@36:23[729..736]
     Form Let
-      Decl Let origin=Source@37:1[743..760]
-        BindingSlot let=true origin=Generated(PatternNormalize)@37:5[747..760]
+      Decl Let origin=Source@37:1[739..756]
+        BindingSlot let=true origin=Generated(PatternNormalize)@37:5[743..756]
           deduce:
             None
           value_pattern:
-            PatternSplice origin=Source@37:8[750..752]
-              Nav origin=Source@37:8[750..752]
+            InterpretationFlip S->V origin=Source@37:8[746..748]
+              Nav origin=Source@37:8[746..748]
                 components:
-                  Operator "[]" origin=Source@37:8[750..752]
+                  Operator "[]" origin=Source@37:8[746..748]
           annotation:
             None
           with_clause:
             None
           initializer:
-            Name "value" origin=Source@37:13[755..760]
+            Name "value" origin=Source@37:13[751..756]
     Form Let
-      Decl Let origin=Source@38:1[762..785]
-        BindingSlot let=true origin=Generated(PatternNormalize)@38:5[766..785]
+      Decl Let origin=Source@38:1[758..781]
+        BindingSlot let=true origin=Generated(PatternNormalize)@38:5[762..781]
           deduce:
             None
           value_pattern:
-            PatternNav terminated=false origin=Source@38:8[769..776]
+            PatternNav terminated=false origin=Source@38:8[765..772]
               components:
-                Name "a" origin=Source@38:8[769..770]
-                PatternGroup origin=Source@38:12[773..776]
-                  PatternSequence origin=Generated(PatternNormalize)@38:12[773..776]
+                Name "a" origin=Source@38:8[765..766]
+                PatternGroup origin=Source@38:12[769..772]
+                  PatternSequence origin=Generated(PatternNormalize)@38:12[769..772]
                     elements:
-                      PatternName "b" origin=Source@38:12[773..774]
-                      PatternName "c" origin=Source@38:14[775..776]
+                      PatternName "b" origin=Source@38:12[769..770]
+                      PatternName "c" origin=Source@38:14[771..772]
           annotation:
             None
           with_clause:
             None
           initializer:
-            Name "value" origin=Source@38:19[780..785]
+            Name "value" origin=Source@38:19[776..781]
     Form Let
-      Decl Let origin=Source@39:1[787..825]
-        BindingSlot let=true origin=Generated(PatternNormalize)@39:5[791..825]
+      Decl Let origin=Source@39:1[783..821]
+        BindingSlot let=true origin=Generated(PatternNormalize)@39:5[787..821]
           deduce:
             None
           value_pattern:
-            Binder "f" origin=Source@39:5[791..792]
+            Binder "f" origin=Source@39:5[787..788]
           annotation:
             None
           with_clause:
             None
           initializer:
-            Closure placement=Ordinary origin=Source@39:9[795..825]
+            Closure placement=Ordinary origin=Source@39:9[791..821]
               head:
-                ClosureHead origin=Generated(ClosureNormalize)@39:9[795..817]
+                ClosureHead origin=Generated(ClosureNormalize)@39:9[791..813]
                   deduce:
                     None
                   params:
                     BindingSlotElem
-                      BindingSlot let=false origin=Generated(PatternNormalize)@39:10[796..800]
+                      BindingSlot let=false origin=Generated(PatternNormalize)@39:10[792..796]
                         deduce:
                           None
                         value_pattern:
-                          Binder "self" origin=Source@39:10[796..800]
+                          Binder "self" origin=Source@39:10[792..796]
                         annotation:
                           None
                         with_clause:
@@ -722,14 +722,14 @@ NormProgram origin=Source@1:1[0..901]
                         initializer:
                           None
                     BindingSlotElem
-                      BindingSlot let=false origin=Generated(PatternNormalize)@39:16[802..807]
+                      BindingSlot let=false origin=Generated(PatternNormalize)@39:16[798..803]
                         deduce:
                           None
                         value_pattern:
-                          PatternSplice origin=Source@39:19[805..807]
-                            Nav origin=Source@39:19[805..807]
+                          InterpretationFlip S->V origin=Source@39:19[801..803]
+                            Nav origin=Source@39:19[801..803]
                               components:
-                                Operator "[]" origin=Source@39:19[805..807]
+                                Operator "[]" origin=Source@39:19[801..803]
                         annotation:
                           None
                         with_clause:
@@ -737,11 +737,11 @@ NormProgram origin=Source@1:1[0..901]
                         initializer:
                           None
                     BindingSlotElem
-                      BindingSlot let=false origin=Generated(PatternNormalize)@39:23[809..813]
+                      BindingSlot let=false origin=Generated(PatternNormalize)@39:23[805..809]
                         deduce:
                           None
                         value_pattern:
-                          Binder "next" origin=Source@39:23[809..813]
+                          Binder "next" origin=Source@39:23[805..809]
                         annotation:
                           None
                         with_clause:
@@ -749,61 +749,61 @@ NormProgram origin=Source@1:1[0..901]
                         initializer:
                           None
               body:
-                NormBody origin=Source@39:32[818..825]
+                NormBody origin=Source@39:32[814..821]
                   forms:
                     Form Expr
-                      Product origin=Source@39:34[820..822]
+                      Product origin=Source@39:34[816..818]
                         elements:
-                          Unit origin=Source@39:34[820..822]
+                          Unit origin=Source@39:34[816..818]
     Form Alias
-      Decl Alias origin=Generated(AliasPreserve)@40:1[827..866]
+      Decl Alias origin=Generated(AliasPreserve)@40:1[823..862]
         binder:
-          Name "resumed_pattern" origin=Source@40:5[831..846]
+          Name "resumed_pattern" origin=Source@40:5[827..842]
         target:
-          PathMaterial origin=Generated(PathMaterialPreserve)@40:25[851..866]
-            PatternNav terminated=false origin=Source@40:25[851..866]
+          PathMaterial origin=Generated(PathMaterialPreserve)@40:25[847..862]
+            PatternNav terminated=false origin=Source@40:25[847..862]
               components:
-                component PatternSplice origin=Source@40:25[851..860]
-                  Nav origin=Source@40:25[851..858]
+                component InterpretationFlip S->V origin=Source@40:25[847..856]
+                  Nav origin=Source@40:25[847..854]
                     components:
-                      Name "a" origin=Source@40:25[851..852]
-                      Group origin=Source@40:29[855..858]
-                        Call origin=Generated(ColonLowering)@40:29[855..858]
+                      Name "a" origin=Source@40:25[847..848]
+                      Group origin=Source@40:29[851..854]
+                        Call origin=Generated(ColonLowering)@40:29[851..854]
                           source:
-                            Product origin=Source@40:29[855..858]
+                            Product origin=Source@40:29[851..854]
                               elements:
                                 ExprElem
-                                  Name "b" origin=Source@40:29[855..856]
+                                  Name "b" origin=Source@40:29[851..852]
                                 ExprElem
-                                  Name "c" origin=Source@40:31[857..858]
+                                  Name "c" origin=Source@40:31[853..854]
                           target:
-                            Name "slice" origin=Source@40:29[855..858]
-                PatternGroup origin=Source@40:37[863..866]
-                  PatternSequence origin=Generated(PatternNormalize)@40:37[863..866]
+                            Name "slice" origin=Source@40:29[851..854]
+                PatternGroup origin=Source@40:37[859..862]
+                  PatternSequence origin=Generated(PatternNormalize)@40:37[859..862]
                     elements:
-                      PatternName "d" origin=Source@40:37[863..864]
-                      PatternName "e" origin=Source@40:39[865..866]
+                      PatternName "d" origin=Source@40:37[859..860]
+                      PatternName "e" origin=Source@40:39[861..862]
     Form Alias
-      Decl Alias origin=Generated(AliasPreserve)@41:1[869..899]
+      Decl Alias origin=Generated(AliasPreserve)@41:1[865..893]
         binder:
-          Name "postfix_splice" origin=Source@41:5[873..887]
+          Name "postfix_flip" origin=Source@41:5[869..881]
         target:
-          PathMaterial origin=Generated(PathMaterialPreserve)@41:24[892..899]
-            PatternSplice origin=Source@41:24[892..899]
-              Call origin=Generated(OperatorLowering)@41:24[892..898]
+          PathMaterial origin=Generated(PathMaterialPreserve)@41:22[886..893]
+            InterpretationFlip S->V origin=Source@41:22[886..893]
+              Call origin=Generated(OperatorLowering)@41:22[886..892]
                 source:
-                  Product origin=Generated(ProductLift)@41:25[893..896]
+                  Product origin=Generated(ProductLift)@41:23[887..890]
                     elements:
                       ExprElem
-                        Call origin=Generated(ColonLowering)@41:25[893..896]
+                        Call origin=Generated(ColonLowering)@41:23[887..890]
                           source:
-                            Product origin=Source@41:25[893..896]
+                            Product origin=Source@41:23[887..890]
                               elements:
                                 ExprElem
-                                  Name "a" origin=Source@41:25[893..894]
+                                  Name "a" origin=Source@41:23[887..888]
                                 ExprElem
-                                  Name "b" origin=Source@41:27[895..896]
+                                  Name "b" origin=Source@41:25[889..890]
                           target:
-                            Name "slice" origin=Source@41:25[893..896]
+                            Name "slice" origin=Source@41:23[887..890]
                 target:
-                  OperatorTarget spelling="!" fixity=Postfix arity=1 origin=Source@41:29[897..898]
+                  OperatorTarget spelling="!" fixity=Postfix arity=1 origin=Source@41:27[891..892]

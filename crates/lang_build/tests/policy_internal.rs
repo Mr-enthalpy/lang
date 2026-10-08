@@ -30,8 +30,8 @@ fn core_type_pattern_is_visible_in_open_static_horizon() {
 #[test]
 fn value_and_pattern_facets_have_independent_visibility_without_policy_changes() {
     for (stage, horizon, value_visible, pattern_visible) in [
-        (Stage::Meta, ObservationHorizon::OpenStatic, true, true),
-        (Stage::Meta, ObservationHorizon::Runtime, false, false),
+        (Stage::Compile, ObservationHorizon::OpenStatic, true, true),
+        (Stage::Compile, ObservationHorizon::Runtime, false, false),
         (Stage::Runtime, ObservationHorizon::OpenStatic, false, true),
         (Stage::Runtime, ObservationHorizon::SealStatic, false, true),
         (Stage::Runtime, ObservationHorizon::Runtime, true, false),
@@ -108,11 +108,7 @@ fn horizon_projection_does_not_define_symbol_existence() {
 fn seal_horizon_projection_reads_concrete_policy_views() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.namespace_projection().empty_delta();
-    for (name, stage) in [
-        ("meta_only", Stage::Meta),
-        ("compile_only", Stage::Compile),
-        ("seal_only", Stage::Seal),
-    ] {
+    for (name, stage) in [("compile_only", Stage::Compile), ("seal_only", Stage::Seal)] {
         let symbol_id = delta.allocate_symbol_id();
         let mut symbol = NamespaceGraphSymbol::new(
             symbol_id,
@@ -131,11 +127,9 @@ fn seal_horizon_projection_reads_concrete_policy_views() {
         .expect("install policy fixtures");
     let context = world.package_context();
     let capability = snapshot.capability();
-    let meta = capability.resolve_str("meta_only", &context).unwrap();
     let compile = capability.resolve_str("compile_only", &context).unwrap();
     let seal = capability.resolve_str("seal_only", &context).unwrap();
     for (symbol, horizon, exposed) in [
-        (&meta, ObservationHorizon::SealStatic, false),
         (&compile, ObservationHorizon::SealStatic, true),
         (&seal, ObservationHorizon::SealStatic, true),
         (&seal, ObservationHorizon::OpenStatic, false),

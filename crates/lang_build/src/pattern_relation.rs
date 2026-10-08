@@ -13,9 +13,9 @@ use lang_syntax::{
 };
 
 use crate::{
-    CanonicalFullNavigation, CanonicalPatternValue, CanonicalValueAddr, Diagnostic,
-    OverloadArgShape, PatternValueId, Provenance, ResolvedHoleBinderId, ResolvedPatternRootId,
-    SemanticOwnerId, SemanticValueId, SpecificityTuple,
+    CanonicalFullNavigation, CanonicalValueAddr, Diagnostic, OverloadArgShape, PatternValueId,
+    Provenance, ResolvedHoleBinderId, ResolvedPatternRootId, SemanticOwnerId, SemanticValueId,
+    SpecificityTuple, StructuralSchema,
 };
 
 /// Stable implicit candidate-family filter used only while Pattern itself
@@ -32,53 +32,14 @@ pub enum PatternSelector {
     Positional(usize),
 }
 
-/// Proof that one child comes from the Pattern's registered structural value,
-/// rather than from an ordinary navigable Val2 member.
+/// Registered structural incidence witnessed by one actual Val2 member.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DirectPatternChildEvidence {
     pub parent: PatternValueId,
     pub selector: PatternSelector,
-    pub child: CanonicalPatternValue,
+    pub member: SemanticValueId,
+    pub child: StructuralSchema,
     pub extraction_family: StructuralDefault,
-}
-
-/// Query a recorded canonical structural Pattern value for direct incidence.
-/// Ordinary Val2 state is intentionally absent from this interface.
-pub fn direct_pattern_child_from_canonical_value(
-    parent: PatternValueId,
-    value: &CanonicalPatternValue,
-    selector: &PatternSelector,
-) -> Option<DirectPatternChildEvidence> {
-    let body = match value {
-        CanonicalPatternValue::NamedPattern { body, .. } => body.as_ref(),
-        other => other,
-    };
-    let child = match (body, selector) {
-        (CanonicalPatternValue::UnorderedLayer(entries), PatternSelector::Named(name)) => entries
-            .iter()
-            .find(|(navigation, _)| navigation.components().first() == Some(name))
-            .map(|(_, child)| child.clone()),
-        (CanonicalPatternValue::OrderedLayer(entries), PatternSelector::Positional(index)) => {
-            entries.get(*index).map(|entry| entry.value.clone())
-        }
-        (CanonicalPatternValue::OrderedLayer(entries), PatternSelector::Named(name)) => entries
-            .iter()
-            .find(|entry| {
-                entry
-                    .navigation
-                    .as_ref()
-                    .and_then(|navigation| navigation.components().first())
-                    == Some(name)
-            })
-            .map(|entry| entry.value.clone()),
-        _ => None,
-    }?;
-    Some(DirectPatternChildEvidence {
-        parent,
-        selector: selector.clone(),
-        child,
-        extraction_family: StructuralDefault,
-    })
 }
 
 /// Root-local identity of an ordinary value binder in a Pattern query.
@@ -831,7 +792,7 @@ fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
         | NormPattern::Sequence { origin, .. }
         | NormPattern::Skeleton { origin, .. }
         | NormPattern::BindingSlot { origin, .. }
-        | NormPattern::Splice { origin, .. }
+        | NormPattern::InterpretationFlip { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
     }

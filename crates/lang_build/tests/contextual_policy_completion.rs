@@ -2,8 +2,7 @@ mod support;
 
 use lang_build::{
     elaborate_binding_result_demand, elaborate_namespace_declaration_policy, normalize_p2_policy,
-    MetaInstancePolicy, NamespaceDeclarationPosition, OpenHereAvailability, PolicyMode, Provenance,
-    Stage,
+    NamespaceDeclarationPosition, OpenHereAvailability, OpenPolicy, PolicyMode, Provenance, Stage,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -18,11 +17,11 @@ fn policy(source: &str) -> NormPolicySpec {
 }
 
 #[test]
-fn omitted_mode_requires_meta_and_current_open_here_for_mut() {
+fn omitted_mode_requires_open_and_current_open_here_for_mut() {
     for (qualification, open_here, expected) in [
-        ("meta", OpenHereAvailability::Known(true), PolicyMode::Mut),
+        ("open", OpenHereAvailability::Known(true), PolicyMode::Mut),
         (
-            "meta",
+            "open",
             OpenHereAvailability::Known(false),
             PolicyMode::Const,
         ),
@@ -52,7 +51,7 @@ fn omitted_mode_requires_meta_and_current_open_here_for_mut() {
         );
     }
     let pending =
-        elaborate_binding_result_demand(Some(&policy("meta")), Provenance::new("unknown source"))
+        elaborate_binding_result_demand(Some(&policy("open")), Provenance::new("unknown source"))
             .unwrap();
     assert!(pending
         .complete(
@@ -66,7 +65,7 @@ fn omitted_mode_requires_meta_and_current_open_here_for_mut() {
 
 #[test]
 fn explicit_or_deduced_mode_is_never_overwritten_by_contextual_completion() {
-    for source in ["meta + const", "meta + mut", "close + const", "close + mut"] {
+    for source in ["open + const", "open + mut", "close + const", "close + mut"] {
         let pending =
             elaborate_binding_result_demand(Some(&policy(source)), Provenance::new(source))
                 .unwrap();
@@ -87,7 +86,7 @@ fn explicit_or_deduced_mode_is_never_overwritten_by_contextual_completion() {
         }
     }
     let mut deduced =
-        elaborate_binding_result_demand(Some(&policy("meta")), Provenance::new("deduced")).unwrap();
+        elaborate_binding_result_demand(Some(&policy("open")), Provenance::new("deduced")).unwrap();
     deduced.mode = Some(PolicyMode::Const);
     assert_eq!(
         deduced
@@ -103,18 +102,18 @@ fn explicit_or_deduced_mode_is_never_overwritten_by_contextual_completion() {
 
 #[test]
 fn completion_policy_and_evaluation_stage_are_positionally_independent() {
-    let meta =
-        elaborate_binding_result_demand(Some(&policy("meta + const")), Provenance::new("P1 meta"))
+    let open =
+        elaborate_binding_result_demand(Some(&policy("open + const")), Provenance::new("P1 open"))
             .unwrap();
-    assert_eq!(meta.meta_instance_policy, MetaInstancePolicy::Meta);
+    assert_eq!(open.open_policy, OpenPolicy::Open);
     assert!(
-        matches!(meta.pair_query, lang_build::P1Projection::ValueDominant { value } if value.stage.is_none())
+        matches!(open.pair_query, lang_build::P1Projection::ValueDominant { value } if value.stage.is_none())
     );
-    let p2 = normalize_p2_policy(&policy("meta"), Provenance::new("P2 meta")).unwrap();
-    assert_eq!(p2.pair.value.stage(), Some(Stage::Meta));
+    let p2 = normalize_p2_policy(&policy("compile"), Provenance::new("P2 compile")).unwrap();
+    assert_eq!(p2.pair.value.stage(), Some(Stage::Compile));
     assert_eq!(p2.mode, PolicyMode::Const);
     assert!(normalize_p2_policy(&policy("close"), Provenance::new("not a stage or mode")).is_err());
-    for source in ["plain", "const + mut", "meta + close"] {
+    for source in ["plain", "const + mut", "open + close"] {
         assert!(
             elaborate_binding_result_demand(Some(&policy(source)), Provenance::new(source))
                 .is_err()
@@ -123,17 +122,17 @@ fn completion_policy_and_evaluation_stage_are_positionally_independent() {
 }
 
 #[test]
-fn explicit_mode_does_not_erase_meta_completion_from_a_declaration() {
+fn explicit_mode_does_not_erase_open_completion_from_a_declaration() {
     let declaration = elaborate_namespace_declaration_policy(
-        Some(&policy("meta + const")),
+        Some(&policy("open + const")),
         NamespaceDeclarationPosition::DirectTopLevel,
         Provenance::new("retained qualification"),
     )
     .unwrap();
     assert_eq!(declaration.mode, PolicyMode::Const);
-    assert_eq!(declaration.meta_instance_policy, MetaInstancePolicy::Meta);
+    assert_eq!(declaration.open_policy, OpenPolicy::Open);
     let error = support::AssociatedFamily::try_new(&[
-        "meta + const let f = (self): compile -> let r => { self; };",
+        "open + const let f = (self): compile -> let r => { self; };",
     ])
     .err()
     .expect("explicit mode does not witness instance completion");

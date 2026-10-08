@@ -1,1 +1,2 @@
-let DepType: type = (uint8 a) |> struct;
+let DepType: type = uint8;
+let AnotherType: type = uint16;

@@ -81,6 +81,11 @@ fn contextual_structural_material() {
 }
 
 #[test]
+fn product_receiver_dot_suffixes() {
+    assert_parser_case("product_receiver_dot_suffixes", false);
+}
+
+#[test]
 fn member_int_base() {
     assert_parser_case("member_int_base", false);
 }

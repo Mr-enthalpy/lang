@@ -4,17 +4,8 @@ use support::*;
 use lang_build::{BuildSession, BuildWorkspace, ToolchainGlobalSourceRoot};
 
 const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
-    ("vertical_slice", "app"),
-    ("verify_meta_conflict", "app"),
-    ("early_struct_meta", "app"),
-    ("struct_single_field", "app"),
-    ("struct_invalid_field_syntax", "app"),
-    ("field_named_ref", "app"),
-    ("field_named_share", "app"),
+    ("verify_compile_conflict", "app"),
     ("physical_subns", "app"),
-    ("type_named_struct", "app"),
-    ("struct_uint8", "app"),
-    ("struct_uint16", "app"),
     ("same_name_distinct_namespaces", "app"),
     ("resolver_core_conflict", "app"),
     ("single_package_type_binding", "app"),
@@ -52,7 +43,7 @@ fn runtime_transport_fixture(workspace: &str) -> BuildWorkspace {
 fn source_transport_without_execution_cannot_materialize_runtime_values() {
     for workspace in [
         "verify_runtime_shadow",
-        "policy_aware_early_meta",
+        "policy_aware_static_program",
         "user_runtime_values",
     ] {
         let mut session = BuildSession::new();
@@ -79,40 +70,61 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "app",
         "source expression completion requires common E",
     ),
-    ("struct_duplicate_field", "app", "duplicate field name"),
-    ("struct_non_type_field", "app", "unknown struct field type"),
-    ("struct_nested_product", "app", "invalid struct syntax"),
-    ("struct_unit_field", "app", "unit field or trailing unit"),
     (
-        "struct_target_not_name",
+        "structural_single_child_frontier",
         "app",
-        "expected a field binder name",
+        "structural type formation consumer is unavailable",
     ),
     (
-        "struct_operator_private_syntax",
+        "structural_nested_layer_frontier",
         "app",
-        "invalid struct syntax",
+        "structural type formation consumer is unavailable",
     ),
     (
-        "struct_unknown_field_type",
+        "structural_empty_layer_frontier",
         "app",
-        "unknown struct field type",
+        "structural type formation consumer is unavailable",
     ),
     (
-        "runtime_value_as_struct_field_type",
+        "structural_named_slots_frontier",
         "app",
-        "unknown struct field type",
+        "structural type formation consumer is unavailable",
+    ),
+    (
+        "structural_duplicate_navigation_frontier",
+        "app",
+        "structural type formation consumer is unavailable",
+    ),
+    (
+        "struct_helper_frontier",
+        "app",
+        "struct helper formation consumer is unavailable",
+    ),
+    (
+        "struct_helper_explicit_core_frontier",
+        "app",
+        "struct helper formation consumer is unavailable",
+    ),
+    (
+        "struct_helper_argument_arity",
+        "app",
+        "candidate preparation arity mismatch",
+    ),
+    (
+        "struct_helper_unobserved_argument",
+        "app",
+        "parameter shape compatibility is not established",
     ),
     ("source_conflict_physical_dir_symbol", "app", "conflict"),
     (
-        "descendant_injection",
+        "qualified_name_destination_frontier",
         "app",
-        "ordinary parent-to-descendant injection",
+        "qualified NameExpr formation and destination Place consumer is unavailable",
     ),
     (
-        "deep_descendant_injection",
+        "nested_qualified_name_destination_frontier",
         "app",
-        "ordinary parent-to-descendant injection",
+        "qualified NameExpr formation and destination Place consumer is unavailable",
     ),
     (
         "product_binder_rejected",
@@ -122,10 +134,10 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
         "discard_binder_rejected",
         "app",
-        "ordinary parent-to-descendant injection",
+        "qualified NameExpr formation and destination Place consumer is unavailable",
     ),
     (
-        "alias_external_injection_future",
+        "path_alias_destination_frontier",
         "app",
         "lexical Path alias formation/composition consumer is unavailable",
     ),
@@ -135,22 +147,21 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "source contribution error:",
     ),
     ("diagnostic_conflict", "app", "conflict"),
-    ("diagnostic_descendant", "app", "parent-to-descendant"),
+    (
+        "diagnostic_descendant",
+        "app",
+        "qualified NameExpr formation",
+    ),
     ("duplicate_declaration", "app", "conflict"),
     (
-        "non_meta_target",
+        "noncallable_target",
         "app",
         "ordinary invocation found no fully admissible candidate",
     ),
     (
-        "ambient_struct_collision",
-        "app",
-        "ambient struct collision",
-    ),
-    (
         "identity_type_missing_rank",
         "app",
-        "could not be resolved as a pure type Object",
+        "parameter shape compatibility is not established",
     ),
 ];
 

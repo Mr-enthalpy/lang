@@ -428,7 +428,8 @@ fn product_atom_from_expr(expr: &NormExpr) -> ProductAtom {
 
 fn expr_origin(expr: &NormExpr) -> &NormOrigin {
     match expr {
-        NormExpr::PolicyLet { origin, .. }
+        NormExpr::InterpretationFlip { origin, .. }
+        | NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }

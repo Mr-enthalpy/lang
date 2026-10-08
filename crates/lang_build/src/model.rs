@@ -169,7 +169,7 @@ impl Provenance {
     }
 }
 
-/// Diagnostic severity used by build/graph/meta diagnostics.
+/// Diagnostic severity used by build/graph/compile diagnostics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiagnosticSeverity {
     Info,
@@ -190,6 +190,8 @@ pub enum ResolverCode {
     Conflict,
     AmbiguousCallableCandidate,
     NoCallCandidate,
+    UnsupportedInitializerExpression,
+    ObservationUnavailable,
     UnsupportedInitializerContinuation,
     /// Explicit Pin stage constraints are canonical, but their per-position
     /// InputAdmissible consumer is not connected.
@@ -203,7 +205,7 @@ pub enum ResolverCode {
     /// declares a value slice whose stage is disjoint from its Pattern stage,
     /// but the pure-P return slot (`let r: type`) carries no value dimension.
     /// The declared runtime value slice could never be filled, so the
-    /// declaration itself is illegal. Static pairs (`meta:meta`,
+    /// declaration itself is illegal. Static pairs (`compile:compile`,
     /// `compile:compile`, `seal:seal`) keep Pv == Pp and remain legal for
     /// pure-P return slots.
     RuntimeSliceWithoutValueDimension,
@@ -459,7 +461,7 @@ pub struct TypeField {
     /// Current graph carrier used to reach field-type namespace material.
     /// This is not field-type identity.
     pub type_symbol_id: SymbolId,
-    pub visibility: crate::struct_pattern_material::StructuralMemberVisibility,
+    pub visibility: crate::structural_material::StructuralMemberVisibility,
     pub provenance: Provenance,
 }
 

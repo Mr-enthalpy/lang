@@ -1,0 +1,2 @@
+let Local = uint16;
+let nested:Local = 7;

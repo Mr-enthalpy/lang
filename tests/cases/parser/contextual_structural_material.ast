@@ -994,7 +994,7 @@ Program
                                 elements:
   LetAlias
     binder:
-      Name navigation_splice
+      Name navigation_flip
     target:
       PathMaterial
         Expr
@@ -1024,7 +1024,7 @@ Program
                                           Name c
   LetAlias
     binder:
-      Name bracket_splice
+      Name bracket_flip
     target:
       PathMaterial
         Expr
@@ -1248,7 +1248,7 @@ Program
                                 Name e
   LetAlias
     binder:
-      Name postfix_splice
+      Name postfix_flip
     target:
       PathMaterial
         Expr

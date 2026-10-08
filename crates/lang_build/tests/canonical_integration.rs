@@ -3,7 +3,7 @@
 //! These tests pin the canonical invariants end to end:
 //! one resolved binding per call target, member views as the canonical
 //! fact (never a flat Symbol/Policy aggregate), declaration-time return
-//! ontology shared by core and source, ordinary let-binding of meta outcomes
+//! ontology shared by core and source, ordinary let-binding of compile outcomes
 //! (bind the RHS value to the LHS symbol — types have value semantics too),
 //! and the single canonical P1 authority chain.
 
@@ -12,7 +12,7 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CompilationWorld, InvocationOutcome,
     OrdinaryInvocationContext, OrdinaryInvocationFailure, OrdinaryPipelineTrace, PolicyMode,
-    Provenance, ResolverCode, SemanticOwnerKind, SemanticValuePayload,
+    Provenance, ResolverCode, SemanticValuePayload,
 };
 
 use support::{build_fixture_error, build_single_fixture_world, initializer_from_source};
@@ -60,10 +60,87 @@ fn family_with_const_actual(
                 pattern,
                 view,
             }],
+            None,
             Provenance::new("const actual observation"),
         )
         .unwrap();
     (world, binding)
+}
+
+#[test]
+fn visible_noncallable_target_with_hidden_argument_has_no_candidate() {
+    use lang_build::{declared_policy_view, PolicyResultEntry, SemanticValueRef, Stage};
+    let (mut world, hidden) = family_with_const_actual(Stage::Runtime);
+    assert!(world.semantic_world().symbol(hidden).is_some());
+    let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let type_value = support::type_lookup_fixture("visible-noncallable-target");
+    let rank = world.semantic_world().type_rank().unwrap();
+    let view = declared_policy_view(Stage::Compile, PolicyMode::Const);
+    let (_, _, pattern) = world
+        .semantic_world_mut()
+        .register_type_symbol(
+            base.root_context().current_namespace,
+            "noncallable_type",
+            lang_build::SymbolId(900000),
+            type_value,
+            rank,
+            None,
+            view.pair.clone(),
+            Provenance::new("noncallable classifier fixture"),
+        )
+        .unwrap();
+    let value = world
+        .semantic_world_mut()
+        .install_plain_value(
+            type_value,
+            view.pair.clone(),
+            Provenance::new("visible noncallable"),
+        )
+        .unwrap();
+    assert!(world
+        .semantic_world()
+        .callable_entries_for_value(value)
+        .is_empty());
+    let noncallable = world
+        .semantic_world_mut()
+        .bind_ordinary_new(
+            base.root_context().current_namespace,
+            "noncallable",
+            &[PolicyResultEntry {
+                value: Some(SemanticValueRef {
+                    id: value,
+                    type_value,
+                }),
+                pattern,
+                view,
+            }],
+            None,
+            Provenance::new("noncallable binding"),
+        )
+        .unwrap();
+    let before = format!("{:?}", world.semantic_world());
+    let call =
+        extract_single_call_site(&initializer_from_source("let r = a noncallable;")).unwrap();
+    let result = lang_build::invoke_resolved_binding_ordinary(
+        world.semantic_world_mut(),
+        &[],
+        noncallable,
+        &call,
+        &base.root_context(),
+        OrdinaryInvocationContext::open_static(&[]),
+        Provenance::new("empty C3"),
+    );
+    let Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+        first_diagnostic: None,
+        trace,
+    }) = result
+    else {
+        panic!("fully observed noncallability must terminate before argument applicability: {result:?}");
+    };
+    assert!(!trace.c2_horizon_values.is_empty());
+    assert!(trace.c3_call_entries.is_empty());
+    assert!(trace.selected.is_none());
+    assert_eq!(format!("{:?}", world.semantic_world()), before);
 }
 
 #[test]
@@ -90,10 +167,12 @@ fn resolved_hidden_const_actual_cannot_default_mode_or_seal_selection() {
                 OrdinaryInvocationContext::open_static(&modes),
                 Provenance::new("hidden argument"),
             );
-            let Err(OrdinaryInvocationFailure::Residual { residual, trace }) = result else {
+            let Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace }) =
+                result
+            else {
                 panic!("hidden actual must stop before preference: {result:?}");
             };
-            assert_eq!(residual.class, "hidden-argument-value-observation");
+            assert_eq!(obstruction.class, "hidden-argument-value-observation");
             assert!(!trace.c3_call_entries.is_empty());
             assert!(trace.a_fully_admissible.is_empty());
             assert!(trace.bp_prime.is_empty());
@@ -170,7 +249,7 @@ fn trace_of<'a>(
         | Err(OrdinaryInvocationFailure::ResultTypeHasNoPattern { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationResultTypeChanged { trace, .. })
         | Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed { trace })
-        | Err(OrdinaryInvocationFailure::Residual { trace, .. })
+        | Err(OrdinaryInvocationFailure::ObservationUnavailable { trace, .. })
         | Err(OrdinaryInvocationFailure::CyclicVal2 { trace, .. }) => trace,
     }
 }
@@ -231,10 +310,7 @@ fn unit_argument_mode_completes_const_under_close() {
 
 #[test]
 fn unknown_argument_policy_never_defaults_selects_or_publishes() {
-    for qualification in [
-        lang_build::MetaInstancePolicy::Close,
-        lang_build::MetaInstancePolicy::Meta,
-    ] {
+    for qualification in [lang_build::OpenPolicy::Close, lang_build::OpenPolicy::Open] {
         let mut world = support::AssociatedFamily::new(&[
             "let first = (self, const let x): compile -> let r => { x; };",
             "let second = (self, mut let x): compile -> let r => { x; };",
@@ -276,6 +352,20 @@ fn pure_type_binding_mode_survives_classification_and_preference() {
         .unwrap()
         .pure_p_pattern()
         .unwrap();
+    let complete = world
+        .semantic_world()
+        .symbol_in_namespace(base.core_node(), "uint8")
+        .unwrap()
+        .pure_p()
+        .unwrap()
+        .complete_type
+        .and_then(|whole| {
+            world
+                .semantic_world()
+                .complete_type_by_whole_observation(whole)
+        })
+        .unwrap()
+        .clone();
     world
         .semantic_world_mut()
         .bind_ordinary_new(
@@ -286,6 +376,7 @@ fn pure_type_binding_mode_survives_classification_and_preference() {
                 pattern,
                 view: lang_build::declared_policy_view(lang_build::Stage::Compile, PolicyMode::Mut),
             }],
+            Some(&complete),
             Provenance::new("mut pure type observation"),
         )
         .unwrap();
@@ -344,6 +435,7 @@ fn receiver_binding_mode_survives_shared_value_identity() {
                 pattern: record.pattern,
                 view: lang_build::declared_policy_view(lang_build::Stage::Compile, PolicyMode::Mut),
             }],
+            None,
             Provenance::new("mut binding of same receiver"),
         )
         .unwrap();
@@ -425,7 +517,7 @@ fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
 #[test]
 fn ordinary_receiver_owns_terminal_call_entry() {
     let world = support::AssociatedFamily::new(&[
-        "let member = (self, t:type):meta -> let r:type => { t; };",
+        "let member = (self, t:type):compile -> let r:type => { t; };",
     ]);
     let make_type = world.target_binding();
     assert_eq!(make_type.ordinary_value().iter().count(), 1);
@@ -467,65 +559,34 @@ fn ordinary_receiver_owns_terminal_call_entry() {
 }
 
 // ---------------------------------------------------------------------------
-// ⑥ Privileged `struct` goes through the normal overload path: privilege is
-// a selected-body capability, never a resolution bypass.
+// Complete type helper selection uses the ordinary candidate and result planes.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn privileged_struct_uses_the_normal_overload_path() {
+fn struct_helper_frontier_follows_ordinary_selection() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
-            .expect("core semantic world builds");
-    let result = invoke(
+            .unwrap();
+    let before = format!("{:?}", world.semantic_world());
+    let failure = invoke(
         &mut world,
-        "let T: type = (uint8 a) struct;",
+        "let T = uint8 struct::core;",
         OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-        "privileged struct",
+        "selected struct helper",
     )
-    .expect("struct is selected through the ordinary spine");
-    let lang_build::InvocationResult::SemanticResult {
-        value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
-        ..
-    } = result
-    else {
-        panic!("struct declares one complete-type result");
+    .unwrap_err();
+    let OrdinaryInvocationFailure::SelectedImplementation { diagnostic, trace } = failure else {
+        panic!("complete input reaches helper selection: {failure:?}");
     };
-    assert_eq!(result.trace.c0_target_values.len(), 1);
-    assert_eq!(
-        result.trace.c1_visible_values,
-        result.trace.c0_target_values
-    );
-    assert_eq!(result.trace.c3_call_entries.len(), 1);
-    assert!(
-        result.trace.selected.is_some(),
-        "privilege applies only after ordinary selection"
-    );
-    let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
-        panic!("struct semantic result is complete tau");
-    };
-    assert!(result.complete_result[0].value.is_some());
-    let owner = world
-        .semantic_world()
-        .pattern_owner(returned.pattern)
-        .expect("struct result Pattern owner")
-        .owner;
-    // Direct `struct` never creates a `MetaInstance(struct, arguments)`
-    // scope of its own: the complete type attaches to the ambient
-    // declaration environment.
-    let ambient_owner = world
-        .semantic_world()
-        .namespace_owner(world.package_root_node())
-        .expect("package root owner");
-    assert_eq!(owner, ambient_owner);
-    assert!(matches!(
-        world
-            .semantic_world()
-            .owners()
-            .node(owner)
-            .expect("owner node")
-            .kind,
-        SemanticOwnerKind::PackageRoot { .. }
-    ));
+    assert_eq!(trace.c0_target_values.len(), 1);
+    assert_eq!(trace.c1_visible_values, trace.c0_target_values);
+    assert_eq!(trace.c3_call_entries.len(), 1);
+    assert!(trace.selected.is_some());
+    assert!(trace.compile_instance.is_some());
+    assert!(diagnostic
+        .message
+        .contains("struct helper formation consumer is unavailable"));
+    assert_eq!(format!("{:?}", world.semantic_world()), before);
 }
 
 // ---------------------------------------------------------------------------

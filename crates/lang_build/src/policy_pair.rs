@@ -6,7 +6,6 @@ use crate::{Diagnostic, Provenance};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Stage {
-    Meta,
     Compile,
     Seal,
     Runtime,
@@ -24,7 +23,6 @@ pub enum ObservationHorizon {
 impl Stage {
     pub fn visible_at(self, horizon: ObservationHorizon) -> bool {
         match self {
-            Self::Meta => horizon == ObservationHorizon::OpenStatic,
             Self::Compile => matches!(
                 horizon,
                 ObservationHorizon::OpenStatic | ObservationHorizon::SealStatic
@@ -35,7 +33,7 @@ impl Stage {
     }
 }
 
-/// Concrete value mode, independent of MetaInstance completion policy.
+/// Concrete value mode, independent of CompileInstance completion policy.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PolicyMode {
     #[default]
@@ -44,8 +42,8 @@ pub enum PolicyMode {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum MetaInstancePolicy {
-    Meta,
+pub enum OpenPolicy {
+    Open,
     #[default]
     Close,
 }
@@ -62,7 +60,7 @@ pub enum OpenHereAvailability {
 pub struct PendingResultPolicyDemand {
     pub pair_query: P1Projection,
     pub mode: Option<PolicyMode>,
-    pub meta_instance_policy: MetaInstancePolicy,
+    pub open_policy: OpenPolicy,
 }
 
 impl PendingResultPolicyDemand {
@@ -71,12 +69,12 @@ impl PendingResultPolicyDemand {
         open_here: OpenHereAvailability,
         provenance: Provenance,
     ) -> Result<ResultPolicyDemand, Diagnostic> {
-        let mode = match (self.mode, self.meta_instance_policy, open_here) {
+        let mode = match (self.mode, self.open_policy, open_here) {
             (Some(mode), _, _) => mode,
-            (None, MetaInstancePolicy::Close, _) => PolicyMode::Const,
-            (None, MetaInstancePolicy::Meta, OpenHereAvailability::Known(true)) => PolicyMode::Mut,
-            (None, MetaInstancePolicy::Meta, OpenHereAvailability::Known(false)) => PolicyMode::Const,
-            (None, MetaInstancePolicy::Meta, OpenHereAvailability::Unavailable) => return Err(policy_error("omitted mode under meta requires current OpenHere; the canonical construction consumer is unavailable", provenance)),
+            (None, OpenPolicy::Close, _) => PolicyMode::Const,
+            (None, OpenPolicy::Open, OpenHereAvailability::Known(true)) => PolicyMode::Mut,
+            (None, OpenPolicy::Open, OpenHereAvailability::Known(false)) => PolicyMode::Const,
+            (None, OpenPolicy::Open, OpenHereAvailability::Unavailable) => return Err(policy_error("omitted mode under open requires current OpenHere; the canonical construction consumer is unavailable", provenance)),
         };
         Ok(ResultPolicyDemand {
             pair_query: self.pair_query,
@@ -165,7 +163,7 @@ pub enum NamespaceVisibility {
 /// Independent capability axis of `CallableSemantics`.
 ///
 /// Privilege states what special operations a callable may perform (for
-/// example consuming raw/meta AST material).  It implies nothing about
+/// example consuming structural AST material).  It implies nothing about
 /// the declared result class and nothing about the Policy stage: `struct` is
 /// a privileged built-in whose result class is `CompleteType`, while `assert`
 /// and `verify` declare ordinary-value results.
@@ -319,7 +317,7 @@ pub struct NamespaceDeclarationPolicy {
     /// Whole-slot declaration mode, factored before `projection` is formed.
     pub mode: PolicyMode,
     /// Independent completion qualification, retained through declaration elaboration.
-    pub meta_instance_policy: MetaInstancePolicy,
+    pub open_policy: OpenPolicy,
     /// Root-local external projection derived when this declaration directly
     /// writes `export`. This is an early validation/preview only:
     /// `None` does not prove that the declaration is absent from the eventual
@@ -590,14 +588,14 @@ pub fn externally_visible<I: Ord>(
 struct ComponentAtoms {
     stage: Option<Stage>,
     mode_atoms: BTreeSet<PolicyMode>,
-    meta_instance_policy: Option<MetaInstancePolicy>,
+    open_policy: Option<OpenPolicy>,
     namespace: BTreeSet<NamespaceVisibility>,
     export_root: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum PolicyDimension {
-    MetaInstancePolicy,
+    OpenPolicy,
     Stage,
     Mode,
     NamespaceVisibility,
@@ -607,8 +605,8 @@ enum PolicyDimension {
 impl ComponentAtoms {
     fn dimensions(&self) -> BTreeSet<PolicyDimension> {
         let mut result = BTreeSet::new();
-        if self.meta_instance_policy.is_some() {
-            result.insert(PolicyDimension::MetaInstancePolicy);
+        if self.open_policy.is_some() {
+            result.insert(PolicyDimension::OpenPolicy);
         }
         if self.stage.is_some() {
             result.insert(PolicyDimension::Stage);
@@ -648,10 +646,10 @@ pub fn elaborate_binding_result_demand(
         return Ok(PendingResultPolicyDemand {
             pair_query: P1Projection::Infer,
             mode: None,
-            meta_instance_policy: MetaInstancePolicy::Close,
+            open_policy: OpenPolicy::Close,
         });
     };
-    let (pair_query, mode, meta_instance_policy, namespace, export_root) =
+    let (pair_query, mode, open_policy, namespace, export_root) =
         elaborate_p1_components(policy, provenance.clone())?;
     if !namespace.is_empty() || export_root {
         return Err(policy_error(
@@ -662,7 +660,7 @@ pub fn elaborate_binding_result_demand(
     Ok(PendingResultPolicyDemand {
         pair_query,
         mode,
-        meta_instance_policy,
+        open_policy,
     })
 }
 
@@ -748,7 +746,7 @@ pub struct ExplicitP1Selection {
     pub presence: Option<ValuePresence>,
     pub pattern_stage: Option<Stage>,
     pub mode: Option<PolicyMode>,
-    pub meta_instance_policy: Option<MetaInstancePolicy>,
+    pub open_policy: Option<OpenPolicy>,
 }
 
 impl ExplicitP1Selection {
@@ -757,7 +755,7 @@ impl ExplicitP1Selection {
             && self.presence.is_none()
             && self.pattern_stage.is_none()
             && self.mode.is_none()
-            && self.meta_instance_policy.is_none()
+            && self.open_policy.is_none()
     }
 
     /// A fully explicit selection carrying every dimension of `pair`.
@@ -769,7 +767,7 @@ impl ExplicitP1Selection {
             presence: Some(view.pair.value.presence()),
             pattern_stage: Some(view.pair.pattern.stage),
             mode: Some(view.mode),
-            meta_instance_policy: None,
+            open_policy: None,
         }
     }
 }
@@ -792,7 +790,7 @@ pub fn elaborate_explicit_p1(
     let mut selection = ExplicitP1Selection::default();
 
     let value_atoms = parse_p1_component(&policy.constraint, provenance.clone())?;
-    selection.meta_instance_policy = value_atoms.meta_instance_policy;
+    selection.open_policy = value_atoms.open_policy;
     match position {
         // Visibility/export atoms in the outer prefix are namespace
         // declaration attributes, separate from the function-object P1.
@@ -824,17 +822,17 @@ pub fn elaborate_namespace_declaration_policy(
             projection: P1Projection::Infer,
             mode: PolicyMode::Const,
             external_projection: None,
-            meta_instance_policy: MetaInstancePolicy::Close,
+            open_policy: OpenPolicy::Close,
             visibility: None,
             export_root: false,
         });
     };
-    let (projection, mode, meta_instance_policy, namespace, export_root) =
+    let (projection, mode, open_policy, namespace, export_root) =
         elaborate_p1_components(policy, provenance.clone())?;
     let mode = PendingResultPolicyDemand {
         pair_query: projection.clone(),
         mode,
-        meta_instance_policy,
+        open_policy,
     }
     .complete(OpenHereAvailability::Unavailable, provenance.clone())?
     .mode;
@@ -851,7 +849,7 @@ pub fn elaborate_namespace_declaration_policy(
     Ok(NamespaceDeclarationPolicy {
         projection,
         mode,
-        meta_instance_policy,
+        open_policy,
         external_projection,
         visibility,
         export_root,
@@ -886,7 +884,7 @@ fn elaborate_p1_components(
     (
         P1Projection,
         Option<PolicyMode>,
-        MetaInstancePolicy,
+        OpenPolicy,
         BTreeSet<NamespaceVisibility>,
         bool,
     ),
@@ -906,7 +904,7 @@ fn elaborate_p1_components(
     Ok((
         projection,
         mode,
-        atoms.meta_instance_policy.unwrap_or_default(),
+        atoms.open_policy.unwrap_or_default(),
         atoms.namespace,
         atoms.export_root,
     ))
@@ -1038,9 +1036,8 @@ fn parse_atom(
     let mut atoms = ComponentAtoms::default();
     match atom {
         NormPolicyAtom::Name { text, .. } => match text.as_str() {
-            "meta" if p1 => atoms.meta_instance_policy = Some(MetaInstancePolicy::Meta),
-            "close" if p1 => atoms.meta_instance_policy = Some(MetaInstancePolicy::Close),
-            "meta" => atoms.stage = Some(Stage::Meta),
+            "open" if p1 => atoms.open_policy = Some(OpenPolicy::Open),
+            "close" if p1 => atoms.open_policy = Some(OpenPolicy::Close),
             "compile" => atoms.stage = Some(Stage::Compile),
             "seal" => atoms.stage = Some(Stage::Seal),
             "runtime" => atoms.stage = Some(Stage::Runtime),
@@ -1096,7 +1093,7 @@ fn merge_conjunction(
             provenance,
         ));
     }
-    result.meta_instance_policy = result.meta_instance_policy.or(next.meta_instance_policy);
+    result.open_policy = result.open_policy.or(next.open_policy);
     result.stage = result.stage.or(next.stage);
     result.mode_atoms.extend(next.mode_atoms);
     result.namespace.extend(next.namespace);
