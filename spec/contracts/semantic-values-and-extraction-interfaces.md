@@ -8,11 +8,11 @@ The semantic value universe is the ordinary Object universe:
 Object(x) = <Val1?(x), Pattern(x), Val2(x)>
 ```
 
-Construction bodies may use private replay material, but only the declared
-semantic result crosses the invocation boundary. `struct` materializes and
-returns a complete type value. `StructConstructionMaterial` remains private to
-execution. Struct Pattern syntax material is converted to
-`CanonicalPatternValue` before it participates in semantic relations.
+Structural interpretation forms complete types atomically with actual Val2
+witnesses and registered roles. struct:type->type receives the complete type
+and adds helpers without changing its structural registrations. Private
+execution/formation material is consumed within its common transaction;
+only ordinary declared semantic results cross InvocationResult.
 
 `R_Gamma(P,c,rho)` is the sole Pattern applicability and extraction relation.
 Its content input is the Object's `Val1?` and owned `Val2`. Structural
@@ -58,7 +58,7 @@ implementation enum. An incomplete applicability relation stops the candidate
 family before maxima. In particular, Assert/Verify currently have unconnected
 parameter relations; they cannot be removed to select a known runner-up.
 Builtin body handling returns private material to the ordinary declared-result
-consumer. Source completion remains unavailable; no separate meta block evaluator
+consumer. Source completion remains unavailable; no separate compile block evaluator
 supplies a substitute result. Preparation supplies no Ready or common commit proof.
 `BuiltinBodyMaterial` belongs only to selected builtin leaves. The source-body
 frontier has a diagnostic-only interface and cannot produce that private material.

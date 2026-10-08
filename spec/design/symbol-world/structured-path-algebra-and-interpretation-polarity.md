@@ -1,10 +1,10 @@
-# Structured Path algebra and Pattern splice
+# Structured Path Algebra and Interpretation Polarity
 
 **Status: canonical semantic authority.**
 
 This owner defines NameValue/Path composition, two-level reading, # projection, and the
 common $ interface. The [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md)
-owns R_Gamma; the [Policy owner](symbol-policy-and-compile-flow-projection.md)
+owns R_Gamma; the [Policy owner](policy-and-static-flow-projection.md)
 owns Policy admissibility; the [call owner](function-object-call-model.md) owns
 invocation. All operations use the same E and ordinary Objects. Source consumers
 are pending; examples specify relations, not implemented parser coverage.
@@ -40,7 +40,7 @@ value-expected continuation only: NameValue(p) -> Read_resident(NameValue(p))
 ```
 
 For example, express$::express$ may evaluate both operands. The computation
-may contain ordinary calls, meta calls, compile computation and non-name
+may contain ordinary compile/value calls and non-name
 intermediate values. Its final result must supply the legal NameValue (or the
 ordinary projection domain of §2.5). # suppresses only the final resident read;
 it neither stops these computations nor repeats them. A simple written
@@ -322,11 +322,11 @@ PathPatternProjection(q) = a#
 ```
 
 These round-trip laws are indexed by the Path consumer: Interpret_Path in
-the general splice judgment of §4 interprets the projected Pattern material.
+the interpretation-polarity judgment of §4 interprets the projected Pattern material.
 Thus (a#)$ =_Path a and (a |> path_pattern)$ =_Path a compare structural
 observations. The surface shorthands (n#)$# = n# and
 ((a |> path_pattern)$)# = a# assume this Path interpretation of the inner
-splice. They give neither Policy nor other Pattern consumers an implicit
+polarity flip. They give neither Policy nor other Pattern consumers an implicit
 Path decoder and add no decoding step to the general definition of $.
 
 Both spellings use one projection. A NameExpr operand supplies Read_name(n),
@@ -335,7 +335,7 @@ evaluated value. A resolved Pattern binder holding a NameValue supplies that
 bound material, not a new node made from the binder's spelling; thus a# in the
 generative forwarder observes the requested field::adl, not the local label a.
 Projection/reinjection of this bound value does not repeat NameExpr lookup or
-reconstruct a Path from the binder spelling. General splice still evaluates
+reconstruct a Path from the binder spelling. Opposite-context interpretation evaluates
 its operand once and checks its consumer's ordinary readiness/admissibility.
 A value cannot be projected merely because its source once
 looked like a Path. Undefined projection fails through ordinary applicability,
@@ -402,7 +402,7 @@ Empty colon and comma slots use the same unit completion law. There is no
 missing-endpoint ontology. Ordinary `slice` structure is formed through Product
 Pattern items and ordinary struct:
 
-    slice = ((product items) slice) |> struct
+    slice = (((product items) slice)$) |> struct
 
 Container, Path, string and user callable
 families extract it using R_Gamma. Each family defines admissible item Patterns
@@ -467,55 +467,56 @@ the structure explicitly retains value/reference material. Projection need not s
 the surrounding namespace, and later same-spelled declarations cannot revise
 an already completed read.
 
-## 4. General Pattern material splice
+## 4. Interpretation polarity
 
-### 4.1 One interface
-
-For the current Pattern consumer A:
+### 4.1 Common flip and structural consumers
 
 ```text
-Gamma; Sigma |- e =>_RHS v
-Admissible_A(v)
--------------------------------
-Gamma; Sigma |- e$ =>_A Interpret_A(v)
+V = RHS/value interpretation
+S = structural interpretation
+Flip(V)=S; Flip(S)=V; Flip^2=Id
+Interpret(e$,C)=Interpret(e,Flip(C))
+BareName(a;p)=a::p
 ```
 
-In LHS/Pattern interpretation, $ declares its entire left operand to be RHS
-expression material, then reinjects that value into the current algebra. It is
-not an ordinary postfix value operation. Bare single names retain inherited
-navigation: a_LHS != a$_LHS. Bare operators elaborate as (operator[op])$
-in LHS and as operator[op] in RHS.
+$ may nest to arbitrary source depth. Even parity preserves the interpretation;
+odd parity flips it. It performs no resident read, stage change, borrowing,
+OpenHere grant, PolicyMode change or lifecycle action. ReadVal remains an
+independent Name/resident consumer.
 
-Path, Policy and ordinary extraction heads use this interface. Different
-consumers accept different structures; general splice does not make every
-value admissible in every Pattern position.
+Path, Policy, extraction and complete structural type formation specialize S.
+Within S, e$ interprets e in V and the surrounding structural consumer checks
+its resulting ordinary material. Within V, e$ interprets e in S; type formation
+publishes a complete type with actual Val2 witnesses and registered roles.
+Bare names use shared navigation completion. Bare S operators use
+(operator[op])$; V operators use operator[op].
 
-At one reached source occurrence, e evaluates once under ordinary semantics.
-Splice uses that result. Projections cannot repeat e's effects to manufacture
-another stage's copy.
+Each reached operand executes once under the common E; projection never repeats
+its effects or establishes another stage copy.
 
 ### 4.2 No textual macros or implicit binders
 
-Splice does not re-lex or parse strings, arbitrarily evaluate source AST,
+Interpretation polarity does not re-lex or parse strings, arbitrarily evaluate source AST,
 implicitly allocate HoleBinderId, capture another same-spelled hole, or grant
 Writable/OpenHere.
 
 Existing HoleRef material retains its actual PatternRoot/HoleBinderId. Invalid
 scope or incomplete material is inapplicable or erroneous under existing rules;
 renaming or redeclaration does not repair it. New holes require explicitly
-formed binding material. Splice itself performs no alpha-renaming.
+formed binding material. The flip performs no alpha-renaming.
 
 ### 4.3 Readiness and local selection
 
-The consumer's material must be legally available. Otherwise ordinary
-continuation retention, deferral or failure applies. A body that requires the
+The consumer's material must be legally available. A real remaining
+continuation may be retained; missing observations or consumers are unavailable.
+A body that requires the
 Pattern for its own selection cannot be run early to produce that Pattern.
 
 In particular, a candidate cannot execute to obtain evidence for its own
-earlier applicability. Failure to read a Policy splice does not reinterpret
+earlier applicability. Failure to obtain opposite-context Policy material does not reinterpret
 the spelling as a concrete atom or new hole.
 
-### 4.4 Concrete atoms, holes and value splices
+### 4.4 Concrete atoms, holes and opposite-context Policy material
 
 ```text
 runtime let a = e
@@ -525,7 +526,7 @@ runtime let a = e
     // explicitly declares a HoleBinderId, solved by ordinary extraction
 
 <> p$ let a = e
-    // reads the existing p value into the Policy Pattern context
+    // interprets p in V, then checks its result in the surrounding S consumer
 
 runtime let ~ <> runtime let
 runtime let != <runtime> runtime let
@@ -536,11 +537,13 @@ The last distinction concerns interpretation roles; it does not reject every
 otherwise legal program with the same spelling. It provides no implicit
 dereference repair.
 
-### 4.5 Projection is not implicit in splice
+### 4.5 Projection and polarity are independent
 
-name_express$ splices its current ordinary Pattern value directly into the current algebra.
-(name_express |> path_pattern)$ first performs path_pattern projection and then splices
-that result. They are not equivalent in general; $ never inserts that projection.
+In structural interpretation, name_express$ evaluates its operand in V and
+the surrounding consumer uses its resulting ordinary material.
+(name_express |> path_pattern)$ first performs path_pattern projection in V.
+The surrounding S consumer then interprets that result. These operations are
+not equivalent in general; $ never inserts the projection.
 
 name_express may be a complex computed name expression, not merely a single
 name. In general, (name_express |> path_pattern)$ != name_express$ as operations.
@@ -583,7 +586,7 @@ admissibility, readiness and Hole identities still obey §4.1–§4.3.
 
 ### 5.1 Preserve the observed members' names
 
-The ordinary meta type family is:
+The ordinary compile type family is:
 
 ```text
 N_s = s |> name
@@ -691,6 +694,7 @@ R_Gamma(NameNode(text), Content(rho(s)), rho2)
 
 Named fields may be permuted without reversing the chain. Changing `next` or an
 endpoint changes Path structure. These extractions require no external Read;
-`p$` in an ordinary value use subsequently checks its own Read environment.
+Any subsequent resident observation checks its own Read environment independently
+of the polarity flip.
 `End` terminates this representation; it does not establish a public empty-Path
 unit or choose new open-end semantics.

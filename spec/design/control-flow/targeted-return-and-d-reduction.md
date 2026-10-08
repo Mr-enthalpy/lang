@@ -20,7 +20,7 @@ completion constructors defined here and in
 `../patterns-overload/static-pattern-spaces-and-extraction-chains.md`; compile
 projection preserves them homomorphically. Projection and require slicing are
 canonical in
-`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+`../symbol-world/policy-and-static-flow-projection.md`.
 
 The return-target binding substrate adds one consumer after
 normalization:
@@ -181,7 +181,7 @@ maxima. Delivery does not first complete an unconstrained temporary and then
 rematch it. An explicitly written user binding still creates its own boundary.
 Both established outer P1 and P2 constrain the immediate inner call's P1/P2;
 the selected inner call cannot be reopened by later use. See
-[Policy demand](../symbol-world/symbol-policy-and-compile-flow-projection.md#39-direct-result-delivery-and-two-sided-forwarding).
+[Policy demand](../symbol-world/policy-and-static-flow-projection.md#39-direct-result-delivery-and-two-sided-forwarding).
 
 
 For a callable declared with an extraction result:

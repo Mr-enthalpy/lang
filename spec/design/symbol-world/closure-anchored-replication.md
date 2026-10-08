@@ -94,28 +94,26 @@ materials jointly determine one complete type and its target-formed callable
 members, then initialize once. No sibling's standalone tau_C is the first
 resident. A singleton ordinary declaration simply installs tau_C:type.
 After an initialized T exists, further member material uses
-extend/inject and its complete-type anchoring relation. An explicit += can
+ordinary * / *= and their complete-type anchoring relation. An explicit += can
 change callability registration when the home, non-generative registration and result consistency
-premises hold. Neither the first formation nor an inject is followed by an
+premises hold. Neither the first formation nor a type update is followed by an
 additional implicit +=. Ordinary assignment candidates remain owned by the
 assignment-operation owner; their existence is not inferred from a witness.
 
-## 5. Meta and non-meta anchors
+## 5. Anchors, dependencies and survival
 
-Within a meta invocation, the MetaInstance root is the unique stable anchor;
-in-place navigation is transparent for authority. Local residents end with the
-invocation unless ordinary owned transfer admits their resulting realization
-into the result region. Global promotion requires global dependency stability;
-a bounded result may retain valid input-derived opening sources. Neither cache
-identity nor result completion extends an expired local resident. struct,
-inject and closure anonymous construction share the same meta anchor rules.
+Each CompileInstance and callable has its own semantic owner. Ordinary and
+in-place closures preserve their lexical, Self and navigation layer. Reaching an
+enclosing instance requires its ordinary self-name and admitted dependencies.
+Replication constructs at the authorized destination while preserving the
+original callable identity and dependency coordinates.
 
-Established non-meta type constructions retain their survival rules and opaque
-in-place navigation levels. Universal closure-to-tau formation does not extend
-those rules to all dependency-bearing closure results; their survival, move,
-return/store/escape/promotion and bounded state are handed to the lifetime owner. Their stable identity cannot be retroactively
-reparented. Replication makes a new instance under the requested anchor while
-retaining the old one. Neither case adds a new owner kind or window rule.
+Stable identity and completed type status grant no lifetime extension.
+Local residents, owned transfer, return/store/escape, global promotion and
+bounded results follow ordinary region, generation and dependency checks.
+Globally persistent results require globally survivable dependencies.
+Retained opening sources are checked at every use; cache acquisition cannot
+restore an expired local or reopen Close.
 
 ## 6. Local open question
 
@@ -129,6 +127,6 @@ Initial formation at a known authorized contribution site differs from rehosting
 an already formed ordinary callable member c. A known target T directly forms
 c_C^T with Home(Type(c_C^T))=TypeMemberScope(T). Only later explicit contribution
 of an already formed c needs AnchorFor(c,T) and its replication witness.
-The unified [construction relation](symbol-first-meta-construction-and-pattern-injection.md)
+The unified [construction relation](structural-type-formation-and-composition.md)
 does not remove this witness or rerun [] initializers. General [dependency](dependency-observation-and-realization.md)
 checks remain active throughout; deferred lifetime refinement grants no exemption.

@@ -35,5 +35,5 @@ Public demand uses ordinary constraints on the value and direct type projections
 of the same observation edge. Removing colon syntax removes no endpoint checks:
 presence, both Policy observations, same Type and capability coherence remain
 mandatory. Already available views win before the one admitted direct family;
-no-reopen and selected-failure rules are unchanged. Policy splice obeys readiness
+no-reopen and selected-failure rules are unchanged. opposite-context Policy interpretation obeys readiness
 and never runs a candidate body to obtain its own applicability Pattern.

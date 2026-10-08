@@ -73,7 +73,7 @@ alternate relation or identity.
 - `let binder === PathMaterial` preserves a lexical Path alias: form the RHS once
   in the old Path environment, store material, never cache terminal binding identity.
 - `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
-  `type`, `meta`, `runtime`, `compile`, `namespace`, and `struct` are not lexer
+  `type`, `compile`, `seal`, `runtime`, `open`, `close`, `namespace`, and `struct` are not lexer
   keywords.
 - The parser must not create semantic declarations such as `FnDecl`,
   `StructDecl`, `ImportDecl`, HIR, MIR, or codegen nodes.
@@ -166,8 +166,9 @@ alternate relation or identity.
 - Color vocabulary is extensible and relation rows are explicit and directed.
 - SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
   semantic axioms, never missing Pre facts or private optimizer assumptions.
-- Child-directory names normalize to ordinary fresh-name actions followed by
-  explicit ref and one-shot directory type initialization before body evaluation; root and filenames add no segment.
+- Child directories provide inherited navigation; file P let inner=rhs becomes
+  P let inner::path=rhs through the ordinary let consumer. Root and filenames
+  add no segment or semantic type-composition action.
 - Host capabilities return ordinary Objects. Physical normalization and build
   facilities introduce no semantic facts; E alone owns meaning.
 - E is idempotent and saturates ready actions without rewriting continuations.
@@ -181,16 +182,15 @@ alternate relation or identity.
   UnitDiscard; continuation-path tail unit falls through, non-unit synthesizes return.
   Explicit unit return still returns; AST-list position is not semantic tailness.
 - Done is internal chain/target completion, never an Object or Pattern.
-  Split/D is restricted; residual escape separately reads ordinary meta facts.
+  Split/D is restricted; residual escape separately reads ordinary compile facts.
   Return has no synthetic local unit contribution.
-- Every legal completed closure expression returns full tau_C through ordinary
-  struct, with tau_C/c_C/A_C/() distinct and a finite implementation leaf.
+- Every legal completed closure expression returns full tau_C through atomic structural formation, with tau_C/c_C/A_C/() distinct and a finite implementation leaf.
   File implementation-layer let installs at the established package root;
   true lexical local let remains binding. Contribution repair preserves all legal binding/shadow/write/group
   actions and never retries failed execution as contribution.
 - NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
   Ordinary name writes may change Val2(Core) without either registration.
-  Pattern-registered extension uses extend/inject; TypeAdd changes V_tau only.
+  Registered structural composition uses ordinary * / *=; TypeAdd changes V_tau only.
 - Requested-name producers are ordinary compile computations over a requested
   NameValue and may realize any ordinary resident. Dot enters the generative
   field::adl overload family: receiver candidates perform ordinary method calls,
@@ -213,9 +213,9 @@ alternate relation or identity.
   with arbitrary source nesting. $ is independent from resident Read and Stage.
   Path support preserves Hole identities; ADL dynamic path segments use
   ((field#)[0])$::t.
-- Public Policy pair syntax is retired; internal value/type observations remain
+- Policy syntax preserves independent constraints; internal value/type observations remain
   independent and share the source evaluation edge only for direct projections.
-  Concrete atoms, omission, holes and splice remain distinct.
+  Concrete atoms, omission, holes and opposite-context material remain distinct.
 - Terminal ReturnPattern/Pout demand precedes immediate root maxima; established
   outer P1/P2 jointly constrain inner positions, without an implicit semantic temp.
 - Dependencies separate requirements, semantic realization and layout. [] is one
@@ -226,7 +226,7 @@ alternate relation or identity.
   In-place syntax forms dependencies automatically and produces an ordinary
   first-class result. Invocation does not recapture; binding, transfer and outer
   writes use actual access/capability/lifetime, with no placement-based veto.
-  Non-MetaDecl DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
+  Closure DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
   per occurrence; resolved explicit capture binders replace corresponding outer
   observations. Ordinary => closures may have both. InPlace excludes explicit
   clauses, but automatic dependencies do not imply InPlace. Placement and

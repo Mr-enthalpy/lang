@@ -38,21 +38,22 @@ ordinary graph entries, not parser keywords.
 
 Owner qualification maps frontend owner/root identities into a parent-linked
 persistent graph. It preserves callable owner, PatternRoot alpha boundary,
-HoleBinder identity and MetaInstance parent placement.
+HoleBinder identity and CompileInstance parent placement.
 
 ```text
-MetaInstanceRootKey
+CompileInstanceKey
   = ParentSemanticOwner
   x selected callable identity
   x CanonicalizeInvocationInputs(In)
 ```
 
-Every MetaInstance is a stable semantic owner whose name denotes its instance
-type tau_M. P1 meta retains it under dependency-derived OpenHere, which governs
-mut acquisition; close let completes and closes it. Ordinary payloads live in
-Val2 and keep their ordinary policies. The general cache preserves instance and
-member Place identity, current observations and checked dependencies. Value mode
-cannot substitute for the P1 meta qualification.
+Every CompileInstance is a stable semantic owner, formed before selected body
+entry and independent of result kind or P2. Its ordinary self-name is readable
+without reentry when initialized. A single direct instance-open self-root type
+result supplies a computed NameExpr; ordinary/external results preserve their
+own identity. OpenPolicy=open retains established opening sources; close
+completes and closes after ordinary result delivery. Current storage and prior
+immutable snapshots remain distinct.
 
 ## Policy and visibility
 
@@ -77,18 +78,16 @@ Core bootstrap supplies:
 
 - rank and abstract literal complete types;
 - ordinary callable/type-member entries;
-- privileged AST-consuming `struct` construction;
+- structural interpretation/type formation and ordinary struct helpers;
 - verification operations;
 - registered construction/migration implementations;
 - namespace and owner roots.
 
 Bootstrap implementation does not create a separate language ontology.
-Stable roots imply no active MetaDom; only actual active frames impose
-meta/seal dominance. main has runtime P2 and defaults its omitted P1 to runtime.
-`struct` follows the ordinary call pipeline and returns an exact complete type
-value. Primitive execution material is installed before the CompleteType
-semantic result is formed. Outer binding creates the destination name binding/Place
-and graph rendering.
+Main has runtime P2. Stable roots and active body evaluation are independent.
+CompileInstance identity is compatible with seal P2. Visibility, Ready and
+LegalToExecute are independent consumers. struct:type->type augments an
+already complete structural type without changing its structural registrations.
 
 ## Call path
 
@@ -116,7 +115,7 @@ causes name resolution to search an outer same-name name binding.
 
 ## Construction boundary
 
-Meta and source construction use the same facts:
+Structural construction and ordinary source actions use the same facts:
 
 ```text
 WellFormed
@@ -126,11 +125,11 @@ ConstructionAuthority
 ActiveConstructionWindow
 ```
 
-`extend` is a pure transform. `inject` is read+extend+write on an existing
-writable Place. Type contribution requires final classifier home Home(TypeOf(v)) = TypeMemberScope(T).
+* is ordinary type composition; *= performs read-transform-write on an actual
+writable type reference with all ordinary Pre premises. Type contribution requires final classifier home Home(TypeOf(v)) = TypeMemberScope(T).
 Eligible closure expressions can be instantiated under another anchor while
 preserving the original value. Derived forwarders capture the base complete
-snapshot. A is an ordinary meta instance type with an ordinary Val2 group
+snapshot. A is an ordinary compile instance type with an ordinary Val2 group
 member; its state uses the general invocation cache facilities.
 
 ## Pending consumers
@@ -144,7 +143,7 @@ The following are source/evaluator wiring work, not alternative semantics:
 - cleanup schedule production;
 - Residual/Diagnostic continuation transport;
 - derived associated forwarder formation;
-- instance/member residency, P1 meta qualification, input dependency normalization
+- instance/member residency, P1 open qualification, input dependency normalization
   and opening-source propagation, including the derived A instance;
 - serial compile evaluation.
 

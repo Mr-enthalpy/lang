@@ -10,7 +10,7 @@ define a second base Pattern calculus.
 
 Policy staging of this extraction flow, including runtime Pattern retention and
 automatic require, is canonical in
-`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+`../symbol-world/policy-and-static-flow-projection.md`.
 
 An evaluation returns one result object. The result object's value normal form is
 one of two shapes:
@@ -200,7 +200,7 @@ x?? = (x?)?
 ### Minimal Sum-Pattern Example: `bool`
 
 ```lang
-let bool: type = ((if | else) bool) |> struct;
+let bool: type = ((if | else) bool)$ |> struct;
 ```
 
 The first `bool` is the symbol being bound. The second `bool` is the pattern /
@@ -351,7 +351,7 @@ introduced. `let (r first,d second)=expr` denotes delivery to the already
 selected ReturnPattern, not a fresh lexical binding. Its Pout demand reaches
 expr's root before maxima. No independent `let temp=expr; result=temp` Policy
 completion or observable LifeName is inserted. A user-written temp remains
-an actual ordinary binding boundary. See the [Policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md)
+an actual ordinary binding boundary. See the [Policy owner](../symbol-world/policy-and-static-flow-projection.md)
 for two-sided forwarding and call-local no-reopen.
 
 ## 4. Equality Examples
@@ -406,7 +406,7 @@ can read the Pattern directly.
 Given:
 
 ```lang
-let t = (uint8 a, uint8 b)struct;
+let t = ((uint8 a, uint8 b)t)$ |> struct;
 
 let val = complete_t_value;
 ```
@@ -509,12 +509,12 @@ through `R_Gamma`. Direct Product observation and explicit one-layer `?` view
 formation are distinct operations. A failed direct observation never inserts
 an implicit `?`, and ordinary equality never calls an extraction helper.
 
-## 7. Relationship to Control-Flow-Local Meta Evaluation
+## 7. Relationship to Control-Flow-Local Evaluation
 
 The one-layer extraction view is complemented by a branch-local evaluation
-substrate (see [semantic evaluation](../meta-invocation/evaluation-residual-and-optimization.md)). That
+substrate (see [semantic evaluation](../static-evaluation/evaluation-residual-and-optimization.md)). That
 substrate uses sum-pattern spaces (e.g. `if | else`) as branch-selection material.
-It enforces that only the selected branch may perform lookup, policy check, meta
+It enforces that only the selected branch may perform lookup, policy check, compile
 invocation, or local symbol construction. Unselected branches have no lookup,
 policy, invocation, or `NamespaceDelta` obligation.
 
@@ -524,7 +524,7 @@ projection retains the Pattern and inferred require retains all
 runtime-reachable alternatives as pattern-guarded contracts.
 
 
-Type/meta/Pattern material remains ordinary instance material with normal
+Type/compile/Pattern material remains ordinary instance material with normal
 pass and lifecycle obligations; shape or stage creates no automatic exemption. Mechanical elaboration supplies the
-continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
+continuation to [E](../static-evaluation/evaluation-residual-and-optimization.md);
 optional optimizer search cannot change its rules.

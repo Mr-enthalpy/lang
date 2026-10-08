@@ -18,14 +18,12 @@ retain source order; sibling files are unordered contributions/actions and
 main.lang receives no execution priority. Physical normalization installs no
 semantic owner or authority.
 
-Existing bootstrap or independently legal ordinary meta formation establishes
-stable roots. Root ownership does not imply an active meta frame around
-K_entry. Actual meta/seal frames impose their stack-relative dominance only
-during their own activity, including through compile helpers.
-[Build normalization](../build-package/build-system-design.md) and
-[meta entry](meta-object-invocation-and-policy-reduction.md#21-compilation-entry-and-root-formation)
-supply the ordinary source/owner handoffs; host capabilities return ordinary
-Objects and add no build-side semantic facts.
+Bootstrap or independently legal ordinary formation establishes stable roots.
+Root ownership, active evaluation and P2 remain independent. CompileInstance
+formation is compatible with compile or seal horizons. [Build normalization](../build-package/build-system-design.md)
+provides inherited navigation; [invocation](compile-instance-invocation-and-result-delivery.md)
+supplies stable identity, body entry and ordinary result delivery. Host
+capabilities return ordinary Objects and add no build-side semantic facts.
 
 ## 2. Semantic saturation
 
@@ -82,6 +80,11 @@ A consumer cannot infer hidden work from the shape of either failure. Only the
 consumer that observes an actual horizon obstruction can report that frontier;
 an outer initializer transports it without guessing its cause or producer stage.
 
+An observation obstruction records an unavailable observation at H. It is
+distinct from residual material: without an established remaining continuation,
+the obstruction crosses the consumer boundary as an unavailable diagnostic.
+An unsupported expression or unconnected producer supplies neither fact.
+
 Failure to complete at an observation horizon establishes no producer stage.
 Pending seal work remains in the common continuation with its existing stage,
 identity, inputs, effects and dependencies. A written runtime result demand
@@ -125,7 +128,7 @@ optimizer-private assumptions or semantic gaps interpreted as permissions.
 Operator laws have three distinct consumers: grammar ParseAssociativity fixes
 AST grouping; SemanticLaw_E fixes the operator's relation; RewriteLaw_O supplies
 an E-proved equivalence for a continuation rewrite. Trait-like law queries are
-ordinary meta results. A commutative Pattern must already be unordered in E's
+ordinary compile results. A commutative Pattern must already be unordered in E's
 interpretation; O cannot make it unordered by consulting a later trait query.
 See [operator relations](../patterns-overload/operator-patterns-and-generative-declarations.md).
 
@@ -168,10 +171,10 @@ this is not a stage conversion. Ready includes actual read, write, borrow,
 lifetime and effect dependencies as well as formation order. Moving the work
 to a convenient scheduler queue cannot change those dependencies.
 
-MetaDom forbids seal entry and seal let; SealDom forbids meta invocation and
-meta let, including cache hits. Completed meta payloads are ordinary readable
-inputs when independently legal. Wpre/Wseal are snapshots of this one
-continuation; privileged scans keep their fixed Wpre domain.
+CompileInstance identity is independent of P2. Seal entry, helper calls and
+cache acquisition check the ordinary horizon, fixed Wpre/Wseal domain,
+dependency readiness and execution legality. A stable instance or readable
+completed result does not itself establish an active evaluation or Ready.
 
 All legal ready schedules preserve observable results, instance/call origin,
 cleanup and effects. Scheduler traces do not become identity. Saturation is a

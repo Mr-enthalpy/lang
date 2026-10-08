@@ -7,7 +7,7 @@ function call's return value is normalized at the return slot, and how default
 error handling is a mechanically inserted, source-expressible action rather than
 a compiler-intrinsic exception mechanism. Its central claim is that default error
 propagation is expressed through ordinary symbols, policy, alias/binding, and
-meta invocation — not through a built-in exception channel.
+compile invocation — not through a built-in exception channel.
 
 It is a future design note. It is not current public language behavior, not an
 implemented pass, not a parser or normalizer rule, and not a current type or
@@ -66,7 +66,7 @@ return slot:
 ```
 
 It is not type checking itself, not exception syntax, not a runtime catch, and
-not macro expansion. It is an ordinary meta-action framework inserted during the
+not macro expansion. It is an ordinary compile-action framework inserted during the
 normalization / lowering stage.
 
 A possible future consumer obtains the returned instance's ordinary type
@@ -76,7 +76,7 @@ sketch does not freeze a complete error/effect policy.
 
 ## 3. Uniform returned instances
 
-Type, meta, namespace and Pattern results remain ordinary instances. They
+Type, compile, namespace and Pattern results remain ordinary instances. They
 are not categorically exempt from movement or lifecycle checks. Any future
 Error normalization must define its predicate's applicable domain using
 ordinary relations and preserve the canonical result/completion boundary.
@@ -320,18 +320,18 @@ error-policy checker exists. The relevant dimensions are:
   there is no independent arbitrary complete return-policy `P3` or scalar
   replacement for its independent internal value/type Policy observations.
   Pout.stage=P1.stage; omitted mode inherits and an explicit mode overlay
-  remains a constraint. Public Policy pair syntax is retired; direct source/type
+  remains a constraint. Public Policy uses a single carrier; direct source/type
   projections retain the same edge only before a new binding boundary;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 
 These are future design statements, not a description of an implemented policy
 checker. Canonical symbol-flow policy is defined in
-`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+`../symbol-world/policy-and-static-flow-projection.md`.
 
-## 11. Relation to Meta Object Invocation
+## 11. Relation to Compile Instance Invocation
 
-Automatic return normalization should ultimately reuse the formal meta object
+Automatic return normalization should ultimately reuse the formal compile object
 invocation model rather than becoming a return-specific compiler oracle. The
 steps:
 
@@ -345,7 +345,7 @@ branch guarding
 should all be expressed through the unified policy-aware lookup and invocation
 mechanism.
 
-This document does not define the full meta object invocation model; it records
+This document does not define the full compile object invocation model; it records
 the dependency:
 
 ```text
@@ -380,7 +380,7 @@ No eager branch lookup.
 
 The canonical owners below constrain this future return-normalization sketch.
 
-- `meta-object-invocation-and-policy-reduction.md` — the unified policy-aware
+- `compile-instance-invocation-and-result-delivery.md` — the unified policy-aware
   lookup and invocation engine that `Error` branch lookup and branch guarding
   should reuse.
 - `pattern-normalization-and-first-order-overload.md` — provides the
@@ -390,7 +390,7 @@ The canonical owners below constrain this future return-normalization sketch.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the argument-slot
   counterpart of this return-slot normalization; both are mechanical source-level
   lowering actions.
-- `../symbol-world/symbol-policy-and-compile-flow-projection.md` — canonical
+- `../symbol-world/policy-and-static-flow-projection.md` — canonical
   internal value/type Policy observations, contextual P1/P2 elaboration, and
   stage views that gate Error branch
   lookup and execution.
@@ -402,9 +402,9 @@ The canonical owners below constrain this future return-normalization sketch.
   it is not written as `r?`. The `?` operator is reserved for the declared
   extraction-view transition described there. Return normalization uses the
   explicit guarded branch form shown in this document.
-- `control-flow-local meta evaluation substrate` (see
-  [semantic evaluation](../meta-invocation/evaluation-residual-and-optimization.md)) — the guarded
-  `T |> has(Error)` branch relies on the control-flow-local meta evaluation
+- `control-flow-local compile evaluation substrate` (see
+  [semantic evaluation](../static-evaluation/evaluation-residual-and-optimization.md)) — the guarded
+  `T |> has(Error)` branch relies on the control-flow-local compile evaluation
   substrate: the false branch has no Error lookup or return-capability
   obligation, and the true branch alone checks the Error carrier branch and
   `return_owner..return(e Error)` capability.

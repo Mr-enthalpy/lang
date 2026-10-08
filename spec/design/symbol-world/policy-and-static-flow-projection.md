@@ -1,4 +1,4 @@
-# name binding Policy and Compile-Flow Projection
+# Policy and Static Flow Projection
 
 Status: canonical design contract. The typed model in this document is the
 normative policy algebra.
@@ -20,12 +20,11 @@ source policy syntax
 
 ## 1. Complete binding flow and policy pair
 
-The ordinary slot/view laws below apply where a name and its resident value are
-distinct. P1 also admits `meta` for the invocation instance whose name is its
-own type value (§3.0). OpenHere governs current mutation authority and completes
-only finally omitted Mode under meta to mut. Explicit or deduced const/mut is
-preserved independently from MetaInstancePolicy, which is a separate P1 coordinate.
-P2 meta continues to specify the callable's evaluation horizon.
+P1 supplies OpenPolicy={open,close}, independently of value-mode
+PolicyMode={const,mut} and Stage={compile,seal,runtime}. Only finally omitted
+mode completes contextually: open plus current known OpenHere gives mut;
+otherwise const. Required unknown OpenHere is unavailable. P2 supplies the
+evaluation horizon; stable CompileInstance identity is independent of P2.
 
 Language computation remains one object flow. Every object has the same three
 components:
@@ -151,7 +150,7 @@ identity or introducing a fourth Object component.
 Policy dimensions are typed and orthogonal:
 
 ```text
-pair/view stage              meta / compile / seal / runtime
+pair/view stage              compile / seal / runtime
 pair/view presence           present / optional / absent
 whole-slot PolicyMode        const / mut
 ordinary namespace visibility public / private
@@ -218,7 +217,7 @@ never from the `mut let` spelling itself. This is why the `ref` family, the
 without policy carrying a writable/nonwritable promise (§1.1's two mechanisms
 `member overload` + `delete` remain the only local capability-exposure
 mechanisms, and the candidate schemas of `=` / field / `ref` / `share` in
-`symbol-first` §4.5.1 and `type-values` §5.1.3 reference exactly this rule
+`structural construction owner and `type-values` §5.1.3 reference exactly this rule
 rather than redefining a second PolicyMode system).
 
 ### 1.1.1 Initializing a typed Place before a resident exists
@@ -358,8 +357,8 @@ If the inner ordinary invocation fails, the failure is final for this
 candidate: the resolver does not go back and re-select another global
 `const` / `mut` overload.
 
-PolicyMode has two points, const and mut. MetaInstance completion uses the
-independent MetaInstancePolicy = {meta, close}; it is not a reconstruction
+PolicyMode has two points, const and mut. CompileInstance completion uses the
+independent OpenPolicy = {open, close}; it is not a reconstruction
 operator inventory. Copying uses ordinary share/rebind, selected clone, a fresh
 complete result and terminal Move, as owned by
 [mechanical passing](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md).
@@ -369,7 +368,7 @@ complete result and terminal Move, as owned by
 Single `|` belongs to Pattern alternative:
 
 ```lang
-let bool = ((if | else) bool) |> struct;
+let bool = ((if | else) bool)$ |> struct;
 
 let true = if::bool;
 let false = else::bool;
@@ -415,17 +414,17 @@ Whole-slot Mode, Safety and namespace visibility/export retain their independent
 owners; none is moved into Pv/Pp. The no-independent-Val1 consistency law of §1
 still applies. A hidden Val1 is not evidence of absent content.
 
-Concrete atoms, explicit holes, omission and value splice are distinct:
+Concrete atoms, explicit holes, omission and polarity flip are distinct:
 
 ```text
 runtime let ...  ~=  <> runtime let ...
 runtime let ...  !=  <runtime> runtime let ...
 <p> p ...       -- explicit HoleBinderId and ordinary extraction
 <> p$ let ...   -- observe an existing value and interpret it as Policy material
-<> p let ...    -- not implicitly the preceding splice
+<> p let ...    -- not implicitly the preceding polarity flip
 ```
 
-The [general splice judgment](structured-path-algebra-and-pattern-splice.md)
+The [interpretation-polarity judgment](structured-path-algebra-and-interpretation-polarity.md)
 evaluates its operand once at a reached occurrence, requires Policy-admissible
 ready material, and preserves existing HoleBinderIds/scope. It introduces no
 hole, string parser, phase-copy side effect or fallback from unavailable value
@@ -434,8 +433,7 @@ separate. The exact absent-value spelling remains open.
 
 A demand on both Pv and Pp uses ordinary Patterns/require on these two
 observations in the same candidate-local joint relation. Internal PolicyPair
-carriers and endpoint tuples may retain both facts, but public `Qv:Qp`
-Policy literals/extractors are retired. Raw/Norm Policy constraints preserve
+carriers and endpoint tuples may retain both facts, but public syntax consists of independent constraint material. Raw/Norm Policy constraints preserve
 ordinary atoms and orthogonal conjunction; they provide no pair/choice carrier.
 
 ### 2.2 Algebra
@@ -443,19 +441,18 @@ ordinary atoms and orthogonal conjunction; they provide no pair/choice carrier.
 A completed stage coordinate is one atom:
 
 ```text
-Stage = {meta, compile, seal, runtime}
-<=stage = Id ∪ {(meta,runtime), (compile,runtime), (seal,runtime)}
+Stage = {compile, seal, runtime}
+<=stage = Id ∪ {(compile,runtime), (seal,runtime)}
 ```
 
-The three static atoms are pairwise incomparable. They share one static
+The two static atoms are pairwise incomparable. They share one static
 evaluator; neither that fact nor execution readiness establishes a stage edge.
 The static-to-runtime edges require an admitted ordinary same-Type migration.
 No runtime-to-compile or seal-to-compile conversion follows.
 
 An unresolved solver may retain several valuations, each with one stage atom.
 Genericity uses explicit holes, ordinary extraction, legal orthogonal `+`,
-value splice and require. It does not use a public resolved StageSet or
-`runtime||compile` / `const||mut` demand. Presence alternatives use their
+polarity flip and require. It does not use a resolved stage union. Presence alternatives use their
 ordinary Pattern relation, not a stage union. Independently registered ordinary
 `||` outside this Policy sublanguage is unaffected.
 
@@ -465,7 +462,7 @@ retain distinct value/type facts; they are not source literals.
 ### 2.3 Deduction is ordinary operator Pattern extraction
 
 Policy + consumes its registered ordinary operator relation under type.
-Ordinary extraction, splice and require retain typed coordinate restrictions.
+Ordinary extraction, polarity and require retain typed coordinate restrictions.
 
     R_+(h1,h2,p,rho)
     independent holes -> distinct HoleBinderId
@@ -494,7 +491,7 @@ candidate/family fact; failed dynamic legality never reopens selection.
 ## 3. Contextual elaboration of P1
 
 Policy contexts can share a binding-shaped surface slot while using their
-position-specific elaborators. P1 meta-instance policy has the following
+position-specific elaborators. P1 open-instance policy has the following
 qualification before ordinary slot projection.
 
 Two named inference operations must remain distinct:
@@ -519,62 +516,61 @@ These operation names describe consumers of one ordinary Pattern relation,
 not separate inference ontologies. Concrete modes, holes and omission remain distinct.
 Declaration and call contexts supply observations of the same joint relation.
 
-### 3.0 Meta-instance P1 policy
+### 3.0 Instance P1 open policy
 
     PolicyMode = {const, mut}
-    MetaInstancePolicy = {meta, close}
+    OpenPolicy = {open, close}
 
-P1 meta retains an already established opening source. P1 close completes the
-instance and performs Close **after ordinary result delivery**. P2 meta remains
-an evaluation Stage. Neither coordinate implies the other. The contextual
-qualification domain remains type/type ref; it creates no instance, opening
+P1 open retains an already established opening source. P1 close completes the
+instance and performs Close **after ordinary result delivery**. P2 independently supplies an evaluation Stage. Neither coordinate implies the other. The contextual
+qualification applies to the current instance and its ordinary type/type ref views; it creates no instance, opening
 window, Writable proof or lifetime extension.
 
 Mode deduction is completed only after explicit const/mut constraints and
 ordinary Pattern deduction. Explicit Hole identities remain distinct from omission:
 
     DefaultMode_K(x) =
-      mut   if MetaInstancePolicy_K(x)=meta and OpenHere_K(x)
+      mut   if OpenPolicy_K(x)=open and OpenHere_K(x)
       const otherwise
 
 This applies only to a still-omitted mode. Unknown OpenHere facts are unavailable,
 not a proof of the otherwise branch. A mode derived as mut is a current
 continuation-relative observation, never a permanent property of an instance root.
 
-The body executes under meta; successful ordinary result assignment/replacement
+The body executes under open; successful ordinary result assignment/replacement
 precedes outward completion/Close. Later omitted mode completes const when
-meta + OpenHere no longer holds. close is not const. Completion retained under
-meta preserves the established opening source, not a new one.
+open + OpenHere no longer holds. close is not const. Completion retained under
+open preserves the established opening source, not a new one.
 
-Direct initialized-name mut borrowing and explicit meta-ref-to-mut confirmation
+Direct initialized-name mut borrowing and explicit open-ref-to-mut confirmation
 retain their actual Place, borrowed generation and opening subject. Both require
 current OpenHere, target Writable and ordinary capability/access/type/lifetime.
 Close defeats mutable acquisition and saved-ref writes. One-shot initial type
 slot authority remains independent. See the
-[type/ref owner](type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+[type/ref owner](type-values-places-and-borrow-views.md#522-initialized-type-names-open-references-and-mut-confirmation).
 
 OpenHere controls construction/mutation qualification, not the instance lifetime.
 Instance survival, movement, escape and dependencies remain ordinary lifecycle
 relations. Ordinary Val2 payload policies remain independent. The
-[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
+[invocation owner](../static-evaluation/compile-instance-invocation-and-result-delivery.md)
 owns self-name observation, ordinary delivery, identity and current storage reads.
 
 ### 3.1 Ordinary binding projection
 
 P1 let x = expr forms a complete lexical binding. Written const/mut, explicit
 Hole, deduced mode and omission are distinct inputs. The independent completion
-qualification defaults to close unless the established context retains meta.
+qualification defaults to close unless the established context retains open.
 
     written := WrittenPolicyConstraints(prefix)
     pending := FormCandidateIndependentDemand(written, immediate_context)
-    mode := CompleteOnlyOmittedMode(pending, MetaInstancePolicy, current OpenHere)
+    mode := CompleteOnlyOmittedMode(pending, OpenPolicy, current OpenHere)
     demand := CompleteResultPolicyDemand(pending, mode)
     result := ordinary E(expr, demand)  // demand precedes root maxima
     producer_mode := frozen selected result mode
     destination_view := ordinary projection and satisfaction
     transfer := selected ordinary realization followed by terminal Move
 
-Missing OpenHere needed by meta completion diagnoses unavailable; it cannot
+Missing OpenHere needed by open completion diagnoses unavailable; it cannot
 supply a concrete preference. The total output demand must exist before maxima.
 An unresolved outer candidate cannot send formal constraints into an inner call.
 Selected body, extraction, migration, delete or transfer failure never reopens it.
@@ -583,7 +579,7 @@ Mode preference does not change the selected producer mode. Existing exact
 outward views satisfy first; otherwise one direct same-Type selected migration
 owns coherent PolicyProjection and ValueRealization. Copy-derived delivery
 retains share/rebind -> clone -> fresh complete result -> Move. Preserve Move
-is not copying and invokes no clone. Destination assignment and MetaInstance
+is not copying and invokes no clone. Destination assignment and CompileInstance
 Complete/Close are distinct boundaries; completion policy supplies no value cast.
 
 ### 3.1.1 Explicit expression result-Policy context
@@ -596,8 +592,8 @@ PolicyLetExpression ::= PolicySpec "let" PipeExpression
 ```
 
 `PolicySpec` here denotes canonical typed Policy material (§2), including a
-legal explicit splice of an ordinary value. It does not reinstate a
-public pair/choice grammar. The operand covers the complete following pipe; parentheses close
+opposite-context interpretation of an ordinary value. The operand covers the
+complete following pipe; parentheses close
 the boundary:
 
 ```lang
@@ -1130,7 +1126,7 @@ If the complete query already has an accepted view, identity is the only
 migration candidate. Otherwise one admitted direct family may provide:
 
 ```text
-S:S, Type T -> runtime:S, Type T    where S ∈ {meta, compile, seal}
+S:S, Type T -> runtime:S, Type T    where S ∈ {compile, seal}
 ```
 
 The selected callable provides coherent PolicyProjection and ValueRealization.
@@ -1168,7 +1164,7 @@ Selected = (c*, sigma*, InvocationFrame)
 The family may be represented lazily. Each C_sigma has ordinary call structure,
 a correspondence to the same source invocation, and its concrete visibility
 and input evidence. Unreadable runtime Val1 is hidden without deleting
-arguments, Pattern observations, Val2 or identity. Generic meta partner M(c)
+arguments, Pattern observations, Val2 or identity. Selected CompilePartner(c)
 has separate anchored identity; it is not this projection family.
 
 Resolve once, progressively evaluate ready work, and retain unavailable
@@ -1206,15 +1202,15 @@ The following invariants hold independently of storage and lowering:
   even when their current contents normalize equally.
 - Cache keying does not swallow the caller's construction context wholesale.
   Canonical value identity and `Anchor`/`WindowLive_Σ` remain separate inputs to
-  applicability. A `compile` function that calls pure `extend` on a transported
-  type, or place-level `inject` through a ref, may be legal or illegal for the
+  applicability. A `compile` function that calls ordinary type composition `*` on a transported
+  type, or ordinary type update `*=` through a ref, may be legal or illegal for the
   same normalized contents in different stacks:
 
   ```text
   Eval(F, t; Γ_open)  ≠  Eval(F, t; Γ_closed)
   ```
 
-  `extend` requires `OpenHere_Σ(value)`; `inject` independently also requires
+  `*` requires `OpenHere_Σ(value)`; `*=` independently also requires
   `Writable_Γ(Target(ref))`. A `type ref` key preserves referent identity but
   proves neither current premise. Cache the pure value computation separately
   from applicability, or record/recheck those requirements in a function
@@ -1312,14 +1308,12 @@ following table is a semantic endpoint description, not source Policy syntax:
 
 | Concrete value stage | Ordinary pair |
 |---|---|
-| meta | meta:meta |
 | compile | compile:compile |
 | seal | seal:seal |
 | runtime | runtime:compile |
 
 An explicitly seal-formed Pattern permits runtime:seal. Runtime is not a
-Pattern formation stage. Distinct static atoms cannot make compile:seal or
-meta:compile into an admissible static split. A hidden Val1 retains the
+Pattern formation stage. Distinct static atoms cannot make compile:seal into an admissible static split. A hidden Val1 retains the
 underlying Object (§1).
 
 ```text
@@ -1342,7 +1336,7 @@ Only omission admits default completion:
 | seal | seal |
 | compile | compile |
 
-Meta instance P1 retains the contextual openness rules of §3.0; it is not a
+Instance P1 retains the contextual openness rules of §3.0; it is not a
 fourth mode or a stage union. Explicit P1 is never overwritten by the table.
 A bare ordinary let completes its stage at its formation context; it is not
 a wildcard that later uses can reinterpret. Default mode completion remains
@@ -1362,7 +1356,6 @@ ObservationHorizon = OpenStatic | SealStatic | Runtime
 Stage visibility is defined by domains:
 
 ```text
-Vis(meta)    = { OpenStatic }
 Vis(seal)    = { SealStatic }
 Vis(compile) = { OpenStatic, SealStatic }
 Vis(runtime) = { Runtime }
@@ -1370,7 +1363,6 @@ Vis(runtime) = { Runtime }
 
 | Policy stage | OpenStatic | SealStatic | Runtime |
 |---|:---:|:---:|:---:|
-| `meta` | yes | no | no |
 | `compile` | yes | yes | no |
 | `seal` | no | yes | no |
 | `runtime` value | no | no | yes |
@@ -1447,7 +1439,7 @@ copies.
 Projection alone executes no call and selects no overload. E exhausts ready
 work under the current continuation, stage, policy and facts; E E = E.
 It does not rewrite runtime bindings into compile bindings to obtain more work.
-[E and optimizer boundaries](../meta-invocation/evaluation-residual-and-optimization.md)
+[E and optimizer boundaries](../static-evaluation/evaluation-residual-and-optimization.md)
 govern transformations and revalidation by all affected projections.
 
 ## 9. Namespace visibility and export
@@ -1537,7 +1529,7 @@ It must not consume a later caller's Policy demand and must not be disguised as
 ordinary namespace visibility. No such additional publication filter is
 defined by this document.
 
-It is forbidden in function/meta-function bodies, parameters, return slots,
+It is forbidden in function/compile-function bodies, parameters, return slots,
 P2, Pattern interiors, expression policies, ordinary local P1, and any nested
 local declaration below that namespace level. A top-level function object may
 be an export root; its body declarations may not.
@@ -1666,8 +1658,8 @@ closure:
 
 ```text
 R0 = ExportedBindings
-   ∪ MaterializedResultsOfExportedMetaFunctions
-   ∪ ParameterDependenciesOfExportedMetaFunctions
+   ∪ MaterializedResultsOfExportedCompileFunctions
+   ∪ ParameterDependenciesOfExportedCompileFunctions
 
 R(n+1) = Rn ∪ SemanticDependencies(Rn)
 
@@ -1675,7 +1667,7 @@ Wpre = least_fixed_point(R)
 ```
 
 Materialized results include only results actually generated in this build,
-not the infinite set a generic meta function might produce for future inputs.
+not the infinite set a generic compile function might produce for future inputs.
 Wpre can contain non-exported private dependencies solely so the exported
 interface remains interpretable. Such membership does not install those
 dependencies in `Σ_export`.
@@ -1703,37 +1695,22 @@ authority, and policy rules. Internal authority may resolve it through
 Its absence from the current Wpre scan does not make it unaddressable, and its
 presence in Wseal does not make it exported.
 
-## 11. Evaluation frontier and active dominance
+## 11. Evaluation frontier
 
-OpenStatic and SealStatic use the same E and ordinary object machinery.
-Their readiness frontiers do not order the static Stage atoms. Active stack
-frames impose these independent restrictions:
+OpenStatic and SealStatic use the same E and ordinary Object machinery. Their
+readiness frontiers do not order the static atoms. CompileInstance formation
+is compatible with seal P2. Stable roots, result kind and instance opening
+establish neither an active body evaluation nor readiness.
 
-```text
-MetaDom(Sigma) => no seal candidate and no seal let
-SealDom(Sigma) => no meta invocation and no meta let
-```
+Seal entry, helper calls and cache acquisition consume the ordinary horizon,
+fixed Wpre/Wseal domain, input/migration evidence, Ready and execution legality.
+Read_name and Read_resident of an initialized instance do not enter its body;
+EnterBody of an active instance is the reentry edge.
 
-Restrictions propagate through compile helpers and are tested before candidate
-admission/entry, including a cached meta invocation. They end when the actual
-dominating frame returns. Stable owner ancestry, a meta-created payload, root
-bootstrap and a callable's P2 do not themselves create an active MetaDom.
-
-Completed meta payloads can be ordinary inputs to seal work when their
-observations are legal. This gives neither meta <= seal nor a migration edge.
-A compile helper waiting on seal material defers with its original identity,
-inputs, effects and dependencies; it is not reclassified seal.
-
-E runs only Ready actions. Deferral preserves dependencies on reads, writes,
-borrows, lifetime events and effect order, including pending formation.
-Legal ready schedules have the same observable result; scheduling trace is
-not semantic identity. No rule promises termination of infinite static work.
-Unresolved terminal static requirements diagnose or retain the appropriate
-unsupported residual, rather than inventing a value.
-
-Runtime consumes the sealed runtime residue and executes retained bodies,
-effects and branch choices. Compile realizations do not replace the original
-runtime invocation.
+E executes only Ready actions. Pending obligations retain selected identity,
+inputs, effects and dependencies in the same continuation. Legal ready schedules
+preserve observable result, cleanup and effects. Scheduler trace is not semantic
+identity. Runtime consumes the sealed residue without reselection.
 
 ## 12. Unified binding and overload selection
 
@@ -1884,4 +1861,4 @@ This document does not freeze:
 - arbitrary clause-level Boolean policy logic;
 - a complete runtime reflection API;
 - export reopening syntax;
-- unrelated `?`, `inject`, or new PatternValue mechanisms.
+- unrelated `?`, `*=`, or new PatternValue mechanisms.

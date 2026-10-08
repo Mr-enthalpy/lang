@@ -1,7 +1,7 @@
 # Policy Visibility and Capability Mapping
 
 Status: implementation-mapping companion. Canonical semantics are owned by
-[`../symbol-world/symbol-policy-and-compile-flow-projection.md`](../symbol-world/symbol-policy-and-compile-flow-projection.md).
+[`../symbol-world/policy-and-static-flow-projection.md`](../symbol-world/policy-and-static-flow-projection.md).
 
 ## 1. Typed semantic model
 
@@ -20,10 +20,10 @@ Whole-slot Mode, Safety, visibility/export and capability remain orthogonal.
 Concrete atoms introduce no holes: `runtime let` corresponds to
 `<> runtime let`, not `<runtime> runtime let`. An explicit hole and omitted
 constraint remain distinct. `<> p$ let` reuses an evaluated Policy value via
-the general splice interface; it does not rebind its HoleIds or reparse strings.
+the general polarity interpretation interface; it does not rebind its HoleIds or reparse strings.
 
-Public Policy has no pair literal, StageSet or dedicated stage/mode union
-sublanguage. Legal orthogonal +, ordinary extraction/holes/splice and require
+Public Policy preserves independent observations through ordinary constraints.
+Legal orthogonal +, ordinary extraction/holes/polarity and require
 constrain both observations within one candidate-local relation. Raw/Norm
 constraint carriers preserve ordinary atoms and orthogonal conjunction (§5).
 Default completion applies separately after inherited/contextual constraints.
@@ -44,13 +44,13 @@ No unresolved solver alternative manufactures a missing view.
 
 P2 is the evaluation horizon, P1/Pout producer visibility, InputAdmissible the
 input relation and Ready the current execution condition. Resolved Stage is
-{meta,compile,seal,runtime}; the order contains only identity and the three
+{compile,seal,runtime}; the order contains only identity and the two
 static-to-runtime edges. Static atoms are mutually incomparable.
 
 Internal Pv/Pp facts may differ: (runtime,compile) and (runtime,seal) are valid
 endpoint descriptions, not source pair expressions.
 Omitted ordinary P1 stage defaults from runtime P2 to runtime, seal to seal,
-compile to compile; contextual meta qualification has its separate owner.
+compile to compile; contextual open qualification has its separate owner.
 Explicit P1 is never overwritten and bare let is not a late wildcard.
 
 Pin inherits P2 with explicit stage/mode atoms or ordinary holes where written.
@@ -71,7 +71,6 @@ ObservationHorizon = OpenStatic | SealStatic | Runtime
 
 | Stage | OpenStatic | SealStatic | Runtime |
 |---|:---:|:---:|:---:|
-| meta | yes | no | no |
 | compile | yes | yes | no |
 | seal | no | yes | no |
 | runtime | no | no | yes |
@@ -197,7 +196,7 @@ The following carriers are implementation inventory, not evidence that the
 full R_vis/C_sigma model is connected. Resolved observations carry one Stage
 atom, while omitted query coordinates remain separate. The mapping below is
 not normative algebra. Omission remains separate until contextual completion:
-meta with known current OpenHere yields mut, otherwise const. Missing required
+compile with known current OpenHere yields mut, otherwise const. Missing required
 OpenHere evidence is unavailable. Operator-Pattern policy deduction and the joint
 Pin/Pout solution relation remain pending consumers.
 
@@ -278,7 +277,7 @@ scalar policy projection.
   resident's independently exposed Pattern view.
 - Runtime Policy-slice existence does not imply present-phase value
   readability.
-- Meta is not exposed in SealStatic.
+- CompileInstance formation is independent of P2 and compatible with seal.
 - Seal policy grants no enumeration capability.
 - `@` reifies name interpretation: `N@ is a name iff N is a name`.
   It cannot alter completed ordinary overload selection. SafetyPolicy is

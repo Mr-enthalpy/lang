@@ -14,16 +14,16 @@ chain and terminal binding before consumer projection. Callability, applicabilit
 not restart lexical resolution at an outer same-name binding.
 
 Pattern structural incidence is recorded separately from ordinary members.
-Generated fields contribute explicit `DirectPatternChild` evidence; ordinary
-lookup-visible or virtual members do not acquire structural status by presence.
+Non-generative structural formation registers `DirectPatternChild` with a current
+actual Val2 member witness. Ordinary helpers remain independently navigable.
 
 Owner identity is determined by the typed `SemanticOwner` graph and canonical
-meta-instance root key. Destination binding paths, registry allocation order,
+compile-instance root key. Destination binding paths, registry allocation order,
 and display names do not reroot a Pattern or complete type value.
 
 
-[Path projection and general splice](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
+[Path projection and interpretation polarity](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md)
 do not turn strings into resolved coordinates or access authority. Once resolved,
 projection, runtime residue and caches retain that same chain without relookup.
-Splicing a Pattern preserves its existing PatternRoot/HoleBinderId references;
+Interpretation preserves existing PatternRoot/HoleBinderId references;
 illegal scope fails rather than rebinding by spelling or automatic alpha-renaming.

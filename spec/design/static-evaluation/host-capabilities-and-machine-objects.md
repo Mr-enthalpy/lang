@@ -17,7 +17,7 @@ ordinary call, followed by ordinary binding or named contribution. The result
 becomes a navigation prefix through its ordinary Object members. link has no
 mount, namespace-injection, package-graph, or build authority.
 
-The public model is an already available first-class object::path. Source meta
+The public model is an already available first-class object::path. Source compile
 evaluation can implement acquisition, validation, representation construction,
 specialization, and export without requiring users to operate a separate
 file-to-language-object subsystem.
@@ -96,7 +96,7 @@ available observations and realizations.
 ## 4. Target-machine facts
 
 The target machine is described by compile-known Objects obtained through source
-meta actions and, where necessary, host capabilities. Width, alignment,
+compile actions and, where necessary, host capabilities. Width, alignment,
 representation validity, arithmetic/rounding, trap behavior, and ABI-relevant
 semantic facts enter the language world before evaluation, optimization, or
 materialization relies on them.
@@ -109,7 +109,7 @@ that permits an optimizer to assume the event cannot occur.
 
 Target flags, feature flags, dependency flags, manifests, and library paths
 cannot supply a second channel of program meaning. The compilation level and
-source meta actions determine acquisition and selection. Planner parameters
+source compile actions determine acquisition and selection. Planner parameters
 only govern equivalent-transform search.
 
 ## 5. External behavior and optimization

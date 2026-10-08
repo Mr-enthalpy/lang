@@ -1,8 +1,8 @@
-# Meta Construction Boundary
+# Compile Construction Boundary
 
 Status: semantic handoff with source-consumer migration pending
 
-Meta construction uses the shared semantic universe and ordinary invocation
+Compile construction uses the shared semantic universe and ordinary invocation
 boundary. Selected builtin leaves produce private material consumed at their
 own declared-result boundary under the call's specified `SemanticOwner`.
 Source bodies require ordinary semantic completion through common E; they do
@@ -25,28 +25,34 @@ parent SemanticOwner
   × CanonicalizeInvocationInputs(In)
 ```
 
-Ordinary meta constructs its instance name/type tau_M rooted at M, with direct
-result class CompleteType. Arbitrary payloads belong in ordinary Val2;
-name::path navigation and explicit compile extraction expose their values. Input normalization preserves value observations
-and every semantically observed name/subject/borrow dependency identity. The
-result name is not an input structural child and changes neither input Val2 nor
-Norm. Its openness source is the meet over AccessClosure_out(In); open inputs
-are admitted with ordinary identity, access and lifetime checks. P1 meta retains the instance under OpenHere, which governs mut acquisition;
-close let completes and closes it. P2 meta remains the evaluation horizon. Global persistence requires the stronger
-global stability/escape judgments.
+Every selected compile call forms its stable CompileInstance before EnterBody,
+independent of result kind and P2. The instance self-name is ordinary NameValue;
+resident reading requires initialized complete storage and does not reenter the
+body. Declared result class, ReturnPattern and ResultPolicy are independent.
+Ordinary scalar, Product, closure and external type results are admitted.
+
+Accessible instance-open self-root types must form exactly one direct complete
+type result tau_I. The traversal includes Product elements, captures, references,
+share targets and other admitted wrappers. Missing traversal evidence is
+unavailable. Valid direct self-root results provide Read_name(result)=n_I;
+external type results do not manufacture that NameExpr. Input dependency
+normalization preserves value, observed name/subject and borrowed-target identity.
+Output opening sources follow the actual dependency meet. OpenPolicy=open
+retains the established source; close follows ordinary result delivery with
+Complete and Close. Unknown required OpenHere is unavailable.
 
 The invocation registry/cache associates the full key with the same result
 binding/Place and construction status. Repeated completed acquisition reads the
 current resident, does not rerun initialization, and rechecks dependencies and
-current Pre. Value/material reuse is separate. The direct instance type keeps
-its root invariant; ordinary Val2 payloads keep their own value owners or targets. Untransferred locals cannot escape via cache storage.
+current Pre. Value/material reuse is separate. A direct self-root result keeps its root invariant; other ordinary results and
+Val2 members keep their own owners or targets. Untransferred locals cannot escape via cache storage.
 These laws are owned by
-[meta invocation](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md).
+[compile invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md).
 
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
 bodies perform value-side name formation and separately authorized ref/write
-or inject actions. Initializer-free P let name:t and P let name::path:t
+or ordinary *= actions. Initializer-free P let name:t and P let name::path:t
 create typed NameExpr at lexical and structural destinations respectively.
 Qualified formation uses resolved structural root identity and the current
 resident type's OpenHere, valid selector, non-retention and ordinary access/path/type
@@ -58,8 +64,7 @@ ref borrows the Place using its declared type without reading. Ordinary write
 initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
-replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires retained structural names being published to be
+replacement capability and resident compatibility. A qualified let with RHS forms a complete binding using RHS inference. Close requires retained structural names being published to be
 initialized; it does not require all future generated coordinates to be realized.
 Ordinary lexical let remains unchanged.
 
@@ -82,25 +87,24 @@ The source-body frontier returns diagnostics only, with no success carrier for
 builtin material. Inner builtin invocations consume `BuiltinBodyMaterial` into
 their own complete semantic result; future source execution must deliver ordinary
 semantic completion through common E rather than forward that private material.
-There is no separate meta body evaluator. Preparation and horizon visibility
+There is no separate compile body evaluator. Preparation and horizon visibility
 prove neither Ready nor execution legality.
 
-`MetaInstanceId` reuses the interned semantic owner and is independent of
-TypeValueId. Identity admission alone establishes no Object, Place, openness or
-completed result. The registry's currently supported struct-result record is a
-specific payload under that identity. `SelectedCallableIdentity` keeps the actual
-receiver and selected implementation. `MetaInstanceMaterialKey` combines that
-pair with canonical arguments. The complete `MetaInstanceRootKey` is the sole
-identity input to owner interning and struct-result installation, with no second
-callable or half-root parameter to reconcile. Equal full keys preserve the instance;
-conflicting formation material cannot split or replace it. Reacquisition reads
-current ordinary type/Val2 storage and preserves old complete-type snapshots.
-Missing prerequisites and formation conflicts publish no partial instance/result
-installation. This storage transaction does not establish the common E producer
-transaction. General instance residency, dependencies, current write authority,
-P1 completion and source body execution remain unconnected consumers.
+`CompileInstanceId` reuses the interned semantic owner independently of
+TypeValueId. Admission creates its independent ordinary self-name coordinate,
+with initialized residency requiring an ordinary producer. `CompilePartner`
+retains the actual receiver/call-entry pair; canonical arguments and parent
+complete `CompileInstanceKey`. Body/result material and provenance supply no
+identity coordinate. Connected external-type delivery retains the input's exact
+complete snapshot and leaves instance self residency uninitialized.
+
+General instance residency, accessible-result closure, opening-source meets,
+P1 completion and source body execution require their common E consumers.
+Structural source formation and ordinary struct helper formation are unavailable;
+schema normalization and graph records establish no structural member or role.
+Selected failures publish no semantic world mutation.
 
 Compilation entry has runtime P2 and omitted ordinary P1 defaults to runtime.
-Bootstrap or ordinary legal meta formation supplies stable roots, without an
-active meta wrapper over all compilation. Actual MetaDom forbids seal work;
-actual SealDom forbids meta invocation, including cache hits and helper calls.
+Bootstrap or ordinary legal compile formation supplies stable roots, without an
+active compile wrapper over all compilation. CompileInstance formation is compatible with seal P2. Helper calls and cache
+acquisition obey ordinary Ready and execution legality.

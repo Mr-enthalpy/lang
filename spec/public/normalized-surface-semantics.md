@@ -299,7 +299,7 @@ The canonical semantic handoff distinguishes RHS naked OperatorUse -> operator[o
 LHS naked operator -> (operator[op])$ with its operand interpreted on the RHS,
 OperatorNameValue (ordinary name read without recursive dispatch), dot .op ->
 op::adl, and explicit paths as written. Grammar vocabulary, precedence and
-parse associativity cannot be modified by source meta evaluation. The current
+parse associativity cannot be modified by source compile evaluation. The current
 OperatorTarget carrier does not itself implement family lookup or the registered
 Pattern/generative projections described by the
 [operator owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md).
@@ -329,8 +329,8 @@ argument.
 ### Ordinary ADL and compact member sugar
 
 Canonical `.field` means `field::adl`; `obj.field` means
-`obj |> field::adl`. The ordinary default ADL generator supplies a closure
-that forwards under the selected receiver Pattern and immediate result demand.
+`obj |> field::adl`. The ordinary ADL generative family has receiver-call and type-path candidates.
+Ordinary applicability and specificity select under the immediate result demand.
 Its own self and explicit receiver remain distinct. Binding the selector and
 using it later follows the same pipe/Product rules.
 
@@ -357,22 +357,26 @@ The parser recognizes only those two complete annotations, so ordinary bracket
 calls such as `obj[[cap] => { cap }]` and `obj[[strategy]]` retain their prior
 shape. Normalization encodes the suffix through ordinary call structure with
 `MemberViewAnnotationLowering`; it does not assign general policy or member
-semantics. Only the later `struct` consumer interprets it as structural member
-metadata. The slot is not available for `runtime`, `seal`, `const`, `export`,
+semantics. The structural interpretation consumer uses it as member metadata; ordinary
+struct receives the already complete type. The slot is not available for `runtime`, `seal`, `const`, `export`,
 or arbitrary names.
 
 ### Double-dot sugar
 
 ```text
 Conceptual rule: double-dot lowering
-Dump label:      DoubleDotLowering
+Dump label:      PipelineDotLowering
 ```
 
 ```text
 obj..method(args...)
-=> obj |> generated closure:
-   <T: type>(self, val: T) => { (val, args...) |> method::T }
+=> obj |> .method(args...)
+=> (obj, args...) |> method::adl
 ```
+
+For empty `()`, the ordinary Product contribution is unit, so both spellings
+produce `(obj, ()) |> method::adl`. A Product receiver participates in the same
+ordinary suffix and pipeline rules.
 
 ### Bracket sugar
 
@@ -396,14 +400,10 @@ Explicit `()` inside brackets is a user-written Unit product: obj[()] => (obj, (
 
 ### Shared boundary
 
-In the double-dot and prefix-negative helpers, `T` and `val` are local
-generated binders, and the receiver becomes the call's source product (a
-`ProductLift`). `...args` is a Pattern remainder binding, not a pack type.
-
-```text
-`field::T` and `method::T` are unresolved navigation targets.
-No field lookup, method lookup, method dispatch, type checking, or overload resolution occurs.
-```
+Prefix negative uses hygienic generated T/val binders. Double-dot contracts
+only pipeline-dot syntax and generates no closure, Self or capture layer.
+...args is Pattern remainder material. field::adl is unresolved navigation;
+normalization grants no dispatch, OpenHere, mode, borrow or lifetime facts.
 
 ### PolicyLet preservation
 
@@ -418,7 +418,7 @@ P let a |> f
 ```
 
 The current carrier uses `PolicySpec`; the canonical public material excludes
-its legacy pair/choice forms and admits the defined general Pattern splice. The operand is the complete
+only ordinary constraints and interpretation-polarity material. The operand is the complete
 following pipe expression. Parentheses close the boundary:
 
 ```text
@@ -436,65 +436,31 @@ The normalized node preserves an explicit semantic boundary. Normalization
 itself performs neither result-demand formation, overload resolution, nor
 Policy migration; those operations belong to semantic evaluation.
 
-## 8. Value-Side vs Pattern-Side Material
-
-Value and pattern are different kinds of material and do not implicitly convert.
+## 8. Interpretation polarity
 
 ```text
-A value does not implicitly become a pattern.
-A pattern does not implicitly become a value.
+V = RHS/value interpretation
+S = structural interpretation
+Flip(V)=S; Flip(S)=V; Flip^2=Id
+Interpret(e$,C)=Interpret(e,Flip(C))
 ```
 
-A value enters pattern space only through an explicit bridge outside
-normalization (for example postfix `?` or another explicit value-to-pattern
-operation). A pattern exposes
-values only through explicit extraction, binding, passing, or returning.
+Arbitrary postfix-$ nesting alternates polarity. Even nesting preserves the
+initial interpretation; odd nesting flips it. The normalized syntax preserves
+this boundary without evaluating an operand or reading a resident.
+$ changes no Stage, PolicyMode, OpenHere, borrow or lifecycle fact.
 
-What each side is:
+NormExpr carries V syntax and NormPattern carries S syntax. A polarity-flip
+node carries the operand in the opposite syntax context; nested flips retain
+hole identities and ordinary closure traversal. Norm is syntax-directed and
+does not form the semantic complete type. The common E structural consumer
+atomically forms actual Val2 role witnesses and a complete type.
 
-```text
-A Value is the object being processed.
-A Pattern is the structural / extraction-side material used to decompose,
-classify, or bind material.
-```
-
-At the normalized layer, whether a value can be expanded, whether a field
-exists, or whether an extractor applies is not decided.
-
-Separation in the normalized tree:
-
-```text
-Value-side material remains NormExpr.
-Pattern-side material remains NormPattern.
-```
-
-Expression-shaped syntax may appear in a binding, annotation, or extraction
-context. When it does, it normalizes into pattern-side material:
-
-```text
-Raw syntax may look expression-shaped, but if it occurs in a pattern,
-annotation, or extraction context, it normalizes into NormPattern-side material,
-not NormExpr.
-```
-
-The dump labels make this visible. The same source name is a different node on
-each side:
-
-```text
-value position:       Name "P"          (NormExpr)
-annotation position:  PatternName "P"   (NormPattern)
-```
-
-Pattern-side names are bounded pattern material, not ordinary call targets:
-
-```text
-Pattern-side names are unresolved pattern material.
-They are not ordinary call targets.
-They must not fall back to ordinary value/function lookup.
-```
-
-This applies to annotation patterns, binding patterns, extraction skeletons, and
-future pattern-head positions.
+Bare S names use BareName(a;p)=a::p for both Path and extraction. Bare S
+operators elaborate as (operator[op])$; naked V operators use operator[op].
+The normalizer resolves neither names nor ordinary operator families.
+Annotations, binding and extraction preserve their structural interpretation
+and exact PatternRoot/HoleBinder identity.
 
 ### Construction/extraction vs call/extraction
 
@@ -826,17 +792,13 @@ observe the same source evaluation edge; a new binding has its own destination.
 Mode, safety, visibility and migration endpoints remain independent.
 
 Concrete `runtime let` introduces no hole. Omission, concrete material,
-declared HoleRef and general `<> p$ let` splice remain distinct.
-General Policy splice and complete source observation consumers remain pending.
+declared HoleRef and opposite-context `<> p$ let` interpretation remain distinct.
+General opposite-context Policy interpretation and complete source observation consumers remain pending.
 
-The P1 form `meta let f = expression` uses this existing policy-prefixed
-binding shape. Its `meta` atom remains a Name. Contextual meta qualification is
-currently limited to type/type ref, with instance retention as one consumer;
-it is not a fourth PolicyMode. P1 openness qualification and P2
-meta evaluation horizon are distinguished by later contextual policy elaboration;
-normalization establishes neither instance identity nor OpenHere. Close let
-uses the same syntax shape; its classic meta completion/closure behavior is
-likewise a semantic rule, not a frontend rewrite.
+The P1 open let form preserves OpenPolicy=open independently from const/mut
+and Stage. Close uses the same policy-prefixed binding shape. Omitted mode
+completion and instance delivery remain semantic consumers; normalization
+supplies neither identity nor OpenHere. P2 has compile, seal and runtime atoms.
 
 ### Capture binding elaboration
 
@@ -935,13 +897,13 @@ The build handoff derives long-lived identity from a parent-linked
 `SemanticOwner`, not a file, span, or printable path. Every callable, including
 an in-place closure, has a `CallableOwner` and callable-local `Self` space.
 Every legal completed closure expression yields full tau_C through ordinary
-struct Material_C. Its contributed callable c_C, A_C=Type(c_C) and () entry
+complete structural formation material Material_C. Its contributed callable c_C, A_C=Type(c_C) and () entry
 remain distinct, with finite implementation leaves and same-formation initial
 callable material. An associated `()` implementation may instead bind the type
 facet of its local `Self` and invocation slot 0 to a named receiver type.
 `CallableOwner` and receiver type are independent semantic facts.
 
-Source navigation remains inner-to-outer; a complete generated meta-call scope
+Source navigation remains inner-to-outer; a complete generated compile-call scope
 used as an outer component is grouped, as in `child::(int Vec::std)`.
 
 Each independent let Pattern and callable head establishes a `PatternRoot`.
@@ -970,13 +932,10 @@ Placement and explicit/automatic origin supply no post-formation applicability,
 specificity or overload preference. Otherwise tied distinct candidates remain
 ambiguous under ordinary uniqueness.
 
-MetaDecl has a narrower semantic handoff: its identity-establishing callable
-requires ordinary => and no capture clause, and cannot automatically capture
-unpassed enclosing locals. Generic Raw/Norm preservation is not MetaDecl
-acceptance; declaration validation remains pending. The meta owner admits input
-dependencies and established stable definition/instance relations, without a
-CapturedEnv identity axis. Nested ordinary closures may use legally available
-invocation material under their own ordinary dependency rules.
+CompilePartner formation uses these ordinary dependency rules. Its selected
+receiver/call-entry pair and canonical inputs determine the CompileInstance,
+independent of result class. The invocation body retains its own lexical,
+Self and navigation layer and uses established dependencies without recapture.
 
 For example, an exported ordinary closure's source dependency is explicit:
 
@@ -1115,7 +1074,7 @@ Generated:
   PrefixNegativeLowering
   DotNameLowering
   MemberLowering
-  DoubleDotLowering
+  PipelineDotLowering
   BracketCallLowering
   PatternNormalize        (binding-site / annotation / extraction-pattern normalization; §9)
   ClosureNormalize        (closure head normalization; §9)
@@ -1165,7 +1124,7 @@ Later pattern-space and extraction-chain semantics
 (`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`) motivate the
 value-side / pattern-side boundaries, but they are **not** current normalized
 call-binding behavior. `Done`, residual propagation, pattern-space subtraction,
-`operator+` meta-reduction, `match` closing, exhaustiveness, and pattern-head
+`operator+` compile-reduction, `match` closing, exhaustiveness, and pattern-head
 resolution are future semantics, not current behavior, and must not be read as
 implemented.
 
@@ -1245,7 +1204,7 @@ surface and must not be assumed:
 
 ## Canonical construction and consumer alignment
 
-The canonical dual meta declaration surfaces `P let f = (self,args):meta => B`
+The canonical equal callable/name-producer declaration surfaces `P let f = (self,args):compile => B`
 and `P let (self,args) f => B` preserve the same declaration material. This is
 a syntax/semantic handoff requirement, not a claim that the current parser has
 connected the latter form. Neither form normalizes by resolving a name or
@@ -1258,11 +1217,11 @@ resident type's OpenHere, selector validity, non-retention and ordinary
 access/path/type legality. It requires no parent Writable or parent mut type ref.
 Equal type values do not merge structural root/name/Place identities. Borrowing
 is a separate Place-side judgment. Initialized type names admit direct mut
-borrowing or explicit meta type ref followed by ConfirmMut, subject to the same
+borrowing or explicit open type ref followed by ConfirmMut, subject to the same
 current OpenHere, target Writable, capability and lifetime checks. These coherent
 routes introduce no implicit chain; saved refs retain their borrowed generation
 and cannot write after Close. Initial refs remain initialization-only. See the
-[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-open-references-and-mut-confirmation).
 
 Initializer-free P let name:t and P let name::path:t create typed NameExpr
 using lexical and structural destinations respectively, with non-Object
@@ -1273,8 +1232,7 @@ ref borrows the Place using its declared type without reading. Ordinary write
 initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
-replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires retained structural names being published to be
+replacement capability and resident compatibility. A qualified let with RHS forms a complete binding using RHS inference. Close requires retained structural names being published to be
 initialized; it does not require all future generated coordinates to be realized.
 Ordinary lexical let remains unchanged.
 These canonical consumers remain pending; current parser carriers do not define them.
@@ -1317,25 +1275,25 @@ Normalization neither inspects RHS semantic type nor retries failed execution.
 
 ### Structured Path and Product handoff
 
-[Structured Path](../design/symbol-world/structured-path-algebra-and-pattern-splice.md)
+[Structured Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md)
 uses Read_name to complete the whole name expression, including computed
-operands and ordinary/meta/compile subexpressions, to structural NameValue;
+operands and ordinary/compile subexpressions, to structural NameValue;
 ordinary value use then
 performs Read_resident. Postfix e# is the defined path_pattern projection,
 observing only the first level for NameExpr after that full computation.
 It does not capture AST or stop operand evaluation. name::path keeps the same
 construction/extraction direction; :: is Pattern/path composition. Bare a
 inherits navigation in extraction, while evaluated a$ reinjects material;
-non-extraction name::a == name::(a$) is not an unconditional Pattern rewrite. In LHS, e$ interprets the entire operand in RHS expression context and
-reinjects its value; bare operators elaborate to (operator[op])$. General $ splices ready material
-without implicit Path conversion, retaining Hole identities. The round-trip
+non-extraction name::a == name::(a$) is not an unconditional Pattern rewrite. Interpret(e$,C)=Interpret(e,Flip(C)) applies in both V and S, with arbitrary
+nesting and parity. Bare S operators elaborate to (operator[op])$. The flip
+retains Hole identities and inserts no implicit Path conversion or resident Read. The round-trip
 (n#)$ reconstructs n's structure under the Path consumer, not through a general
-splice decoding rule. Index p[i] yields relative single-name
+polarity decoding rule. Index p[i] yields relative single-name
 path_pattern. RHS colon forms ordinary Product |> slice; empty structural
 colon/comma slots are unit. Slice consumers use ordinary overload/Pattern
 extraction, without a separate slicing primitive. Textual roots
 resolve at resident use, while explicit roots retain their dependencies.
-Current source consumers remain pending, including # and general splice.
+Current source consumers remain pending, including # and general polarity interpretation.
 
 All directly named Product entries make that layer unordered; any bare entry
 makes the whole layer ordered. The top name does not decide ordering; nested
