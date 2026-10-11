@@ -503,7 +503,7 @@ first-initialization capability and no permission to collapse distinct entries.
 ## 7. Identity and closure
 
 Name binding, entry identity, value equality, complete type, Place and lookup
-index remain distinct. Copying a pattern value preserves its anchor and does
+index remain distinct. Copying a type value preserves its anchor and does
 not open a new construction window. OpenHere uses the existing Core, anchor,
 WindowLive and evaluation-stack judgments independently of carrier writability.
 

@@ -16,7 +16,7 @@ fn type_projection_is_not_an_ordinary_resident() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
     assert!(uint8.ordinary_value().is_none());
-    assert!(uint8.pure_p_pattern().is_some());
+    assert!(uint8.type_resident_pattern().is_some());
     // CoreTypeProjection graph value is accessible through core_type_projection_value_for_symbol,
     // never through an ordinary resident.
     let type_obj = world
@@ -38,7 +38,7 @@ fn forwarded_type_binding_carries_exact_tau_independently_of_core_projection() {
         .symbol_in_namespace(world.package_root_node(), "PatternResult")
         .expect("forwarded type result is bound");
     let member = binding
-        .pure_p()
+        .type_resident()
         .expect("T carries the returned pure type Object");
     let whole = member
         .complete_type
@@ -435,7 +435,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
             .pattern_owner(core_value.pattern)
             .expect("core Pattern owner")
             .owner,
-        "binding installation must not reroot PatternValue ownership"
+        "binding installation must not reroot Pattern coordinate ownership"
     );
 
     let bound_graph_symbol = world
@@ -482,7 +482,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
             .semantic_world()
             .pattern_for_associated_namespace(companion),
         Some(bound_value.pattern),
-        "navigation through the fresh carrier place still obtains the bound value's existing PatternValue"
+        "navigation through the fresh carrier place still obtains the bound value's existing Pattern coordinate"
     );
     assert_ne!(
         world
@@ -492,9 +492,9 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         world
             .semantic_world()
             .pattern_owner(bound_value.pattern)
-            .expect("bound PatternValue keeps its owner")
+            .expect("bound Pattern coordinate keeps its owner")
             .owner,
-        "routing a carrier place to the existing PatternValue must not reroot its Pattern owner"
+        "routing a carrier place to the existing Pattern coordinate must not reroot its Pattern owner"
     );
 }
 
@@ -511,7 +511,7 @@ fn rebound_type_value_keeps_complete_identity_and_distinct_carriers() {
         .expect("carrier rebinding of Direct");
 
     assert_eq!(
-        direct.pure_p_pattern(), rebound.pure_p_pattern(),
+        direct.type_resident_pattern(), rebound.type_resident_pattern(),
         "a carrier rebinding refers to the same complete type, so the rebound carrier name cannot change type identity"
     );
 
@@ -536,10 +536,10 @@ fn rebound_type_value_keeps_complete_identity_and_distinct_carriers() {
         rebound_type.carrier_symbol_id
     );
     assert_eq!(direct_type.represented_type, rebound_type.represented_type);
-    let direct_snapshot = direct.pure_p().unwrap().complete_type.unwrap();
-    let rebound_snapshot = rebound.pure_p().unwrap().complete_type.unwrap();
+    let direct_snapshot = direct.type_resident().unwrap().complete_type.unwrap();
+    let rebound_snapshot = rebound.type_resident().unwrap().complete_type.unwrap();
     assert_eq!(direct_snapshot, rebound_snapshot);
-    assert_ne!(direct.pure_p_place(), rebound.pure_p_place());
+    assert_ne!(direct.type_resident_place(), rebound.type_resident_place());
 }
 
 #[test]
@@ -558,9 +558,13 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
         .symbol_in_namespace(world.package_root_node(), "U")
         .expect("source binding U");
 
-    let bound_pure = bound.pure_p_pattern().expect("T has pure_p");
-    let core_pure = core.pure_p_pattern().expect("uint8 has pure_p");
-    let rebound_pure = rebound.pure_p_pattern().expect("U has pure_p");
+    let bound_pure = bound.type_resident_pattern().expect("T has type_resident");
+    let core_pure = core
+        .type_resident_pattern()
+        .expect("uint8 has type_resident");
+    let rebound_pure = rebound
+        .type_resident_pattern()
+        .expect("U has type_resident");
 
     assert_eq!(bound_pure, core_pure);
     assert_eq!(rebound_pure, core_pure);
@@ -568,15 +572,15 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
     let bound_declaration = world
         .semantic_world()
         .pattern_declaration(bound_pure)
-        .expect("T PatternValue has original declaration");
+        .expect("T Pattern coordinate has original declaration");
     let core_declaration = world
         .semantic_world()
         .pattern_declaration(core_pure)
-        .expect("uint8 PatternValue has original declaration");
+        .expect("uint8 Pattern coordinate has original declaration");
     let rebound_declaration = world
         .semantic_world()
         .pattern_declaration(rebound_pure)
-        .expect("U PatternValue has original declaration");
+        .expect("U Pattern coordinate has original declaration");
 
     assert_eq!(
         bound_declaration, core_declaration,
@@ -603,8 +607,8 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
 /// ```
 ///
 /// The place inequality is what makes `let f::T = ...` a write to `T`'s own
-/// pure-pure type Object instead of to the PatternValue that `U` and `uint8`
-/// share, so it is the structural difference between `let =` and `let ===`.
+/// resident Object. The P coordinate shared by `U` and `uint8` does not
+/// identify that resident or its Place.
 #[test]
 fn ordinary_type_bindings_own_distinct_val2_places() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
@@ -619,14 +623,16 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
 
-    let pattern = core.pure_p_pattern().expect("uint8 has pure_p");
-    assert_eq!(bound.pure_p_pattern(), Some(pattern));
-    assert_eq!(rebound.pure_p_pattern(), Some(pattern));
+    let pattern = core
+        .type_resident_pattern()
+        .expect("uint8 has type_resident");
+    assert_eq!(bound.type_resident_pattern(), Some(pattern));
+    assert_eq!(rebound.type_resident_pattern(), Some(pattern));
     let type_value = semantic
         .type_for_pattern(pattern)
         .expect("the shared Pattern denotes one TypeValue");
     assert_eq!(
-        semantic.type_for_pattern(bound.pure_p_pattern().expect("T pure_p")),
+        semantic.type_for_pattern(bound.type_resident_pattern().expect("T type_resident")),
         Some(type_value),
         "a carrier rebinding never mints a new TypeValue"
     );
@@ -635,11 +641,15 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
     assert_ne!(rebound.identity, core.identity);
     assert_ne!(bound.identity, rebound.identity);
 
-    let bound_place = bound.pure_p_place().expect("T's pure P is a real object");
-    let rebound_place = rebound.pure_p_place().expect("U's pure P is a real object");
+    let bound_place = bound
+        .type_resident_place()
+        .expect("T's pure Object is a real object");
+    let rebound_place = rebound
+        .type_resident_place()
+        .expect("U's pure Object is a real object");
     let core_place = core
-        .pure_p_place()
-        .expect("uint8's pure P is a real object");
+        .type_resident_place()
+        .expect("uint8's pure Object is a real object");
     assert_ne!(
         bound_place, core_place,
         "`let T: type = uint8` binds a new object, so T owns a fresh writable place"
@@ -663,7 +673,7 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
 }
 
 #[test]
-fn named_pattern_applicability_consumes_pattern_value_not_carrier_name() {
+fn named_pattern_applicability_consumes_p_coordinate_not_carrier_name() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let rebound = world
         .semantic_world()
@@ -678,10 +688,13 @@ fn named_pattern_applicability_consumes_pattern_value_not_carrier_name() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
 
-    assert_eq!(rebound.pure_p_pattern(), core.pure_p_pattern());
     assert_eq!(
-        result.pure_p_pattern(), core.pure_p_pattern(),
-        "named Pattern applicability must compare the resolved PatternValue reached through T, not the spelling `T`"
+        rebound.type_resident_pattern(),
+        core.type_resident_pattern()
+    );
+    assert_eq!(
+        result.type_resident_pattern(), core.type_resident_pattern(),
+        "named Pattern applicability must compare the resolved Pattern coordinate reached through T, not the spelling `T`"
     );
 }
 
@@ -735,7 +748,7 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
             .semantic_world()
             .symbol(state.invoke_name())
             .unwrap()
-            .pure_p()
+            .type_resident()
             .is_none(),
         "returning an existing type does not install it as the instance self resident"
     );
@@ -763,7 +776,7 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
             .value(uint8_type)
             .expect("uint8 pure type Object")
             .pattern,
-        "the core identity implementation returns the uint8 PatternValue"
+        "the core identity implementation returns the uint8 Pattern coordinate"
     );
 }
 
@@ -856,7 +869,7 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
     assert!(result.complete_result[0].value.is_none());
     assert_eq!(
         result.complete_result[0].pattern,
-        uint8.pure_p_pattern().unwrap()
+        uint8.type_resident_pattern().unwrap()
     );
     let lang_build::ReturnedSemanticEntity::CompleteType(value) = result.returned else {
         panic!("IdentityType returns the evaluated complete type value");
@@ -959,7 +972,7 @@ fn same_bare_path_has_one_terminal_symbol_before_value_type_and_call_projection(
         world
             .semantic_world()
             .symbol(inner)
-            .and_then(|symbol| symbol.pure_p_pattern())
+            .and_then(|symbol| symbol.type_resident_pattern())
             .is_some(),
         "type projection observes the already resolved inner Symbol"
     );
@@ -1002,7 +1015,7 @@ fn selected_type_forwarder_delivers_exact_external_snapshot() {
         .semantic_world()
         .symbol_in_namespace(world.core_node(), "uint8")
         .unwrap()
-        .pure_p()
+        .type_resident()
         .unwrap();
     let source = initializer_from_source("let T = uint8 IdentityType::core;");
     let call = extract_single_call_site(&source).unwrap();
@@ -1057,7 +1070,7 @@ fn selected_type_forwarder_delivers_exact_external_snapshot() {
         .semantic_world()
         .symbol(self_name)
         .unwrap()
-        .pure_p()
+        .type_resident()
         .is_none());
 }
 

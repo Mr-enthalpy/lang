@@ -4,7 +4,8 @@
 
 Strong positions preserve [Path material](structured-path-algebra-and-interpretation-polarity.md).
 Navigation runs in `name::path` direction with LHS/Pattern navigation inheritance.
-An explicit `$` operand uses RHS expression interpretation before reinjection.
+Each `$` interprets its operand under the opposite polarity. At a reached S
+position the operand uses V; further nested flips follow parity.
 The frontend neither resolves a path nor fixes a terminal binding identity.
 
 [Lexical alias](entity-alias-design.md) targets and `with` items use PathMaterialAst

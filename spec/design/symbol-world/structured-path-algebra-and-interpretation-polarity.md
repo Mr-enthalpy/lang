@@ -119,8 +119,8 @@ premises. Failure cannot reopen completed name resolution.
 
 ### 2.1 Ordinary extractable material
 
-path_pattern is the working name for ordinary structured Pattern values
-interpretable by a Path consumer. It is neither an AST token nor a String
+path_pattern is the working name for ordinary structured Objects whose P
+coordinate is interpretable by a Path consumer. It is neither an AST token nor a String
 wrapper carrying access authority nor a new nominal Path ontology.
 
 PathShaped(v) is a Pattern/role judgment, not a subtype relation. Users must
@@ -553,34 +553,26 @@ the projection's domain. It does not quote arbitrary Policy syntax or callable
 source bodies. General $ retains its independent admissibility judgment and
 single evaluation, including existing HoleBinderId, scope and readiness rules.
 
-### 4.6 Construction and extraction interpret bare material differently
+### 4.6 Polarity governs Path and extraction operands
 
-The following judgments use existing Path composition and R_Gamma, not another
-evaluator. In their common legal non-extraction domain, with the same ordinary
-operand evaluation and material:
-
-```text
-Gamma; Sigma |- name::a =>_Path p
-Gamma; Sigma |- name::(a$) =>_Path p
-    hence name::a =_Path name::(a$) in non-extraction use
-```
-
-This is not an unconditional source rewrite. In extraction position:
+For a bare structural name a, Path and extraction consumers use the same
+interpretation law:
 
 ```text
-R_Gamma(name::a, c, rho)
-    interprets bare a as Pattern/path material with navigation-chain inheritance
-
-Gamma; Sigma |- a => v
-Admissible_Pattern(v)
-R_Gamma(name::Interpret_Pattern(v), c, rho)
-    interprets name::(a$) using explicitly evaluated and reinjected material
+Interpret(a, S)  = BareName(a; inherited_navigation)
+Interpret(a$, S) = Interpret(a, V)
+Interpret(a$$, S) = Interpret(a, S)
 ```
 
-Explicit reinjection cuts the bare Pattern's inherited navigation-chain
-interpretation. Thus name::a != name::(a$) as general extraction judgments;
-particular equal results do not establish a rewrite theorem. Evaluation,
-admissibility, readiness and Hole identities still obey §4.1–§4.3.
+The surrounding Path or extraction consumer checks the actual resulting
+material through its ordinary admissibility and relational judgments. Bare
+structural names complete their inherited navigation; a flipped operand uses
+the opposite interpretation. Additional flips continue by parity.
+
+Comparing name::a and name::(a$) requires their actual interpreted material.
+Their syntax establishes neither equal Path results nor unequal extraction
+results. Path equality uses the structural relation of §1.2; extraction uses
+R_Gamma. Evaluation, readiness and Hole identities obey §4.1–§4.3.
 
 ## 5. Open navigation, name types and buckets
 

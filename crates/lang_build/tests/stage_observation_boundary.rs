@@ -325,7 +325,7 @@ fn seal_p2_forms_and_reuses_a_compile_instance_for_an_external_type() {
         assert!(world
             .symbol(state.invoke_name())
             .unwrap()
-            .pure_p()
+            .type_resident()
             .is_none());
         identities.push(instance);
     }
@@ -434,7 +434,11 @@ fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
             .symbol_in_namespace(base.core_node(), "uint8")
             .unwrap()
             .identity;
-        let pattern = world.symbol(target).unwrap().pure_p_pattern().unwrap();
+        let pattern = world
+            .symbol(target)
+            .unwrap()
+            .type_resident_pattern()
+            .unwrap();
         let receivers = if hidden_first {
             [hidden, visible]
         } else {

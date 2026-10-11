@@ -96,7 +96,7 @@ may still be realized without registration or a reopened construction view.
 Current Core/Val2 observations may change; earlier copied snapshots do not.
 only_val2 counts its actual snapshot, not every future generated result.
 
-### Complete pattern/type value (`tau`)
+### Complete type value (`tau`)
 
 `tau = bind alpha.<Core(tau), V_tau[alpha]>`. `Core(tau)` supplies ordinary
 type equality; `V_tau` is an immutable TypeMember callspace snapshot; the whole
@@ -131,7 +131,8 @@ means not Retained. A typed realized name has a Place that may remain
 Uninitialized until ordinary first write. These facts are independent of visibility.
 Initialized structural names declared :type denote complete named types; same-name construction contributes
 to their V_tau. Ordinary lexical binding is not implicit overload synthesis.
-Name binding identity, pattern-value equality and Place identity are distinct.
+Name binding identity, type-value equality, P-coordinate equality and Place
+identity are distinct.
 
 ### OverloadGroup
 
@@ -528,12 +529,14 @@ use proceeds through Read_resident. Text roots resolve at resident use; explicit
 roots retain anchors and dependencies. e# is the defined path_pattern projection,
 stopping before resident reading after **complete** NameExpr computation,
 including computed operands and calls. name::path is fixed by construction/
-extraction isomorphism. In extraction, bare navigation inheritance differs
-from evaluated reinjection a$; the non-extraction equality is not a rewrite. The Path consumer interprets (n#)$
+extraction isomorphism. Bare a in S inherits navigation; a$ interprets a in V.
+Actual material and the ordinary Path or extraction relation determine equality.
+The Path consumer interprets (n#)$
 to reconstruct structure; general $ supplies no implicit Path decoding. Indexing
 returns relative single-name path_pattern, not string. RHS colon constructs
-ordinary Product |> slice, with empty colon/comma slots completed to unit. In LHS, e$ interprets its entire operand in RHS/value context before
-reinjection; bare operators elaborate as (operator[op])$. Interpret(e$,C)=Interpret(e,Flip(C)), Flip^2=Id, permits arbitrary nesting.
+ordinary Product |> slice, with empty colon/comma slots completed to unit.
+Bare S operators elaborate as (operator[op])$.
+Interpret(e$,C)=Interpret(e,Flip(C)), Flip^2=Id, permits arbitrary nesting.
 The flip preserves Hole identities and supplies no Read, Stage change or
 implicit Path projection.
 PathShaped admits finite name chains with a textual/open root endpoint, or

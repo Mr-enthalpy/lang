@@ -34,13 +34,14 @@ classifiers and anchors candidate-family identity. It is not MemberScope(Core(T)
 An associated coordinate supplies no Place or permission by itself; actual
 navigation retains its resolved structural root and resident generation.
 
-The following candidate schemas use semantic signature notation, not source
-callee-first declarations or calls. The `struct` registration `Field(T, name, A)` generates the field's complete
-associated candidate family under `T`: one by-value accessor, plus for each
-borrow observation `ρ ∈ {ref, share}` a triple of policy cells:
+The following candidate schemas use semantic signature notation. A complete
+structural type T already has actual Val2 members and registered field routes.
+For such a route, ordinary helper augmentation can provide an associated
+accessor family: one by-value accessor, plus for each borrow observation
+`ρ ∈ {ref, share}` a triple of policy cells:
 
 ```text
-GeneratedFieldFamily(T, name, A):
+FieldAccessorFamily(T, name, A):
 
   let
   name(self, object:T)
@@ -94,21 +95,24 @@ AssociatedName(T, push):
 ```
 
 The full candidate family is normative; the summary is its policy-erased
-projection and is not the sole specification. For a `struct`-generated field
-these are ordinary typed candidate objects in one associated name binding.
+projection. These are ordinary typed candidate Objects in one associated name
+binding. `struct:type->type` adds the helpers while preserving T's existing
+DirectPatternChild, ConstructEdge, ExtractEdge and FieldView registrations.
 
 #### Family registration: producer side of `StructuralDefault`
 
-Every candidate of the generated schema is registered in one stable
-call-site candidate family. The identity key retains the complete type's stable implementation home
-TypeMemberScope(tau_T), not a quotient by its Core observation:
+Protected extraction consumes candidates witnessed by actual Val2 members and
+the existing ExtractEdge or FieldView registration for the requested route.
+Its stable call-site family retains the complete type's implementation home
+TypeMemberScope(tau_T), independently of its Core observation:
 
 ```text
 StructuralFamily(T, name, A)
   = StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)
 
-c ∈ GeneratedFieldFamily(T, name, A)
----------------------------------------
+c is an actual Val2 member witnessing an existing
+ExtractEdge or FieldView for the named structural route
+------------------------------------------------------
 CandidateFamily(c) = StructuralFamily(T, name, A)
 ```
 
@@ -120,16 +124,17 @@ StructuralFamilyStability:
   ⇒ StructuralFamily(tau', name, A) = StructuralFamily(tau, name, A)
 ```
 
-An `*` that adds unrelated virtual helpers (so `Q ≠ Q'` but
-the authorized update preserves the complete bound implementation owner) therefore keeps every generated structural
-candidate's identity: P-internal extraction over the new snapshot still
-filters exactly the inherited generated cells. P-internal extraction
+An ordinary helper addition may change Q while preserving the complete bound
+implementation owner and existing structural registrations. P-internal
+extraction over that snapshot filters the candidates witnessed by those
+registrations. P-internal extraction
 (`AtomicExtract_P`, canonical
 `pattern-values-relational-semantics-and-extraction.md` §3.1) applies
 `CallSiteFamilyFilter = StructuralDefault` before C0; that filter preserves
-exactly the candidates registered under this family identity. This is the
-registration that closes the consumer/producer loop: the extraction rule
-names the family, and the generator assigns every generated cell to it.
+exactly the candidates registered under this family identity. Structural
+formation establishes the actual members and role registrations together;
+ordinary helpers consume those facts. Helper membership or schema shape alone
+supplies no protected-family evidence.
 
 Three attributes of a generated cell are distinct and must never be conflated
 under the single word `default`:
@@ -144,7 +149,7 @@ per-cell policy disposition
 
 declaration-side fallback
     =>[[fallback]]   DeclarationCandidatePolicy after FullyAdmissible A
-                     (overload-resolution-design.md §2.3)
+                     (overload-resolution-design.md §3)
 ```
 
 Family identity decides which candidates a call site sees; the per-cell
@@ -235,13 +240,12 @@ Each callable/view has one concrete stage and admissible C_sigma projections;
 other field observations require static formation.
 ```
 
-A type-valued field is compile-only only because it currently fails this
-predicate, not because “type/PatternValue field” is a separate category.
+A type-valued field's runtime accessor availability follows this predicate.
 Generated candidates use the ordinary context preference
 const > mut under const demand and mut > const under mut demand. Distinct
 tied candidates and crossed product advantages remain ambiguous.
 Open authority does not propagate along owned field relations; each
-PatternValue's `OpenHere_Σ` is determined independently by stack-relative
+type subject's `OpenHere_Σ` is determined independently by stack-relative
 coordinate equality (construction §5). Mutability does not propagate:
 
 ```text
@@ -501,7 +505,7 @@ projection decides the `Ref(ProjectionSlot(...))` form (canonical
 `type-values-places-and-borrow-views.md` §2.3) rather than materializing the
 field value and then forming `A ref`.
 
-## Type Values, Places, and Injection (summary)
+## Type Values, Places, and Ordinary Updates (summary)
 
 Field functions are observed in Core's associated member scope; writing one
 requires an actual member Place, distinct from the type value. The access-tree work in this

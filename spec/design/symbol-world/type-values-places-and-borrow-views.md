@@ -1,6 +1,6 @@
 # Complete Type Values, Places, and Borrow Views
 
-Complete type values are called complete pattern values (tau). Core observation,
+Complete type values are immutable snapshots (tau). Core observation,
 whole-snapshot observation, and ordinary Pattern algebra retain the distinctions
 specified below. [Names and OverloadGroups](names-and-overload-groups.md) owns
 name occupancy and group algebra; they do not add an Object axis.
@@ -74,7 +74,7 @@ establish a partially consumed aggregate.
 ## 2. Semantic identities
 
 Three distinct binding/type identities participate in this model, alongside
-canonical pattern-value identity:
+the Object's Pattern coordinate:
 
 ```text
 NameBindingId
@@ -91,8 +91,8 @@ Object identity
   Place relation. It is not a language value and cannot be borrowed or carry a
   `.type` field. A borrow addresses its typed Place, including before the first
   resident exists; its type comes from PlaceType, not an implicit value read.
-- `PlaceId` is the identity of a location that can be bound, updated, injected
-  into, or opened for a namespace delta.
+- `PlaceId` is the identity of a typed location whose resident can be
+  initialized or replaced under the ordinary operation's authority.
 - `TypeValueId` is the stable first-order root of `Core(tau)` — a registry
   projection used by the current substrate (cache, lookup key, or first-order
   root), not the full type-closure identity and not the default semantic
@@ -411,9 +411,9 @@ Val2(()) = ∅
 Norm(()) = ⟨ null, Norm_P(P_FunctionItem), ∅ ⟩
 ```
 
-Other typical leaves are terminal built-in type objects and associated pure-P
+Other typical leaves are terminal built-in type Objects and associated pure
 objects whose concrete object carries no further owned expansion — an
-associated type is not a special recursion rule, it is an ordinary pure P that
+associated type is not a special recursion rule, it is an ordinary pure Object that
 happens to have run out of children. Borrow views (`ref` / `share`) are also
 owned-recursion leaves, not back references, but the target identity they carry
 is part of their leaf value:
@@ -1387,7 +1387,7 @@ those identities, not the carrier spellings. Hence a formal `_ uint8` accepts a
 type value read through `T` after `let T: type = uint8`; comparing the strings
 `"uint8"` and `"T"` would be name-category-first resolution in disguise.
 
-The same rule applies to an externally owned pattern value:
+The same rule applies to an externally owned type value:
 
 ```lang
 mut let t1_ref = (let t1::t:type) ref;
@@ -1409,8 +1409,8 @@ future spelling `let a = 'a';`, the left `a` is a binding name while the right
 `'a'` denotes a character literal; matching textual content does not make them
 the same object. The frozen lexer does not yet accept that character spelling
 (§4.1.3).
-Pattern values have no analogous standalone literal syntax, so same-spelled
-name binding paths and pattern diagnostic names must be kept especially distinct.
+Same-spelled name binding paths and Pattern diagnostic names remain distinct;
+matching consumes the actual Object and its P coordinate.
 
 ### 3.2 Name resolution and navigation
 
@@ -1458,7 +1458,7 @@ NameBindingId(T) = fresh structural binding identity
 place(T) = fresh writable place at current lexical level
 value(T) = value(uint8)
 type_value(T) = type_value(uint8)
-pattern_value(T) = pattern_value(uint8)
+Pattern(T) = Pattern(uint8)
 ```
 
 This must be read precisely:
@@ -1907,7 +1907,7 @@ the binding itself is not an intermediate Object.
 uses: a `share` view admits reading and passing but is not an assignable place
 and cannot be an `*=` target (§5.5).
 
-#### 5.1.1 Borrowing an ordinary group or pattern value
+#### 5.1.1 Borrowing an ordinary group or type value
 
 A borrow observes the actual operand's Place. Reading or borrowing an ordinary
 OverloadGroup does not implicitly select one of its members or project a type.
@@ -1915,14 +1915,14 @@ OverloadGroup does not implicitly select one of its members or project a type.
     g : OverloadGroup
     g ref : OverloadGroup ref
 
-An explicit type projection selects a complete pattern value under the ordinary
+An explicit type projection selects a complete type value under the ordinary
 type consumer's rules. TypeRole and NamespaceRole remain judgments over the
 selected value's Core, not classifications of the group. A type-expected
 position may elaborate AsType where already specified; candidate enumeration
 does not insert a conversion merely to make a competing candidate applicable.
 
 Borrowed member projection follows ordinary reference/field rules and keeps
-the actual target identity. A complete pattern value's captured callspace is
+the actual target identity. A complete type value's captured callspace is
 not replaced by searching a source binding or registry.
 
 #### 5.1.2 No implicit borrow formation
@@ -2103,7 +2103,7 @@ The operator choice is decided by what the surface means, never by type-rank:
 | --- | --- | --- |
 | ordinary value with `Val1` | borrow of the complete value-bearing object | no |
 | type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |
-| pure pattern value | `ref` of that pattern value | only to reach the carrier slot |
+| absent-Val1 Core Object | `ref` of that complete Object | only to reach the carrier slot |
 | pure `type` slot | type formation: the TypeValue `t ref` (the borrow type) | yes — for a borrow instance over the carrier place |
 
 The `Val1` column decides only *which path applies* — the borrow-forming `ref`

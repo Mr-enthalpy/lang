@@ -71,8 +71,9 @@ ordinary construction mutation. External navigation follows completion of the
 selected compile call. Close freezes non-generative registered structure, while
 ordinary generated Val2 results may still be realized without either registration.
 Anonymous classifiers stay under /tau; this grants no navigation to their values.
-Associated compile state closes under its source pattern value's existing
-window; target injection independently requires the receiver's open reference.
+Associated compile state closes under its source type's existing opening
+window. An ordinary `*=` update independently checks the target reference,
+current OpenHere, Writable and its ordinary capability/access/lifecycle Pre.
 
 Graph state reflects these facts; a graph seal is not another authority that
 can close or reopen semantic construction. Representation transactions preserve

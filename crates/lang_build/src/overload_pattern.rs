@@ -3,7 +3,7 @@ use crate::{
     model::{Provenance, SymbolId},
     policy_pair::PolicyResultEntry,
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
-    semantic_world::PatternValueId,
+    semantic_world::PatternCoordinateId,
 };
 
 /// Already-observed argument content supplied to the Pattern relation.
@@ -19,13 +19,13 @@ pub struct OverloadArgShape {
     pub type_symbol_id: Option<SymbolId>,
     /// Opaque Core lookup key only; never used for Pattern equality.
     pub value_type: Option<TypeValueId>,
-    pub pattern_value: Option<PatternValueId>,
+    pub pattern_coordinate: Option<PatternCoordinateId>,
     /// Ordinary type-equality observation, `Addr(Norm(Core(tau)))`.
     pub type_core_observation: Option<crate::CanonicalValueAddr>,
     /// Whole immutable type snapshot for explicitly snapshot-sensitive later
     /// consumers. Base Pattern applicability does not use it.
     pub complete_type_observation: Option<crate::CanonicalValueAddr>,
-    pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     pub semantic_value: Option<SemanticValueId>,
     pub is_value: bool,
     pub provenance: Provenance,
@@ -93,7 +93,7 @@ impl SpecificityTuple {
 pub fn overload_args_from_classified_shape(
     shape: &ArgProductShape,
     symbol_name: impl Fn(SymbolId) -> Option<String>,
-    pattern_for_type: impl Fn(TypeValueId) -> Option<PatternValueId>,
+    pattern_for_type: impl Fn(TypeValueId) -> Option<PatternCoordinateId>,
 ) -> Vec<OverloadArgShape> {
     shape
         .raw_args
@@ -116,7 +116,7 @@ pub fn overload_args_from_classified_shape(
                 top_pattern_name,
                 type_symbol_id,
                 value_type: raw_arg.known_first_order_type_value,
-                pattern_value: raw_arg
+                pattern_coordinate: raw_arg
                     .known_first_order_type_value
                     .and_then(&pattern_for_type),
                 type_core_observation: raw_arg.known_type_observation,

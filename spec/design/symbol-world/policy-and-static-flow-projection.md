@@ -123,13 +123,13 @@ PolicyMode_Γ(slot) ∈ { const, mut }
 PolicyMode_Γ(slot) is independent of Val1?(x), Pv, and Pp
 ```
 
-The first rule does **not** say `Pv = absent`: a pure PatternValue still has one
+The first rule does **not** say `Pv = absent`: a pure Object still has one
 Policy, observed identically as `Pv` and `Pp`. Divergence becomes meaningful only
 when an independent runtime value projection exists. The final rule preserves
 observer hiding: an edge may suppress the value projection of an object that
 does carry `Val1`. Object shape is therefore not inferred back from an
 observation, while an impossible two-policy split is not invented for a pure
-PatternValue.
+Object.
 
 The whole-slot separation is a semantic invariant:
 
@@ -831,9 +831,9 @@ capability before migration candidate enumeration:
 Pp_selected = SlicePatternPolicyStages(Qp, source.Pp)
 ```
 
-This is Policy slicing over `Pp`; it is not Pattern extraction, PatternValue
+This is Policy slicing over `Pp`; it is not Pattern extraction, type
 projection, postfix `?`, extractor lookup, Pattern-root navigation, or a change
-of PatternRoot/PatternScope. It preserves PatternValue identity and structural
+of PatternRoot/PatternScope. It preserves the Object's P coordinate and structural
 Pattern shape.
 
 Unselected ordinary Pattern solutions in a query are never obligations to
@@ -1067,7 +1067,7 @@ ProjectExistingViewForDemand(demand, R) != empty
   => no value reconstruction
   => PolicyProjection(identity, R) preserves the accepted view
   => ValueRealization(identity, R) = R
-  => name binding / TypeValue / PatternValue / Place identity is unchanged
+  => name binding / TypeValue / P coordinate / Place identity is unchanged
 ```
 
 This is the **Existing-First, Constructible-Second** principle:
@@ -1861,4 +1861,4 @@ This document does not freeze:
 - arbitrary clause-level Boolean policy logic;
 - a complete runtime reflection API;
 - export reopening syntax;
-- unrelated `?`, `*=`, or new PatternValue mechanisms.
+- unrelated `?`, `*=`, or Pattern-coordinate mechanisms.

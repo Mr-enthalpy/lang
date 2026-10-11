@@ -203,15 +203,15 @@ pub enum ResolverCode {
     UnsupportedSelectedSourceBodyLocalBinding,
     /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)
     /// declares a value slice whose stage is disjoint from its Pattern stage,
-    /// but the pure-P return slot (`let r: type`) carries no value dimension.
+    /// but the type return slot (`let r: type`) carries no value dimension.
     /// The declared runtime value slice could never be filled, so the
     /// declaration itself is illegal. Static pairs (`compile:compile`,
-    /// `compile:compile`, `seal:seal`) keep Pv == Pp and remain legal for
-    /// pure-P return slots.
+    /// `seal:seal`) keep Pv == Pp and remain legal for
+    /// type return slots.
     RuntimeSliceWithoutValueDimension,
-    /// Alias syntax is preserved by the frontend. Its canonical target is a
-    /// block-local lexical resolver mapping, but that scoped environment is
-    /// not implemented. Reject rather than installing a forwarding entity.
+    /// Alias syntax is preserved by the frontend. The semantic consumer forms
+    /// Path material once in the old environment and installs a block-local
+    /// Path equation. That environment consumer is unavailable.
     UnsupportedLexicalAlias,
     ReturnOutsideReturnableContext,
     ReturnTargetNotActive,

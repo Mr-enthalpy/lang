@@ -165,7 +165,7 @@ consumer demand
   -> if successful, use it and stop
   -> otherwise, if the query accepts runtime, extract its runtime branch
   -> select an existing static source Policy view
-  -> from the held source PatternValue, enter its resolved Pattern owner
+  -> from the held source P coordinate, enter its resolved Pattern owner
   -> enumerate the language-authorized associated Val2 family
   -> obtain each candidate value's TypeValue
   -> resolve associated ()
@@ -204,7 +204,7 @@ Stage, presence, Pp capability, Type, and structural applicability remain hard
 conditions.
 
 As an explanatory model rather than frozen surface syntax, one type name binding may
-carry the pure Pattern member `:t` plus ordinary value members over the four current
+carry the type resident `:t` plus ordinary value members over the four current
 `output PolicyMode <- input PolicyMode` coordinates. Every coordinate is
 expressible, but no coordinate is required to exist: each may be absent or
 realized by `default`, `delete`, or `custom`. More specific Pattern members may
@@ -235,7 +235,7 @@ The model does not freeze a special global `transition` name binding or a new
 callable ontology. It freezes complete-choice existing projection followed,
 only when that projection is empty and the choice accepts runtime, by one
 ordinary function-object call toward the extracted runtime branch. The
-connected atomic slice begins from the source value's existing PatternValue
+connected atomic slice begins from the source value's existing P-coordinate
 owner and its associated `()` Val2; independently authorized mechanical
 operations may select other ordinary associated families without changing
 this demand rule.
@@ -247,7 +247,7 @@ function objects and toolchain-source associated `()` entries:
 Semantic name binding / Pattern owner
   -> CallCandidates(NamedType(S))
   -> TypeValue
-  -> PatternValue / ResolvedPatternScope
+  -> PatternCoordinateId / ResolvedPatternScope
   -> associated ()
   -> PreparedCallCandidate
   -> InvocationFrame

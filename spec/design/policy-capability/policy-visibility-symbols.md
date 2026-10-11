@@ -268,7 +268,7 @@ scalar policy projection.
 - After existing projection is empty, a concrete runtime demand may admit one
   direct same-Type migration; solver alternatives are not manufactured views.
 - Policy slicing of `Pp` does not extract, navigate, reroot, or otherwise
-  transform a PatternValue.
+  transform the Object's P coordinate.
 - Atomic migration mandates only the static-to-runtime stage edge, unchanged
   Type, present output, and unchanged selected `Pp`; callable-declared
   `PolicyMode` endpoints may differ and participate in Bp'.

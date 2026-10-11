@@ -63,7 +63,7 @@ use crate::{
     semantic_owner::{SemanticOwnerId, SemanticSymbolIdentity},
     semantic_world::{
         ObjectPlaceId, OrdinaryCallEntry, OrdinaryCallableImplementation, OrdinaryCandidateRole,
-        PatternValueId, SemanticValuePayload, SemanticWorld, WritableContext,
+        PatternCoordinateId, SemanticValuePayload, SemanticWorld, WritableContext,
     },
     type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
     DeclaredResultClass, NormalizedCallSite,
@@ -173,8 +173,8 @@ pub struct DynamicLegalityDemand<'a> {
 pub enum OrdinaryCandidateOrigin {
     SourceSymbol(SemanticSymbolIdentity),
     TypeCallSpace(crate::CanonicalValueAddr),
-    PatternAssociatedCallEntry(PatternValueId),
-    PatternAssociatedValue(PatternValueId),
+    PatternAssociatedCallEntry(PatternCoordinateId),
+    PatternAssociatedValue(PatternCoordinateId),
 }
 
 #[derive(Clone, Debug)]
@@ -389,7 +389,7 @@ pub struct SingleMemberResult {
     /// `Project_out`. This is
     /// NOT the outward exposure policy of the invocation result: outward
     /// visibility is the canonical P1 layer (`exposed()`).
-    pub complete_result: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
+    pub complete_result: Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>,
     pub trace: OrdinaryPipelineTrace,
 }
 
@@ -436,7 +436,7 @@ pub struct ExposedInvocationResult {
     pub outward_policy: PolicyPair,
     /// The completed result material (the P2-domain entries), exposed
     /// under the callable P1 window.
-    pub material: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
+    pub material: Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>,
 }
 
 impl ExposedInvocationResult {
@@ -446,7 +446,7 @@ impl ExposedInvocationResult {
     /// rewriting their stages. Distinct P1/P2 authorities may carry equal atoms.
     pub fn expose(
         outward_policy: PolicyPair,
-        complete_result: &[PolicyResultEntry<SemanticValueRef, PatternValueId>],
+        complete_result: &[PolicyResultEntry<SemanticValueRef, PatternCoordinateId>],
     ) -> Self {
         let material = complete_result
             .iter()
@@ -465,8 +465,8 @@ impl ExposedInvocationResult {
 /// Pv=Pp on an unhidden pure Object. Mode is independent.
 fn expose_result_entry(
     outward: &PolicyPair,
-    entry: &PolicyResultEntry<SemanticValueRef, PatternValueId>,
-) -> Option<PolicyResultEntry<SemanticValueRef, PatternValueId>> {
+    entry: &PolicyResultEntry<SemanticValueRef, PatternCoordinateId>,
+) -> Option<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>> {
     let material = crate::policy_pair::project_p1(
         &P1Projection::Pair(outward.clone()),
         std::slice::from_ref(entry),
@@ -514,13 +514,13 @@ fn semantic_invocation_outcome(
 pub struct ReturnedCompleteType {
     pub complete_type: crate::CompleteTypeValue,
     pub carrier_value: SemanticValueId,
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
 }
 
 #[derive(Clone, Debug)]
 pub struct PolicyMigrationResult {
     pub invocation: SingleMemberResult,
-    pub demanded_view: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
+    pub demanded_view: Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -774,11 +774,12 @@ fn resolved_binding_call_views(
     world: &SemanticWorld,
     binding: SemanticSymbolIdentity,
     provenance: &Provenance,
-) -> Result<Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>, OrdinaryInvocationFailure> {
+) -> Result<Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>, OrdinaryInvocationFailure>
+{
     let Some(cell) = world.symbol(binding) else {
         return Ok(Vec::new());
     };
-    if let Some(ty) = cell.pure_p() {
+    if let Some(ty) = cell.type_resident() {
         let complete = ty
             .complete_type
             .and_then(|whole| world.complete_type_by_whole_observation(whole));
@@ -820,7 +821,7 @@ fn resolved_binding_call_views(
 ///
 /// The member factor is the per-member exposure stage decided downstream in
 /// this pipeline; the host factors are decided here, each from that host
-/// carrier's own binding-level pure-P member view.  A single host anywhere in
+/// carrier's own binding-level type resident view.  A single host anywhere in
 /// the chain that is not navigable at this horizon hides everything reached
 /// through it, so the whole chain must be exposed; the failure is reported as
 /// an explicit hidden-observation frontier for the already resolved binding.
@@ -863,11 +864,11 @@ pub fn invoke_resolved_binding_ordinary(
 }
 
 /// Invoke an authorized operation family reached from an existing
-/// PatternValue's owner.  No source path or TypeValue reverse lookup is
+/// Pattern coordinate's owner.  No source path or TypeValue reverse lookup is
 /// fabricated.
 pub fn invoke_pattern_associated_ordinary(
     semantic_world: &mut SemanticWorld,
-    pattern: PatternValueId,
+    pattern: PatternCoordinateId,
     operation_name: &str,
     receiver_value: SemanticValueId,
     explicit_arg_product: ArgProductShape,
@@ -912,7 +913,7 @@ pub fn invoke_pattern_associated_ordinary(
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_pattern_associated_value_ordinary(
     semantic_world: &mut SemanticWorld,
-    pattern: PatternValueId,
+    pattern: PatternCoordinateId,
     operation_name: &str,
     receiver_value: SemanticValueId,
     mut explicit_arg_product: ArgProductShape,
@@ -1005,7 +1006,7 @@ fn filter_callable(
 pub(crate) fn invoke_target_values(
     semantic_world: &mut SemanticWorld,
     origin: OrdinaryCandidateOrigin,
-    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
     associated_receiver: Option<SemanticValueId>,
     arg_shape: ArgProductShape,
@@ -1037,7 +1038,7 @@ pub(crate) fn invoke_target_values(
 fn invoke_target_values_in_scratch(
     semantic_world: &mut SemanticWorld,
     origin: OrdinaryCandidateOrigin,
-    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
     associated_receiver: Option<SemanticValueId>,
     mut arg_shape: ArgProductShape,
@@ -1045,7 +1046,7 @@ fn invoke_target_values_in_scratch(
     context: OrdinaryInvocationContext<'_>,
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    // C0: canonical member views of the resolved target.  Pure-P member
+    // C0: canonical member views of the resolved target. Type-resident
     // views (value = None) have no ordinary Val1 and are never invocation
     // candidates; only value-bearing views continue.  All subsequent
     // exposure decisions read the per-member view Policy — never a flat
@@ -2033,7 +2034,7 @@ fn classify_semantic_value_arguments(
                 let value = view.value?;
                 let object = semantic_world.value(value)?;
                 // CoreTypeProjection is projection material, not an ordinary
-                // value argument. Pure-P/type views carry `value=None`; this
+                // value argument. Type-resident views carry `value=None`; this
                 // check also excludes projection material stored in a
                 // value-bearing transport view.
                 if matches!(
@@ -2527,7 +2528,7 @@ fn ordinary_result_identity(
 ) -> Result<
     Option<(
         TypeValueId,
-        PatternValueId,
+        PatternCoordinateId,
         Option<SemanticValueId>,
         ReturnedSemanticEntity,
     )>,

@@ -29,7 +29,7 @@ AliasRef thunk or independent recursion semantics exists.
     NormPathMaterial { pattern: Box<NormPattern>, origin }
 
 `===` is a structural delimiter. The frontend preserves Pattern/Path syntax,
-including navigation and explicit RHS reinjection through `$`. It performs no
+including navigation and explicit interpretation-polarity boundaries through `$`. It performs no
 Path formation, value evaluation or lookup. Expression-shaped syntax does not
 make arbitrary values admissible to Path; the ordinary Path consumer decides that.
 

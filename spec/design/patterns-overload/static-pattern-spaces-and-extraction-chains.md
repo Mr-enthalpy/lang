@@ -38,7 +38,8 @@ DirectPatternChild(P, x, selector)
 
 Likewise, an overload-visible ordinary member is not automatically a real
 structural field. Structural incidence is established explicitly when the
-Pattern value is formed and is observed through `DirectPatternChild` evidence.
+complete structural type is formed with actual Val2 witnesses. It is observed
+through `DirectPatternChild` evidence.
 Virtual or computed members remain available to ordinary member lookup without
 becoming structural children.
 

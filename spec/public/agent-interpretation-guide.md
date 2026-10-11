@@ -97,8 +97,9 @@ Incoming source Product, no following Product?  -> first legality repair (PipeFa
   work still run. # is projection, not AST capture or evaluation stop.
 - Interpret(e$, C)=Interpret(e, Flip(C)), where V and S are opposite
   polarities and Flip^2=Id. Arbitrary nesting follows parity. Structural bare
-  names inherit navigation; a$ interprets a in V before the S consumer uses
-  its result. Resident Read, stage and authority remain independent.
+  names inherit navigation. When a$ is reached in S, it interprets a in V
+  before that structural consumer checks its result. Resident Read, stage
+  and authority remain independent.
 - A name-headed callable has (self, <> name), preserving actual selected self.
   The syntax carrier retains both positions.
 - Implicit ReturnEvent and omitted ReturnTarget are separate. Non-tail

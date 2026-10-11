@@ -15,7 +15,7 @@ that the corresponding source semantics is implemented.
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
 | Callable tails and Pack boundaries | [callable material](patterns-overload/callable-tail-dot-name-and-pack-pattern.md) |
 | Names, named-type synthesis, structural let, type/group algebra | [names and groups](symbol-world/names-and-overload-groups.md) |
-| Complete pattern values, Core/whole equality, Places, borrows, literals | [pattern values and Places](symbol-world/type-values-places-and-borrow-views.md) |
+| Complete type values, Core/whole equality, Places, borrows, literals | [type values and Places](symbol-world/type-values-places-and-borrow-views.md) |
 | Structural formation, ordinary struct and * / *=, OpenHere | [construction](symbol-world/structural-type-formation-and-composition.md) |
 | Source composition and construction closure | [composition](symbol-world/symbol-construction-units-and-namespace-origin.md) |
 | Associated state A as a derived compile invocation | [associated state](symbol-world/associated-compile-state.md) |
@@ -51,7 +51,7 @@ or authority.
 ## Reading order
 
     static / name / structural semantics
-      -> Object / complete pattern value / Place
+      -> Object / complete type value / Place
       -> name existence and named-type / group algebra
       -> construction / OpenHere / anchored replication
       -> Pattern relation / policy / exact-self call / invocation-generated names

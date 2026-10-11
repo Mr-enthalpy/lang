@@ -25,7 +25,7 @@ fixes serial files and unordered common-snapshot sibling overlays.
 
 ## 2. Construction authority
 
-Semantic construction uses the existing pattern value, anchor, evaluation
+Semantic construction uses the actual type subject, anchor, evaluation
 coordinate, WindowLive and authority-frame judgments. Copying a value preserves
 its anchor and does not create a new open window. Writable belongs to actual
 ordinary Places/references and remains independent of the value's OpenHere

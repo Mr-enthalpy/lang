@@ -1,4 +1,4 @@
-# Names, Pattern Values, Construction, and Calls
+# Names, Type Values, Construction, and Calls
 
 This block separates structural name existence from ordinary value algebra.
 
@@ -10,7 +10,7 @@ This block separates structural name existence from ordinary value algebra.
 - [Structured Path and opposite-context interpretation](structured-path-algebra-and-interpretation-polarity.md)
 - [General dependency realization](dependency-observation-and-realization.md)
 - [Name/type/group algebra and structural let](names-and-overload-groups.md)
-- [Complete pattern values and Places](type-values-places-and-borrow-views.md)
+- [Complete type values and Places](type-values-places-and-borrow-views.md)
 - [Construction, compile identity and OpenHere](structural-type-formation-and-composition.md)
 - [Source composition](symbol-construction-units-and-namespace-origin.md)
 - [Associated compile state](associated-compile-state.md)

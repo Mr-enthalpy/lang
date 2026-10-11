@@ -10,7 +10,7 @@
 //! one Symbol
 //!   -> heterogeneous Val2 values
 //!   -> each value's TypeValue
-//!   -> that type's PatternValue
+//!   -> that type's Pattern coordinate
 //!   -> resolved Pattern owner
 //!   -> associated Symbols / Val2, including `()`
 //! ```
@@ -108,12 +108,12 @@ struct RegisteredStructuralChild {
     schema: StructuralSchema,
 }
 
-/// Snapshot-local identity of one semantic Pattern value.
+/// Snapshot-local handle for an Object's relational P coordinate.
 ///
 /// This is deliberately distinct from a Pattern root/scope, a TypeValue,
 /// Symbol, value, and install place.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PatternValueId(pub u64);
+pub struct PatternCoordinateId(pub u64);
 
 /// Snapshot-local handle of one resolved Pattern scope.
 ///
@@ -304,13 +304,15 @@ pub struct SemanticVal2Snapshot {
 /// the frame keys nor the memo keys reach any produced normal form.
 #[derive(Clone, Debug, Default)]
 struct Val2NormState {
-    frames: Vec<(Option<SemanticObjectId>, PatternValueId)>,
-    memo: BTreeMap<(Option<SemanticObjectId>, PatternValueId), CanonicalValueAddr>,
+    frames: Vec<(Option<SemanticObjectId>, PatternCoordinateId)>,
+    memo: BTreeMap<(Option<SemanticObjectId>, PatternCoordinateId), CanonicalValueAddr>,
 }
 
+/// Root, scope and provenance of a registered P coordinate.
+/// Object content and complete-type snapshots have separate records.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SemanticPatternValue {
-    pub id: PatternValueId,
+pub struct SemanticPatternRecord {
+    pub id: PatternCoordinateId,
     pub root: ResolvedPatternRootId,
     pub scope: ResolvedPatternScopeId,
     pub provenance: Provenance,
@@ -328,7 +330,7 @@ pub struct SemanticTypeValue {
     /// Opaque first-order lookup index for the core.  It is neither semantic
     /// type equality nor a whole complete-type snapshot identity.
     pub id: TypeValueId,
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub provenance: Provenance,
 }
 
@@ -397,8 +399,8 @@ impl CompleteTypeValue {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SemanticOuterScope {
     /// The complete host layer, not just its Pattern: the carrier Symbol,
-    /// its own object place, and its own pure-P member view.  Navigation
-    /// must not collapse this to a bare `PatternValueId` — the layered
+    /// its own object place, and its own type resident view.  Navigation
+    /// must not collapse this to a bare `PatternCoordinateId` — the layered
     /// exposure conjunction `Expose(T_t, φ) ∧ Expose(f-member, φ)` needs the
     /// host's binding view, and per-carrier Val2 needs the host's place.
     pub host: Option<PatternHostMember>,
@@ -406,7 +408,7 @@ pub struct SemanticOuterScope {
 }
 
 impl SemanticOuterScope {
-    pub fn pattern(&self) -> Option<PatternValueId> {
+    pub fn pattern(&self) -> Option<PatternCoordinateId> {
         self.host.as_ref().map(|host| host.pattern)
     }
 }
@@ -425,7 +427,7 @@ impl SemanticOuterScope {
 /// context afterwards projects only the facet it needs:
 ///
 /// * call context: the resident value or complete type callspace;
-/// * type context: its pure-P member (and that member's own place);
+/// * type context: its type resident (and that member's own place);
 /// * value context: its ordinary resident;
 /// * member-write context: the writable host object/place;
 /// * extraction context: the Pattern facet.
@@ -449,22 +451,22 @@ impl ResolvedSemanticNavigation {
 
 /// One resolved host layer of a Val2 navigation.
 ///
-/// A host is the pure-P member (the `null × P × Val2` pure type Object) that the
+/// A host is the type resident (the `null × P × Val2` pure type Object) that the
 /// navigation stepped through.  `symbol` is the carrier that named it when
 /// the step came from source navigation; compiler-internal Pattern-level
 /// hosts have no carrier Symbol.  `place` is that object's own Val2 place,
-/// and `view` is its own binding-level pure-P member view — the host factor
+/// and `view` is its own binding-level type resident view — the host factor
 /// of the layered exposure conjunction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternHostMember {
     pub symbol: Option<SemanticSymbolIdentity>,
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub place: ObjectPlaceId,
     /// Whole-snapshot observation of the complete type carried by this host.
     /// `None` is reserved for compiler-internal Pattern hosts that do not
     /// carry an exact complete-type snapshot.
     pub complete_type: Option<CanonicalValueAddr>,
-    pub view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    pub view: Option<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
 }
 
 impl PatternHostMember {
@@ -503,7 +505,7 @@ pub struct SemanticNamespaceDelta {
 pub enum SemanticDeclarationEntry {
     /// `let () = closure` inside a Pattern-owned associated namespace.
     AssociatedCallEntry {
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         backing_declaration: SymbolId,
         closure: NormClosure,
         outer_p1_explicit: Option<ExplicitP1Selection>,
@@ -544,8 +546,8 @@ pub enum SemanticDeclarationEntry {
 
 /// The absent-Val1 type resident of one name binding.
 ///
-/// A pure P is a real object (`Val1 = ∅`, `P`, `Val2`), so it owns its own
-/// `ObjectPlace`.  The Pattern is shared identity material — `let T: type =
+/// The resident has a complete Core Object (`Val1 = ∅`, `P`, `Val2`) and its
+/// own `ObjectPlace`. The Pattern is shared identity material — `let T: type =
 /// uint8` keeps `Pattern(T) = Pattern(uint8)` and `TypeValue(T) =
 /// TypeValue(uint8)` — while the place is per object:
 ///
@@ -557,12 +559,13 @@ pub enum SemanticDeclarationEntry {
 /// ```
 ///
 /// so a later `let f::T = expr;` writes `T`'s Val2 only.  Ordinary `let =`
-/// binds a new object and therefore a fresh writable place. A future lexical
-/// `let ===` pass installs no cell at all; it maps a local spelling to an
-/// already-resolved terminal Symbol in a separate lexical environment.
+/// binds a new object and therefore a fresh writable place. A lexical Path
+/// alias instead forms `q =>_Path p` once in the old Path environment and
+/// installs `Gamma[n |->path p]`. It stores Path material and creates no
+/// resident cell; subsequent uses compose that material through Path algebra.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PurePMember {
-    pub pattern: PatternValueId,
+pub struct TypeBindingResident {
+    pub pattern: PatternCoordinateId,
     pub object: SemanticObjectId,
     pub place: ObjectPlaceId,
     /// The complete immutable type value read into this binding.  Two
@@ -585,16 +588,16 @@ pub struct SemanticSymbolCell {
     resident: Option<BindingResident>,
     /// Policy projections of this binding's single resident.
     ///
-    /// A pure-P-only view may use `value = None`. An ordinary value view uses
+    /// A type-resident view may use `value = None`. An ordinary value view uses
     /// `value = Some(v)`. A P1 slice changes this association, not the
     /// SemanticValue identity.
-    pub member_views: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    pub member_views: Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum BindingResident {
-    Type(PurePMember),
+    Type(TypeBindingResident),
     Value {
         value: SemanticValueId,
         place: ObjectPlaceId,
@@ -602,7 +605,7 @@ enum BindingResident {
 }
 
 impl SemanticSymbolCell {
-    pub fn pure_p(&self) -> Option<PurePMember> {
+    pub fn type_resident(&self) -> Option<TypeBindingResident> {
         match self.resident {
             Some(BindingResident::Type(member)) => Some(member),
             _ => None,
@@ -626,22 +629,24 @@ impl SemanticSymbolCell {
         }
     }
 
-    /// The PatternValue of this binding's type resident. Type identity
+    /// The Pattern coordinate of this binding's type resident. Type identity
     /// questions use the Pattern/Core observation rather than its residency.
-    pub fn pure_p_pattern(&self) -> Option<PatternValueId> {
-        self.pure_p().map(|member| member.pattern)
+    pub fn type_resident_pattern(&self) -> Option<PatternCoordinateId> {
+        self.type_resident().map(|member| member.pattern)
     }
 
     /// The binding residency of this binding's type resident.
-    pub fn pure_p_place(&self) -> Option<ObjectPlaceId> {
-        self.pure_p().map(|member| member.place)
+    pub fn type_resident_place(&self) -> Option<ObjectPlaceId> {
+        self.type_resident().map(|member| member.place)
     }
 
     /// This binding's own type resident view (`value = None`), the
-    /// binding-level Policy authority of the pure P.  A globally reused
+    /// binding-level Policy authority of the pure Object.  A globally reused
     /// CoreTypeProjection is graph material and never a binding view.
-    pub fn pure_p_view(&self) -> Option<&PolicyResultEntry<SemanticValueId, PatternValueId>> {
-        let pattern = self.pure_p_pattern()?;
+    pub fn type_resident_view(
+        &self,
+    ) -> Option<&PolicyResultEntry<SemanticValueId, PatternCoordinateId>> {
+        let pattern = self.type_resident_pattern()?;
         self.member_views
             .iter()
             .find(|view| view.value.is_none() && view.pattern == pattern)
@@ -655,7 +660,7 @@ pub struct SemanticValueRecord {
     /// The Object carrying this value's Val1/Pattern/owned-Val2 coordinates.
     pub object: SemanticObjectId,
     pub type_value: TypeValueId,
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub policy: PolicyPair,
     pub mode: PolicyMode,
     pub namespace_visibility: Option<NamespaceVisibility>,
@@ -717,7 +722,7 @@ pub enum SemanticValuePayload {
     /// Existing first-order type-value material.
     CoreTypeProjection {
         represented_type: TypeValueId,
-        represented_pattern: PatternValueId,
+        represented_pattern: PatternCoordinateId,
     },
 }
 
@@ -972,12 +977,12 @@ impl ConstructionEvaluationContext {
 /// it so a proof cannot revive a window that closed after observation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OpenHereProof {
-    target_pattern: PatternValueId,
+    target_pattern: PatternCoordinateId,
     authority: ConstructionAuthority,
 }
 
 impl OpenHereProof {
-    pub fn target_pattern(&self) -> PatternValueId {
+    pub fn target_pattern(&self) -> PatternCoordinateId {
         self.target_pattern
     }
 }
@@ -997,10 +1002,10 @@ impl MemberCreationProof {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OpenHereFailure {
-    UnknownPattern(PatternValueId),
-    NoLiveConstruction(PatternValueId),
-    WindowClosed(PatternValueId),
-    AuthorityMismatch(PatternValueId),
+    UnknownPattern(PatternCoordinateId),
+    NoLiveConstruction(PatternCoordinateId),
+    WindowClosed(PatternCoordinateId),
+    AuthorityMismatch(PatternCoordinateId),
 }
 
 fn authority_matches_context(
@@ -1046,7 +1051,7 @@ pub struct RegisteredCallable {
     pub symbol: SemanticSymbolIdentity,
     pub function_value: SemanticValueId,
     pub function_type: TypeValueId,
-    pub function_pattern: PatternValueId,
+    pub function_pattern: PatternCoordinateId,
     pub pattern_scope: ResolvedPatternScopeId,
     pub call_entry: SemanticValueId,
 }
@@ -1090,13 +1095,13 @@ pub struct SemanticWorld {
     complete_types: BTreeMap<CanonicalValueAddr, CompleteTypeValue>,
     /// Projection carrying a Core lookup identity for graph transport. This
     /// is NOT a semantic Val1
-    /// (pure-P types have Val1 = ∅).  It is never an ordinary resident.
+    /// (type Core Objects have Val1 = ∅).  It is never an ordinary resident.
     core_type_projection_values: BTreeMap<TypeValueId, SemanticValueId>,
-    pattern_types: BTreeMap<PatternValueId, TypeValueId>,
+    pattern_types: BTreeMap<PatternCoordinateId, TypeValueId>,
     /// Full invocation keys index ordinary compile instances.
     compile_instance_index: BTreeMap<CompileInstanceKey, CompileInstanceId>,
     compile_instances: BTreeMap<CompileInstanceId, CompileInstanceState>,
-    patterns: BTreeMap<PatternValueId, SemanticPatternValue>,
+    patterns: BTreeMap<PatternCoordinateId, SemanticPatternRecord>,
     scopes: BTreeMap<ResolvedPatternScopeId, ResolvedPatternScope>,
     /// Object/residency Places. A Place points to its current resident Object;
     /// no Object has an intrinsic distinguished Place.
@@ -1107,40 +1112,32 @@ pub struct SemanticWorld {
     semantic_val2_snapshots: BTreeMap<SemanticObjectId, SemanticVal2Snapshot>,
     value_residencies: BTreeMap<SemanticValueId, BTreeSet<ObjectPlaceId>>,
     borrows: BTreeMap<BorrowViewId, BorrowView>,
-    /// Forward map: PatternValue (as pure-P type) -> its pure type Object's place.
-    /// This is the canonical type-level Val2 for this pattern.  Every
+    /// Forward map: P coordinate -> the declaration's type Object residency.
+    /// Its owned Val2 is distinct from P. Every
     /// pattern allocated via `allocate_pattern_and_scope` receives an entry.
-    pattern_places: BTreeMap<PatternValueId, ObjectPlaceId>,
-    /// Declaration lookup: PatternValue → its original name binding.
+    pattern_places: BTreeMap<PatternCoordinateId, ObjectPlaceId>,
+    /// Declaration lookup: Pattern coordinate → its original name binding.
     ///
-    /// Recorded at first creation of a new owning PatternValue. Rebinding a
+    /// Recorded at first creation of a new owning Pattern coordinate. Rebinding a
     /// type value to a new carrier Symbol does not rewrite this entry.
-    pattern_declarations: BTreeMap<PatternValueId, SemanticSymbolIdentity>,
-    associated_namespace_patterns: BTreeMap<NamespaceNodeId, PatternValueId>,
+    pattern_declarations: BTreeMap<PatternCoordinateId, SemanticSymbolIdentity>,
+    associated_namespace_patterns: BTreeMap<NamespaceNodeId, PatternCoordinateId>,
     backing_to_function_value: BTreeMap<SymbolId, SemanticValueId>,
     /// Projection-only link from a semantic Symbol to its source/core
     /// declaration record. Resolution chooses the semantic Symbol first; graph
     /// rendering may then use this link to obtain a `NamespaceGraphSymbol`.
     symbol_backing_declarations: BTreeMap<SemanticSymbolIdentity, SymbolId>,
     registered_type_bindings: BTreeSet<SymbolId>,
-    construction_facts: BTreeMap<PatternValueId, PatternConstructionFacts>,
-    /// Replay registry for generated local callables.
-    /// One generated callable identity (enclosing compile callable × canonical
-    /// instance × member name) maps to its installed value plus the
-    /// declaration material that produced it: replaying with equal
-    /// material is an idempotent reuse, replaying with different material
-    /// is a construction conflict.
-    /// Recorded structural normal-form material per PatternValue:
-    /// compile-generated struct patterns normalize by their
-    /// normalized structural body, so two separately allocated
-    /// PatternValues with equal bodies share one `Norm_P(P)`.  Nominal
-    /// declaration patterns never enter this table — their declaration root
-    /// IS their normal form.
-    pattern_structural_norms: BTreeMap<PatternValueId, StructuralSchema>,
+    construction_facts: BTreeMap<PatternCoordinateId, PatternConstructionFacts>,
+    /// Recorded structural normalization material for each P coordinate.
+    /// Equal structural schemas share one `Norm_P(P)` independently of
+    /// coordinate allocation. Nominal declaration Patterns normalize by their
+    /// declaration root. Schema storage supplies no member or role witness.
+    pattern_structural_norms: BTreeMap<PatternCoordinateId, StructuralSchema>,
     /// Registered incidence over actual Val2 members. Schema normalization and
     /// ordinary navigation supply no rows to this relation.
     direct_pattern_children:
-        BTreeMap<(PatternValueId, crate::PatternSelector), RegisteredStructuralChild>,
+        BTreeMap<(PatternCoordinateId, crate::PatternSelector), RegisteredStructuralChild>,
     /// Interning table for `Addr(v) = Intern(Norm(v))`: equal canonical
     /// normal forms share one snapshot-local address.  Opaque fresh
     /// addresses (material without a stable normal form) are allocated from
@@ -1165,12 +1162,12 @@ pub struct SemanticWorld {
 /// The resolved target of one source-level extraction.
 ///
 /// A completed extraction navigation resolves to exactly one Symbol; the
-/// extraction then reads that Symbol's PatternValue and compares canonical
+/// extraction then reads that Symbol's Pattern coordinate and compares canonical
 /// pattern norms.  No step of this chain re-enters bare-name lookup.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedExtractionTarget {
     pub symbol: SemanticSymbolIdentity,
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub norm: CanonicalPatternNorm,
 }
 
@@ -1485,7 +1482,7 @@ impl SemanticWorld {
     fn canonical_pure_type_address(
         &mut self,
         object: Option<SemanticObjectId>,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         state: &mut Val2NormState,
     ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
         self.canonical_object_address(object, pattern, None, state)
@@ -1496,7 +1493,7 @@ impl SemanticWorld {
     fn canonical_object_address(
         &mut self,
         object: Option<SemanticObjectId>,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         val1: Option<CanonicalVal1Norm>,
         state: &mut Val2NormState,
     ) -> Result<CanonicalValueAddr, crate::Diagnostic> {
@@ -1615,7 +1612,7 @@ impl SemanticWorld {
     /// Normalize one call-argument position into its canonical interning
     /// address.
     ///
-    /// Simple closed material — resolved pure type Objects (pure-P), product
+    /// Simple closed material — resolved pure type Objects (absent-Val1), product
     /// units, and literal spellings — receives content-normalized addresses.
     /// Material with an implemented content normalizer uses it; otherwise an
     /// identity-stable opaque Val1 leaf preserves a normal form without
@@ -1910,13 +1907,16 @@ impl SemanticWorld {
         )
     }
 
-    /// `Norm_P(P)` — the canonical normal form of one PatternValue.  A
+    /// `Norm_P(P)` — the canonical normal form of one Pattern coordinate.  A
     /// Pattern with recorded structural material normalizes
     /// by its normalized structural body (equal bodies allocated separately
     /// share one norm); a nominal declaration Pattern normalizes by its
     /// declaration root coordinate, which IS its normal form under the
     /// existing pattern-equivalence rules.
-    pub fn canonical_pattern_norm(&self, pattern: PatternValueId) -> Option<CanonicalPatternNorm> {
+    pub fn canonical_pattern_norm(
+        &self,
+        pattern: PatternCoordinateId,
+    ) -> Option<CanonicalPatternNorm> {
         if let Some(value) = self.pattern_structural_norms.get(&pattern).cloned() {
             return Some(CanonicalPatternNorm::Structural { value });
         }
@@ -1929,7 +1929,7 @@ impl SemanticWorld {
     /// witness. Ordinary helper membership and schema shape do not register it.
     pub fn direct_pattern_child(
         &self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         selector: &crate::PatternSelector,
     ) -> Option<crate::DirectPatternChildEvidence> {
         let registration = self
@@ -2154,14 +2154,16 @@ impl SemanticWorld {
         if let Some(child) = self.child_namespace(parent, name) {
             return Some(child);
         }
-        let pattern = self.symbol_in_namespace(parent, name)?.pure_p_pattern()?;
+        let pattern = self
+            .symbol_in_namespace(parent, name)?
+            .type_resident_pattern()?;
         self.associated_namespace_for_pattern(pattern)
     }
 
     /// The associated namespace node owned by one Pattern, if it has one.
     pub fn associated_namespace_for_pattern(
         &self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
     ) -> Option<NamespaceNodeId> {
         self.associated_namespace_patterns
             .iter()
@@ -2261,7 +2263,7 @@ impl SemanticWorld {
     }
 
     /// Cell-level exact path walk shared by identity resolution and
-    /// extraction-target resolution (which also needs the cell's pure P).
+    /// extraction-target resolution (which also needs the cell's pure Object).
     fn symbol_cell_path_from(
         &self,
         path: &[String],
@@ -2294,7 +2296,7 @@ impl SemanticWorld {
     ///    implicit global top)
     /// -> completed full Symbol path
     /// -> exact resolution from the global namespace root
-    /// -> the Symbol's PatternValue
+    /// -> the Symbol's Pattern coordinate
     /// -> canonical pattern norm
     /// ```
     ///
@@ -2339,11 +2341,11 @@ impl SemanticWorld {
                     Some(provenance.clone()),
                 )
             })?;
-        let pattern = cell.pure_p_pattern().ok_or_else(|| {
+        let pattern = cell.type_resident_pattern().ok_or_else(|| {
             crate::Diagnostic::hard_error(
                 format!(
-                    "extraction path `{}` resolved to a symbol without a pure-P \
-                     PatternValue; extraction targets must denote a Pattern",
+                    "extraction path `{}` resolved to a symbol without a type resident's \
+                     P coordinate; extraction targets must provide that coordinate",
                     completed.components().join("::"),
                 ),
                 Some(provenance.clone()),
@@ -2514,19 +2516,19 @@ impl SemanticWorld {
 
     /// The host layer named by one carrier Symbol.
     ///
-    /// The carrier's own pure-P member is the host object: its place is that
+    /// The carrier's own type resident is the host object: its place is that
     /// object's Val2 container and its member view is the binding-level
     /// Policy authority.  Two carriers of one Pattern (`let T: type = uint8;
     /// let U: type = T;`) therefore produce different hosts even though
     /// `Pattern(T) = Pattern(U)`.
     fn host_member_for_symbol(&self, cell: &SemanticSymbolCell) -> Option<PatternHostMember> {
-        let member = cell.pure_p()?;
+        let member = cell.type_resident()?;
         Some(PatternHostMember {
             symbol: Some(cell.identity),
             pattern: member.pattern,
             place: member.place,
             complete_type: member.complete_type,
-            view: cell.pure_p_view().cloned(),
+            view: cell.type_resident_view().cloned(),
         })
     }
 
@@ -2540,7 +2542,10 @@ impl SemanticWorld {
     /// No carrier Symbol named this step, so there is no binding-level view
     /// to compose: the host factor of the exposure conjunction is vacuous and
     /// Val2 lookup lands on the Pattern's canonical type-object place.
-    pub fn host_member_for_pattern(&self, pattern: PatternValueId) -> Option<PatternHostMember> {
+    pub fn host_member_for_pattern(
+        &self,
+        pattern: PatternCoordinateId,
+    ) -> Option<PatternHostMember> {
         Some(PatternHostMember {
             symbol: None,
             pattern,
@@ -2610,7 +2615,7 @@ impl SemanticWorld {
         identity: SemanticSymbolIdentity,
     ) -> Option<SemanticValueId> {
         let cell = self.symbol(identity)?;
-        let pattern = cell.pure_p_pattern()?;
+        let pattern = cell.type_resident_pattern()?;
         let type_value = self.type_for_pattern(pattern)?;
         self.core_type_projection_value(type_value)
     }
@@ -2757,7 +2762,7 @@ impl SemanticWorld {
             .copied()
     }
 
-    pub fn type_for_pattern(&self, pattern: PatternValueId) -> Option<TypeValueId> {
+    pub fn type_for_pattern(&self, pattern: PatternCoordinateId) -> Option<TypeValueId> {
         self.pattern_types.get(&pattern).copied()
     }
 
@@ -2767,8 +2772,8 @@ impl SemanticWorld {
     /// member's home after creation.
     pub fn admit_direct_type_member(
         &mut self,
-        target_pattern: PatternValueId,
-        direct_home_pattern: PatternValueId,
+        target_pattern: PatternCoordinateId,
+        direct_home_pattern: PatternCoordinateId,
         selector: impl Into<String>,
         value: SemanticValueId,
     ) -> Result<(), crate::Diagnostic> {
@@ -2842,12 +2847,12 @@ impl SemanticWorld {
     /// carriers are deliberately not scanned or rewritten.
     fn refresh_declaring_type_carrier_snapshot(
         &mut self,
-        target_pattern: PatternValueId,
+        target_pattern: PatternCoordinateId,
     ) -> Result<(), crate::Diagnostic> {
         let Some(owner) = self.pattern_declaration(target_pattern) else {
             return Ok(());
         };
-        let Some(member) = self.symbol(owner).and_then(|cell| cell.pure_p()) else {
+        let Some(member) = self.symbol(owner).and_then(|cell| cell.type_resident()) else {
             return Ok(());
         };
         if member.pattern != target_pattern {
@@ -2882,7 +2887,7 @@ impl SemanticWorld {
         self.registered_type_bindings.contains(&symbol)
     }
 
-    pub fn pattern(&self, id: PatternValueId) -> Option<&SemanticPatternValue> {
+    pub fn pattern(&self, id: PatternCoordinateId) -> Option<&SemanticPatternRecord> {
         self.patterns.get(&id)
     }
 
@@ -2892,14 +2897,17 @@ impl SemanticWorld {
 
     /// Find the original declaration binding without changing Pattern identity.
     ///
-    /// This is a forward-only mapping recorded when the PatternValue is first
-    /// created as an owning pure-P member. Carrier rebinding (`let T: type = X`)
+    /// This is a forward-only mapping recorded when the Pattern coordinate is first
+    /// created as an owning type resident. Carrier rebinding (`let T: type = X`)
     /// does not rewrite this entry.
-    pub fn pattern_declaration(&self, pattern: PatternValueId) -> Option<SemanticSymbolIdentity> {
+    pub fn pattern_declaration(
+        &self,
+        pattern: PatternCoordinateId,
+    ) -> Option<SemanticSymbolIdentity> {
         self.pattern_declarations.get(&pattern).copied()
     }
 
-    pub fn pattern_owner(&self, pattern: PatternValueId) -> Option<&ResolvedPatternScope> {
+    pub fn pattern_owner(&self, pattern: PatternCoordinateId) -> Option<&ResolvedPatternScope> {
         let scope = self.pattern(pattern)?.scope;
         self.pattern_scope(scope)
     }
@@ -2933,14 +2941,14 @@ impl SemanticWorld {
     }
 
     /// Get the canonical type-object place for a Pattern.
-    pub fn pattern_place(&self, pattern: PatternValueId) -> Option<ObjectPlaceId> {
+    pub fn pattern_place(&self, pattern: PatternCoordinateId) -> Option<ObjectPlaceId> {
         self.pattern_places.get(&pattern).copied()
     }
 
     pub fn pattern_for_associated_namespace(
         &self,
         namespace: NamespaceNodeId,
-    ) -> Option<PatternValueId> {
+    ) -> Option<PatternCoordinateId> {
         self.associated_namespace_patterns.get(&namespace).copied()
     }
 
@@ -2973,7 +2981,7 @@ impl SemanticWorld {
     /// that carrier's own place.
     pub fn associated_values_for_pattern(
         &self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         name: &str,
     ) -> Option<&[SemanticValueId]> {
         let place_id = self.pattern_places.get(&pattern)?;
@@ -3260,7 +3268,7 @@ impl SemanticWorld {
     /// The source-visible Val2 Symbol of a Pattern's canonical pure type Object.
     pub fn associated_symbol_for_pattern(
         &self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         name: &str,
     ) -> Option<SemanticSymbolIdentity> {
         self.associated_symbol_in_place(self.pattern_place(pattern)?, name)
@@ -3285,7 +3293,7 @@ impl SemanticWorld {
     /// Record a source-visible Val2 name on a Pattern's canonical pure type Object.
     pub fn associate_existing_symbol(
         &mut self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         name: &str,
         symbol: SemanticSymbolIdentity,
     ) -> Option<()> {
@@ -3316,7 +3324,7 @@ impl SemanticWorld {
 
     pub fn associate_existing_value(
         &mut self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         name: &str,
         value: SemanticValueId,
     ) -> Option<()> {
@@ -3400,7 +3408,7 @@ impl SemanticWorld {
     pub fn member_views_for_values(
         &self,
         values: &[SemanticValueId],
-    ) -> Vec<PolicyResultEntry<SemanticValueId, PatternValueId>> {
+    ) -> Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>> {
         values
             .iter()
             .filter_map(|id| {
@@ -3440,7 +3448,7 @@ impl SemanticWorld {
         host: &PatternHostMember,
         name: &str,
         horizon: crate::ObservationHorizon,
-    ) -> Vec<PolicyResultEntry<SemanticValueId, PatternValueId>> {
+    ) -> Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>> {
         if !host.exposed_at(horizon) {
             return Vec::new();
         }
@@ -3457,10 +3465,10 @@ impl SemanticWorld {
         projected.extend(self.member_views_for_values(&transported));
 
         let mut seen_values = BTreeSet::new();
-        let mut seen_pure_patterns = BTreeSet::new();
+        let mut seen_type_patterns = BTreeSet::new();
         projected.retain(|view| match view.value {
             Some(value) => seen_values.insert(value),
-            None => seen_pure_patterns.insert(view.pattern),
+            None => seen_type_patterns.insert(view.pattern),
         });
         projected
     }
@@ -3476,10 +3484,10 @@ impl SemanticWorld {
     /// silently dropped.
     pub fn associated_member_views_for_pattern(
         &self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         name: &str,
         horizon: crate::ObservationHorizon,
-    ) -> Vec<PolicyResultEntry<SemanticValueId, PatternValueId>> {
+    ) -> Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>> {
         match self.host_member_for_pattern(pattern) {
             Some(host) => self.associated_member_views_for_host(&host, name, horizon),
             None => Vec::new(),
@@ -3488,7 +3496,7 @@ impl SemanticWorld {
 
     fn validate_complete_type_core_material(
         &self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         complete: &CompleteTypeValue,
     ) -> Result<(), BindConflict> {
         if self.types.get(&complete.lookup_key()).map(|ty| ty.pattern) != Some(pattern)
@@ -3518,15 +3526,15 @@ impl SemanticWorld {
 
     fn allocate_complete_type_binding_member(
         &mut self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         complete: &CompleteTypeValue,
-    ) -> PurePMember {
+    ) -> TypeBindingResident {
         let object = self.allocate_semantic_object(complete.core_material.val2.clone());
         let place = self.allocate_residency_for_object(object);
         let storage = self.places.get_mut(&place).unwrap();
         storage.associated_symbols = complete.core_material.associated_symbols.clone();
         storage.associated_val2 = complete.core_material.associated_val2.clone();
-        PurePMember {
+        TypeBindingResident {
             pattern,
             object,
             place,
@@ -3534,9 +3542,9 @@ impl SemanticWorld {
         }
     }
 
-    /// The pure-P member one bootstrap carrier installs for `pattern`.
+    /// The type resident one bootstrap carrier installs for `pattern`.
     ///
-    /// A pure P is a real object, so each carrier owns its own writable Val2
+    /// A pure Object is a real object, so each carrier owns its own writable Val2
     /// place while the Pattern stays shared identity material.  The Pattern's
     /// canonical pure type Object belongs to the declaration that established the Pattern:
     /// that carrier keeps writing there, because construction-time members
@@ -3548,14 +3556,18 @@ impl SemanticWorld {
     /// formation; later navigation changes never alter that owned
     /// snapshot or its Object normal form.
     ///
-    /// An existing pure-P member is never re-placed: rebinding a carrier is a
+    /// An existing type resident is never re-placed: rebinding a carrier is a
     /// new declaration, not a mutation of the previous object.
-    fn pure_p_member_for_carrier(
+    fn type_resident_for_carrier(
         &mut self,
         symbol: SemanticSymbolIdentity,
-        pattern: PatternValueId,
-    ) -> PurePMember {
-        if let Some(mut existing) = self.symbols.get(&symbol).and_then(|cell| cell.pure_p()) {
+        pattern: PatternCoordinateId,
+    ) -> TypeBindingResident {
+        if let Some(mut existing) = self
+            .symbols
+            .get(&symbol)
+            .and_then(|cell| cell.type_resident())
+        {
             if existing.complete_type.is_none() {
                 existing.complete_type = self.type_for_pattern(pattern).and_then(|type_value| {
                     self.observe_complete_type(type_value, Some(existing.place))
@@ -3603,7 +3615,7 @@ impl SemanticWorld {
                 .ok()
                 .map(|complete| complete.whole())
         });
-        PurePMember {
+        TypeBindingResident {
             pattern,
             object,
             place,
@@ -3621,7 +3633,7 @@ impl SemanticWorld {
         associated_namespace: Option<NamespaceNodeId>,
         policy: PolicyPair,
         provenance: Provenance,
-    ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternValueId)> {
+    ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternCoordinateId)> {
         self.register_type_symbol_with_complete_type(
             namespace,
             name,
@@ -3649,7 +3661,7 @@ impl SemanticWorld {
         associated_namespace: Option<NamespaceNodeId>,
         policy: PolicyPair,
         provenance: Provenance,
-    ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternValueId)> {
+    ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternCoordinateId)> {
         let observed = match complete_type {
             Some(whole) => Some(self.complete_types.get(&whole)?.clone()),
             None => None,
@@ -3690,7 +3702,7 @@ impl SemanticWorld {
         };
         debug_assert!(
             self.pattern_declarations.contains_key(&represented_pattern),
-            "PatternValue {:?} must already have a declaration binding at installation time",
+            "Pattern coordinate {:?} must already have a declaration binding at installation time",
             represented_pattern.0
         );
         if represented_type == type_rank {
@@ -3755,7 +3767,9 @@ impl SemanticWorld {
                 && *existing == represented_type
         ));
         let member = match (
-            self.symbols.get(&symbol).and_then(|cell| cell.pure_p()),
+            self.symbols
+                .get(&symbol)
+                .and_then(|cell| cell.type_resident()),
             &observed,
         ) {
             (Some(existing), Some(complete)) => {
@@ -3769,7 +3783,7 @@ impl SemanticWorld {
             (None, Some(complete)) => {
                 self.allocate_complete_type_binding_member(represented_pattern, complete)
             }
-            (_, None) => self.pure_p_member_for_carrier(symbol, represented_pattern),
+            (_, None) => self.type_resident_for_carrier(symbol, represented_pattern),
         };
         let cell = self
             .symbols
@@ -3785,7 +3799,7 @@ impl SemanticWorld {
             slot @ None => *slot = Some(BindingResident::Type(member)),
             Some(BindingResident::Value { .. }) => return None,
         }
-        let pure_p_view = PolicyResultEntry {
+        let type_resident_view = PolicyResultEntry {
             value: None,
             pattern: represented_pattern,
             view: PolicyView {
@@ -3793,8 +3807,8 @@ impl SemanticWorld {
                 mode: PolicyMode::Const,
             },
         };
-        if !cell.member_views.contains(&pure_p_view) {
-            cell.member_views.push(pure_p_view);
+        if !cell.member_views.contains(&type_resident_view) {
+            cell.member_views.push(type_resident_view);
         }
         if let Some(namespace) = associated_namespace {
             self.associated_namespace_patterns
@@ -3921,7 +3935,7 @@ impl SemanticWorld {
     #[allow(clippy::too_many_arguments)]
     fn allocate_terminal_call_entry(
         &mut self,
-        owner_pattern: PatternValueId,
+        owner_pattern: PatternCoordinateId,
         backing_declaration: SymbolId,
         declaration_name: &str,
         operation_selector: &str,
@@ -3943,7 +3957,7 @@ impl SemanticWorld {
         // `provenance` is moved into SemanticValueRecord later in this
         // function, and we cannot borrow it after the move.
         let err_provenance = provenance.clone();
-        let owner_pattern_value = self
+        let owner_pattern_record = self
             .pattern(owner_pattern)
             .ok_or_else(|| {
                 BuildError::single(crate::Diagnostic::hard_error(
@@ -3959,7 +3973,7 @@ impl SemanticWorld {
         // is a terminal FunctionItem with Val2 = ∅.
         let function_item_type = self.allocate_anonymous_type();
         let (function_item_pattern, _function_item_scope) =
-            self.allocate_pattern(owner_pattern_value.root.owner, provenance.clone());
+            self.allocate_pattern(owner_pattern_record.root.owner, provenance.clone());
         self.types.insert(
             function_item_type,
             SemanticTypeValue {
@@ -4089,7 +4103,7 @@ impl SemanticWorld {
             .symbols
             .values()
             .filter(|symbol| self.owners.package_of(symbol.declaration_owner) == toolchain_package)
-            .filter_map(|symbol| symbol.pure_p().map(|member| member.pattern))
+            .filter_map(|symbol| symbol.type_resident().map(|member| member.pattern))
             .collect::<BTreeSet<_>>();
         for pattern in patterns {
             self.refresh_declaring_type_carrier_snapshot(pattern)?;
@@ -4217,7 +4231,7 @@ impl SemanticWorld {
     #[allow(clippy::too_many_arguments)]
     pub fn register_associated_call_entry(
         &mut self,
-        pattern: PatternValueId,
+        pattern: PatternCoordinateId,
         declaration_namespace: NamespaceNodeId,
         backing_declaration: SymbolId,
         closure: &NormClosure,
@@ -4762,7 +4776,7 @@ impl SemanticWorld {
         &mut self,
         namespace: NamespaceNodeId,
         name: &str,
-        views: &[PolicyResultEntry<crate::SemanticValueRef, PatternValueId>],
+        views: &[PolicyResultEntry<crate::SemanticValueRef, PatternCoordinateId>],
         complete_type: Option<&CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<SemanticSymbolIdentity, BindConflict> {
@@ -4825,7 +4839,7 @@ impl SemanticWorld {
         // A type binding transports the exact observed Core and V_tau into a
         // distinct Place. It never reads the Pattern declaration's current
         // members to reconstruct the result.
-        let pure_p_member = pure_type.map(|view| {
+        let type_resident = pure_type.map(|view| {
             let complete = complete_type.expect("pure type observation was validated");
             self.allocate_complete_type_binding_member(view.pattern, complete)
         });
@@ -4859,12 +4873,12 @@ impl SemanticWorld {
                     place: destination_places[&value],
                 });
             } else {
-                // Pure-P view (value=None, pattern=P):
-                // set pure_p directly so SemanticWorld has the complete
+                // Type-resident view (value=None, pattern=P):
+                // set type_resident directly so SemanticWorld has the complete
                 // fact after binding returns, independently of declaration projections.
                 // §8.2: projection records are not the semantic truth source.
                 if cell.resident.is_none() {
-                    cell.resident = pure_p_member.map(BindingResident::Type);
+                    cell.resident = type_resident.map(BindingResident::Type);
                 }
             }
             // Every bound resident carries a Pattern. Record its declaration
@@ -4892,7 +4906,7 @@ impl SemanticWorld {
         &mut self,
         namespace: NamespaceNodeId,
         name: &str,
-        views: &[PolicyResultEntry<crate::SemanticValueRef, PatternValueId>],
+        views: &[PolicyResultEntry<crate::SemanticValueRef, PatternCoordinateId>],
         provenance: Provenance,
     ) -> Option<SemanticSymbolIdentity> {
         // A Core projection transports an absent-Val1 type resident; it is
@@ -4936,11 +4950,11 @@ impl SemanticWorld {
             return None;
         }
         let symbol = self.intern_symbol(namespace, owner, name, provenance);
-        let pure_p_member = views
+        let type_resident = views
             .iter()
             .find(|view| view.value.is_none())
             .map(|view| view.pattern)
-            .map(|pattern| self.pure_p_member_for_carrier(symbol, pattern));
+            .map(|pattern| self.type_resident_for_carrier(symbol, pattern));
         let mut destination_places = BTreeMap::new();
         for value in views
             .iter()
@@ -4956,7 +4970,7 @@ impl SemanticWorld {
             .expect("interned semantic symbol exists");
         cell.member_views.clear();
         cell.resident = None;
-        let mut pure_p_patterns = Vec::new();
+        let mut type_resident_patterns = Vec::new();
         for view in views {
             let value = view.value.map(|value| value.id);
             if let Some(value) = value {
@@ -4966,13 +4980,13 @@ impl SemanticWorld {
                 });
             } else {
                 // Keep the derived caches strictly in sync with the
-                // canonical member views: pure_p mirrors the first
+                // canonical member views: type_resident mirrors the first
                 // value=None view, and the Pattern declaration binding is
                 // registered exactly like `bind_ordinary_new`.
                 if cell.resident.is_none() {
-                    cell.resident = pure_p_member.map(BindingResident::Type);
+                    cell.resident = type_resident.map(BindingResident::Type);
                 }
-                pure_p_patterns.push(view.pattern);
+                type_resident_patterns.push(view.pattern);
             }
             let binding_view = PolicyResultEntry {
                 value,
@@ -4983,7 +4997,7 @@ impl SemanticWorld {
                 cell.member_views.push(binding_view);
             }
         }
-        for pattern in pure_p_patterns {
+        for pattern in type_resident_patterns {
             self.pattern_declarations.entry(pattern).or_insert(symbol);
         }
         Some(symbol)
@@ -4993,7 +5007,7 @@ impl SemanticWorld {
     /// value. Window liveness and authority matching are independent facts.
     pub fn open_here(
         &self,
-        target_pattern: PatternValueId,
+        target_pattern: PatternCoordinateId,
         context: &ConstructionEvaluationContext,
     ) -> Result<OpenHereProof, OpenHereFailure> {
         if !self.patterns.contains_key(&target_pattern) {
@@ -5021,7 +5035,7 @@ impl SemanticWorld {
     /// current construction unit may attempt that operation here.
     pub fn can_create_member_here(
         &self,
-        target_pattern: PatternValueId,
+        target_pattern: PatternCoordinateId,
         context: &ConstructionEvaluationContext,
     ) -> Result<MemberCreationProof, OpenHereFailure> {
         self.open_here(target_pattern, context)
@@ -5105,12 +5119,12 @@ impl SemanticWorld {
         &mut self,
         owner: SemanticOwnerId,
         provenance: Provenance,
-    ) -> (PatternValueId, ResolvedPatternScopeId) {
-        let pattern = PatternValueId(self.next_pattern);
+    ) -> (PatternCoordinateId, ResolvedPatternScopeId) {
+        let pattern = PatternCoordinateId(self.next_pattern);
         self.next_pattern = self
             .next_pattern
             .checked_add(1)
-            .expect("PatternValue identity exhausted");
+            .expect("Pattern coordinate identity exhausted");
         let scope = ResolvedPatternScopeId(self.next_scope);
         self.next_scope = self
             .next_scope
@@ -5126,7 +5140,7 @@ impl SemanticWorld {
             .expect("Pattern root identity exhausted");
         self.patterns.insert(
             pattern,
-            SemanticPatternValue {
+            SemanticPatternRecord {
                 id: pattern,
                 root,
                 scope,
@@ -5361,7 +5375,7 @@ mod tests {
         let cell = world.symbol(name).unwrap();
         assert_eq!(cell.declaration_owner, first.owner());
         assert!(cell.ordinary_value().is_none());
-        assert!(cell.pure_p().is_none());
+        assert!(cell.type_resident().is_none());
         assert!(!world.compile_instance(first).unwrap().evaluation_active());
         assert_eq!(
             counts,
@@ -5687,7 +5701,11 @@ mod tests {
             .symbol_in_namespace(base.core_node(), "uint8")
             .unwrap()
             .identity;
-        let pattern = world.symbol(target).unwrap().pure_p_pattern().unwrap();
+        let pattern = world
+            .symbol(target)
+            .unwrap()
+            .type_resident_pattern()
+            .unwrap();
         let first = test_callable(&mut world);
         let classifier = world.value(first).unwrap().type_value;
         let second = world
@@ -5918,7 +5936,7 @@ mod tests {
             .semantic_world()
             .symbol_in_namespace(core, "uint16")
             .unwrap()
-            .pure_p()
+            .type_resident()
             .unwrap()
             .complete_type;
         let parsed = lang_syntax::parse("let result = uint8 IdentityType::core;");
@@ -5974,7 +5992,7 @@ mod tests {
         let owner = world.package_owner();
         let (p1, _) = world.allocate_pattern(owner, Provenance::new("structural alloc 1"));
         let (p2, _) = world.allocate_pattern(owner, Provenance::new("structural alloc 2"));
-        assert_ne!(p1, p2, "two allocations, two PatternValue identities");
+        assert_ne!(p1, p2, "two allocations, two Pattern coordinate identities");
         let structure = StructuralSchema::unordered([(
             CanonicalFullNavigation::from_component("field"),
             StructuralSchema::Atom(CanonicalPatternAtom::Type(
@@ -6383,7 +6401,7 @@ mod tests {
     /// an existing CoreTypeProjection's normal form.  An explicit contribution to the
     /// object's own SemanticVal2Snapshot does.
     #[test]
-    fn pure_p_with_different_val2_keeps_different_addresses() {
+    fn type_residents_with_different_val2_keep_different_addresses() {
         let mut world = SemanticWorld::new("app");
         let owner = world.package_owner();
         let (pattern, _) = world.allocate_pattern(owner, Provenance::new("val2 test pattern"));
@@ -6707,7 +6725,7 @@ mod tests {
                     provenance: Provenance::new("valid first staged entry"),
                 },
                 SemanticDeclarationEntry::AssociatedCallEntry {
-                    pattern: PatternValueId(u64::MAX),
+                    pattern: PatternCoordinateId(u64::MAX),
                     backing_declaration: SymbolId(901),
                     closure,
                     outer_p1_explicit: None,
@@ -6791,8 +6809,8 @@ mod tests {
         let (t_a, _, _) = register(&mut world, root_a, "T", 2, 2);
         let (t_b, _, _) = register(&mut world, root_b, "T", 3, 3);
         assert_ne!(t_a, t_b, "each root owns a distinct `T` carrier");
-        let t_a_place = world.symbol(t_a).unwrap().pure_p_place().unwrap();
-        let t_b_place = world.symbol(t_b).unwrap().pure_p_place().unwrap();
+        let t_a_place = world.symbol(t_a).unwrap().type_resident_place().unwrap();
+        let t_b_place = world.symbol(t_b).unwrap().type_resident_place().unwrap();
         assert_ne!(t_a_place, t_b_place);
         // Both carriers name the SAME terminal `g` under `f`.
         world

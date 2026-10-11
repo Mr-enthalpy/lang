@@ -20,8 +20,8 @@ mod support;
 use lang_build::{
     canonical_function_object_view, extract_single_call_site, BuildManifest, CompilationWorld,
     ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext,
-    PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair, PolicyResultEntry, PolicyView,
-    Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, Stage,
+    PatternComponentPolicy, PatternCoordinateId, PolicyMode, PolicyPair, PolicyResultEntry,
+    PolicyView, Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, Stage,
     ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
@@ -297,13 +297,13 @@ fn value_entry(
     value_stage: Stage,
     mode: PolicyMode,
     pattern_stage: Stage,
-) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
+) -> PolicyResultEntry<SemanticValueRef, PatternCoordinateId> {
     PolicyResultEntry {
         value: Some(SemanticValueRef {
             id: SemanticValueId(7),
             type_value: support::type_lookup_fixture("canonical-p1/value-entry"),
         }),
-        pattern: PatternValueId(1),
+        pattern: PatternCoordinateId(1),
         view: PolicyView {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
@@ -316,13 +316,13 @@ fn value_entry(
     }
 }
 
-fn pure_p_entry(
+fn type_result_entry(
     value_stage: Stage,
     pattern_stage: Stage,
-) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
+) -> PolicyResultEntry<SemanticValueRef, PatternCoordinateId> {
     PolicyResultEntry {
         value: None,
-        pattern: PatternValueId(1),
+        pattern: PatternCoordinateId(1),
         view: PolicyView {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
@@ -390,7 +390,7 @@ fn expose_is_identity_under_the_same_stage_observation() {
 fn expose_does_not_clip_a_pure_object_into_a_different_stage() {
     let exposed = ExposedInvocationResult::expose(
         exposure_window(Stage::Runtime, PolicyMode::Const, Stage::Compile).pair,
-        &[pure_p_entry(Stage::Compile, Stage::Compile)],
+        &[type_result_entry(Stage::Compile, Stage::Compile)],
     );
     assert!(
         exposed.material.is_empty(),

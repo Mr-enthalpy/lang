@@ -17,7 +17,7 @@ fn directory_context_preserves_complete_types_without_structural_composition() {
             .unwrap();
         assert!(matches!(directory.payload, SymbolPayload::Namespace { .. }));
         if let Some(binding) = semantic.symbol_in_namespace(parent, name) {
-            assert!(binding.pure_p().is_none());
+            assert!(binding.type_resident().is_none());
             assert!(binding.ordinary_value().is_none());
         }
     }
@@ -27,15 +27,15 @@ fn directory_context_preserves_complete_types_without_structural_composition() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .unwrap();
     assert_eq!(
-        nested.pure_p().unwrap().complete_type,
-        core.pure_p().unwrap().complete_type
+        nested.type_resident().unwrap().complete_type,
+        core.type_resident().unwrap().complete_type
     );
     assert_eq!(
-        nested.pure_p().unwrap().complete_type,
-        outer.pure_p().unwrap().complete_type
+        nested.type_resident().unwrap().complete_type,
+        outer.type_resident().unwrap().complete_type
     );
     assert_ne!(nested.identity, outer.identity);
-    assert_ne!(nested.pure_p_place(), outer.pure_p_place());
+    assert_ne!(nested.type_resident_place(), outer.type_resident_place());
     assert!(semantic.compile_instances().next().is_none());
     assert!(semantic.symbol_in_namespace(b, "foo").is_none());
     assert!(semantic.child_namespace(b, "foo").is_none());
@@ -77,7 +77,7 @@ fn scalar_compile_results_use_canonical_inputs_without_a_nameexpr_result() {
         ));
         assert!(!instance.evaluation_active());
         let self_name = semantic.symbol(instance.invoke_name()).unwrap();
-        assert!(self_name.pure_p().is_none());
+        assert!(self_name.type_resident().is_none());
         assert!(self_name.ordinary_value().is_none());
     }
     let mut observation = semantic.clone();

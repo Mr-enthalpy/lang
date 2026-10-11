@@ -10,7 +10,7 @@
 //!    global top)
 //! -> completed full Symbol path
 //! -> exact resolution from the global namespace root
-//! -> the Symbol's PatternValue
+//! -> the Symbol's Pattern coordinate
 //! -> canonical pattern norm
 //! ```
 //!
@@ -80,8 +80,8 @@ fn top_omitted_navigation_is_exact_global_never_bare_name() {
     assert_eq!(target.symbol, uint8.identity, "resolved the core symbol");
     assert_eq!(
         Some(target.pattern),
-        uint8.pure_p_pattern(),
-        "the extraction target is the symbol's PatternValue"
+        uint8.type_resident_pattern(),
+        "the extraction target is the symbol's Pattern coordinate"
     );
     assert_eq!(
         Some(target.norm.clone()),
@@ -157,7 +157,7 @@ fn intermediate_absent_layer_extends_the_completed_path() {
     // subject `exists`, an Absent layer named `verify`, then an explicit
     // `core` anchor: the completed path is `exists::verify::core`, which
     // resolves to the real core verification primitive — a symbol without
-    // a pure-P PatternValue, so the failure is the pattern-shape check,
+    // a type-resident P coordinate, so the failure is the pattern-shape check,
     // NOT an unresolved path.
     let parents = [
         ExtractionPatternParent::new(nav(&["verify"]), PatternOwnNavigation::Absent),
@@ -170,7 +170,7 @@ fn intermediate_absent_layer_extends_the_completed_path() {
         .resolve_extraction_target(&nav(&["exists"]), None, &parents, provenance())
         .expect_err("the verification primitive is not a Pattern");
     assert!(
-        error.message.contains("without a pure-P"),
+        error.message.contains("without a type resident's"),
         "the Absent layer extended the path to a real non-pattern symbol: {}",
         error.message
     );

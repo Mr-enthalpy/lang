@@ -23,7 +23,7 @@ use crate::{
     model::Provenance,
     model::SymbolId,
     policy_pair::{PolicyMode, PolicyResultEntry},
-    semantic_world::{ObjectPlaceId, PatternValueId},
+    semantic_world::{ObjectPlaceId, PatternCoordinateId},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -164,14 +164,14 @@ pub struct RawArgShape {
     /// key classifies the argument; canonical observations determine equality.
     pub known_type_pattern_name: Option<String>,
     pub known_first_order_type_value: Option<TypeValueId>,
-    /// The resolved carrier's own binding-level pure-P member view, when this
+    /// The resolved carrier's own binding-level type resident view, when this
     /// argument was classified from a named type carrier.
     ///
     /// A represented TypeValue is shared by every carrier binding it, so it
     /// cannot answer "what Policy did *this* binding expose?".
     /// The binding view therefore rides along with the argument instead of
     /// being reconstructed downstream.
-    pub known_type_member_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    pub known_type_member_view: Option<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     /// The resolved carrier's own object place, when this argument was
     /// classified from a named type carrier.
     ///
@@ -329,7 +329,7 @@ impl RawArgShape {
         top_pattern_name: String,
         represented_type: TypeValueId,
         carrier_symbol: Option<SymbolId>,
-        member_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+        member_view: Option<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
         carrier_place: Option<ObjectPlaceId>,
         complete_type_observation: Option<CanonicalValueAddr>,
     ) -> Self {

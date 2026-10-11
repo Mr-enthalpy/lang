@@ -34,7 +34,7 @@ fn family_with_const_actual(
         .semantic_world()
         .symbol_in_namespace(base.core_node(), "uint8")
         .unwrap()
-        .pure_p_pattern()
+        .type_resident_pattern()
         .unwrap();
     let type_value = world.semantic_world().type_for_pattern(pattern).unwrap();
     let view = declared_policy_view(stage, PolicyMode::Const);
@@ -350,13 +350,13 @@ fn pure_type_binding_mode_survives_classification_and_preference() {
         .semantic_world()
         .symbol_in_namespace(base.core_node(), "uint8")
         .unwrap()
-        .pure_p_pattern()
+        .type_resident_pattern()
         .unwrap();
     let complete = world
         .semantic_world()
         .symbol_in_namespace(base.core_node(), "uint8")
         .unwrap()
-        .pure_p()
+        .type_resident()
         .unwrap()
         .complete_type
         .and_then(|whole| {
@@ -496,20 +496,22 @@ fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
     );
 
     // Ordinary binding semantics: the RHS value (the uint8 type value) is
-    // bound to the symbol T — T reads the same PatternValue.
+    // bound to the symbol T — T reads the same Pattern coordinate.
     assert_eq!(
-        t.pure_p_pattern(),
-        uint8.pure_p_pattern(),
+        t.type_resident_pattern(),
+        uint8.type_resident_pattern(),
         "the bound type value is the RHS value itself"
     );
 
     // No reroot: carrier rebinding does not rewrite the Pattern's owning
-    // binding; uint8's PatternValue stays owned by uint8.
-    let pattern = uint8.pure_p_pattern().expect("core uint8 pure-P");
+    // binding; uint8's Pattern coordinate stays owned by uint8.
+    let pattern = uint8
+        .type_resident_pattern()
+        .expect("core uint8 absent-Val1");
     assert_eq!(
         world.semantic_world().pattern_declaration(pattern),
         Some(uint8.identity),
-        "carrier rebinding must not reroot the RHS PatternValue"
+        "carrier rebinding must not reroot the RHS Pattern coordinate"
     );
 }
 

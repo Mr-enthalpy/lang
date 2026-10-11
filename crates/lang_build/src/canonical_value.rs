@@ -11,8 +11,8 @@
 //! permitted to discard Val2, and an implementation allocation id is never a
 //! substitute for unobserved Val1 content.
 //!
-//! A pure P is a real object (`null × P × Val2`), and two carriers of one
-//! Pattern can hold different Val2, so the Pattern alone cannot be the type
+//! An absent-Val1 Core is a complete object (`null × P × Val2`). Two carriers
+//! of one Pattern can hold different Val2, so the Pattern alone cannot be the type
 //! object's identity:
 //!
 //! ```text
@@ -28,7 +28,7 @@
 //!
 //! The interning table lives on [`crate::SemanticWorld`]; equal normal forms
 //! share one snapshot-local [`CanonicalValueAddr`].  Simple literal values,
-//! pure-P types, registered structural schemas, and static Products are
+//! type Core Objects, registered structural schemas, and static Products are
 //! canonicalized here.  Every value normal form carries its Pattern
 //! coordinate explicitly: `Norm_VP(Val1, P)` is a PAIR — equal Val1 content
 //! under different Ps never shares one address.  Values whose Val1 content
@@ -109,19 +109,14 @@ impl CanonicalLiteralFamily {
     }
 }
 
-/// `Norm_P(P)` — the canonical normal form of one PatternValue.  This is
-/// NOT the snapshot allocation identity: a Pattern
-/// with recorded structural material normalizes by that structure, so two
-/// separately allocated PatternValues with equal normalized structural
-/// bodies share one Pattern normal form.  Only patterns WITHOUT structural
-/// material (nominal declaration patterns) normalize by their declaration
-/// root coordinate — for those, the declaration identity IS the existing
-/// pattern-equivalence normal form.
+/// `Norm_P(P)` — the normal form of the Object's relational P coordinate.
+/// Recorded structural schemas normalize independently of coordinate allocation.
+/// Nominal declaration Patterns normalize by their declaration root under the
+/// ordinary Pattern-equivalence relation.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CanonicalPatternNorm {
-    /// A Pattern carrying a recorded structural normal form (compile-generated
-    /// struct patterns): `Norm_P(P) = StructuralSchema(P)` by the
-    /// normalized structural body, independent of allocation.
+    /// A Pattern with recorded structural normalization material:
+    /// `Norm_P(P) = StructuralSchema(P)`, independent of coordinate allocation.
     Structural { value: StructuralSchema },
     /// A nominal declaration Pattern: its declaration root coordinate is its
     /// normal form under the existing pattern-equivalence rules (nominal
@@ -144,7 +139,7 @@ pub enum CanonicalPatternNorm {
 ///
 /// Whether these components were written explicitly or inherited from an
 /// enclosing Pattern layer is deliberately absent.  That distinction is
-/// normalization input, not PatternValue identity.
+/// normalization input, not P-coordinate identity.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CanonicalFullNavigation(Vec<String>);
 
@@ -231,7 +226,7 @@ impl StructuralSchemaBuilder {
         }
     }
 
-    pub fn contribute_pattern_value(
+    pub fn contribute_child_schema(
         &mut self,
         navigation: PatternNavigationInput,
         value: StructuralSchema,
@@ -332,7 +327,7 @@ impl StructuralSchema {
     }
 }
 
-/// Expand extraction navigation independently of PatternValue equality.
+/// Expand extraction navigation independently of Pattern coordinate equality.
 ///
 /// An explicit query navigation is already complete.  Otherwise, the
 /// subject's local navigation follows its Pattern parents from nearest to
@@ -421,7 +416,7 @@ pub fn expand_extraction_navigation(
 }
 
 /// One `Core(tau)` observation consumed by a structural identity position
-/// (struct Pattern leaves, field signatures, extraction views).
+/// (registered structural leaves, field signatures, extraction views).
 ///
 /// A bare `TypeValueId` is only the first-order lookup projection. Structural
 /// Pattern identity consumes the ordinary Object observation of the core,
@@ -809,7 +804,7 @@ mod tests {
     }
 
     #[test]
-    fn inherited_and_explicit_navigation_normalize_to_the_same_pattern_value() {
+    fn inherited_and_explicit_navigation_normalize_to_the_same_schema() {
         let a = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
@@ -1108,7 +1103,7 @@ mod tests {
                 )],
             )
             .unwrap(),
-            "bare extraction follows the Pattern parent chain without changing PatternValue identity"
+            "bare extraction follows the Pattern parent chain without changing Pattern coordinate identity"
         );
 
         let explicit = CanonicalFullNavigation::new(["t", "bool"]);
@@ -1137,7 +1132,7 @@ mod tests {
         let mut one_shot =
             StructuralSchemaBuilder::named_root(CanonicalFullNavigation::from_component("t"));
         one_shot
-            .contribute_pattern_value(
+            .contribute_child_schema(
                 PatternNavigationInput::InheritOuter(CanonicalFullNavigation::from_component(
                     "inner",
                 )),
@@ -1151,7 +1146,7 @@ mod tests {
         let mut incrementally_built =
             StructuralSchemaBuilder::named_root(CanonicalFullNavigation::from_component("t"));
         incrementally_built
-            .contribute_pattern_value(
+            .contribute_child_schema(
                 PatternNavigationInput::Explicit(CanonicalFullNavigation::new(["inner", "t"])),
                 bool_pattern,
             )

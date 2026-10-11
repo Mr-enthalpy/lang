@@ -202,13 +202,13 @@ pub use semantic_world::{
     CompileResultObservation, CompleteTypeValue, ConstructionAuthority,
     ConstructionEvaluationContext, ImmutableTypeCallSpace, MemberCreationProof, ObjectPlace,
     ObjectPlaceId, OpenHereFailure, OpenHereProof, OrdinaryCallEntry, OrdinaryCandidateRole,
-    PatternHostMember, PatternValueId, PlaceMutationFailure, ProjectionSelector, ProjectionSlot,
-    ProjectionSlotContents, ProjectionSlotIdentity, PurePMember, RegisteredCallable,
+    PatternCoordinateId, PatternHostMember, PlaceMutationFailure, ProjectionSelector,
+    ProjectionSlot, ProjectionSlotContents, ProjectionSlotIdentity, RegisteredCallable,
     ResidentGeneration, ResidentIdentity, ResolvedExtractionTarget, ResolvedPatternScope,
-    ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId, SemanticPatternValue,
+    ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId, SemanticPatternRecord,
     SemanticSymbolCell, SemanticTypeValue, SemanticVal2Snapshot, SemanticValuePayload,
-    SemanticValueRecord, SemanticWorld, StableBorrowTarget, TypeMemberSnapshotEntry,
-    WritableContext,
+    SemanticValueRecord, SemanticWorld, StableBorrowTarget, TypeBindingResident,
+    TypeMemberSnapshotEntry, WritableContext,
 };
 pub use source::SourceFragment;
 pub use structural_material::StructuralMemberVisibility;

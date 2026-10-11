@@ -43,8 +43,8 @@ use lang_build::{
     classify_type_arguments_env_with_report, compute_compile_instance_material_key,
     extract_single_call_site, invoke_resolved_binding_ordinary, CanonicalValueAddr, CompilePartner,
     DeclaredResultClass, NamespaceNodeId, NonValueArgKind, ObjectPlaceId, ObservationHorizon,
-    OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternValueId, PolicyMode, PolicyPair,
-    ProductAtom, Provenance, RawArgShape, RawArgValueClass, ResolverContext,
+    OrdinaryInvocationContext, OrdinaryInvocationFailure, PatternCoordinateId, PolicyMode,
+    PolicyPair, ProductAtom, Provenance, RawArgShape, RawArgValueClass, ResolverContext,
     SemanticSymbolIdentity, SemanticTypeEnv, SemanticValueId, SemanticWorld, Stage, SymbolId,
     TypeResolutionEnv, TypeValueId,
 };
@@ -68,7 +68,7 @@ struct Carriers {
     member: SemanticSymbolIdentity,
     /// A third type, used to make one carrier's Val2 differ by content.
     other: SemanticSymbolIdentity,
-    pattern: PatternValueId,
+    pattern: PatternCoordinateId,
     type_value: TypeValueId,
 }
 
@@ -128,8 +128,8 @@ fn place_of(world: &SemanticWorld, symbol: SemanticSymbolIdentity) -> ObjectPlac
     world
         .symbol(symbol)
         .expect("registered symbol")
-        .pure_p_place()
-        .expect("a pure P is a real object with its own place")
+        .type_resident_place()
+        .expect("a pure Object is a real object with its own place")
 }
 
 /// Explicitly observe a current complete snapshot for this substrate fixture,
@@ -268,7 +268,7 @@ fn later_pattern_fallback_does_not_rewrite_existing_owned_val2() {
     } = carriers();
     let canonical = place_of(&world, base);
     let t_place = place_of(&world, t);
-    let t_host = world.host_member_of(t).expect("T is a pure-P host");
+    let t_host = world.host_member_of(t).expect("T is a type host");
     let before = type_addr(&mut world, type_value, Some(t_place));
 
     world
@@ -435,7 +435,13 @@ fn missing_unknown_or_mismatched_type_snapshots_cannot_form_input_observations()
     let place = place_of(&world, t);
     let (valid, atom) = type_arg(&mut world, type_value, Some(place)).unwrap();
     let other_type = world
-        .type_for_pattern(world.symbol(member).unwrap().pure_p_pattern().unwrap())
+        .type_for_pattern(
+            world
+                .symbol(member)
+                .unwrap()
+                .type_resident_pattern()
+                .unwrap(),
+        )
         .unwrap();
     let cases = [
         RawArgShape {
@@ -771,8 +777,8 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
     let member_pattern = world
         .symbol(member)
         .expect("member symbol")
-        .pure_p_pattern()
-        .expect("the member is a pure P");
+        .type_resident_pattern()
+        .expect("the member is a pure Object");
     let member_type = world
         .type_for_pattern(member_pattern)
         .expect("the member type has a TypeValue");
@@ -800,7 +806,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
             .expect("`f::T` stepped through a host")
             .pattern,
         pattern,
-        "the host layer is T's pure-P Object"
+        "the host layer is T's Core Object"
     );
 
     // Call target and associated-member RHS: `(…) |> f::T`, `let g::U = f::T`.
@@ -816,7 +822,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
         Some(member),
     );
 
-    // Type context: `let A: type = f::T` projects the pure-P facet of the
+    // Type context: `let A: type = f::T` projects the type-resident projection of the
     // same terminal Symbol, carrying that Symbol's own place.
     let context = ResolverContext::new(NamespaceNodeId(0));
     let resolution = SemanticTypeEnv::new(&world)
@@ -1081,7 +1087,7 @@ fn distinct_associated_bindings_with_equal_resident_content_share_one_core_norma
     assert_ne!(c_t, c_u, "two distinct associated member bindings");
     assert_eq!(
         c_t_pattern, c_u_pattern,
-        "but they carry ONE Pattern, so their pure-P norms are equal"
+        "but they carry ONE Pattern, so their Core Object norms are equal"
     );
 
     let t_place = place_of(&world, t);

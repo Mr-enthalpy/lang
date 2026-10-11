@@ -615,7 +615,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
 
     let external_type = views
         .resolve_external(&"exported_type")
-        .expect("pure Pattern/type candidate remains externally visible");
+        .expect("type candidate remains externally visible");
     assert_eq!(
         external_type[0].external_policy, external_type[0].internal_candidate.internal_policy,
         "Pv=absent has no value-policy_mode projection obligation"

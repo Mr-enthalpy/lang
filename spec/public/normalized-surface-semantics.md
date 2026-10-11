@@ -1283,8 +1283,9 @@ performs Read_resident. Postfix e# is the defined path_pattern projection,
 observing only the first level for NameExpr after that full computation.
 It does not capture AST or stop operand evaluation. name::path keeps the same
 construction/extraction direction; :: is Pattern/path composition. Bare a
-inherits navigation in extraction, while evaluated a$ reinjects material;
-non-extraction name::a == name::(a$) is not an unconditional Pattern rewrite. Interpret(e$,C)=Interpret(e,Flip(C)) applies in both V and S, with arbitrary
+in S inherits navigation; a$ interprets a in V. Comparing their Path or
+extraction results requires the actual material and the ordinary consumer's
+relation. Interpret(e$,C)=Interpret(e,Flip(C)) applies in both V and S, with arbitrary
 nesting and parity. Bare S operators elaborate to (operator[op])$. The flip
 retains Hole identities and inserts no implicit Path conversion or resident Read. The round-trip
 (n#)$ reconstructs n's structure under the Path consumer, not through a general

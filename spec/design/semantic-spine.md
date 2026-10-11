@@ -2,7 +2,7 @@
 
 This reading index introduces no separate value or execution ontology.
 
-    Object normalization and complete pattern-value observations
+    Object normalization and complete type-value observations
       -> structural name existence and named type
       -> type contribution / closure anchored replication
       -> ordinary OverloadGroup candidate aggregation
@@ -76,8 +76,9 @@ changes V_T only. Neither construction axis implies the other.
 Read_name fully computes NameValue, including ordinary/compile subexpressions;
 value-expected use proceeds through Read_resident. # projects the completed first
 level and blocks only resident reading. name::path preserves construction/
-extraction direction; bare inherited Pattern navigation differs from evaluated
-$ reinjection in extraction. (n#)$ reconstructs structure under the Path consumer only;
+extraction direction. Bare S names use navigation completion; $ interprets its
+operand under the opposite polarity, and the surrounding consumer checks the
+resulting material. (n#)$ reconstructs structure under the Path consumer only;
 indexing yields a relative single-name
 path_pattern. RHS colon constructs ordinary Product |> slice; empty structural
 slots are unit. Slice families use ordinary overload/Pattern extraction. Textual roots resolve at

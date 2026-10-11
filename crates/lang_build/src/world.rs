@@ -61,7 +61,7 @@ enum ConnectedInitializerOutcome {
 
 #[derive(Clone, Debug)]
 struct ConnectedExistingResult {
-    material: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
+    material: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
     /// Exact complete tau carried by an existing type result. This coordinate
     /// comes from the semantic binding's immutable snapshot, never from a
     /// CoreTypeProjection graph payload.
@@ -394,7 +394,7 @@ impl CompilationWorld {
     }
 
     /// Install one already-evaluated semantic value without inventing a
-    /// binding Symbol or rerooting its canonical PatternValue.
+    /// binding Symbol or rerooting its canonical Pattern coordinate.
     pub fn install_semantic_value(
         &mut self,
         type_value: crate::TypeValueId,
@@ -421,7 +421,7 @@ impl CompilationWorld {
     /// fabricating a source path or a migration-specific resolver.
     pub fn invoke_pattern_associated_operation(
         &mut self,
-        pattern: crate::PatternValueId,
+        pattern: crate::PatternCoordinateId,
         operation_name: &str,
         receiver: crate::SemanticValueId,
         explicit_args: crate::ArgProductShape,
@@ -587,7 +587,7 @@ impl CompilationWorld {
         let pattern = self
             .semantic_world
             .symbol(identity)
-            .and_then(|symbol| symbol.pure_p_pattern())
+            .and_then(|symbol| symbol.type_resident_pattern())
             .ok_or_else(|| {
                 Diagnostic::hard_error(
                     format!("resolver error: `{source_order_path}` is not a semantic type carrier"),
@@ -661,7 +661,7 @@ impl CompilationWorld {
         let Some(member) = self
             .semantic_world
             .symbol(identity)
-            .and_then(|symbol| symbol.pure_p())
+            .and_then(|symbol| symbol.type_resident())
         else {
             return Ok(None);
         };
@@ -1074,7 +1074,7 @@ impl CompilationWorld {
                 .pattern_for_associated_namespace(namespace)
             else {
                 return Err(BuildError::single(Diagnostic::hard_error(
-                    "source contribution error: `let ()` is valid only in a namespace owned by an existing PatternValue",
+                    "source contribution error: `let ()` is valid only in a namespace owned by an existing Pattern coordinate",
                     Some(Provenance::from_norm_origin(
                         "associated call entry",
                         origin,
@@ -1428,7 +1428,14 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
         request: crate::ConstructionRequest,
         provenance: &Provenance,
-    ) -> Result<(crate::SemanticValueRef, crate::PatternValueId, PolicyView), BuildError> {
+    ) -> Result<
+        (
+            crate::SemanticValueRef,
+            crate::PatternCoordinateId,
+            PolicyView,
+        ),
+        BuildError,
+    > {
         if request.family != crate::ConstructionFamily::ConstructOrConvert {
             return Err(BuildError::single(Diagnostic::hard_error(
                 "unsupported literal construction candidate family",
@@ -1540,7 +1547,7 @@ impl CompilationWorld {
         };
         let Some(result_ref) = entry.value else {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "literal construction returned a pure Pattern instead of a value",
+                "literal construction returned absent-Val1 material instead of a value",
                 Some(provenance.clone()),
             )));
         };
@@ -1572,11 +1579,13 @@ impl CompilationWorld {
         &mut self,
         namespace: NamespaceNodeId,
         annotation: Option<&NormAnnotation>,
-        mut result: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
+        mut result: Vec<
+            crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>,
+        >,
         result_demand: &ResultPolicyDemand,
         provenance: &Provenance,
     ) -> Result<
-        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
+        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
         BuildError,
     > {
         let Some(NormPattern::Name { name, .. }) = annotation.map(|annotation| &annotation.pattern)
@@ -1624,15 +1633,17 @@ impl CompilationWorld {
     fn invoke_general_binding_migration(
         &mut self,
         namespace: NamespaceNodeId,
-        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
         demand: &ResultPolicyDemand,
         provenance: &Provenance,
-    ) -> Result<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>, String>
-    {
+    ) -> Result<
+        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
+        String,
+    > {
         let mut completed = Vec::new();
         for entry in result {
             let Some(source) = entry.value else {
-                return Err("a pure-P entry has no value realization to migrate".into());
+                return Err("a absent-Val1 entry has no value realization to migrate".into());
             };
             let source_view = entry.view.clone();
             let target_view =
@@ -1673,12 +1684,14 @@ impl CompilationWorld {
     fn satisfy_binding_result_demand(
         &mut self,
         namespace: NamespaceNodeId,
-        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
         demand: &ResultPolicyDemand,
         provenance: &Provenance,
-    ) -> Result<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>, String>
-    {
-        // Binding P1 has one deliberate pure-P rule: a value-presence
+    ) -> Result<
+        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
+        String,
+    > {
+        // Binding P1 has one deliberate absent-Val1 rule: a value-presence
         // coordinate cannot require migration when the semantic result has
         // no Val1, but its requested stage slice still applies.  Reuse that
         // binding elaboration here; all non-identity completion below goes
@@ -1707,7 +1720,10 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
-        selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        selected: &[crate::PolicyResultEntry<
+            crate::SemanticValueRef,
+            crate::PatternCoordinateId,
+        >],
         semantic_complete_type: Option<&crate::CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
@@ -1719,7 +1735,7 @@ impl CompilationWorld {
         };
         if selected.iter().any(|entry| entry.pattern != first_pattern) {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "ordinary semantic binding cannot install result entries with different PatternValue identities under one Symbol",
+                "ordinary semantic binding cannot install result entries with different Pattern coordinate identities under one Symbol",
                 Some(provenance),
             )));
         }
@@ -1734,7 +1750,7 @@ impl CompilationWorld {
                     .type_for_pattern(pattern)
                     .ok_or_else(|| {
                         BuildError::single(Diagnostic::hard_error(
-                            "ordinary semantic binding: pure-P result uses an unregistered PatternValue",
+                            "ordinary semantic binding: absent-Val1 result uses an unregistered Pattern coordinate",
                             Some(provenance.clone()),
                         ))
                     })?,
@@ -2104,7 +2120,7 @@ impl CompilationWorld {
             let source_view = entry.view;
             let Some(source) = entry.value else {
                 return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
-                    "PolicyLet cannot migrate a pure-P result: absent Val1 is outside same-Type Policy migration; an authorized constructor/materializer must produce a value first",
+                    "PolicyLet cannot migrate a absent-Val1 result: absent Val1 is outside same-Type Policy migration; an authorized constructor/materializer must produce a value first",
                     Some(provenance),
                 ));
             };
@@ -2168,7 +2184,7 @@ impl CompilationWorld {
             .symbol;
         let symbol = self.semantic_world.symbol(symbol)?;
         let complete_type = symbol
-            .pure_p()
+            .type_resident()
             .and_then(|member| member.complete_type)
             .and_then(|whole| {
                 self.semantic_world
@@ -2513,7 +2529,7 @@ fn source_callable_delta(
         result_policy_from_closure(closure, provenance.clone()).map_err(BuildError::single)?;
     // Semantic invariant — a runtime-only result P2 normalizes to
     // `runtime:compile` (`N2(runtime) = runtime:compile`), whose value stage
-    // is disjoint from its Pattern stage. A pure-P return slot
+    // is disjoint from its Pattern stage. A type return slot
     // (`let r: type`) declares a member with no value dimension, so the
     // declared runtime value slice could never be filled: the declaration
     // itself is a hard error at this elaboration boundary.
@@ -2674,7 +2690,7 @@ fn ordinary_invocation_failure_diagnostic(
         crate::OrdinaryInvocationFailure::ResultTypeHasNoPattern { type_value, .. } => {
             Diagnostic::hard_error(
                 format!(
-                    "ordinary invocation result TypeValue {:?} has no installed PatternValue",
+                    "ordinary invocation result TypeValue {:?} has no installed Pattern coordinate",
                     type_value
                 ),
                 Some(provenance),
@@ -2718,11 +2734,11 @@ fn result_policy_from_closure(
 }
 
 /// A result P2 whose value stage is `runtime`, paired with a
-/// pure-P return slot (`let r: type`) declares a runtime value slice that
+/// type return slot (`let r: type`) declares a runtime value slice that
 /// carries no value dimension. `N2(runtime) = runtime:compile` makes Pv
 /// disjoint from Pp, so the declared value slice can never be filled by a
-/// pure-P member; the declaration is rejected here. Static single policies
-/// keep Pv == Pp (`N2(P) = P:(P - runtime)`), so pure-P return slots under
+/// type resident; the declaration is rejected here. Static single policies
+/// keep Pv == Pp (`N2(P) = P:(P - runtime)`), so type return slots under
 /// `compile` and `seal` remain legal.
 fn ensure_runtime_result_slice_has_value_dimension(
     closure: &NormClosure,
@@ -2733,15 +2749,15 @@ fn ensure_runtime_result_slice_has_value_dimension(
     if !runtime_only {
         return Ok(());
     }
-    let pure_p_return_slot = closure
+    let type_return_slot = closure
         .head
         .as_ref()
         .and_then(|head| head.returns.as_ref())
         .is_some_and(|returns| is_type_annotation(returns.annotation.as_ref()));
-    if pure_p_return_slot {
+    if type_return_slot {
         return Err(Diagnostic::hard_error(
             "runtime-only result P2 (`: runtime ->` = `runtime:compile`) declares a runtime \
-             value slice, but the pure-P return slot (`let r: type`) carries no value \
+             value slice, but the type return slot (`let r: type`) carries no value \
              dimension; the declaration is illegal",
             Some(provenance),
         )
@@ -2752,7 +2768,7 @@ fn ensure_runtime_result_slice_has_value_dimension(
 
 fn assert_semantic_result_satisfies_annotation(
     annotation: Option<&NormAnnotation>,
-    result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+    result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
     semantic_complete_type: Option<&crate::CompleteTypeValue>,
     provenance: Provenance,
 ) -> Result<(), BuildError> {
@@ -2894,7 +2910,7 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .symbol_in_namespace(namespace, "U")
             .unwrap()
-            .pure_p()
+            .type_resident()
             .unwrap();
         let complete = world
             .semantic_world
@@ -2945,7 +2961,7 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .symbol_in_namespace(namespace, "Registered")
             .unwrap()
-            .pure_p()
+            .type_resident()
             .unwrap();
         assert_eq!(registered_pattern, pattern);
         assert_eq!(registered.complete_type, old.complete_type);
@@ -2969,7 +2985,7 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .symbol_in_namespace(namespace, "V")
             .unwrap()
-            .pure_p()
+            .type_resident()
             .unwrap();
         assert_ne!(new.place, old.place);
         assert_ne!(new.object, old.object);
@@ -2978,7 +2994,7 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .symbol_in_namespace(namespace, "Forward")
             .unwrap()
-            .pure_p()
+            .type_resident()
             .unwrap();
         assert_eq!(forwarded.complete_type, old.complete_type);
         assert_ne!(forwarded.place, old.place);
@@ -3026,7 +3042,7 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .symbol_in_namespace(core, "uint8")
             .unwrap()
-            .pure_p_pattern()
+            .type_resident_pattern()
             .unwrap();
         let helper = world
             .semantic_world
@@ -3165,7 +3181,7 @@ mod initializer_consumer_boundary_tests {
                     .semantic_world
                     .symbol_in_namespace(world.core_node(), "uint8")
                     .unwrap()
-                    .pure_p_pattern()
+                    .type_resident_pattern()
                     .unwrap(),
             )
             .unwrap();

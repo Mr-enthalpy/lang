@@ -13,7 +13,7 @@ use lang_syntax::{
 };
 
 use crate::{
-    CanonicalFullNavigation, CanonicalValueAddr, Diagnostic, OverloadArgShape, PatternValueId,
+    CanonicalFullNavigation, CanonicalValueAddr, Diagnostic, OverloadArgShape, PatternCoordinateId,
     Provenance, ResolvedHoleBinderId, ResolvedPatternRootId, SemanticOwnerId, SemanticValueId,
     SpecificityTuple, StructuralSchema,
 };
@@ -35,7 +35,7 @@ pub enum PatternSelector {
 /// Registered structural incidence witnessed by one actual Val2 member.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DirectPatternChildEvidence {
-    pub parent: PatternValueId,
+    pub parent: PatternCoordinateId,
     pub selector: PatternSelector,
     pub member: SemanticValueId,
     pub child: StructuralSchema,
@@ -57,7 +57,7 @@ pub struct ResolvedPatternBinderId {
 /// bare TypeValueId never participates in equality here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExtractedTypeObservation {
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub core: Option<CanonicalValueAddr>,
 }
 
@@ -168,7 +168,7 @@ impl PatternApplicabilityProof {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NamedPatternObservation {
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub core: Option<CanonicalValueAddr>,
 }
 
@@ -395,7 +395,7 @@ fn solve_annotation(
 ) -> Result<(Vec<PatternRelationDerivation>, SpecificityTuple), PatternRelationFailure> {
     match &annotation.pattern {
         NormPattern::Name { name, .. } if name == "type" => {
-            if arg.is_value || arg.pattern_value.is_none() {
+            if arg.is_value || arg.pattern_coordinate.is_none() {
                 return Err(inapplicable(
                     "type annotation expected a complete type value",
                     arg,
@@ -589,7 +589,7 @@ fn named_matches(
 
 fn extracted_type(arg: &OverloadArgShape) -> Option<ExtractedTypeObservation> {
     Some(ExtractedTypeObservation {
-        pattern: arg.pattern_value?,
+        pattern: arg.pattern_coordinate?,
         core: arg.type_core_observation,
     })
 }
