@@ -1,5 +1,5 @@
 let deliver_nearest =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   let r = (t inner) |> struct;
@@ -7,7 +7,7 @@ let deliver_nearest =
 };
 
 let return_outermost =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   let r = (t inner) |> struct;
@@ -15,7 +15,7 @@ let return_outermost =
 };
 
 let return_selected =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   let r = (t inner) |> struct;
@@ -23,14 +23,14 @@ let return_selected =
 };
 
 let forward_outermost =
-  (self, t: type): meta
+  (self, t: type): compile
     -> let r: type =>
 {
   t return;
 };
 
 let forward_selected =
-  (self, t: type): meta
+  (self, t: type): compile
     -> let r: type =>
 {
   t |> (self return);

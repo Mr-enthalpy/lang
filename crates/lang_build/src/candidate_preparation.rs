@@ -260,6 +260,13 @@ pub fn prepare_callable_candidate_with_declared_planes(
         };
         match requirement {
             ParameterArgRequirement::CoreTypeProjection => {
+                if raw_arg.value_class == RawArgValueClass::UnknownExpression {
+                    return CandidatePrepResult::Incomplete {
+                        candidate: Box::new(candidate),
+                        reason:
+                            CandidatePrepIncompleteReason::ParameterShapeCompatibilityIncomplete,
+                    };
+                }
                 if !matches!(
                     raw_arg.value_class,
                     RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)

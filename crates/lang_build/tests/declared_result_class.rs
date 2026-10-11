@@ -29,11 +29,11 @@ fn declared_result_class(source: &str) -> DeclaredResultClass {
 #[test]
 fn declared_result_class_is_the_single_result_authority() {
     assert_eq!(
-        declared_result_class("let f = (self, t: type): meta -> r: symbol => { r; };"),
+        declared_result_class("let f = (self, t: type): compile -> r: symbol => { r; };"),
         DeclaredResultClass::OrdinaryValue
     );
     assert_eq!(
-        declared_result_class("let f = (self, t: type): meta -> let r: type => { r; };"),
+        declared_result_class("let f = (self, t: type): compile -> let r: type => { r; };"),
         DeclaredResultClass::CompleteType
     );
     assert_eq!(

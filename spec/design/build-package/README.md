@@ -2,7 +2,7 @@
 
 This block owns the normalization of physical source into ordinary source
 actions and the engineering boundary around their evaluation by E. Main has
-runtime horizon; stable root ownership does not impose an active meta wrapper.
+runtime horizon; stable root ownership does not impose an active compile wrapper.
 
 - [Compilation and physical normalization](build-system-design.md)
 - [Namespace projection of evaluation](namespace-assembly.md)
@@ -12,4 +12,4 @@ runtime horizon; stable root ownership does not impose an active meta wrapper.
 Names, capability and construction authority belong to ordinary language
 semantics. File discovery, decoding, caching, scheduling, diagnostics and artifact
 persistence implement those semantics without adding facts. External resources
-enter through [host capabilities](../meta-invocation/host-capabilities-and-machine-objects.md).
+enter through [host capabilities](../static-evaluation/host-capabilities-and-machine-objects.md).

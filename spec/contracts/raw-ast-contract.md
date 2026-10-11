@@ -17,14 +17,14 @@ Raw AST preserves syntax and recovery. It does not resolve names, check types,
 select overloads, materialize closures, execute callable bodies, or interpret
 Pattern packs.
 
-The canonical extension has equal call/value and Pattern/name meta declaration
+The canonical extension has equal call/value and Pattern/name compile declaration
 surfaces, grammar-fixed operator syntax, and distinct omitted/concrete/hole
 policy material. These are handoff obligations, not implemented syntax coverage:
 the current carriers below do not execute generative realization or relational
 operator extraction. A future syntax-directed carrier must retain this material
-without introducing semantic MetaDecl/HIR nodes or lookup in the parser. See
+without introducing semantic declaration/HIR nodes or lookup in the parser. See
 [operator/declaration semantics](../design/patterns-overload/operator-patterns-and-generative-declarations.md)
-and the [alignment gates](../planning/roadmap.md#canonicalsource-alignment-gates).
+and the [alignment gates](../planning/roadmap.md#4-common-e-acceptance-gates).
 
 ## 2. Lexical contract
 
@@ -34,8 +34,8 @@ Names remain weak `Name` tokens. In particular:
 default
 delete
 strategy identifiers
-meta / compile / seal / runtime
-const / mut / meta / close / let
+compile / seal / runtime
+const / mut / compile / close / let
 ```
 
 are not lexer keywords.
@@ -114,7 +114,7 @@ parameter candidate and the cursor is at complete `[[public]]` or
 the ordinary grouped expression can consume the member-view suffix. Thus:
 
 ```lang
-(uint8 secret [[private]]) |> struct
+((uint8 secret [[private]]) Record)$ |> struct
 ```
 
 is not a malformed `[[strategy]]` callable tail. A complete
@@ -323,7 +323,7 @@ declaration through this prefix.
 An expression ending in `P let`, including `[x let]`, is a PolicyLet with a
 missing operand and receives `ExpectedPolicyLetOperand`.
 
-## 5. Dot closure and member forms
+## 5. Dot names and member forms
 
 The Raw AST contains:
 
@@ -338,10 +338,13 @@ means `E |> name::adl`. Normalization emits ordinary navigation with
 `DotNameLowering` provenance and uses the existing pipe skeleton for E.
 The semantic generator, not normalization, supplies forwarding behavior.
 No pipe, Product or repair rule may use provenance to change ordinary binding.
-Direct `E..name(product)` remains separate member-call sugar.
+E..name(product) contracts to E |> .name(product), using the same ordinary
+ADL call shape without generating a closure or Self layer.
+Product receivers support these suffixes through the ordinary postfix path.
+An empty argument Product retains its unit slot in both source forms.
 
 Normalization produces syntax carriers only. Every legal semantic completion
-of a closure expression returns full tau_C through ordinary struct; semantic
+of a closure expression returns full tau_C through atomic complete structural formation; semantic
 completion is not restricted to explicit binding/call consumers.
 
 ## 6. Pattern remainder
@@ -420,9 +423,9 @@ Generated provenance is stored only in:
 NormOrigin::Generated { rule, span }
 ```
 
-It never replaces placement. Generated double-dot/prefix helper closures retain
-their in-place placement while separately reporting their lowering rule.
-Dot names instead normalize to ordinary navigation.
+It never replaces placement. Generated prefix helper closures retain their placement and lowering origin.
+Double-dot carries PipelineDotLowering provenance on an ordinary ADL call.
+Dot names normalize to ordinary navigation.
 
 ## 8. Pattern-validated normalized handoff
 
@@ -497,7 +500,7 @@ explicit shorthand for `[let x = x]` with no written mode override; it is not
 automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not
-`self` fields or layout decisions. Ordinary non-meta closures may combine
+`self` fields or layout decisions. Ordinary closures may combine
 explicit capture occurrences with automatic free observations not replaced by
 resolved explicit capture binders. In-place syntax excludes explicit clauses;
 it is not the exclusive source of automatic dependencies. Invocation consumes
@@ -506,15 +509,11 @@ access/capability/lifetime judgments.
 After formation, placement and capture origin supply no overload applicability,
 specificity or preference evidence. Distinct tied candidates remain ambiguous.
 
-At the MetaDecl consumer boundary, the identity-establishing callable must have
-an ordinary => implementation and no capture clause. Capture-bearing meta
-material and a no-=> generative body are invalid MetaDecl forms, not captured
-ordinary closures to reinterpret. Generic syntax preservation does not establish
-MetaDecl validity; the declaration consumer is pending. MetaDecl cannot
-automatically capture an unpassed enclosing local either. Its admitted inputs
-and established stable definition/instance relations are the only lawful
-channels; nested ordinary closures may use material legally available inside
-that invocation. No parser name resolution or semantic MetaDecl AST is added.
+CompilePartner dependencies obey ordinary closure formation. The selected
+receiver/call-entry pair and canonical inputs determine its CompileInstance.
+Generic syntax preserves those callable and requested-name surfaces without
+semantic declarations or name lookup. In-place and ordinary closures retain
+their lexical/Self/navigation layers; invocation consumes established dependencies.
 
 Explicit-navigation/export checking and automatic capture remain resolved
 semantics, not Raw-to-Norm work. External navigation searches the export view
@@ -576,8 +575,7 @@ ref borrows the Place using its declared type without reading. Ordinary write
 initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
-replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires retained structural names being published to be
+replacement capability and resident compatibility. A qualified let with RHS forms a complete binding using RHS inference. Close requires retained structural names being published to be
 initialized, not all future coordinates realized. Ordinary lexical let remains
 unchanged. Current Raw/Norm let carriers do not yet implement
 this expression family. Consumer work must preserve spans/recovery and add
@@ -616,18 +614,19 @@ and reparses it as contribution. New source wiring requires span/recovery and
 golden coverage, and may not feed semantic facts back into parsing.
 
 
-## PR106 source consumer frontier
+## Structural interpretation handoff
 
-Public Policy pair literal/extraction is retired; internal Pv/Pp remain distinct.
+Policy syntax preserves ordinary independent constraints; internal Pv/Pp remain distinct.
 Raw/Norm Policy constraints have no colon-pair or choice carrier. Concrete atoms, omission, declared holes and general
-Pattern splice are distinct. `runtime let` introduces no `runtime` hole.
+opposite-context interpretation are distinct. `runtime let` introduces no `runtime` hole.
 
 Read_name/Read_resident, path_pattern projection (#), relative single-name
 indexing and general $ consumer wiring are pending. # observes values rather
 than source AST; general $ does not insert Path conversion. RHS colon slots
 normalize to ordinary Product |> slice, empty colon/comma slots complete to unit,
 and no Slice node enters semantic IR. LHS colon remains annotation.
-NormPattern::Splice and navigation splice components preserve the RHS operand
-and alpha-bound holes without proving semantic evaluation or readiness. Optional generator heads, HoleRef
+Polarity-flip carriers preserve the opposite-context operand and arbitrary
+nested flips, with even/odd polarity and exact alpha-bound Hole identities.
+They establish no resident read, Stage change, semantic evaluation or readiness. Optional generator heads, HoleRef
 requested-name selectors and expression bodies require ordinary source
 span/recovery coverage when wired. Semantic rules never feed back into parsing.

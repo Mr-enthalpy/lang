@@ -250,18 +250,18 @@ fn parse_postfix_expr(
     parser: &mut Parser<'_>,
     stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
 ) -> Option<OperatorExprAst> {
-    // `$` assigns RHS interpretation to its whole syntactic operand, including
-    // navigation groups and bracket payloads. This lookahead reads only tokens.
+    // The enclosing postfix flips determine the operand's interpretation by
+    // parity, including navigation groups and bracket payloads.
     let previous_context = parser.pattern_context;
-    if previous_context && postfix_operand_has_splice(parser) {
-        parser.pattern_context = false;
+    if postfix_operand_flips_context(parser) {
+        parser.pattern_context = !previous_context;
     }
-    let result = parse_postfix_expr_in_context(parser, stop, previous_context);
+    let result = parse_postfix_expr_in_context(parser, stop);
     parser.pattern_context = previous_context;
     result
 }
 
-fn postfix_operand_has_splice(parser: &Parser<'_>) -> bool {
+fn postfix_operand_flips_context(parser: &Parser<'_>) -> bool {
     fn after_primary(parser: &Parser<'_>, index: usize) -> Option<usize> {
         let (index, token) = parser.cursor.peek_at_skip_trivia(index);
         match token.kind {
@@ -302,26 +302,30 @@ fn postfix_operand_has_splice(parser: &Parser<'_>) -> bool {
     let Some(mut next) = after_primary(parser, parser.cursor.current_index()) else {
         return false;
     };
+    let mut flipped = false;
     loop {
         let (index, token) = parser.cursor.peek_at_skip_trivia(next);
         match token.kind {
-            TokenKind::Operator(OperatorSpelling::Dollar) => return true,
+            TokenKind::Operator(OperatorSpelling::Dollar) => {
+                flipped = !flipped;
+                next = index + 1;
+            }
             TokenKind::Operator(spelling) if is_postfix_operator(spelling) => {
                 next = index + 1;
             }
             TokenKind::Symbol(Symbol::ColonColon | Symbol::Dot | Symbol::DotDot) => {
                 let Some(after) = after_primary(parser, index + 1) else {
-                    return false;
+                    return flipped;
                 };
                 next = after;
             }
             TokenKind::Symbol(Symbol::LBracket) => {
                 let Some(after) = after_primary(parser, index) else {
-                    return false;
+                    return flipped;
                 };
                 next = after;
             }
-            _ => return false,
+            _ => return flipped,
         }
     }
 }
@@ -329,7 +333,6 @@ fn postfix_operand_has_splice(parser: &Parser<'_>) -> bool {
 fn parse_postfix_expr_in_context(
     parser: &mut Parser<'_>,
     stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
-    enclosing_pattern_context: bool,
 ) -> Option<OperatorExprAst> {
     let mut expr = parse_operand(parser, stop)?;
 
@@ -342,9 +345,7 @@ fn parse_postfix_expr_in_context(
             if is_postfix_operator(current.spelling) {
                 let operator = bump_operator(parser, current);
                 if current.spelling == OperatorSpelling::Dollar {
-                    // RHS interpretation ends at the reinjection boundary.
-                    // Navigation to its right resumes the enclosing context.
-                    parser.pattern_context = enclosing_pattern_context;
+                    parser.pattern_context = !parser.pattern_context;
                 }
                 let span = expr.span.join(operator.span);
                 expr = OperatorExprAst {

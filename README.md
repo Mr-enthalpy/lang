@@ -32,10 +32,10 @@ The semantic layer is organized around these independent coordinates:
   selection shared by static projections and runtime residue;
 - unique sealed invocation, no reopen, and unified `InvocationResult`;
 - candidate-driven same-Type Policy migration;
-- construction authority, `OpenHere`, Writable, `extend`, and `inject`;
+- construction authority, `OpenHere`, Writable and ordinary type operators * / *=;
 - continuation-relative lifecycle facts, Region generations, Pre/Post, and an
   extensible directed Color algebra;
-- meta instance names/types, P1 meta retention versus close completion/closure,
+- compile instance names/types, P1 open retention versus close completion/closure,
   dependency-derived openness, ordinary Val2 payloads, generic instance caching,
   derived associated state A, and witnessed closure re-instantiation;
 - unsafe semantic axiom admission and ordinary host-capability Objects;
@@ -43,13 +43,12 @@ The semantic layer is organized around these independent coordinates:
   one evaluator E with synchronized projections and validated optimization.
 
 Stage is a single atom. P2 is horizon, Pin admits explicit stage constraints,
-and Pout follows P1. Runtime main enters one E/K; active meta/seal dominance
+and Pout follows P1. Runtime main enters one E/K; active compile/seal dominance
 is independent of stable root history. Instance move effects and directed with
 cleanup feed the same lifecycle observations. Done is internal completion;
-residual escape separately consumes ordinary meta facts.
+residual escape separately consumes ordinary compile facts.
 
-Every legal completed closure expression produces full tau_C through ordinary
-struct. File implementation-layer let installs at the established package root;
+Every legal completed closure expression produces full tau_C through atomic structural type formation. File implementation-layer let installs at the established package root;
 true lexical local let remains binding. Explicit structural contributions synthesize named types;
 OverloadGroup is the separate aggregation algebra. Naked operators select
 operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
@@ -117,5 +116,6 @@ well-formed complete tau is a type. Dependency realization follows the selected
 ordinary source action, uniquely up to observational equivalence.
 Ordinary closures may combine explicit and automatic dependency occurrences;
 in-place syntax excludes explicit clauses and supplies no overload preference.
-Meta declarations require => and no closure capture channel; unpassed locals
-remain masked and invocation identity has no hidden captured-environment axis.
+Every compile call forms a CompileInstance from parent owner, selected partner
+and canonical inputs before body entry. Ordinary callable dependencies retain
+their actual identity, with no hidden caller-environment coordinate.

@@ -373,8 +373,8 @@ pub enum AtomKind {
     },
     /// Narrow postfix structural-member view annotation.
     ///
-    /// This remains generic Raw AST shape. Only the struct decoder interprets
-    /// it as member visibility; it is not an arbitrary PolicySpec.
+    /// This is generic Raw AST shape consumed as structural member visibility.
+    /// Policy constraints use their independent PolicySpec shape.
     MemberViewAnnotation {
         object: Box<AtomAst>,
         visibility: MemberVisibilityAst,

@@ -1,0 +1,1 @@
+let T = (uint8, uint16) struct::core;

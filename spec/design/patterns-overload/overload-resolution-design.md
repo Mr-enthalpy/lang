@@ -147,4 +147,4 @@ deduce its demand by running G's unresolved formal or its body. Ready dependency
 initializers execute once in the ordinary formation order; speculative body
 execution cannot justify a dependency or Policy hole. Explicit user temporaries
 remain real boundaries, and selection failure never reopens a sealed inner call.
-See the [Policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md).
+See the [Policy owner](../symbol-world/policy-and-static-flow-projection.md).

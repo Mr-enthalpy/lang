@@ -1,0 +1,3 @@
+let first:uint16 = 7;
+let same:uint16 = 7;
+let different:uint16 = 8;

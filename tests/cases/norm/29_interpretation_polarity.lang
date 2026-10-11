@@ -1,0 +1,11 @@
+let zero = a;
+let one = a$;
+let two = a$$;
+let three = a$$$;
+let deep = a$$$$$$$$;
+let t = ((bool inner)a)$;
+let nested = ((bool a)(args Mytypefun)$)$;
+let structural:a = value;
+let value_operand:a$ = value;
+let structural_operand:a$$ = value;
+let flip_three:a$$$ = value;

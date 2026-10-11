@@ -34,13 +34,14 @@ classifiers and anchors candidate-family identity. It is not MemberScope(Core(T)
 An associated coordinate supplies no Place or permission by itself; actual
 navigation retains its resolved structural root and resident generation.
 
-The following candidate schemas use semantic signature notation, not source
-callee-first declarations or calls. The `struct` registration `Field(T, name, A)` generates the field's complete
-associated candidate family under `T`: one by-value accessor, plus for each
-borrow observation `ρ ∈ {ref, share}` a triple of policy cells:
+The following candidate schemas use semantic signature notation. A complete
+structural type T already has actual Val2 members and registered field routes.
+For such a route, ordinary helper augmentation can provide an associated
+accessor family: one by-value accessor, plus for each borrow observation
+`ρ ∈ {ref, share}` a triple of policy cells:
 
 ```text
-GeneratedFieldFamily(T, name, A):
+FieldAccessorFamily(T, name, A):
 
   let
   name(self, object:T)
@@ -94,21 +95,24 @@ AssociatedName(T, push):
 ```
 
 The full candidate family is normative; the summary is its policy-erased
-projection and is not the sole specification. For a `struct`-generated field
-these are ordinary typed candidate objects in one associated name binding.
+projection. These are ordinary typed candidate Objects in one associated name
+binding. `struct:type->type` adds the helpers while preserving T's existing
+DirectPatternChild, ConstructEdge, ExtractEdge and FieldView registrations.
 
 #### Family registration: producer side of `StructuralDefault`
 
-Every candidate of the generated schema is registered in one stable
-call-site candidate family. The identity key retains the complete type's stable implementation home
-TypeMemberScope(tau_T), not a quotient by its Core observation:
+Protected extraction consumes candidates witnessed by actual Val2 members and
+the existing ExtractEdge or FieldView registration for the requested route.
+Its stable call-site family retains the complete type's implementation home
+TypeMemberScope(tau_T), independently of its Core observation:
 
 ```text
 StructuralFamily(T, name, A)
   = StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)
 
-c ∈ GeneratedFieldFamily(T, name, A)
----------------------------------------
+c is an actual Val2 member witnessing an existing
+ExtractEdge or FieldView for the named structural route
+------------------------------------------------------
 CandidateFamily(c) = StructuralFamily(T, name, A)
 ```
 
@@ -120,16 +124,17 @@ StructuralFamilyStability:
   ⇒ StructuralFamily(tau', name, A) = StructuralFamily(tau, name, A)
 ```
 
-An `extend` that adds unrelated virtual helpers (so `Q ≠ Q'` but
-the authorized update preserves the complete bound implementation owner) therefore keeps every generated structural
-candidate's identity: P-internal extraction over the new snapshot still
-filters exactly the inherited generated cells. P-internal extraction
+An ordinary helper addition may change Q while preserving the complete bound
+implementation owner and existing structural registrations. P-internal
+extraction over that snapshot filters the candidates witnessed by those
+registrations. P-internal extraction
 (`AtomicExtract_P`, canonical
-`pattern-values-relational-semantics-and-extraction.md` §3.1) applies
+`pattern-relations-observation-and-extraction.md` §3.1) applies
 `CallSiteFamilyFilter = StructuralDefault` before C0; that filter preserves
-exactly the candidates registered under this family identity. This is the
-registration that closes the consumer/producer loop: the extraction rule
-names the family, and the generator assigns every generated cell to it.
+exactly the candidates registered under this family identity. Structural
+formation establishes the actual members and role registrations together;
+ordinary helpers consume those facts. Helper membership or schema shape alone
+supplies no protected-family evidence.
 
 Three attributes of a generated cell are distinct and must never be conflated
 under the single word `default`:
@@ -144,7 +149,7 @@ per-cell policy disposition
 
 declaration-side fallback
     =>[[fallback]]   DeclarationCandidatePolicy after FullyAdmissible A
-                     (overload-resolution-design.md §2.3)
+                     (overload-resolution-design.md §3)
 ```
 
 Family identity decides which candidates a call site sees; the per-cell
@@ -175,7 +180,7 @@ The universal assignment family remains exactly:
 
 ```text
 AssignmentFamily(U):
-    U ref × U -> unit        (canonical §4.5.1)
+    U ref × U -> unit        (construction §3.1)
 ```
 
 The two families never coincide, for any field type:
@@ -235,14 +240,13 @@ Each callable/view has one concrete stage and admissible C_sigma projections;
 other field observations require static formation.
 ```
 
-A type-valued field is compile-only only because it currently fails this
-predicate, not because “type/PatternValue field” is a separate category.
+A type-valued field's runtime accessor availability follows this predicate.
 Generated candidates use the ordinary context preference
 const > mut under const demand and mut > const under mut demand. Distinct
 tied candidates and crossed product advantages remain ambiguous.
 Open authority does not propagate along owned field relations; each
-PatternValue's `OpenHere_Σ` is determined independently by stack-relative
-coordinate equality (canonical §12.1.1). Mutability does not propagate:
+type subject's `OpenHere_Σ` is determined independently by stack-relative
+coordinate equality (construction §5). Mutability does not propagate:
 
 ```text
 mut(child) does not imply mut(parent)
@@ -264,15 +268,15 @@ The first-class surface constructor is:
 
 and denotes ordinary `field::adl`. Thus `E.field` means
 `E |> field::adl`; a stored selector uses the same ordinary call relations.
-The default ADL generator contributes an ordinary closure, whose receiver
-Pattern selects the associated family. It directly forwards under established
+The generative ADL family provides ordinary receiver-call and type-path
+candidates, chosen by applicability and specificity. It directly forwards under established
 P1/P2 and ReturnPattern/Pout demand before inner maxima. It introduces no
 normalizer-owned forwarding body, receiver coercion or private dispatch rule.
-`E..field(product)` remains direct member-call sugar. Derived forwarding and
+E..field(product) equals E |> .field(product), using the same ADL entrance. Derived forwarding and
 borrowed projection below remain separate ordinary operations. See
 [operator and ADL owner](../patterns-overload/operator-patterns-and-generative-declarations.md).
 
-An ordinary let-shaped declaration consumed by `struct` contributes its
+An ordinary let-shaped declaration consumed by structural interpretation contributes its
 initializer as Val2 material under the current Pattern owner:
 
 ```lang
@@ -458,7 +462,7 @@ forwards. This prevents write capability from leaking from `T ref` to
 share-admissible subset of inherited associated names, never the
 ref-only write family.
 
-The ordinary `inner::adl` generated closure resolves its receiver type and, for a
+The selected ordinary `inner::adl` method candidate resolves its receiver type and, for a
 borrowed receiver `r : X ref`, forwards to `r |> inner::(X ref)`. The connection
 
 ```text
@@ -501,7 +505,7 @@ projection decides the `Ref(ProjectionSlot(...))` form (canonical
 `type-values-places-and-borrow-views.md` §2.3) rather than materializing the
 field value and then forming `A ref`.
 
-## Type Values, Places, and Injection (summary)
+## Type Values, Places, and Ordinary Updates (summary)
 
 Field functions are observed in Core's associated member scope; writing one
 requires an actual member Place, distinct from the type value. The access-tree work in this
@@ -542,9 +546,9 @@ The consequences that field/access-tree work must preserve:
   only `rebind` selects a new target.
 - `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. Writable
   alone cannot permit replacement through a type ref after Close: direct mut
-  refs and meta-ref writable candidates require OpenHere of their original
+  refs and open-ref writable candidates require OpenHere of their original
   borrowed generation. An open-window value may be extended purely without a
-  writable carrier. Explicit meta-to-mut confirmation preserves target and
+  writable carrier. Explicit open-to-mut confirmation preserves target and
   capability; it does not amplify authority or introduce implicit chaining.
 
 This is only a summary. For the canonical `TypeValueId` implementation index
@@ -591,5 +595,5 @@ This note does not implement or specify:
   defining-name binding or carrier-provenance recovery;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;
-- generic meta execution;
+- generic compile execution;
 - HIR or codegen.

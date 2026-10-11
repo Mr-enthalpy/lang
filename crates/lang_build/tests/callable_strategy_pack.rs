@@ -41,7 +41,7 @@ fn arg(index: usize) -> OverloadArgShape {
         top_pattern_name: Some(format!("arg{index}")),
         type_symbol_id: None,
         value_type: None,
-        pattern_value: None,
+        pattern_coordinate: None,
         type_core_observation: None,
         complete_type_observation: None,
         effective_view: None,

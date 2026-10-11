@@ -85,7 +85,7 @@ after sealed failure. Consumer wiring remains pending; this ontology is closed.
 
 ## 5. Uniform instance participation
 
-Type, rank, namespace, meta, Pattern and verification material do not form a
+Type, rank, namespace, compile, Pattern and verification material do not form a
 non-value pass-through category. Every transported Object instance follows
 the same pass-action and lifecycle relations. Stage affects observation and
 readiness, not whether a lifecycle subject exists.
@@ -96,7 +96,7 @@ MoveEffect_K(n,m) ∈ {Kill, Preserve}
 ```
 
 The lifetime owner defines the narrow Preserve proof and the frontier Pre.
-A globally surviving type instance and a meta-local type temporary may have
+A globally surviving type instance and a compile-local type temporary may have
 different effects despite equal values. Nonkillability does not grant copy,
 borrow or movement capability. Movable does not imply Kill. Preserve is a
 legal Move effect, not clone, copy fallback or failed movement:
@@ -292,7 +292,7 @@ Move explicit_ref_handle -> arg_slot
 Move x -> arg_slot
 ```
 
-If a source/meta layer produces a nested move, it must be canonicalized:
+If a source/compile layer produces a nested move, it must be canonicalized:
 
 ```text
 move(move(x)) => move(x)
@@ -347,9 +347,9 @@ The documents below own the adjacent relations consumed by this model.
   handle is moved while preserving parent/origin.
 - `overload-resolution-design.md` — candidate matching must separate type/rank
   compatibility from pass compatibility.
-- `meta-object-invocation-and-policy-reduction.md` — the invocation engine that
+- `compile-instance-invocation-and-result-delivery.md` — the invocation engine that
   ultimately receives fully decided pass actions.
-- [semantic evaluation](../meta-invocation/evaluation-residual-and-optimization.md)
+- [semantic evaluation](../static-evaluation/evaluation-residual-and-optimization.md)
   preserves selected ordinary realization and terminal Move. No get_default_pass
   lookup is needed to choose a second terminal pass.
 

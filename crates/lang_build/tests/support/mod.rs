@@ -89,6 +89,7 @@ pub fn install_callable_receiver_fixture(
                 pattern,
                 view: canonical,
             }],
+            None,
             provenance,
         )
         .expect("fixture receiver binds once");
@@ -179,7 +180,7 @@ pub fn prepare_candidate_from_fixture_symbol(
 
 /// Temporary on-disk tree for boundary-only tests.
 ///
-/// `TempProject` is boundary-only. Ordinary successful build/discovery/early-meta
+/// `TempProject` is boundary-only. Ordinary successful build/discovery/compile-invocation
 /// tests must use committed fixtures under `tests/fixtures/workspaces/`. Use
 /// `TempProject` only for mutation/cache-invalidation via copied committed
 /// fixtures, invalid-filesystem, invalid-bytes, or graph/model boundary tests.
@@ -231,7 +232,7 @@ pub fn empty_app_manifest() -> BuildManifest {
 // ---------------------------------------------------------------------------
 // Repository fixture helpers
 //
-// Build/discovery/early-meta integration tests point at committed physical
+// Build/discovery/compile-invocation integration tests point at committed physical
 // source trees under `tests/fixtures/workspaces/`, not strings written at test
 // time. These helpers still construct API-level `BuildManifest` / `BuildWorkspace`
 // values in Rust (there is no manifest-file parser); only the source trees are
@@ -324,7 +325,7 @@ pub fn bare_package_spec(name: &str) -> PackageBuildSpec {
 }
 
 /// Build a single-package fixture workspace through `BuildSession` and return its
-/// `CompilationWorld`. Used by early-meta / policy integration tests.
+/// `CompilationWorld`. Used by compile-invocation / policy integration tests.
 pub fn build_single_fixture_world(workspace: &str, package: &str) -> CompilationWorld {
     let mut session = BuildSession::new();
     let result = session
@@ -597,9 +598,8 @@ pub fn identity_type_fixture_world() -> CompilationWorld {
     build_single_fixture_world("identity_type", "app")
 }
 
-/// Test the ordinary implementation-selection substrate with one receiver and
-/// several explicitly installed associated entries. No same-name declaration
-/// aggregation or source contribution consumer is involved.
+/// Selection fixtures use one actual associated resident per receiver.
+/// Multiple receivers are registered in one held complete type callspace.
 pub struct AssociatedFamily {
     world: lang_build::SemanticWorld,
     target: lang_build::SemanticSymbolIdentity,
@@ -626,7 +626,34 @@ impl AssociatedFamily {
         let namespace = base.package_root_node();
         let resolver = base.root_context();
         let mut world = base.semantic_world().clone();
-        let mut receiver: Option<lang_build::RegisteredCallable> = None;
+        let family = if sources.len() > 1 {
+            let home = NamespaceNodeId(900999);
+            world
+                .register_namespace(home, namespace, "family<classifier>")
+                .unwrap();
+            let rank = world.type_rank().unwrap();
+            let (symbol, _, pattern) = world
+                .register_type_symbol(
+                    namespace,
+                    "family",
+                    lang_build::SymbolId(900999),
+                    numbered_type_lookup_fixture("candidate-union", 900999),
+                    rank,
+                    Some(home),
+                    lang_build::declared_policy_view(
+                        lang_build::Stage::Compile,
+                        lang_build::PolicyMode::Const,
+                    )
+                    .pair,
+                    Provenance::new("known candidate family home"),
+                )
+                .unwrap();
+            Some((symbol, pattern, home))
+        } else {
+            None
+        };
+        let receiver_namespace = family.map(|(_, _, home)| home).unwrap_or(namespace);
+        let mut receivers = Vec::new();
         for (index, source) in sources.iter().enumerate() {
             let parsed = lang_syntax::parse(source);
             assert!(parsed.diagnostics.is_empty());
@@ -657,42 +684,44 @@ impl AssociatedFamily {
                 },
             );
             let result_class = lang_build::declared_result_class_from_closure(closure).unwrap();
-            if let Some(first) = &receiver {
+            receivers.push(install_callable_receiver_fixture(
+                &mut world,
+                receiver_namespace,
+                &format!("receiver_{index}"),
+                lang_build::SymbolId(900000 + index as u64),
+                closure,
+                outer,
+                view,
+                p2,
+                None,
+                result_class,
+                provenance,
+            )?);
+        }
+        let first = &receivers[0];
+        let target = if let Some((symbol, pattern, home)) = family {
+            for (index, receiver) in receivers.iter().enumerate() {
+                assert_eq!(
+                    world.pattern(receiver.function_pattern).unwrap().root.owner,
+                    world.namespace_owner(home).unwrap(),
+                    "classifier forms at the known family home"
+                );
                 world
-                    .register_associated_call_entry(
-                        first.function_pattern,
-                        namespace,
-                        lang_build::SymbolId(900000 + index as u64),
-                        closure,
-                        outer,
-                        view,
-                        p2,
-                        None,
-                        lang_build::OrdinaryCandidateRole::Ordinary,
-                        result_class,
-                        provenance,
+                    .admit_direct_type_member(
+                        pattern,
+                        pattern,
+                        format!("member_{index}"),
+                        receiver.function_value,
                     )
                     .unwrap();
-            } else {
-                receiver = Some(install_callable_receiver_fixture(
-                    &mut world,
-                    namespace,
-                    "receiver",
-                    lang_build::SymbolId(900000),
-                    closure,
-                    outer,
-                    view,
-                    p2,
-                    None,
-                    result_class,
-                    provenance,
-                )?);
             }
-        }
-        let first = receiver.unwrap();
+            symbol
+        } else {
+            first.symbol
+        };
         Ok(Self {
             world,
-            target: first.symbol,
+            target,
             namespace,
             resolver,
         })

@@ -11,8 +11,8 @@
 //! permitted to discard Val2, and an implementation allocation id is never a
 //! substitute for unobserved Val1 content.
 //!
-//! A pure P is a real object (`null × P × Val2`), and two carriers of one
-//! Pattern can hold different Val2, so the Pattern alone cannot be the type
+//! An absent-Val1 Core is a complete object (`null × P × Val2`). Two carriers
+//! of one Pattern can hold different Val2, so the Pattern alone cannot be the type
 //! object's identity:
 //!
 //! ```text
@@ -28,7 +28,7 @@
 //!
 //! The interning table lives on [`crate::SemanticWorld`]; equal normal forms
 //! share one snapshot-local [`CanonicalValueAddr`].  Simple literal values,
-//! pure-P types, structured PatternValues, and static Products are
+//! type Core Objects, registered structural schemas, and static Products are
 //! canonicalized here.  Every value normal form carries its Pattern
 //! coordinate explicitly: `Norm_VP(Val1, P)` is a PAIR — equal Val1 content
 //! under different Ps never shares one address.  Values whose Val1 content
@@ -109,20 +109,15 @@ impl CanonicalLiteralFamily {
     }
 }
 
-/// `Norm_P(P)` — the canonical normal form of one PatternValue.  This is
-/// NOT the snapshot allocation identity: a Pattern
-/// with recorded structural material normalizes by that structure, so two
-/// separately allocated PatternValues with equal normalized structural
-/// bodies share one Pattern normal form.  Only patterns WITHOUT structural
-/// material (nominal declaration patterns) normalize by their declaration
-/// root coordinate — for those, the declaration identity IS the existing
-/// pattern-equivalence normal form.
+/// `Norm_P(P)` — the normal form of the Object's relational P coordinate.
+/// Recorded structural schemas normalize independently of coordinate allocation.
+/// Nominal declaration Patterns normalize by their declaration root under the
+/// ordinary Pattern-equivalence relation.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CanonicalPatternNorm {
-    /// A Pattern carrying a recorded structural normal form (meta-generated
-    /// struct patterns): `Norm_P(P) = CanonicalPatternValue(P)` by the
-    /// normalized structural body, independent of allocation.
-    Structural { value: CanonicalPatternValue },
+    /// A Pattern with recorded structural normalization material:
+    /// `Norm_P(P) = StructuralSchema(P)`, independent of coordinate allocation.
+    Structural { value: StructuralSchema },
     /// A nominal declaration Pattern: its declaration root coordinate is its
     /// normal form under the existing pattern-equivalence rules (nominal
     /// patterns are equivalent only to themselves).
@@ -144,7 +139,7 @@ pub enum CanonicalPatternNorm {
 ///
 /// Whether these components were written explicitly or inherited from an
 /// enclosing Pattern layer is deliberately absent.  That distinction is
-/// normalization input, not PatternValue identity.
+/// normalization input, not P-coordinate identity.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CanonicalFullNavigation(Vec<String>);
 
@@ -173,7 +168,7 @@ impl CanonicalFullNavigation {
 /// Navigation material accepted while normalizing one source Pattern child.
 ///
 /// This enum is intentionally consumed by normalization.  It never appears
-/// inside [`CanonicalPatternValue`], so explicit/inherited provenance cannot
+/// inside [`StructuralSchema`], so explicit/inherited provenance cannot
 /// affect Pattern equality.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PatternNavigationInput {
@@ -193,22 +188,9 @@ impl PatternNavigationInput {
 /// One source child accepted by direct-layer normalization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternChildInput {
-    /// `None` is a genuinely bare child.  Navigation is necessary but not
-    /// sufficient for order-insensitivity: the containing layer must also
-    /// be the body of a named Pattern rather than a naked Product.
+    /// `None` is a bare child and makes this direct layer ordered.
     pub navigation: Option<PatternNavigationInput>,
-    pub value: CanonicalPatternValue,
-}
-
-/// The syntactic/semantic container of one direct Pattern child layer.
-///
-/// A naked Product is always positional.  A named Pattern body may erase
-/// sibling order only when every direct child has a complete navigation
-/// identity.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PatternLayerContext {
-    NakedProduct,
-    NamedPatternBody,
+    pub value: StructuralSchema,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -223,28 +205,20 @@ pub struct DuplicatePatternNavigation {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CanonicalOrderedPatternEntry {
     pub navigation: Option<CanonicalFullNavigation>,
-    pub value: CanonicalPatternValue,
+    pub value: StructuralSchema,
 }
 
-/// Incremental normalizer for one fully named, order-insensitive Pattern
-/// layer.
-///
-/// A one-shot `struct` body and a later **privileged** Pattern-value
-/// injection (the future `t = t |> inject(bool inner)` built-in) both feed
-/// this builder. Construction order and explicit/inherited spelling are
-/// erased; only the completed navigation map survives in the PatternValue.
-///
-/// Ordinary navigated `let f::t = expr` never calls this builder — whether
-/// the RHS is `Val1 × P × Val2` or a pure `null × P × Val2` pure type Object, it
-/// installs an associated Val2 member and cannot change the Pattern normal
-/// form. Only `struct` and `inject` hold Pattern-injection privilege.
+/// Collect one fully named structural layer for normalization. This schema
+/// describes registered structure; actual member witnesses and role authority
+/// are established by the formation transaction. Ordinary Val2 installation
+/// alone supplies no structural registration.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CanonicalPatternBuilder {
+pub struct StructuralSchemaBuilder {
     root_navigation: CanonicalFullNavigation,
-    entries: BTreeMap<CanonicalFullNavigation, CanonicalPatternValue>,
+    entries: BTreeMap<CanonicalFullNavigation, StructuralSchema>,
 }
 
-impl CanonicalPatternBuilder {
+impl StructuralSchemaBuilder {
     pub fn named_root(root_navigation: CanonicalFullNavigation) -> Self {
         Self {
             root_navigation,
@@ -252,10 +226,10 @@ impl CanonicalPatternBuilder {
         }
     }
 
-    pub fn contribute_pattern_value(
+    pub fn contribute_child_schema(
         &mut self,
         navigation: PatternNavigationInput,
-        value: CanonicalPatternValue,
+        value: StructuralSchema,
     ) -> Result<(), DuplicatePatternNavigation> {
         let navigation = navigation.complete(&self.root_navigation);
         if self.entries.contains_key(&navigation) {
@@ -265,52 +239,48 @@ impl CanonicalPatternBuilder {
         Ok(())
     }
 
-    pub fn finish(self) -> CanonicalPatternValue {
-        CanonicalPatternValue::NamedPattern {
+    pub fn finish(self) -> StructuralSchema {
+        StructuralSchema::NamedPattern {
             navigation: self.root_navigation,
-            body: Box::new(CanonicalPatternValue::UnorderedLayer(self.entries)),
+            body: Box::new(StructuralSchema::UnorderedLayer(self.entries)),
         }
     }
 }
 
-/// One recursively comparable `PatternValue` normal form.
-///
-/// This is semantic value material, not a digest and not a construction
-/// artifact id.  Hashing may accelerate an interning table, but derived
-/// `Eq`/`Ord` over this tree defines equality.
+/// Recursively comparable schema of registered structural roles. This is
+/// normalization material, not a standalone language value or member witness.
+/// Derived `Eq`/`Ord` defines schema equality; hashing only accelerates lookup.
 ///
 /// The final value contains no `internal`/`external`, inherited/explicit,
 /// source carrier Symbol, or source-path marker.  In an unordered layer the
 /// complete navigation itself is part of element identity.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum CanonicalPatternValue {
+pub enum StructuralSchema {
     /// A resolved leaf value used by a Pattern node.
     Atom(CanonicalPatternAtom),
     /// A named Pattern root/layer.  This is Pattern-internal navigation
     /// identity, not the name of whichever Symbol currently carries it.
     NamedPattern {
         navigation: CanonicalFullNavigation,
-        body: Box<CanonicalPatternValue>,
+        body: Box<StructuralSchema>,
     },
-    /// A positional sibling layer.  Every naked Product uses this form, even
-    /// when all children are named.  A named Pattern body also uses it when
-    /// at least one direct child is bare.  Named entries retain their
-    /// complete navigation in addition to their position.
+    /// A direct layer containing at least one bare entry. Named entries retain
+    /// their complete navigation in addition to position.
     OrderedLayer(Vec<CanonicalOrderedPatternEntry>),
-    /// A fully navigated direct-child layer inside a named Pattern body.
+    /// A fully navigated direct-child layer.
     /// Order is not semantic; the complete navigation name is the key and
     /// therefore part of equality.
-    UnorderedLayer(BTreeMap<CanonicalFullNavigation, CanonicalPatternValue>),
+    UnorderedLayer(BTreeMap<CanonicalFullNavigation, StructuralSchema>),
     /// A canonical sum result.  Alternative order remains explicit until
     /// the complete sum-value algebra supplies a stronger equivalence rule.
-    Sum(Vec<CanonicalPatternValue>),
+    Sum(Vec<StructuralSchema>),
     /// A normalized hole coordinate.
     Hole(u32),
 }
 
-impl CanonicalPatternValue {
+impl StructuralSchema {
     pub fn unordered(
-        entries: impl IntoIterator<Item = (CanonicalFullNavigation, CanonicalPatternValue)>,
+        entries: impl IntoIterator<Item = (CanonicalFullNavigation, StructuralSchema)>,
     ) -> Result<Self, DuplicatePatternNavigation> {
         let mut normalized = BTreeMap::new();
         for (navigation, value) in entries {
@@ -324,18 +294,14 @@ impl CanonicalPatternValue {
 
     /// Complete child navigation and normalize one direct-child layer.
     ///
-    /// Only a named Pattern body whose direct children are all navigated
-    /// becomes a map keyed by complete navigation.  A naked Product is
-    /// always ordered, including `(a, b)` when both `a` and `b` are named.
+    /// A layer whose direct children are all navigated becomes a map keyed by
+    /// complete navigation. Any bare child makes the whole layer ordered.
     /// Navigation-source provenance is erased in either result.
     pub fn direct_child_layer(
-        context: PatternLayerContext,
         enclosing: &CanonicalFullNavigation,
         children: Vec<PatternChildInput>,
     ) -> Result<Self, DuplicatePatternNavigation> {
-        if context == PatternLayerContext::NamedPatternBody
-            && children.iter().all(|child| child.navigation.is_some())
-        {
+        if children.iter().all(|child| child.navigation.is_some()) {
             Self::unordered(children.into_iter().map(|child| {
                 (
                     child
@@ -361,7 +327,7 @@ impl CanonicalPatternValue {
     }
 }
 
-/// Expand extraction navigation independently of PatternValue equality.
+/// Expand extraction navigation independently of Pattern coordinate equality.
 ///
 /// An explicit query navigation is already complete.  Otherwise, the
 /// subject's local navigation follows its Pattern parents from nearest to
@@ -374,7 +340,7 @@ impl CanonicalPatternValue {
 ///
 /// The result is always an exact extraction path.  It must never be sent
 /// through ordinary bare-name `near -> outer -> core` lookup, and it is
-/// never cached into the carried [`CanonicalPatternValue`].
+/// never cached into the carried [`StructuralSchema`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PatternOwnNavigation {
     /// This Pattern layer specifies its own complete navigation.  It is an
@@ -450,7 +416,7 @@ pub fn expand_extraction_navigation(
 }
 
 /// One `Core(tau)` observation consumed by a structural identity position
-/// (struct Pattern leaves, field signatures, extraction views).
+/// (registered structural leaves, field signatures, extraction views).
 ///
 /// A bare `TypeValueId` is only the first-order lookup projection. Structural
 /// Pattern identity consumes the ordinary Object observation of the core,
@@ -830,7 +796,7 @@ mod tests {
                 normalized: canonical_literal_content(NormLiteralKind::Int, "1"),
             }),
             pattern: CanonicalPatternNorm::Structural {
-                value: CanonicalPatternValue::Atom(CanonicalPatternAtom::Unit),
+                value: StructuralSchema::Atom(CanonicalPatternAtom::Unit),
             },
             val2: Default::default(),
         });
@@ -838,13 +804,12 @@ mod tests {
     }
 
     #[test]
-    fn inherited_and_explicit_navigation_normalize_to_the_same_pattern_value() {
-        let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+    fn inherited_and_explicit_navigation_normalize_to_the_same_schema() {
+        let a = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
         let enclosing = CanonicalFullNavigation::from_component("bool");
-        let inherited = CanonicalPatternValue::direct_child_layer(
-            PatternLayerContext::NamedPatternBody,
+        let inherited = StructuralSchema::direct_child_layer(
             &enclosing,
             vec![PatternChildInput {
                 navigation: Some(PatternNavigationInput::InheritOuter(
@@ -854,8 +819,7 @@ mod tests {
             }],
         )
         .unwrap();
-        let explicit = CanonicalPatternValue::direct_child_layer(
-            PatternLayerContext::NamedPatternBody,
+        let explicit = StructuralSchema::direct_child_layer(
             &CanonicalFullNavigation::new(Vec::<String>::new()),
             vec![PatternChildInput {
                 navigation: Some(PatternNavigationInput::Explicit(
@@ -873,19 +837,17 @@ mod tests {
 
     #[test]
     fn unordered_pattern_identity_includes_the_complete_navigation_name() {
-        let value = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+        let value = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
-        let left = CanonicalPatternValue::unordered([(
+        let left = StructuralSchema::unordered([(
             CanonicalFullNavigation::new(["t", "bool"]),
             value.clone(),
         )])
         .unwrap();
-        let right = CanonicalPatternValue::unordered([(
-            CanonicalFullNavigation::new(["t", "truth"]),
-            value,
-        )])
-        .unwrap();
+        let right =
+            StructuralSchema::unordered([(CanonicalFullNavigation::new(["t", "truth"]), value)])
+                .unwrap();
         assert_ne!(
             left, right,
             "equal child values under distinct complete navigation names are distinct"
@@ -894,16 +856,15 @@ mod tests {
 
     #[test]
     fn named_pattern_body_is_unordered_only_when_every_child_is_named() {
-        let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+        let a = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
-        let b = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+        let b = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(2)),
         ));
         let no_enclosing = CanonicalFullNavigation::new(Vec::<String>::new());
         assert_eq!(
-            CanonicalPatternValue::direct_child_layer(
-                PatternLayerContext::NamedPatternBody,
+            StructuralSchema::direct_child_layer(
                 &no_enclosing,
                 vec![
                     PatternChildInput {
@@ -921,8 +882,7 @@ mod tests {
                 ],
             )
             .unwrap(),
-            CanonicalPatternValue::direct_child_layer(
-                PatternLayerContext::NamedPatternBody,
+            StructuralSchema::direct_child_layer(
                 &no_enclosing,
                 vec![
                     PatternChildInput {
@@ -944,8 +904,7 @@ mod tests {
              unordered navigation map"
         );
         assert_ne!(
-            CanonicalPatternValue::direct_child_layer(
-                PatternLayerContext::NamedPatternBody,
+            StructuralSchema::direct_child_layer(
                 &no_enclosing,
                 vec![
                     PatternChildInput {
@@ -959,8 +918,7 @@ mod tests {
                 ],
             )
             .unwrap(),
-            CanonicalPatternValue::direct_child_layer(
-                PatternLayerContext::NamedPatternBody,
+            StructuralSchema::direct_child_layer(
                 &no_enclosing,
                 vec![
                     PatternChildInput {
@@ -979,17 +937,16 @@ mod tests {
     }
 
     #[test]
-    fn naked_product_remains_ordered_even_when_every_child_is_named() {
-        let a = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+    fn all_named_product_layer_erases_declaration_order() {
+        let a = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
         ));
-        let b = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+        let b = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(2)),
         ));
         let no_enclosing = CanonicalFullNavigation::new(Vec::<String>::new());
-        assert_ne!(
-            CanonicalPatternValue::direct_child_layer(
-                PatternLayerContext::NakedProduct,
+        assert_eq!(
+            StructuralSchema::direct_child_layer(
                 &no_enclosing,
                 vec![
                     PatternChildInput {
@@ -1007,8 +964,7 @@ mod tests {
                 ],
             )
             .unwrap(),
-            CanonicalPatternValue::direct_child_layer(
-                PatternLayerContext::NakedProduct,
+            StructuralSchema::direct_child_layer(
                 &no_enclosing,
                 vec![
                     PatternChildInput {
@@ -1026,8 +982,7 @@ mod tests {
                 ],
             )
             .unwrap(),
-            "`(a, b) != (b, a)`: naming Product elements never erases position \
-             without a wrapping Pattern"
+            "all direct entries are named, so this Product layer is unordered"
         );
     }
 
@@ -1120,9 +1075,9 @@ mod tests {
 
     #[test]
     fn parent_chain_affects_shorthand_not_pattern_identity() {
-        let pattern = CanonicalPatternValue::unordered([(
+        let pattern = StructuralSchema::unordered([(
             CanonicalFullNavigation::new(["t", "bool"]),
-            CanonicalPatternValue::Atom(CanonicalPatternAtom::Unit),
+            StructuralSchema::Atom(CanonicalPatternAtom::Unit),
         )])
         .unwrap();
         let rebound_pattern = pattern.clone();
@@ -1148,7 +1103,7 @@ mod tests {
                 )],
             )
             .unwrap(),
-            "bare extraction follows the Pattern parent chain without changing PatternValue identity"
+            "bare extraction follows the Pattern parent chain without changing Pattern coordinate identity"
         );
 
         let explicit = CanonicalFullNavigation::new(["t", "bool"]);
@@ -1168,16 +1123,16 @@ mod tests {
     }
 
     #[test]
-    fn one_shot_struct_and_privileged_incremental_contribution_normalize_equally() {
-        let bool_pattern = CanonicalPatternValue::Atom(CanonicalPatternAtom::Type(
+    fn inherited_and_explicit_navigation_schemas_normalize_equally() {
+        let bool_pattern = StructuralSchema::Atom(CanonicalPatternAtom::Type(
             CanonicalTypeObservation::Observed(CanonicalValueAddr(7)),
         ));
 
-        // `let t = ((bool inner)t) |> struct;`
+        // Normalize inherited navigation against its containing layer.
         let mut one_shot =
-            CanonicalPatternBuilder::named_root(CanonicalFullNavigation::from_component("t"));
+            StructuralSchemaBuilder::named_root(CanonicalFullNavigation::from_component("t"));
         one_shot
-            .contribute_pattern_value(
+            .contribute_child_schema(
                 PatternNavigationInput::InheritOuter(CanonicalFullNavigation::from_component(
                     "inner",
                 )),
@@ -1186,18 +1141,12 @@ mod tests {
             .unwrap();
         let one_shot = one_shot.finish();
 
-        // First form Pattern `t`, then apply the future privileged
-        // `t = t |> inject(bool inner)` semantic operation.
-        //
-        // This unit test covers only canonical PatternValue normalization —
-        // not source-level `inject` evaluation, Val2 capability
-        // installation, Symbol creation, or ObjectPlace updates.  Ordinary
-        // `let inner::t = bool::` is associated-type installation and never
-        // reaches this builder.
+        // Normalize the same fully written navigation. This comparison
+        // supplies no member, registration or semantic producer evidence.
         let mut incrementally_built =
-            CanonicalPatternBuilder::named_root(CanonicalFullNavigation::from_component("t"));
+            StructuralSchemaBuilder::named_root(CanonicalFullNavigation::from_component("t"));
         incrementally_built
-            .contribute_pattern_value(
+            .contribute_child_schema(
                 PatternNavigationInput::Explicit(CanonicalFullNavigation::new(["inner", "t"])),
                 bool_pattern,
             )

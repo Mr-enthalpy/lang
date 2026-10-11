@@ -1,5 +1,5 @@
 let dead_symbol_local =
-  (self, t: type): meta
+  (self, t: type): compile
     -> r: symbol =>
 {
   let r = (t inner) |> struct;

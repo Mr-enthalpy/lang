@@ -1,7 +1,7 @@
 use lang_build::{
     solve_parameter_product_relation, CallableOwnerPlacement, CanonicalValueAddr,
-    LocalCallableIdentity, OverloadArgShape, PackageId, PatternRelationContext,
-    PatternRelationFailure, PatternValueId, Provenance, SemanticOwnerGraph, TypeValueId,
+    LocalCallableIdentity, OverloadArgShape, PackageId, PatternCoordinateId,
+    PatternRelationContext, PatternRelationFailure, Provenance, SemanticOwnerGraph, TypeValueId,
 };
 use lang_syntax::{normalize_program, NormDecl, NormExpr, NormForm};
 
@@ -34,14 +34,14 @@ fn callable_owner() -> lang_build::SemanticOwnerId {
 
 fn typed_value(
     value_type: TypeValueId,
-    pattern: PatternValueId,
+    pattern: PatternCoordinateId,
     core: CanonicalValueAddr,
 ) -> OverloadArgShape {
     OverloadArgShape {
         top_pattern_name: Some("diagnostic-only-name".into()),
         type_symbol_id: None,
         value_type: Some(value_type),
-        pattern_value: Some(pattern),
+        pattern_coordinate: Some(pattern),
         type_core_observation: Some(core),
         complete_type_observation: None,
         effective_view: None,
@@ -65,7 +65,7 @@ fn unnamed_binder_binds_by_identity_without_becoming_a_wildcard() {
         .to_vec();
     let argument = typed_value(
         support::type_lookup_fixture("relational-pattern/unnamed"),
-        PatternValueId(10),
+        PatternCoordinateId(10),
         CanonicalValueAddr(100),
     );
     let named = solve_parameter_product_relation(&params, &[argument.clone()], &context).unwrap();
@@ -116,12 +116,12 @@ fn shared_deduce_hole_requires_one_relational_valuation() {
         &[
             typed_value(
                 support::type_lookup_fixture("relational-pattern/type-a"),
-                PatternValueId(10),
+                PatternCoordinateId(10),
                 CanonicalValueAddr(100),
             ),
             typed_value(
                 support::type_lookup_fixture("relational-pattern/type-b"),
-                PatternValueId(11),
+                PatternCoordinateId(11),
                 CanonicalValueAddr(100),
             ),
         ],
@@ -137,12 +137,12 @@ fn shared_deduce_hole_requires_one_relational_valuation() {
         &[
             typed_value(
                 support::type_lookup_fixture("relational-pattern/type-a"),
-                PatternValueId(10),
+                PatternCoordinateId(10),
                 CanonicalValueAddr(100),
             ),
             typed_value(
                 support::type_lookup_fixture("relational-pattern/type-a"),
-                PatternValueId(10),
+                PatternCoordinateId(10),
                 CanonicalValueAddr(101),
             ),
         ],
@@ -171,12 +171,12 @@ fn bare_type_lookup_and_display_name_cannot_decide_pattern_applicability() {
         &[
             typed_value(
                 support::type_lookup_fixture("relational-pattern/shared-lookup"),
-                PatternValueId(20),
+                PatternCoordinateId(20),
                 CanonicalValueAddr(200),
             ),
             typed_value(
                 support::type_lookup_fixture("relational-pattern/shared-lookup"),
-                PatternValueId(20),
+                PatternCoordinateId(20),
                 CanonicalValueAddr(201),
             ),
         ],

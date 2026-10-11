@@ -1,9 +1,9 @@
 use lang_build::{
     CallableOwnerPlacement, CallableReceiverBindingSource, CallableReceiverTypeId,
-    CanonicalValueAddr, ExtractionMemberVisibility, LocalCallableIdentity, LocalGenerationIdentity,
-    LocalSymbolIdentity, MetaInstanceMaterialKey, NamespaceLookupFailure, NamespaceNameView,
-    NamespaceSymbolEntry, NamespaceVisibility, OwnerNamespaceGraph, OwnerNamespaceNodeId,
-    OwnerQualificationError, PackageId, Provenance, SelectedCallableIdentity, SemanticOwnerGraph,
+    CanonicalValueAddr, CompileInvocationMaterialKey, CompilePartner, ExtractionMemberVisibility,
+    LocalCallableIdentity, LocalGenerationIdentity, LocalSymbolIdentity, NamespaceLookupFailure,
+    NamespaceNameView, NamespaceSymbolEntry, NamespaceVisibility, OwnerNamespaceGraph,
+    OwnerNamespaceNodeId, OwnerQualificationError, PackageId, Provenance, SemanticOwnerGraph,
     SemanticOwnerQualification, SemanticSymbolIdentity, SemanticValueId,
 };
 use lang_syntax::{NormDecl, NormForm};
@@ -29,11 +29,11 @@ fn entry(
     }
 }
 
-fn canonical_meta_key(
-    callable: SelectedCallableIdentity,
+fn canonical_compile_key(
+    callable: CompilePartner,
     argument_addr: u64,
-) -> MetaInstanceMaterialKey {
-    MetaInstanceMaterialKey {
+) -> CompileInvocationMaterialKey {
+    CompileInvocationMaterialKey {
         callable,
         arguments: CanonicalValueAddr(argument_addr),
         provenance: Provenance::new(format!("canonical args@{argument_addr}")),
@@ -209,26 +209,26 @@ fn frontend_pattern_root_identity_is_qualified_at_the_build_owner_boundary() {
 }
 
 #[test]
-fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() {
+fn canonical_compile_invocations_share_the_callable_owner_graph_and_are_interned() {
     let mut owners = SemanticOwnerGraph::new();
     let package = owners.package_root(PackageId(1), "app");
-    let namespace = owners.namespace(package, "meta");
-    // Meta instance interning keys off the selected function object VALUE
+    let namespace = owners.namespace(package, "compile");
+    // Compile instance interning keys off the selected function object VALUE
     // identity, independently of the source name binding.
-    let f = SelectedCallableIdentity {
+    let f = CompilePartner {
         selected_function_value: SemanticValueId(7),
         selected_call_entry: SemanticValueId(70),
     };
-    let uint8 = canonical_meta_key(f, 8);
-    let uint16 = canonical_meta_key(f, 16);
+    let uint8 = canonical_compile_key(f, 8);
+    let uint16 = canonical_compile_key(f, 16);
 
-    let f_uint8 = owners.meta_instance(lang_build::MetaInstanceRootKey {
+    let f_uint8 = owners.compile_instance(lang_build::CompileInstanceKey {
         parent_owner: namespace,
         material: uint8.clone(),
     });
     assert_eq!(
         f_uint8,
-        owners.meta_instance(lang_build::MetaInstanceRootKey {
+        owners.compile_instance(lang_build::CompileInstanceKey {
             parent_owner: namespace,
             material: uint8
         }),
@@ -236,20 +236,20 @@ fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() 
     );
     assert_ne!(
         f_uint8,
-        owners.meta_instance(lang_build::MetaInstanceRootKey {
+        owners.compile_instance(lang_build::CompileInstanceKey {
             parent_owner: namespace,
             material: uint16
         }),
         "different canonical arguments create distinct owners"
     );
 
-    let returned_meta = SelectedCallableIdentity {
+    let returned_partner = CompilePartner {
         selected_function_value: SemanticValueId(100),
         selected_call_entry: SemanticValueId(101),
     };
-    let nested = owners.meta_instance(lang_build::MetaInstanceRootKey {
+    let nested = owners.compile_instance(lang_build::CompileInstanceKey {
         parent_owner: f_uint8,
-        material: canonical_meta_key(returned_meta, 8),
+        material: canonical_compile_key(returned_partner, 8),
     });
     assert_eq!(owners.parent(nested), Some(f_uint8));
 }

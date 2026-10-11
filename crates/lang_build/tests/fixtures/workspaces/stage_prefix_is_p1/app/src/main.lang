@@ -7,4 +7,4 @@ compile let narrow =
   t;
 };
 
-meta let X: type = int narrow;
+compile let X: type = int narrow;

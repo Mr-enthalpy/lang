@@ -19,7 +19,7 @@ use crate::{
     policy_pair::PolicyResultEntry,
     product_shape::{ArgProductShape, ProductAtom, RawArgValueClass},
     semantic_name_index::ResolverContext,
-    semantic_world::{ObjectPlaceId, PatternValueId, SemanticWorld},
+    semantic_world::{ObjectPlaceId, PatternCoordinateId, SemanticWorld},
     TypeValueId,
 };
 
@@ -36,19 +36,20 @@ pub struct TypeArgumentClassificationReport {
 /// type identity flows through `complete_type_observation`. The carrier Symbol
 /// is graph navigation material and is absent for semantic-world resolutions.
 ///
-/// `effective_view` is the resolved carrier's own binding-level pure-P member
+/// `effective_view` is the resolved carrier's own binding-level type resident
 /// view.  It travels with the resolution because a represented TypeValue is
 /// shared by every carrier that binds it (`P_a let T: type = X;` and
 /// `P_b let U: type = X;` have one TypeValue and two binding Policies), so no
 /// later stage can recover the binding view from the TypeValue alone.
 ///
-/// `carrier_place` is that carrier object's own Val2 place.  A pure P is a
-/// real object, so two carriers of one Pattern can hold different Val2 and
+/// `carrier_place` is that carrier Object's own residency Place. Two carriers
+/// of one Pattern can hold different Val2 and
 /// the type argument's normal form must be observed from the carrier that was
 /// actually named:
 ///
 /// ```text
-/// Norm_type(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩
+/// Norm(Core(tau)) = ⟨null, Norm_P(P), Norm_Val2(Val2)⟩
+/// Norm_type(tau) = bind alpha.⟨Norm(Core(tau)), Norm_V^alpha(V_tau)⟩
 /// ```
 ///
 /// The place is the observation coordinate only; it never enters the normal
@@ -57,7 +58,7 @@ pub struct TypeArgumentClassificationReport {
 pub struct NamedTypeResolution {
     pub carrier_symbol: Option<SymbolId>,
     pub represented_type: TypeValueId,
-    pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     pub carrier_place: Option<ObjectPlaceId>,
     pub complete_type_observation: Option<crate::CanonicalValueAddr>,
 }
@@ -104,7 +105,7 @@ pub trait TypeResolutionEnv {
 }
 
 /// Canonical semantic-world environment. Resolution flows through recursive
-/// Resolved type-binding lookup (`resolve_symbol_path` → pure-P → pattern type); no
+/// Resolved type-binding lookup (`resolve_symbol_path` -> type resident -> P coordinate); no
 /// graph Symbol payload is read on this path.
 pub struct SemanticTypeEnv<'a> {
     world: &'a SemanticWorld,
@@ -115,12 +116,12 @@ impl<'a> SemanticTypeEnv<'a> {
         Self { world }
     }
 
-    /// Resolve a path to its pure-P carrier facts: represented TypeValue plus
+    /// Resolve a path to its type resident facts: represented TypeValue plus
     /// the carrier's own binding-level member view and object place.
     ///
     /// The path walks the one shared recursive Symbol navigation, so `f::T`
     /// means `Val2(T)[f]` here exactly as it does in a call target; this
-    /// context only projects the terminal Symbol's pure-P facet afterwards.
+    /// context only observes the terminal Symbol's type resident afterwards.
     fn resolve_path_carrier(
         &self,
         path: &[String],
@@ -136,15 +137,15 @@ impl<'a> SemanticTypeEnv<'a> {
             )
             .ok()?;
         let cell = self.world.symbol(navigation.terminal_symbol)?;
-        let pattern = cell.pure_p_pattern()?;
+        let pattern = cell.type_resident_pattern()?;
         Some(NamedTypeResolution {
             carrier_symbol: self
                 .world
                 .backing_declaration_for_symbol(navigation.terminal_symbol),
             represented_type: self.world.type_for_pattern(pattern)?,
-            effective_view: cell.pure_p_view().cloned(),
-            carrier_place: cell.pure_p_place(),
-            complete_type_observation: cell.pure_p().and_then(|member| member.complete_type),
+            effective_view: cell.type_resident_view().cloned(),
+            carrier_place: cell.type_resident_place(),
+            complete_type_observation: cell.type_resident().and_then(|member| member.complete_type),
         })
     }
 }
@@ -199,10 +200,10 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
 ///
 /// A navigated argument (`f::T`) is classified through the same shared
 /// recursive Symbol navigation as a bare name: the path denotes one terminal
-/// Symbol, and this context projects its pure-P facet. The resolved carrier's
-/// own object place travels with the classified argument, because
-/// `Norm_type(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩` must be observed from the
-/// carrier that was actually named.
+/// Symbol, and this context observes its type resident. The resolved carrier's
+/// own residency Place and exact complete-type observation travel with the
+/// classified argument. Core and immutable V_tau belong to that held snapshot;
+/// the Place is a separate observation coordinate.
 pub fn classify_type_arguments_env_with_report(
     shape: &ArgProductShape,
     env: &dyn TypeResolutionEnv,

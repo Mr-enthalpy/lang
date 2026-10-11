@@ -38,7 +38,8 @@ DirectPatternChild(P, x, selector)
 
 Likewise, an overload-visible ordinary member is not automatically a real
 structural field. Structural incidence is established explicitly when the
-Pattern value is formed and is observed through `DirectPatternChild` evidence.
+complete structural type is formed with actual Val2 witnesses. It is observed
+through `DirectPatternChild` evidence.
 Virtual or computed members remain available to ordinary member lookup without
 becoming structural children.
 
@@ -131,15 +132,15 @@ An if|else Pattern can legally flow through its matching chain and be rejected
 only where a forbidden residual would escape; other ordinary residuals may
 escape when admitted.
 
-F_residual is an ordinary meta query returning its instance type tau_M. Its
-allow/deny payload lives in ordinary Val2. Default instance formation,
+F_residual is an ordinary compile query with its declared result shape;
+allow/deny may be an ordinary direct result or a registered resident read. Default instance formation,
 OpenHere/Writable member customization, current committed reads, snapshot/Close
 discipline and cache/dominance checks follow
-[ordinary meta defaults](../meta-invocation/meta-object-invocation-and-policy-reduction.md#7-ordinary-meta-defaults-and-current-state-consumers).
+[ordinary compile defaults](../static-evaluation/compile-instance-invocation-and-result-delivery.md#7-requested-names-and-ordinary-associated-state).
 Writing an outer result copy does not customize the retained instance. The
 consumer reads at its own frontier; later changes have no retroactive effect.
-SealDom cannot invoke meta indirectly to answer the query; an independently
-available completed observation must suffice or the action is unavailable.
+Seal queries follow ordinary horizon, input, Ready and execution legality.
+Cache/instance identity supplies no substitute for required current evidence.
 
 ## 5.2 Result Pattern boundary
 

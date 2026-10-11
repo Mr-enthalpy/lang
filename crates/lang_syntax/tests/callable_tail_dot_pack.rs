@@ -397,7 +397,7 @@ fn assert_adl_path(expr: &NormExpr, selector: &str) {
 }
 
 #[test]
-fn compact_member_sugar_calls_the_same_adl_path_and_double_dot_survives() {
+fn member_and_pipeline_dot_sugar_call_the_same_adl_path() {
     let member = normalized_initializer("let x = object.push;");
     let NormExpr::Call { target, .. } = member else {
         panic!("object.push must normalize as a call");
@@ -405,14 +405,41 @@ fn compact_member_sugar_calls_the_same_adl_path_and_double_dot_survives() {
     assert_adl_path(target.as_ref(), "push");
 
     let direct_member = normalized_initializer("let x = object..push(value);");
-    let NormExpr::Call { target, .. } = direct_member else {
+    let NormExpr::Call { ref target, .. } = direct_member else {
         panic!("double-dot must remain direct call sugar");
     };
-    assert!(matches!(
-        target.as_ref(),
-        NormExpr::Closure(closure)
-            if is_generated_closure(closure, NormRule::DoubleDotLowering)
-    ));
+    assert_adl_path(target.as_ref(), "push");
+    assert!(find_generated_closure(&direct_member, NormRule::PipelineDotLowering).is_none());
+}
+
+#[test]
+fn double_dot_and_explicit_pipeline_preserve_the_same_arguments_and_target() {
+    fn current_structure(source: &str) -> String {
+        let program = normalize_program(&parsed(source).program);
+        lang_syntax::dump_norm_program(&program)
+            .lines()
+            .map(|line| line.split(" origin=").next().unwrap())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    for (sugar, pipeline) in [
+        ("let r = e..field();", "let r = e |> .field();"),
+        ("let r = e..field(a);", "let r = e |> .field(a);"),
+        ("let r = e..field(a,b);", "let r = e |> .field(a,b);"),
+        (
+            "let r = (e,f)..field(a,(b,c));",
+            "let r = (e,f) |> .field(a,(b,c));",
+        ),
+    ] {
+        assert_eq!(
+            current_structure(sugar),
+            current_structure(pipeline),
+            "{sugar}"
+        );
+        let expression = normalized_initializer(sugar);
+        assert!(find_generated_closure(&expression, NormRule::PipelineDotLowering).is_none());
+    }
 }
 
 #[test]
@@ -791,7 +818,7 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
             | NormPattern::Nav { .. }
             | NormPattern::Skeleton { .. }
             | NormPattern::Error(_)
-            | NormPattern::Splice { .. }
+            | NormPattern::InterpretationFlip { .. }
             | NormPattern::Unsupported { .. } => false,
         }
     }
@@ -929,6 +956,15 @@ fn binding_slot_at(form: &NormForm) -> &NormBindingSlot {
 
 fn find_generated_closure(expr: &NormExpr, rule: NormRule) -> Option<&lang_syntax::NormClosure> {
     match expr {
+        NormExpr::InterpretationFlip { operand, .. } => {
+            let mut found = None;
+            lang_syntax::norm::visit_structural_value_occurrences(operand, &mut |expr| {
+                if found.is_none() {
+                    found = find_generated_closure(expr, rule);
+                }
+            });
+            found
+        }
         NormExpr::PolicyLet { operand, .. } => find_generated_closure(operand, rule),
         NormExpr::Closure(closure)
             if matches!(
@@ -957,7 +993,7 @@ fn find_generated_closure(expr: &NormExpr, rule: NormRule) -> Option<&lang_synta
         NormExpr::Nav { components, .. } => {
             components.iter().find_map(|component| match component {
                 NormNavComponent::Group { expr, .. }
-                | NormNavComponent::Splice { operand: expr, .. } => {
+                | NormNavComponent::InterpretationFlip { operand: expr, .. } => {
                     find_generated_closure(expr, rule)
                 }
                 NormNavComponent::PatternGroup { .. }
@@ -1049,13 +1085,7 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
     let source_t = outer.head.as_ref().expect("outer closure head").deduce[0].id;
     let body = outer.body.user_body().expect("outer body");
 
-    for (index, rule) in [
-        NormRule::PrefixNegativeLowering,
-        NormRule::DoubleDotLowering,
-    ]
-    .into_iter()
-    .enumerate()
-    {
+    for (index, rule) in [NormRule::PrefixNegativeLowering].into_iter().enumerate() {
         let initializer = binding_slot_at(&body.forms[index + 1])
             .initializer
             .as_deref()
@@ -1090,6 +1120,11 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
             "generated reference must follow its hygienic key"
         );
     }
+    let member = binding_slot_at(&body.forms[2])
+        .initializer
+        .as_deref()
+        .unwrap();
+    assert!(find_generated_closure(member, NormRule::PipelineDotLowering).is_none());
 }
 
 #[test]
@@ -1743,6 +1778,7 @@ fn pattern_validation_certificate_does_not_claim_recovery_free_syntax() {
 
 fn expression_binding_shape(expr: &NormExpr) -> String {
     match expr {
+        NormExpr::InterpretationFlip { .. } => "interpretation-flip".to_string(),
         NormExpr::PolicyLet { operand, .. } => {
             format!("policy-let({})", expression_binding_shape(operand))
         }
@@ -1788,14 +1824,4 @@ fn expression_binding_shape(expr: &NormExpr) -> String {
         NormExpr::Error(_) => "error".to_string(),
         NormExpr::Unsupported { .. } => "unsupported".to_string(),
     }
-}
-
-fn is_generated_closure(closure: &lang_syntax::NormClosure, rule: NormRule) -> bool {
-    matches!(
-        closure.origin,
-        NormOrigin::Generated {
-            rule: actual,
-            ..
-        } if actual == rule
-    )
 }

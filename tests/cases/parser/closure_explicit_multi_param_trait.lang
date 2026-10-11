@@ -1,1 +1,1 @@
-(self, t: type): meta -> let r: type => { r === t }
+(self, t: type): compile -> let r: type => { r === t }

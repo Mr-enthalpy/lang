@@ -1,6 +1,6 @@
 //! Unified semantic invocation result universe.
 //!
-//! Evaluation stage (`meta`, `compile`, `seal`, or `runtime`) does not define a
+//! Evaluation stage (`compile`, `seal`, or `runtime`) does not define a
 //! separate value ontology.  Every selected callable reports the result class
 //! declared by that callable and then produces exactly one of:
 //!

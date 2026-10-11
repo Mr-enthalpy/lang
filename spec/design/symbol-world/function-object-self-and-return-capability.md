@@ -94,7 +94,7 @@ unchanged; see [closure replication](closure-anchored-replication.md).
 
 `self` is not an invisible ambient environment and not an ordinary
 user-supplied argument. It belongs to the invocation / callable frame boundary,
-not product arity, product flattening, canonical argument products, or meta
+not product arity, product flattening, canonical argument products, or compile
 instance keys.
 
 ## 3. Implicit self borrow
@@ -169,7 +169,7 @@ maxima. Delivery does not first complete an unconstrained temporary and then
 rematch it. An explicitly written user binding still creates its own boundary.
 Both established outer P1 and P2 constrain the immediate inner call's P1/P2;
 the selected inner call cannot be reopened by later use. See
-[Policy demand](symbol-policy-and-compile-flow-projection.md).
+[Policy demand](policy-and-static-flow-projection.md).
 
 
 An internal target-qualified completion carries the ordinary return payload

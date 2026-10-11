@@ -305,6 +305,11 @@ impl<'resolver> ReturnTargetBinder<'resolver> {
 
     fn visit_expr(&mut self, expr: &NormExpr) {
         match expr {
+            NormExpr::InterpretationFlip { operand, .. } => {
+                lang_syntax::norm::visit_structural_value_occurrences(operand, &mut |expr| {
+                    self.visit_expr(expr)
+                })
+            }
             NormExpr::PolicyLet { operand, .. } => self.visit_expr(operand),
             NormExpr::Call { source, target, .. } => {
                 for elem in &source.elements {
@@ -437,7 +442,8 @@ fn resolve_explicit_return_target(
 
 fn expr_origin(expr: &NormExpr) -> &NormOrigin {
     match expr {
-        NormExpr::PolicyLet { origin, .. }
+        NormExpr::InterpretationFlip { origin, .. }
+        | NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
@@ -574,6 +580,11 @@ fn collect_return_events_in_decl(
 
 fn collect_return_events_in_expr(expr: &NormExpr, events: &mut Vec<UnboundReturnEvent>) {
     match expr {
+        NormExpr::InterpretationFlip { operand, .. } => {
+            lang_syntax::norm::visit_structural_value_occurrences(operand, &mut |expr| {
+                collect_return_events_in_expr(expr, events)
+            })
+        }
         NormExpr::PolicyLet { operand, .. } => collect_return_events_in_expr(operand, events),
         NormExpr::Call { source, target, .. } => {
             for elem in &source.elements {

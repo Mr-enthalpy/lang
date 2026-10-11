@@ -1,0 +1,191 @@
+NormProgram origin=Source@1:1[0..273]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..12]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..12]
+          deduce:
+            None
+          value_pattern:
+            Binder "zero" origin=Source@1:5[4..8]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "a" origin=Source@1:12[11..12]
+    Form Let
+      Decl Let origin=Source@2:1[14..26]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[18..26]
+          deduce:
+            None
+          value_pattern:
+            Binder "one" origin=Source@2:5[18..21]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@2:11[24..26]
+              PatternName "a" origin=Source@2:11[24..25]
+    Form Let
+      Decl Let origin=Source@3:1[28..41]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[32..41]
+          deduce:
+            None
+          value_pattern:
+            Binder "two" origin=Source@3:5[32..35]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@3:11[38..41]
+              InterpretationFlip S->V origin=Source@3:11[38..40]
+                Name "a" origin=Source@3:11[38..39]
+    Form Let
+      Decl Let origin=Source@4:1[43..59]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[47..59]
+          deduce:
+            None
+          value_pattern:
+            Binder "three" origin=Source@4:5[47..52]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@4:13[55..59]
+              InterpretationFlip S->V origin=Source@4:13[55..58]
+                InterpretationFlip V->S origin=Source@4:13[55..57]
+                  PatternName "a" origin=Source@4:13[55..56]
+    Form Let
+      Decl Let origin=Source@5:1[61..81]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[65..81]
+          deduce:
+            None
+          value_pattern:
+            Binder "deep" origin=Source@5:5[65..69]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@5:12[72..81]
+              InterpretationFlip S->V origin=Source@5:12[72..80]
+                InterpretationFlip V->S origin=Source@5:12[72..79]
+                  InterpretationFlip S->V origin=Source@5:12[72..78]
+                    InterpretationFlip V->S origin=Source@5:12[72..77]
+                      InterpretationFlip S->V origin=Source@5:12[72..76]
+                        InterpretationFlip V->S origin=Source@5:12[72..75]
+                          InterpretationFlip S->V origin=Source@5:12[72..74]
+                            Name "a" origin=Source@5:12[72..73]
+    Form Let
+      Decl Let origin=Source@6:1[83..107]
+        BindingSlot let=true origin=Generated(PatternNormalize)@6:5[87..107]
+          deduce:
+            None
+          value_pattern:
+            Binder "t" origin=Source@6:5[87..88]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@6:9[91..107]
+              PatternSequence origin=Generated(PatternNormalize)@6:10[92..105]
+                elements:
+                  PatternSequence origin=Generated(PatternNormalize)@6:11[93..103]
+                    elements:
+                      PatternName "bool" origin=Source@6:11[93..97]
+                      PatternName "inner" origin=Source@6:16[98..103]
+                  PatternName "a" origin=Source@6:22[104..105]
+    Form Let
+      Decl Let origin=Source@7:1[109..150]
+        BindingSlot let=true origin=Generated(PatternNormalize)@7:5[113..150]
+          deduce:
+            None
+          value_pattern:
+            Binder "nested" origin=Source@7:5[113..119]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@7:14[122..150]
+              PatternSequence origin=Generated(PatternNormalize)@7:15[123..148]
+                elements:
+                  PatternSequence origin=Generated(PatternNormalize)@7:16[124..130]
+                    elements:
+                      PatternName "bool" origin=Source@7:16[124..128]
+                      PatternName "a" origin=Source@7:21[129..130]
+                  InterpretationFlip S->V origin=Source@7:23[131..148]
+                    Call origin=Derived(PipeFallback; ordinary expression-chain growth)@7:24[132..146]
+                      source:
+                        Product origin=Generated(ProductLift)@7:24[132..136]
+                          elements:
+                            ExprElem
+                              Name "args" origin=Source@7:24[132..136]
+                      target:
+                        Name "Mytypefun" origin=Source@7:29[137..146]
+    Form Let
+      Decl Let origin=Source@8:1[152..176]
+        BindingSlot let=true origin=Generated(PatternNormalize)@8:5[156..176]
+          deduce:
+            None
+          value_pattern:
+            Binder "structural" origin=Source@8:5[156..166]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@8:16[167..168]
+              PatternName "a" origin=Source@8:16[167..168]
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@8:20[171..176]
+    Form Let
+      Decl Let origin=Source@9:1[178..206]
+        BindingSlot let=true origin=Generated(PatternNormalize)@9:5[182..206]
+          deduce:
+            None
+          value_pattern:
+            Binder "value_operand" origin=Source@9:5[182..195]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@9:19[196..198]
+              InterpretationFlip S->V origin=Source@9:19[196..198]
+                Name "a" origin=Source@9:19[196..197]
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@9:24[201..206]
+    Form Let
+      Decl Let origin=Source@10:1[208..242]
+        BindingSlot let=true origin=Generated(PatternNormalize)@10:5[212..242]
+          deduce:
+            None
+          value_pattern:
+            Binder "structural_operand" origin=Source@10:5[212..230]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@10:24[231..234]
+              InterpretationFlip S->V origin=Source@10:24[231..234]
+                InterpretationFlip V->S origin=Source@10:24[231..233]
+                  PatternName "a" origin=Source@10:24[231..232]
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@10:30[237..242]
+    Form Let
+      Decl Let origin=Source@11:1[244..271]
+        BindingSlot let=true origin=Generated(PatternNormalize)@11:5[248..271]
+          deduce:
+            None
+          value_pattern:
+            Binder "flip_three" origin=Source@11:5[248..258]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@11:16[259..263]
+              InterpretationFlip S->V origin=Source@11:16[259..263]
+                InterpretationFlip V->S origin=Source@11:16[259..262]
+                  InterpretationFlip S->V origin=Source@11:16[259..261]
+                    Name "a" origin=Source@11:16[259..260]
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@11:23[266..271]

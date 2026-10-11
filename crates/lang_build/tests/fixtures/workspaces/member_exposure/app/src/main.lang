@@ -1,5 +1,5 @@
 let pick =
-  (self, t: type): meta -> r: symbol =>
+  (self, t: type): compile -> r: symbol =>
 {
   let r = (t inner) |> struct;
   r;
@@ -12,7 +12,7 @@ let pick =
 };
 
 let make_two =
-  (self, t: type, u: type): meta -> r: symbol =>
+  (self, t: type, u: type): compile -> r: symbol =>
 {
   let r = (t first, u second) |> struct;
   r;

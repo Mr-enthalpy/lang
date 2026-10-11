@@ -68,7 +68,7 @@ pub(crate) fn install_core_bootstrap(
 
     for symbol in delta.symbols.values_mut() {
         if symbol.kind == SymbolKind::Namespace && symbol.name == CORE_NAMESPACE {
-            symbol.policy_view = Some(core_declared_view(Stage::Meta));
+            symbol.policy_view = Some(core_declared_view(Stage::Compile));
         }
     }
 
@@ -79,7 +79,7 @@ pub(crate) fn install_core_bootstrap(
         "struct",
         BuiltinCallableImpl::Struct,
         Provenance::new("core builtin callable `struct`"),
-        core_declared_view(Stage::Meta),
+        core_declared_view(Stage::Compile),
     );
     insert_builtin_callable(
         &mut delta,
@@ -88,7 +88,7 @@ pub(crate) fn install_core_bootstrap(
         "assert",
         BuiltinCallableImpl::Assert,
         Provenance::new("core builtin callable `assert`"),
-        core_declared_view(Stage::Meta),
+        core_declared_view(Stage::Compile),
     );
     insert_builtin_callable(
         &mut delta,
@@ -97,7 +97,7 @@ pub(crate) fn install_core_bootstrap(
         "IdentityType",
         BuiltinCallableImpl::IdentityType,
         Provenance::new("core builtin callable `IdentityType`"),
-        core_declared_view(Stage::Meta),
+        core_declared_view(Stage::Compile),
     );
     insert_verification_namespace(&mut delta, &mut core_callables, core_node);
 
@@ -123,7 +123,7 @@ pub(crate) fn install_core_bootstrap(
             core_node,
             name,
             Provenance::new(format!("core type symbol `{name}`")),
-            core_declared_view(Stage::Meta),
+            core_declared_view(Stage::Compile),
         );
     }
 
@@ -133,7 +133,7 @@ pub(crate) fn install_core_bootstrap(
         .map_err(BuildError::from)
 }
 
-/// Bootstrap declarations are meta-formed resolved observations.
+/// Bootstrap declarations are compile-formed resolved observations.
 /// Runtime use requires a separately admitted ordinary migration, not a union.
 pub(crate) fn core_declared_pair(stage: Stage, _export_root: bool) -> PolicyPair {
     crate::declared_policy_view(stage, PolicyMode::Const).pair
@@ -152,13 +152,13 @@ fn insert_builtin_callable(
     function_view: PolicyView,
 ) {
     let symbol_id = delta.allocate_symbol_id();
-    let body_entry_policy = core_declared_view(Stage::Meta);
-    let return_object_policy = core_declared_view(Stage::Meta);
+    let body_entry_policy = core_declared_view(Stage::Compile);
+    let return_object_policy = core_declared_view(Stage::Compile);
     // Independent result-class/privilege coordinates for each built-in:
     // `struct` and `identity_type` return complete type values;
     // `assert` / `verify` return a single
     // ordinary value.  All core primitives are privileged built-ins (they
-    // may consume raw/meta material); privilege implies nothing about the
+    // may consume structural material); privilege implies nothing about the
     // result class and neither coordinate is re-derived at call time.
     let declared_result_class = match primitive {
         BuiltinCallableImpl::Struct | BuiltinCallableImpl::IdentityType => {
@@ -192,7 +192,7 @@ fn insert_builtin_callable(
         privilege: crate::CallablePrivilege::BuiltinPrivileged,
     });
     // Declared semantic registration fact, spelled once next to the graph
-    // payload. `struct` has one meta producer observation. Runtime use
+    // payload. `struct` has one compile producer observation. Runtime use
     // requires an ordinary migration; execution
     // authority is never inferred from the result view.
     core_callables.push(CoreCallableRegistration {
@@ -202,21 +202,21 @@ fn insert_builtin_callable(
         primitive,
         function_view: PolicyView {
             pair: match primitive {
-                BuiltinCallableImpl::Struct => core_declared_pair(Stage::Meta, true),
-                _ => core_declared_pair(Stage::Meta, true),
+                BuiltinCallableImpl::Struct => core_declared_pair(Stage::Compile, true),
+                _ => core_declared_pair(Stage::Compile, true),
             },
             mode: PolicyMode::Const,
         },
         body_entry_view: PolicyView {
-            pair: core_declared_pair(Stage::Meta, false),
+            pair: core_declared_pair(Stage::Compile, false),
             mode: PolicyMode::Const,
         },
         result_view: PolicyView {
             pair: match primitive {
-                BuiltinCallableImpl::Struct => core_declared_pair(Stage::Meta, false),
+                BuiltinCallableImpl::Struct => core_declared_pair(Stage::Compile, false),
                 BuiltinCallableImpl::Assert
                 | BuiltinCallableImpl::Verify(_)
-                | BuiltinCallableImpl::IdentityType => core_declared_pair(Stage::Meta, false),
+                | BuiltinCallableImpl::IdentityType => core_declared_pair(Stage::Compile, false),
             },
             mode: PolicyMode::Const,
         },
@@ -253,7 +253,7 @@ fn insert_verification_namespace(
         Some(core_node),
         provenance,
     );
-    symbol.policy_view = Some(core_declared_view(Stage::Meta));
+    symbol.policy_view = Some(core_declared_view(Stage::Compile));
     symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
     symbol.visibility_metadata.export_root = true;
     delta.insert_symbol(core_node, symbol);
@@ -287,7 +287,7 @@ fn insert_verification_namespace(
             name,
             BuiltinCallableImpl::Verify(primitive),
             Provenance::new(format!("core verification operation `verify::{name}`")),
-            core_declared_view(Stage::Meta),
+            core_declared_view(Stage::Compile),
         );
     }
 }
@@ -328,14 +328,14 @@ pub(crate) fn insert_core_type(
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
     let represented_type = type_lookup_indices.allocate();
     // Declared semantic registration fact: core type carriers are declared
-    // meta-formed observations; export is a separate declaration fact.
+    // compile-formed observations; export is a separate declaration fact.
     core_types.push(CoreTypeRegistration {
         namespace: parent,
         name: name.to_string(),
         binding: symbol_id,
         represented_type,
         associated_namespace: associated_node,
-        policy: core_declared_pair(Stage::Meta, true),
+        policy: core_declared_pair(Stage::Compile, true),
         provenance: provenance.clone(),
     });
     symbol.payload = SymbolPayload::CompleteTypeProjection(CoreTypeProjection {

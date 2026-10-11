@@ -65,7 +65,7 @@ links canonical acceptance scenarios to owners and pending consumers.
 - [`control-flow-end-events.md`](contracts/control-flow-end-events.md)
 - [`semantic-values-and-extraction-interfaces.md`](contracts/semantic-values-and-extraction-interfaces.md)
 - [`pattern-root-identity-and-explicit-navigation.md`](contracts/pattern-root-identity-and-explicit-navigation.md)
-- [`meta-construction-boundary.md`](contracts/meta-construction-boundary.md)
+- [`compile-construction-boundary.md`](contracts/compile-construction-boundary.md)
 - [`policy-migration.md`](contracts/policy-migration.md)
 
 ## Open questions

@@ -88,10 +88,10 @@ fn representative_diagnostics_contain_useful_text_and_provenance() {
         .expect_err("unresolved explicit path");
     assert!(unresolved.message.contains("Nope::core"));
 
-    // Descendant-injection rejection: message + provenance span.
+    // Qualified destination frontier: message + provenance span.
     let error = build_fixture_error("diagnostic_descendant", "app");
     assert!(error.diagnostics.iter().any(|diagnostic| {
-        diagnostic.message.contains("parent-to-descendant")
+        diagnostic.message.contains("qualified NameExpr formation")
             && diagnostic
                 .provenance
                 .as_ref()

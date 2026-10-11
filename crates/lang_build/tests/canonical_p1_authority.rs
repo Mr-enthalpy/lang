@@ -20,8 +20,8 @@ mod support;
 use lang_build::{
     canonical_function_object_view, extract_single_call_site, BuildManifest, CompilationWorld,
     ExplicitP1Selection, ExposedInvocationResult, OrdinaryInvocationContext,
-    PatternComponentPolicy, PatternValueId, PolicyMode, PolicyPair, PolicyResultEntry, PolicyView,
-    Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, Stage,
+    PatternComponentPolicy, PatternCoordinateId, PolicyMode, PolicyPair, PolicyResultEntry,
+    PolicyView, Provenance, SemanticValueId, SemanticValuePayload, SemanticValueRef, Stage,
     ValueComponentPolicy, ValuePresence,
 };
 use support::initializer_from_source;
@@ -165,10 +165,9 @@ fn invocation_candidate_function_object_p1_matches_declared_p1() {
         "call entry object policy and candidate function_object_p1 are the same canonical P1"
     );
 
-    // P2 stays a separately stored result-domain authority. This particular
-    // pure-meta core declaration happens to give P1 and P2 equal values after
-    // declaration visibility/export were removed from PolicyPair; equality of
-    // the values does not create a third policy coordinate.
+    // P2 is a separately stored result-domain authority. Equal P1/P2 values in
+    // this declaration keep those two coordinates independent. Namespace
+    // visibility and export have their own declarations.
     assert_eq!(
         selected.complete_result_view.pair, entry.complete_result_view.pair,
         "candidate result P2 must read the declared complete result policy"
@@ -298,13 +297,13 @@ fn value_entry(
     value_stage: Stage,
     mode: PolicyMode,
     pattern_stage: Stage,
-) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
+) -> PolicyResultEntry<SemanticValueRef, PatternCoordinateId> {
     PolicyResultEntry {
         value: Some(SemanticValueRef {
             id: SemanticValueId(7),
             type_value: support::type_lookup_fixture("canonical-p1/value-entry"),
         }),
-        pattern: PatternValueId(1),
+        pattern: PatternCoordinateId(1),
         view: PolicyView {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
@@ -317,13 +316,13 @@ fn value_entry(
     }
 }
 
-fn pure_p_entry(
+fn type_result_entry(
     value_stage: Stage,
     pattern_stage: Stage,
-) -> PolicyResultEntry<SemanticValueRef, PatternValueId> {
+) -> PolicyResultEntry<SemanticValueRef, PatternCoordinateId> {
     PolicyResultEntry {
         value: None,
-        pattern: PatternValueId(1),
+        pattern: PatternCoordinateId(1),
         view: PolicyView {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
@@ -358,12 +357,8 @@ fn expose_preserves_matching_single_stage_and_independent_mode() {
 #[test]
 fn expose_hides_entries_whose_window_vanishes() {
     let stage_disjoint = ExposedInvocationResult::expose(
-        exposure_window(Stage::Meta, PolicyMode::Const, Stage::Meta).pair,
-        &[value_entry(
-            Stage::Compile,
-            PolicyMode::Const,
-            Stage::Compile,
-        )],
+        exposure_window(Stage::Compile, PolicyMode::Const, Stage::Compile).pair,
+        &[value_entry(Stage::Seal, PolicyMode::Const, Stage::Seal)],
     );
     assert!(stage_disjoint.material.is_empty());
 
@@ -395,7 +390,7 @@ fn expose_is_identity_under_the_same_stage_observation() {
 fn expose_does_not_clip_a_pure_object_into_a_different_stage() {
     let exposed = ExposedInvocationResult::expose(
         exposure_window(Stage::Runtime, PolicyMode::Const, Stage::Compile).pair,
-        &[pure_p_entry(Stage::Compile, Stage::Compile)],
+        &[type_result_entry(Stage::Compile, Stage::Compile)],
     );
     assert!(
         exposed.material.is_empty(),
@@ -410,7 +405,7 @@ fn expose_does_not_clip_a_pure_object_into_a_different_stage() {
 // single elaboration point; only full omission derives from P2.
 // ---------------------------------------------------------------------------
 
-/// Outer explicit `meta` vs self explicit `compile let self`
+/// Outer explicit `seal` vs self explicit `compile let self`
 /// disagree on the value-stage dimension: hard error at elaboration.
 #[test]
 fn value_stage_dimension_mismatch_is_hard_error() {
@@ -438,7 +433,7 @@ fn value_stage_dimension_mismatch_is_hard_error() {
 #[test]
 fn pattern_stage_dimension_mismatch_is_hard_error() {
     let outer = ExplicitP1Selection {
-        pattern_stage: Some(Stage::Meta),
+        pattern_stage: Some(Stage::Seal),
         ..ExplicitP1Selection::default()
     };
     let initializer = initializer_from_source("let f = (compile let self): compile => { (); };");

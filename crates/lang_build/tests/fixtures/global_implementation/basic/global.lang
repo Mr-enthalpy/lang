@@ -1,5 +1,5 @@
-public + meta let global_identity =
-  (self, t: type): meta -> let r: type =>
+public + compile let global_identity =
+  (self, t: type): compile -> let r: type =>
 {
   t;
 };
