@@ -48,7 +48,7 @@ use crate::{
 /// the invocation gates on every layer.
 #[derive(Clone, Debug)]
 pub struct ResolvedCallTarget {
-    pub host_chain: Vec<crate::PatternHostMember>,
+    pub host_chain: Vec<crate::ObjectHostMember>,
     pub symbol: crate::SemanticSymbolIdentity,
 }
 
@@ -415,50 +415,6 @@ impl CompilationWorld {
         let mut resolver_context = self.package_context();
         resolver_context.current_namespace = namespace;
         crate::invoke_policy_migration(&mut self.semantic_world, request, &resolver_context)
-    }
-
-    /// Invoke one already-authorized Pattern-associated operation without
-    /// fabricating a source path or a migration-specific resolver.
-    pub fn invoke_pattern_associated_operation(
-        &mut self,
-        pattern: crate::PatternCoordinateId,
-        operation_name: &str,
-        receiver: crate::SemanticValueId,
-        explicit_args: crate::ArgProductShape,
-        context: crate::OrdinaryInvocationContext<'_>,
-        provenance: Provenance,
-    ) -> Result<crate::InvocationOutcome, crate::OrdinaryInvocationFailure> {
-        let resolver_context = self.root_context();
-        if operation_name == "()" {
-            crate::invoke_pattern_associated_ordinary(
-                &mut self.semantic_world,
-                pattern,
-                operation_name,
-                receiver,
-                explicit_args,
-                &resolver_context,
-                context,
-                provenance,
-            )
-        } else {
-            let mut explicit_modes = Vec::with_capacity(1 + context.explicit_argument_modes.len());
-            explicit_modes.push(crate::PolicyMode::Const);
-            explicit_modes.extend_from_slice(context.explicit_argument_modes);
-            let named_context = crate::OrdinaryInvocationContext {
-                explicit_argument_modes: &explicit_modes,
-                ..context
-            };
-            crate::invoke_pattern_associated_value_ordinary(
-                &mut self.semantic_world,
-                pattern,
-                operation_name,
-                receiver,
-                explicit_args,
-                &resolver_context,
-                named_context,
-                provenance,
-            )
-        }
     }
 
     pub fn source_fragments(&self) -> &[SourceFragment] {
@@ -1481,16 +1437,13 @@ impl CompilationWorld {
                     no_direct_product_atom_remains: true,
                 },
             });
-        let target_pattern = self
+        let target_members = self
             .semantic_world
-            .type_value(request.target.lookup_key())
-            .expect("complete target lookup key remains installed")
-            .pattern;
-        let target_members = self.semantic_world.associated_member_views_for_pattern(
-            target_pattern,
-            CONSTRUCT_OR_CONVERT_SELECTOR,
-            crate::ObservationHorizon::OpenStatic,
-        );
+            .associated_member_views_for_complete_type(
+                &request.target,
+                CONSTRUCT_OR_CONVERT_SELECTOR,
+            )
+            .map_err(BuildError::single)?;
 
         // Abstract-to-concrete construction itself produces a compile view.
         // A surrounding runtime demand is satisfied only afterwards by the
@@ -1513,7 +1466,7 @@ impl CompilationWorld {
         resolver_context.current_namespace = namespace;
         let outcome = crate::ordinary_invocation::invoke_target_values(
             &mut self.semantic_world,
-            crate::OrdinaryCandidateOrigin::PatternAssociatedCallEntry(target_pattern),
+            crate::OrdinaryCandidateOrigin::CompleteTypeAssociatedCallEntry(request.target.whole()),
             target_members,
             std::collections::BTreeMap::new(),
             Some(target_receiver),
@@ -2936,7 +2889,7 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .observe_complete_type(
                 complete.lookup_key(),
-                world.semantic_world.pattern_place(pattern),
+                world.semantic_world.registered_core_place(pattern),
             )
             .unwrap();
         assert_ne!(current.core(), complete.core());
@@ -3196,6 +3149,7 @@ mod initializer_consumer_boundary_tests {
         assert!(world
             .semantic_world
             .callable_entries_for_value(value)
+            .expect("actual classifier resident observation")
             .is_empty());
         let views = world
             .semantic_world
@@ -3728,7 +3682,7 @@ mod literal_construction_tests {
     }
 
     #[test]
-    fn selected_constructor_failure_does_not_run_opposite_mode_runner_up() {
+    fn held_target_does_not_observe_later_failing_constructor() {
         let mut world = world();
         let target = world.resolve_type_value("uint16").expect("uint16 resolves");
         let request = request(&mut world, "uint16", PolicyMode::Mut);
@@ -3739,23 +3693,19 @@ mod literal_construction_tests {
             crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
         );
         let before = constructed_count(&world);
-        let error = world
+        let result = world
             .invoke_literal_construction_request(
                 world.package_root_node(),
                 request,
-                &Provenance::new("selected constructor failure"),
+                &Provenance::new("held target constructor"),
             )
-            .expect_err("the preferred selected body fails terminally");
-        assert!(error.diagnostics[0].message.contains("failed to realize"));
-        assert_eq!(
-            constructed_count(&world),
-            before,
-            "the runnable const builtin was not retried"
-        );
+            .expect("the held Core contains only the original constructor");
+        assert_eq!(result.2.mode, PolicyMode::Const);
+        assert_eq!(constructed_count(&world), before + 1);
     }
 
     #[test]
-    fn selected_delete_and_ambiguity_do_not_fabricate_literal_results() {
+    fn held_target_does_not_observe_later_delete_or_competing_constructor() {
         let mut deleted = world();
         let target = deleted
             .resolve_type_value("uint16")
@@ -3768,15 +3718,14 @@ mod literal_construction_tests {
             crate::semantic_world::OrdinaryIntrinsicBody::Delete,
         );
         let before = constructed_count(&deleted);
-        let error = deleted
+        deleted
             .invoke_literal_construction_request(
                 deleted.package_root_node(),
                 deleted_request,
                 &Provenance::new("deleted constructor"),
             )
-            .expect_err("delete winner rejects");
-        assert!(error.diagnostics[0].message.contains("deleted"));
-        assert_eq!(constructed_count(&deleted), before);
+            .expect("the later Delete entry is absent from the held Core");
+        assert_eq!(constructed_count(&deleted), before + 1);
 
         let mut ambiguous = world();
         let target = ambiguous
@@ -3795,14 +3744,83 @@ mod literal_construction_tests {
             crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(builtin_spec),
         );
         let before = constructed_count(&ambiguous);
-        let error = ambiguous
+        ambiguous
             .invoke_literal_construction_request(
                 ambiguous.package_root_node(),
                 ambiguous_request,
                 &Provenance::new("ambiguous constructors"),
             )
-            .expect_err("equal maxima are ambiguous");
-        assert!(error.diagnostics[0].message.contains("multiple maximal"));
-        assert_eq!(constructed_count(&ambiguous), before);
+            .expect("the later competing entry is absent from the held Core");
+        assert_eq!(constructed_count(&ambiguous), before + 1);
+        let before = format!("{:?}", ambiguous.semantic_world);
+        let error = ambiguous
+            .semantic_world
+            .observe_complete_type(target, None)
+            .expect_err("an implementation ledger cannot supply a formed family resident");
+        assert!(error.message.contains("ordinary resident formation"));
+        assert_eq!(
+            before,
+            format!("{:?}", ambiguous.semantic_world),
+            "failed family observation publishes no semantic facts"
+        );
+    }
+
+    #[test]
+    fn empty_held_core_and_successor_core_have_distinct_constructor_candidates() {
+        let mut world = world();
+        let mut old_request = request(&mut world, "type", PolicyMode::Const);
+        let target = old_request.target.lookup_key();
+        let old = old_request.target.clone();
+        let candidate = add_test_candidate(
+            &mut world,
+            target,
+            PolicyMode::Const,
+            crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
+        );
+        let successor = world
+            .semantic_world
+            .observe_complete_type(target, None)
+            .expect("a single actual resident forms a complete successor Core");
+        assert_ne!(old.core(), successor.core());
+        assert_eq!(old.lookup_key(), successor.lookup_key());
+        assert!(world
+            .semantic_world
+            .associated_member_views_for_complete_type(&old, CONSTRUCT_OR_CONVERT_SELECTOR)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            world
+                .semantic_world
+                .associated_member_views_for_complete_type(
+                    &successor,
+                    CONSTRUCT_OR_CONVERT_SELECTOR
+                )
+                .unwrap()[0]
+                .value,
+            Some(candidate)
+        );
+        let before = format!("{:?}", world.semantic_world);
+        let error = world
+            .invoke_literal_construction_request(
+                world.package_root_node(),
+                old_request.clone(),
+                &Provenance::new("empty held Core"),
+            )
+            .expect_err("later members supply no old-snapshot candidate");
+        assert!(error.diagnostics[0]
+            .message
+            .contains("no semantic target values"));
+        assert_eq!(before, format!("{:?}", world.semantic_world));
+        old_request.target = successor;
+        let before = constructed_count(&world);
+        let error = world
+            .invoke_literal_construction_request(
+                world.package_root_node(),
+                old_request,
+                &Provenance::new("selected successor failure"),
+            )
+            .expect_err("the successor selects its actual failing entry");
+        assert!(error.diagnostics[0].message.contains("failed to realize"));
+        assert_eq!(constructed_count(&world), before);
     }
 }

@@ -5,7 +5,7 @@
 The language-level Pattern relation, binderless Pattern semantics, and the
 distinction between ordinary `Val2` presence and direct structural incidence
 are canonical in
-`../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`.
+`../design/patterns-overload/pattern-relations-observation-and-extraction.md`.
 This contract owns only the persistent owner/root/binder identities and the
 build handoff consumed by that relation.
 

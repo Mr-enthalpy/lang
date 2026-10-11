@@ -173,8 +173,7 @@ pub struct DynamicLegalityDemand<'a> {
 pub enum OrdinaryCandidateOrigin {
     SourceSymbol(SemanticSymbolIdentity),
     TypeCallSpace(crate::CanonicalValueAddr),
-    PatternAssociatedCallEntry(PatternCoordinateId),
-    PatternAssociatedValue(PatternCoordinateId),
+    CompleteTypeAssociatedCallEntry(crate::CanonicalValueAddr),
 }
 
 #[derive(Clone, Debug)]
@@ -832,7 +831,7 @@ fn resolved_binding_call_views(
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_resolved_binding_ordinary(
     semantic_world: &mut SemanticWorld,
-    hosts: &[crate::PatternHostMember],
+    hosts: &[crate::ObjectHostMember],
     symbol: SemanticSymbolIdentity,
     call_site: &NormalizedCallSite,
     resolver_context: &ResolverContext,
@@ -863,125 +862,16 @@ pub fn invoke_resolved_binding_ordinary(
     )
 }
 
-/// Invoke an authorized operation family reached from an existing
-/// Pattern coordinate's owner.  No source path or TypeValue reverse lookup is
-/// fabricated.
-pub fn invoke_pattern_associated_ordinary(
-    semantic_world: &mut SemanticWorld,
-    pattern: PatternCoordinateId,
-    operation_name: &str,
-    receiver_value: SemanticValueId,
-    explicit_arg_product: ArgProductShape,
-    resolver_context: &ResolverContext,
-    context: OrdinaryInvocationContext<'_>,
-    provenance: Provenance,
-) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    if semantic_world
-        .host_member_for_pattern(pattern)
-        .is_some_and(|host| !host.exposed_at(context.horizon))
-    {
-        return Err(OrdinaryInvocationFailure::ObservationUnavailable {
-            obstruction: ObservationObstruction {
-                class: "hidden-associated-host-observation".into(),
-                provenance,
-            },
-            trace: OrdinaryPipelineTrace::default(),
-        });
-    }
-    let target_members = semantic_world.associated_member_views_for_pattern(
-        pattern,
-        operation_name,
-        context.horizon,
-    );
-    invoke_target_values(
-        semantic_world,
-        OrdinaryCandidateOrigin::PatternAssociatedCallEntry(pattern),
-        target_members,
-        BTreeMap::new(),
-        Some(receiver_value),
-        explicit_arg_product,
-        resolver_context,
-        context,
-        provenance,
-    )
-}
-
-/// Invoke a named ordinary value member obtained from a Pattern owner's
-/// associated Val2. The authorized receiver is inserted as the first explicit
-/// argument; slot 0 remains the selected function object, exactly as for a
-/// source-visible named function.
-#[allow(clippy::too_many_arguments)]
-pub fn invoke_pattern_associated_value_ordinary(
-    semantic_world: &mut SemanticWorld,
-    pattern: PatternCoordinateId,
-    operation_name: &str,
-    receiver_value: SemanticValueId,
-    mut explicit_arg_product: ArgProductShape,
-    resolver_context: &ResolverContext,
-    context: OrdinaryInvocationContext<'_>,
-    provenance: Provenance,
-) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    let Some(receiver) = semantic_world.value(receiver_value) else {
-        return Err(OrdinaryInvocationFailure::NoTargetValues {
-            trace: OrdinaryPipelineTrace::default(),
-        });
-    };
-    let receiver_mode = receiver.mode;
-    let mut atoms = Vec::with_capacity(1 + explicit_arg_product.flattened.atoms.len());
-    atoms.push(ProductAtom::SemanticValue {
-        value: receiver_value,
-        type_value: receiver.type_value,
-        mode: receiver_mode,
-        provenance: provenance.clone(),
-    });
-    atoms.append(&mut explicit_arg_product.flattened.atoms);
-    let explicit_arg_product = ArgProductShape::from_flattened(FlattenedProductMaterial {
-        atoms,
-        provenance: provenance.clone(),
-        invariant: FlattenedProductInvariant {
-            no_direct_product_atom_remains: true,
-        },
-    });
-    if semantic_world
-        .host_member_for_pattern(pattern)
-        .is_some_and(|host| !host.exposed_at(context.horizon))
-    {
-        return Err(OrdinaryInvocationFailure::ObservationUnavailable {
-            obstruction: ObservationObstruction {
-                class: "hidden-associated-host-observation".into(),
-                provenance,
-            },
-            trace: OrdinaryPipelineTrace::default(),
-        });
-    }
-    let target_members = semantic_world.associated_member_views_for_pattern(
-        pattern,
-        operation_name,
-        context.horizon,
-    );
-    invoke_target_values(
-        semantic_world,
-        OrdinaryCandidateOrigin::PatternAssociatedValue(pattern),
-        target_members,
-        BTreeMap::new(),
-        None,
-        explicit_arg_product,
-        resolver_context,
-        context,
-        provenance,
-    )
-}
-
 /// Ordinary callability comes from Type(v)'s associated namespace, independently
 /// of both v's owned Val2 and the type-call V_tau projection.
 fn filter_callable(
     semantic_world: &SemanticWorld,
     values: &[SemanticValueId],
-) -> Vec<CallableTarget> {
+) -> Result<Vec<CallableTarget>, Diagnostic> {
     values
         .iter()
-        .filter_map(|value| {
-            let entries = semantic_world.callable_entries_for_value(*value);
+        .map(|value| {
+            let entries = semantic_world.callable_entries_for_value(*value)?;
             let call_entries: Vec<SemanticValueId> = entries
                 .into_iter()
                 .filter(|entry| {
@@ -992,14 +882,15 @@ fn filter_callable(
                 })
                 .collect();
             if call_entries.is_empty() {
-                return None;
+                return Ok(None);
             }
-            Some(CallableTarget {
+            Ok(Some(CallableTarget {
                 callable_value: *value,
                 call_entries,
-            })
+            }))
         })
-        .collect()
+        .collect::<Result<Vec<_>, Diagnostic>>()
+        .map(|targets| targets.into_iter().flatten().collect())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1064,9 +955,9 @@ fn invoke_target_values_in_scratch(
         return Err(OrdinaryInvocationFailure::NoTargetValues { trace });
     }
 
-    let direct_pattern_entries = matches!(
+    let direct_core_entries = matches!(
         origin,
-        OrdinaryCandidateOrigin::PatternAssociatedCallEntry(_)
+        OrdinaryCandidateOrigin::CompleteTypeAssociatedCallEntry(_)
     );
 
     // C1: member-level visibility exposure.  Internal callers see every
@@ -1120,21 +1011,26 @@ fn invoke_target_values_in_scratch(
 
     // Cc: filter ordinary values that are callable.  A value v is callable iff
     // (v |> type).Val2 contains an associated `()` call entry.
-    let callable_targets = filter_callable(semantic_world, &c2);
+    let callable_targets = filter_callable(semantic_world, &c2).map_err(|diagnostic| {
+        OrdinaryInvocationFailure::ApplicabilityUnsupported {
+            diagnostic,
+            trace: trace.clone(),
+        }
+    })?;
     trace.callable_values = callable_targets
         .iter()
         .map(|target| target.callable_value)
         .collect();
 
     // C3: for each ordinary callable value, resolve its call entries.
-    // A compiler-authorized Pattern entrance has already reached associated
-    // Val2 and therefore feeds those call-entry values directly into C3.
+    // A complete-type operation entrance supplies actual resident witnesses
+    // from the held Core's Val2 and feeds those call-entry values into C3.
     let mut c3 = Vec::new();
-    if direct_pattern_entries {
+    if direct_core_entries {
         let Some(receiver_value) = associated_receiver else {
             return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
                 first_diagnostic: Some(Diagnostic::hard_error(
-                    "Pattern-associated ordinary call entries require an explicit semantic receiver",
+                    "Core-associated ordinary call entries require an explicit semantic receiver",
                     Some(provenance.clone()),
                 )),
                 trace,

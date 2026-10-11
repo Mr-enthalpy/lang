@@ -71,7 +71,7 @@ let _ = expression
 
 These share head material, not polarity: = extracts from a known RHS; => forms
 a result under a legal request. Intermediate `let <a> (c Pattern) a` applies
-the [same R_Gamma again at the reached layer](pattern-values-relational-semantics-and-extraction.md#82-intermediate-layer-extraction):
+the [same R_Gamma again at the reached layer](pattern-relations-observation-and-extraction.md#82-intermediate-layer-extraction):
 one whole unpositioned extraction on an unordered layer, multiple aligned
 extractions on an ordered layer. Name observation, layer and payload remain
 distinct. Pack restrictions remain intact.

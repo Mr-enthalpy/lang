@@ -112,7 +112,6 @@ pub use model::{
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{
-    invoke_pattern_associated_ordinary, invoke_pattern_associated_value_ordinary,
     invoke_policy_migration, invoke_resolved_binding_ordinary, CallableTarget,
     DynamicLegalityDemand, DynamicLegalityProof, ExposedInvocationResult, InvocationOutcome,
     MigrationInvocationContext, ObservationObstruction, OrdinaryCandidateOrigin,
@@ -200,9 +199,9 @@ pub use semantic_world::{
     canonical_function_object_view, BindConflict, BorrowFormationFailure, BorrowKind,
     BorrowOperand, BorrowView, BorrowViewId, CompileInstanceId, CompileInstanceState,
     CompileResultObservation, CompleteTypeValue, ConstructionAuthority,
-    ConstructionEvaluationContext, ImmutableTypeCallSpace, MemberCreationProof, ObjectPlace,
-    ObjectPlaceId, OpenHereFailure, OpenHereProof, OrdinaryCallEntry, OrdinaryCandidateRole,
-    PatternCoordinateId, PatternHostMember, PlaceMutationFailure, ProjectionSelector,
+    ConstructionEvaluationContext, ImmutableTypeCallSpace, MemberCreationProof, ObjectHostMember,
+    ObjectPlace, ObjectPlaceId, OpenHereFailure, OpenHereProof, OrdinaryCallEntry,
+    OrdinaryCandidateRole, PatternCoordinateId, PlaceMutationFailure, ProjectionSelector,
     ProjectionSlot, ProjectionSlotContents, ProjectionSlotIdentity, RegisteredCallable,
     ResidentGeneration, ResidentIdentity, ResolvedExtractionTarget, ResolvedPatternScope,
     ResolvedPatternScopeId, ResolvedSemanticNavigation, SemanticObjectId, SemanticPatternRecord,

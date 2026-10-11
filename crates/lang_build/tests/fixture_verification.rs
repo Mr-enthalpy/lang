@@ -40,7 +40,7 @@ fn runtime_transport_fixture(workspace: &str) -> BuildWorkspace {
 }
 
 #[test]
-fn source_transport_without_execution_cannot_materialize_runtime_values() {
+fn source_transport_requires_ordinary_object_path_wiring() {
     for workspace in [
         "verify_runtime_shadow",
         "policy_aware_static_program",
@@ -51,7 +51,7 @@ fn source_transport_without_execution_cannot_materialize_runtime_values() {
             .build_workspace(&runtime_transport_fixture(workspace))
             .expect_err("unconnected single-stage transport cannot produce a migrated value");
         assert!(
-            format!("{error:?}").contains("closure-to-tau formation consumer"),
+            format!("{error:?}").contains("ordinary Path consumer"),
             "{workspace}: {error:?}"
         );
     }

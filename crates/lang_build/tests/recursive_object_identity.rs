@@ -56,7 +56,7 @@ fn stage_pair(stage: Stage) -> PolicyPair {
 
 struct Carriers {
     world: SemanticWorld,
-    /// Declares the shared Pattern, so it keeps the Pattern's canonical place.
+    /// Declares the Core Object and keeps that Object's registered Place.
     base: SemanticSymbolIdentity,
     /// `let T: type = base;` — same Pattern and TypeValue, own fresh place.
     t: SemanticSymbolIdentity,
@@ -196,8 +196,8 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
     } = carriers();
 
     let canonical = world
-        .pattern_place(pattern)
-        .expect("the Pattern has a canonical pure type Object");
+        .registered_core_place(pattern)
+        .expect("the P index locates an explicitly registered Core Object");
     let base_place = place_of(&world, base);
     let t_place = place_of(&world, t);
     let u_place = place_of(&world, u);
@@ -252,12 +252,10 @@ fn type_identity_ignores_place_but_follows_recursive_val2() {
     );
 }
 
-/// Lookup-visible fallback is horizontal navigation, not owned Val2.  A
-/// carrier freezes physically shared members when it is formed; later writes
-/// to the Pattern's canonical place remain navigable but cannot rewrite that
-/// existing Object's normal form.
+/// A carrier owns the Val2 captured at formation. A later member on another
+/// Core Object with the same P is absent from both navigation and normalization.
 #[test]
-fn later_pattern_fallback_does_not_rewrite_existing_owned_val2() {
+fn later_core_member_is_absent_from_existing_carrier_navigation_and_val2() {
     let Carriers {
         mut world,
         base,
@@ -273,16 +271,16 @@ fn later_pattern_fallback_does_not_rewrite_existing_owned_val2() {
 
     world
         .associate_existing_symbol_in_place(canonical, "late", member)
-        .expect("the canonical Pattern object receives a later member");
+        .expect("the registered Core Object receives a later member");
     assert_eq!(
         world.associated_symbol_for_host(&t_host, "late"),
-        Some(member),
-        "navigation may still expose the Pattern fallback"
+        None,
+        "shared P supplies no member lookup authority"
     );
     assert_eq!(
         type_addr(&mut world, type_value, Some(t_place)),
         before,
-        "lookup fallback is not SemanticVal2Snapshot(T)"
+        "another Core Object's update does not change SemanticVal2Snapshot(T)"
     );
     assert_ne!(
         type_addr(&mut world, type_value, Some(canonical)),
@@ -614,9 +612,7 @@ fn unit_is_terminal_leaf() {
         (entry.pattern, entry.type_value)
     };
     assert!(
-        world
-            .associated_values_for_pattern(entry_pattern, "()")
-            .is_none(),
+        world.registered_core_values(entry_pattern, "()").is_none(),
         "Val2(()) = ∅: the call entry has no vertically traversable children"
     );
 
@@ -965,8 +961,8 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
         2,
         "`g::f::T` steps through both `T` and `f`, not just the innermost host"
     );
-    assert_eq!(navigation.host_chain[0].symbol, Some(t));
-    assert_eq!(navigation.host_chain[1].symbol, Some(f));
+    assert_eq!(navigation.host_chain[0].symbol, t);
+    assert_eq!(navigation.host_chain[1].symbol, f);
 
     // Exposure facts: only the outer host `T` is hidden at OpenStatic.
     assert!(

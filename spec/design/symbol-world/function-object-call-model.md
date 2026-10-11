@@ -244,19 +244,18 @@ The connected `lang_build` slice now implements this routing for source
 function objects and toolchain-source associated `()` entries:
 
 ```text
-Semantic name binding / Pattern owner
-  -> CallCandidates(NamedType(S))
-  -> TypeValue
-  -> PatternCoordinateId / ResolvedPatternScope
-  -> associated ()
+Semantic name binding
+  -> ordinary resident x
+  -> Type(x)
+  -> associated Val2[()]
   -> PreparedCallCandidate
   -> InvocationFrame
   -> ordinary result entries
 ```
 
-The source-name binding and already-held-Pattern entrances merge at the same
-candidate pipeline. The latter carries an explicit semantic receiver and does
-not fabricate a source path or require migration metadata.
+The source-name binding and held-complete-type operation entrances merge at
+the same candidate pipeline. The latter consumes actual resident witnesses
+from the captured Core and carries an explicit semantic receiver.
 
 Name-based source calls and compiler-authorized operations therefore have
 different candidate entrances but one ordinary call trunk. Neither entrance
@@ -288,6 +287,14 @@ type snapshot. Type-as-callee candidates come from its `V_τ`; an ordinary
 navigated member may additionally be selected through `Q`/`Val2` under the
 normal navigation rules. Neither path inspects provenance or searches for
 uint8's defining binding.
+
+Associated operation candidates observed through a complete type value come
+from the owned Val2 material captured by that exact `Core(tau)`. Every admitted
+candidate requires a resident witness in that snapshot. A Pattern coordinate
+may index an explicitly registered Core Object; it supplies no member lookup
+authority by itself. Later changes to another Object with the same Pattern
+cannot add candidates to a held snapshot, and navigation through a resident
+Object observes that Object's own Val2.
 
 Migration callables obtain their result Pattern and complete type observations
 from registered semantic entities. Constructor/extractor materialization and

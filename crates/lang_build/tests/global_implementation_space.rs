@@ -145,7 +145,7 @@ fn result_mode_preference_is_sealed_independently_of_callable_mode() {
 }
 
 #[test]
-fn named_transport_source_requires_tau_formation() {
+fn named_transport_source_requires_ordinary_object_path_wiring() {
     let mut manifest = BuildManifest::new("app", vec!["app".into()]);
     manifest
         .global_implementation_roots
@@ -154,7 +154,7 @@ fn named_transport_source_requires_tau_formation() {
     assert!(error
         .diagnostics
         .iter()
-        .any(|d| d.message.contains("closure-to-tau formation consumer")));
+        .any(|d| d.message.contains("ordinary Path consumer")));
 }
 
 #[test]

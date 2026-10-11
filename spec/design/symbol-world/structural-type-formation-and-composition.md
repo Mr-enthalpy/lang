@@ -66,7 +66,7 @@ For a field with source A, structural child C and host T, registered ordinary
 members may witness A -> C, C -> A, C -> T and T -> C. FieldView records the
 actual registered route; a signature alone is not structural evidence.
 Registered callable classifiers satisfy the complete type's /tau home
-independently of whether they also enter V_tau. The [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md)
+independently of whether they also enter V_tau. The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md)
 owns applicability, role consistency and protected extraction.
 
 ## 3. Ordinary struct helpers

@@ -445,8 +445,8 @@ let f = <A>(self, x: A) -> r: A => {
 
 Here `r` is the explicit binder bound to the returned object, while `A` is the
 postfix annotation Pattern on that binder. If the callable returns an ordinary
-value, `r` denotes that value; if it returns a type/Pattern object, `r` denotes
-that type/Pattern object. The parser does not classify `r` itself as a type.
+value, `r` denotes that value; if it returns a complete type, `r` denotes
+that type. The parser does not classify `r` itself as a type.
 
 The anonymous constrained form is `-> _: A`. `-> A r` is an extraction
 Pattern and must not be reinterpreted as the annotated-result shorthand

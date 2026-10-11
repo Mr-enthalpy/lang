@@ -100,6 +100,7 @@ fn visible_noncallable_target_with_hidden_argument_has_no_candidate() {
     assert!(world
         .semantic_world()
         .callable_entries_for_value(value)
+        .expect("actual classifier resident observation")
         .is_empty());
     let noncallable = world
         .semantic_world_mut()
@@ -414,13 +415,24 @@ fn pure_type_binding_mode_survives_classification_and_preference() {
 #[test]
 fn receiver_binding_mode_survives_shared_value_identity() {
     let mut world = support::AssociatedFamily::new(&[
-        "const let first = (self, x): compile -> let r => (\"const self\") delete;",
-        "mut let second = (self, x): compile -> let r => (\"mut self\") delete;",
+        "mut let first = (self, x): compile -> let r => (\"mut self\") delete;",
     ]);
-    let receiver = world.target_binding().ordinary_value().unwrap();
+    let classifier = world.target_binding().ordinary_value().unwrap();
+    let ty = world.semantic_world().value(classifier).unwrap().type_value;
+    let receiver = world
+        .semantic_world_mut()
+        .install_ordinary_value(
+            ty,
+            lang_build::declared_policy_view(lang_build::Stage::Compile, PolicyMode::Const),
+            Provenance::new("const receiver Object"),
+        )
+        .unwrap();
     let record = world.semantic_world().value(receiver).unwrap().clone();
     assert_eq!(record.mode, PolicyMode::Const);
-    let expected = world.semantic_world().callable_entries_for_value(receiver)[1];
+    let expected = world
+        .semantic_world()
+        .callable_entries_for_value(receiver)
+        .expect("actual classifier resident observation")[0];
     let namespace = world.package_root_node();
     let binding = world
         .semantic_world_mut()
@@ -554,7 +566,7 @@ fn ordinary_receiver_owns_terminal_call_entry() {
     assert!(
         world
             .semantic_world()
-            .associated_values_for_pattern(call_obj.pattern, "()")
+            .registered_core_values(call_obj.pattern, "()")
             .is_none(),
         "call entry is terminal: no further ()"
     );

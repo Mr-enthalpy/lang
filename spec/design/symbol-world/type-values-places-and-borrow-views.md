@@ -64,7 +64,7 @@ substitution and **not** a second name for a name binding. And value equality is
 **not** place equality.
 
 Object identity is complete at construction and consuming-extraction commit,
-as defined by the [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#32-atomic-object-identity-commits).
+as defined by the [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#32-atomic-object-identity-commits).
 Incremental construction material and Uninitialized Places are not partial
 Objects. Ordinary dot ADL is a call, not a private Place projection; only the
 selected registered borrow accessor uses the existing ProjectionSlot law.
@@ -292,7 +292,7 @@ TypeRole = Pure = NamespaceRole
 Type identity is determined by absent Val1, not by an available constructor.
 The separate `SelfConstructible(Q)` judgment consumes the registered joint
 Val2/ConstructEdge witness defined in the
-[Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#13-structural-role-registration-and-ordinary-callables).
+[Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#13-structural-role-registration-and-ordinary-callables).
 It establishes construction capability, never membership in the type domain.
 
 `Navigable(V)` means selector lookup yields the resident-specific
@@ -303,9 +303,9 @@ Consequently every pure Object has `NamespaceRole`; namespace capability is not
 an extra entity or witness. Every pure Object has the type role, including one
 with no self-construction witness. These are
 predicates; no `NamespaceFacet`, hidden Q/type-role member, or parallel
-`NamespaceObject` ontology is introduced. Bare Product and the empty pure
-Pattern therefore have intrinsic structural namespace capability through their
-ordinary selectors; whether a tuple-like user-facing namespace API exposes
+`NamespaceObject` ontology is introduced. A well-formed pure Object, including
+one with a Product Pattern or empty owned Val2, has namespace capability through
+its ordinary selectors; whether a tuple-like user-facing namespace API exposes
 that capability remains a narrow surface question.
 
 An Object carrying `Val1` is an ordinary value. An independently authorized
@@ -701,7 +701,7 @@ WellFormedTau is history-free:
 **Same-entity boundary (normative).** A complete type value and its
 description material are one semantic entity observed through two equivalent
 views (canonical owner:
-`spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+`spec/design/patterns-overload/pattern-relations-observation-and-extraction.md`
 §15):
 
 ```text
@@ -1186,7 +1186,7 @@ rank(ShareTy(T)) = rank(T)
 state that borrow-type formation preserves the semantic rank of its pointee.
 
 The borrowed-extraction law of
-`../patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+`../patterns-overload/pattern-relations-observation-and-extraction.md`
 §14 is a theorem of this section:
 
 ```text
@@ -2837,7 +2837,7 @@ T and uint8 may observe the same Core(τ) yet have different PlaceId.
 The same separation applies to Pattern layers. Every all-named direct-entry
 layer is unordered, independent of a top Pattern name; any bare entry makes the
 whole layer positional. BareProduct's pos_i equations above describe that
-positional subdomain, not every Product. See the [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md#7-product-ordering-is-local-to-each-layer).
+positional subdomain, not every Product. See the [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#7-product-ordering-is-local-to-each-layer).
 NameBindingId and PlaceId are neither resident values nor ordinary content keys.
 Open navigation retains each observed member's name Pattern; carrier spelling
 does not rename that member or merge coordinates.

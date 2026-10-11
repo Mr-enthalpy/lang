@@ -561,7 +561,7 @@ let f = <A>(self, x: A) -> r: A => {
 
 `r` is the explicit symbol bound to the returned object. `A` is its postfix
 annotation Pattern. Thus `r` denotes a value for a value-returning callable
-and a type/Pattern object for a callable whose result has that rank; parser
+and a complete type for a type-returning callable; parser
 syntax does not preclassify the binder as a type. Use `-> _: A` when no result
 symbol is bound. A prefix-shaped `-> A r` remains an extraction Pattern; it is
 not a type annotation on `r`.

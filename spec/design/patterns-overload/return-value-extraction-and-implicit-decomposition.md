@@ -4,7 +4,7 @@
 
 The relational meaning of Pattern observation/extraction and the fact that
 constructor/extractor inverses are family-specific theorems are canonical in
-`pattern-values-relational-semantics-and-extraction.md`. This document applies
+`pattern-relations-observation-and-extraction.md`. This document applies
 that authority to result delivery and one-layer view construction; it does not
 define a second base Pattern calculus.
 

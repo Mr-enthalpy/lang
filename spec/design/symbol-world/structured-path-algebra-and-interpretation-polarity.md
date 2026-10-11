@@ -3,7 +3,7 @@
 **Status: canonical semantic authority.**
 
 This owner defines NameValue/Path composition, two-level reading, # projection, and the
-common $ interface. The [Pattern owner](../patterns-overload/pattern-values-relational-semantics-and-extraction.md)
+common $ interface. The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md)
 owns R_Gamma; the [Policy owner](policy-and-static-flow-projection.md)
 owns Policy admissibility; the [call owner](function-object-call-model.md) owns
 invocation. All operations use the same E and ordinary Objects. Source consumers

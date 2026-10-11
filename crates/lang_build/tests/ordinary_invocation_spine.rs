@@ -663,11 +663,11 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
         "two ordinary bindings of one Pattern never share one Val2 place"
     );
 
-    // The Pattern's canonical pure type Object belongs to the declaration that
+    // The explicitly registered Core Object belongs to the declaration that
     // declared the Pattern; neither rebinding writes there.
     let canonical = semantic
-        .pattern_place(pattern)
-        .expect("the Pattern has a canonical pure type Object");
+        .registered_core_place(pattern)
+        .expect("the P index locates an explicitly registered Core Object");
     assert_ne!(bound_place, canonical);
     assert_ne!(rebound_place, canonical);
 }
@@ -1082,6 +1082,7 @@ fn unsupported_pattern_query_terminates_before_candidate_selection() {
     ]);
     let initializer = initializer_from_source("let result = uint8 choose;");
     let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let before = format!("{:?}", world.semantic_world());
     let failure = world
         .invoke_ordinary_call(
             world.package_root_node(),
@@ -1109,6 +1110,9 @@ fn unsupported_pattern_query_terminates_before_candidate_selection() {
         trace.selected.is_none(),
         "no candidate may be selected from an incomplete A-stage"
     );
+    assert!(trace.bp_prime.is_empty());
+    assert!(trace.compile_instance.is_none());
+    assert_eq!(format!("{:?}", world.semantic_world()), before);
 }
 
 #[test]

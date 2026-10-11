@@ -129,7 +129,7 @@ implementation owner and existing structural registrations. P-internal
 extraction over that snapshot filters the candidates witnessed by those
 registrations. P-internal extraction
 (`AtomicExtract_P`, canonical
-`pattern-values-relational-semantics-and-extraction.md` §3.1) applies
+`pattern-relations-observation-and-extraction.md` §3.1) applies
 `CallSiteFamilyFilter = StructuralDefault` before C0; that filter preserves
 exactly the candidates registered under this family identity. Structural
 formation establishes the actual members and role registrations together;

@@ -22,7 +22,7 @@ that the corresponding source semantics is implemented.
 | Closure anchored replication | [replication](symbol-world/closure-anchored-replication.md) |
 | Single Stage, P1/P2/Pin/Pout, R_vis, demand and migration | [policy](symbol-world/policy-and-static-flow-projection.md) |
 | Exact callee/self, ordinary C_sigma family and forwarding | [calling](symbol-world/function-object-call-model.md) |
-| Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-relations-observation-and-extraction.md) |
 | Restricted Split/D, internal chain completion and residual escape | [extraction chains](patterns-overload/static-pattern-spaces-and-extraction-chains.md) |
 | Pass action, move fixed point and directed with cleanup placement | [mechanical passing](mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
 | Requested-name producer surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |

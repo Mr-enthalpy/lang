@@ -683,15 +683,15 @@ This does not relax Pack cardinality or admit several arbitrary remainders.
 Generation reverses the direction of the declaration consumer, not this
 known-content extraction judgment.
 
-## 9. Pure Pattern nodes and pipe branch shorthand
+## 9. Binderless Pattern nodes and pipe branch shorthand
 
-A pure Pattern node needs no artificial wildcard/value padding layer. For example:
+A binderless Pattern node needs no artificial wildcard/value padding layer. For example:
 
 ```lang
 let bool = ((if | else) bool)$ |> struct;
 ```
 
-uses `if` and `else` as pure Pattern nodes. A let-shaped presentation is:
+uses `if` and `else` as binderless Pattern nodes. A let-shaped presentation is:
 
 ```lang
 let <> if
@@ -1086,8 +1086,8 @@ then V_τ attached, then τ obtained"; there is no "P structure is one object,
 V_τ/type callability is another side table"; and there is never a state where
 "τ is already closed but V_τ can still be augmented."
 
-The Pattern/core component of a type is the ordinary pure Object `Q`, but a
-complete type value is not bare `Q`. The canonical type-value authority closes
+The Core component of a type is the ordinary pure Object `Q`, including its
+relational Pattern coordinate. The canonical type-value authority closes
 that core over its direct TypeMember callspace:
 
 ```text

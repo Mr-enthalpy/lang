@@ -52,8 +52,8 @@ Every step preserves one identity/authority relation and selected no-reopen.
 
 | Relation | Representation / connected slice | Consumer boundary |
 |---|---|---|
-| Object and complete tau | Val1/Pattern/owned-Val2 normalization; immutable Core and V_tau observations; exact observed Core material and callspace transport into fresh bindings and constructor results | Changed nested resident material reports unavailable; persistent captured-child representation and rich opaque payload normalization remain open |
-| Name and owner identity | Parent-linked owners, root-qualified Holes, name/Place/generation coordinates | General NameValue/read, qualified formation and lexical Path aliases require ordinary consumers |
+| Object and complete tau | Val1/Pattern/owned-Val2 normalization; immutable Core and V_tau observations; exact observed Core material and callspace transport into fresh bindings and constructor results; constructor candidates and ordinary Type(x).Val2[()] consume held Core resident witnesses | Changed nested resident material and unformed implementation families report unavailable; persistent captured-child representation and rich opaque payload normalization remain open |
+| Name and owner identity | Parent-linked owners, root-qualified Holes, name/Place/generation coordinates; declaration topology and actual Object navigation remain distinct | General NameValue/read, directory navigation through Objects, qualified formation and lexical Path aliases require ordinary Path consumers |
 | Applicability | R_Gamma proofs, Hole valuations and parameter preparation | Protected StructuralDefault, structural role families and richer extraction require consumers |
 | Policy | Explicit observation/demand/preference, migration and derived 2x2 capability views | Source deduction, operation-driven premises and full R_vis/C_sigma are separate obligations |
 | Selection | Exact receiver/call-entry enumeration, total demand, sealed selection and diagnostics | Unknown applicability cannot become fallback evidence; source completion requires common E |
