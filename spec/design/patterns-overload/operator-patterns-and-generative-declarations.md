@@ -253,7 +253,7 @@ previous committed semantic decision.
 adl/
     let <field> (self, object:t, ...args) field
         => ((object, args) |> ((field#)[0])$::t);
-    let <field> (self, t:type) field
+    let <field> (self, t:type::) field
         => ((field#)[0])$::t;
 ```
 
@@ -264,8 +264,8 @@ and $ flips polarity under the Path consumer. Ordinary applicability and
 specificity select; dot syntax provides no priority or receiver adaptation.
 
 ```text
-T.field =_Path field::T
-foo.bar.baz =_Path baz::bar::foo
+T.field =_Path field::T        -- selected type-Path candidate
+foo.bar.baz =_Path baz::bar::foo -- each step selects that ordinary Path family
 ```
 
 ### 6.2 Canonical lowering

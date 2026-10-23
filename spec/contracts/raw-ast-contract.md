@@ -34,7 +34,7 @@ Names remain weak `Name` tokens. In particular:
 default
 delete
 strategy identifiers
-compile / seal / runtime
+compile / runtime
 const / mut / compile / close / let
 ```
 
@@ -225,24 +225,18 @@ let <> P
 `let <> _` contains a real wildcard Pattern with no outer binder. Binder
 absence and wildcard presence are different facts.
 
-For one non-composite atomic Pattern P, the canonical semantic head is:
+For an atomic branch name, parser expansion preserves the ordinary head:
 
 ```text
-|> P { body }
-  -> |> (self, <> P) { body }
-  -> headed InPlace formation, preserving selected callable self
+|> name { body }
+  -> |> (_, let _: (name)$) { body }
 ```
 
-self is a schematic fresh binder for invocation slot zero, followed by the
-binderless explicit argument Pattern. It is not user-supplied actual material.
-The parser preserves both positions. Its GeneratedSelf marker has no textual
-name and exists only in Raw syntax. Normalization produces an ordinary Binder
-with an identity within its callable/Pattern root and optional display spelling;
-written binders use that same representation. Source `self`
-in the body remains a free name unless explicitly bound by source. Goldens
-compare head structure modulo this generated versus textual binding distinction;
-they do not equate the two Raw ASTs. Explicit wildcard (_ P) is different. The Pattern
-owner §9 owns the head; parser/normalizer expansion is syntax-directed.
+Slot zero and the explicit argument binder are structural anonymous Patterns.
+The full grouped (name)$ operand is interpreted in V and supplies the external
+value Pattern. Raw AST and normalized head structures agree with the explicit
+form. Source self remains free unless explicitly bound. The Pattern owner §9
+owns extraction; normalization supplies no resident-read or stage action.
 
 In-place closures cannot have capture lists. Invalid capture/tail forms become
 ErrorAst; an error cannot be represented as a valid empty Block.
@@ -469,11 +463,17 @@ require those properties need distinct resolved-stage checks or certificates.
 Normalized DeduceLists are left-to-right telescopes:
 
 ```text
-Ti in <A1:T1, ..., Ai:Ti> sees inherited holes and A1..A(i-1)
-Ai is not visible in Ti
+Policy_i and Ti in <Policy_1 let A1:T1, ..., Policy_i let Ai:Ti>
+  see inherited holes and A1..A(i-1)
+Ai is not visible in its own Policy_i or Ti
 later binders are not visible in Ti
 same-PatternRoot hole names cannot be redeclared
 ```
+
+BinderDeclAst retains optional PolicySpecAst; NormHoleDecl retains optional
+NormPolicySpec. Omission remains distinct from a written dimension. The
+semantic [HoleOverride](../design/patterns-overload/pattern-relations-observation-and-extraction.md#101-independent-hole-policy) consumer uses this material; normalization
+performs no Policy deduction.
 
 Raw AST carries lexical structure, surface spelling, and pre-semantic name
 roles. Normalized alpha conversion, not the parser and not a source span,
@@ -482,7 +482,8 @@ owner/root-local ordinal identity. Each callable allocates a semantic owner and
 Pattern root. Independent roots may shadow inherited spellings. Display
 spelling and span are provenance data.
 Generated receiver holes use a hygienic generated key rather than their
-display spelling. `_` is an anonymous hole and targets no declaration.
+display spelling. In S, `_` is an anonymous Pattern and targets no declaration;
+in V it normalizes to UniverseRank, denoting universerank.
 
 Within a BindingSlot, the leading policy is processed under inherited holes
 before the local DeduceList extends the environment for Pattern, annotation,

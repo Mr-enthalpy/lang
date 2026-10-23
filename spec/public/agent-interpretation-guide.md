@@ -100,7 +100,7 @@ Incoming source Product, no following Product?  -> first legality repair (PipeFa
   names inherit navigation. When a$ is reached in S, it interprets a in V
   before that structural consumer checks its result. Resident Read, stage
   and authority remain independent.
-- A name-headed callable has (self, <> name), preserving actual selected self.
+- A name-headed callable has (_, let _: (name)$), preserving actual selected self.
   The syntax carrier retains both positions.
 - Implicit ReturnEvent and omitted ReturnTarget are separate. Non-tail
   expressions require unit through the semantic UnitDiscard consumer. True
@@ -151,7 +151,10 @@ See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
   callable-head telescope scopes captures, parameters, call policy, return,
   clauses, body, and inherited nested callables. Exact Norm binding covers
   Pattern/policy occurrences; value-side names/navigation remain unresolved.
-  `_` is an anonymous hole, not a named ref.
+  In S, `_` is an anonymous Pattern and targets no Hole declaration; in V it
+  normalizes as UniverseRank (universerank), without name lookup.
+  HoleDecl preserves its optional local Policy before its own declaration;
+  HoleOverride replaces written dimensions and inherits the remaining ones.
 - Alias right-hand sides stay unresolved Path material (dump label `PathMaterialPreserve`),
   never `NormExpr`.
 - Pattern-side names are not ordinary call targets and must not fall back to
@@ -311,17 +314,17 @@ and optimizer structures cannot introduce program facts.
 
 ## Canonical evaluation and lifecycle guardrails
 
-- Stage is one atom; compile/seal/runtime are mutually incomparable. P2 is horizon,
+- Stage is one atom; compile/runtime are mutually incomparable. P2 is horizon,
   P1/Pout producer visibility. InputAdmissible, migration and Ready are separate.
-  Runtime P2 defaults omitted P1 to runtime; seal defaults to seal. Omission
+  Runtime P2 defaults omitted P1 to runtime. Omission
   is not a hole. Known runtime inputs do not change the producer stage.
 - Resolve once, R_vis evidence, ordinary C_sigma preparation, hard A, fallback
   suppression, Policy/Pattern order, unique Selected=(c*,sigma*,frame).
   No speculative candidate bodies and no runtime reselection.
 - Main has runtime horizon. CompileInstance formation is independent of P2;
-  seal instances, helpers and cache reads obey ordinary horizon, Ready and
+  instances, helpers and cache reads obey ordinary horizon, Ready and
   execution legality, with actual dependency preservation.
-- ResidualAt(H) does not establish runtime producer Policy. Pending seal work
+- ResidualAt(H) does not establish runtime producer Policy. Pending continuation work
   remains in the same continuation and retains its stage and identity. An
   explicit runtime result demand supplies no producer. If the continuation
   preservation consumer is not connected, report the unavailable boundary

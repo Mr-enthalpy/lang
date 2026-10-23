@@ -73,33 +73,48 @@ must not conflate structural equality with equality of the values read.
 
 ### 1.3 Composition and endpoints
 
-express::express permits evaluation and composition of both operands in their
-applicable interpretation positions. It does not give arbitrary values a legal
-:: candidate.
+Composition consumes full ordinary Path values, actual endpoints, root material
+and dependencies. Relative leaves an inherited root to complete; Absolute is
+fully specified (path:: in full-navigation context). This classification is a
+property of values, including computed Paths, not source spelling.
 
-For legal internal composition:
+| Left | Right | Rule |
+|---|---|---|
+| Relative | Relative | existing endpoint-compatible composition |
+| Relative | Absolute | existing completion against the right root |
+| Absolute | Relative | undefined |
+| Absolute | Absolute | compatible rooted structural suffix overlap only |
+
+Suffix(q,p) holds iff q is the outward suffix of p with the same actual terminal
+root, root material, endpoint shape and equal overlapping normalized nodes.
 
 ```text
-(p::q)::r =_Path p::(q::r)
+Compose(p_abs,q_abs)=p_abs if Suffix(q_abs,p_abs)
+Compose(p_abs,q_rel) undefined
+Compose(p_abs,q_abs) undefined if not Suffix(q_abs,p_abs)
+((path1::path2::)#)$::(path2::) =_Path path1::path2::
 ```
 
-The direction remains the language's name::path direction. This is not a
-conventional left-to-right member chain, and it does not assert:
+Different roots, explicit anchors or reference generations do not overlap merely
+because strings agree. Relative-left results retain their existing meaning.
+Associativity requires all intermediate compositions to be defined. Internal
+composition performs no resident read.
+
+### 1.3.1 Full navigation and suffix closure
 
 ```text
-Read(p::q)::r = Read(p::(q::r))
+let a p1 p2 p3
+  => let a (p1::p2::p3) (p2::p3) (p3::)
+FullNavigation(p) => every outward suffix retains RootEndpoint(p)
+BareName(a;p)=a::p
+Path algebra strictly-contained-in Pattern algebra
 ```
 
-Once an operand has been read externally, it cannot be treated as the same
-internal Path without an applicable conversion. Open endpoints such as ::a
-and a:: remain part of the structure; a string array with no endpoint
-information is insufficient.
-
-:: first composes Pattern/path material. The same structure has construction
-and extraction interpretations at RHS and LHS relation positions, in the same
-name::path direction. This construction/extraction isomorphism fixes the
-direction; it is not an arbitrary namespace-selector convention. Reversing it
-to path::name would require additional reversals in those existing relations.
+The suffix law holds for computed Paths of the same structure. Pattern adds
+extraction and explicit full-navigation module nodes that reset inheritance to
+that root. Normalization retains actual members, full navigation and extraction,
+with no unrelated inner/outer source identity. Dot agrees with name::path when
+each step selects a type-Path candidate; methods can return non-Path Objects.
 
 ### 1.4 Composition grants no authority
 
@@ -210,21 +225,25 @@ The observable endpoint shape has two coordinates:
 
 ```text
 member end: Select | Expand
-root end:   TextRoot | OpenRoot | AnchoredRoot
+root end:   TextRoot | RelativeRoot | GlobalRoot | AnchoredRoot
 
 PathShaped(Product(chain=Names(ss), endpoint_shape=(m, TextRoot)))
     if ss is nonempty and m in {Select, Expand}
 
-PathShaped(Product(chain=Names(ss), endpoint_shape=(Select, OpenRoot)))
+PathShaped(Product(chain=Names(ss), endpoint_shape=(Select, RelativeRoot)))
     if ss is nonempty
+
+PathShaped(Product(chain=Names(ss), endpoint_shape=(Select, GlobalRoot)))
+    if ss is nonempty and the actual formation root is retained
 
 PathShaped(Product(chain=Anchored(ss, r), endpoint_shape=(m, AnchoredRoot)))
     if m in {Select, Expand} and RootMaterial(r)
 ```
 
 For TextRoot, the final NameNode is the textual root resolved at external Read;
-preceding NameNodes are inward selectors. OpenRoot leaves the root endpoint
-available for compatible composition or the established ambient-root reading.
+preceding NameNodes are inward selectors. RelativeRoot leaves the root endpoint available for inherited completion.
+GlobalRoot closes it against the actual global root of formation, retaining that
+root identity in the Path value. A fully specified path:: has this closed end.
 For AnchoredRoot, the final node supplies the explicit root. Expand observes
 the finite members of the reached host; Select observes the selected target.
 
@@ -234,9 +253,9 @@ the finite members of the reached host; Select observes the selected target.
 (::a)#:
     Names(["a"]), (Expand, TextRoot)
 (a::)#:
-    Names(["a"]), (Select, OpenRoot)
+    Names(["a"]), (Select, GlobalRoot)
 
-RelativeSingleName = (Select, OpenRoot)
+RelativeSingleName = (Select, RelativeRoot)
 "field" |> path_pattern:
     Product(chain=Names(["field"]), endpoint_shape=RelativeSingleName)
 ```
@@ -359,7 +378,7 @@ omega : Omega
 PathPattern ~= {<ss,omega> in String* x Omega | PathShaped(<ss,omega>)}
 ```
 
-Omega retains Select/Expand, TextRoot/OpenRoot/AnchoredRoot, explicit ordinary
+Omega retains Select/Expand, TextRoot/RelativeRoot/AnchoredRoot, explicit ordinary
 root material, and the endpoint information required to reconstruct the Path.
 This is a restricted legal domain, not an arbitrary pair or a string-only identity.
 Names run in name::path order. No anchor can be recovered from strings alone.
@@ -374,7 +393,7 @@ For each existing segment position 0 <= i < length(ss):
 
 ```text
 p[i] : path_pattern
-p[i] = PathPattern(Names([ss[i]]), (Select, OpenRoot))
+p[i] = PathPattern(Names([ss[i]]), (Select, RelativeRoot))
 ((field::adl)#)[0] = PathPattern(field::)
 ```
 

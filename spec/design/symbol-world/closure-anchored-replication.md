@@ -86,8 +86,9 @@ f_ref = complete_first_type;
 The first expression creates a typed NameExpr then explicitly borrows its
 uninitialized Place. The next ordinary write initializes it. The RHS must
 satisfy the selected write operation and PlaceType; creation does not supply
-a closure conversion or anchored replication. Structural let-with-assignment
-is not a canonical compound expression.
+a closure conversion or anchored replication. A structural declaration with
+an RHS instead supplies the same destination to complete binding formation
+and ordinary result delivery, as defined by the name owner.
 
 In an established multiple-contribution bucket, accepted sibling closure
 materials jointly determine one complete type and its target-formed callable

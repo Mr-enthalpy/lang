@@ -49,9 +49,9 @@ from pending source consumers. Indices, templates, caches, source paths, graph
 rendering and allocation cannot define equality, authority, candidate identity,
 lifecycle or result meaning.
 
-Stage is one atom; static atoms are pairwise incomparable. Pin can constrain
+Stage is one atom from {compile,runtime}. Pin can constrain
 stage explicitly; Pout.stage=P1.stage. InputAdmissible, migration and Ready
-are separate. Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
+are separate. Runtime P2 defaults omitted P1 to runtime.
 
 Instance Killable, fixed MoveEffect and frontier Movable remain independent.
 Pass=Move; copy-derived share/rebind -> clone -> Move creates a fresh result,
@@ -93,7 +93,7 @@ results retain the lifetime refinement handoff.
 
 
 Source calls obey P |> E == P E, never E P. Dot is ordinary ADL, not Place
-projection; name-headed callables preserve (self, <> name). Ordinary calls
+projection; branch heads preserve (_, let _: (name)$). Ordinary calls
 enter through Type(x)'s associated Val2[()] with self=x.
 Implicit ReturnEvent differs from omitted ReturnTarget: non-tail requires unit;
 true path-tail unit falls through, non-unit synthesizes return before target
@@ -115,3 +115,22 @@ in-place syntax excludes explicit clauses. Source placement and dependency
 formation origin supply no post-formation overload evidence. Selected callable
 dependencies retain their ordinary identity; instance keys contain parent,
 selected partner and canonical inputs without hidden caller capture.
+
+## Current extraction and continuation interfaces
+
+[Joint extraction](patterns-overload/pattern-relations-observation-and-extraction.md#10-joint-extraction-across-adjacent-universe-ranks)
+observes v and Type(v) at adjacent universe ranks. External constraints enter
+through full Paths or R$; V underscore denotes universerank. HoleOverride
+replaces written Hole-local dimensions independently of input/output overlays.
+Bare branches have actual opaque values and bool uses true|false structure.
+The [Path owner](symbol-world/structured-path-algebra-and-interpretation-polarity.md#13-composition-and-endpoints)
+fixes rooted suffix composition and Pattern navigation inheritance. Struct
+helper computation owns derived forwarding registration.
+
+[Reification](static-evaluation/evaluation-residual-and-optimization.md#8-runtime-reification-of-e)
+materializes the same E and actual remaining continuation under a closed return
+contract. Dependencies separate formation, readiness and runtime realization.
+Self is Pattern-observable without transparent capture layout; return routing
+uses callable tag and actual activation independently of ActualSelf.
+Region_K(n)=R(NamePosition_K(n)); current Pre/commit/Post and cleanup facts
+suffice for E, while future-path analysis belongs to O.

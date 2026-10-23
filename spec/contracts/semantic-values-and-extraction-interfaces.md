@@ -160,7 +160,9 @@ retained origins still include permitted additions to active ancestors.
 Bare LifeName numbers
 are interpreted within the supplied K, never as independent authority.
 
-ReifyLife must describe the fully fixed generation continuation. A frozen
+ReifyLife describes fixed generation and cleanup facts of the current semantic
+continuation K, with Region_K(n)=R(NamePosition_K(n)). Future branch enumeration
+is not a premise of E. A frozen
 cleanup table alone proves neither its full endpoint nor the absence of other
 generation-ending actions. The operational active Region is not a completed
 LifetimeValue. Until that continuation projection is connected, `reify_value`

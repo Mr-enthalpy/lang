@@ -114,5 +114,5 @@ Selected failures publish no semantic world mutation.
 
 Compilation entry has runtime P2 and omitted ordinary P1 defaults to runtime.
 Bootstrap or ordinary legal compile formation supplies stable roots, without an
-active compile wrapper over all compilation. CompileInstance formation is compatible with seal P2. Helper calls and cache
+active compile wrapper over all compilation. CompileInstance formation follows ordinary compile invocation. Helper calls and cache
 acquisition obey ordinary Ready and execution legality.

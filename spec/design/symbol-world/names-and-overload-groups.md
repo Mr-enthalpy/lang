@@ -249,7 +249,7 @@ not turn it into parent Place writability. A path may retain a borrowed target
 identity when explicitly supplied, but such a borrow is not required to form
 the child name. Borrowing the resulting child Place is a subsequent judgment.
 
-NameCoord's root is r, never Norm(T). For let T:type = uint8, value equality
+NameCoord's root is r, never Norm(T). For let T:type:: = uint8, value equality
 does not equate NameCoord(T,f) with NameCoord(uint8,f), their binding identities
 or their Places. Each formation still checks OpenHere of the current value;
 copying a closed type into a fresh binding does not reopen it.
@@ -301,10 +301,13 @@ during first initialization. Value reads of an uninitialized target fail.
 The complete two-case Write derivation and the const-name example are in
 [Place/write algebra](type-values-places-and-borrow-views.md#711-initialization-authority-and-the-two-write-cases).
 
-Structural `P let name::path = e` is not a canonical compound expression,
-and there is no equality with `(P let name::path) = e`. Any future convenience
-must be pure sugar for the explicit creation/borrow/write sequence and cannot
-own a separate initialization rule.
+With an RHS, structural P let name::path = e uses the resolved structural
+destination and the complete result of E(e), inferring its classifier when :t
+is omitted. Formation and initialization publish atomically under the same
+ordinary name/Place and result-delivery premises. Written :t belongs to this
+structural formation judgment. The initializer-free form instead publishes an
+uninitialized Place for later explicit borrowing and Write. File hierarchy
+only supplies the inherited destination path.
 
     NamedType(n) iff DeclaredType(n) = type
                     and Resident(n) = T : type
@@ -312,31 +315,20 @@ own a separate initialization rule.
 Named type is an initialized case of a general structural name, not a distinct
 name-creation primitive.
 
-An initializer changes which complete let form is present. In ordinary lexical
-context, P let name = rhs is a whole let binding whose declared type is inferred
-from its RHS under the existing inference rules. It is not a typed-name
-declaration defaulted to type followed by a separate assignment. An explicit
-annotation in P let name:t = rhs supplies the type constraint instead.
+For lexical binding with RHS, E(rhs)=v supplies ordinary complete residency.
+At every adjacent universe rank, the simplest annotated form jointly extracts:
 
-```lang
-mut let local_ref = (const let local:uint8) ref;
-local_ref = 1uint8;
-
-const let inferred = 1uint8;
-const let annotated:uint8 = 1uint8;
+```text
+R_Gamma(a:b,v,rho) => rho(a)=v, rho(b)=Type(v)
+Rank(rho(b))=Rank(rho(a))+1
 ```
 
-The first pair explicitly creates and initializes a typed local Place. The
-last two lines are complete lexical bindings: both create initialized uint8
-destinations using the ordinary binding/transfer rules. Their internal first
-resident installation obeys the same Place initialization law; it is not an
-implicit source-level ref or an assignment suffix appended to NameExpr.
-
-Thus the default :type for the initializer-free structural expression
-(P let name::path) does not participate in lexical RHS type inference. Only
-the separately designated named-contribution position changes unqualified
-let name = rhs into named-type synthesis (§6); ordinary lexical binding never
-acquires that meaning merely by spelling.
+Bare b is classifier-side extraction material. External uint8:: or R$ explicitly
+introduces an existing Pattern. Qualified structural P let name::path:t retains
+the separate coordinate/type/Place formation judgment above. Initializer-free
+let name:uint8:: can create a typed lexical name with an uninitialized Place;
+value use still requires explicit initialization. No resident is inferred from
+absence of RHS. P let name=rhs has ordinary complete binding/transfer semantics.
 
 For example, let path resolve to a type value T with OpenHere(T), and v:uint8:
 

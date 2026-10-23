@@ -13,7 +13,7 @@ All source computation uses the same evaluator `E`. A static call is identified
 by its evaluation horizon, instance identity, and independent completion policy:
 
 ```text
-Stage = {compile, seal, runtime}
+Stage = {compile, runtime}
 OpenPolicy = {open, close}
 PolicyMode = {const, mut}
 ```
@@ -397,3 +397,198 @@ Source, normalized interfaces, semantic carriers, diagnostics, tests, fixtures,
 contracts, planning documents, public guides, glossary, and agent instructions
 use the vocabulary and equations defined by their topic owners. Source
 conveniences lower to the lowest existing relation that explains them.
+
+## 13. Adjacent-universe joint extraction
+
+For every adjacent universe rank, a simple binding consumes one relational
+extraction judgment. Let `Gamma;K |- E(expr) => v` and `Type(v)=T`:
+
+```text
+R_Gamma(a:b, v, rho)
+  => rho(a)=v and rho(b)=T
+     Rank(rho(b))=Rank(rho(a))+1
+```
+
+Bare `b` at this extraction site introduces the classifier-side binder. An
+existing external Pattern enters explicitly through a full Path, such as
+`uint8::`, or opposite-polarity `R$`. Deduction, an external Pattern constraint,
+and a classifier Hole all use `R_Gamma`; Hole presence does not change the
+binding judgment into a result-transforming call. Structural qualified
+`P let name::path:t` is the name-formation judgment of the names owner.
+Initializer-free `let a:uint8::` can form a typed name and uninitialized Place
+when that judgment's external-type premises hold. It creates no resident.
+
+```text
+Interpret(_, S)=AnonymousPattern
+Interpret(_, V)=universerank
+```
+
+`universerank` is ordinary universe-rank material. Anonymous Pattern, explicit
+binder absence `<>`, and root-qualified Deduce Holes have distinct identities.
+Polarity changes neither the universe rank nor resident availability by itself.
+
+## 14. Hole-local Policy
+
+```text
+P let <P_h let h> LHS = RHS
+Policy(h)=HoleOverride(P,Delta_h)
+HoleOverride(P,Delta)[d] = Delta[d] if d in WrittenDims(Delta)
+                         P[d]     otherwise
+```
+
+An omitted `P_h` inherits all outer dimensions. An explicit dimension replaces
+that dimension without an outer-strength restriction. Pattern constraints and
+Policy constraints of each Hole are solved by the ordinary relation under its
+`PatternRoot/HoleBinderId`; the local Policy operation is independent of
+`ElabIn` and `ElabOut`. In `<p> let <p let h> ...`, the inner Policy occurrence
+references the preceding exact Hole identity of `p`.
+
+## 15. Bare branches and ordinary bool values
+
+```text
+Bare(s)=<nu_s,P(s),Val2(s)>
+UniqueValueMember(Bare(s),nu_s)
+```
+
+The member exists. Its machine representation is unobservable; `nu_s` fixes
+branch identity through ordinary Pattern relations, without a public integer
+encoding or synthesized extraction field. A compile Pattern with a runtime
+value observation is a legal view of this Object.
+
+```lang
+let bool = ((true | false)bool)$;
+let true = true::bool;
+let false = false::bool;
+let if = true::bool;
+let else = false::bool;
+
+|> name { B }
+// syntax-directed expansion:
+|> (_, let _: (name)$) { B }
+```
+
+The two branch-head `_` positions are structural anonymous Patterns. The
+annotation's complete `(name)$` operand enters V interpretation and supplies
+the existing value Pattern to extraction. `if` and `else` are ordinary value
+bindings of the true/false branches.
+
+## 16. Fully specified Path and structural navigation
+
+The [Path owner](symbol-world/structured-path-algebra-and-interpretation-polarity.md)
+defines full navigation and structural suffix overlap over actual Path values.
+`Relative::Relative` and `Relative::Absolute` retain their composition;
+`Absolute::Relative` is undefined; `Absolute::Absolute` requires a matching
+complete rooted suffix. Pattern navigation consumes the same completion law,
+adds extraction and explicitly full-navigation module resets:
+
+```text
+Path algebra strictly-contained-in Pattern algebra
+let a p1 p2 p3
+  => let a (p1::p2::p3) (p2::p3) (p3::)
+```
+
+Normalized navigation retains actual members, full navigation and extraction
+relations. Syntactic inner/outer provenance supplies no additional identity.
+`foo.bar.baz =_Path baz::bar::foo` requires a type-Path candidate selected at
+each step. An object method can return an unrelated ordinary Object.
+
+## 17. General open computation and struct helpers
+
+For a legal compile open call under ordinary by-value passing:
+
+```text
+OpenHere_K(type_val) iff OpenHere_K(type_val compile_open_call)
+```
+
+This is subject-preserving observation of the same concrete type value;
+Writable, access, dependency and lifetime premises remain independent. Open
+computation supports name/member generation and ordinary Policy migration.
+`(T ref) |> (type ref)` uses ordinary type/value invocation and reference Pre.
+
+`struct` receives a complete structural type and returns a complete type with
+ordinary additional helpers. Its legal ordinary open computation can use
+`OpenHere`, `|[[attribution]]>`, `type ref`, and `*`/`*=` or member registration
+to form forwarding members on derived reference types. Reference/borrow and
+lifecycle primitives belong to ref/share; field forwarding requires these
+explicit helper registrations. StructuralRegistration is preserved.
+
+```text
+DerivedState(T0) depends on the concrete T0 snapshot
+Write(place,T1) does not retarget DerivedState(T0)
+```
+
+Observing final members of `T1` requires a new ordinary formation/call on `T1`.
+
+## 18. Dependencies and opaque self
+
+Compile callables may have ordinary implicit dependencies. Formation records
+requirements and selected realizations; readiness separately asks whether the
+current action needs a concrete value that is available. Runtime materialization
+can supply such a value to a delayed continuation. Dependency validity and
+instance reuse retain all result-affecting identities and observations.
+
+```text
+Norm_Name(n) is independent of structural unfolding of self
+```
+
+`self` is observable through normalized Pattern algebra without a public capture
+layout. Its compile-flow observation uses the current CompileInstance, and its
+runtime-flow observation uses the current callable object. The same call,
+Policy, dependency and lifecycle relations govern both observations.
+
+## 19. Callable tag and activation
+
+```text
+ReturnTarget = current callable object tag
+CallType(tau): CallTarget(I)=tau, ActualSelf(I)=c* in V_tau
+Tag(closure expression)=tau_C
+Type(tau_C)=type; Type(type)=(1 type)
+```
+
+Ordinary value invocation retains its normal implicit self. Return routing
+observes the callable tag and the actual current control-flow activation;
+recursive activations of the same tag have different frame identities. Tag
+observation supplies no candidate preference and unfolds no private self layout.
+ReturnEvent, ReturnPattern/Pout and internal completion retain their existing
+delivery and no-reopen boundaries.
+
+## 20. Runtime reification of the same E
+
+```text
+(C,R) |> reify => f
+Callable(C) and ClosedReturnContract(R)
+Invoke(f,args) ~= Deliver_R(E(Invoke(C,args)))
+Deliver_R(v) = ordinary return-boundary delivery of (v |> R)
+```
+
+The equivalence requires InputAdmissible, actual evaluation-frontier facts,
+dependency validity, ordinary Pre/commit/Post and a complete result-type
+contract determined by R on every normal return. `f` is an ordinary callable
+value admitting legal runtime-policy arguments. It materializes the relevant
+compile computation and its actual remaining continuation; E resumes when
+concrete runtime inputs become available.
+
+```lang
+let r_vals:R$ = runtime_vals |> ((closure,R) |> reify);
+```
+
+The external contract is `R$`. Bare R is classifier-side extraction material.
+An already selected invocation retains its candidate/projection/frame. A call
+newly formed by runtime E first selects at its actual frontier by ordinary
+overload rules. AOT, JIT, caching and precomputed dispatch tables are equivalent
+O choices; exhaustive Cartesian-product enumeration is not an E premise.
+
+## 21. Continuation-local Region
+
+```text
+Region_K(n)=R(NamePosition_K(n))
+```
+
+The current semantic name position, not future branch availability or physical
+execution time, determines Region. E uses current continuation Pre/commit/Post
+and fixed cleanup observations. It does not require future-path enumeration.
+`compile let val = runtime_express` may remain a delayed continuation when its
+required value is not yet available. Reification resumes the same E with actual
+inputs at args-in; ordinary origin relations stay within semantic name-position
+algebra. Runtime strings supply no authority to redefine fixed structured names.
+Future-path proof, specialization and layout remain O work with E revalidation.

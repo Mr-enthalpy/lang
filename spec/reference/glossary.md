@@ -444,8 +444,7 @@ projections. The planner controls search, never meaning.
 
 ### Stage, horizon, producer visibility and readiness
 
-Stage={compile,seal,runtime}, one atom per resolved coordinate. Static
-atoms are pairwise incomparable; only identity and static-to-runtime edges
+Stage={compile,runtime}, one atom per resolved coordinate. Only identity and compile-to-runtime edges
 exist. P2 is evaluation horizon; P1/Pout is producer visibility; InputAdmissible
 is position-sensitive acceptance and Ready is frontier execution legality.
 Neither acceptance nor deferral is Policy migration.
@@ -460,7 +459,7 @@ runtime reselection occur.
 
 ### Active evaluation and readiness
 
-Main has runtime P2. CompileInstance identity is compatible with seal P2.
+Main has runtime P2. CompileInstance identity follows the selected ordinary compile invocation.
 Read_name and Read_resident do not EnterBody. Visibility, Ready and execution
 legality are independent facts; helper calls and cache acquisition obey them.
 Only EnterBody of a currently active instance establishes evaluation reentry.
@@ -567,3 +566,59 @@ declarations, Self hierarchy and control flow precede conditional instantiation
 on layers with an actual target; absent layers add no constraint. Forward references
 are supported. Actual LifeName/generation facts precede fixed cleanup placement,
 same-point ordering and lifetime observation. Drop(higher) precedes Drop(lower).
+
+## Joint extraction, reification and current control flow
+
+### Joint classifier extraction
+
+For E(expr)=v and Type(v)=T, R_Gamma(a:b,v,rho) binds a to v and b to T
+at every adjacent universe rank. Bare b introduces the classifier-side name;
+R$ or a fully specified external Path supplies an existing Pattern.
+See the [extraction owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#10-joint-extraction-across-adjacent-universe-ranks).
+
+### Universe-rank material
+
+Interpret(_,V)=universerank; Interpret(_,S)=AnonymousPattern. Neither supplies
+a named Hole identity or an arbitrary rank lift. $ only flips polarity.
+
+### HoleOverride
+
+HoleOverride(P,Delta)[d] is Delta[d] on written dimensions and P[d] otherwise,
+with no outer-strength restriction. Each Hole keeps its ordinary PatternRoot
+and HoleBinderId; ElabIn and ElabOut have separate domains.
+
+### Bare branch value
+
+Bare(s)=<nu_s,P(s),Val2(s)> has one actual opaque value member. Ordinary
+Pattern relations distinguish branches; machine encoding remains unobservable.
+Bool uses true|false, with if/else bound ordinarily to those values.
+
+### Fully specified Path suffix
+
+Absolute Path composition requires actual rooted structural suffix overlap.
+Absolute::Relative is undefined. Relative-left composition retains its normal
+endpoint-compatible rules. See the [Path owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md#13-composition-and-endpoints).
+
+### Callable tag and activation
+
+CallType(tau) observes CallTarget=tau and ActualSelf=c* from V_tau. Return
+routing uses the callable tag together with its actual active frame; recursive
+activations remain distinct. Self is Pattern-observable without a public capture layout.
+
+### Reify
+
+(C,R) |> reify forms an ordinary callable under InputAdmissible, actual frontier
+and dependency validity, ordinary Pre/commit/Post and ClosedReturnContract(R).
+Invoke(reify(C,R),args) ~= Deliver_R(E(Invoke(C,args))); every normal return
+passes v |> R at its existing return boundary. The same E resumes a delayed
+continuation when runtime inputs become available. A runtime newly formed call
+selects once at its frontier; selected invocations retain their identity.
+AOT/JIT, caching and table generation are O representations, without an E
+requirement to enumerate future dispatch combinations or paths. See the
+[evaluation owner](../design/static-evaluation/evaluation-residual-and-optimization.md#8-runtime-reification-of-e).
+
+### Current name-position Region
+
+Region_K(n)=R(NamePosition_K(n)). Current continuation Pre/commit/Post and fixed
+cleanup facts govern execution, independently of when a branch becomes known.
+Future-path analysis is optional O work with E revalidation.

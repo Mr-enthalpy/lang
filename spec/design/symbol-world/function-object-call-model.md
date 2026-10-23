@@ -28,7 +28,8 @@ CallType(tau)
 
 CallCandidates(G)
     = disjoint_union over tau in G of CallCandidates_type(tau)
-Type(actual callee) = Type(first self)
+CallOrdinary(x): CallTarget(I)=x, ActualSelf(I)=x
+CallType(tau): CallTarget(I)=tau, ActualSelf(I)=c*
 ```
 
 Entries denotes the implementation family offered to candidate preparation,
@@ -134,7 +135,7 @@ Traditional callee-first f() / f(x) are not source call spellings.
 Call(...), Invoke(...), Entries(...) and nested H(G(...)) in semantic
 equations are metanotation, not exceptions to this direction.
 
-A name-headed callable shorthand preserves (self, <> name) as its semantic
+A name-headed callable shorthand preserves (_, let _: (name)$) as its semantic
 head. It must not lose slot zero by expanding to (<> name) alone; see the
 Pattern owner §9. This retains the selected ordinary x or type-projected c
 all the way into the actual invocation.
@@ -279,7 +280,7 @@ recovery, most-recent carrier, or reverse `AsType` candidate entrance.
 Associated source navigation obeys the same forward-only rule. If:
 
 ```lang
-let T: type = uint8;
+let T:type:: = uint8;
 ```
 
 then a target selected through `T` resolves T to one terminal NameBinding and reads the complete
@@ -473,7 +474,7 @@ A head with no written formal still has invocation-frame slot 0, but it does
 not bind that object to a source Pattern.
 
 No separate self-policy plane is required. P1/P2 are independent. For
-omitted ordinary P1 stage, runtime P2 defaults to runtime, seal to seal, and
+omitted ordinary P1 stage, runtime P2 defaults to runtime, and
 compile to compile; open qualification follows its own owner. Explicit P1
 is never overwritten. The completed view must supply legal self material.
 
@@ -504,16 +505,10 @@ associated () implementation:
   ReceiverType(C) = type carrying the selected call entry
 ```
 
-The callable-local `Self` frame may therefore combine these local projections:
-
-```text
-namespace role          = callable-local semantic space
-receiver-type projection = ReceiverType(C)
-caller value slot       = invocation slot 0
-```
-
-These are callable-frame labels, not independently stored name binding facets in the
-target Object ontology.
+The callable-local Self observation preserves namespace, receiver and activation
+relations without exposing a public frame/capture tuple. Norm_Name is independent
+of structural unfolding of self. ActualSelf, CallTarget and active return frame
+are distinct observations of the same call.
 
 This does not inject callable-local declarations into the named receiver
 type's namespace. Nested owner paths use source navigation order:
@@ -762,3 +757,21 @@ Current source carriers do not implement this full consumer.
 
 - Callable-tail named strategy metadata operates only on fully admissible
   candidates and cannot reopen ordinary overload enumeration.
+
+## Callable tag and activation observations
+
+```text
+CallType(tau):
+  select (c*,Impl*,projection*,frame*) from V_tau
+  ActualSelf(I)=c*
+  CallTarget(I)=tau
+CallValue(x): ActualSelf(I)=x; CallTarget(I)=x
+ReturnTargetTag(I)=CallTarget(I)
+```
+
+The tag is the currently invoked callable Object, independent of the chosen
+implementation receiver. Tag plus actual control-flow activation identifies
+one active return frame. Recursive activations of the same tag remain distinct.
+Type(tau_C)=type and Type(type)=(1 type); classifier extraction observes this
+rank, independently of Type(c*). Self is Pattern-observable without transparent
+capture-layout unfolding. Neither tag nor its representation affects selection.

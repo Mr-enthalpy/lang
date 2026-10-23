@@ -42,82 +42,30 @@ No unresolved solver alternative manufactures a missing view.
 
 ## 2. P2 and function objects
 
-P2 is the evaluation horizon, P1/Pout producer visibility, InputAdmissible the
-input relation and Ready the current execution condition. Resolved Stage is
-{compile,seal,runtime}; the order contains only identity and the two
-static-to-runtime edges. Static atoms are mutually incomparable.
-
-Internal Pv/Pp facts may differ: (runtime,compile) and (runtime,seal) are valid
-endpoint descriptions, not source pair expressions.
-Omitted ordinary P1 stage defaults from runtime P2 to runtime, seal to seal,
-compile to compile; contextual open qualification has its separate owner.
-Explicit P1 is never overwritten and bare let is not a late wildcard.
-
-Pin inherits P2 with explicit stage/mode atoms or ordinary holes where written.
-Pout inherits P1's stage and permits mode refinement. A runtime callable can
-therefore have heterogeneous compile/runtime Pins. Compile can admit a seal
-input and defer through InputAdmissible/Ready without a seal-to-compile
-migration. Self remains the first written formal, supplied implicitly.
-
-Formal elaboration feeds the same position facts to body entry and ordinary
-candidate comparison. Namespace export retains identity and stable declaration
-facts; later consumer demand and DynamicLegality create no second view owner.
+Stage={compile,runtime}, with <=stage=Id union {(compile,runtime)}.
+P2 is horizon, P1/Pout producer visibility. InputAdmissible, Ready and execution
+legality remain independent. The internal runtime:compile view is valid.
+Omitted ordinary P1 stage follows P2; explicit P1 remains. Pin admits explicit
+constraints and Holes; Pout retains P1.stage. HoleOverride independently replaces
+written Hole Policy dimensions and inherits the others without strength checks.
 
 ## 3. Observation horizon mapping
 
 ```text
-ObservationHorizon = OpenStatic | SealStatic | Runtime
+ObservationHorizon=OpenStatic | Runtime
 ```
 
-| Stage | OpenStatic | SealStatic | Runtime |
-|---|:---:|:---:|:---:|
-| compile | yes | yes | no |
-| seal | no | yes | no |
-| runtime | no | no | yes |
+| Stage | OpenStatic | Runtime |
+|---|:---:|:---:|
+| compile | yes | no |
+| runtime | no | yes |
 
-For ordinary call evaluation, the current observation horizon is already known. When no
-explicit target observation/stage Policy is written, each candidate's evaluation P1
-stage view may use the applicable stage-only default completion in §2 and is then
-checked against this table. Therefore `compile`/`runtime` exposure does not
-require `PolicyLet`; that syntax remains an optional explicit result boundary.
-Stage-only default completion does not choose whole-slot mode: no written
-constraint, explicit const/mut and an explicit hole remain distinct. Result demand must be
-resolved from the actual context/completion before maxima; inner selection seals.
-
-Resolution and exposure are distinct. A name binding whose resident has a
-`runtime:compile` view resolves in OpenStatic. Subsequent resident projection
-exposes no readable runtime value, but exposes its compile Pattern. An
-admissible compile realization still requires independent ordinary evidence. Seal-only slices are hidden in OpenStatic but
-their explicit paths are not semantically conflated with unresolved paths.
-
-A declared runtime view can exist while its Val1 is unreadable at a static
-frontier. Hiding that Val1 preserves the Object, Pattern, Val2 and argument
-slot. R_vis prepares admissible C_sigma projections before ordinary hard A,
-fallback suppression and Policy/Pattern selection. Once selected, every
-projection and runtime residue keeps the same origin and frame.
-
-Explicit-path resolution is authority-sensitive:
-
-```text
-InternalResolve(path) -> Σ_full
-ExternalResolve(path) -> Σ_export
-```
-
-Neither operation is a Wpre/Wseal membership query. A name binding may exist in
-the materialized world without being externally exposed. Its exported candidate
-views preserve the resident's candidate-entry identities and create no second
-binding or wrapper Object.
-
-Source-established namespace and access relations determine whether lookup
-uses `FullNameView` or `ExternalNameView`. Lexical internal visibility requires
-the permitted source-defined domain and an ancestor-or-self declaration owner.
-Physical package boundaries and configured mounts establish neither relation.
-
-This is separate from public/private path reachability and from export.
-
-Ordinary seal code can explicitly resolve committed name bindings. Only a
-compiler-known privileged seal function can enumerate the fixed Wpre scan
-domain; Wseal never enlarges it.
+Resolution fixes identity before exposure. Hidden runtime Val1 retains its
+Pattern and Object coordinates. R_vis/C_sigma require ordinary evidence;
+visibility grants neither Ready nor execution. Selected origins never reopen.
+Ordinary internal/external lookup consumes source access and export facts.
+Reify materializes actual delayed E continuations under a closed return contract;
+it supplies no namespace scanning privilege.
 
 ## 4. Export and visibility mapping
 
@@ -188,7 +136,7 @@ DefaultExtractionView structural members exposed by default extraction
 A private structural member remains in the full structural representation but
 is absent from `DefaultExtractionView`. This is only the hard default boundary;
 a future custom `?` design owns richer extraction-interface construction.
-`Wpre/Wseal` membership remains orthogonal to all three views.
+Committed binding existence remains independent of these views.
 
 ## 5. Rust substrate
 
@@ -196,7 +144,7 @@ The following carriers are implementation inventory, not evidence that the
 full R_vis/C_sigma model is connected. Resolved observations carry one Stage
 atom, while omitted query coordinates remain separate. The mapping below is
 not normative algebra. Omission remains separate until contextual completion:
-compile with known current OpenHere yields mut, otherwise const. Missing required
+OpenPolicy=open with known current OpenHere yields mut, otherwise const. Missing required
 OpenHere evidence is unavailable. Operator-Pattern policy deduction and the joint
 Pin/Pout solution relation remain pending consumers.
 
@@ -216,7 +164,7 @@ The typed substrate currently provides:
 - explicit resolution followed by horizon exposure and facet reads; hidden
   facets retain their underlying resolved observations; no static/runtime node
   partition or visibility-based readiness classifier exists;
-- Wpre and export-retention least-closure helpers;
+- export-retention least-closure helpers;
 - complete and externally projected namespace overload-set carriers that
   require a typed `ExportAdmission { in_export_retention_closure,
   publicly_reachable }` before projection and
@@ -261,7 +209,7 @@ scalar policy projection.
 - Policy words remain contextual names, not lexer keywords.
 - Pattern | retains its own relation; no dedicated public Policy union is added.
 - Runtime horizon uses runtime:compile for ordinary value/Pattern observation.
-- Internal (Pv=runtime,Pp=seal) observations remain valid; public colon pairs do not.
+- Internal (Pv=runtime,Pp=compile) observations remain valid; public colon pairs do not.
 - P1 projection accepts existing matching observations without cropping stage atoms.
 - A non-empty ordinary P1 projection never manufactures absent query
   alternatives and makes migration unreachable.
@@ -277,8 +225,8 @@ scalar policy projection.
   resident's independently exposed Pattern view.
 - Runtime Policy-slice existence does not imply present-phase value
   readability.
-- CompileInstance formation is independent of P2 and compatible with seal.
-- Seal policy grants no enumeration capability.
+- CompileInstance formation retains the selected ordinary invocation identity.
+- Namespace enumeration requires its ordinary callable capability.
 - `@` reifies name interpretation: `N@ is a name iff N is a name`.
   It cannot alter completed ordinary overload selection. SafetyPolicy is
   orthogonal to PolicyMode; lifecycle writes obey the unsafe admission owner.

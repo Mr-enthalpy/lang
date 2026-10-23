@@ -34,7 +34,7 @@ named-versus-positional normalization boundary are owned by
 direct complete type formation, `struct` helper augmentation, ordinary `*` and `*=` are owned by
 `../symbol-world/structural-type-formation-and-composition.md` and
 must satisfy that Pattern authority.
-Internal Policy observations, seal visibility, PolicyMode product order, compile-flow
+Internal Policy observations, stage visibility, PolicyMode product order, compile-flow
 projection, derived compile companions, must-select semantics, match staging,
 and automatic require are owned by
 `../symbol-world/policy-and-static-flow-projection.md`.

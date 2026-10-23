@@ -58,7 +58,7 @@ This document does **not** define:
 - package import / export,
 - runtime lookup.
 
-Three phrasings are explicitly rejected throughout. `let T: type = uint8` is
+Three phrasings are explicitly rejected throughout. `let T:type:: = uint8` is
 **not** fresh nominal type generation. A borrow view is **not** textual
 substitution and **not** a second name for a name binding. And value equality is
 **not** place equality.
@@ -567,7 +567,7 @@ WellFounded_kappa(x)
 static-eval (kappa = static-eval):
   terminating finite generation; restricted P*Val2 back-references admitted
   as finite-graph compression (BoundRef(alpha) is the canonical instance)
-  -- compile and seal consume this same static generation relation
+  -- compile consumes this static generation relation
 
 runtime (kappa = runtime):
   the materialized owned graph must remain acyclic; a back-reference cannot
@@ -1008,7 +1008,7 @@ whole closure:
 
 ```text
 TypeValue(T) = tau = <Q, V_τ>
-let U: type = T
+let U:type:: = T
 TypeValue(U) = Copy(tau) = <Q, V_τ>
 Eval(T) = Eval(U) = tau
 CoreView(tau) = Q
@@ -1371,7 +1371,7 @@ An implementation may temporarily retain the carrier name binding for graph
 navigation or provenance, but it is not part of field-type equality,
 Pattern-head identity, or structural registration identity. Consequently
 `((uint8 field) Record)$` and `((T field) Record)$` use the same field-type identity
-after `let T: type = uint8`; a reverse `TypeValueId -> original name binding` lookup
+after `let T:type:: = uint8`; a reverse `TypeValueId -> original name binding` lookup
 would incorrectly make ordinary binding observable.
 
 Extraction interfaces follow the same split. Their semantic owner/type
@@ -1384,7 +1384,7 @@ Ordinary Pattern applicability follows the same rule. A written Pattern name is
 resolved forward to its `Object`; the actual argument contributes the
 `Object` reached through its evaluated type/value. Matching compares
 those identities, not the carrier spellings. Hence a formal `_ uint8` accepts a
-type value read through `T` after `let T: type = uint8`; comparing the strings
+type value read through `T` after `let T:type:: = uint8`; comparing the strings
 `"uint8"` and `"T"` would be name-category-first resolution in disguise.
 
 The same rule applies to an externally owned type value:
@@ -1448,7 +1448,7 @@ Type-value binding is the general value-binding rule under a `type`
 expectation, not a separate assignment mechanism. The form:
 
 ```text
-let T: type = uint8
+let T:type:: = uint8
 ```
 
 means:
@@ -1917,9 +1917,9 @@ OverloadGroup does not implicitly select one of its members or project a type.
 
 An explicit type projection selects a complete type value under the ordinary
 type consumer's rules. TypeRole and NamespaceRole remain judgments over the
-selected value's Core, not classifications of the group. A type-expected
-position may elaborate AsType where already specified; candidate enumeration
-does not insert a conversion merely to make a competing candidate applicable.
+selected value's Core. AsType is an explicit ordinary operation. Joint
+classifier extraction and candidate enumeration consume their established
+observations without inserting conversions.
 
 Borrowed member projection follows ordinary reference/field rules and keeps
 the actual target identity. A complete type value's captured callspace is
@@ -2084,7 +2084,7 @@ selected the pattern facet and the carrier slot is not reachable from the read
 value:
 
 ```lang
-let t: type = uint8;
+let t:type:: = uint8;
 
 t ref               // type formation:  TypeValue tau_(uint8 ref)
 t |> (type ref)     // invocation:      borrow instance r : type ref
@@ -2358,8 +2358,8 @@ Such a view is formed whenever ordinary place, policy, lifetime, and
 capability rules admit it:
 
 ```lang
-let t: type = uint8
-let r : type ref = t |> (type ref)
+let t:type:: = uint8
+let r:type:: ref = t |> (type ref)
 ```
 
 A `type ref` is a type value; the borrow instance it carries holds only the
@@ -2427,96 +2427,32 @@ validity additionally requires OpenHere of the original borrowed generation;
 neither a saved mut ref nor a open ref supplies a write after Close. A later
 resident at the same Place does not retarget that reference (§5.2.2).
 
-### 5.6 Type-expected positions elaborate `|> type`; candidate discovery does not
-
-§5.1.1 excludes implicit projection in *operand* positions. That exclusion is
-about candidate discovery / formal applicability, and it must not be read as
-"the language performs no type-context projection anywhere". The two rules are
-distinct:
+### 5.6 Explicit Pattern constraints and adjacent universes
 
 ```text
-candidate discovery / formal applicability
-    =/=>  implicit AsType
-
-unique language-designated result/type transformation
-    ==>  AsType(E) = E |> type
+E(rhs)=v and Type(v)=T
+R_Gamma(a:b,v,rho) => rho(a)=v and rho(b)=T
+Rank(rho(b))=Rank(rho(a))+1
+Type(type)=(1 type)
 ```
 
-A function formal `t: type` must not, during candidate enumeration, try
-`actual |> type` to make an inapplicable candidate suddenly match. An operand
-position never acquires a projection because a projection would make the program
-check. Implicit `AsType` is admitted only where the language has already
-committed to a unique transformation target — declaration annotations,
-path components that demand `TypeRole`, and type-rank return positions — never
-where multiple candidates compete for applicability.
+This is the ordinary joint extraction law at every adjacent rank. Bare b binds
+classifier material; a full external Path uint8:: or computed R$ supplies an
+existing Pattern. Deduction and explicit constraints consume the same R_Gamma.
 
-In a language-designated type-expected position the elaboration is supplied:
+AsType(E)=E |> type denotes an explicitly selected ordinary conversion or
+validation. Annotation syntax supplies no implicit AsType action. Candidate
+applicability likewise introduces no conversion to repair a mismatch. An explicit
+operation retains its ordinary complete-type and rank-preservation premises.
 
-```text
-AsType(E)  =  E |> type
-```
+Initializer-free typed-name formation requires a known external classifier,
+for example let a:uint8::. Structural P let name::path:t uses its own resolved
+root/declared-type/Place judgment, without unifying it with lexical extraction.
+@ preserves name interpretation and supplies neither a borrow nor a conversion.
 
-`AsType` validates an already-complete TypeValue read from a binding, or uses
-an explicitly defined value-side type projection as
-specified in §2.2. It does not compute the type of
-the expression, wrap a namespace-like Object, or raise universe rank:
-
-```text
-AsType(E) != TypeOf(E)
-rank(AsType(E)) = rank(the selected or validated complete type value)
-```
-
-Only explicit type-of extraction — for example the future canonical form
-`let <typeof> x : typeof = RHS` — may produce the classifier one universe above
-`RHS`. The global `type` object is itself a value of `type_1`:
-
-```text
-TypeOf(type)   = type_1
-TypeOf(OverloadGroup) = type
-```
-
-With `tau = <Q, V_τ>`, `type` carries its own callspace, so
-`TypeOf(type) = type_1` directly; no name binding recovery participates.
-
-The designated positions are:
-
-| position | example |
-| --- | --- |
-| declaration annotation | `let x: E` |
-| a path component that demands `TypeRole` | the type projection step of §3.2 |
-| type argument position | a parameter declared to receive a type |
-| `t: type` | a parameter or binder at type rank |
-| `t: type ref` | the borrow-view form of the same |
-| type-rank return position | a callable whose return is declared at type rank |
-
-So `E` supplying a `Val1` dimension in one of these positions is projected to
-its complete type snapshot when its `Q` satisfies `TypeRole`, without the
-author writing `|> type`, while the very same `E` under
-`ref` is not:
-
-For an explicitly bound ordinary OverloadGroup g whose type projection is
-valid in that designated context (g denotes the group resident, not a binding
-wrapper):
-
-```lang
-let x: g = ...;             // type-expected: elaborates to g |> type
-let r = g ref;              // actual group operand: r : OverloadGroup ref
-```
-
-For a structural named type t instead, t ref forms the borrow type and
-`t |> (type ref)` borrows its resident Place; it never yields a group reference.
-
-The distinction is positional and fixed by the language, never inferred from the
-operand's shape. An operand position never acquires a projection because a
-projection would make the program check.
-
-@ preserves name interpretation: N@ is a name iff N is a name. It does not
-perform an implicit AsType conversion or itself create a borrow. Lifecycle
-value fields and borrowed fields follow ordinary projection rules. Safe code
-can observe the values; a mutable reference that writes back into lifecycle
-knowledge additionally requires unsafe and all ordinary permissions.
-The [admission owner](../lifetime/unsafe-semantic-admission.md) defines the
-post-commit, compatibility-checked information flow.
+Bare(s)=<nu_s,P(s),Val2(s)> has a unique actual value member with unobservable
+machine representation. Pure Object TypeRole remains Val1 absent; a bare
+branch with its actual value is not made pure by hiding that representation.
 
 ## 6. Writability, member creation, and construction openness
 
@@ -2750,8 +2686,10 @@ live initialization authority, the first write fails even if the name is mut.
 
 ### 7.1.2 Closure and contribution handoff
 
-The structural let-with-assignment compound is not canonical; any future sugar
-must expand into these steps. Ordinary lexical let remains unchanged.
+A structural declaration with RHS forms and initializes the resolved destination
+with ordinary complete result delivery in one transaction. Initializer-free
+formation and later explicit Write retain their distinct boundaries. Simple
+lexical let a:b instead consumes joint adjacent-rank extraction.
 
 Close requires retained structural names being published to be initialized;
 open HasName facts may precede dom(Val2). Legal coordinates not yet retained are
@@ -2823,7 +2761,7 @@ whole-snapshot semantics.
 For example:
 
 ```text
-let T: type = uint8
+let T:type:: = uint8
 ```
 
 In ordinary type matching, `T` and `uint8` observe the same core:
@@ -2927,7 +2865,7 @@ retained resident do not thereby share lifetime or Killable facts.
 
 The [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#2131-instance-killability-and-move-legality)
 defines Killable_K, predetermined MoveEffect and frontier Movable uniformly
-for type, compile, seal and runtime instances. OpenHere, Writable, Place
+for type, compile and runtime instances. OpenHere, Writable, Place
 residency and lifetime imply none of one another. A narrow Preserve proof is
 not an implicit clone and does not exempt the action from borrow/access Pre.
 

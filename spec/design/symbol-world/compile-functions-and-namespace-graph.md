@@ -67,7 +67,7 @@ export-root membership
 CapabilityRealization
 ```
 
-OpenStatic, SealStatic, and Runtime are visibility/evaluation phases. They do
+OpenStatic and Runtime are visibility/evaluation phases. They do
 not grant callable execution, capability, Writable, or construction authority.
 External admission preserves candidate identity and stable Policy/capability
 facts; consumer demand and DynamicLegality are applied after lookup.
@@ -85,7 +85,7 @@ Core bootstrap supplies:
 
 Bootstrap implementation does not create a separate language ontology.
 Main has runtime P2. Stable roots and active body evaluation are independent.
-CompileInstance identity is compatible with seal P2. Visibility, Ready and
+CompileInstance identity follows the selected ordinary compile invocation. Visibility, Ready and
 LegalToExecute are independent consumers. struct:type->type augments an
 already complete structural type without changing its structural registrations.
 

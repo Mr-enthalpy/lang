@@ -108,7 +108,7 @@ ordinary candidate preparation
 There is no global `E ref = Ref(Read(E))` law: the selected overload determines
 the result, and the builtin default may acquire `PrivilegedActualPlace(actual)`
 (canonical owner [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
-§5.1). For `let t: type = uint8`, `t ref` is the **type-forming** overload: it
+§5.1). For `let t:type:: = uint8`, `t ref` is the **type-forming** overload: it
 yields the TypeValue `uint8 ref` (the borrow type of `t`), not a borrow
 instance. The borrow instance over the type-level place is produced by invoking
 that borrow type:
@@ -336,7 +336,7 @@ admitted Move and ordinary clone realization as another value.
 
 #### 2.1.1 One semantic continuation
 
-All compile, seal, runtime and lifetime activity is projected from one
+All compile, runtime and lifetime activity is projected from one
 semantic continuation:
 
 ```text
@@ -345,7 +345,6 @@ SemanticContinuation K
 pi_runtime(K)
 pi_compile(K)
 pi_life(K)
-pi_seal(K)
 
 Life : LifeName × Pos(K) -> LifetimeValue
 ```
@@ -462,10 +461,11 @@ Object axis.
 #### 2.1.3 Region and lifecycle events
 
 The first-level region of one LifeName generation is a linear half-open
-interval over the semantic continuation:
+interval over the current semantic continuation K. NamePosition_K fixes the
+region; future branches and their physical availability are not premises:
 
 ```text
-Region(n) = [i, j)
+Region_K(n) = R(NamePosition_K(n)) = [i, j)
 events    = use | move | drop
 ```
 
@@ -992,3 +992,16 @@ or rejecting every closure with local references.
 
 Path, ADL, Policy and closure formation retain defined semantics through these
 interfaces without deciding every future lifetime refinement.
+
+## Current name position and delayed E
+
+```text
+Region_K(n)=R(NamePosition_K(n))
+```
+
+Region follows current semantic name position, independently of future branch
+availability and physical runtime timing. E uses current Pre/commit/Post and fixed
+cleanup observations, without future-path enumeration. Reify resumes the same E
+at args-in. Origins remain relations inside compile name-position algebra.
+Runtime strings create no authority to redefine fixed structured-name coordinates.
+O may analyze future paths and specialize with affected E revalidation.

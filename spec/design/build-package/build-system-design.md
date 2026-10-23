@@ -59,7 +59,7 @@ An unavailable target, illegal access or conflicting realization diagnoses under
 ordinary semantics rather than being repaired by physical namespace allocation.
 
 Main has runtime P2; root identity and active body evaluation are independent.
-CompileInstance formation remains compatible with seal P2. Every action checks
+CompileInstance formation follows ordinary compile invocation. Every action checks
 actual OpenHere, Writable, capability, access, lifetime and continuation facts
 where required, and publishes only through the common semantic transaction.
 

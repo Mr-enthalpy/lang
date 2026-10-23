@@ -25,7 +25,7 @@ owns static/name/structural interpretation and instance formation.
 ## 2. Consumer dependency order
 
 1. Independent PolicyMode={const,mut}, OpenPolicy={open,close} and
-   Stage={compile,seal,runtime}; total output demand before maxima.
+   Stage={compile,runtime}; total output demand before maxima.
 2. Resolve once; ordinary associated Val2[()] entrance and exact immutable V_tau
    expansion; R_vis evidence and ordinary C_sigma preparation.
 3. Stable CompilePartner receiver/call-entry pair and canonical inputs;
@@ -43,8 +43,10 @@ owns static/name/structural interpretation and instance formation.
    unordered common-snapshot sibling overlays.
 9. Requested-name producers accepting any ordinary result independently of
    NameExpr shape; ordinary ADL receiver/type-path overload families.
-10. Path consumers, dependencies, source lifecycle, fixed cleanup,
-    ordinary remaining-continuation transport and E saturation.
+10. Joint classifier extraction across ranks, HoleOverride solving, full Path
+    suffix consumers, bare-branch formation, dependencies, source lifecycle, fixed cleanup,
+    ordinary remaining-continuation transport, reify formation/resumption with
+    closed result delivery, and E saturation.
 
 Every step preserves one identity/authority relation and selected no-reopen.
 
@@ -55,6 +57,7 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Object and complete tau | Val1/Pattern/owned-Val2 normalization; immutable Core and V_tau observations; exact observed Core material and callspace transport into fresh bindings and constructor results; constructor candidates and ordinary Type(x).Val2[()] consume held Core resident witnesses | Changed nested resident material and unformed implementation families report unavailable; persistent captured-child representation and rich opaque payload normalization remain open |
 | Name and owner identity | Parent-linked owners, root-qualified Holes, name/Place/generation coordinates; declaration topology and actual Object navigation remain distinct | General NameValue/read, directory navigation through Objects, qualified formation and lexical Path aliases require ordinary Path consumers |
 | Applicability | R_Gamma proofs, Hole valuations and parameter preparation | Protected StructuralDefault, structural role families and richer extraction require consumers |
+| Universe classification | Explicit first-order external classifiers and unavailable higher-universe observation boundary | Adjacent-rank classifier extraction, including Type(type)=(1 type), requires the ordinary rank consumer |
 | Policy | Explicit observation/demand/preference, migration and derived 2x2 capability views | Source deduction, operation-driven premises and full R_vis/C_sigma are separate obligations |
 | Selection | Exact receiver/call-entry enumeration, total demand, sealed selection and diagnostics | Unknown applicability cannot become fallback evidence; source completion requires common E |
 | Instance identity | Parent/selected-partner/canonical-input interning; held complete tau inputs with Core projected from the same snapshot; independent ordinary self-name coordinate and exact selected frame; connected external-type delivery | Initialized self residency, accessible-result closure, dependency-sensitive current storage and general completion require common consumers |
@@ -95,7 +98,7 @@ publication, and verify uniform cleanup gating and actual producer authority.
 
 ## 5. Instance and result obligations
 
-Every selected compile call, including seal P2 and scalar/Product/external-type
+Every selected compile call, including scalar/Product/external-type
 results, has a stable instance before body entry. Parent, actual selected
 receiver/call-entry pair and canonical inputs determine identity. Body/result
 material and provenance do not. Conflicting bodies for equal keys are conflicts.
@@ -133,7 +136,8 @@ filenames add no segment, type-composition action or authority.
 Requested-name producers accept any declared ordinary result. Concrete heads,
 wildcards and requested HoleRef use ordinary applicability/specificity.
 ADL receiver calls and type-path progression share that relation:
-foo.bar.baz has canonical Path baz::bar::foo. Double-dot contracts pipeline-dot.
+Each selected type-Path candidate advances the canonical Path; object-method
+candidates remain ordinary calls. Double-dot contracts pipeline-dot.
 
 Lexical === forms Path material once in the old environment before installation;
 it caches no terminal binding and creates no entity or recursive alias thunk.
@@ -156,7 +160,7 @@ Dependency lifetime and escape remain ordinary checked handoffs.
 
 Serial completion consumes path-sensitive UnitDiscard, unit fallthrough,
 ReturnEvent and target inference. AST-list position is not semantic tailness.
-R_vis/C_sigma, pending seal material, dependency readiness, source lifecycle,
+R_vis/C_sigma, pending continuation material, dependency readiness, source lifecycle,
 current instance state and E saturation share one continuation.
 
 Bootstrap families use source-expressible relations where possible. Host

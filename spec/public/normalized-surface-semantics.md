@@ -314,7 +314,7 @@ Dump label:      PrefixNegativeLowering
 ```text
 -x
 => x |> generated closure:
-   <T: type>(self, val: T) => { (zero::T, val) |> - }
+   <T: type::>(self, val: T) => { (zero::T, val) |> - }
 ```
 
 ```text
@@ -358,7 +358,7 @@ calls such as `obj[[cap] => { cap }]` and `obj[[strategy]]` retain their prior
 shape. Normalization encodes the suffix through ordinary call structure with
 `MemberViewAnnotationLowering`; it does not assign general policy or member
 semantics. The structural interpretation consumer uses it as member metadata; ordinary
-struct receives the already complete type. The slot is not available for `runtime`, `seal`, `const`, `export`,
+struct receives the already complete type. The slot is not available for `runtime`, `const`, `export`,
 or arbitrary names.
 
 ### Double-dot sugar
@@ -516,16 +516,18 @@ Each declared hole is a `HoleDecl` in the binding site's `deduce` list; a use of
 that hole inside an annotation is a `HoleRef`:
 
 ```text
-HoleDecl   { id: HoleBinderId, spelling, annotation, origin }
+HoleDecl   { id: HoleBinderId, spelling, policy, annotation, origin }
 HoleRef    { target: HoleBinderId, spelling, origin }
 ```
 
-A `HoleDecl` may itself carry an annotation pattern (e.g. `<T: type>` declares
-`T` with annotation `PatternName "type"`).
+A HoleDecl preserves optional local Policy and an annotation Pattern. For
+example, <mut let T:type::> retains an explicit mut dimension and full external
+Path type::. HoleOverride replaces written dimensions; omitted dimensions
+inherit the outer Policy independently of ElabIn and ElabOut.
 
 DeduceLists elaborate as left-to-right dependent telescopes. If
 `<A1: T1, ..., An: Tn>` occurs with inherited hole environment `Γ0`, then
-`Ti` is interpreted in `Γ(i-1)` and only afterwards is `Ai` added. Therefore
+Each local Policy and Ti is interpreted in Γ(i-1); only afterwards is Ai added. Therefore
 `<A, B: A>` refers to the preceding `A`, while `<A: B, B>` does not resolve the
 first annotation to the later `B`. A declaration is not visible in its own
 annotation. Hole spellings must be unique within one `PatternRoot`; an
@@ -596,8 +598,18 @@ callable, but this Norm pass assigns exact identities only to Pattern/policy
 occurrences. A later resolved-symbol pass owns value-side name/navigation
 identity, including generated navigation such as `field::T`.
 
-The anonymous annotation placeholder `_` is `AnonymousHole`; it is not a named
-`HoleRef` and has no `HoleBinderId`.
+In S interpretation, _ is an anonymous Pattern with no HoleBinderId. In V it
+normalizes as UniverseRank, denoting universerank. A postfix $ flips the
+complete operand polarity, with arbitrary nesting and no resident read.
+
+### Joint extraction and classifier-side material
+
+The simple form let a:b=expr consumes R_Gamma(a:b,v,rho) with E(expr)=v,
+Type(v)=T, rho(a)=v and rho(b)=T at every adjacent universe rank. A bare b is a
+classifier-side binder. Existing external constraints enter as uint8:: or R$.
+Structural qualified P let name::path:t and initializer-free typed-name
+formation have their own name-formation premises. Norm preserves these source
+shapes; it performs no extraction or annotation-induced RHS conversion.
 
 ### Annotation is pattern-side / classifier-pattern material
 
@@ -639,12 +651,12 @@ let <T> x: U Option::std = y
 Closure head example (head dump label `ClosureNormalize`):
 
 ```text
-<T: type>(self, val: T) => { val }
+<T: type::>(self, val: T) => { val }
 
 Closure placement=Ordinary
   head: ClosureHead
     deduce:
-      HoleDecl "T" with annotation AnnotationPattern( PatternName "type" )
+      HoleDecl "T" with annotation AnnotationPattern( PatternNav["type", terminated] )
     params:
       BindingSlot "self"
       BindingSlot "val" with annotation AnnotationPattern( HoleRef "T" )
@@ -662,14 +674,10 @@ call-entry may supply another receiver object. The spelling `self` is
 conventional and may be replaced. A head with no written position still has a
 semantic self-position but no source binder for it.
 
-Name-headed shorthand normalizes to an ordinary Binder in slot zero without
-a textual name. Written and generated binders both receive a syntax-local
-identity within the existing callable/Pattern-root coordinates, independently
-of optional display spelling. Independent bindings get distinct identities.
-GeneratedSelf exists only in Raw syntax, not as a normalized Pattern kind. The schematic `self`
-in the expansion does not declare source spelling `self` or capture a free
-body name. Explicit `(receiver, <> P)` and other written binder names retain
-their ordinary source binding behavior.
+Name-headed shorthand expands to (_, let _: (name)$). Slot zero and the
+argument binder are anonymous Patterns. The annotation preserves the complete
+grouped RHS operand and its polarity flip, exactly as in the explicit form.
+Ordinary written binders retain their own callable/Pattern-root identities.
 
 ### Extraction skeletons and product extraction
 
@@ -798,7 +806,7 @@ General opposite-context Policy interpretation and complete source observation c
 The P1 open let form preserves OpenPolicy=open independently from const/mut
 and Stage. Close uses the same policy-prefixed binding shape. Omitted mode
 completion and instance delivery remain semantic consumers; normalization
-supplies neither identity nor OpenHere. P2 has compile, seal and runtime atoms.
+supplies neither identity nor OpenHere. P2 has compile and runtime atoms.
 
 ### Capture binding elaboration
 

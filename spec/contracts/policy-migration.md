@@ -20,9 +20,9 @@ a graph, chains intermediate views, changes the source Core type, or reopens
 selection after a selected failure.
 
 Stage is one atom. The directed static-to-runtime cases preserve Pp and Type,
-including compile:compile -> runtime:compile and seal:seal -> runtime:seal.
-No runtime-to-compile or seal-to-compile edge exists. InputAdmissible and Ready
-are separate; deferring a compile callable for a seal input is not migration. Bootstrap implementations provide candidate bodies and
+including compile:compile -> runtime:compile.
+No runtime-to-compile edge exists. InputAdmissible and Ready
+are separate; waiting for unavailable concrete runtime input is a continuation dependency. Bootstrap implementations provide candidate bodies and
 realization data; they do not decide the migration relation.
 
 Every request carries explicit `PolicyView` and `ResultPolicyDemand` values.

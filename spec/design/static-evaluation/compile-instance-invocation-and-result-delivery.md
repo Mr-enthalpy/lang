@@ -39,7 +39,7 @@ lifetime obligations. There is no hidden caller-environment coordinate.
 
 Every CompileInstance is a stable semantic owner with an ordinary self-name.
 Instance formation is independent of result kind and P2. In particular, a
-selected compile invocation can form an instance while evaluating at seal P2.
+selected compile invocation forms its ordinary stable instance.
 
 ## 2. Ordinary self-name and body entry
 
@@ -181,20 +181,19 @@ and fresh complete result formation before terminal Move.
 ## 6. P2, Ready and evaluation
 
 ```text
-Stage = {compile, seal, runtime}
-Visible != Ready != LegalToExecute
+Stage={compile,runtime}
+CompileInstanceKey=ParentOwner x SelectedPartner x CanonicalInputs
 ```
 
-CompileInstance formation and OpenPolicy are independent of these atoms.
-Seal work follows the ordinary seal horizon, fixed Wpre/Wseal domains and
-dependency readiness. A compile helper or cache cannot fabricate Ready or
-read unavailable material. Runtime residue preserves selected names, receivers,
-call entries, projection and frame; it does not re-resolve or reselect.
-
-Main uses runtime P2. Stable roots arise through independently legal ordinary
-formation and do not impose an ambient active evaluation frame around entry.
-The [evaluation owner](evaluation-residual-and-optimization.md) owns saturation,
-common transactions, projection synchronization and residual provenance.
+Compile dependencies may include implicit ordinary external observations.
+Requirements, realized dependency identities and concrete-value readiness are
+separate. Unavailable runtime Val1 cannot be evaluated at the compile frontier;
+its actual pending computation can be materialized by reify(C,R), then continued
+by the same E at args-in. Result-affecting dependencies participate in validity
+and instance reuse; hidden environment state is not a cache coordinate.
+Norm_Name is independent of unfolding self's capture layout. Self remains an
+ordinary Pattern-observable opaque Object with compile instance and runtime
+callable flow observations. Read_name/Read_resident do not EnterBody.
 
 ## 7. Requested names and ordinary associated state
 

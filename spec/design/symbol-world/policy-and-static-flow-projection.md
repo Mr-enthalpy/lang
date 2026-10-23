@@ -14,14 +14,13 @@ source policy syntax
   -> ordinary compile realization C_sigma where required
   -> hard admissibility / ordinary overload selection
   -> OpenStatic evaluation
-  -> SealStatic evaluation
   -> Runtime binding and evaluation
 ```
 
 ## 1. Complete binding flow and policy pair
 
 P1 supplies OpenPolicy={open,close}, independently of value-mode
-PolicyMode={const,mut} and Stage={compile,seal,runtime}. Only finally omitted
+PolicyMode={const,mut} and Stage={compile,runtime}. Only finally omitted
 mode completes contextually: open plus current known OpenHere gives mut;
 otherwise const. Required unknown OpenHere is unavailable. P2 supplies the
 evaluation horizon; stable CompileInstance identity is independent of P2.
@@ -150,7 +149,7 @@ identity or introducing a fourth Object component.
 Policy dimensions are typed and orthogonal:
 
 ```text
-pair/view stage              compile / seal / runtime
+pair/view stage              compile / runtime
 pair/view presence           present / optional / absent
 whole-slot PolicyMode        const / mut
 ordinary namespace visibility public / private
@@ -365,38 +364,17 @@ complete result and terminal Move, as owned by
 
 ## 2. Pattern alternative and policy operators
 
-Single `|` belongs to Pattern alternative:
-
 ```lang
-let bool = ((if | else) bool)$ |> struct;
-
-let true = if::bool;
-let false = else::bool;
+let bool = ((true | false)bool)$;
+let true = true::bool;
+let false = false::bool;
+let if = true::bool;
+let else = false::bool;
 ```
 
-Therefore:
-
-```text
-Pattern(bool) = if::bool | else::bool
-true  holds the value read through if::bool
-false holds the value read through else::bool
-```
-
-`true` and `false` are ordinary bindings, not aliases. Each is a fresh binding
-with a fresh place holding a copy of the value read through the source path:
-
-```text
-NameBindingId(true) ≠ NameBindingId(if::bool)
-PlaceId(true)  ≠ PlaceId(if::bool)
-Value(true)    =  Value(if::bool)
-```
-
-`true | false` is not a second Pattern space for `bool`.
-
-Policy uses ordinary Pattern material and registered operator relations.
-`+` combines legal orthogonal constraints. The public Policy algebra has no
-colon pair constructor/extractor and no dedicated stage/mode union language.
-Type annotations and callable-head colons retain their separate syntax.
+The two bare branches have distinct unique actual value members with
+unobservable machine representation. Pattern stage is compile; value stage may
+be compile or runtime. The ordinary alternative relation matches these values.
 
 ### 2.1 Policy material and two observations
 
@@ -441,14 +419,14 @@ ordinary atoms and orthogonal conjunction; they provide no pair/choice carrier.
 A completed stage coordinate is one atom:
 
 ```text
-Stage = {compile, seal, runtime}
-<=stage = Id ∪ {(compile,runtime), (seal,runtime)}
+Stage = {compile, runtime}
+<=stage = Id ∪ {(compile,runtime)}
 ```
 
-The two static atoms are pairwise incomparable. They share one static
+The compile atom uses the ordinary static
 evaluator; neither that fact nor execution readiness establishes a stage edge.
 The static-to-runtime edges require an admitted ordinary same-Type migration.
-No runtime-to-compile or seal-to-compile conversion follows.
+No runtime-to-compile conversion follows.
 
 An unresolved solver may retain several valuations, each with one stage atom.
 Genericity uses explicit holes, ordinary extraction, legal orthogonal `+`,
@@ -456,7 +434,7 @@ polarity flip and require. It does not use a resolved stage union. Presence alte
 ordinary Pattern relation, not a stage union. Independently registered ordinary
 `||` outside this Policy sublanguage is unaffected.
 
-Internal endpoint descriptions such as `runtime:compile` and `runtime:seal`
+Internal endpoint descriptions such as `runtime:compile`
 retain distinct value/type facts; they are not source literals.
 
 ### 2.3 Deduction is ordinary operator Pattern extraction
@@ -539,7 +517,7 @@ continuation-relative observation, never a permanent property of an instance roo
 
 The body executes under open; successful ordinary result assignment/replacement
 precedes outward completion/Close. Later omitted mode completes const when
-open + OpenHere no longer holds. close is not const. Completion retained under
+the current OpenPolicy/OpenHere condition is false. close is not const. Completion retained under
 open preserves the established opening source, not a new one.
 
 Direct initialized-name mut borrowing and explicit open-ref-to-mut confirmation
@@ -1126,7 +1104,7 @@ If the complete query already has an accepted view, identity is the only
 migration candidate. Otherwise one admitted direct family may provide:
 
 ```text
-S:S, Type T -> runtime:S, Type T    where S ∈ {compile, seal}
+S:S, Type T -> runtime:S, Type T    where S = compile
 ```
 
 The selected callable provides coherent PolicyProjection and ValueRealization.
@@ -1147,10 +1125,10 @@ another. A runtime-produced result remains runtime-produced even if all its
 inputs are known during static evaluation. Hiding its unreadable Val1 does not
 remove its Object, Pattern, Val2, binding or argument slot.
 
-A compile callable may admit a seal input through InputAdmissible and wait
-for its formation. This is deferred execution under the same compile horizon,
-not a seal-to-compile Policy migration. A pending seal let is a
-continuation/Place formation obligation, never a fabricated resident value.
+A compile callable can have ordinary implicit dependencies. When a required
+concrete runtime value is unavailable, its actual remaining continuation waits
+for that dependency. Reify materializes that continuation for the same E; value
+availability does not change semantic name coordinates or producer identity.
 
 ### 3.7 Progressive evaluation and sealed source identity
 
@@ -1224,7 +1202,7 @@ The following invariants hold independently of storage and lowering:
   operation is not Policy-demand repair.
 
 These are deferred positive constraints, not claims that runtime lowering,
-cache identity, `[[global]]` seal scanning, or lifetime checking is currently
+cache identity, ordinary namespace observation, or lifetime checking is currently
 implemented.
 
 ### 3.9 Direct result delivery and two-sided forwarding
@@ -1300,76 +1278,47 @@ capability, reference, OpenHere evidence or additional migration candidate.
 
 ## 4. P2 evaluation horizon and result observations
 
-P2 specifies the callable's evaluation horizon, a concrete Stage. It is
-independent of the declaration's producer P1 and its output Pout.
-Position elaboration forms Pin from P2 and the written position constraints.
-Call-result observations still have both internal Pv/Pp coordinates. The
-following table is a semantic endpoint description, not source Policy syntax:
-
-| Concrete value stage | Ordinary pair |
-|---|---|
-| compile | compile:compile |
-| seal | seal:seal |
-| runtime | runtime:compile |
-
-An explicitly seal-formed Pattern permits runtime:seal. Runtime is not a
-Pattern formation stage. Distinct static atoms cannot make compile:seal into an admissible static split. A hidden Val1 retains the
-underlying Object (§1).
-
 ```text
-producer visibility = P1 / Pout
-evaluation horizon = P2
-position input acceptance = InputAdmissible(actual, Pin, context)
-execution now = Ready(action, continuation frontier)
+Stage={compile,runtime}
+OpenPolicy={open,close}
+PolicyMode={const,mut}
 ```
 
-There is no additional P3 and no inference that known inputs change Pout.
+Visibility, InputAdmissible, Ready and LegalToExecute are independent. Bare nodes
+have actual unique opaque values, permitting runtime:compile observations.
+Pure Objects retain equal value/Pattern projection constraints. R_vis preserves
+hidden resident identity; concrete value availability is a separate fact.
 
 ## 5. Function-object default stage completion
 
-Omitted stage, explicit stage atom and explicit stage hole are separate inputs.
-Only omission admits default completion:
-
-| P2 horizon | Omitted ordinary P1 stage |
-|---|---|
-| runtime | runtime |
-| seal | seal |
-| compile | compile |
-
-Instance P1 retains the contextual openness rules of §3.0; it is not a
-fourth mode or a stage union. Explicit P1 is never overwritten by the table.
-A bare ordinary let completes its stage at its formation context; it is not
-a wildcard that later uses can reinterpret. Default mode completion remains
-separate and considers written/inherited/contextual constraints before const.
-
-Pin may explicitly constrain stage or deduce a stage hole. Pout.stage is
-P1.stage; output mode refinement creates no independent output stage vector.
-P1 and P2 never infer one another generally. Public/private, export, presence
-and mode do not propagate through stage completion.
+Omitted ordinary P1 stage follows P2: compile -> compile, runtime -> runtime.
+Explicit P1 is retained. Finally omitted mode derives mut under open + known
+OpenHere, const otherwise; required unknown OpenHere is unavailable.
+Pout.stage=P1.stage. Pin retains written stage/mode constraints or ordinary Holes.
 
 ## 6. Observation horizons
 
 ```text
-ObservationHorizon = OpenStatic | SealStatic | Runtime
+ObservationHorizon=OpenStatic | Runtime
+Vis(compile)={OpenStatic}
+Vis(runtime)={Runtime}
 ```
 
-Stage visibility is defined by domains:
+Exposure proves no readiness or execution legality. A hidden runtime value can
+retain available Pattern facts. Concrete value use waits for ordinary required
+facts; reify materializes the same E and actual remaining continuation.
+
+### 6.1 Hole-local dimension replacement
 
 ```text
-Vis(seal)    = { SealStatic }
-Vis(compile) = { OpenStatic, SealStatic }
-Vis(runtime) = { Runtime }
+Policy(h)=HoleOverride(P_outer,Delta_h)
+HoleOverride(P,Delta)[d] = Delta[d] if d in WrittenDims(Delta)
+                         P[d]     otherwise
 ```
 
-| Policy stage | OpenStatic | SealStatic | Runtime |
-|---|:---:|:---:|:---:|
-| `compile` | yes | yes | no |
-| `seal` | no | yes | no |
-| `runtime` value | no | no | yes |
-
-`compile` being visible during SealStatic does not make `compile` equal to
-`seal`. Exposure checks ask whether the current horizon is in `Vis(stage)`; they
-do not intersect atom spellings.
+For P let <P_h let h>, omitted dimensions inherit; written coordinates replace
+without outer-strength restriction. Pattern and Policy share HoleBinderId scope.
+This third operation is independent of ElabIn and ElabOut restrictions.
 
 ## 7. Resolution, exposure, and facet reads
 
@@ -1410,7 +1359,7 @@ phase is not permission to read its value:
 Stage(Pv) = runtime
   => the declared runtime view exists
 
-current observation horizon is OpenStatic or SealStatic
+current observation horizon is OpenStatic
   => ReadValue(runtime slice) is unavailable
   => preserve already-resolved runtime computation/residual
 ```
@@ -1419,7 +1368,7 @@ The runtime continuation consumes the preserved binding/callable identities. It
 does not repeat path resolution or overload choice merely because the value
 becomes readable later.
 
-Seal-only bindings follow the same ordinary-binding rule. Their paths can be
+All bindings follow the ordinary identity/exposure rule. Their paths can be
 resolved independently of whether a facet is exposed in the current phase.
 
 ## 8. Mechanical compile-flow projection
@@ -1430,7 +1379,7 @@ continuation. They do not partition node kinds into separate execution flows.
     complete continuation -> static observation
                           -> runtime residual observation
 
-Pattern/type work, ready calls, derived companions and deferred seal work retain
+Pattern/type work, ready calls, derived companions and actual delayed work retain
 their ordinary stage rules. Runtime residue retains value computations, runtime
 bodies/effects and branch value selection. D/Done and other control structures
 are projections of the same actions and positions, not separately interpreted
@@ -1446,43 +1395,14 @@ govern transformations and revalidation by all affected projections.
 
 ### 9.1 Three independent binding views
 
-Namespace resolution, external exposure, and compilation-world membership are
-different questions:
-
 ```text
-Σ_full(N)    complete namespace-internal binding/overload set
-Σ_export(N)  externally exposed projection of that set
-Wfinal       Wpre ∪ Wseal, the bindings materialized or retained this build
+Sigma_full    actual bindings for permitted internal lookup
+Sigma_export  export-retained stable views with public path reachability
+CurrentView   horizon/access-qualified observation of resolved identity
 ```
 
-They are consumed by distinct operations:
-
-```text
-InternalResolve(N, path) searches Σ_full(N)
-ExternalResolve(N, path) searches Σ_export(N)
-WorldMembership(s) asks whether s belongs to Wpre or Wseal
-```
-
-For one name:
-
-```text
-ExportOverloadSet(name)
-  = ExternalProjection(FullOverloadSet(name))
-```
-
-This projection retains the original candidate identities; it does not create
-a second binding universe. Consequently:
-
-```text
-s in Wpre  does not imply s is exported
-s in Wseal does not imply s is exported
-s is exported does not imply s was itself an export root
-```
-
-Explicit navigation is authority-sensitive. Internal explicit navigation may
-reach the complete namespace-internal view. External explicit navigation is
-restricted to the export projection. Explicit-path success alone therefore
-does not prove export membership.
+Existence, namespace access and exposure are independent. Private/hidden
+residents retain identity. DynamicLegality follows ordinary selection.
 
 ### 9.2 Export roots and stable external projection
 
@@ -1650,67 +1570,21 @@ ExternallyVisible(path)
 The export-retention closure may retain private dependencies without
 installing them in `Σ_export`.
 
-## 10. Wpre and seal snapshots
+## 10. Ordinary world observation
 
-Wpre and Wseal are observations of one semantic continuation, not separate
-semantic worlds. Immediately before SealStatic, compute the least semantic materialization
-closure:
-
-```text
-R0 = ExportedBindings
-   ∪ MaterializedResultsOfExportedCompileFunctions
-   ∪ ParameterDependenciesOfExportedCompileFunctions
-
-R(n+1) = Rn ∪ SemanticDependencies(Rn)
-
-Wpre = least_fixed_point(R)
-```
-
-Materialized results include only results actually generated in this build,
-not the infinite set a generic compile function might produce for future inputs.
-Wpre can contain non-exported private dependencies solely so the exported
-interface remains interpretable. Such membership does not install those
-dependencies in `Σ_export`.
-
-SealStatic generates `Wseal` and finishes with:
-
-```text
-Wfinal = Wpre ∪ Wseal
-```
-
-Only a compiler-known privileged seal function may enumerate the binding world,
-and its fixed scan domain is `Wpre`. Adding `Wseal` never expands that domain.
-Ordinary seal policy grants no scanning capability.
-
-Explicit lookup is separate:
-
-```text
-ResolveExplicitPath != EnumerateBindingWorld
-```
-
-A committed binding in Wseal can be explicitly resolved by later seal/compile
-code under ordinary construction transaction, name-resolution, dependency,
-authority, and policy rules. Internal authority may resolve it through
-`Σ_full`; external authority still requires a corresponding `Σ_export` view.
-Its absence from the current Wpre scan does not make it unaddressable, and its
-presence in Wseal does not make it exported.
+Name resolution uses committed identity and source-established internal or
+external views. Export retention and public/private reachability determine
+external membership. Existence supplies no separate scan/evaluation privilege.
+Operations check ordinary access, Policy and dependency premises.
 
 ## 11. Evaluation frontier
 
-OpenStatic and SealStatic use the same E and ordinary Object machinery. Their
-readiness frontiers do not order the static atoms. CompileInstance formation
-is compatible with seal P2. Stable roots, result kind and instance opening
-establish neither an active body evaluation nor readiness.
-
-Seal entry, helper calls and cache acquisition consume the ordinary horizon,
-fixed Wpre/Wseal domain, input/migration evidence, Ready and execution legality.
-Read_name and Read_resident of an initialized instance do not enter its body;
-EnterBody of an active instance is the reentry edge.
-
-E executes only Ready actions. Pending obligations retain selected identity,
-inputs, effects and dependencies in the same continuation. Legal ready schedules
-preserve observable result, cleanup and effects. Scheduler trace is not semantic
-identity. Runtime consumes the sealed residue without reselection.
+E evaluates ready actions in the current continuation. CompileInstance identity,
+visibility, Ready and legality remain independent. Unavailable concrete runtime
+input may retain an actual unfinished compile continuation, materialized by
+reify(C,R) under its closed ordinary return contract. Selected calls retain
+origin; newly formed runtime calls first select at the actual frontier. Region
+uses current NamePosition without future-path/optimization prerequisites.
 
 ## 12. Unified binding and overload selection
 
@@ -1814,7 +1688,7 @@ reopen fallback.
 
 `@` is an ordinary continuation-relative name-reification operation with its own overload groups, owned
 by `../lifetime/lifetime-policy-and-overload-boundary.md`. It is not a policy
-atom in the stage dimension of §1, and lifetime policy is not a fifth stage.
+atom in the stage dimension of §1, and lifetime observation is a continuation projection.
 
 The only boundary this document asserts is directional: ordinary overload
 selection must already have produced one unique candidate, and lifetime rules
@@ -1857,7 +1731,6 @@ This document does not freeze:
 - the final source token for `AbsentValuePattern`;
 - concrete LifeName/Region/Color IR, lifetime-checker integration, summary
   compression, access-tree integration, and extended Horae logic;
-- future policy stages;
 - arbitrary clause-level Boolean policy logic;
 - a complete runtime reflection API;
 - export reopening syntax;

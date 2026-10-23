@@ -79,9 +79,15 @@ type. T, T ref and T share therefore use matching entries of their respective
 complete types. A candidate expecting T ref does not repair a T callee by
 coercion. The receiver spelling is ordinary; its self role is positional.
 
-A name-headed callable's semantic head is (self, <> name), never the
-self-less (<> name). Ordinary call projection supplies x; type projection
-supplies the selected c. Both preserve Type(actual callee)=Type(first self).
+Branch shorthand |> name {B} has the head (_, let _: (name)$).
+The anonymous slot zero receives x for a value call and c* for a type call.
+The current return tag instead observes CallTarget: x for an ordinary value
+call, tau for CallType(tau). Its actual first self is an independent observation.
+
+Self is observable through normalized Pattern algebra without a public capture
+layout. Norm_Name(n) does not unfold self's representation. The compile flow
+observes the current CompileInstance; runtime flow observes the callable Object.
+Dependencies retain ordinary identity/readiness and lifecycle judgments.
 
 An ordinary field function instead has its own anonymous function-object self,
 with the operated object in a later explicit argument position. Forwarding that
@@ -144,7 +150,7 @@ t return
 ```
 
 selects the return capability associated with the callable frame whose
-self-position / type anchor is `t`. This is the semantic basis for
+callable-object tag is `t`, at the selected active control-flow activation. This is the semantic basis for
 specified-level return; it is not syntax magic, an operator, or a compiler
 escape hatch.
 

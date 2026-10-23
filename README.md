@@ -42,15 +42,22 @@ The semantic layer is organized around these independent coordinates:
 - source-only namespace construction, unordered physical normalization, and
   one evaluator E with synchronized projections and validated optimization.
 
-Stage is a single atom. P2 is horizon, Pin admits explicit stage constraints,
-and Pout follows P1. Runtime main enters one E/K; active compile/seal dominance
+Stage={compile,runtime} is a single atom. P2 is horizon, Pin admits explicit stage constraints,
+and Pout follows P1. Runtime main enters one E/K; active compile dominance
 is independent of stable root history. Instance move effects and directed with
 cleanup feed the same lifecycle observations. Done is internal completion;
 residual escape separately consumes ordinary compile facts.
 
 Every legal completed closure expression produces full tau_C through atomic structural type formation. File implementation-layer let installs at the established package root;
 true lexical local let remains binding. Explicit structural contributions synthesize named types;
-OverloadGroup is the separate aggregation algebra. Naked operators select
+OverloadGroup is the separate aggregation algebra. Simple let a:b jointly extracts the delivered value and its adjacent-rank
+classifier. External constraints use full Paths or R$. RHS _ is universerank,
+structural _ is anonymous Pattern, and $ is a repeatable polarity flip.
+Hole-local Policy uses independent written-dimension replacement. Bare branches
+have actual opaque values; bool has true/false structure. Reify materializes
+the same E under a closed return contract; its execution consumer remains pending.
+
+Naked operators select
 operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
 

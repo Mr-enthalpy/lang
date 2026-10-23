@@ -20,7 +20,7 @@ semantic owner or authority.
 
 Bootstrap or independently legal ordinary formation establishes stable roots.
 Root ownership, active evaluation and P2 remain independent. CompileInstance
-formation is compatible with compile or seal horizons. [Build normalization](../build-package/build-system-design.md)
+formation is compatible with compile horizons. [Build normalization](../build-package/build-system-design.md)
 provides inherited navigation; [invocation](compile-instance-invocation-and-result-delivery.md)
 supplies stable identity, body entry and ordinary result delivery. Host
 capabilities return ordinary Objects and add no build-side semantic facts.
@@ -43,7 +43,7 @@ does not become a compile binding merely because its value is known. Existing
 language-defined derivations, including compile companions and policy migration,
 retain their own rules; their existence grants no discretionary stage rewrite.
 
-OpenStatic, SealStatic, and Runtime describe readiness/exposure in this one
+OpenStatic and Runtime describe readiness/exposure in this one
 evaluation. A runtime continuation retains resolved names, selected members,
 and sealed invocations. Runtime value control does not reopen resolution.
 
@@ -76,7 +76,7 @@ representation of the remaining common continuation, not a separate result
 ontology or an evaluator with private interpretation rules.
 
     ResidualAt(H) does_not_imply Stage = runtime
-    PendingSeal does_not_imply RuntimeResidual
+    PendingContinuation does_not_imply RuntimeResidual
     NoTargetValues does_not_imply ResidualAt(H)
     NoFullyAdmissibleCandidate does_not_imply ResidualAt(H)
 
@@ -93,7 +93,7 @@ the obstruction crosses the consumer boundary as an unavailable diagnostic.
 An unsupported expression or unconnected producer supplies neither fact.
 
 Failure to complete at an observation horizon establishes no producer stage.
-Pending seal work remains in the common continuation with its existing stage,
+Pending continuation work remains in the common continuation with its existing stage,
 identity, inputs, effects and dependencies. A written runtime result demand
 does not itself supply a producer or a continuation. If their preservation
 consumer is unavailable, a binding consumer reports that frontier before
@@ -170,25 +170,40 @@ host, and physical normalization laws. It does not repair or redefine them.
 Concrete residual frames, effect summaries, storage, and planner algorithms
 remain representation/implementation work.
 
-## 8. Seal readiness and scheduling
+## 8. Runtime reification of E
 
-P1 seal formation can remain a pending continuation/Place obligation with no
-resident yet. Compile work may admit that input and defer until it is ready;
-this is not a stage conversion. Ready includes actual read, write, borrow,
-lifetime and effect dependencies as well as formation order. Moving the work
-to a convenient scheduler queue cannot change those dependencies.
+```text
+(C,R) |> reify => f
+Callable(C) and ClosedReturnContract(R)
+ClosedReturnContract(R) iff R is ordinary Pattern-observable material
+  with a unique complete T_R fixed at formation:
+  every admitted normal delivery v |> R completes as w with Type(w)=T_R
+  and R, T_R and required dependency evidence remain valid at that frontier
+Invoke(f,args) ~= Deliver_R(E(Invoke(C,args)))
+Deliver_R(v) = ordinary return-boundary delivery of (v |> R)
+```
 
-CompileInstance identity is independent of P2. Seal entry, helper calls and
-cache acquisition check the ordinary horizon, fixed Wpre/Wseal domain,
-dependency readiness and execution legality. A stable instance or readable
-completed result does not itself establish an active evaluation or Ready.
+The result is an ordinary callable admitting legal runtime-policy arguments.
+Its premises are InputAdmissible, actual frontier/dependency validity, common
+Pre/commit/Post and a complete result-type contract determined by R for every
+normal return. A reference interpreter can carry the restricted single E.
+AOT, JIT, cache and dispatch-table representations are equivalent O choices;
+an exhaustive dispatch Cartesian product is not an E premise.
 
-All legal ready schedules preserve observable results, instance/call origin,
-cleanup and effects. Scheduler traces do not become identity. Saturation is a
-semantic fixed point for ready work, not a guarantee that infinite static work
-terminates. Representations and scheduling algorithms remain implementation
-frontiers.
+```lang
+let r_vals:R$ = runtime_vals |> ((closure,R) |> reify);
+```
 
+R$ explicitly supplies the external contract. A compile action needing an
+unavailable runtime value can retain an actual unfinished continuation. Reify
+materializes that computation and continuation; the same E resumes at args-in
+with actual inputs. An obstruction or empty candidate set alone proves no such
+continuation. Unsupported formation reports unavailable.
+
+Selected calls retain origin. Calls newly formed by runtime E make their first
+ordinary selection at the actual frontier. Fixed name authority still applies.
+Current NamePosition determines Region; E requires no future branch enumeration.
+Legal ready schedules preserve results, effects and cleanup.
 
 ## 9. Dependency realization at formation
 

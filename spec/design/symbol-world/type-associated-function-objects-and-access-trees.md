@@ -346,8 +346,10 @@ the candidate from the receiver Pattern and Policy.
 
 ## Derived-Type Associated Forwarding
 
-A derived type construction D(T), including T ref or T share, preserves
-complete snapshot identity. Its contributed closure members must satisfy:
+A derived type D(T), including T ref or T share, is formed from the concrete
+complete T snapshot. Forwarding exists only after an ordinary struct helper
+computation has explicitly registered the corresponding members.
+The members actually contributed must satisfy:
 
     F in V_tau => Home(TypeOf(F)) = TypeMemberScope(tau)
 
@@ -374,7 +376,8 @@ derived type's own level. Its behavior is an ordinary call:
 (args) |> name::T
 ```
 
-For fields this gives the two instances:
+After the ordinary struct computation registers the forwarding family,
+its field instances are:
 
 ```text
 inner::(T ref)   -> forward -> inner::T
@@ -414,9 +417,8 @@ It is not fallback, candidate reopening, or late adaptation.
 
 ### Candidate-domain-preserving registration
 
-The family-level equation above is the summary; the normative specification
-is candidate-domain preserving. Each admissible base candidate produces one
-forwarder, so the derived candidate domain mirrors the base candidate domain
+The registration judgment is candidate-domain preserving. Under a lawful
+struct helper transaction, each admitted base candidate produces one forwarder, so the derived candidate domain mirrors the base candidate domain
 instead of collapsing to a single universal trampoline:
 
 ```text
@@ -430,7 +432,7 @@ Applicable(f, args)
   Applicable(c, args)
 
 ForwardBaseSnapshot(f)
-  = the complete τ_base snapshot captured when D(τ_base) was formed
+  = the complete τ_base snapshot captured by the struct helper registration for D(τ_base)
 ```
 
 The forwarder `f` is a real ordinary callable homed in `V_(D(T))`
@@ -469,8 +471,8 @@ borrowed receiver `r : X ref`, forwards to `r |> inner::(X ref)`. The connection
 inner::(X ref) -> inner::X
 ```
 
-is what the specification must provide: nothing in the surface spelling
-can by itself reach the `inner : X ref -> A ref` candidate inside `inner::X`.
+requires that actual struct helper registration. Surface spelling alone
+cannot reach the `inner : X ref -> A ref` candidate inside `inner::X`.
 The full chain therefore has four layers that must not be merged:
 
 ```text
@@ -519,7 +521,7 @@ document therefore depends on three identities being kept separate:
 
 The consequences that field/access-tree work must preserve:
 
-- `let t: type = uint8` creates a fresh name binding and a fresh current-level
+- `let t:type:: = uint8` creates a fresh name binding and a fresh current-level
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
   `place(t) != place(uint8)`. It is not a fresh nominal type and not a binding
   alias.
@@ -597,3 +599,12 @@ This note does not implement or specify:
 - `ref` / `share` type normalization;
 - generic compile execution;
 - HIR or codegen.
+
+## Struct-owned derived forwarding formation
+
+For complete structural T, struct:type->type adds ordinary helpers preserving
+DirectPatternChild, ConstructEdge, ExtractEdge and FieldView. Derived T ref/T share
+forwarding requires actual registrations produced by ordinary struct open
+computation with OpenHere, |[[attribution]]>, type ref and ordinary updates.
+Borrow primitives form references and enforce lifecycle, without automatic field
+forwarding. Derived state follows concrete T0 when its former Place later holds T1.

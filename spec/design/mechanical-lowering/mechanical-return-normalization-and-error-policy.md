@@ -80,7 +80,7 @@ Type, compile, namespace and Pattern results remain ordinary instances. They
 are not categorically exempt from movement or lifecycle checks. Any future
 Error normalization must define its predicate's applicable domain using
 ordinary relations and preserve the canonical result/completion boundary.
-A known false guard enters no Error branch; runtime or seal-dependent guards
+A known false guard enters no Error branch; runtime-dependent guards
 retain/defer their lawful continuation instead of speculatively running both.
 
 ## 4. Error Carrier Detection: `T |> has(Error)`

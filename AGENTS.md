@@ -68,12 +68,12 @@ alternate relation or identity.
 - A headed closure without `=>` is in-place; `=>` forms an ordinary closure.
 - `<...>` is a DeduceList only in documented strong binding contexts.
 - `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
-- `|> P { ... }` preserves the callable head (self, <> P).
+- `|> P { ... }` preserves the callable head (_, let _: (P)$).
 - Value-side expressions and Pattern-side material remain distinct.
 - `let binder === PathMaterial` preserves a lexical Path alias: form the RHS once
   in the old Path environment, store material, never cache terminal binding identity.
 - `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
-  `type`, `compile`, `seal`, `runtime`, `open`, `close`, `namespace`, and `struct` are not lexer
+  `type`, `compile`, `runtime`, `open`, `close`, `namespace`, and `struct` are not lexer
   keywords.
 - The parser must not create semantic declarations such as `FnDecl`,
   `StructDecl`, `ImportDecl`, HIR, MIR, or codegen nodes.
@@ -132,9 +132,9 @@ alternate relation or identity.
   may escape only as the single self-rooted complete type, which exposes the
   instance NameExpr. In-place closures retain ordinary lexical/Self/navigation
   boundaries and use admitted dependencies to reach enclosing instances.
-- Stage = {compile, seal, runtime}. P2 is evaluation horizon; P1/Pout producer
+- Stage = {compile, runtime}. P2 is evaluation horizon; P1/Pout producer
   visibility, OpenPolicy, InputAdmissible, migration and Ready are independent.
-  Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
+  Runtime P2 defaults omitted P1 to runtime.
 - Name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
@@ -203,6 +203,16 @@ alternate relation or identity.
   Val2 realization. Such results reopen no construction view and do not alter old
   snapshots. Current Norm/only_val2 observations remain continuation-relative.
 
+- Simple let a:b extracts v and Type(v) at adjacent universe ranks; bare b
+  introduces a classifier-side name. External constraints enter through full
+  Paths or R$. RHS _ is universerank; structural _ is anonymous Pattern.
+  HoleOverride replaces written dimensions and inherits others, independently
+  of ElabIn/ElabOut. Bare branches have a unique actual opaque value member.
+- Reify(C,R) materializes the same E with ordinary input/frontier/dependency
+  premises and closed normal-return delivery through R. New runtime calls
+  select at their actual frontier; selected calls never reopen.
+  Region_K(n)=R(NamePosition_K(n)); E requires no future-path enumeration.
+  ReturnTarget uses callable tag plus actual activation, independently of ActualSelf.
 - Product layers with all direct entries named are unordered; any bare entry
   makes that whole layer ordered. Nested layers decide independently. Unordered
   to bare sequence requires named extraction and explicit ordered assembly.

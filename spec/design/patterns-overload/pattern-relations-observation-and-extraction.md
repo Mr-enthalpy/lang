@@ -683,87 +683,76 @@ This does not relax Pack cardinality or admit several arbitrary remainders.
 Generation reverses the direction of the declaration consumer, not this
 known-content extraction judgment.
 
-## 9. Binderless Pattern nodes and pipe branch shorthand
-
-A binderless Pattern node needs no artificial wildcard/value padding layer. For example:
-
-```lang
-let bool = ((if | else) bool)$ |> struct;
-```
-
-uses `if` and `else` as binderless Pattern nodes. A let-shaped presentation is:
-
-```lang
-let <> if
-let <> else
-```
-
-not `_ if` / `_ else` used as empty padding. `_` remains valid where a real
-wildcard or discard position is intended.
-
-The current atomic pipe-branch shorthand is:
-
-```lang
-|> P { B }
-```
-
-and is semantically equivalent to:
-
-```lang
-|> (self, <> P) { B }
-```
-
-The no-=> form retains InPlace formation syntax. The callable head has the
-selected function object's self in position zero and binderless <> P in the
-explicit argument position. self is a schematic fresh binder here; its
-spelling is unrestricted. Neither (<> P) alone nor wildcard padding preserves
-that invocation frame. Ordinary calls supply x as self; type projection
-supplies the selected c, never the type tau itself. Raw/Norm shorthand
-expansion retains both self and the binderless explicit Pattern.
-
-Current parser coverage admits one non-composite atomic `P` in the shorthand.
-That is a surface boundary, not a restriction on binderless Pattern semantics.
-
-## 10. Closed and deductive annotations
-
-After Pattern-root scope resolution, define:
+## 9. Bare nodes and pipe branch shorthand
 
 ```text
-ClosedAnnotation(P)
-  iff HoleRefs(P) = empty
-
-DeductiveAnnotation(P)
-  iff HoleRefs(P) != empty
+Bare(s)=<nu_s,P(s),Val2(s)>
+UniqueValueMember(Bare(s),nu_s)
 ```
 
-`HoleRefs` is a set of resolved `HoleBinderId`-targeted references, not a
-source-string search.
-
-For:
+The member actually exists. Its machine representation is unobservable;
+ordinary Pattern relations distinguish branch identity without a public integer
+encoding or synthesized extraction field. Binder absence and value presence are
+independent. Compile Pattern / runtime value is a legal view.
 
 ```lang
-let LHS : P = RHS
+let bool = ((true | false)bool)$;
+let true = true::bool;
+let false = false::bool;
+let if = true::bool;
+let else = false::bool;
 ```
 
-a closed annotation is an ordinary value/result transformation target:
+true|false is the structural sum; the four names are ordinary value bindings.
+
+```lang
+|> name { B }
+// syntax-directed expansion:
+|> (_, let _: (name)$) { B }
+```
+
+Both anonymous positions are structural. The complete (name)$ operand is
+interpreted in V, supplying the existing value Pattern to ordinary extraction.
+Raw and normalized heads agree with the explicit form and retain InPlace.
+
+## 10. Joint extraction across adjacent universe ranks
+
+Let Gamma;K |- E(RHS)=>v and Type(v)=T. At every universe level:
 
 ```text
-let LHS : P = RHS
-  == let LHS = RHS |> P
+R_Gamma(a:b,v,rho)
+  => rho(a)=v and rho(b)=T
+     Rank(rho(b))=Rank(rho(a))+1
 ```
 
-It is not an annotation-only Boolean compatibility primitive. Thus a hole-free
-return annotation such as:
+Bare b introduces the classifier-side binder at this site. External constraints
+use a full Path uint8:: or opposite-polarity R$. Inference, external Pattern
+constraints and Hole deduction all consume R_Gamma. Hole presence does not
+change extraction into RHS transformation. Return and parameter positions
+apply the same relation to their actual delivered values.
 
-```lang
--> _: type => { inner::t }
+```text
+Interpret(_,S)=AnonymousPattern
+Interpret(_,V)=universerank
 ```
 
-means result-as-`type` transformation.
+universerank is ordinary universe-rank material for structural/callable formation;
+it supplies neither anonymous matching nor an arbitrary rank lift.
 
-A deductive annotation participates in extraction/deduction constraints and
-may bind observations for its resolved holes. The two cases share the ordinary
-call and Pattern calculus; no separate annotation compatibility oracle exists.
+### 10.1 Independent Hole Policy
+
+```text
+P let <P_h let h> LHS = RHS
+Policy(h)=HoleOverride(P,Delta_h)
+HoleOverride(P,Delta)[d] = Delta[d] if d in WrittenDims(Delta)
+                         P[d]     otherwise
+```
+
+Omitted dimensions inherit. Written dimensions replace without outer-strength
+restriction. This third operation is independent of Pin/ElabIn and Pout/ElabOut.
+Each Hole's Pattern and Policy solve in the ordinary relation with exact
+PatternRoot/HoleBinderId. In <p> let <p let h>, inner p references the preceding
+Hole identity; Policy uses no separate Hole solver.
 
 ## 11. Constructor and extractor contracts are family theorems
 
@@ -1217,7 +1206,7 @@ membership afterward. Descendant ownership is also insufficient.
 After authorized `BoundRef` edges are erased, the owned graph must satisfy
 `WellFounded_kappa` (`../symbol-world/type-values-places-and-borrow-views.md`
 §2.1): finite, acyclic, fully bound, and restricted to authorized static
-edge kinds under static-eval generation (covering compile and seal)
+edge kinds under static-eval generation (for compile)
 and acyclic once materialized at runtime.
 
 This document uses `Q` when discussing structural Pattern relations and `tau`
@@ -1255,8 +1244,8 @@ callspaces. Ordinary name writes alone supply no structural registration.
   insufficient.
 - Formation provenance does not enter Pattern identity.
 - Bare positional material uses the ordinary Product calculus.
-- `_` is a real wildcard position; binder absence is represented explicitly.
-- Pipe branch expansion retains callable self and binderless `<> P`, not a self-less head or wildcard padding.
+- Interpret(_,S)=AnonymousPattern; Interpret(_,V)=universerank; binder absence is explicit.
+- Pipe branch expansion is (_, let _: (name)$), with an anonymous self slot and ordinary classifier-side extraction.
 - A complete type value contains Core and immutable callspace observations.
 - Complete types retain their own callspaces without defining-binding recovery.
 - TypeMember home is explicit and is not implied by descendant classification.
@@ -1273,7 +1262,6 @@ The following do not reopen this base authority:
 - concrete runtime/static IR for derivations and residual pattern spaces;
 - D-reduction / `Done` representation and control-pattern transforms;
 - diagnostics and recovery for later semantic matching;
-- future Pattern policy after an explicit sealing mechanism;
 - user-visible tuple-style namespace syntax for intrinsic Product selectors.
 
 These are extension, representation, or surface questions. They may consume

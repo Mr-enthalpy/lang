@@ -64,3 +64,13 @@ or authority.
 canonical acceptance and source-consumer cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
 [open questions](../planning/open-questions.md) contains only remaining choices.
 Historical files are non-authoritative and are not rewritten for current rules.
+
+## Joint extraction and runtime reification interfaces
+
+The [unified owner](unified-static-name-and-structural-semantics.md#13-adjacent-universe-joint-extraction)
+connects adjacent-universe extraction, polarity-indexed underscore, HoleOverride,
+actual opaque bare-branch values, full rooted Path suffixes, general open helper
+computation, opaque self/dependencies, callable tags and active frames, and
+runtime reification of E with current-name-position Region. Each topic above
+keeps its own canonical judgments; the [conformance matrix](../planning/canonical-semantic-conformance.md#joint-extraction-and-runtime-reification-acceptance-targets)
+records semantic acceptance targets separately from connected execution.

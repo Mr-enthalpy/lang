@@ -197,34 +197,21 @@ capability. Repeated explicit `?` remains ordinary composition:
 x?? = (x?)?
 ```
 
-### Minimal Sum-Pattern Example: `bool`
+### Minimal Sum-Pattern Example: bool
 
 ```lang
-let bool: type = ((if | else) bool)$ |> struct;
+let bool = ((true | false)bool)$;
+let true = true::bool;
+let false = false::bool;
+let if = true::bool;
+let else = false::bool;
 ```
 
-The first `bool` is the symbol being bound. The second `bool` is the pattern /
-construction name attached to the sum Pattern `if | else`.
-
-Logical operators return ordinary bool symbols:
-
-```text
-not  : bool -> bool
-and  : (bool, bool) -> bool
-or   : (bool, bool) -> bool
-```
-
-The bool symbol's Pattern layer carries exactly one alternative space:
-
-```text
-if | else
-```
-
-`true === if::bool` and `false === else::bool` are aliases of those Pattern
-symbols. They do not create a second `true | false` alternative space.
-
-Pattern matching reads that layer directly; conditional control flow does not
-require `?`. Explicit `bool_value?` only asks for the one-layer top Pattern view.
+The two structural branches have unique actual value members nu_true/nu_false
+with unobservable machine encoding. The names are ordinary bindings. Matching
+uses R_Gamma on the same true|false structure for compile or runtime values
+with compile Pattern. An explicit bool_value? requests only the one-layer
+Pattern view, not another branch universe.
 
 The same mechanism generalizes beyond `bool`:
 
@@ -513,7 +500,7 @@ an implicit `?`, and ordinary equality never calls an extraction helper.
 
 The one-layer extraction view is complemented by a branch-local evaluation
 substrate (see [semantic evaluation](../static-evaluation/evaluation-residual-and-optimization.md)). That
-substrate uses sum-pattern spaces (e.g. `if | else`) as branch-selection material.
+substrate uses sum-pattern spaces (e.g. `true | false`) as branch-selection material.
 It enforces that only the selected branch may perform lookup, policy check, compile
 invocation, or local symbol construction. Unselected branches have no lookup,
 policy, invocation, or `NamespaceDelta` obligation.

@@ -23,11 +23,11 @@ are fixed before same-point reverse-declaration linearization and @ observation.
 
 ## Bool-protected guard rule
 
-Logical, predicate, and guard expressions do not produce a naked `if | else`
+Logical, predicate, and guard expressions do not produce a naked `true | false`
 pattern space. They produce a bool-protected control result:
 
 ```text
-(if | else) bool
+(true | false) bool
 ```
 
 The bool construction supplies the ordinary condition Pattern. Residual

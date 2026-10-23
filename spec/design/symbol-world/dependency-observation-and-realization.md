@@ -180,7 +180,7 @@ capture value. A head, compile key or complete normalization requiring that valu
 must satisfy readiness and legality; unknown material is not proof of equal
 Core.
 
-Seal deferral preserves these dependencies and effects. A closure dependency
+Continuation deferral preserves these dependencies and effects. A closure dependency
 remains subject to its actual horizon, readiness and execution legality.
 
 ## 6. Semantic state cannot be hidden in a side table
@@ -209,3 +209,13 @@ extend a referenced object's lifetime.
 The [lifetime handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
 owns persistence and move/escape refinement. This dependency relation adds no
 universal lifetime theorem.
+
+## Delayed concrete input and opaque self
+
+Compile callables admit ordinary implicit dependencies. Requirements, selected
+realizations, and current demand for available concrete values are separate.
+Runtime materialization can complete ordinary closure capture. Result-affecting
+observations enter dependency validity and instance reuse. Norm_Name(n) does not
+unfold self's capture layout; self remains observable through normalized Pattern
+algebra without public transparent structure. Reify uses the same E and ordinary
+input, dependency and current-name-position lifecycle facts.

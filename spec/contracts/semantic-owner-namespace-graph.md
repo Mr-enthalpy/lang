@@ -98,7 +98,7 @@ separate from EnterBody. Only the direct single instance-open self-root type
 result supplies a computed NameExpr; external types retain their own identity.
 Reachability checks include accessible aggregates, captures and ref/share
 targets before outward delivery. OpenPolicy={open,close} is independent of
-Mode={const,mut} and Stage={compile,seal,runtime}; a seal invocation can own a
+Mode={const,mut} and Stage={compile,runtime}; a compile invocation forms a
 CompileInstance. Current storage and immutable prior snapshots stay distinct.
 
 Source navigation remains inner-to-outer. A generated compile-call scope used as
@@ -173,7 +173,7 @@ They remain orthogonal to:
 ```text
 Σ_full
 Σ_export
-Wfinal = Wpre ∪ Wseal
+CommittedBindings(K) = actual materialized bindings of K
 ```
 
 Non-export does not imply private or same-level-only. Existing lexical

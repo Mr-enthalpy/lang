@@ -234,3 +234,20 @@ continuation storage remain representation questions in the [open questions](../
 Closed relations lacking a consumer report their actual unavailable boundary
 or preserve an established remaining continuation. They supply no alternate
 identity, authority, result class or evaluator.
+
+## General open helper formation
+
+```text
+LegalCompileOpenCall(T,K) =>
+  (OpenHere_K(T) iff OpenHere_K(T compile_open_call))
+struct:type -> type
+StructuralRegistration(struct(T))=StructuralRegistration(T)
+```
+
+Open computation supports ordinary names, members and Policy migration. Struct
+consumes a complete structural type and forms extra ordinary helpers using
+open/OpenHere, |[[attribution]]>, type ref and ordinary * / *= or member
+registration. Derived ref/share field forwarding requires actual helper
+registrations. Reference primitives retain borrowing/lifecycle duties. State
+derived from concrete T0 does not follow its former Place after Write(place,T1);
+a new T1 formation/call is needed to observe T1's final members.

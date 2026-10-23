@@ -1,6 +1,6 @@
 # Static Evaluation and Compile Instances
 
-Compile, seal and runtime use the same evaluator, ordinary Object/Pattern/type,
+Compile and runtime use the same evaluator, ordinary Object/Pattern/type,
 Place, Policy, dependency and lifecycle relations. InvocationResult is the single
 result boundary. CompileInstance formation is independent of result kind and P2.
 

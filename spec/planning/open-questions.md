@@ -59,18 +59,16 @@ same-Type Policy migration are separate ordinary operations.
   available, and what monotone comparison law does each use?
 - What is the final call-site candidate-family selector syntax?
 - What are the remaining later B-filter interfaces and their proof carriers?
-- How does any future policy stage compose with the fixed OpenStatic,
-  SealStatic, and Runtime observation horizons?
 - Which effect/error/panic/resource capability dimensions are added to
   DynamicLegality?
 
 PolicyMode={const,mut} and independent OpenPolicy={open,close},
 demand formation before maxima,
 two-point preference, capability realization, unique selection and no reopen
-are fixed. Stage is one atom; the two static atoms are incomparable. P2 is
+are fixed. Stage is one atom from {compile,runtime}. P2 is
 horizon, P1/Pout producer visibility. Pin admits explicit stage constraints and
 holes; Pout.stage=P1.stage. InputAdmissible, migration and Ready are separate.
-Runtime P2 defaults omitted P1 to runtime; seal defaults to seal. Bare let
+Runtime P2 defaults omitted P1 to runtime. Bare let
 supplies no override; written concrete mode and explicit hole are distinct.
 Policy deduction uses ordinary operator Pattern relations, HoleBinderId and
 require. The 2×2 tables are finite explanatory views of relational declarations,
