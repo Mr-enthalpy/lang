@@ -19,7 +19,9 @@ Program
                         Name y
                     OperatorExpr
                       Atom
-                        Name type
+                        NavPath terminated
+                          components:
+                            component Name type
                     OperatorExpr
                       Atom
                         Name z

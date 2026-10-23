@@ -1,1 +1,1 @@
-let Corelib: type = uint8
+let Corelib: type:: = uint8

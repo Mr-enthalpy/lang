@@ -14,7 +14,9 @@ Program
                 Segment has_incoming=false
                   OperatorExpr
                     Atom
-                      Name type
+                      NavPath terminated
+                        components:
+                          component Name type
         with_clause:
           None
         initializer:
@@ -38,7 +40,9 @@ Program
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Name type
+                        NavPath terminated
+                          components:
+                            component Name type
                     OperatorExpr
                       Atom
                         Name b

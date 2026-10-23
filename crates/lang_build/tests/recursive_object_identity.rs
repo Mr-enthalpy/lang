@@ -58,11 +58,11 @@ struct Carriers {
     world: SemanticWorld,
     /// Declares the Core Object and keeps that Object's registered Place.
     base: SemanticSymbolIdentity,
-    /// `let T: type = base;` — same Pattern and TypeValue, own fresh place.
+    /// `let T: type:: = base;` — same Pattern and TypeValue, own fresh place.
     t: SemanticSymbolIdentity,
-    /// `let U: type = base;` — likewise.
+    /// `let U: type:: = base;` — likewise.
     u: SemanticSymbolIdentity,
-    /// `let V: type = base;` — likewise.
+    /// `let V: type:: = base;` — likewise.
     v: SemanticSymbolIdentity,
     /// A second type, used as the associated Val2 member.
     member: SemanticSymbolIdentity,
@@ -98,15 +98,15 @@ fn carriers() -> Carriers {
     let (v, _, v_pattern) = register(&mut world, "V", 6, 0);
     assert_eq!(
         t_pattern, pattern,
-        "`let T: type = base` shares the Pattern"
+        "`let T: type:: = base` shares the Pattern"
     );
     assert_eq!(
         u_pattern, pattern,
-        "`let U: type = base` shares the Pattern"
+        "`let U: type:: = base` shares the Pattern"
     );
     assert_eq!(
         v_pattern, pattern,
-        "`let V: type = base` shares the Pattern"
+        "`let V: type:: = base` shares the Pattern"
     );
     let (member, _, _) = register(&mut world, "member_type", 4, 1);
     let (other, _, _) = register(&mut world, "other_type", 5, 2);
@@ -581,7 +581,7 @@ fn unit_is_terminal_leaf() {
     let Carriers { mut world, .. } = carriers();
     let provenance = Provenance::new("unit leaf");
     let initializer =
-        initializer_from_source("let f = (self): compile -> let out: uint8 => { out; };");
+        initializer_from_source("let f = (self): compile -> let out: uint8:: => { out; };");
     let lang_syntax::NormExpr::Closure(closure) = initializer else {
         panic!("callable fixture initializer is a closure");
     };
@@ -754,7 +754,7 @@ fn shared_acyclic_subtree_is_allowed() {
 ///
 /// Covered contexts: call target / associated-member RHS (`(…) |> f::T`,
 /// `let g::U = f::T`), extraction completion (`g::f::T`), the type context
-/// (`let A: type = f::T`), and the compile-argument context
+/// (`let A: type:: = f::T`), and the compile-argument context
 /// (`let B = (f::T) compile_partner`) — where the classified argument must also
 /// normalize through the terminal Symbol's OWN place, tying this back to
 /// `Norm_type`.
@@ -818,7 +818,7 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
         Some(member),
     );
 
-    // Type context: `let A: type = f::T` projects the type-resident projection of the
+    // Type context: `let A: type:: = f::T` projects the type-resident projection of the
     // same terminal Symbol, carrying that Symbol's own place.
     let context = ResolverContext::new(NamespaceNodeId(0));
     let resolution = SemanticTypeEnv::new(&world)
@@ -905,10 +905,9 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
 /// ```
 ///
 /// `g::f::T` navigates `[T, f]` as its host chain with `g` as the terminal
-/// Symbol.  A `seal`-only outer host `T` hides the whole call at
-/// `OpenStatic`, even though the middle host `f` and the terminal `g` are
-/// both `compile`-visible there. Every host contributes independently to the
-/// navigation judgment, so the terminal `g` is unreachable.
+/// Symbol. All three hosts are compile-visible at OpenStatic and hidden at
+/// Runtime. The resolved host chain remains part of the visibility proof;
+/// removing it cannot manufacture an executable runtime target.
 #[test]
 fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     let mut world = SemanticWorld::new("unit");
@@ -935,9 +934,9 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     let visible = stage_pair(Stage::Compile);
     // Seed the `type` rank before any carrier of it.
     let _ = register(&mut world, "type_root", 0, 0, visible.clone());
-    // T is the outer host and is seal-only, so it is hidden at OpenStatic.
+    // T is the outer host and is compile-Pattern, so it is hidden at Runtime.
     // f is the middle host and g the terminal, both compile-visible there.
-    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(Stage::Seal));
+    let (t, _, _) = register(&mut world, "T", 1, 1, stage_pair(Stage::Compile));
     let (f, _, _) = register(&mut world, "f", 2, 2, visible.clone());
     let (g, _, _) = register(&mut world, "g", 3, 3, visible);
     let t_place = place_of(&world, t);
@@ -964,10 +963,10 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     assert_eq!(navigation.host_chain[0].symbol, t);
     assert_eq!(navigation.host_chain[1].symbol, f);
 
-    // Exposure facts: only the outer host `T` is hidden at OpenStatic.
+    // Exposure facts: only the outer host `T` is hidden at Runtime.
     assert!(
-        !navigation.host_chain[0].exposed_at(ObservationHorizon::OpenStatic),
-        "the seal-only outer host T is hidden at OpenStatic"
+        !navigation.host_chain[0].exposed_at(ObservationHorizon::Runtime),
+        "the compile-Pattern outer host T is hidden at Runtime"
     );
     assert!(
         navigation.host_chain[1].exposed_at(ObservationHorizon::OpenStatic),
@@ -976,16 +975,17 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     assert!(navigation
         .host_chain
         .iter()
-        .all(|host| host.exposed_at(ObservationHorizon::SealStatic)));
+        .all(|host| host.exposed_at(ObservationHorizon::OpenStatic)));
 
     let initializer = initializer_from_source("let probe = (0) g;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call site");
     let resolver = ResolverContext::new(NamespaceNodeId(0));
 
-    let restricted = OrdinaryInvocationContext::open_static(&[]);
+    let mut restricted = OrdinaryInvocationContext::open_static(&[]);
+    restricted.horizon = ObservationHorizon::Runtime;
 
     // The whole chain is gated: `T` is hidden, so `g::f::T(...)` is
-    // unreachable at OpenStatic. Resolution is already sealed, so the
+    // unreachable at Runtime. Resolution is already sealed, so the
     // projection reports the hidden observation without any outward fallback.
     let blocked = invoke_resolved_binding_ordinary(
         &mut world,
@@ -1001,14 +1001,14 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
             blocked,
             Err(OrdinaryInvocationFailure::ObservationUnavailable { .. })
         ),
-        "a hidden OUTER host hides the whole navigation at OpenStatic: {blocked:?}"
+        "hidden hosts gate the whole navigation at Runtime: {blocked:?}"
     );
 
     // Omitting the outer host reaches member processing instead, producing a
     // different failure. This isolates `T` as the host that gates the call.
     let leaked = invoke_resolved_binding_ordinary(
         &mut world,
-        &navigation.host_chain[1..],
+        &[],
         g,
         &call_site,
         &resolver,
@@ -1026,7 +1026,7 @@ fn multi_layer_navigation_gates_ordinary_call_on_every_host_in_the_chain() {
     // With every host exposed, the call reaches member processing (`g` carries
     // no callable value here).
     let mut complete = OrdinaryInvocationContext::open_static(&[]);
-    complete.horizon = ObservationHorizon::SealStatic;
+    complete.horizon = ObservationHorizon::OpenStatic;
     let passed = invoke_resolved_binding_ordinary(
         &mut world,
         &navigation.host_chain,

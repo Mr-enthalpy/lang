@@ -583,7 +583,7 @@ pub fn candidate_fixture_world() -> CompilationWorld {
 }
 
 /// Extract the single `NormalizedCallSite` from the candidate fixture's
-/// let initializer (`let T: type = (<product>) |> struct`).
+/// let initializer (`let T: type:: = (<product>) |> struct`).
 pub fn candidate_fixture_call_site() -> NormalizedCallSite {
     let expr = parse_and_normalize_fixture_let_initializer(
         fixture_source_root("candidate_world", "app").join("main.lang"),

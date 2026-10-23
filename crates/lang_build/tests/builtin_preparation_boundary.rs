@@ -10,6 +10,12 @@ use lang_build::{
 #[test]
 fn unknown_builtin_applicability_stops_selection_and_later_family_is_unformed() {
     for (target_path, input, expected) in [
+        ("IdentityType::core", "type", "higher-universe classifier"),
+        (
+            "reify::core",
+            "(uint8, uint8)",
+            "applicability relation consumer is not connected",
+        ),
         (
             "assert::core",
             "uint8",
@@ -64,7 +70,7 @@ fn unknown_builtin_applicability_stops_selection_and_later_family_is_unformed() 
         assert!(format!("{initial:?}").contains(expected), "{initial:?}");
         assert_eq!(format!("{world:?}"), before);
         let lang_syntax::NormExpr::Closure(fallback) = support::initializer_from_source(
-            "let fallback = (self, t:type):compile -> let r:type => (\"must not run\") delete;",
+            "let fallback = (self, t:type::):compile -> let r:type:: => (\"must not run\") delete;",
         ) else {
             panic!("fixture closure");
         };
@@ -132,9 +138,9 @@ fn unknown_builtin_applicability_stops_selection_and_later_family_is_unformed() 
 fn builtin_selected_result_preserves_call_entry_declared_policy() {
     let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
     let mut world = base.semantic_world().clone();
-    let callable = declared_policy_view(Stage::Seal, PolicyMode::Const);
-    let body = declared_policy_view(Stage::Seal, PolicyMode::Mut);
-    let result = declared_policy_view(Stage::Seal, PolicyMode::Const);
+    let callable = declared_policy_view(Stage::Compile, PolicyMode::Const);
+    let body = declared_policy_view(Stage::Compile, PolicyMode::Mut);
+    let result = declared_policy_view(Stage::Compile, PolicyMode::Const);
     let installed = world
         .register_core_callable(
             base.package_root_node(),
@@ -155,7 +161,7 @@ fn builtin_selected_result_preserves_call_entry_declared_policy() {
     ))
     .unwrap();
     let mut context = OrdinaryInvocationContext::open_static(&[]);
-    context.horizon = ObservationHorizon::SealStatic;
+    context.horizon = ObservationHorizon::OpenStatic;
     let outcome = invoke_resolved_binding_ordinary(
         &mut world,
         &[],
@@ -179,7 +185,7 @@ fn builtin_selected_result_preserves_call_entry_declared_policy() {
     assert_eq!(outcome.complete_result[0].view, result);
     assert_eq!(
         outcome.selected.frame.horizon,
-        ObservationHorizon::SealStatic
+        ObservationHorizon::OpenStatic
     );
     let SemanticValuePayload::CallEntry(entry) =
         &world.value(installed.call_entry).unwrap().payload
@@ -190,7 +196,7 @@ fn builtin_selected_result_preserves_call_entry_declared_policy() {
     let instance = outcome
         .trace
         .compile_instance
-        .expect("seal body has a compile instance");
+        .expect("compile body has a compile instance");
     let state = world.compile_instance(instance).unwrap();
     assert_eq!(
         state.root.parent_owner,
@@ -211,7 +217,7 @@ fn builtin_selected_result_preserves_call_entry_declared_policy() {
         &site,
         &base.package_context(),
         context,
-        Provenance::new("same inputs under seal"),
+        Provenance::new("same inputs under compile"),
     )
     .unwrap();
     let lang_build::InvocationResult::SemanticResult {

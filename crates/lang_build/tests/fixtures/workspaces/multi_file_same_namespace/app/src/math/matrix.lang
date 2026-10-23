@@ -1,1 +1,1 @@
-let Mat: type = uint8;
+let Mat: type:: = uint8;

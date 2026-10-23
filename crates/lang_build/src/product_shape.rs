@@ -293,7 +293,7 @@ impl RawArgShape {
     /// Refine into `NonValue(CoreTypeProjection)` while keeping carrier Symbol and
     /// represented type value independent.
     ///
-    /// Ordinary `let T: type = uint8` passes the fresh carrier `T` together
+    /// Ordinary `let T: type:: = uint8` passes the fresh carrier `T` together
     /// with the already-existing `uint8` TypeValue.  Candidate identity and
     /// type equality consume the TypeValue; the carrier remains graph/place
     /// material only.
@@ -425,6 +425,7 @@ fn expr_origin(expr: &NormExpr) -> &NormOrigin {
         NormExpr::InterpretationFlip { origin, .. }
         | NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
+        | NormExpr::UniverseRank { origin }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }

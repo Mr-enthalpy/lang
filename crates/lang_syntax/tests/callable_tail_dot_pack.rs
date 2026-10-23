@@ -1003,6 +1003,7 @@ fn find_generated_closure(expr: &NormExpr, rule: NormRule) -> Option<&lang_synta
             })
         }
         NormExpr::Closure(_)
+        | NormExpr::UniverseRank { .. }
         | NormExpr::Name { .. }
         | NormExpr::Literal { .. }
         | NormExpr::OperatorTarget { .. }
@@ -1816,6 +1817,7 @@ fn expression_binding_shape(expr: &NormExpr) -> String {
             ..
         } => "$field".to_string(),
         NormExpr::Name { text, .. } if text == "d" => "$field".to_string(),
+        NormExpr::UniverseRank { .. } => "universerank".to_string(),
         NormExpr::Name { text, .. } => format!("name({text})"),
         NormExpr::Literal { text, .. } => format!("literal({text})"),
         NormExpr::Nav { .. } => "nav".to_string(),

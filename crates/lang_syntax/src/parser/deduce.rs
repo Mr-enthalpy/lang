@@ -22,6 +22,12 @@ pub fn parse_deduce_list(parser: &mut Parser<'_>) -> DeduceListAst {
             break;
         }
 
+        let policy = super::policy::try_parse_policy_spec_before_let(parser, |p| {
+            p.cursor.at_symbol(Symbol::Comma)
+                || p.cursor.at_symbol(Symbol::Greater)
+                || p.cursor.at_symbol(Symbol::Colon)
+        });
+        let _has_let = parser.cursor.consume_name("let").is_some();
         let token = parser.cursor.peek_non_trivia();
         if !matches!(token.kind, TokenKind::Name) {
             parser.error(
@@ -53,6 +59,7 @@ pub fn parse_deduce_list(parser: &mut Parser<'_>) -> DeduceListAst {
             .unwrap_or(name.span);
 
         binders.push(BinderDeclAst {
+            policy,
             name,
             annotation,
             span: start_span.join(end_span),

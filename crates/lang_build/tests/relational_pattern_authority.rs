@@ -101,7 +101,7 @@ fn unnamed_binder_binds_by_identity_without_becoming_a_wildcard() {
 
 #[test]
 fn shared_deduce_hole_requires_one_relational_valuation() {
-    let closure = normalized_closure("let f = <T: type>(self, x: T, y: T) -> r => { r };");
+    let closure = normalized_closure("let f = <T: type::>(self, x: T, y: T) -> r => { r };");
     let params = closure
         .head
         .as_ref()
@@ -156,7 +156,7 @@ fn shared_deduce_hole_requires_one_relational_valuation() {
 
 #[test]
 fn bare_type_lookup_and_display_name_cannot_decide_pattern_applicability() {
-    let closure = normalized_closure("let f = <T: type>(self, x: T, y: T) -> r => { r };");
+    let closure = normalized_closure("let f = <T: type::>(self, x: T, y: T) -> r => { r };");
     let params = closure
         .head
         .as_ref()
@@ -188,3 +188,73 @@ fn bare_type_lookup_and_display_name_cannot_decide_pattern_applicability() {
     );
 }
 mod support;
+
+#[test]
+fn pack_classifier_material_cannot_be_silently_dropped() {
+    for annotation in ["classifier", "uint8::", "R$"] {
+        let closure =
+            normalized_closure(&format!("let f = (self, ...xs:{annotation}) => {{ xs; }};"));
+        let context =
+            PatternRelationContext::for_source_callable(&closure, callable_owner(), None).unwrap();
+        let params = closure
+            .head
+            .as_ref()
+            .unwrap()
+            .formal_frame()
+            .explicit_parameters;
+        let argument = typed_value(
+            support::type_lookup_fixture("pack/type"),
+            PatternCoordinateId(10),
+            CanonicalValueAddr(100),
+        );
+        for arguments in [
+            vec![],
+            vec![argument.clone()],
+            vec![argument.clone(), argument.clone()],
+        ] {
+            assert!(
+                matches!(solve_parameter_product_relation(params, &arguments, &context), Err(PatternRelationFailure::Unsupported(d)) if d.message.contains("Pack classifier"))
+            );
+        }
+    }
+}
+
+#[test]
+fn classifier_binder_does_not_resolve_an_existing_name() {
+    let closure = normalized_closure("let f = (self, x:uint8) => { x; };");
+    let resolve = |_name: &str| -> Option<lang_build::NamedPatternObservation> {
+        panic!("a classifier-side binder must not consult an external name resolver")
+    };
+    let context =
+        PatternRelationContext::for_source_callable(&closure, callable_owner(), Some(&resolve))
+            .unwrap();
+    let params = closure
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters;
+    let argument = typed_value(
+        support::type_lookup_fixture("joint/type"),
+        PatternCoordinateId(10),
+        CanonicalValueAddr(100),
+    );
+    let error = solve_parameter_product_relation(params, &[argument], &context).unwrap_err();
+    assert!(
+        matches!(error, PatternRelationFailure::Unsupported(d) if d.message.contains("classifier-side binding"))
+    );
+}
+
+#[test]
+fn hole_local_policy_cannot_be_silently_dropped_by_relation_entry() {
+    for source in [
+        "let f = <mut let h>(self, x:h) => { x; };",
+        "let f = (self, let <mut let h> x:h) => { x; };",
+    ] {
+        let closure = normalized_closure(source);
+        let result = PatternRelationContext::for_source_callable(&closure, callable_owner(), None);
+        assert!(
+            matches!(result, Err(PatternRelationFailure::Unsupported(d)) if d.message.contains("Hole-local Policy"))
+        );
+    }
+}

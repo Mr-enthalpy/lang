@@ -190,6 +190,22 @@ impl<'a> PatternRelationContext<'a> {
         callable_owner: SemanticOwnerId,
         resolve_named: Option<&'a dyn Fn(&str) -> Option<NamedPatternObservation>>,
     ) -> Result<Self, PatternRelationFailure> {
+        if closure.head.as_ref().is_some_and(|head| {
+            head.deduce.iter().any(|hole| hole.policy.is_some())
+                || head.params.iter().any(|param| {
+                    matches!(param,
+                    NormPatternElem::BindingSlot(slot)
+                        if slot.deduce.iter().any(|hole| hole.policy.is_some()))
+                })
+        }) {
+            return Err(unsupported(
+                "Hole-local Policy extraction consumer is unavailable",
+                Some(Provenance::from_norm_origin(
+                    "Hole-local Policy",
+                    &closure.origin,
+                )),
+            ));
+        }
         let frontend_owner = closure
             .semantic_owner
             .map(|owner| owner.id)
@@ -244,6 +260,16 @@ pub fn solve_parameter_product_relation(
     args: &[OverloadArgShape],
     context: &PatternRelationContext<'_>,
 ) -> Result<PatternApplicabilityProof, PatternRelationFailure> {
+    if params.iter().any(|param| {
+        matches!(param,
+        NormPatternElem::BindingSlot(slot)
+            if slot.deduce.iter().any(|hole| hole.policy.is_some()))
+    }) {
+        return Err(unsupported(
+            "Hole-local Policy extraction consumer is unavailable",
+            params.first().and_then(param_provenance),
+        ));
+    }
     let pack_index = params.iter().position(param_is_pack);
     let fixed_suffix = pack_index.map_or(0, |index| params.len() - index - 1);
     let mut solutions = vec![PatternRelationDerivation::default()];
@@ -388,13 +414,27 @@ fn solve_value_pattern(
     }
 }
 
+pub(crate) fn external_pattern_name(pattern: &NormPattern) -> Option<&str> {
+    match pattern {
+        NormPattern::Nav {
+            components,
+            explicit_terminated: true,
+            ..
+        } => match components.as_slice() {
+            [lang_syntax::NormNavComponent::Name { name, .. }] => Some(name),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 fn solve_annotation(
     annotation: &NormAnnotation,
     arg: &OverloadArgShape,
     context: &PatternRelationContext<'_>,
 ) -> Result<(Vec<PatternRelationDerivation>, SpecificityTuple), PatternRelationFailure> {
     match &annotation.pattern {
-        NormPattern::Name { name, .. } if name == "type" => {
+        pattern if external_pattern_name(pattern) == Some("type") => {
             if arg.is_value || arg.pattern_coordinate.is_none() {
                 return Err(inapplicable(
                     "type annotation expected a complete type value",
@@ -411,22 +451,33 @@ fn solve_annotation(
                 },
             ))
         }
+        NormPattern::Name { .. } => Err(unsupported(
+            "classifier-side binding extraction consumer is unavailable",
+            Some(Provenance::from_norm_origin(
+                "joint extraction",
+                &annotation.origin,
+            )),
+        )),
         pattern => {
             if !arg.is_value || extracted_type(arg).is_none() {
-                return Err(inapplicable(
-                    "value Pattern annotation expected a typed Val1 argument",
-                    arg,
+                return Err(unsupported(
+                    "classifier observation at this universe rank is unavailable",
+                    Some(arg.provenance.clone()),
                 ));
             }
-            let derived = solve_value_pattern(
-                pattern,
-                arg,
-                ResolvedPatternBinderId {
-                    root: context.root,
-                    local_ordinal: u32::MAX,
-                },
-                context,
-            )?;
+            let derived = if let Some(name) = external_pattern_name(pattern) {
+                solve_named(name, arg, context)?
+            } else {
+                solve_value_pattern(
+                    pattern,
+                    arg,
+                    ResolvedPatternBinderId {
+                        root: context.root,
+                        local_ordinal: u32::MAX,
+                    },
+                    context,
+                )?
+            };
             Ok((derived, specificity_for_pattern(pattern)))
         }
     }
@@ -443,6 +494,15 @@ fn solve_pack(
             param_provenance(element),
         ));
     };
+    if slot.annotation.is_some() {
+        return Err(unsupported(
+            "Pack classifier extraction consumer is unavailable",
+            Some(Provenance::from_norm_origin(
+                "Pack classifier",
+                &slot.origin,
+            )),
+        ));
+    }
     let NormPattern::Pack { inner, origin } = &slot.value_pattern else {
         return Err(unsupported(
             "non-pack parameter cannot consume an argument slice",
@@ -573,6 +633,24 @@ fn solve_named(
     }
 }
 
+pub(crate) fn relate_external_classifier(
+    expected: NamedPatternObservation,
+    actual: ExtractedTypeObservation,
+    provenance: Provenance,
+) -> Result<PatternRelationDerivation, Diagnostic> {
+    if actual.semantic_eq(ExtractedTypeObservation {
+        pattern: expected.pattern,
+        core: expected.core,
+    }) {
+        Ok(PatternRelationDerivation::default())
+    } else {
+        Err(Diagnostic::hard_error(
+            "external Pattern classifier extraction failed",
+            Some(provenance),
+        ))
+    }
+}
+
 fn named_matches(
     name: &str,
     actual: ExtractedTypeObservation,
@@ -581,10 +659,12 @@ fn named_matches(
     let Some(expected) = context.resolve_named.and_then(|resolve| resolve(name)) else {
         return false;
     };
-    actual.semantic_eq(ExtractedTypeObservation {
-        pattern: expected.pattern,
-        core: expected.core,
-    })
+    relate_external_classifier(
+        expected,
+        actual,
+        Provenance::new("external Pattern relation"),
+    )
+    .is_ok()
 }
 
 fn extracted_type(arg: &OverloadArgShape) -> Option<ExtractedTypeObservation> {

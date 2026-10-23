@@ -7,7 +7,6 @@ use crate::{Diagnostic, Provenance};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Stage {
     Compile,
-    Seal,
     Runtime,
 }
 
@@ -16,18 +15,13 @@ pub enum Stage {
 /// a readiness proof, nor a scheduling queue.
 pub enum ObservationHorizon {
     OpenStatic,
-    SealStatic,
     Runtime,
 }
 
 impl Stage {
     pub fn visible_at(self, horizon: ObservationHorizon) -> bool {
         match self {
-            Self::Compile => matches!(
-                horizon,
-                ObservationHorizon::OpenStatic | ObservationHorizon::SealStatic
-            ),
-            Self::Seal => horizon == ObservationHorizon::SealStatic,
+            Self::Compile => horizon == ObservationHorizon::OpenStatic,
             Self::Runtime => horizon == ObservationHorizon::Runtime,
         }
     }
@@ -349,32 +343,6 @@ pub struct PolicyResultEntry<V, P> {
     pub value: Option<V>,
     pub pattern: P,
     pub view: PolicyView,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct WpreRoots<T> {
-    pub exported_symbols: Vec<T>,
-    pub materialized_results_of_exported_callables: Vec<T>,
-    pub parameter_dependencies_of_exported_callables: Vec<T>,
-}
-
-pub fn compute_wpre<T: Clone + Ord>(
-    roots: WpreRoots<T>,
-    mut semantic_dependencies: impl FnMut(&T) -> Vec<T>,
-) -> BTreeSet<T> {
-    let mut closure = BTreeSet::new();
-    let mut queue = VecDeque::new();
-    queue.extend(roots.exported_symbols);
-    queue.extend(roots.materialized_results_of_exported_callables);
-    queue.extend(roots.parameter_dependencies_of_exported_callables);
-
-    while let Some(symbol) = queue.pop_front() {
-        if !closure.insert(symbol.clone()) {
-            continue;
-        }
-        queue.extend(semantic_dependencies(&symbol));
-    }
-    closure
 }
 
 /// Namespace facts used to derive the export graph and ordinary path
@@ -1039,7 +1007,6 @@ fn parse_atom(
             "open" if p1 => atoms.open_policy = Some(OpenPolicy::Open),
             "close" if p1 => atoms.open_policy = Some(OpenPolicy::Close),
             "compile" => atoms.stage = Some(Stage::Compile),
-            "seal" => atoms.stage = Some(Stage::Seal),
             "runtime" => atoms.stage = Some(Stage::Runtime),
             "const" => {
                 atoms.mode_atoms.insert(PolicyMode::Const);

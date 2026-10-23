@@ -1,1 +1,1 @@
-let Math: type = uint8
+let Math: type:: = uint8

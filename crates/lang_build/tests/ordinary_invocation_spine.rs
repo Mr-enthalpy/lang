@@ -76,9 +76,9 @@ fn source_body_frontiers_never_produce_builtin_material_or_reopen_selection() {
         ),
     ] {
         let selected_source =
-            format!("let chosen = (self, _ uint8: type): compile -> let r: type => {tail};");
+            format!("let chosen = (self, _ uint8: type::): compile -> let r: type:: => {tail};");
         let mut world = support::AssociatedFamily::new(&[
-            "let fallback = (self, t: type): compile -> let r: type => (\"must not reopen\") delete;",
+            "let fallback = (self, t: type::): compile -> let r: type:: => (\"must not reopen\") delete;",
             &selected_source,
         ]);
         let before = format!("{:?}", world.semantic_world());
@@ -121,10 +121,10 @@ fn source_body_frontiers_never_produce_builtin_material_or_reopen_selection() {
 #[test]
 fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
     let mut world = support::AssociatedFamily::new(&[
-        "let first = (self, t: type): compile -> let r: type => { t; };",
-        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+        "let first = (self, t: type::): compile -> let r: type:: => { t; };",
+        "let second = (self, _ uint8: type::): compile -> let r: type:: => { self; };",
     ]);
-    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let initializer = initializer_from_source("let R: type:: = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
     let failure = world
@@ -155,10 +155,10 @@ fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
 #[test]
 fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
     let mut world = support::AssociatedFamily::new(&[
-        "let first = (self, t: type): compile -> let r: type => { t; };",
-        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+        "let first = (self, t: type::): compile -> let r: type:: => { t; };",
+        "let second = (self, _ uint8: type::): compile -> let r: type:: => { self; };",
     ]);
-    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let initializer = initializer_from_source("let R: type:: = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
     let lifecycle = LifecycleValidationContext {
@@ -197,7 +197,7 @@ fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
 #[test]
 fn configured_capability_cell_is_proof_material_not_policy_preference() {
     let mut world = support::AssociatedFamily::new(&[
-        "let member = (self, _ uint8:type):compile -> let r:uint8 => { r; };",
+        "let member = (self, _ uint8:type::):compile -> let r:uint8:: => { r; };",
     ]);
     let keep = world.target_binding();
     let entries = keep
@@ -225,7 +225,7 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
             .expect("terminal call entry accepts candidate-local realization");
     }
 
-    let initializer = initializer_from_source("let R: type = uint8 keep;");
+    let initializer = initializer_from_source("let R: type:: = uint8 keep;");
     let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
     let actual = [PolicyMode::Const];
     let failure = world
@@ -252,10 +252,10 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
 #[test]
 fn mut_policy_mode_does_not_grant_writable() {
     let mut world = support::AssociatedFamily::new(&[
-        "mut let first = (self, t: type): compile -> let r: type => { t; };",
-        "mut let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+        "mut let first = (self, t: type::): compile -> let r: type:: => { t; };",
+        "mut let second = (self, _ uint8: type::): compile -> let r: type:: => { self; };",
     ]);
-    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let initializer = initializer_from_source("let R: type:: = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
     let writable = WritableContext::default();
@@ -280,7 +280,7 @@ fn mut_policy_mode_does_not_grant_writable() {
 #[test]
 fn actual_callable_binding_place_authorizes_target_sensitive_legality() {
     let mut world = support::AssociatedFamily::new(&[
-        "let member = (self, t:type):compile -> let r:type => { t; };",
+        "let member = (self, t:type::):compile -> let r:type:: => { t; };",
     ]);
     let binding = world.target_binding();
     let value = binding.ordinary_value().unwrap();
@@ -399,7 +399,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         .expect("uint8 value facet");
     assert_eq!(
         bound_type, core_type,
-        "`let T: type = uint8` binds the existing type pattern; it does not allocate a second type pattern"
+        "`let T: type:: = uint8` binds the existing type pattern; it does not allocate a second type pattern"
     );
     let rebound_type = world
         .semantic_world()
@@ -407,7 +407,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         .expect("U pure type Object value");
     assert_eq!(
         rebound_type, bound_type,
-        "`let U: type = T` reads the value carried by T and binds that same value; the RHS carrier is not identity"
+        "`let U: type:: = T` reads the value carried by T and binds that same value; the RHS carrier is not identity"
     );
     let SemanticValuePayload::CoreTypeProjection {
         represented_type,
@@ -596,7 +596,7 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
     );
 }
 
-/// `let T: type = uint8; let U: type = T;` — shared Pattern identity, three
+/// `let T: type:: = uint8; let U: type:: = T;` — shared Pattern identity, three
 /// separate objects:
 ///
 /// ```text
@@ -652,11 +652,11 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
         .expect("uint8's pure Object is a real object");
     assert_ne!(
         bound_place, core_place,
-        "`let T: type = uint8` binds a new object, so T owns a fresh writable place"
+        "`let T: type:: = uint8` binds a new object, so T owns a fresh writable place"
     );
     assert_ne!(
         rebound_place, core_place,
-        "`let U: type = T` binds a new object too"
+        "`let U: type:: = T` binds a new object too"
     );
     assert_ne!(
         bound_place, rebound_place,
@@ -1077,8 +1077,8 @@ fn selected_type_forwarder_delivers_exact_external_snapshot() {
 #[test]
 fn unsupported_pattern_query_terminates_before_candidate_selection() {
     let mut world = support::AssociatedFamily::new(&[
-        "let first = (self, if | else: type): compile -> let r: uint8 => { self; };",
-        "let second = (self, t: type): compile -> let r: uint8 => { self; };",
+        "let first = (self, true | false: type::): compile -> let r: uint8:: => { self; };",
+        "let second = (self, t: type::): compile -> let r: uint8:: => { self; };",
     ]);
     let initializer = initializer_from_source("let result = uint8 choose;");
     let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");

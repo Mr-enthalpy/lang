@@ -208,7 +208,6 @@ fn dump_path_material(output: &mut String, path: &PathMaterialAst, indent: usize
 fn dump_binder_name(output: &mut String, name: &BinderNameAst, indent: usize) {
     match name {
         BinderNameAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
-        BinderNameAst::GeneratedSelf { .. } => line(output, indent, "GeneratedSelf"),
         BinderNameAst::Operator(name) => {
             line(output, indent, &format!("OperatorName {}", name.spelling))
         }
@@ -229,6 +228,10 @@ fn dump_binder_decl(output: &mut String, binder: &crate::BinderDeclAst, indent: 
         indent,
         &format!("BinderDecl name={}", binder.name.text),
     );
+    if let Some(policy) = &binder.policy {
+        line(output, indent + 1, "policy:");
+        dump_policy_spec(output, policy, indent + 2);
+    }
     line(output, indent + 1, "annotation:");
     match &binder.annotation {
         Some(annotation) => dump_annotation_term(output, annotation, indent + 2),

@@ -13,7 +13,9 @@ Program
                         Segment has_incoming=false
                           OperatorExpr
                             Atom
-                              Name type
+                              NavPath terminated
+                                components:
+                                  component Name type
         pattern:
           PatternSkeleton
             CanonicalSegment

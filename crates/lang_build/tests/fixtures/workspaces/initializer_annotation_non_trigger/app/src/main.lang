@@ -1,2 +1,2 @@
-let unit: type = uint8;
-let X: type = missing + unit;
+let unit: type:: = uint8;
+let X: type:: = missing + unit;

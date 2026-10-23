@@ -29,21 +29,21 @@ fn declared_result_class(source: &str) -> DeclaredResultClass {
 #[test]
 fn declared_result_class_is_the_single_result_authority() {
     assert_eq!(
-        declared_result_class("let f = (self, t: type): compile -> r: symbol => { r; };"),
+        declared_result_class("let f = (self, t: type::): compile -> r: symbol:: => { r; };"),
         DeclaredResultClass::OrdinaryValue
     );
     assert_eq!(
-        declared_result_class("let f = (self, t: type): compile -> let r: type => { r; };"),
+        declared_result_class("let f = (self, t: type::): compile -> let r: type:: => { r; };"),
         DeclaredResultClass::CompleteType
     );
     assert_eq!(
         declared_result_class(
-            "let f = (self, _ uint8: type): compile -> let result: uint8 => { result; };"
+            "let f = (self, _ uint8: type::): compile -> let result: uint8:: => { result; };"
         ),
         DeclaredResultClass::OrdinaryValue
     );
     assert_eq!(
-        declared_result_class("let f = (self): compile -> _: unit => { self; };"),
+        declared_result_class("let f = (self): compile -> _: unit:: => { self; };"),
         DeclaredResultClass::Unit
     );
 }
@@ -51,7 +51,7 @@ fn declared_result_class_is_the_single_result_authority() {
 #[test]
 fn return_pattern_does_not_define_result_class() {
     let constrained = declared_result_class(
-        "let f = (self, _ uint8: type): compile -> let result: uint8 => { result; };",
+        "let f = (self, _ uint8: type::): compile -> let result: uint8:: => { result; };",
     );
     let unconstrained = declared_result_class("let f = (self): compile => { self; };");
     assert_eq!(constrained, DeclaredResultClass::OrdinaryValue);
@@ -59,10 +59,10 @@ fn return_pattern_does_not_define_result_class() {
 }
 
 #[test]
-fn unit_result_requires_the_underscore_binder_spelling() {
-    let error = declared_result_class_from_closure(&closure_initializer(
-        "let f = (self): compile -> r: unit => { self; };",
+fn unit_result_allows_an_ordinary_named_extraction_binder() {
+    let class = declared_result_class_from_closure(&closure_initializer(
+        "let f = (self):compile -> r:unit:: => { self; };",
     ))
-    .expect_err("a named binder with a unit annotation is rejected");
-    assert!(error.message.contains("_: unit"));
+    .unwrap();
+    assert_eq!(class, DeclaredResultClass::Unit);
 }

@@ -1,1 +1,1 @@
-let x: type = a |> f
+let x: type:: = a |> f

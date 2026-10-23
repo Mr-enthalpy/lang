@@ -1,0 +1,8 @@
+let a:b = input;
+let constrained:uint8:: = input;
+let external:R$ = input;
+let rank = _;
+let flip = (_)$;
+let twice = ((_)$)$;
+let f = <p>(self, p let <p let h:type::> x:h):compile -> r => { x; };
+value |> Branch { body; };

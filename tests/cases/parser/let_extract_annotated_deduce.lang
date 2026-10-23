@@ -1,1 +1,1 @@
-let <x: type> x Node = value
+let <x: type::> x Node = value

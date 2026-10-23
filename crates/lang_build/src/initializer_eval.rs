@@ -4,17 +4,13 @@ use crate::model::{Diagnostic, Provenance, ResolverCode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnnotationContext {
-    Assertion,
-    /// Reserved for rank-pattern declaration grammar. Initializer evaluation
-    /// does not classify any current binding annotation as rank-pattern
-    /// material.
-    RankPattern,
+    JointExtraction,
 }
 
-pub fn binding_assertion_annotation_context(slot: &NormBindingSlot) -> Option<AnnotationContext> {
+pub fn binding_extraction_annotation_context(slot: &NormBindingSlot) -> Option<AnnotationContext> {
     slot.annotation
         .as_ref()
-        .map(|_| AnnotationContext::Assertion)
+        .map(|_| AnnotationContext::JointExtraction)
 }
 
 pub(crate) fn unavailable_initializer_diagnostic(provenance: Provenance) -> Diagnostic {

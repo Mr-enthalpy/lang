@@ -1,2 +1,2 @@
-<T: type>(val: T) => { val };
-<T: type>(,other: T) => { other }
+<T: type::>(val: T) => { val };
+<T: type::>(,other: T) => { other }

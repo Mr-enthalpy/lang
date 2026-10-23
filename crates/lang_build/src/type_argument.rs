@@ -15,7 +15,7 @@ use lang_syntax::NormExpr;
 
 use crate::{
     identity::SemanticValueId,
-    model::{Diagnostic, Provenance, SymbolId},
+    model::SymbolId,
     policy_pair::PolicyResultEntry,
     product_shape::{ArgProductShape, ProductAtom, RawArgValueClass},
     semantic_name_index::ResolverContext,
@@ -38,8 +38,8 @@ pub struct TypeArgumentClassificationReport {
 ///
 /// `effective_view` is the resolved carrier's own binding-level type resident
 /// view.  It travels with the resolution because a represented TypeValue is
-/// shared by every carrier that binds it (`P_a let T: type = X;` and
-/// `P_b let U: type = X;` have one TypeValue and two binding Policies), so no
+/// shared by every carrier that binds it (`P_a let T: type:: = X;` and
+/// `P_b let U: type:: = X;` have one TypeValue and two binding Policies), so no
 /// later stage can recover the binding view from the TypeValue alone.
 ///
 /// `carrier_place` is that carrier Object's own residency Place. Two carriers
@@ -93,15 +93,6 @@ pub trait TypeResolutionEnv {
             _ => None,
         }
     }
-
-    /// Resolve a struct field type path once, retaining the selected carrier's
-    /// identity, complete observation and declared Policy view together.
-    fn resolve_field_type_path(
-        &self,
-        path: &[String],
-        context: &ResolverContext,
-        provenance: &Provenance,
-    ) -> Result<NamedTypeResolution, Diagnostic>;
 }
 
 /// Canonical semantic-world environment. Resolution flows through recursive
@@ -165,31 +156,6 @@ impl TypeResolutionEnv for SemanticTypeEnv<'_> {
         context: &ResolverContext,
     ) -> Option<NamedTypeResolution> {
         self.resolve_path_carrier(path, context)
-    }
-
-    fn resolve_field_type_path(
-        &self,
-        path: &[String],
-        context: &ResolverContext,
-        provenance: &Provenance,
-    ) -> Result<NamedTypeResolution, Diagnostic> {
-        let type_path_str = path.join("::");
-        let resolution = self.resolve_path_carrier(path, context).ok_or_else(|| {
-            Diagnostic::hard_error(
-                format!("unknown struct field type `{type_path_str}`"),
-                Some(provenance.clone()),
-            )
-        })?;
-        // Field-type graph projection used for namespace installation only;
-        // it is non-identity material (see
-        // `FieldSignatureMaterial::field_type_carrier_symbol`).
-        resolution.carrier_symbol.ok_or_else(|| {
-            Diagnostic::hard_error(
-                "resolved struct field type has no graph declaration projection",
-                Some(provenance.clone()),
-            )
-        })?;
-        Ok(resolution)
     }
 }
 

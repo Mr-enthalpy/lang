@@ -1,2 +1,2 @@
-let DepType: type = uint8;
-let AnotherType: type = uint16;
+let DepType: type:: = uint8;
+let AnotherType: type:: = uint16;

@@ -33,7 +33,7 @@ fn value_and_pattern_facets_have_independent_visibility_without_policy_changes()
         (Stage::Compile, ObservationHorizon::OpenStatic, true, true),
         (Stage::Compile, ObservationHorizon::Runtime, false, false),
         (Stage::Runtime, ObservationHorizon::OpenStatic, false, true),
-        (Stage::Runtime, ObservationHorizon::SealStatic, false, true),
+        (Stage::Runtime, ObservationHorizon::OpenStatic, false, true),
         (Stage::Runtime, ObservationHorizon::Runtime, true, false),
     ] {
         let entry = PolicyResultEntry {
@@ -79,7 +79,7 @@ fn horizon_projection_does_not_define_symbol_existence() {
     let view = symbol.policy_view.as_ref().unwrap();
     for horizon in [
         ObservationHorizon::OpenStatic,
-        ObservationHorizon::SealStatic,
+        ObservationHorizon::OpenStatic,
         ObservationHorizon::Runtime,
     ] {
         let entry = lang_build::PolicyResultEntry {
@@ -105,10 +105,13 @@ fn horizon_projection_does_not_define_symbol_existence() {
 }
 
 #[test]
-fn seal_horizon_projection_reads_concrete_policy_views() {
+fn runtime_horizon_preserves_independent_pattern_observation() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.namespace_projection().empty_delta();
-    for (name, stage) in [("compile_only", Stage::Compile), ("seal_only", Stage::Seal)] {
+    for (name, stage) in [
+        ("compile_only", Stage::Compile),
+        ("runtime_only", Stage::Runtime),
+    ] {
         let symbol_id = delta.allocate_symbol_id();
         let mut symbol = NamespaceGraphSymbol::new(
             symbol_id,
@@ -128,11 +131,11 @@ fn seal_horizon_projection_reads_concrete_policy_views() {
     let context = world.package_context();
     let capability = snapshot.capability();
     let compile = capability.resolve_str("compile_only", &context).unwrap();
-    let seal = capability.resolve_str("seal_only", &context).unwrap();
+    let runtime = capability.resolve_str("runtime_only", &context).unwrap();
     for (symbol, horizon, exposed) in [
-        (&compile, ObservationHorizon::SealStatic, true),
-        (&seal, ObservationHorizon::SealStatic, true),
-        (&seal, ObservationHorizon::OpenStatic, false),
+        (&compile, ObservationHorizon::OpenStatic, true),
+        (&runtime, ObservationHorizon::Runtime, true),
+        (&runtime, ObservationHorizon::OpenStatic, false),
     ] {
         let entry = PolicyResultEntry {
             value: Some(symbol.id),
@@ -141,7 +144,10 @@ fn seal_horizon_projection_reads_concrete_policy_views() {
         };
         let observed = expose_policy_slice(&entry, horizon);
         assert_eq!(read_value(&observed).is_some(), exposed);
-        assert_eq!(read_pattern(&observed).is_some(), exposed);
+        assert_eq!(
+            read_pattern(&observed).is_some(),
+            horizon == ObservationHorizon::OpenStatic
+        );
     }
 }
 
@@ -178,7 +184,7 @@ fn hidden_observation_cannot_suppress_a_search_root_conflict() {
         ResolverContext::with_default_mounts(world.package_root_node(), vec![world.core_node()]);
     for horizon in [
         ObservationHorizon::OpenStatic,
-        ObservationHorizon::SealStatic,
+        ObservationHorizon::OpenStatic,
         ObservationHorizon::Runtime,
     ] {
         // Exactly one resident value is visible, but both bindings still exist.

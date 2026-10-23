@@ -162,6 +162,9 @@ impl<'tokens> Parser<'tokens> {
     /// a `P1::` nav path. Includes local expression/pattern boundaries
     /// (`)`, `]`, `,`, `|>`, `=>`, `:=`, `=`) in addition to form boundaries.
     pub fn is_nav_termination_boundary(&mut self) -> bool {
+        if self.pattern_context && self.cursor.at_symbol(Symbol::Greater) {
+            return true;
+        }
         if self.is_form_boundary() {
             return true;
         }

@@ -148,7 +148,7 @@ fn visible_noncallable_target_with_hidden_argument_has_no_candidate() {
 fn resolved_hidden_const_actual_cannot_default_mode_or_seal_selection() {
     use lang_build::{expose_policy_slice, read_pattern, read_value, ObservationHorizon, Stage};
 
-    for stage in [Stage::Runtime, Stage::Seal] {
+    for stage in [Stage::Runtime] {
         for modes in [vec![], vec![PolicyMode::Const], vec![PolicyMode::Mut]] {
             let (mut world, binding) = family_with_const_actual(stage);
             let symbol = world.semantic_world().symbol(binding).unwrap();
@@ -531,7 +531,7 @@ fn type_binding_is_fresh_symbol_no_alias_no_reroot() {
 #[test]
 fn ordinary_receiver_owns_terminal_call_entry() {
     let world = support::AssociatedFamily::new(&[
-        "let member = (self, t:type):compile -> let r:type => { t; };",
+        "let member = (self, t:type::):compile -> let r:type:: => { t; };",
     ]);
     let make_type = world.target_binding();
     assert_eq!(make_type.ordinary_value().iter().count(), 1);

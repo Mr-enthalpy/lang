@@ -1,1 +1,1 @@
-let T: type = missing_type_name;
+let T: type:: = missing_type_name;

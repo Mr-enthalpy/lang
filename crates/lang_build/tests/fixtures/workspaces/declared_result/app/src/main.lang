@@ -1,58 +1,58 @@
 let make_type =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   let r = (t inner) |> struct;
   r;
 };
 
 let forward_type =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   let r = t;
   r;
 };
 
 let no_terminal =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   let r = (t inner) |> struct;
 };
 
 let keep =
-  (self, _ uint8: type): compile
-    -> let result: uint8 =>
+  (self, _ uint8: type::): compile
+    -> let result: uint8:: =>
 {
   result;
 };
 
 let effect_free_ordinary_result =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   r;
 };
 
 let refactor_kept =
-  (self, t: type): compile
-    -> let r: type =>
+  (self, t: type::): compile
+    -> let r: type:: =>
 {
   let r = t;
   r;
 };
 
 let bare_alias =
-  (self, t: type): compile
-    -> let r: type =>
+  (self, t: type::): compile
+    -> let r: type:: =>
 {
   r === t;
 };
 
 let bare_alias_compile =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   r === t;
   r;

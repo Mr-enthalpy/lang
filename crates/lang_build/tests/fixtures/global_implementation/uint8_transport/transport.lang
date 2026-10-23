@@ -1,48 +1,48 @@
 const let uint8 =
-  (self, const let object: uint8): const + runtime
-    -> let result: uint8 =>
+  (self, const let object: uint8::): const + runtime
+    -> let result: uint8:: =>
 {
   object;
 };
 
 const let uint8 =
-  (self, mut let object: uint8): const + runtime
-    -> let result: uint8 =>
+  (self, mut let object: uint8::): const + runtime
+    -> let result: uint8:: =>
 {
   object;
 };
 
 mut let uint8 =
-  (self, const let object: uint8): mut + runtime
-    -> let result: uint8 =>
+  (self, const let object: uint8::): mut + runtime
+    -> let result: uint8:: =>
 {
   object;
 };
 
 mut let uint8 =
-  (self, close let object: uint8): mut + runtime
-    -> let result: uint8 =>
+  (self, close let object: uint8::): mut + runtime
+    -> let result: uint8:: =>
 {
   object;
 };
 
 compile let identity =
-  (self, const let object: uint8): compile
-    -> let result: uint8 =>
+  (self, const let object: uint8::): compile
+    -> let result: uint8:: =>
 {
   object;
 };
 
 public + compile let type_identity =
-  (self, const let object: type): compile
-    -> let result: type =>
+  (self, const let object: type::): compile
+    -> let result: type:: =>
 {
   object;
 };
 
 mut let uint8 =
-  (self, mut let object: uint8): mut + runtime
-    -> let result: uint8 =>
+  (self, mut let object: uint8::): mut + runtime
+    -> let result: uint8:: =>
 {
   object;
 };

@@ -1,5 +1,5 @@
 let unit_pick =
-  (self, t: type): compile
-    -> _: unit =>
+  (self, t: type::): compile
+    -> _: unit:: =>
 {
 };

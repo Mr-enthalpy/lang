@@ -507,7 +507,7 @@ pub enum SemanticDeclarationEntry {
         declared_result_class: DeclaredResultClass,
         provenance: Provenance,
     },
-    /// A declared type carrier (`let t: type`), including the semantic
+    /// A declared type carrier (`let t: type::`), including the semantic
     /// registration of its associated namespace node.
     TypeCarrier {
         name: String,
@@ -538,7 +538,7 @@ pub enum SemanticDeclarationEntry {
 /// The absent-Val1 type resident of one name binding.
 ///
 /// The resident has a complete Core Object (`Val1 = ∅`, `P`, `Val2`) and its
-/// own `ObjectPlace`. The Pattern is shared identity material — `let T: type =
+/// own `ObjectPlace`. The Pattern is shared identity material — `let T: type:: =
 /// uint8` keeps `Pattern(T) = Pattern(uint8)` and `TypeValue(T) =
 /// TypeValue(uint8)` — while the place is per object:
 ///
@@ -2507,8 +2507,8 @@ impl SemanticWorld {
     ///
     /// The carrier's own type resident is the host object: its place is that
     /// object's Val2 container and its member view is the binding-level
-    /// Policy authority.  Two carriers of one Pattern (`let T: type = uint8;
-    /// let U: type = T;`) therefore produce different hosts even though
+    /// Policy authority.  Two carriers of one Pattern (`let T: type:: = uint8;
+    /// let U: type:: = T;`) therefore produce different hosts even though
     /// `Pattern(T) = Pattern(U)`.
     fn host_member_for_symbol(&self, cell: &SemanticSymbolCell) -> Option<ObjectHostMember> {
         let member = cell.type_resident()?;
@@ -2868,7 +2868,7 @@ impl SemanticWorld {
     /// Find the original declaration binding without changing Pattern identity.
     ///
     /// This is a forward-only mapping recorded when the Pattern coordinate is first
-    /// created as an owning type resident. Carrier rebinding (`let T: type = X`)
+    /// created as an owning type resident. Carrier rebinding (`let T: type:: = X`)
     /// does not rewrite this entry.
     pub fn pattern_declaration(
         &self,
@@ -3239,7 +3239,7 @@ impl SemanticWorld {
 
     /// The source-visible Val2 Symbol reached through one host layer.
     ///
-    /// The host object's own place wins: `let T: type = uint8; let f::T = ...`
+    /// The host object's own place wins: `let T: type:: = uint8; let f::T = ...`
     /// installs `f` on `T`'s object only, so `uint8::f` and `U::f` must not
     /// see it. Every member lookup is confined to the actual host Place.
     pub fn associated_symbol_for_host(
@@ -3483,7 +3483,7 @@ impl SemanticWorld {
     /// Each carrier owns its actual Object and writable Val2 Place. The
     /// explicitly registered Core Object belongs to its declaring carrier;
     /// bootstrap members are installed on that Object during formation.
-    /// Every other carrier of the same Pattern — `let U: type = T` — binds a
+    /// Every other carrier of the same Pattern — `let U: type:: = T` — binds a
     /// new object and therefore receives a fresh writable place, so a later
     /// `let f::U` cannot reach `T` or `uint8`. Physically shared Core
     /// members are copied into the fresh object's semantic Val2 snapshot at
@@ -5404,8 +5404,8 @@ mod tests {
                 Provenance::new("actual self"),
             ),
             args,
-            crate::ObservationHorizon::SealStatic,
-            Provenance::new("body at seal"),
+            crate::ObservationHorizon::OpenStatic,
+            Provenance::new("body at compile"),
         )
         .unwrap();
         let mut wrong = frame.clone();
@@ -5441,7 +5441,7 @@ mod tests {
                 .evaluation_frame()
                 .unwrap()
                 .horizon,
-            crate::ObservationHorizon::SealStatic
+            crate::ObservationHorizon::OpenStatic
         );
     }
 

@@ -19,23 +19,36 @@ Program
                             deduce:
                               None
                             pattern:
-                              Binder
-                                GeneratedSelf
+                              PatternSkeleton
+                                CanonicalWildcard _
                             annotation:
                               None
                             with_clause:
                               None
                             initializer:
                               None
-                          BindingSlot let=false
+                          BindingSlot let=true
                             deduce:
-                              DeduceList
-                                binders:
+                              None
                             pattern:
                               PatternSkeleton
-                                CanonicalName role=NodeName name=name
+                                CanonicalWildcard _
                             annotation:
-                              None
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        OperatorSugar fixity=Postfix operator="$"
+                                          arg:
+                                            Atom
+                                              Group
+                                                Expr
+                                                  Pipe
+                                                    Segment has_incoming=false
+                                                      OperatorExpr
+                                                        Atom
+                                                          Name name
                             with_clause:
                               None
                             initializer:

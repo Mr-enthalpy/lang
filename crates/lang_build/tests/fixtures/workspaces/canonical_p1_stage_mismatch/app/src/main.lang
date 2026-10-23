@@ -1,6 +1,6 @@
-seal let bad =
-  (compile let self, _ uint8: type): compile
-    -> let result: uint8 =>
+runtime let bad =
+  (compile let self, _ uint8: type::): compile
+    -> let result: uint8:: =>
 {
   result;
 };

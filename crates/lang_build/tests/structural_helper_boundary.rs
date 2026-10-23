@@ -11,7 +11,7 @@ use lang_build::{
 fn selected_struct_helper_frontier_publishes_nothing_at_each_static_horizon() {
     for horizon in [
         ObservationHorizon::OpenStatic,
-        ObservationHorizon::SealStatic,
+        ObservationHorizon::OpenStatic,
     ] {
         let mut world = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
         let site = extract_single_call_site(&support::initializer_from_source(

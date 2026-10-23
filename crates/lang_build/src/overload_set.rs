@@ -98,6 +98,13 @@ fn applicable_candidate_from_source_callable(
             Some(source_callable.provenance.clone()),
         ))
     })?;
+    if head.deduce.iter().any(|h| h.policy.is_some())
+        || head.params.iter().any(|p| matches!(p, NormPatternElem::BindingSlot(slot) if slot.deduce.iter().any(|h| h.policy.is_some()))) {
+        return Err(CandidateApplicabilityFailure::Unsupported(Diagnostic::hard_error(
+            "Hole-local Policy extraction consumer is unavailable",
+            Some(source_callable.provenance.clone()),
+        )));
+    }
     let formal_frame = head.formal_frame();
     let explicit_params = formal_frame.explicit_parameters;
     validate_parameter_pack_levels(explicit_params)
@@ -213,19 +220,15 @@ fn parameter_arity_matches(params: &[NormPatternElem], explicit_arity: usize) ->
 ///
 /// Mapping:
 ///
-/// * `-> r: type`   → `CompleteType`;
-/// * `-> _: unit`   → `Unit` — the value-less result REQUIRES the `_`
-///   binder (`_: unit` matches and discards the value, exactly as `_ unit`
-///   in extraction matches and discards the leaf; a named binder for a
-///   value-less result is a spelling error);
+/// * `-> r: type::`   → `CompleteType`;
+/// * `-> r: unit::` or `-> _: unit::` → `Unit`; binder presence is independent.
 /// * any other annotation or no annotation → `OrdinaryValue`.
 ///
 /// The complete return Pattern remains on the closure return slot and is
 /// interpreted independently by the Pattern relation.
 ///
-/// A future product-shaped result is one ordinary value whose Val1 is a
-/// Product — still one `OrdinaryValue`: the return slot is restricted to a
-/// single binder.
+/// A Product-shaped result remains one ordinary value. Full result extraction
+/// consumes the preserved return Pattern through the common delivery consumer.
 pub fn declared_result_class_from_closure(
     closure: &NormClosure,
 ) -> Result<crate::DeclaredResultClass, Diagnostic> {
@@ -233,40 +236,15 @@ pub fn declared_result_class_from_closure(
     let returns = closure.head.as_ref().and_then(|head| head.returns.as_ref());
     let annotation = returns.and_then(|returns| returns.annotation.as_ref());
     let annotation_name = match annotation.map(|annotation| &annotation.pattern) {
-        Some(NormPattern::Name { name, .. }) => Some(name.as_str()),
+        Some(pattern) if crate::pattern_relation::external_pattern_name(pattern).is_some() => {
+            crate::pattern_relation::external_pattern_name(pattern)
+        }
         Some(_) => return Ok(DeclaredResultClass::OrdinaryValue),
         None => None,
     };
     match annotation_name {
         Some("type") => Ok(DeclaredResultClass::CompleteType),
-        Some("unit") => {
-            // `_` in binder position normalizes to a wildcard skeleton
-            // pattern (not a `Binder` named `_`).
-            let is_wildcard_binder = returns.is_some_and(|returns| {
-                matches!(
-                    &returns.value_pattern,
-                    NormPattern::Skeleton {
-                        skeleton: lang_syntax::NormSkeleton::Wildcard { .. },
-                        ..
-                    }
-                )
-            });
-            if is_wildcard_binder {
-                Ok(DeclaredResultClass::Unit)
-            } else {
-                Err(Diagnostic::hard_error(
-                    "a unit return is value-less and must be spelled `_: unit` \
-                     (`_` occupies the leftmost slot so `unit` cannot be misread as the \
-                     leftmost to-be-extracted name of an extraction shorthand)",
-                    Some(Provenance::from_norm_origin(
-                        "return slot",
-                        returns
-                            .map(|returns| &returns.origin)
-                            .unwrap_or(&closure.origin),
-                    )),
-                ))
-            }
-        }
+        Some("unit") => Ok(DeclaredResultClass::Unit),
         Some(_) | None => Ok(DeclaredResultClass::OrdinaryValue),
     }
 }
@@ -302,24 +280,6 @@ fn check_body_local_let_frontier(
     local_names: &BTreeSet<String>,
     slot: &lang_syntax::NormBindingSlot,
 ) -> Result<(), SourceBodyFrontierFailure> {
-    // Execution gap — a body-local `let x:symbol = ...` outside the
-    // return-slot position has no defined meaning yet: symbol-rank
-    // local construction is an undefined future construct, so it is
-    // rejected explicitly instead of being accepted as a
-    // checked-then-discarded dead local.  The future pass that defines
-    // it must be the first to give the form positive semantics.
-    if let Some(annotation) = &slot.annotation {
-        if matches!(
-            &annotation.pattern,
-            NormPattern::Name { name, .. } if name == "symbol"
-        ) {
-            return Err(selected_body_failure(
-                selected,
-                ResolverCode::UnsupportedSelectedSourceBody,
-                "symbol-rank local binding (`let ...:symbol = ...`) outside the return slot has no defined source-body execution",
-            ));
-        }
-    }
     if let Some(initializer) = slot.initializer.as_deref() {
         if expr_refs_selected_or_local_binding(initializer, selected, local_names) {
             return Err(selected_body_failure(

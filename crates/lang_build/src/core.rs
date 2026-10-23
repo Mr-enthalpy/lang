@@ -99,6 +99,15 @@ pub(crate) fn install_core_bootstrap(
         Provenance::new("core builtin callable `IdentityType`"),
         core_declared_view(Stage::Compile),
     );
+    insert_builtin_callable(
+        &mut delta,
+        &mut core_callables,
+        core_node,
+        "reify",
+        BuiltinCallableImpl::Reify,
+        Provenance::new("core builtin callable reify"),
+        core_declared_view(Stage::Compile),
+    );
     insert_verification_namespace(&mut delta, &mut core_callables, core_node);
 
     for name in [
@@ -164,9 +173,9 @@ fn insert_builtin_callable(
         BuiltinCallableImpl::Struct | BuiltinCallableImpl::IdentityType => {
             crate::DeclaredResultClass::CompleteType
         }
-        BuiltinCallableImpl::Assert | BuiltinCallableImpl::Verify(_) => {
-            crate::DeclaredResultClass::OrdinaryValue
-        }
+        BuiltinCallableImpl::Reify
+        | BuiltinCallableImpl::Assert
+        | BuiltinCallableImpl::Verify(_) => crate::DeclaredResultClass::OrdinaryValue,
     };
     let mut symbol = NamespaceGraphSymbol::new(
         symbol_id,
@@ -216,6 +225,7 @@ fn insert_builtin_callable(
                 BuiltinCallableImpl::Struct => core_declared_pair(Stage::Compile, false),
                 BuiltinCallableImpl::Assert
                 | BuiltinCallableImpl::Verify(_)
+                | BuiltinCallableImpl::Reify
                 | BuiltinCallableImpl::IdentityType => core_declared_pair(Stage::Compile, false),
             },
             mode: PolicyMode::Const,

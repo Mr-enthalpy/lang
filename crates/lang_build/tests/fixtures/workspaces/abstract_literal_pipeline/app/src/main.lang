@@ -1,3 +1,3 @@
 let abstract_value = 42;
 let exact_real = 1.50;
-let concrete_value: uint16 = 42;
+let concrete_value: uint16:: = 42;

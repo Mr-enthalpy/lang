@@ -15,7 +15,9 @@ NormProgram origin=Source@1:1[0..2]
                   HoleDecl "T" origin=Generated(PrefixNegativeLowering)@1:1[0..2]
                     annotation:
                       AnnotationPattern origin=Generated(PrefixNegativeLowering)@1:1[0..2]
-                        PatternName "type" origin=Generated(PrefixNegativeLowering)@1:1[0..2]
+                        PatternNav terminated=true origin=Generated(PrefixNegativeLowering)@1:1[0..2]
+                          components:
+                            Name "type" origin=Generated(PrefixNegativeLowering)@1:1[0..2]
                 params:
                   BindingSlotElem
                     BindingSlot let=false origin=Generated(PrefixNegativeLowering)@1:1[0..2]

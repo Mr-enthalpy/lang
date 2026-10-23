@@ -1,7 +1,7 @@
 use std::path::Path;
 
 #[cfg(test)]
-use crate::declared_policy_view;
+use crate::{declared_policy_view, Stage};
 
 use lang_syntax::{
     norm::NormNavComponent, NormAnnotation, NormClosure, NormDecl, NormExpr, NormForm, NormOrigin,
@@ -25,7 +25,7 @@ use crate::{
         NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyMode,
         PolicyView, ResultPolicyDemand, ValueComponentPolicy,
     },
-    policy_pair::{PatternComponentPolicy, PolicyPair, Stage},
+    policy_pair::{PatternComponentPolicy, PolicyPair},
     return_target::{
         elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
         ReturnFrameOwner,
@@ -1011,6 +1011,24 @@ impl CompilationWorld {
         let NormDecl::Let { slot, origin } = decl else {
             return Ok(());
         };
+        if !slot.deduce.is_empty() || slot.with_clause.is_some() {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "binding Hole extraction / Path-relative cleanup consumer is unavailable",
+                Some(Provenance::from_norm_origin(
+                    "binding relation frontier",
+                    origin,
+                )),
+            )));
+        }
+        if matches!(
+            slot.annotation.as_ref().map(|a| &a.pattern),
+            Some(NormPattern::Name { .. })
+        ) {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "joint classifier binding extraction consumer is unavailable",
+                Some(Provenance::from_norm_origin("joint let extraction", origin)),
+            )));
+        }
 
         if matches!(
             &slot.value_pattern,
@@ -1236,7 +1254,17 @@ impl CompilationWorld {
                 Some(provenance),
             )));
         }
+        let external_constraint = match slot
+            .annotation
+            .as_ref()
+            .and_then(|a| crate::pattern_relation::external_pattern_name(&a.pattern))
+        {
+            Some(name) => self.resolve_complete_annotation_type(namespace, name)?,
+            None => None,
+        };
         assert_semantic_result_satisfies_annotation(
+            &self.semantic_world,
+            external_constraint.as_ref(),
             slot.annotation.as_ref(),
             &exposed.material,
             complete_type_authority.as_ref(),
@@ -1344,7 +1372,17 @@ impl CompilationWorld {
             demand,
             &provenance,
         )?;
+        let external_constraint = match slot
+            .annotation
+            .as_ref()
+            .and_then(|a| crate::pattern_relation::external_pattern_name(&a.pattern))
+        {
+            Some(name) => self.resolve_complete_annotation_type(namespace, name)?,
+            None => None,
+        };
         assert_semantic_result_satisfies_annotation(
+            &self.semantic_world,
+            external_constraint.as_ref(),
             slot.annotation.as_ref(),
             &result,
             complete_type.as_ref(),
@@ -1541,11 +1579,12 @@ impl CompilationWorld {
         Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
         BuildError,
     > {
-        let Some(NormPattern::Name { name, .. }) = annotation.map(|annotation| &annotation.pattern)
-        else {
+        let Some(name) = annotation.and_then(|annotation| {
+            crate::pattern_relation::external_pattern_name(&annotation.pattern)
+        }) else {
             return Ok(result);
         };
-        if matches!(name.as_str(), "type" | "integer" | "real" | "character") {
+        if matches!(name, "type" | "integer" | "real" | "character") {
             return Ok(result);
         }
         let Some(target) = self.resolve_complete_annotation_type(namespace, name)? else {
@@ -1708,6 +1747,12 @@ impl CompilationWorld {
                         ))
                     })?,
             };
+            if self.semantic_world.type_rank() == Some(represented_type) {
+                return Err(BuildError::single(Diagnostic::hard_error(
+                    "higher-universe classifier observation consumer is unavailable",
+                    Some(provenance),
+                )));
+            }
             let mut delta = {
                 let carrier = declared_bound_type_value_delta(
                     self.semantic_world.namespace_index(),
@@ -2321,7 +2366,7 @@ fn declared_type_projection_delta(
     represented_type: crate::TypeValueId,
     provenance: Provenance,
 ) -> DeclaredTypeCarrierDelta {
-    // Graph projection for a declared type carrier. `let t: type =
+    // Graph projection for a declared type carrier. `let t: type:: =
     // uint8` is an ordinary fresh Symbol/Place binding, not type generation or
     // aliasing. Canonical Core/whole equality and Writable judgments live in
     // SemanticWorld; this graph symbol only renders the already-decided type
@@ -2480,14 +2525,6 @@ fn source_callable_delta(
 ) -> Result<SourceCallableDelta, BuildError> {
     let result_p2 =
         result_policy_from_closure(closure, provenance.clone()).map_err(BuildError::single)?;
-    // Semantic invariant — a runtime-only result P2 normalizes to
-    // `runtime:compile` (`N2(runtime) = runtime:compile`), whose value stage
-    // is disjoint from its Pattern stage. A type return slot
-    // (`let r: type`) declares a member with no value dimension, so the
-    // declared runtime value slice could never be filled: the declaration
-    // itself is a hard error at this elaboration boundary.
-    ensure_runtime_result_slice_has_value_dimension(closure, &result_p2.pair, provenance.clone())
-        .map_err(BuildError::single)?;
     // Elaborate the declared result class once from the return slot. The body
     // is never inspected, Policy does not determine the class, and the full
     // return Pattern remains in the closure.
@@ -2686,46 +2723,49 @@ fn result_policy_from_closure(
     normalize_p2_policy(annotation, provenance)
 }
 
-/// A result P2 whose value stage is `runtime`, paired with a
-/// type return slot (`let r: type`) declares a runtime value slice that
-/// carries no value dimension. `N2(runtime) = runtime:compile` makes Pv
-/// disjoint from Pp, so the declared value slice can never be filled by a
-/// type resident; the declaration is rejected here. Static single policies
-/// keep Pv == Pp (`N2(P) = P:(P - runtime)`), so type return slots under
-/// `compile` and `seal` remain legal.
-fn ensure_runtime_result_slice_has_value_dimension(
-    closure: &NormClosure,
-    result_p2: &PolicyPair,
-    provenance: Provenance,
-) -> Result<(), Diagnostic> {
-    let runtime_only = result_p2.value.stage() == Some(Stage::Runtime);
-    if !runtime_only {
-        return Ok(());
-    }
-    let type_return_slot = closure
-        .head
-        .as_ref()
-        .and_then(|head| head.returns.as_ref())
-        .is_some_and(|returns| is_type_annotation(returns.annotation.as_ref()));
-    if type_return_slot {
-        return Err(Diagnostic::hard_error(
-            "runtime-only result P2 (`: runtime ->` = `runtime:compile`) declares a runtime \
-             value slice, but the type return slot (`let r: type`) carries no value \
-             dimension; the declaration is illegal",
-            Some(provenance),
-        )
-        .with_code(ResolverCode::RuntimeSliceWithoutValueDimension));
-    }
-    Ok(())
-}
-
+/// Check an explicitly supplied external result Pattern.
 fn assert_semantic_result_satisfies_annotation(
+    world: &SemanticWorld,
+    expected: Option<&crate::CompleteTypeValue>,
     annotation: Option<&NormAnnotation>,
     result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
     semantic_complete_type: Option<&crate::CompleteTypeValue>,
     provenance: Provenance,
 ) -> Result<(), BuildError> {
-    if !is_type_annotation(annotation) {
+    let Some(annotation) = annotation else {
+        return Ok(());
+    };
+    if !is_type_annotation(Some(annotation)) {
+        let expected = expected.ok_or_else(|| {
+            BuildError::single(Diagnostic::hard_error(
+                "joint classifier extraction / external Pattern result consumer is unavailable",
+                Some(provenance.clone()),
+            ))
+        })?;
+        let expected_pattern = world.type_value(expected.lookup_key()).unwrap().pattern;
+        for entry in result {
+            let actual = entry
+                .value
+                .and_then(|v| world.complete_type_for_value(v.id))
+                .ok_or_else(|| {
+                    BuildError::single(Diagnostic::hard_error(
+                        "external Pattern needs the actual classifier snapshot",
+                        Some(provenance.clone()),
+                    ))
+                })?;
+            crate::pattern_relation::relate_external_classifier(
+                crate::NamedPatternObservation {
+                    pattern: expected_pattern,
+                    core: Some(expected.core()),
+                },
+                crate::ExtractedTypeObservation {
+                    pattern: world.type_value(actual.lookup_key()).unwrap().pattern,
+                    core: Some(actual.core()),
+                },
+                provenance.clone(),
+            )
+            .map_err(BuildError::single)?;
+        }
         return Ok(());
     }
     if semantic_complete_type.is_none() {
@@ -2788,7 +2828,7 @@ fn override_delta_binding_visibility(
 fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
     matches!(
         annotation.map(|annotation| &annotation.pattern),
-        Some(NormPattern::Name { name, .. }) if name == "type"
+        Some(pattern) if crate::pattern_relation::external_pattern_name(pattern) == Some("type")
     )
 }
 
@@ -2797,6 +2837,7 @@ fn norm_expr_span(expr: &NormExpr) -> lang_syntax::Span {
         NormExpr::InterpretationFlip { origin, .. }
         | NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
+        | NormExpr::UniverseRank { origin }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
@@ -2837,6 +2878,57 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
 #[cfg(test)]
 mod initializer_consumer_boundary_tests {
     use super::*;
+
+    #[test]
+    fn higher_universe_classifier_is_unavailable_without_publication() {
+        for source in [
+            "let U = type;",
+            "let U:type:: = type;",
+            "let U = type IdentityType::core;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(
+                format!("{error:?}").contains("higher-universe classifier"),
+                "{error:?}"
+            );
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
+    fn unconnected_joint_classifier_binding_publishes_nothing() {
+        for source in ["let value:uint8 = 7;", "let T:type = uint8;"] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(format!("{error:?}").contains("joint classifier binding"));
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
+    fn binding_holes_and_cleanup_material_cannot_be_discarded() {
+        for source in [
+            "let <mut let h> x = uint8;",
+            "let x with {future::path} = uint8;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(
+                format!("{error:?}").contains("binding Hole extraction / Path-relative cleanup")
+            );
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
 
     fn harvest_source(world: &mut CompilationWorld, source: &str) -> Result<(), BuildError> {
         let parsed = lang_syntax::parse(source);
@@ -2931,7 +3023,7 @@ mod initializer_consumer_boundary_tests {
 
         harvest_source(
             &mut world,
-            "let V = U; let Forward = U IdentityType::core; let value:U = 7;",
+            "let V = U; let Forward = U IdentityType::core; let value:U:: = 7;",
         )
         .unwrap();
         let new = world
@@ -3096,7 +3188,7 @@ mod initializer_consumer_boundary_tests {
     #[test]
     fn invocation_reports_hidden_observation_before_both_initializer_boundaries() {
         for source in ["let result = () f;", "let result = close let () f;"] {
-            let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
+            let mut world = world_with_member("compile let f = (receiver, x):runtime => { (); };");
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             assert!(world
                 .resolve_semantic_source_target(world.package_root_node(), &call.target)
@@ -3247,7 +3339,7 @@ mod initializer_consumer_boundary_tests {
     #[test]
     fn reached_candidate_error_is_not_residual_completion() {
         for source in ["let result = () f;", "let result = close let () f;"] {
-            let mut world = world_with_member("let f = (receiver, x:type):compile => { (); };");
+            let mut world = world_with_member("let f = (receiver, x:type::):compile => { (); };");
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             let failure = world
                 .invoke_ordinary_call(
@@ -3386,15 +3478,14 @@ mod initializer_consumer_boundary_tests {
     }
 
     #[test]
-    fn pending_seal_cannot_install_runtime_binding_or_change_existing_facts() {
+    fn pending_runtime_cannot_install_runtime_binding_or_change_existing_facts() {
         for source in [
             "let result = () f;",
             "runtime let result = () f;",
-            "seal let result = () f;",
             "let result = close let () f;",
-            "let result:type = () f;",
+            "let result:type:: = () f;",
         ] {
-            let mut world = world_with_member("let f = (receiver, x):seal => { (); };");
+            let mut world = world_with_member("compile let f = (receiver, x):runtime => { (); };");
             let namespace = world.package_root_node();
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             let target = world
@@ -3409,7 +3500,7 @@ mod initializer_consumer_boundary_tests {
             assert!(!original_views.is_empty());
             assert!(original_views
                 .iter()
-                .all(|view| view.view.pair.value.stage() == Some(Stage::Seal)));
+                .all(|view| view.view.pair.value.stage() == Some(Stage::Runtime)));
             assert!(matches!(
                 evaluate(&mut world, source),
                 ConnectedInitializerOutcome::Diagnostic(diagnostic)
@@ -3421,7 +3512,7 @@ mod initializer_consumer_boundary_tests {
             assert!(parsed.diagnostics.is_empty());
             let program = lang_syntax::normalize_program(&parsed.program);
             let error = world
-                .harvest_program(namespace, &program, Path::new("pending-seal.lang"))
+                .harvest_program(namespace, &program, Path::new("pending-runtime.lang"))
                 .unwrap_err();
             assert!(error
                 .diagnostics
@@ -3536,8 +3627,8 @@ mod source_closure_frontier_tests {
     #[test]
     fn closure_declarations_fail_without_installing_callable_value_or_type() {
         for source in [
-            "let f = (receiver, t:type):compile -> let r:type => { t; };",
-            "let f = (receiver, t:type) { t; };",
+            "let f = (receiver, t:type::):compile -> let r:type:: => { t; };",
+            "let f = (receiver, t:type::) { t; };",
             "let f = { 1; };",
             "let f = [let captured = 1] (receiver) => { captured; };",
         ] {

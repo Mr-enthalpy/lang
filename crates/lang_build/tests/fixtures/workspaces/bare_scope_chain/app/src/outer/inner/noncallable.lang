@@ -1,1 +1,1 @@
-let f: type = uint8;
+let f: type:: = uint8;

@@ -367,6 +367,10 @@ fn parse_postfix_expr_in_context(
 
         if parser.cursor.at_symbol(Symbol::ColonColon) {
             parser.cursor.bump_non_trivia();
+            if stop(parser) {
+                expr = terminate_operator_nav_path(parser, expr);
+                break;
+            }
             if let Some(component) = parse_nav_outer_component(parser) {
                 expr = extend_operator_nav_path(expr, component);
             } else if parser.is_nav_termination_boundary() {

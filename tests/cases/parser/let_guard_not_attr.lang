@@ -1,1 +1,1 @@
-let guard x: type = y
+let guard x: type:: = y

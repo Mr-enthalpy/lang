@@ -201,14 +201,6 @@ pub enum ResolverCode {
     ResidualNotAllowedAtBoundary,
     UnsupportedSelectedSourceBody,
     UnsupportedSelectedSourceBodyLocalBinding,
-    /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)
-    /// declares a value slice whose stage is disjoint from its Pattern stage,
-    /// but the type return slot (`let r: type`) carries no value dimension.
-    /// The declared runtime value slice could never be filled, so the
-    /// declaration itself is illegal. Static pairs (`compile:compile`,
-    /// `seal:seal`) keep Pv == Pp and remain legal for
-    /// type return slots.
-    RuntimeSliceWithoutValueDimension,
     /// Alias syntax is preserved by the frontend. The semantic consumer forms
     /// Path material once in the old environment and installs a block-local
     /// Path equation. That environment consumer is unavailable.
@@ -437,7 +429,7 @@ pub struct CoreTypeProjection {
     /// The type value carried by this Symbol.
     ///
     /// This is deliberately independent from `carrier_symbol_id`: for
-    /// `let T: type = uint8`, `T` is a fresh carrier while this projection is
+    /// `let T: type:: = uint8`, `T` is a fresh carrier while this projection is
     /// exactly the value read from `uint8`.
     pub represented_type: TypeValueId,
     pub fields: Vec<TypeField>,
@@ -535,6 +527,7 @@ pub enum CallableImplementation {
 /// Compiler-seeded implementation leaves behind ordinary callable selection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BuiltinCallableImpl {
+    Reify,
     Struct,
     Assert,
     Verify(VerificationPrimitive),

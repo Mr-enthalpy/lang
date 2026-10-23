@@ -39,6 +39,7 @@ pub(crate) fn prepare_resolved_builtin_call(
     };
     let primitive_name = match primitive {
         BuiltinCallableImpl::Struct => "struct",
+        BuiltinCallableImpl::Reify => "reify",
         BuiltinCallableImpl::Assert => "assert",
         BuiltinCallableImpl::Verify(_) => "verify",
         BuiltinCallableImpl::IdentityType => "IdentityType",
@@ -49,7 +50,9 @@ pub(crate) fn prepare_resolved_builtin_call(
                 "{primitive_name} : type -> type signature"
             )))
         }
-        BuiltinCallableImpl::Assert | BuiltinCallableImpl::Verify(_) => {
+        BuiltinCallableImpl::Reify
+        | BuiltinCallableImpl::Assert
+        | BuiltinCallableImpl::Verify(_) => {
             return Err(BuiltinPreparationFailure::Incomplete(Diagnostic::hard_error(
                 format!("builtin `{primitive_name}` applicability relation consumer is not connected"),
                 Some(provenance),
@@ -107,7 +110,7 @@ mod preparation_policy_tests {
         .unwrap();
         let mut world = base.semantic_world().clone();
         let callable = declared_policy_view(Stage::Compile, PolicyMode::Const);
-        let body = declared_policy_view(Stage::Seal, PolicyMode::Mut);
+        let body = declared_policy_view(Stage::Compile, PolicyMode::Mut);
         let result = declared_policy_view(Stage::Runtime, PolicyMode::Const);
         let installed = world
             .register_core_callable(
@@ -156,7 +159,7 @@ mod preparation_policy_tests {
                     &base.package_context(),
                 )
                 .classified_shape,
-                ObservationHorizon::SealStatic,
+                ObservationHorizon::OpenStatic,
                 Provenance::new("entry observation"),
             )
             .unwrap();

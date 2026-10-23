@@ -47,9 +47,9 @@ fn assert_parser_cases_same_head_shape(left: &str, right: &str) {
     assert!(left_output.diagnostics.is_empty());
     assert!(right_output.diagnostics.is_empty());
     assert_eq!(
-        lang_syntax::dump_ast(&left_output.program).replace("GeneratedSelf", "TextName self"),
+        lang_syntax::dump_ast(&left_output.program),
         lang_syntax::dump_ast(&right_output.program),
-        "`{left}` and `{right}` share head structure modulo the fresh versus textual self binder"
+        "`{left}` and `{right}` share the explicit structural extraction head"
     );
 }
 
@@ -73,6 +73,11 @@ fn assert_parser_cases_different_ast(left: &str, right: &str) {
 #[test]
 fn expr_name() {
     assert_parser_case("expr_name", false);
+}
+
+#[test]
+fn joint_extraction_polarity() {
+    assert_parser_case("joint_extraction_polarity", false);
 }
 
 #[test]
@@ -191,20 +196,20 @@ fn pipe_branch_name_shorthand() {
 }
 
 #[test]
-fn pipe_branch_name_binderless_explicit() {
-    assert_parser_case("pipe_branch_name_binderless_explicit", false);
+fn pipe_branch_name_external_pattern_explicit() {
+    assert_parser_case("pipe_branch_name_external_pattern_explicit", false);
     assert_parser_cases_same_head_shape(
         "pipe_branch_name_shorthand",
-        "pipe_branch_name_binderless_explicit",
+        "pipe_branch_name_external_pattern_explicit",
     );
 }
 
 #[test]
-fn pipe_branch_underscore_binderless_explicit() {
-    assert_parser_case("pipe_branch_underscore_binderless_explicit", false);
+fn pipe_branch_underscore_external_pattern_explicit() {
+    assert_parser_case("pipe_branch_underscore_external_pattern_explicit", false);
     assert_parser_cases_same_head_shape(
         "pipe_branch_underscore_shorthand",
-        "pipe_branch_underscore_binderless_explicit",
+        "pipe_branch_underscore_external_pattern_explicit",
     );
 }
 

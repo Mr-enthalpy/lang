@@ -1,1 +1,1 @@
-let T: type = (uint8) |> UnaryConstructionPrototype
+let T: type:: = (uint8) |> UnaryConstructionPrototype

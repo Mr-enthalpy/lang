@@ -94,6 +94,10 @@ pub enum NormDecl {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormExpr {
+    /// RHS underscore is universe-rank material, independent from name lookup.
+    UniverseRank {
+        origin: NormOrigin,
+    },
     /// Structural operand interpreted under the polarity opposite to V.
     InterpretationFlip {
         operand: Box<NormPattern>,
@@ -629,7 +633,8 @@ fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PatternValidationE
             collect_nav_component_pack_errors(components, errors);
         }
         NormExpr::Closure(closure) => collect_closure_pack_errors(closure, errors),
-        NormExpr::Name { .. }
+        NormExpr::UniverseRank { .. }
+        | NormExpr::Name { .. }
         | NormExpr::Literal { .. }
         | NormExpr::OperatorTarget { .. }
         | NormExpr::Error(_)
@@ -782,6 +787,7 @@ pub enum NormPolicyAtom {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormHoleDecl {
+    pub policy: Option<NormPolicySpec>,
     pub id: HoleBinderId,
     pub name: String,
     pub annotation: Option<NormAnnotation>,
@@ -1385,6 +1391,9 @@ impl HoleAlphaNormalizer {
         for hole in deduce {
             // A telescope annotation sees ancestors and earlier binders, but
             // never the binder being declared or a later binder.
+            if let Some(policy) = &mut hole.policy {
+                self.normalize_policy_spec(policy, &visible);
+            }
             if let Some(annotation) = &mut hole.annotation {
                 self.normalize_pattern(&mut annotation.pattern, &visible, root, declared);
             }
@@ -1439,7 +1448,8 @@ impl HoleAlphaNormalizer {
                 self.normalize_nav_components(components, holes, owner);
             }
             NormExpr::Closure(closure) => self.normalize_closure(closure, holes, owner),
-            NormExpr::Name { .. }
+            NormExpr::UniverseRank { .. }
+            | NormExpr::Name { .. }
             | NormExpr::Literal { .. }
             | NormExpr::OperatorTarget { .. }
             | NormExpr::Error(_)
@@ -2239,6 +2249,9 @@ fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
 
 fn normalize_atom(atom: &AtomAst) -> NormExpr {
     match &atom.kind {
+        AtomKind::Name(name) if name.text == "_" => NormExpr::UniverseRank {
+            origin: NormOrigin::Source(name.span),
+        },
         AtomKind::Name(name) => NormExpr::Name {
             text: name.text.clone(),
             origin: NormOrigin::Source(name.span),
@@ -2728,7 +2741,8 @@ fn collect_free_non_call_names_expr(
         NormExpr::Closure(closure) => {
             collect_free_non_call_names_closure(closure, bound, names);
         }
-        NormExpr::Literal { .. }
+        NormExpr::UniverseRank { .. }
+        | NormExpr::Literal { .. }
         | NormExpr::OperatorTarget { .. }
         | NormExpr::Error(_)
         | NormExpr::Unsupported { .. } => {}
@@ -2955,6 +2969,7 @@ fn normalize_deduce_list(
                 .as_ref()
                 .map(|annotation| normalize_annotation_term(annotation, &visible));
             normalized.push(NormHoleDecl {
+                policy: binder.policy.as_ref().map(normalize_policy_spec),
                 id,
                 name: binder.name.text.clone(),
                 annotation,
@@ -3014,14 +3029,6 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole])
             identity: None,
             name: Some(name.text.clone()),
             origin: NormOrigin::Source(name.span),
-        },
-        BindingPatternAst::Binder(BinderNameAst::GeneratedSelf { span }) => NormPattern::Binder {
-            identity: None,
-            name: None,
-            origin: NormOrigin::Generated {
-                rule: NormRule::ClosureNormalize,
-                span: *span,
-            },
         },
         BindingPatternAst::Binder(BinderNameAst::Operator(operator)) => {
             NormPattern::OperatorBinder {
@@ -3371,6 +3378,12 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPatte
     // PatternName/PatternNav/HoleRef labels are intentionally distinct from
     // value-side Name/Nav dumps.
     match &atom.kind {
+        AtomKind::Name(name) if name.text == "_" => NormPattern::Skeleton {
+            skeleton: NormSkeleton::Wildcard {
+                origin: NormOrigin::Source(name.span),
+            },
+            origin: NormOrigin::Source(name.span),
+        },
         AtomKind::Name(name) if find_visible_source_hole(holes, &name.text).is_some() => {
             let target = find_visible_source_hole(holes, &name.text)
                 .expect("guard proved visible hole")
@@ -3609,11 +3622,16 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
         placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {
             deduce: vec![NormHoleDecl {
+                policy: None,
                 id: type_hole_id,
                 name: "T".to_string(),
                 annotation: Some(NormAnnotation {
-                    pattern: NormPattern::Name {
-                        name: "type".to_string(),
+                    pattern: NormPattern::Nav {
+                        components: vec![NormNavComponent::Name {
+                            name: "type".to_string(),
+                            origin: NormOrigin::Generated { rule, span },
+                        }],
+                        explicit_terminated: true,
                         origin: NormOrigin::Generated { rule, span },
                     },
                     origin: NormOrigin::Generated { rule, span },
@@ -3711,6 +3729,7 @@ fn expr_span(expr: &NormExpr) -> Option<Span> {
         NormExpr::InterpretationFlip { origin, .. }
         | NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
+        | NormExpr::UniverseRank { origin }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
@@ -3883,6 +3902,11 @@ fn dump_norm_expr(output: &mut String, expr: &NormExpr, indent: usize) {
             dump_norm_expr(output, target, indent + 2);
         }
         NormExpr::Product(product) => dump_product(output, product, indent),
+        NormExpr::UniverseRank { origin } => line(
+            output,
+            indent,
+            &format!("UniverseRank {}", origin_inline(origin)),
+        ),
         NormExpr::Name { text, origin } => line(
             output,
             indent,
@@ -4063,6 +4087,10 @@ fn dump_hole_decl(output: &mut String, hole: &NormHoleDecl, indent: usize) {
             origin_inline(&hole.origin)
         ),
     );
+    if let Some(policy) = &hole.policy {
+        line(output, indent + 1, "policy:");
+        dump_norm_policy_spec(output, policy, indent + 2);
+    }
     line(output, indent + 1, "annotation:");
     match &hole.annotation {
         Some(annotation) => dump_annotation(output, annotation, indent + 2),

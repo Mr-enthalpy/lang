@@ -1,1 +1,1 @@
-let Vec: type = uint8;
+let Vec: type:: = uint8;

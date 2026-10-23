@@ -81,7 +81,7 @@ pub use fingerprint::{fnv1a64_hex, Fnv1a64};
 pub use identity::{
     CompilePartner, PlaceId, SemanticValueId, TypeLookupIndexAllocator, TypeValueId,
 };
-pub use initializer_eval::{binding_assertion_annotation_context, AnnotationContext};
+pub use initializer_eval::{binding_extraction_annotation_context, AnnotationContext};
 pub use invocation_frame::{
     CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationFrame,
     ReceiverTypeRef, ReturnTargetShape, SelfPosition, SelfPositionSource, SelfSlotKind,
@@ -150,7 +150,7 @@ pub use policy_overload::{
     PolicyOverloadSelection,
 };
 pub use policy_pair::{
-    body_entry_visible_at, compute_export_retention_closure, compute_wpre, declared_policy_view,
+    body_entry_visible_at, compute_export_retention_closure, declared_policy_view,
     derive_function_object_view, elaborate_binding_result_demand, elaborate_explicit_p1,
     elaborate_formal_policy_pattern, elaborate_namespace_declaration_policy,
     elaborate_return_policy_pattern, externally_visible, function_object_declaration_policy,
@@ -163,7 +163,7 @@ pub use policy_pair::{
     ObservationHorizon, OpenHereAvailability, OpenPolicy, OutputModeDemand, P1Projection,
     PatternComponentPolicy, PendingResultPolicyDemand, PolicyMode, PolicyPair, PolicyResultEntry,
     PolicyView, ResolvedCandidatePolicy, ResultPolicyDemand, ReturnPolicyPattern, Stage,
-    ValueComponentPolicy, ValuePolicyQuery, ValuePresence, WpreRoots,
+    ValueComponentPolicy, ValuePolicyQuery, ValuePresence,
 };
 pub use product_shape::{
     ArgProductShape, FlattenedProductInvariant, FlattenedProductMaterial, NonValueArgKind,

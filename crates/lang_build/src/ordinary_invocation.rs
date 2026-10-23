@@ -473,7 +473,7 @@ fn expose_result_entry(
     material.into_iter().next()
 }
 
-/// Result of an invocation declaring `Unit` (`_: unit`). This is a value-less
+/// Result of an invocation declaring `Unit` (`_: unit::`). This is a value-less
 /// result. Reserved carrier — no executable producer exists yet; the
 /// declaration level validates the class and invocation reports the
 /// execution gap explicitly.
@@ -1089,6 +1089,21 @@ fn invoke_target_values_in_scratch(
         &SemanticTypeEnv::new(semantic_world),
         resolver_context,
     );
+    if classified.classified_shape.raw_args.iter().any(|arg| {
+        matches!(
+            arg.value_class,
+            crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection)
+        ) && arg.known_first_order_type_value.is_some()
+            && arg.known_first_order_type_value == semantic_world.type_rank()
+    }) {
+        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+            diagnostic: Diagnostic::hard_error(
+                "higher-universe classifier observation consumer is unavailable",
+                Some(provenance),
+            ),
+            trace,
+        });
+    }
     let args = overload_args_from_classified_shape(
         &classified.classified_shape,
         |_| None,
@@ -2102,7 +2117,9 @@ fn resolve_type_annotation_value(
     provenance: Provenance,
 ) -> Result<TypeValueId, Diagnostic> {
     let name = match pattern {
-        NormPattern::Name { name, .. } => name,
+        pattern if crate::pattern_relation::external_pattern_name(pattern).is_some() => {
+            crate::pattern_relation::external_pattern_name(pattern).unwrap()
+        }
         _ => {
             return Err(Diagnostic::hard_error(
                 "ordinary self type annotation requires a resolved type-name Pattern",
@@ -2142,7 +2159,7 @@ fn declared_value_result_type(
     };
     if matches!(
         &annotation.pattern,
-        NormPattern::Name { name, .. } if matches!(name.as_str(), "type" | "symbol" | "unit")
+        pattern if matches!(crate::pattern_relation::external_pattern_name(pattern), Some("type" | "symbol" | "unit"))
     ) {
         return Ok(None);
     }
@@ -2192,7 +2209,7 @@ fn validate_explicit_value_type_annotations(
         };
         let is_type_rank_annotation = matches!(
             &annotation.pattern,
-            NormPattern::Name { name, .. } if name == "type"
+            pattern if crate::pattern_relation::external_pattern_name(pattern) == Some("type")
         );
         if is_type_rank_annotation
             && matches!(
@@ -2516,7 +2533,9 @@ mod tests {
 
         let pair_demand = P1Projection::Pair(PolicyPair {
             value: runtime.pair.value.clone(),
-            pattern: PatternComponentPolicy { stage: Stage::Seal },
+            pattern: PatternComponentPolicy {
+                stage: Stage::Runtime,
+            },
         });
         assert!(!result_pair_demand_admits(&runtime.pair, &pair_demand));
         assert_ne!(

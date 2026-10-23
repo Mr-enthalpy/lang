@@ -1,1 +1,1 @@
-let T: type = (NotAType) |> IdentityType
+let T: type:: = (NotAType) |> IdentityType

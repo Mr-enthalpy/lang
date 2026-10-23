@@ -105,6 +105,10 @@ impl ReturnTargetStack {
         frame
     }
 
+    pub fn active_frame(&self, id: ReturnFrameId) -> Option<&ReturnTargetFrame> {
+        self.frames.iter().find(|frame| frame.frame_id == id)
+    }
+
     pub fn pop_frame(&mut self) -> Option<ReturnTargetFrame> {
         self.frames.pop()
     }
@@ -112,30 +116,15 @@ impl ReturnTargetStack {
     pub fn outermost_enclosing_function_target(&self) -> Option<&ReturnTargetFrame> {
         self.frames.first()
     }
-
-    pub fn find_self_identity(
-        &self,
-        callable_owner: lang_syntax::NormSemanticOwnerId,
-    ) -> Vec<&ReturnTargetFrame> {
-        self.frames
-            .iter()
-            .rev()
-            .filter(|frame| {
-                frame
-                    .self_identity
-                    .as_ref()
-                    .is_some_and(|identity| identity.callable_owner == callable_owner)
-            })
-            .collect()
-    }
 }
 
 /// Result supplied by the semantic expression/type resolver for an explicit
-/// return target.  The return-target binder never reconstructs this identity
+/// return target and its actual active control-flow activation. The binder never reconstructs this identity
 /// from a source spelling.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExplicitReturnTargetResolution {
-    CallableSelf(lang_syntax::NormSemanticOwnerId),
+    /// Resolved callable tag plus actual activation, supplied by the control-flow consumer.
+    ActiveFrame(ReturnFrameId),
     NotActive,
     Unsupported,
 }
@@ -184,7 +173,7 @@ pub struct BoundReturnEvent {
 pub enum PreservedReturnReason {
     UnmaterializedClosureLiteral,
     /// The normalized expression has not yet been resolved to a callable
-    /// self identity.  Preserving it is required; spelling equality is not a
+    /// object tag and active frame. Preserving it is required; spelling equality is not a
     /// legal fallback.
     SemanticTargetResolutionRequired,
 }
@@ -329,7 +318,8 @@ impl<'resolver> ReturnTargetBinder<'resolver> {
             NormExpr::Closure(closure) => {
                 self.collect_preserved_returns_from_closure_literal(closure);
             }
-            NormExpr::Name { .. }
+            NormExpr::UniverseRank { .. }
+            | NormExpr::Name { .. }
             | NormExpr::Literal { .. }
             | NormExpr::Nav { .. }
             | NormExpr::OperatorTarget { .. }
@@ -411,20 +401,12 @@ fn resolve_explicit_return_target(
         return Ok(None);
     };
     match resolver.resolve_explicit_return_target(target) {
-        ExplicitReturnTargetResolution::CallableSelf(callable_owner) => {
-            let matches = stack.find_self_identity(callable_owner);
-            match matches.as_slice() {
-                [frame] => Ok(Some(ResolvedReturnTarget::ActiveFrame(frame.frame_id))),
-                [] => Err(return_diagnostic(
-                    ResolverCode::ReturnTargetNotActive,
-                    "ReturnTargetNotActive: explicit return target is not active",
-                    expr_origin(target),
-                )),
-                _ => Err(return_diagnostic(
-                    ResolverCode::AmbiguousReturnTarget,
-                    "AmbiguousReturnTarget: explicit return target matched multiple active frames",
-                    expr_origin(target),
-                )),
+        ExplicitReturnTargetResolution::ActiveFrame(frame_id) => {
+            if stack.active_frame(frame_id).is_some() {
+                Ok(Some(ResolvedReturnTarget::ActiveFrame(frame_id)))
+            } else {
+                Err(return_diagnostic(ResolverCode::ReturnTargetNotActive,
+                    "resolved callable activation is not active", expr_origin(target)))
             }
         }
         ExplicitReturnTargetResolution::NotActive => Err(return_diagnostic(
@@ -451,7 +433,7 @@ fn expr_origin(expr: &NormExpr) -> &NormOrigin {
         | NormExpr::Unsupported { origin, .. } => origin,
         NormExpr::Product(lang_syntax::NormProduct { origin, .. })
         | NormExpr::Closure(NormClosure { origin, .. }) => origin,
-        NormExpr::Name { origin, .. } => origin,
+        NormExpr::UniverseRank { origin } | NormExpr::Name { origin, .. } => origin,
         NormExpr::Error(lang_syntax::NormError { origin, .. }) => origin,
     }
 }
@@ -602,7 +584,8 @@ fn collect_return_events_in_expr(expr: &NormExpr, events: &mut Vec<UnboundReturn
             }
         }
         NormExpr::Closure(closure) => collect_return_events_in_closure(closure, events),
-        NormExpr::Name { .. }
+        NormExpr::UniverseRank { .. }
+        | NormExpr::Name { .. }
         | NormExpr::Literal { .. }
         | NormExpr::Nav { .. }
         | NormExpr::OperatorTarget { .. }

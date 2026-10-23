@@ -30,12 +30,12 @@ Program
           PolicySpec
             PolicyConjunction
                 PolicyAtom Name "mut"
-                PolicyAtom Name "seal"
+                PolicyAtom Name "runtime"
         deduce:
           None
         pattern:
           Binder
-            TextName seal_value
+            TextName runtime_value
         annotation:
           None
         with_clause:

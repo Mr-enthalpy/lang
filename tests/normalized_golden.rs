@@ -52,6 +52,11 @@ fn contextual_structural_material() {
 }
 
 #[test]
+fn joint_extraction_polarity() {
+    assert_norm_case("joint_extraction_polarity", false);
+}
+
+#[test]
 fn interpretation_polarity() {
     assert_norm_case("29_interpretation_polarity", false);
 }
@@ -226,7 +231,8 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_rem
     expect_generated(&head.deduce[0].origin, rule);
     assert!(matches!(
         head.deduce[0].annotation.as_ref().map(|annotation| &annotation.pattern),
-        Some(NormPattern::Name { name, .. }) if name == "type"
+        Some(NormPattern::Nav { components, explicit_terminated: true, .. })
+            if matches!(components.as_slice(), [NormNavComponent::Name { name, .. }] if name == "type")
     ));
 
     assert_eq!(

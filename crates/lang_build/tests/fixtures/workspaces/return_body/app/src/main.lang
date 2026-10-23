@@ -1,8 +1,8 @@
-let unit: type = uint8;
-let int: type = uint16;
+let unit: type:: = uint8;
+let int: type:: = uint16;
 
 compile let return_in_body =
-  (self, t: type): compile -> let r: type =>
+  (self, t: type::): compile -> let r: type:: =>
 {
   t return;
 };

@@ -1,37 +1,37 @@
 let deliver_nearest =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   let r = (t inner) |> struct;
   r;
 };
 
 let return_outermost =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   let r = (t inner) |> struct;
   r return;
 };
 
 let return_selected =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   let r = (t inner) |> struct;
   r |> (self return);
 };
 
 let forward_outermost =
-  (self, t: type): compile
-    -> let r: type =>
+  (self, t: type::): compile
+    -> let r: type:: =>
 {
   t return;
 };
 
 let forward_selected =
-  (self, t: type): compile
-    -> let r: type =>
+  (self, t: type::): compile
+    -> let r: type:: =>
 {
   t |> (self return);
 };

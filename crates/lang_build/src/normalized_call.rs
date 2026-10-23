@@ -64,6 +64,7 @@ fn expr_kind_name(expr: &NormExpr) -> &'static str {
         NormExpr::InterpretationFlip { .. } => "InterpretationFlip",
         NormExpr::PolicyLet { .. } => "PolicyLet",
         NormExpr::Call { .. } => "Call",
+        NormExpr::UniverseRank { .. } => "UniverseRank",
         NormExpr::Name { .. } => "Name",
         NormExpr::Literal { .. } => "Literal",
         NormExpr::Nav { .. } => "Nav",

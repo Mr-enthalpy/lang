@@ -1,1 +1,1 @@
-let App: type = uint8
+let App: type:: = uint8

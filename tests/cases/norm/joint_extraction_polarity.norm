@@ -1,0 +1,216 @@
+NormProgram origin=Source@1:1[0..224]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..15]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..15]
+          deduce:
+            None
+          value_pattern:
+            Binder "a" origin=Source@1:5[4..5]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@1:7[6..7]
+              PatternName "b" origin=Source@1:7[6..7]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@1:11[10..15]
+    Form Let
+      Decl Let origin=Source@2:1[17..48]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[21..48]
+          deduce:
+            None
+          value_pattern:
+            Binder "constrained" origin=Source@2:5[21..32]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@2:17[33..38]
+              PatternNav terminated=true origin=Source@2:17[33..38]
+                components:
+                  Name "uint8" origin=Source@2:17[33..38]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@2:27[43..48]
+    Form Let
+      Decl Let origin=Source@3:1[50..73]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[54..73]
+          deduce:
+            None
+          value_pattern:
+            Binder "external" origin=Source@3:5[54..62]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@3:14[63..65]
+              InterpretationFlip S->V origin=Source@3:14[63..65]
+                Name "R" origin=Source@3:14[63..64]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@3:19[68..73]
+    Form Let
+      Decl Let origin=Source@4:1[75..87]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[79..87]
+          deduce:
+            None
+          value_pattern:
+            Binder "rank" origin=Source@4:5[79..83]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            UniverseRank origin=Source@4:12[86..87]
+    Form Let
+      Decl Let origin=Source@5:1[89..104]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[93..104]
+          deduce:
+            None
+          value_pattern:
+            Binder "flip" origin=Source@5:5[93..97]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@5:12[100..104]
+              PatternSkeleton origin=Source@5:13[101..102]
+                SkeletonWildcard origin=Source@5:13[101..102]
+    Form Let
+      Decl Let origin=Source@6:1[106..125]
+        BindingSlot let=true origin=Generated(PatternNormalize)@6:5[110..125]
+          deduce:
+            None
+          value_pattern:
+            Binder "twice" origin=Source@6:5[110..115]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@6:13[118..125]
+              InterpretationFlip S->V origin=Source@6:14[119..123]
+                UniverseRank origin=Source@6:15[120..121]
+    Form Let
+      Decl Let origin=Source@7:1[127..195]
+        BindingSlot let=true origin=Generated(PatternNormalize)@7:5[131..195]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@7:5[131..132]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@7:9[135..195]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@7:9[135..188]
+                  deduce:
+                    HoleDecl "p" origin=Generated(PatternNormalize)@7:10[136..137]
+                      annotation:
+                        None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@7:13[139..143]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "self" origin=Source@7:13[139..143]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=true origin=Generated(PatternNormalize)@7:19[145..171]
+                        policy:
+                          PolicySpec
+                            PolicyConjunction
+                                PolicyAtom HoleRef "p"
+                        deduce:
+                          HoleDecl "h" origin=Generated(PatternNormalize)@7:32[158..164]
+                            policy:
+                              PolicySpec
+                                PolicyConjunction
+                                    PolicyAtom HoleRef "p"
+                            annotation:
+                              AnnotationPattern origin=Generated(PatternNormalize)@7:34[160..164]
+                                PatternNav terminated=true origin=Source@7:34[160..164]
+                                  components:
+                                    Name "type" origin=Source@7:34[160..164]
+                        value_pattern:
+                          Binder "x" origin=Source@7:42[168..169]
+                        annotation:
+                          AnnotationPattern origin=Generated(PatternNormalize)@7:44[170..171]
+                            HoleRef "h" origin=Source@7:44[170..171]
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                  call_policy:
+                    PolicySpec
+                      PolicyConjunction
+                          PolicyAtom Name "compile"
+                  returns:
+                    BindingSlot let=false origin=Generated(PatternNormalize)@7:58[184..185]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "r" origin=Source@7:58[184..185]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+              body:
+                NormBody origin=Source@7:63[189..195]
+                  forms:
+                    Form Expr
+                      Name "x" origin=Source@7:65[191..192]
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@8:10[206..222]
+        source:
+          Product origin=Generated(ProductLift)@8:1[197..202]
+            elements:
+              ExprElem
+                Name "value" origin=Source@8:1[197..202]
+        target:
+          Closure placement=InPlace origin=Source@8:10[206..222]
+            head:
+              ClosureHead origin=Generated(ClosureNormalize)@8:10[206..212]
+                deduce:
+                  None
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(PatternNormalize)@8:10[206..212]
+                      deduce:
+                        None
+                      value_pattern:
+                        PatternSkeleton origin=Generated(PatternNormalize)@8:10[206..212]
+                          SkeletonWildcard origin=Source@8:10[206..212]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=true origin=Generated(PatternNormalize)@8:10[206..212]
+                      deduce:
+                        None
+                      value_pattern:
+                        PatternSkeleton origin=Generated(PatternNormalize)@8:10[206..212]
+                          SkeletonWildcard origin=Source@8:10[206..212]
+                      annotation:
+                        AnnotationPattern origin=Generated(PatternNormalize)@8:10[206..212]
+                          InterpretationFlip S->V origin=Source@8:10[206..212]
+                            Name "Branch" origin=Source@8:10[206..212]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Source@8:17[213..222]
+                forms:
+                  Form Expr
+                    Name "body" origin=Source@8:19[215..219]

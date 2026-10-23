@@ -14,10 +14,10 @@ Program
                 Segment has_incoming=false
                   OperatorExpr
                     Atom
-                      Name type
-                  OperatorExpr
-                    Atom
-                      Name y
+                      NavPath
+                        components:
+                          component Name type
+                          component Name y
         with_clause:
           None
         initializer:
