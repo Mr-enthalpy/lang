@@ -216,6 +216,14 @@ alternate relation or identity.
 - Product layers with all direct entries named are unordered; any bare entry
   makes that whole layer ordered. Nested layers decide independently. Unordered
   to bare sequence requires named extraction and explicit ordered assembly.
+- Product packaging is `(_ * ω)$`; its classifier Pattern is `_ * ω`.
+  Bare P is contextual exposed/merged repetition material with preserved
+  expression/nested boundaries. `t * n` moves element material to Val1 while
+  retaining it in complete identity; legal Val1 changes need not change Pattern.
+  Selected `pack?` exposes one available layer. Runtime-only `t * ω` needs an
+  iteration-like consumer, not static length expansion. S `_$` / `(_)$` supply
+  an external universerank Pattern, not anonymous `_`; the singleton contextual
+  form is `(_ * 1)$`. Missing external Pattern consumers cannot be discarded.
 - Read_name completes full NameExpr computation to NameValue. e# projects that
   result and blocks only resident reading. Structural bare names share one
   navigation-completion law across Path and extraction consumers. $ is a stable

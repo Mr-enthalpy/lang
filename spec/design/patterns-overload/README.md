@@ -68,6 +68,9 @@ do not perform name resolution, selection or execution.
 
 ## Documents
 
+- [product-repetition-and-unpacking.md](product-repetition-and-unpacking.md) —
+  repetition wrappers, contextual bare Product expansion/merging, complete
+  Val1 identity, singleton polarity and Policy-sensitive unpacking.
 - `pattern-relations-observation-and-extraction.md` — the canonical
   authority for Pattern relation, observation, extraction,
   structural incidence, binderless Patterns, annotations, and the Pattern/type

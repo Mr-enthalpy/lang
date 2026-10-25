@@ -129,6 +129,16 @@ struct preserves DirectPatternChild, ConstructEdge, ExtractEdge and FieldView
 while adding ordinary helpers. * selects ordinary type composition; *= performs
 checked read-transform-write without publishing partial state.
 
+The [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md)
+also owns ordinary repetition selection, contextual exposure, Val1 identity and
+Policy-indexed unpacking. Current syntax preserves `_`, polarity flips,
+ordinary `*`/`?` calls and bare Product association. Repetition operator-Pattern
+lowering, complete wrapper formation, singleton semantic expansion and `pack?`
+execution need the ordinary consumers; runtime variable-length processing
+additionally needs iteration. External Pattern queries must remain unavailable
+when embedded in otherwise connected Sequences; partial preparation cannot
+erase them. None of these gaps grants a special Product builtin or decoder.
+
 File hierarchy supplies inherited navigation only. let inner=bool:: under a
 uses destination inner::a at the same NameExpr level as the RHS. Root and
 filenames add no segment, type-composition action or authority.

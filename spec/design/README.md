@@ -13,6 +13,7 @@ that the corresponding source semantics is implemented.
 | NameValue, two-level Read, Path projection/indexing and opposite-context interpretation | [Path algebra](symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
 | General dependencies, semantic realization and one-time formation | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
+| Product repetition wrappers, contextual expansion, Val1 identity and Policy-indexed unpacking | [Product algebra](patterns-overload/product-repetition-and-unpacking.md) |
 | Callable tails and Pack boundaries | [callable material](patterns-overload/callable-tail-dot-name-and-pack-pattern.md) |
 | Names, named-type synthesis, structural let, type/group algebra | [names and groups](symbol-world/names-and-overload-groups.md) |
 | Complete type values, Core/whole equality, Places, borrows, literals | [type values and Places](symbol-world/type-values-places-and-borrow-views.md) |

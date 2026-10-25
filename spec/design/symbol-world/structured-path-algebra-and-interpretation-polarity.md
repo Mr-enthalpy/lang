@@ -421,7 +421,7 @@ Empty colon and comma slots use the same unit completion law. There is no
 missing-endpoint ontology. Ordinary `slice` structure is formed through Product
 Pattern items and ordinary struct:
 
-    slice = (((product items) slice)$) |> struct
+    slice = ((((_ * ω) items) slice)$) |> struct
 
 Container, Path, string and user callable
 families extract it using R_Gamma. Each family defines admissible item Patterns

@@ -59,6 +59,12 @@ e = ordinary expression / target-capable expression
 G = group expression
 ```
 
+P is exposed bare Product material. Its semantic basis is contextual expansion
+and merging of the standard repetition wrapper `product = (_ * ω)$`; the
+classifier Pattern is `_ * ω`. Parser and Norm preserve P/E/G boundaries and
+perform no repetition formation, semantic unpacking or Policy selection. See
+the [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md).
+
 Shape discipline:
 
 ```text
@@ -607,6 +613,18 @@ identity, including generated navigation such as `field::T`.
 In S interpretation, _ is an anonymous Pattern with no HoleBinderId. In V it
 normalizes as UniverseRank, denoting universerank. A postfix $ flips the
 complete operand polarity, with arbitrary nesting and no resident read.
+
+Thus S `_$` and `(_)$` preserve an InterpretationFlip with a V UniverseRank
+operand. They are external Pattern extraction material, like `bool::` and
+`(if)$`, rather than anonymous matching holes. The contextual singleton form is
+`_$ =_context (_ * 1)$`. Binary repetition syntax such as `_ * n` remains
+explicit Unsupported in S normalization until the ordinary operator-Pattern
+carrier is connected; it must not become wildcard success.
+
+`pack?` retains ordinary postfix operator syntax. Its semantic repetition
+consumer exposes one available layer as bare Product; runtime-only `t * ω`
+cannot statically expand its runtime length. Those execution consumers remain
+pending and are not simulated by syntax flattening.
 
 ### Joint extraction and classifier-side material
 

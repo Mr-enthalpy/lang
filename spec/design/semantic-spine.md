@@ -86,6 +86,11 @@ resident use; explicit roots retain dependencies. Interpret(e$,C)=Interpret(e,Fl
 The flip grants no resident Read, Stage change or implicit Path conversion.
 All directly named Product entries form an unordered layer; a bare entry makes
 that layer ordered. Named extraction plus explicit assembly supplies sequence.
+Product packaging is `(_ * ω)$`, with classifier Pattern `_ * ω` and
+contextual bare expansion/merging. `t * n` keeps relocated content in Val1
+identity; selected `pack?` exposes available material, while runtime-only
+`t * ω` requires an iteration-like consumer. S `_$` is external universerank
+extraction material, independent of anonymous `_`.
 Policy value/type observations retain the same evaluation edge; public policy
 syntax uses a single carrier. Terminal demand reaches the immediate root call before
 maxima. General dependencies are realized once before layout; complete closure

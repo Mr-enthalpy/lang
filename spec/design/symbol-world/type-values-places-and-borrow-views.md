@@ -230,40 +230,41 @@ BareProduct(a_0, ..., a_{n-1})
 
 forall i < N: v_i ∈ Object and v_i : T
 -----------------------------------------------------------------
-Seq_N(T; v_0, ..., v_{N-1})
+Packed(T,N; v_0, ..., v_{N-1})
   = ⟨ BareProduct(v_0, ..., v_{N-1}), P_(T*N), GeneratedVal2(T*N) ⟩
   ∈ Object
 
 forall i < n: v_i ∈ Object and v_i : T
 -----------------------------------------------------------------
-Seq_omega(T; v_0, ..., v_{n-1})
+Packed(T,omega; v_0, ..., v_{n-1})
   = ⟨ BareProduct(v_0, ..., v_{n-1}), P_(T*omega),
       GeneratedVal2(T*omega) ⟩
   ∈ Object
 ```
 
-Thus a bare Product's fixed heterogeneous shape is carried by its Pattern and
-its owned elements are ordinary ordinal `Val2` children. A homogeneous Sequence
-is an ordinary Object whose `Val1` is that bare Product Object and whose `Val2`
-contains the mechanically generated associated operations. The erased
-classifier case is likewise an ordinary wrapper:
+Thus a positional bare Product's fixed heterogeneous shape is carried by its
+Pattern and its owned elements are ordinary ordinal `Val2` children. Repetition
+packages its elements in Val1 under the ordinary `T * n` relation. `Packed` is
+metanotation for this ordinary Object, not a separate semantic kind. The
+[Product owner](../patterns-overload/product-repetition-and-unpacking.md)
+defines anonymous element deduction, contextual expansion, and Policy-indexed
+`pack?` extraction.
 
 `Val1(BareProduct) = absent` does not erase its elements: the bare Product is
 the concrete structural carrier, and each `pos_i` child remains a complete
-Object with its own Policy projections. An outer `product` or Sequence value has
-an independent runtime value projection precisely because its `Val1` contains
-that bare Product Object.
+Object with its own Policy projections. The wrapper has its own value Policy
+observation; payload presence supplies neither runtime availability nor Ready.
 
 ```text
-ProductValue(a_0, ..., a_{n-1})
-  = ⟨ BareProduct(a_0, ..., a_{n-1}), P_product, GeneratedVal2(product) ⟩
-  ∈ Object
+product = (_ * ω)$
+p : _ * ω
 ```
 
-This is the precise meaning of `Val1(p) = (a_0, ..., a_{n-1})` for
-`p : product`: the right-hand side denotes the `BareProduct(...)` Object above,
-not a compiler-private tuple carrier. No constructor adds a fourth Object
-component or a semantic collection outside the recursive Object domain.
+For a value with this repetition classifier, `Val1(p) = (a_0, ..., a_{n-1})`
+denotes the `BareProduct(...)` Object above. Anonymous structural positions
+deduce elements independently, permitting heterogeneous content. The complete
+type named product is the ordinary repetition wrapper, and the classifier
+Pattern is `_ * ω`. All material stays in the recursive Object domain.
 For the empty case, `BareProduct() = ()` and
 `P_bare_product() = P_FunctionItem`, agreeing with the standard leaf below.
 Mentions of the host classifier in a mechanically generated accessor signature
@@ -337,19 +338,21 @@ Norm(BareProduct(a_0, ..., a_{n-1}))
       Norm_P(P_bare_product(P(a_0), ..., P(a_{n-1}))),
       { pos_i ↦ Norm(a_i) | 0 <= i < n } ⟩
 
-Norm(Seq_N(T; values))
+Norm(Packed(T,N; values))
   = ⟨ Norm(BareProduct(values)), Norm_P(P_(T*N)),
       Norm_Val2(GeneratedVal2(T*N)) ⟩
 
-Norm(Seq_omega(T; values))
+Norm(Packed(T,omega; values))
   = ⟨ Norm(BareProduct(values)), Norm_P(P_(T*omega)),
       Norm_Val2(GeneratedVal2(T*omega)) ⟩
 ```
 
-Positions remain ordered because `pos_i` is part of the selector identity. `N`
-remains in `P_(T*N)` identity; the current finite length of `T*omega` is visible
-only through its `BareProduct` Val1. These are instances of `Norm(Object)`, not
-compiler-container identities beside it.
+Positions in this positional subdomain remain ordered because `pos_i` is part
+of selector identity. `N` remains in `P_(T*N)`; the current finite length of
+`T*omega` is observed in its payload. Relocated compile material still enters
+identity through Norm_Val1. Legal value replacement can change that payload
+and the complete normal form without changing `P_(T*n)`. These are instances
+of Norm(Object); all-named layers retain their independent unordered rule.
 
 OverloadGroup normalization uses this same Object universe. Carrier/entry
 encoding remains open; the semantic candidate domain (complete type candidates,
@@ -392,7 +395,7 @@ Children_owned(x)
 ```
 
 For a bare Product, `Children_Val2` includes every ordinal element selected by
-`pos_i`. For a Sequence or a value classified by `product`,
+`pos_i`. For a `T * n` repetition wrapper, including `_ * ω`,
 `Children_Val1` contains its `BareProduct` Object, whose ordinal children are
 then reached by the same `Val2` rule. These two sets exhaust owned-object descent
 in the current normal form; any future component rule that introduces another

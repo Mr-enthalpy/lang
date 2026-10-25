@@ -25,11 +25,18 @@ their value/Pattern boundary. It is not HIR.
 
 ### Product
 
-An ordinary structural value or Pattern carrier, distinct from OverloadGroup.
+The standard repetition wrapper is `product = (_ * ω)$`; its classifier
+Pattern is `_ * ω`. Bare Product P is its contextual exposed material in the
+P/E/G source algebra, distinct from OverloadGroup.
 All directly named entries make its layer unordered; any bare entry makes that
 layer ordered, independently of its top-level name and nested layers. A source Product participates in
 the language's call-composition model; it is not a conventional argument-list
 node.
+
+`t * n` packages element material in Val1, which remains part of complete
+Object identity. `pack?` exposes one admitted layer. Compile `t * ω` can
+expose available finite content; runtime-only variable length needs an ordinary
+iteration-like consumer. See the [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md).
 
 ### Pattern
 
@@ -580,6 +587,8 @@ See the [extraction owner](../design/patterns-overload/pattern-relations-observa
 
 Interpret(_,V)=universerank; Interpret(_,S)=AnonymousPattern. Neither supplies
 a named Hole identity or an arbitrary rank lift. $ only flips polarity.
+In S, `_$` and `(_)$` supply the external universerank Pattern for extraction,
+not anonymous matching. The singleton contextual form is `(_ * 1)$`.
 
 ### HoleOverride
 

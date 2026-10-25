@@ -47,6 +47,10 @@ See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
 
 - The core rule is `Product1 |> TargetExpr Product2 => (Product1, Product2) |> TargetExpr`
   (conceptual: source-product continuation; dump label: `ProductMerge`).
+- P denotes exposed bare Product material. Its semantic basis is contextual
+  `_ * ω` expansion/merging, with `product = (_ * ω)$` as the standard wrapper
+  and `_ * ω` as its classifier Pattern. Preserve expression and true nested
+  boundaries; syntax flattening executes no packed-value extraction.
 - A following Product is the **first source-product continuation** of an incoming
   source Product, not an argument list of the target. Only the first following
   Product merges; later material is residual.
@@ -153,6 +157,9 @@ See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
   Pattern/policy occurrences; value-side names/navigation remain unresolved.
   In S, `_` is an anonymous Pattern and targets no Hole declaration; in V it
   normalizes as UniverseRank (universerank), without name lookup.
+  In S, `_$` / `(_)$` therefore supply an external universerank Pattern, not
+  a wildcard; the singleton contextual form is `(_ * 1)$`. Missing external
+  Pattern consumers cannot discard that constraint, including in Sequences.
   HoleDecl preserves its optional local Policy before its own declaration;
   HoleOverride replaces written dimensions and inherits the remaining ones.
 - Alias right-hand sides stay unresolved Path material (dump label `PathMaterialPreserve`),
@@ -172,7 +179,9 @@ See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
   duplicate holes fail only within one root.
 - Construction and extraction may be isomorphic; call and extraction are not.
 - `...Q` stays `NormPattern::Pack(Q)`, with one pack per normalized level and
-  no RHS unpack counterpart. The grammar is shared by every binding slot
+  no RHS ellipsis counterpart. Ordinary repetition `pack?` is the separate
+  selected extraction into bare Product; runtime-only `t * ω` needs an
+  iteration-like consumer rather than static length expansion. The grammar is shared by every binding slot
   (`let`, parameter, return, and nested product extraction); it is not a
   parameter-only variadic form.
 - A canonical Pattern Sequence accepts Pack as a direct child:

@@ -6,8 +6,9 @@ strategy-specific later work; their syntax and semantic boundaries are fixed
 here.
 
 This note connects four thin surface forms to the existing function-object,
-Pattern-normalization, and unique-overload-selection model. It retains the internal value/type Policy observations, the three execution phases, or the requirement that ordinary overload
-resolution produce one result.
+Pattern-normalization, and unique-overload-selection model. Internal value/type
+Policy observations remain independent, Stage is compile/runtime, and ordinary
+overload resolution produces one result.
 
 ## 1. Callable implementation tail
 
@@ -638,18 +639,21 @@ Nested Product/Sequence levels remain independent:
 (a, ...x, ...y)               // validator error
 ```
 
-### 4.4 No unpack operator
+### 4.4 Bare remainder composition and packed extraction
 
-There is no corresponding right-value spread syntax. The remainder bound to
-`args` is already ordinary normalized Pattern/value product material. Existing
-product normalization composes it in:
+The remainder bound to `args` is already bare normalized Pattern/value Product
+material. Contextual `_ * ω` expansion and merging compose it in:
 
 ```lang
 (val, args) |> name::T
 ```
 
-Introducing `*args`, `unpack(args)`, or an RHS meaning for `...args` would add
-a redundant second algebra and is outside this design.
+An ordinary repetition wrapper instead uses its selected `pack?` interface to
+expose bare Product material, as defined by the
+[Product owner](product-repetition-and-unpacking.md). Compile `t * ω` requires
+an available finite payload; runtime-only variable length uses an ordinary
+iteration-like consumer. Ellipsis itself remains Pattern-side remainder
+matching; `...args` has no RHS spread meaning.
 
 ## 5. Pack specificity evidence
 

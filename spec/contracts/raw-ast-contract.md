@@ -489,6 +489,17 @@ Generated receiver holes use a hygienic generated key rather than their
 display spelling. In S, `_` is an anonymous Pattern and targets no declaration;
 in V it normalizes to UniverseRank, denoting universerank.
 
+In S, `_$` / `(_)$` retain InterpretationFlip with a V UniverseRank operand;
+they supply an external Pattern and are not anonymous wildcard positions.
+Repetition syntax `_ * n` / `t * n` uses ordinary operator syntax. Its S
+operator-Pattern lowering remains explicitly Unsupported until connected.
+The [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md)
+defines `product = (_ * ω)$`, the classifier Pattern `_ * ω`, the singleton
+contextual form `_$ =_context (_ * 1)$`, and ordinary `pack?` unpacking.
+Raw/Norm preserves postfix `?`; it performs neither packed-value extraction
+nor runtime-length enumeration. Bare P/E/G association and true nested
+Product boundaries keep their documented syntax normalization.
+
 Within a BindingSlot, the leading policy is processed under inherited holes
 before the local DeduceList extends the environment for Pattern, annotation,
 and initializer. Alpha conversion binds Pattern/policy occurrences only;

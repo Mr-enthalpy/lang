@@ -8,6 +8,15 @@ The semantic value universe is the ordinary Object universe:
 Object(x) = <Val1?(x), Pattern(x), Val2(x)>
 ```
 
+The [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md)
+defines the standard `(_ * ω)$` wrapper and `_ * ω` classifier Pattern.
+Bare Product material expands/merges contextually; actual repetition Val1
+contributes to complete identity. Syntax/material flattening supplies no
+packed-value extraction or runtime length observation. Repetition formation,
+selected `pack?` and iteration consumers remain unavailable until their
+ordinary producer/Policy/Pre interfaces are connected. External S `_$` cannot
+be erased or interpreted as the anonymous `_` hole by a partial matcher.
+
 Structural interpretation forms complete types atomically with actual Val2
 witnesses and registered roles. struct:type->type receives the complete type
 and adds helpers without changing its structural registrations. Private

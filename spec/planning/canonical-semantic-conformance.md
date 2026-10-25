@@ -196,6 +196,30 @@ substrate tests do not establish either gate:
 | 106-PD07 | Unordered result structure formed through observable effects | Result unorderedness alone does not authorize effect reordering. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PD08 | A future ordinal operation observes bare entries | Ordinals do not create names; the complete public ordinal API remains open. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
 
+### Product repetition and unpacking acceptance targets
+
+The [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md)
+defines these semantic targets. Syntax preservation, existing material
+normalization and explicit unavailable boundaries are separate evidence from
+complete source formation/unpacking. No unconnected target is reported as an
+executed success.
+
+| ID | Scenario | Required result | Consumer status |
+|---|---|---|---|
+| PR01 | Standard product packaging and its classifier | `product = (_ * ω)$`; classifier Pattern `_ * ω` uses ordinary repetition. | Norm operator material preserved/unsupported; wrapper formation pending |
+| PR02 | P/E/G source continuation with a bare Product | Contextual exposed `_ * ω` material merges only at the required layer and only the first following Product. | Existing source association and material flatten tests connected |
+| PR03 | A real nested layer, ordinary expression barrier, unit slots | Preserve boundaries and units; do not flatten arbitrary packed results. | Existing syntax/material regression connected |
+| PR04 | S `_`, S `_$` and S `(_)$` | Anonymous deduction/matching differs from external universerank extraction; the latter never becomes a wildcard. | Polarity carrier and unavailable relation boundary connected; external extraction pending |
+| PR05 | S `bool::`, `(if)$` or `_$` in a partial Sequence | Require the actual external Pattern; other matching terms cannot erase it or establish applicability. | Explicit unavailable boundary regression connected |
+| PR06 | Singleton contextual form `_$ =_context (_ * 1)$` | Preserve polarity and group interpretation; derive contextual expansion without equating arbitrary wrapper Object identities. | Syntax coverage connected; singleton semantic consumer pending |
+| PR07 | Different compile element material, same `t * n` Pattern | Val1 participates in complete identity, so different normalized payloads remain distinct. | General Object identity substrate connected; repetition formation pending |
+| PR08 | Legal replacement inside a `t * n` wrapper | Val1 and complete normal form may change while Pattern stays fixed; require ordinary write/Pre checks. | Repetition mutation consumer pending |
+| PR09 | Compile `t * ω` with an available finite payload, then `pack?` | Selected extraction exposes exactly that finite bare Product. | Ordinary unpack consumer pending |
+| PR10 | Runtime-only `t * ω`, then `pack?` | No static variable-arity expansion; require an ordinary iteration-like consumer. | No runtime expansion success path; iteration/unpack consumers pending |
+| PR11 | Unordered packed layer exposed through `?` | Keep all-named ordering and real nested layers; positional sequence needs named extraction and ordered assembly. | General ordering substrate connected; packed extraction pending |
+| PR12 | Runtime data requests a compile view for expansion | Require the admitted reify/reverse-migration boundary; neither `?` nor Product context grants authority. | Missing-authority rejection connected; reverse execution pending |
+| PR13 | `t * n` versus `T * D` | Ordinary operator applicability distinguishes repetition cardinality and type composition; spelling grants no private bypass. | Unresolved syntax connected; both ordinary semantic families pending |
+
 ### 106.2 Path structure and reading
 
 

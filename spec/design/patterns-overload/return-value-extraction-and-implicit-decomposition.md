@@ -20,7 +20,7 @@ e:
   ordinary non-product value point
 
 P:
-  product value / product normal form
+  exposed bare Product normal form
 ```
 
 The distinction is semantic, not an implementation-language distinction between
@@ -34,16 +34,23 @@ P return;
   -> value normal form is P
 ```
 
-`P` is not an outer call wrapper. If a function returns a product, the result is
-product normal form.
+`P` is exposed Product material, with the contextual `_ * ω` expansion and
+merging defined by the [Product owner](product-repetition-and-unpacking.md).
+The complete type `product = (_ * ω)$` packages that material; its classifier
+Pattern is `_ * ω`. A repetition wrapper in expression position keeps its
+ordinary Object identity until the applicable Product context or selected
+extraction exposes it.
 
-`?` does not mean destructure or enable extraction. Its current default meaning
-is one top-Pattern peel:
+`?` selects the admitted one-layer extraction interface. For a repetition
+wrapper it can expose the complete payload as bare Product. For the default
+named view its operation is one top-Pattern peel:
 
 ```text
 leaf? = leaf
 
 P? = P
+
+pack? = P      -- selected repetition interface, available shape and ordinary Pre
 
 TopPattern(P)? = P
 
@@ -84,11 +91,12 @@ PeelView(Norm(x)) = Norm(PeelView(x))
 These are future semantic requirements and are not claimed as current
 executable behavior.
 
-Bare `?` peels at most one layer. It does not keep peeling until a target pattern
+Bare `?` exposes at most one admitted layer. It does not keep peeling until a target pattern
 is found, perform Error propagation, search for an extractor, or stand for
 arbitrary pattern matching. Leaves and Pattern normal forms are fixed points.
 
-Destructuring is a pattern-matcher operation, not value-level `?` semantics:
+Pattern-directed destructuring consumes the supplied structure through the
+Pattern matcher:
 
 ```text
 bind ProductPattern against P
@@ -141,11 +149,12 @@ construct_C(extract_C(v)) = v
 
 This `extract_C` is a named constructor/extractor pair, not bare `?`.
 
-Downward, `?` peels one top Pattern layer:
+Downward, `?` exposes one admitted layer, preserving bare normal forms:
 
 ```text
 leaf e?       = e
 product P?    = P
+repetition pack? = P       -- selected Policy permits its available shape
 TopPattern(P)? = P
 ```
 
@@ -170,7 +179,11 @@ constructor/extractor isomorphism is a separate named interface.
 
 ### `?` Peels One Top Pattern Layer
 
-Bare `?` attempts to peel one top Pattern layer.
+For the default named view, bare `?` attempts to peel one top Pattern layer.
+For `t * n`, the repetition interface exposes one packed layer as bare Product.
+Compile `t * ω` requires an available finite payload; its runtime-only view
+cannot create a static bare Product and instead needs an iteration-like
+consumer. These are ordinary Policy-sensitive candidates for the same value.
 
 It is not recursive by default, and it is not an error-propagation shorthand.
 
@@ -188,8 +201,8 @@ TopPattern(P):
 Pattern matching may consume a symbol's Pattern layer directly without `?`;
 `?` itself does not recursively search for a matching pattern.
 
-A future extension may allow a type to declare one custom exposed view, but the
-extension is not frozen here. It must remain bounded and must not imply
+General custom exposed views remain a representation/interface question beyond
+the closed repetition family. Any such interface must remain bounded and must not imply
 arbitrary multi-layer skipping, recursive search, AST rewriting, or macro
 capability. Repeated explicit `?` remains ordinary composition:
 
@@ -306,9 +319,9 @@ Therefore:
 
 ```text
 binding/pattern matching reads Pattern without `?`
-only explicit source `?` requests the one-layer view
+explicit source `?` requests the selected one-layer extraction view
 value equality never inserts `?`
-ordinary expression evaluation never inserts `?`
+Product contexts expose standard material by their own normalization rule
 ```
 
 ### 3.1 Callable result extraction uses the same binding judgment
@@ -449,9 +462,9 @@ that sequence implicitly.
 ```text
 1. Evaluation result normalizes to e or P.
 
-2. `?` attempts to peel one top Pattern layer. It does not mean destructure,
-   search, recursive decomposition, cross-rank conversion, or Error
-   propagation.
+2. `?` exposes one selected layer: a repetition payload or a named top view.
+   It supplies no recursive search, cross-rank conversion or Error propagation.
+   Runtime-only t * ω supplies no static variable-arity expansion.
 
 3. On leaf values, `?` is idempotent:
    e? = e
@@ -467,8 +480,8 @@ that sequence implicitly.
 7. Binding/pattern matching may read the Pattern layer directly; `?` is not an
    enabling repair step.
 
-8. Product matching consumes P in the pattern matcher; value-level `?` does not
-   produce a separate split result.
+8. Product matching consumes P in the pattern matcher. A selected consuming
+   unpack action obeys atomic ExtractCommit; observation alone proves no death.
 ```
 
 For product return:

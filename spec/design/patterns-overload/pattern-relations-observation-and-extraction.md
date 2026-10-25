@@ -739,6 +739,15 @@ Interpret(_,V)=universerank
 universerank is ordinary universe-rank material for structural/callable formation;
 it supplies neither anonymous matching nor an arbitrary rank lift.
 
+In S, `_` is an anonymous deduction/matching position, without a named
+HoleBinderId. `_$` and `(_)$` instead supply the existing universerank Pattern
+through V interpretation. Like `bool::` and `(if)$`, they require the actual
+external Pattern extraction relation; they cannot be dropped or treated as
+wildcards. A Sequence containing such material requires all its observations,
+even when another term already matches. A missing consumer is unavailable.
+The [Product owner](product-repetition-and-unpacking.md) defines singleton
+contextual expansion, `_ * ω` repetition and compile Val1 identity.
+
 ### 10.1 Independent Hole Policy
 
 ```text

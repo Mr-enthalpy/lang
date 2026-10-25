@@ -427,6 +427,18 @@ Interpret(_, V)=universerank
 binder absence `<>`, and root-qualified Deduce Holes have distinct identities.
 Polarity changes neither the universe rank nor resident availability by itself.
 
+In S, `_$` and `(_)$` supply the external universerank Pattern, rather than
+an anonymous matching hole. The [Product owner](patterns-overload/product-repetition-and-unpacking.md)
+defines the singleton contextual form `_$ =_context (_ * 1)$` and the
+standard wrapper `product = (_ * ω)$`, with classifier Pattern `_ * ω`.
+Bare Product normalization exposes and merges available repetition material
+at the required context while preserving real nested layers. Repetition
+relocates element material into Val1; compile material still participates in
+complete identity, and legal value replacement need not mutate its Pattern.
+`pack?` exposes an admitted repetition layer. Compile `t * ω` can expose an
+available finite payload; runtime-only `t * ω` needs an ordinary iteration-like
+consumer and grants no static variable-arity expansion.
+
 ## 14. Hole-local Policy
 
 ```text

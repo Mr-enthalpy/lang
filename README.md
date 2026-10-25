@@ -53,6 +53,10 @@ true lexical local let remains binding. Explicit structural contributions synthe
 OverloadGroup is the separate aggregation algebra. Simple let a:b jointly extracts the delivered value and its adjacent-rank
 classifier. External constraints use full Paths or R$. RHS _ is universerank,
 structural _ is anonymous Pattern, and $ is a repeatable polarity flip.
+Product packaging is `(_ * ω)$`, with classifier Pattern `_ * ω` and contextual
+bare expansion/merging. Repetition keeps element content in Val1 identity;
+selected `pack?` exposes available shape. In S, `_$` supplies the external
+universerank Pattern rather than anonymous matching.
 Hole-local Policy uses independent written-dimension replacement. Bare branches
 have actual opaque values; bool has true/false structure. Callable-head P2 reify materializes the same E within an independently closed
 return classifier and its actual reverse-dependent cone; its execution consumer remains pending.
