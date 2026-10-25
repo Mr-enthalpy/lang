@@ -527,7 +527,6 @@ pub enum CallableImplementation {
 /// Compiler-seeded implementation leaves behind ordinary callable selection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BuiltinCallableImpl {
-    Reify,
     Struct,
     Assert,
     Verify(VerificationPrimitive),

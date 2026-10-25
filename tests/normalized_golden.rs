@@ -1,4 +1,8 @@
 use std::fs;
+#[test]
+fn reify_p2() {
+    assert_norm_case("reify_p2", false);
+}
 use std::path::PathBuf;
 
 use lang_syntax::norm::{

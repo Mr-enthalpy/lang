@@ -1,8 +1,9 @@
 mod support;
 
 use lang_build::{
-    elaborate_binding_result_demand, elaborate_namespace_declaration_policy, normalize_p2_policy,
-    NamespaceDeclarationPosition, OpenHereAvailability, OpenPolicy, PolicyMode, Provenance, Stage,
+    direct_callable_body_policy, elaborate_binding_result_demand,
+    elaborate_namespace_declaration_policy, NamespaceDeclarationPosition, OpenHereAvailability,
+    OpenPolicy, PolicyMode, Provenance, Stage,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -109,10 +110,14 @@ fn completion_policy_and_evaluation_stage_are_positionally_independent() {
     assert!(
         matches!(open.pair_query, lang_build::P1Projection::ValueDominant { value } if value.stage.is_none())
     );
-    let p2 = normalize_p2_policy(&policy("compile"), Provenance::new("P2 compile")).unwrap();
+    let p2 =
+        direct_callable_body_policy(&policy("compile"), Provenance::new("P2 compile")).unwrap();
     assert_eq!(p2.pair.value.stage(), Some(Stage::Compile));
     assert_eq!(p2.mode, PolicyMode::Const);
-    assert!(normalize_p2_policy(&policy("close"), Provenance::new("not a stage or mode")).is_err());
+    assert!(
+        direct_callable_body_policy(&policy("close"), Provenance::new("not a stage or mode"))
+            .is_err()
+    );
     for source in ["plain", "const + mut", "open + close"] {
         assert!(
             elaborate_binding_result_demand(Some(&policy(source)), Provenance::new(source))

@@ -3025,6 +3025,15 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole])
     // Extraction-side entry point. Binder/name/skeleton material stays in the
     // NormPattern family and is not treated as value-side call target material.
     match pattern {
+        BindingPatternAst::Binder(BinderNameAst::Text(name))
+            if find_visible_source_hole(holes, &name.text).is_some() =>
+        {
+            NormPattern::HoleRef {
+                target: find_visible_source_hole(holes, &name.text).unwrap().id,
+                name: name.text.clone(),
+                origin: NormOrigin::Source(name.span),
+            }
+        }
         BindingPatternAst::Binder(BinderNameAst::Text(name)) => NormPattern::Binder {
             identity: None,
             name: Some(name.text.clone()),

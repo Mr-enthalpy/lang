@@ -12,11 +12,6 @@ fn unknown_builtin_applicability_stops_selection_and_later_family_is_unformed() 
     for (target_path, input, expected) in [
         ("IdentityType::core", "type", "higher-universe classifier"),
         (
-            "reify::core",
-            "(uint8, uint8)",
-            "applicability relation consumer is not connected",
-        ),
-        (
             "assert::core",
             "uint8",
             "applicability relation consumer is not connected",

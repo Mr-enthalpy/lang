@@ -1,4 +1,8 @@
 use std::fs;
+#[test]
+fn reify_p2() {
+    assert_parser_case("reify_p2", false);
+}
 use std::path::PathBuf;
 
 fn case_path(name: &str, extension: &str) -> PathBuf {

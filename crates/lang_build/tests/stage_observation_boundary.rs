@@ -308,12 +308,15 @@ fn compile_p2_forms_and_reuses_a_compile_instance_for_an_external_type() {
 #[test]
 fn hidden_body_observation_is_an_explicit_invocation_frontier() {
     // P1 is visible; the actual declared P2 observation is hidden.
-    let mut family = AssociatedFamily::new(&["compile let f = (receiver, x):runtime => { (); };"]);
+    let mut family = AssociatedFamily::new(&["runtime let f = (receiver, x):compile => { (); };"]);
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     let outcome = family.invoke_ordinary_call(
         family.package_root_node(),
         &call,
-        OrdinaryInvocationContext::open_static(&[]),
+        OrdinaryInvocationContext {
+            horizon: ObservationHorizon::Runtime,
+            ..OrdinaryInvocationContext::open_static(&[])
+        },
         Provenance::new("visible callable, hidden body"),
     );
     assert!(
@@ -324,8 +327,8 @@ fn hidden_body_observation_is_an_explicit_invocation_frontier() {
 
 #[test]
 fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
-    let visible = "let f = (receiver, x):compile => (\"visible rejection\") delete;";
-    let hidden = "compile let f = (receiver, x):runtime => { (); };";
+    let visible = "let f = (receiver, x):runtime => (\"visible rejection\") delete;";
+    let hidden = "runtime let f = (receiver, x):compile => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [
         vec![visible, hidden],
@@ -337,7 +340,10 @@ fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
         let outcome = family.invoke_ordinary_call(
             family.package_root_node(),
             &call,
-            OrdinaryInvocationContext::open_static(&[]),
+            OrdinaryInvocationContext {
+                horizon: ObservationHorizon::Runtime,
+                ..OrdinaryInvocationContext::open_static(&[])
+            },
             Provenance::new("mixed body observations"),
         );
         if ambiguous {
@@ -359,15 +365,18 @@ fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
 
 #[test]
 fn hidden_body_does_not_override_a_reached_applicability_diagnostic() {
-    let visible = "let f = (receiver, x:type::):compile => { (); };";
-    let hidden = "compile let f = (receiver, x):runtime => { (); };";
+    let visible = "let f = (receiver, x:type::):runtime => { (); };";
+    let hidden = "runtime let f = (receiver, x):compile => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [[visible, hidden], [hidden, visible]] {
         let mut family = AssociatedFamily::new(&sources);
         let outcome = family.invoke_ordinary_call(
             family.package_root_node(),
             &call,
-            OrdinaryInvocationContext::open_static(&[]),
+            OrdinaryInvocationContext {
+                horizon: ObservationHorizon::Runtime,
+                ..OrdinaryInvocationContext::open_static(&[])
+            },
             Provenance::new("mixed applicability and body observation"),
         );
         assert!(

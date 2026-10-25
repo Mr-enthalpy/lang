@@ -665,11 +665,11 @@ impl AssociatedFamily {
                 panic!("closure")
             };
             let provenance = Provenance::new("associated implementation fixture");
-            let p2 = lang_build::normalize_p2_policy(
+            let p2 = lang_build::direct_callable_body_policy(
                 closure.head.as_ref().unwrap().call_policy.as_ref().unwrap(),
                 provenance.clone(),
             )
-            .unwrap();
+            .map_err(lang_build::BuildError::single)?;
             let outer = lang_build::policy_pair::elaborate_explicit_p1(
                 slot.policy.as_ref(),
                 &p2.pair,

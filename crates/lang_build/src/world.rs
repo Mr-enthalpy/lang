@@ -19,11 +19,11 @@ use crate::{
         SymbolPayload,
     },
     policy_pair::{
-        derive_function_object_view, elaborate_binding_result_demand,
+        derive_function_object_view, direct_callable_body_policy, elaborate_binding_result_demand,
         elaborate_namespace_declaration_policy, elaborate_return_policy_pattern,
-        function_object_declaration_policy, normalize_p2_policy, ExplicitP1Selection,
-        NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyMode,
-        PolicyView, ResultPolicyDemand, ValueComponentPolicy,
+        function_object_declaration_policy, ExplicitP1Selection, NamespaceDeclarationPolicy,
+        NamespaceDeclarationPosition, P1Projection, PolicyMode, PolicyView, ResultPolicyDemand,
+        ValueComponentPolicy,
     },
     policy_pair::{PatternComponentPolicy, PolicyPair},
     return_target::{
@@ -2720,7 +2720,7 @@ fn result_policy_from_closure(
             Some(provenance),
         ));
     };
-    normalize_p2_policy(annotation, provenance)
+    direct_callable_body_policy(annotation, provenance)
 }
 
 /// Check an explicitly supplied external result Pattern.
@@ -3188,7 +3188,7 @@ mod initializer_consumer_boundary_tests {
     #[test]
     fn invocation_reports_hidden_observation_before_both_initializer_boundaries() {
         for source in ["let result = () f;", "let result = close let () f;"] {
-            let mut world = world_with_member("compile let f = (receiver, x):runtime => { (); };");
+            let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             assert!(world
                 .resolve_semantic_source_target(world.package_root_node(), &call.target)
@@ -3485,7 +3485,7 @@ mod initializer_consumer_boundary_tests {
             "let result = close let () f;",
             "let result:type:: = () f;",
         ] {
-            let mut world = world_with_member("compile let f = (receiver, x):runtime => { (); };");
+            let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
             let namespace = world.package_root_node();
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             let target = world

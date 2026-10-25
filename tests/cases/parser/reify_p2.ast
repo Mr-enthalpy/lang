@@ -1,0 +1,312 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName compare
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName self
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName object1
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName object2
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                        call_policy:
+                          PolicySpec
+                            PolicyConjunction
+                                PolicyAtom Name "reify"
+                        returns:
+                          ReturnClause
+                            slot:
+                              BindingSlot let=false
+                                deduce:
+                                  None
+                                pattern:
+                                  PatternSkeleton
+                                    CanonicalWildcard _
+                                annotation:
+                                  AnnotationExpr
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              NavPath terminated
+                                                components:
+                                                  component Name bool
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      BodyBlock
+                        forms:
+                          Let
+                            slot:
+                              BindingSlot let=true
+                                deduce:
+                                  DeduceList
+                                    binders:
+                                      BinderDecl name=o1
+                                        policy:
+                                          PolicySpec
+                                            PolicyConjunction
+                                                PolicyAtom Name "runtime"
+                                        annotation:
+                                          None
+                                      BinderDecl name=t1
+                                        policy:
+                                          PolicySpec
+                                            PolicyConjunction
+                                                PolicyAtom Name "compile"
+                                        annotation:
+                                          None
+                                pattern:
+                                  Binder
+                                    TextName o1
+                                annotation:
+                                  AnnotationExpr
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name t1
+                                with_clause:
+                                  None
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name object1
+                          Let
+                            slot:
+                              BindingSlot let=true
+                                deduce:
+                                  DeduceList
+                                    binders:
+                                      BinderDecl name=o2
+                                        policy:
+                                          PolicySpec
+                                            PolicyConjunction
+                                                PolicyAtom Name "runtime"
+                                        annotation:
+                                          None
+                                      BinderDecl name=t2
+                                        policy:
+                                          PolicySpec
+                                            PolicyConjunction
+                                                PolicyAtom Name "compile"
+                                        annotation:
+                                          None
+                                pattern:
+                                  Binder
+                                    TextName o2
+                                annotation:
+                                  AnnotationExpr
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name t2
+                                with_clause:
+                                  None
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name object2
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    OperatorSugar fixity=Binary operator="<"
+                                      lhs:
+                                        Atom
+                                          Name o1
+                                      rhs:
+                                        Atom
+                                          Name o2
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName self
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                                BindingSlot let=true
+                                  policy:
+                                    PolicySpec
+                                      PolicyConjunction
+                                          PolicyAtom Name "runtime"
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName args
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                        call_policy:
+                          PolicySpec
+                            PolicyConjunction
+                                PolicyAtom Name "reify"
+                        returns:
+                          ReturnClause
+                            slot:
+                              BindingSlot let=false
+                                deduce:
+                                  None
+                                pattern:
+                                  PatternSkeleton
+                                    CanonicalWildcard _
+                                annotation:
+                                  AnnotationExpr
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            OperatorSugar fixity=Postfix operator="$"
+                                              arg:
+                                                Atom
+                                                  Name R
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      BodyBlock
+                        forms:
+                          Let
+                            slot:
+                              BindingSlot let=true
+                                policy:
+                                  PolicySpec
+                                    PolicyConjunction
+                                        PolicyAtom Name "compile"
+                                deduce:
+                                  None
+                                pattern:
+                                  Binder
+                                    TextName v
+                                annotation:
+                                  None
+                                with_clause:
+                                  None
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name args
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name v
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName reify
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name ordinary

@@ -39,7 +39,6 @@ pub(crate) fn prepare_resolved_builtin_call(
     };
     let primitive_name = match primitive {
         BuiltinCallableImpl::Struct => "struct",
-        BuiltinCallableImpl::Reify => "reify",
         BuiltinCallableImpl::Assert => "assert",
         BuiltinCallableImpl::Verify(_) => "verify",
         BuiltinCallableImpl::IdentityType => "IdentityType",
@@ -50,9 +49,7 @@ pub(crate) fn prepare_resolved_builtin_call(
                 "{primitive_name} : type -> type signature"
             )))
         }
-        BuiltinCallableImpl::Reify
-        | BuiltinCallableImpl::Assert
-        | BuiltinCallableImpl::Verify(_) => {
+        BuiltinCallableImpl::Assert | BuiltinCallableImpl::Verify(_) => {
             return Err(BuiltinPreparationFailure::Incomplete(Diagnostic::hard_error(
                 format!("builtin `{primitive_name}` applicability relation consumer is not connected"),
                 Some(provenance),
@@ -93,6 +90,16 @@ pub(crate) fn prepare_resolved_builtin_call(
             return Err(BuildError::single(diagnostic).into());
         }
     };
+    if candidate.arg_product_shape.raw_args.iter().any(|arg| {
+        arg.known_type_member_view
+            .as_ref()
+            .is_some_and(|view| view.view.pair.pattern.stage == crate::Stage::Runtime)
+    }) {
+        return Err(BuiltinPreparationFailure::Incomplete(Diagnostic::hard_error(
+            "compile type algebra on a runtime-policy type requires the unavailable active reify reverse-migration consumer",
+            Some(provenance),
+        )));
+    }
     Ok(BuiltinBodyInput::new(candidate, primitive, provenance))
 }
 

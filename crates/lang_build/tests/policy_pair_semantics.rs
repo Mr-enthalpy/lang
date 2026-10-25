@@ -2,11 +2,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use lang_build::{
     compute_export_retention_closure, derive_function_object_view as derive_function_object_p1,
-    elaborate_binding_result_demand, elaborate_formal_policy_pattern,
+    direct_callable_body_policy, elaborate_binding_result_demand, elaborate_formal_policy_pattern,
     elaborate_namespace_declaration_policy, elaborate_return_policy_pattern, expose_policy_slice,
-    externally_visible, function_object_declaration_policy, normalize_p2_policy,
-    project_export_overload_sets, project_p1, publicly_reachable, read_pattern, read_value,
-    select_by_policy_product, CapabilityRealization, CapabilityRealizationCell, ExportAdmission,
+    externally_visible, function_object_declaration_policy, project_export_overload_sets,
+    project_p1, publicly_reachable, read_pattern, read_value, select_by_policy_product,
+    CapabilityRealization, CapabilityRealizationCell, ExportAdmission,
     FunctionObjectDeclarationPolicy, NamespaceDeclarationPosition, NamespaceExportNode,
     NamespaceVisibility, ObjectPlaceId, ObservationHorizon, OutputModeDemand, P1Projection,
     PatternComponentPolicy, PolicyActualFrame, PolicyFormalFrame, PolicyMode,
@@ -97,7 +97,7 @@ fn policy_pair_and_whole_slot_mode_are_orthogonal_facts() {
 
 #[test]
 fn public_policy_constraints_preserve_conjunction_and_reject_pair_choice() {
-    let view = normalize_p2_policy(
+    let view = direct_callable_body_policy(
         &policy_spec("const + runtime"),
         Provenance::new("conjunction"),
     )
@@ -126,7 +126,7 @@ fn policy_algebra_rejects_same_dimension_conjunction() {
         "runtime + compile",
     ] {
         assert!(
-            normalize_p2_policy(&policy_spec(source), Provenance::new(source)).is_err(),
+            direct_callable_body_policy(&policy_spec(source), Provenance::new(source)).is_err(),
             "`{source}` must be rejected"
         );
     }
@@ -140,8 +140,8 @@ fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
     ];
 
     for (source, value_stage, pattern_stage) in cases {
-        let view =
-            normalize_p2_policy(&policy_spec(source), Provenance::new(source)).expect("valid P2");
+        let view = direct_callable_body_policy(&policy_spec(source), Provenance::new(source))
+            .expect("valid P2");
         assert_eq!(view.pair.value.stage(), Some(value_stage));
         assert_eq!(view.pair.pattern.stage, pattern_stage);
     }
@@ -181,7 +181,7 @@ fn p1_value_dominant_projection_restricts_the_actual_slice() {
 
 #[test]
 fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
-    let inherited_p2 = normalize_p2_policy(
+    let inherited_p2 = direct_callable_body_policy(
         &policy_spec("runtime"),
         Provenance::new("formal inherited P2"),
     )
@@ -226,7 +226,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         )
         .is_err());
     }
-    let const_only_p2 = normalize_p2_policy(
+    let const_only_p2 = direct_callable_body_policy(
         &policy_spec("const + runtime"),
         Provenance::new("const-only inherited P2"),
     )
@@ -301,7 +301,8 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
 #[test]
 fn explicit_pin_stages_report_unconnected_input_admissibility() {
     for inherited in ["compile", "runtime"] {
-        let p2 = normalize_p2_policy(&policy_spec(inherited), Provenance::new(inherited)).unwrap();
+        let p2 = direct_callable_body_policy(&policy_spec(inherited), Provenance::new(inherited))
+            .unwrap();
         let original = p2.clone();
         for source in ["runtime", "compile", "const + runtime"] {
             let provenance = Provenance::new(source);
@@ -328,7 +329,7 @@ fn explicit_pin_stages_report_unconnected_input_admissibility() {
 
 #[test]
 fn omitted_pin_inherits_p2_and_pout_inherits_p1_stage() {
-    let inherited_p2 = normalize_p2_policy(
+    let inherited_p2 = direct_callable_body_policy(
         &policy_spec("mut + runtime"),
         Provenance::new("position inherited P2"),
     )
@@ -687,8 +688,9 @@ fn omitted_p1_completes_to_one_p2_stage() {
     assert_eq!(object.pair.pattern.stage, Stage::Compile);
     assert_eq!(object.mode, PolicyMode::Const);
 
-    let compile = normalize_p2_policy(&policy_spec("runtime"), Provenance::new("compile result"))
-        .expect("valid result policy");
+    let compile =
+        direct_callable_body_policy(&policy_spec("runtime"), Provenance::new("compile result"))
+            .expect("valid result policy");
     let object = derive_function_object_p1(&compile, &FunctionObjectDeclarationPolicy::default());
     assert_eq!(object.pair.value.stage(), Some(Stage::Runtime));
     assert_eq!(object.pair.pattern.stage, Stage::Compile);
@@ -714,7 +716,7 @@ fn omitted_p1_completes_to_one_p2_stage() {
 
 #[test]
 fn namespace_attributes_never_change_the_canonical_function_object_pair() {
-    let result = normalize_p2_policy(
+    let result = direct_callable_body_policy(
         &policy_spec("compile"),
         Provenance::new("compile result for declaration-attribute separation"),
     )
@@ -907,7 +909,7 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
 
 #[test]
 fn formal_p2_policy_mode_slice_is_exported_to_the_overload_product_order() {
-    let inherited_p2 = normalize_p2_policy(
+    let inherited_p2 = direct_callable_body_policy(
         &policy_spec("runtime"),
         Provenance::new("overload formal P2"),
     )

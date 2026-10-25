@@ -77,7 +77,8 @@ impl PendingResultPolicyDemand {
     }
 }
 
-/// One resolved value observation and its independently formed Pattern stage.
+/// A declaration with a compile-available classifier. Runtime Pattern
+/// observations use their actual PolicyPair instead of this default.
 pub fn declared_policy_view(stage: Stage, mode: PolicyMode) -> PolicyView {
     PolicyView {
         pair: PolicyPair {
@@ -555,6 +556,7 @@ pub fn externally_visible<I: Ord>(
 #[derive(Clone, Debug, Default)]
 struct ComponentAtoms {
     stage: Option<Stage>,
+    reify: bool,
     mode_atoms: BTreeSet<PolicyMode>,
     open_policy: Option<OpenPolicy>,
     namespace: BTreeSet<NamespaceVisibility>,
@@ -592,18 +594,57 @@ impl ComponentAtoms {
     }
 }
 
-pub fn normalize_p2_policy(
+/// A callable P2 declaration; reification is independent of its outward Stage.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CallableP2Policy {
+    Direct(PolicyView),
+    Reify { mode: PolicyMode },
+}
+
+impl CallableP2Policy {
+    pub fn outward_view(&self) -> PolicyView {
+        match self {
+            Self::Direct(view) => view.clone(),
+            Self::Reify { mode } => declared_policy_view(Stage::Runtime, *mode),
+        }
+    }
+
+    pub fn require_connected_body(self, provenance: Provenance) -> Result<PolicyView, Diagnostic> {
+        match self {
+            Self::Direct(view) => Ok(view),
+            Self::Reify { .. } => Err(policy_error(
+                "reify P2 closed-return / active-boundary / dependent-continuation consumer is unavailable",
+                provenance,
+            )),
+        }
+    }
+}
+
+pub fn elaborate_callable_p2(
     policy: &NormPolicySpec,
     provenance: Provenance,
-) -> Result<PolicyView, Diagnostic> {
-    let atoms = parse_component(&policy.constraint, provenance.clone())?;
+) -> Result<CallableP2Policy, Diagnostic> {
+    let atoms =
+        parse_positioned_component(&policy.constraint, PolicyPosition::P2, provenance.clone())?;
     reject_namespace_attributes(&atoms, "P2", provenance.clone())?;
     let mode = concrete_mode_atom(&atoms, "P2", provenance.clone())?;
     let stage = atoms
         .stage
         .ok_or_else(|| policy_error("P2 requires one concrete stage", provenance.clone()))?;
     let pair = validate_p2_pair(declared_policy_view(stage, mode).pair, provenance)?;
-    Ok(PolicyView { pair, mode })
+    let view = PolicyView { pair, mode };
+    Ok(if atoms.reify {
+        CallableP2Policy::Reify { mode }
+    } else {
+        CallableP2Policy::Direct(view)
+    })
+}
+
+pub fn direct_callable_body_policy(
+    policy: &NormPolicySpec,
+    provenance: Provenance,
+) -> Result<PolicyView, Diagnostic> {
+    elaborate_callable_p2(policy, provenance.clone())?.require_connected_body(provenance)
 }
 
 pub fn elaborate_binding_result_demand(
@@ -927,14 +968,13 @@ fn value_query_matches<V, P>(query: ValuePolicyQuery, entry: &PolicyResultEntry<
 }
 
 fn validate_p2_pair(pair: PolicyPair, provenance: Provenance) -> Result<PolicyPair, Diagnostic> {
-    if pair.pattern.stage == Stage::Runtime
-        || pair
-            .value
-            .stage()
-            .is_some_and(|s| s != Stage::Runtime && s != pair.pattern.stage)
+    if pair
+        .value
+        .stage()
+        .is_some_and(|s| s != Stage::Runtime && s != pair.pattern.stage)
     {
         return Err(policy_error(
-            "P2 requires compatible value and static Pattern atoms",
+            "P2 requires compatible value and Pattern observations",
             provenance,
         ));
     }
@@ -973,24 +1013,31 @@ fn parse_component(
     conjunction: &NormPolicyConjunction,
     provenance: Provenance,
 ) -> Result<ComponentAtoms, Diagnostic> {
-    parse_positioned_component(conjunction, false, provenance)
+    parse_positioned_component(conjunction, PolicyPosition::Ordinary, provenance)
 }
 
 fn parse_p1_component(
     conjunction: &NormPolicyConjunction,
     provenance: Provenance,
 ) -> Result<ComponentAtoms, Diagnostic> {
-    parse_positioned_component(conjunction, true, provenance)
+    parse_positioned_component(conjunction, PolicyPosition::P1, provenance)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PolicyPosition {
+    P1,
+    P2,
+    Ordinary,
 }
 
 fn parse_positioned_component(
     conjunction: &NormPolicyConjunction,
-    p1: bool,
+    position: PolicyPosition,
     provenance: Provenance,
 ) -> Result<ComponentAtoms, Diagnostic> {
     let mut result = ComponentAtoms::default();
     for atom in &conjunction.atoms {
-        let next = parse_atom(atom, p1, provenance.clone())?;
+        let next = parse_atom(atom, position, provenance.clone())?;
         merge_conjunction(&mut result, next, provenance.clone())?;
     }
     Ok(result)
@@ -998,14 +1045,20 @@ fn parse_positioned_component(
 
 fn parse_atom(
     atom: &NormPolicyAtom,
-    p1: bool,
+    position: PolicyPosition,
     provenance: Provenance,
 ) -> Result<ComponentAtoms, Diagnostic> {
     let mut atoms = ComponentAtoms::default();
     match atom {
         NormPolicyAtom::Name { text, .. } => match text.as_str() {
-            "open" if p1 => atoms.open_policy = Some(OpenPolicy::Open),
-            "close" if p1 => atoms.open_policy = Some(OpenPolicy::Close),
+            "open" if position == PolicyPosition::P1 => atoms.open_policy = Some(OpenPolicy::Open),
+            "close" if position == PolicyPosition::P1 => {
+                atoms.open_policy = Some(OpenPolicy::Close)
+            }
+            "reify" if position == PolicyPosition::P2 => {
+                atoms.stage = Some(Stage::Runtime);
+                atoms.reify = true;
+            }
             "compile" => atoms.stage = Some(Stage::Compile),
             "runtime" => atoms.stage = Some(Stage::Runtime),
             "const" => {
@@ -1035,7 +1088,7 @@ fn parse_atom(
             ));
         }
         NormPolicyAtom::Group { conjunction, .. } => {
-            return parse_positioned_component(conjunction, p1, provenance);
+            return parse_positioned_component(conjunction, position, provenance);
         }
         NormPolicyAtom::Error(_) => {
             return Err(policy_error("invalid policy AST", provenance));
@@ -1062,6 +1115,7 @@ fn merge_conjunction(
     }
     result.open_policy = result.open_policy.or(next.open_policy);
     result.stage = result.stage.or(next.stage);
+    result.reify |= next.reify;
     result.mode_atoms.extend(next.mode_atoms);
     result.namespace.extend(next.namespace);
     result.export_root |= next.export_root;

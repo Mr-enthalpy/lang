@@ -830,6 +830,13 @@ pub fn canonical_function_object_view(
     closure: Option<&NormClosure>,
     provenance: &Provenance,
 ) -> Result<crate::PolicyView, crate::Diagnostic> {
+    if let Some(policy) = closure
+        .and_then(|c| c.head.as_ref())
+        .and_then(|h| h.call_policy.as_ref())
+    {
+        crate::elaborate_callable_p2(policy, provenance.clone())?
+            .require_connected_body(provenance.clone())?;
+    }
     // Extract the raw self-slot policy spec from the closure head, if any.
     let self_formal_spec: Option<&NormPolicySpec> = closure
         .and_then(|c| c.head.as_ref())
@@ -911,6 +918,14 @@ pub fn canonical_function_object_view(
         (None, Some(self_formal)) => complete(self_formal, outer_derived),
         (None, None) => outer_derived.clone(),
     };
+    if p2.pair.value.stage() == Some(crate::Stage::Runtime)
+        && canonical.pair.value.stage() != Some(crate::Stage::Runtime)
+    {
+        return Err(crate::Diagnostic::hard_error(
+            "runtime P2 requires a runtime P1 producer stage",
+            Some(provenance.clone()),
+        ));
+    }
     Ok(canonical)
 }
 
@@ -4428,6 +4443,14 @@ impl SemanticWorld {
                 Some(provenance.clone()),
             ))
         })?;
+        let canonical_view = canonical_function_object_view(
+            outer_p1_explicit.as_ref(),
+            &function_view,
+            &body_entry_view,
+            None,
+            &provenance,
+        )
+        .map_err(BuildError::single)?;
         let symbol = self.intern_symbol(namespace, namespace_owner, name, provenance.clone());
         self.symbol_backing_declarations
             .entry(symbol)
@@ -4441,21 +4464,6 @@ impl SemanticWorld {
             .next_callable
             .checked_add(1)
             .expect("semantic callable identity exhausted");
-
-        // Canonical P1 normalization. Core callables have no
-        // closure, so self_explicit is None. The caller passes
-        // outer_p1_explicit=Some(&function_policy) since core callables
-        // always have an explicit outer P1; the canonical P1 is therefore
-        // the outer P1. Errors from the canonicalizer propagate rather
-        // than being swallowed.
-        let canonical_view = canonical_function_object_view(
-            outer_p1_explicit.as_ref(),
-            &function_view,
-            &complete_result_view,
-            None,
-            &provenance,
-        )
-        .map_err(BuildError::single)?;
 
         let function_type = self.allocate_anonymous_type();
         let (function_pattern, pattern_scope) =
@@ -5252,7 +5260,7 @@ mod tests {
         let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() else {
             panic!("closure");
         };
-        let p2 = crate::normalize_p2_policy(
+        let p2 = crate::direct_callable_body_policy(
             closure.head.as_ref().unwrap().call_policy.as_ref().unwrap(),
             Provenance::new("callable fixture"),
         )
@@ -6739,7 +6747,7 @@ mod tests {
         let before_next_value = world.next_value;
 
         let closure = test_source_closure();
-        let result_p2 = crate::policy_pair::normalize_p2_policy(
+        let result_p2 = crate::policy_pair::direct_callable_body_policy(
             closure
                 .head
                 .as_ref()

@@ -655,6 +655,14 @@ pub fn invoke_policy_migration(
     request: &PolicyMigrationRequest,
     resolver_context: &ResolverContext,
 ) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
+    request
+        .validate_connected_execution()
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                diagnostic,
+                trace: OrdinaryPipelineTrace::default(),
+            },
+        )?;
     let Some(source) = semantic_world.value(request.source_value()).cloned() else {
         return Err(OrdinaryInvocationFailure::NoTargetValues {
             trace: OrdinaryPipelineTrace::default(),
@@ -905,6 +913,17 @@ pub(crate) fn invoke_target_values(
     context: OrdinaryInvocationContext<'_>,
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
+    if let Some(migration) = &context.migration {
+        migration
+            .request
+            .validate_connected_execution()
+            .map_err(
+                |diagnostic| OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                    diagnostic,
+                    trace: OrdinaryPipelineTrace::default(),
+                },
+            )?;
+    }
     // Selection, instance admission and result storage publish together.
     // Storage staging supplies no lifecycle, readiness or execution proof.
     let mut scratch = semantic_world.clone();

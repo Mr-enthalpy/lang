@@ -12,8 +12,8 @@ use crate::{
     identity::{SemanticValueId, TypeValueId},
     model::Provenance,
     policy_pair::{
-        project_p1, P1Projection, PatternComponentPolicy, PolicyPair, PolicyResultEntry,
-        PolicyView, ResultPolicyDemand, ValuePresence,
+        project_p1, P1Projection, PolicyPair, PolicyResultEntry, PolicyView, ResultPolicyDemand,
+        ValuePresence,
     },
 };
 
@@ -68,10 +68,9 @@ pub enum PolicyMigrationRequestFailure {
     SourceValueAbsent,
     TargetValueAbsent,
     TargetStageOmitted,
-    TargetPatternPolicyUnavailable {
-        source: PatternComponentPolicy,
-        target: PatternComponentPolicy,
-    },
+    /// Active reify boundary, independent return classifier and continuation
+    /// witnesses are required before reverse execution can be formed.
+    ReifyBoundaryUnavailable,
 }
 
 impl PolicyMigrationRequest {
@@ -84,19 +83,14 @@ impl PolicyMigrationRequest {
     ) -> Result<Self, PolicyMigrationRequestFailure> {
         let target_pair = concrete_target_pair(&target_demand)
             .ok_or(PolicyMigrationRequestFailure::TargetStageOmitted)?;
+        if reverse_stage_endpoint(&source_view.pair, target_pair) {
+            return Err(PolicyMigrationRequestFailure::ReifyBoundaryUnavailable);
+        }
         if source_view.pair.value.presence() == ValuePresence::Absent {
             return Err(PolicyMigrationRequestFailure::SourceValueAbsent);
         }
         if target_pair.value.presence() == ValuePresence::Absent {
             return Err(PolicyMigrationRequestFailure::TargetValueAbsent);
-        }
-        if target_pair.pattern.stage != source_view.pair.pattern.stage {
-            return Err(
-                PolicyMigrationRequestFailure::TargetPatternPolicyUnavailable {
-                    source: source_view.pair.pattern.clone(),
-                    target: target_pair.pattern.clone(),
-                },
-            );
         }
         Ok(Self {
             source_view,
@@ -139,6 +133,23 @@ impl PolicyMigrationRequest {
     pub fn provenance(&self) -> &Provenance {
         &self.provenance
     }
+
+    pub(crate) fn validate_connected_execution(&self) -> Result<(), crate::Diagnostic> {
+        if reverse_stage_endpoint(self.source_policy(), self.target_pair()) {
+            return Err(crate::Diagnostic::hard_error(
+                "runtime-to-compile migration requires the unavailable active reify P2 / closed-return / dependent-continuation consumer",
+                Some(self.provenance.clone()),
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn reverse_stage_endpoint(source: &PolicyPair, target: &PolicyPair) -> bool {
+    (source.value.stage() == Some(crate::Stage::Runtime)
+        && target.value.stage() == Some(crate::Stage::Compile))
+        || (source.pattern.stage == crate::Stage::Runtime
+            && target.pattern.stage == crate::Stage::Compile)
 }
 
 fn concrete_target_pair(demand: &ResultPolicyDemand) -> Option<&PolicyPair> {
@@ -353,6 +364,63 @@ fn compare_stage_atoms(
 mod stage_endpoint_tests {
     use super::project_migration_endpoint_hard_coordinates;
     use crate::{PatternComponentPolicy, PolicyPair, Stage, ValueComponentPolicy};
+
+    #[test]
+    fn reverse_request_cannot_bypass_execution_authority_validation() {
+        let base = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let mut world = base.semantic_world().clone();
+        let source = crate::declared_policy_view(Stage::Runtime, crate::PolicyMode::Const);
+        let target = crate::declared_policy_view(Stage::Compile, crate::PolicyMode::Const);
+        let request = super::PolicyMigrationRequest {
+            source_view: source,
+            target_demand: crate::ResultPolicyDemand {
+                pair_query: crate::P1Projection::Pair(target.pair),
+                mode: target.mode,
+            },
+            source_type: world.type_rank().unwrap(),
+            source_value: crate::SemanticValueId(999999),
+            provenance: crate::Provenance::new("unwitnessed internal request"),
+        };
+        let before = format!("{world:?}");
+        let result = crate::invoke_policy_migration(&mut world, &request, &base.package_context());
+        assert!(
+            matches!(result,Err(crate::OrdinaryInvocationFailure::ApplicabilityUnsupported {diagnostic,..}) if diagnostic.message.contains("active reify P2"))
+        );
+        assert_eq!(format!("{world:?}"), before);
+        let binding = world
+            .symbol_in_namespace(base.core_node(), "IdentityType")
+            .unwrap()
+            .identity;
+        let parsed = lang_syntax::parse("let result=uint8 IdentityType::core;");
+        let norm = lang_syntax::normalize_program(&parsed.program);
+        let lang_syntax::NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) = &norm.forms[0]
+        else {
+            panic!("let")
+        };
+        let site = crate::extract_single_call_site(slot.initializer.as_deref().unwrap()).unwrap();
+        let mut context = crate::OrdinaryInvocationContext::open_static(&[]);
+        context.migration = Some(crate::MigrationInvocationContext {
+            request: &request,
+            source_value: request.source_value,
+        });
+        let bypass = crate::invoke_resolved_binding_ordinary(
+            &mut world,
+            &[],
+            binding,
+            &site,
+            &base.package_context(),
+            context,
+            crate::Provenance::new("ordinary invocation entrance"),
+        );
+        assert!(
+            matches!(bypass,Err(crate::OrdinaryInvocationFailure::ApplicabilityUnsupported {diagnostic,..}) if diagnostic.message.contains("active reify P2"))
+        );
+        assert_eq!(format!("{world:?}"), before);
+    }
 
     fn endpoint(value: ValueComponentPolicy) -> PolicyPair {
         PolicyPair {
