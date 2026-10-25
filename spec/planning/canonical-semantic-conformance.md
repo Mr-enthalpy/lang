@@ -66,7 +66,7 @@ fails OpenHere, and saved authority cannot revive an explicitly closed window.
 | S04 | A runtime callable has an explicitly compile Pin | Apply ordinary input admission; the whole call need not be pure. |
 | S05 | An explicit formal-stage hole | Extract from actual/position rules; distinguish it from omission. |
 | S06 | A runtime-policy value happens to be known | E does not promote it to compile. |
-| S07 | Compile body needs unavailable runtime Val1 | Retain actual remaining continuation; reify may resume it with inputs. |
+| S07 | Closed reify body needs unavailable runtime Val1 | Only its actual reverse-dependent continuation resumes with runtime inputs. |
 | S08 | A static type has no runtime realization | Target demand does not manufacture a runtime slice. |
 | S09 | Round one retains two stage derivations | Do not run both observable bodies; round two selects or reports ambiguity. |
 | S10 | A selected compile realization has runtime residue | Preserve the selected origin; runtime does not reselect. |
@@ -82,9 +82,9 @@ fails OpenHere, and saved authority cannot revive an explicitly closed window.
 | E03 | Compile helper/cache reuse | Retain dependency validity and current storage; cache grants no execution authority. |
 | E04 | Invocation returns to main | Restore enclosing continuation; self-name resident reads do not enter an active body. |
 | E05 | Read a completed compile payload | Ordinary resident observation does not EnterBody. |
-| E06 | reify(C,R) with closed contract | Ordinary callable materializes the same E and actual continuation; unsupported producer is unavailable. |
+| E06 | callable P2 reify with closed contract | Callable P2 annotation materializes only actual reverse-dependent E work; unsupported producer is unavailable. |
 | E07 | Pending action depends on a write | Preserve actual dependency/effect ordering on the current continuation. |
-| E08 | compile:compile demand for runtime:compile | Require an actual selected same-Type migration; no runtime stage inferred from failure. |
+| E08 | compile:compile demand for runtime:compile | Reverse migration requires a selected same-Type candidate and active closed reify P2 boundary; no backflow to a past world. |
 | E09 | Compilation cache reuse | Neither reopen a closed subject nor retain permanent authority. |
 
 ## Instance lifecycle and with
@@ -505,9 +505,9 @@ recorded only after its actual consumer has positive and negative tests.
 | R03 | recursive and nested tags | tag plus actual activation selects distinct frames | [Return](../design/control-flow/targeted-return-and-d-reduction.md#callable-tag-to-active-frame) | routing consumer pending |
 | R04 | compile implicit dependencies | ordinary formation allowed; unavailable concrete runtime read waits | [Dependency](../design/symbol-world/dependency-observation-and-realization.md) | general realization pending |
 | R05 | NameExpr with opaque self | Norm_Name independent of capture-layout unfolding; result dependencies retained | [Unified](../design/unified-static-name-and-structural-semantics.md#18-dependencies-and-opaque-self) | consumer pending |
-| E-R01 | reify(C,R) | ordinary callable, closed result contract, every normal return delivered through R | [E](../design/static-evaluation/evaluation-residual-and-optimization.md#8-runtime-reification-of-e) | ordinary builtin execution unavailable |
-| E-R02 | let r:R$ = args reified | explicit external contract; bare R is extraction binder | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | consumer pending |
-| E-R03 | compile let val=runtime_express | actual delayed continuation resumed by same E with runtime input | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | continuation materialization pending |
+| E-R01 | callable P2 reify | outward runtime callable; result classifier independent of reverse migration; ordinary ReturnPattern/Pout delivery | [E](../design/static-evaluation/evaluation-residual-and-optimization.md#8-runtime-reification-of-e) | active closed-boundary execution unavailable |
+| E-R02 | (self,args):reify -> _:R$ => body | explicit external contract; bare R is extraction binder | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | consumer pending |
+| E-R03 | compile let val=runtime_express inside closed reify P2 | actual dependent continuation resumed by same E with runtime input | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | continuation materialization pending |
 | E-R04 | already selected versus newly formed runtime call | no reopen versus first ordinary selection at actual frontier | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | no-reopen connected; reified execution pending |
 | E-R05 | Region and dynamic branch | Region_K(n)=R(NamePosition_K(n)); no future-path enumeration by E | [Lifecycle](../design/lifetime/lifetime-policy-and-overload-boundary.md#current-name-position-and-delayed-e) | lifecycle substrate connected; source position wiring pending |
 | E-R06 | AOT/JIT/cache/precomputed tables | same E semantics; no Cartesian enumeration admission axiom | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | optimization consumer pending |
@@ -536,8 +536,33 @@ feature. Canonical owner definitions above are authoritative for both statuses.
 | Compile dependencies, delayed inputs and opaque self observation | 规范已闭合、消费者待连接 | R04–R05; formation/readiness/materialization consumers |
 | Callable-tag to actual activation materialization | 规范已闭合、消费者待连接 | R01–R03; CallTarget and ActualSelf remain independent |
 | Active-frame return binding, recursion identity and inactive-target rejection | 规范已闭合、实现已连接 | return_target_binding; no self-type or spelling resolution fallback |
-| Ordinary reify builtin declaration and unavailable boundary | 规范已闭合、实现已连接 | builtin_preparation_boundary; incomplete applicability selects/publishes nothing |
-| Reify callable formation, delayed E resumption and closed delivery | 规范已闭合、消费者待连接 | E-R01–E-R04; common continuation and return contract consumers |
+| Callable P2 reify elaboration and unavailable execution boundary | 规范已闭合、实现已连接 | P2 policy tests; closed-boundary execution unavailable before publication |
+| Callable reify boundary, dependency-cone E resumption and closed delivery | 规范已闭合、消费者待连接 | E-R01–E-R04; common continuation and return contract consumers |
 | Current-position lifecycle and mandatory transaction cleanup gate | 规范已闭合、实现已连接 | lifecycle substrate tests over supplied continuation facts |
 | Source NamePosition, cleanup placement and reified continuation wiring | 规范已闭合、消费者待连接 | E-R05; ordinary source/control-flow facts |
 | AOT/JIT/cache/table optimization representations | 规范已闭合、消费者待连接 | E-R06; equivalent O rewrites with E revalidation |
+
+## Reify P2 and bidirectional migration acceptance
+
+All rows define semantic acceptance targets. Pending consumers provide explicit
+unavailable diagnostics, not executed success claims.
+
+| ID | Scenario | Required result | Consumer |
+|---|---|---|---|
+| RF01 | callable-head :reify | outward Runtime, distinct evaluation qualification, two Stage atoms | P2 elaboration |
+| RF02 | reify in P1/Pin/Pout/Hole/expression Policy | reject that Policy atom position; ordinary spelling stays a Name | Policy elaboration |
+| RF03 | explicit R$ or bool:: return classifier | close from input facts before any reverse migration | closed-boundary consumer pending |
+| RF04 | deduced return classifier | accept iff its dependency closure excludes reverse migration | closed-boundary consumer pending |
+| RF05 | return classifier itself requires reverse migration | reject before migration/publication | closed-boundary consumer pending |
+| RF06 | runtime->compile migration outside reify or at ordinary Runtime P2 | reject; matching endpoint/candidate grants no boundary | request boundary |
+| RF07 | reverse migration under active closed reify | select an ordinary same-Type candidate, materialize only actual dependent successors | E consumer pending |
+| RF08 | runtime:runtime->runtime:compile | classifier-only migration, value Policy preserved | source/continuation consumer pending |
+| RF09 | pure runtime-policy type | equal runtime observations; no runtime type-algebra permission | observation substrate; type consumer pending |
+| RF10 | actual dependent type work plus independent compile type work | defer dependent cone only; independent work remains ready | dependency-cone consumer pending |
+| RF11 | runtime value-only compile detour | O may eliminate only with E-proved no type dependency and affected E revalidation | O consumer pending |
+| RF12 | Runtime/reify P2 with explicit compile P1 or one Runtime output among many | incompatible producer constraint fails; all outputs Runtime | P1 check; joint output consumer pending |
+| RF13 | Runtime/reify Pin with compile input | latest availability may accept it; Ready and applicability remain independent | InputAdmissible consumer pending |
+| RF14 | deleted migration, host asymmetry, restricted atomic library type | no generated capability may override missing/deleted realization | ordinary candidate/capability substrate |
+| RF15 | existing accepted view / selected migration failure | identity only / terminal failure, no chain or reopen | shared selection substrate |
+| RF16 | runtime newly formed multi-dispatch call | first ordinary selection at actual frontier; selected predecessors retain origin | reified E consumer pending |
+| RF17 | future false branch and lifecycle facts | current compile name/Color Region only; path elimination uses E O E | lifecycle substrate; source/O consumers pending |

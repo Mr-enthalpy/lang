@@ -475,6 +475,10 @@ NormPolicySpec. Omission remains distinct from a written dimension. The
 semantic [HoleOverride](../design/patterns-overload/pattern-relations-observation-and-extraction.md#101-independent-hole-policy) consumer uses this material; normalization
 performs no Policy deduction.
 
+Direct extraction occurrences of a declared Hole, on either side of o:t,
+retain exact HoleRef targets. Hole-local Policies remain on their declarations;
+the frontend does not infer a migration or a reified continuation from them.
+
 Raw AST carries lexical structure, surface spelling, and pre-semantic name
 roles. Normalized alpha conversion, not the parser and not a source span,
 allocates each `HoleBinderId`; every named `HoleRef` then targets one exact
@@ -631,3 +635,11 @@ nested flips, with even/odd polarity and exact alpha-bound Hole identities.
 They establish no resident read, Stage change, semantic evaluation or readiness. Optional generator heads, HoleRef
 requested-name selectors and expression bodies require ordinary source
 span/recovery coverage when wired. Semantic rules never feed back into parsing.
+
+Callable-head P2 reify has outward runtime Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Only its
+active closed boundary admits selected runtime-to-compile migration. Both
+Policy observations may be runtime, including a runtime-policy type; type
+operations still use the compile algebra. Runtime/reify P2 forces runtime
+producer/output stages, while Pin can accept earlier compile inputs. See the
+[unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

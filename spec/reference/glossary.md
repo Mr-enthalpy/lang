@@ -444,8 +444,8 @@ projections. The planner controls search, never meaning.
 
 ### Stage, horizon, producer visibility and readiness
 
-Stage={compile,runtime}, one atom per resolved coordinate. Only identity and compile-to-runtime edges
-exist. P2 is evaluation horizon; P1/Pout is producer visibility; InputAdmissible
+Stage={compile,runtime}, one atom per resolved coordinate. The ordinary stage order has identity and compile-to-runtime; a selected
+reverse migration requires the active closed reify P2 boundary. P2 is evaluation horizon; P1/Pout is producer visibility; InputAdmissible
 is position-sensitive acceptance and Ready is frontier execution legality.
 Neither acceptance nor deferral is Policy migration.
 
@@ -607,15 +607,14 @@ activations remain distinct. Self is Pattern-observable without a public capture
 
 ### Reify
 
-(C,R) |> reify forms an ordinary callable under InputAdmissible, actual frontier
-and dependency validity, ordinary Pre/commit/Post and ClosedReturnContract(R).
-Invoke(reify(C,R),args) ~= Deliver_R(E(Invoke(C,args))); every normal return
-passes v |> R at its existing return boundary. The same E resumes a delayed
-continuation when runtime inputs become available. A runtime newly formed call
-selects once at its frontier; selected invocations retain their identity.
-AOT/JIT, caching and table generation are O representations, without an E
-requirement to enumerate future dispatch combinations or paths. See the
-[evaluation owner](../design/static-evaluation/evaluation-residual-and-optimization.md#8-runtime-reification-of-e).
+A callable-head P2 annotation, outwardly runtime, with a result classifier
+determined explicitly or from inputs independently of reverse migration.
+Selected runtime-to-compile migration is admitted only by its current closed
+boundary. It materializes the actual dependent E cone at runtime; independent
+compile type work proceeds normally. Runtime-policy types/runtime:runtime views
+are legal values, with type operations still using the compile algebra. AOT,
+JIT, tables and value-only detour elimination are O representations subject to
+E revalidation. See the [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
 
 ### Current name-position Region
 

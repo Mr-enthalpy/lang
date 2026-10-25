@@ -316,7 +316,7 @@ and optimizer structures cannot introduce program facts.
 
 - Stage is one atom; compile/runtime are mutually incomparable. P2 is horizon,
   P1/Pout producer visibility. InputAdmissible, migration and Ready are separate.
-  Runtime P2 defaults omitted P1 to runtime. Omission
+  Runtime or reify P2 requires runtime P1/output producers. Omission
   is not a hole. Known runtime inputs do not change the producer stage.
 - Resolve once, R_vis evidence, ordinary C_sigma preparation, hard A, fallback
   suppression, Policy/Pattern order, unique Selected=(c*,sigma*,frame).
@@ -379,3 +379,11 @@ forms dependencies automatically. Its completed result supports
 ordinary binding and transfer subject to actual dependencies and ordinary
 checks; wrappers preserve those obligations without a source-origin veto. Lifetime persistence and escape remain
 checked through the explicit refinement handoff, not inferred from tau status.
+
+Callable-head P2 reify has outward runtime Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Only its
+active closed boundary admits selected runtime-to-compile migration. Both
+Policy observations may be runtime, including a runtime-policy type; type
+operations still use the compile algebra. Runtime/reify P2 forces runtime
+producer/output stages, while Pin can accept earlier compile inputs. See the
+[unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

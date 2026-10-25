@@ -172,38 +172,52 @@ remain representation/implementation work.
 
 ## 8. Runtime reification of E
 
-```text
-(C,R) |> reify => f
-Callable(C) and ClosedReturnContract(R)
-ClosedReturnContract(R) iff R is ordinary Pattern-observable material
-  with a unique complete T_R fixed at formation:
-  every admitted normal delivery v |> R completes as w with Type(w)=T_R
-  and R, T_R and required dependency evidence remain valid at that frontier
-Invoke(f,args) ~= Deliver_R(E(Invoke(C,args)))
-Deliver_R(v) = ordinary return-boundary delivery of (v |> R)
-```
-
-The result is an ordinary callable admitting legal runtime-policy arguments.
-Its premises are InputAdmissible, actual frontier/dependency validity, common
-Pre/commit/Post and a complete result-type contract determined by R for every
-normal return. A reference interpreter can carry the restricted single E.
-AOT, JIT, cache and dispatch-table representations are equivalent O choices;
-an exhaustive dispatch Cartesian product is not an E premise.
+Callable P2 reify has outward runtime Policy and executes through the same E.
+The [unified judgment](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration)
+owns its syntax, ActiveBoundary, ClosedReturn and ReverseAllowed premises.
 
 ```lang
-let r_vals:R$ = runtime_vals |> ((closure,R) |> reify);
+let f = (self, runtime let args):reify -> _:R$ => {
+    compile let v = args;
+    ...;
+};
 ```
 
-R$ explicitly supplies the external contract. A compile action needing an
-unavailable runtime value can retain an actual unfinished continuation. Reify
-materializes that computation and continuation; the same E resumes at args-in
-with actual inputs. An obstruction or empty candidate set alone proves no such
-continuation. Unsupported formation reports unavailable.
+For every admitted input, TypeContract_B(inputs) is determined without a selected
+reverse migration. Ordinary return delivery checks the established Pattern/Pout;
+an explicit contract and input-derived contract are equally valid when closed.
 
-Selected calls retain origin. Calls newly formed by runtime E make their first
-ordinary selection at the actual frontier. Fixed name authority still applies.
-Current NamePosition determines Region; E requires no future branch enumeration.
-Legal ready schedules preserve results, effects and cleanup.
+```text
+Invoke(B,args) ~= Deliver_(ReturnPattern_B,Pout_B)(E_K(Body_B,args))
+P2(B)=reify => ExternalStage(B)=runtime
+ReverseAllowed_K(m) => RuntimeMaterialize_K(DependentSuccessors(m))
+```
+
+The equivalence also requires ordinary InputAdmissible, dependency validity,
+actual frontier availability and common Pre/commit/Post. It does not execute a
+runtime value at an earlier physical compile frontier. Missing input retains
+only an established remaining continuation, never work guessed from a lookup miss.
+
+An actual runtime-value-to-compile-type edge requires carrying its dependent E
+cone. Unrelated compile type actions continue normally. Runtime-value actions
+remain ordinary runtime continuation work. A value-only compile detour may be
+rewritten by O after proving absence of type dependence; affected E projections
+are revalidated. Deferral neither wraps unrelated successors nor recolors an
+enclosing caller's fixed return classifier.
+
+Runtime-policy types are values of the existing type algebra. Executing type
+operations on runtime-only observations requires scoped reverse migration; no
+parallel runtime type interpreter follows from storage availability.
+
+Selected invocations retain identity. A genuinely new runtime invocation first
+selects at its actual frontier. E does not enumerate future branches or the
+Cartesian product of multi-dispatch. An interpreter carrying restricted E,
+AOT, JIT, caches and precomputed tables are equivalent O representations.
+
+The lifecycle projection remains compile name/Color algebra over the current K.
+Region_K(n)=R(NamePosition_K(n)); physical availability and future branch values
+do not redefine those names or Regions. O's path elimination still requires E O E
+revalidation, and adds no E admission proof obligation.
 
 ## 9. Dependency realization at formation
 

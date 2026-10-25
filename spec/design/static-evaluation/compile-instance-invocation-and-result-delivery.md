@@ -188,7 +188,8 @@ CompileInstanceKey=ParentOwner x SelectedPartner x CanonicalInputs
 Compile dependencies may include implicit ordinary external observations.
 Requirements, realized dependency identities and concrete-value readiness are
 separate. Unavailable runtime Val1 cannot be evaluated at the compile frontier;
-its actual pending computation can be materialized by reify(C,R), then continued
+its actual reverse-dependent E cone can be materialized within a closed
+callable reify P2 boundary, then continued
 by the same E at args-in. Result-affecting dependencies participate in validity
 and instance reuse; hidden environment state is not a cache coordinate.
 Norm_Name is independent of unfolding self's capture layout. Self remains an

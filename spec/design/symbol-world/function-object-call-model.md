@@ -478,7 +478,8 @@ omitted ordinary P1 stage, runtime P2 defaults to runtime, and
 compile to compile; open qualification follows its own owner. Explicit P1
 is never overwritten. The completed view must supply legal self material.
 
-Pin = ElabIn(P2, Delta_in). Omission inherits the applicable base; explicit
+Pin = ElabIn(HorizonPolicy(P2), Delta_in). Reify projects to the ordinary runtime
+horizon for this input view. Omission inherits the applicable base; explicit
 const/mut refines mode, and explicit stage atoms/holes constrain stage.
 Thus a runtime callable may have heterogeneous compile and runtime Pins.
 Pout = ElabOut(P1, Delta_out), with Pout.stage = P1.stage. A mode qualifier

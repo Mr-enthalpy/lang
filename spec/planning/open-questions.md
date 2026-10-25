@@ -68,7 +68,7 @@ two-point preference, capability realization, unique selection and no reopen
 are fixed. Stage is one atom from {compile,runtime}. P2 is
 horizon, P1/Pout producer visibility. Pin admits explicit stage constraints and
 holes; Pout.stage=P1.stage. InputAdmissible, migration and Ready are separate.
-Runtime P2 defaults omitted P1 to runtime. Bare let
+Runtime or reify P2 requires runtime P1/output producers. Bare let
 supplies no override; written concrete mode and explicit hole are distinct.
 Policy deduction uses ordinary operator Pattern relations, HoleBinderId and
 require. The 2×2 tables are finite explanatory views of relational declarations,
@@ -303,3 +303,8 @@ owned-transfer/promotion checks remain required. This does not block closure
 formation semantics and grants neither global lifetime to tau_C nor a blanket
 ban on every local dependency. Already established ordinary type survival
 facts are retained in their domain.
+
+Callable reify P2, scoped bidirectional same-Type migration, runtime-policy types,
+independently closed return classifiers and dependency-cone materialization are
+closed in the unified/Policy/E owners. Active-boundary witness encoding and
+continuation layout remain representation questions; consumer work is in roadmap.

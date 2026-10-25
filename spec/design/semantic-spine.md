@@ -51,7 +51,7 @@ lifecycle or result meaning.
 
 Stage is one atom from {compile,runtime}. Pin can constrain
 stage explicitly; Pout.stage=P1.stage. InputAdmissible, migration and Ready
-are separate. Runtime P2 defaults omitted P1 to runtime.
+are separate. Runtime or reify P2 requires runtime P1/output producers.
 
 Instance Killable, fixed MoveEffect and frontier Movable remain independent.
 Pass=Move; copy-derived share/rebind -> clone -> Move creates a fresh result,
@@ -134,3 +134,11 @@ Self is Pattern-observable without transparent capture layout; return routing
 uses callable tag and actual activation independently of ActualSelf.
 Region_K(n)=R(NamePosition_K(n)); current Pre/commit/Post and cleanup facts
 suffice for E, while future-path analysis belongs to O.
+
+Callable-head P2 reify has outward runtime Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Only its
+active closed boundary admits selected runtime-to-compile migration. Both
+Policy observations may be runtime, including a runtime-policy type; type
+operations still use the compile algebra. Runtime/reify P2 forces runtime
+producer/output stages, while Pin can accept earlier compile inputs. See the
+[unified owner](unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

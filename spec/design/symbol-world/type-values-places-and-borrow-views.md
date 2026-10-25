@@ -1733,6 +1733,15 @@ concrete machine-semantic Type. A normal integer path is therefore
 int32@runtime`; `integer@runtime`, `real@runtime`, and `character@runtime` are
 not legal same-Type results.
 
+For concrete basic machine types, mechanical declarations provide both
+forward and scoped reverse same-Type migration. Derived families require their
+actual constituent realizations; a selected delete, missing external capability
+or library restriction removes the corresponding direction. The canonical
+abstract-literal deleted entries above remain their own ordinary declarations.
+Runtime-policy type values are legal observations of complete tau. The type
+algebra consumes compile observations; reify P2 is required when obtaining those
+observations needs an ordinary runtime-to-compile migration.
+
 #### 4.1.5 Stage-invariant machine semantics
 
 Once a concrete Type fixes machine semantics, those semantics do not vary by

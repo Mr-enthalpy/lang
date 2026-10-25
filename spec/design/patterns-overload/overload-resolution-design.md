@@ -106,7 +106,7 @@ Pattern meaning.
 
 Policy holes participate in this same joint relation:
 
-    Pin_i(rho) = ElabIn(P2, Delta_in_i(rho))
+    Pin_i(rho) = ElabIn(HorizonPolicy(P2), Delta_in_i(rho))
     Pout(rho)  = ElabOut(P1, Delta_out(rho))
 
 Pin allows explicit stage atoms/holes; Pout.stage=P1.stage. R_vis executes no

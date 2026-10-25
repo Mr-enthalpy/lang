@@ -45,8 +45,8 @@ owns static/name/structural interpretation and instance formation.
    NameExpr shape; ordinary ADL receiver/type-path overload families.
 10. Joint classifier extraction across ranks, HoleOverride solving, full Path
     suffix consumers, bare-branch formation, dependencies, source lifecycle, fixed cleanup,
-    ordinary remaining-continuation transport, reify formation/resumption with
-    closed result delivery, and E saturation.
+    ordinary remaining-continuation transport, callable reify P2 closed-boundary/dependency-cone wiring with
+    scoped reverse migration and ordinary result delivery, and E saturation.
 
 Every step preserves one identity/authority relation and selected no-reopen.
 

@@ -32,7 +32,7 @@ Policy positions have contextual elaborators:
 
 ```text
 ordinary binding P1          -> identity-preserving slice restriction
-formal parameter policy      -> Pin = ElabIn(P2, Delta_in)
+formal parameter policy      -> Pin = ElabIn(HorizonPolicy(P2), Delta_in)
 return-position policy       -> Pout = ElabOut(P1, Delta_out)
 namespace declaration policy -> visibility plus optional export-root
 ```
@@ -42,10 +42,12 @@ No unresolved solver alternative manufactures a missing view.
 
 ## 2. P2 and function objects
 
-Stage={compile,runtime}, with <=stage=Id union {(compile,runtime)}.
+Stage={compile,runtime}; the ordinary stage order has identity and compile-to-runtime.
+A selected runtime-to-compile migration requires a closed active reify P2 boundary.
 P2 is horizon, P1/Pout producer visibility. InputAdmissible, Ready and execution
 legality remain independent. The internal runtime:compile view is valid.
-Omitted ordinary P1 stage follows P2; explicit P1 remains. Pin admits explicit
+Runtime or reify P2 requires runtime P1/output producers; competing compile
+producer constraints fail. Compile P2 completes omitted ordinary P1 to compile. Pin admits explicit
 constraints and Holes; Pout retains P1.stage. HoleOverride independently replaces
 written Hole Policy dimensions and inherits the others without strength checks.
 
@@ -64,7 +66,8 @@ Resolution fixes identity before exposure. Hidden runtime Val1 retains its
 Pattern and Object coordinates. R_vis/C_sigma require ordinary evidence;
 visibility grants neither Ready nor execution. Selected origins never reopen.
 Ordinary internal/external lookup consumes source access and export facts.
-Reify materializes actual delayed E continuations under a closed return contract;
+Callable-head reify materializes only the selected reverse-dependent E cone
+under an independently closed return classifier;
 it supplies no namespace scanning privilege.
 
 ## 4. Export and visibility mapping
@@ -208,7 +211,8 @@ scalar policy projection.
 
 - Policy words remain contextual names, not lexer keywords.
 - Pattern | retains its own relation; no dedicated public Policy union is added.
-- Runtime horizon uses runtime:compile for ordinary value/Pattern observation.
+- Runtime observation retains the actual runtime:compile or runtime:runtime
+  coordinates; the horizon supplies neither missing observation.
 - Internal (Pv=runtime,Pp=compile) observations remain valid; public colon pairs do not.
 - P1 projection accepts existing matching observations without cropping stage atoms.
 - A non-empty ordinary P1 projection never manufactures absent query
@@ -217,9 +221,9 @@ scalar policy projection.
   direct same-Type migration; solver alternatives are not manufactured views.
 - Policy slicing of `Pp` does not extract, navigate, reroot, or otherwise
   transform the Object's P coordinate.
-- Atomic migration mandates only the static-to-runtime stage edge, unchanged
-  Type, present output, and unchanged selected `Pp`; callable-declared
-  `PolicyMode` endpoints may differ and participate in Bp'.
+- Direct migration preserves Type and declared endpoint coherence. A reverse
+  value or classifier coordinate requires the active closed reify P2 boundary;
+  selected PolicyMode endpoints may differ and participate in Bp'.
 - Policy failure cannot repair Type/Pattern structural inapplicability.
 - Runtime value invisibility never deletes the name binding or erases its
   resident's independently exposed Pattern view.

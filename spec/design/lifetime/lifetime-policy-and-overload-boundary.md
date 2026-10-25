@@ -1001,7 +1001,12 @@ Region_K(n)=R(NamePosition_K(n))
 
 Region follows current semantic name position, independently of future branch
 availability and physical runtime timing. E uses current Pre/commit/Post and fixed
-cleanup observations, without future-path enumeration. Reify resumes the same E
+cleanup observations, without future-path enumeration. A closed callable reify P2 boundary resumes its reverse-dependent work in the same E
 at args-in. Origins remain relations inside compile name-position algebra.
 Runtime strings create no authority to redefine fixed structured-name coordinates.
 O may analyze future paths and specialize with affected E revalidation.
+
+The lifecycle projection is compile name/Color algebra for both compile and
+runtime callables. Future value facts such as a constant-false branch are not
+visible to name/Color reasoning by themselves; an optimizing path removal uses
+E O E with the affected projections revalidated.

@@ -93,6 +93,14 @@ partition, storage and device metadata need not force full compile-time payload
 loading. Ordinary policy, view, construction, and migration rules describe the
 available observations and realizations.
 
+Compile acquisition and knowledge establish no symmetric migration capability.
+An external Object may lack a runtime export or a compile realization. Such
+asymmetry is expressed by ordinary missing/deleted candidate declarations.
+Library types with restricted physical semantics, including atomic facilities,
+can have the same asymmetric domain. Bidirectional generation requires the
+actual ordinary realizations of each direction; it creates no host IO axiom.
+See [migration](../symbol-world/policy-and-static-flow-projection.md#35-direct-bidirectional-migration).
+
 ## 4. Target-machine facts
 
 The target machine is described by compile-known Objects obtained through source

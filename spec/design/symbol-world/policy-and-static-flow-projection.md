@@ -276,7 +276,7 @@ mut let mut(self, <p> p let object:T) -> T
 ```
 
 Here p belongs to the formal extraction site, not a lifted P1 binder.
-Pin=Overlay(P2,Mode=rho(p)); inherited-only coordinates retain P2.
+Pin=Overlay(HorizonPolicy(P2),Mode=rho(p)); inherited coordinates retain that ordinary view.
 With no result override, Pout=P1. Three input rows are a finite explanatory
 expansion of each declaration, not three required primitive declarations.
 
@@ -420,13 +420,15 @@ A completed stage coordinate is one atom:
 
 ```text
 Stage = {compile, runtime}
-<=stage = Id ∪ {(compile,runtime)}
+OrdinaryStageOrder = Id ∪ {(compile,runtime)}
+ScopedReverse_K(runtime,compile) iff ReverseAllowed_K(selected migration)
 ```
 
 The compile atom uses the ordinary static
 evaluator; neither that fact nor execution readiness establishes a stage edge.
 The static-to-runtime edges require an admitted ordinary same-Type migration.
-No runtime-to-compile conversion follows.
+Reverse migration uses the active reify P2 / closed-return judgment of §3.5.
+It is a selected scoped operation, not an unconditional stage-order edge.
 
 An unresolved solver may retain several valuations, each with one stage atom.
 Genericity uses explicit holes, ordinary extraction, legal orthogonal `+`,
@@ -450,7 +452,7 @@ Ordinary extraction, polarity and require retain typed coordinate restrictions.
 There is no independent policy deduction calculus:
 
     P1, P2 independent
-    Pin_i(rho) = Overlay(P2, Delta_in_i(rho))
+    Pin_i(rho) = Overlay(HorizonPolicy(P2), Delta_in_i(rho))
     Pout(rho) = Overlay(P1, Delta_out(rho))
     Omega = <Actual_1,...,Actual_n,Demand?>
 
@@ -836,20 +838,20 @@ by the overload product order in section 12.
 
 Pin and Pout have independent parents and different stage rules:
 
-    Pin = ElabIn(P2, Delta_in)
+    Pin = ElabIn(HorizonPolicy(P2), Delta_in)
     Pout = ElabOut(P1, Delta_out)
     bare let -> Delta = empty
     written atom -> explicit override
     <p> p let -> mode overlay containing the formal-local HoleBinderId p
 
-    let x          -> Pin=P2
-    const let x    -> Overlay(P2, Mode=const)
-    mut let x      -> Overlay(P2, Mode=mut)
-    <p> p let x    -> Overlay(P2, Mode=rho(p))
+    let x          -> Pin=HorizonPolicy(P2)
+    const let x    -> Overlay(HorizonPolicy(P2), Mode=const)
+    mut let x      -> Overlay(HorizonPolicy(P2), Mode=mut)
+    <p> p let x    -> Overlay(HorizonPolicy(P2), Mode=rho(p))
 
 Pin may override stage with an explicit atom or an ordinary Pattern hole.
 For example a runtime-horizon callable can have one compile Pin and one
-runtime Pin. Missing input stage inherits P2; a hole is solved, never defaulted
+runtime Pin. Missing input stage inherits HorizonPolicy(P2); a hole is solved, never defaulted
 as if omitted. InputAdmissible checks each actual against its position, rather
 than comparing every input stage with P2 in a total order. Omission, explicit concrete mode and explicit hole are not interchangeable.
 Visibility/export do not acquire invented formal/output counterparts.
@@ -1055,8 +1057,8 @@ This is the **Existing-First, Constructible-Second** principle:
 2. language-constructible accepted views
 ```
 
-A stage-changing migration has a selected static source atom and runtime
-target atom. Unresolved solver alternatives are not a completed Policy view.
+A stage-changing migration has explicit selected source and target atoms.
+A runtime-to-compile endpoint requires the reify boundary judgment. Unresolved solver alternatives are not a completed Policy view.
 Migration evidence may constrain R_vis, but speculative candidate enumeration
 executes no migration body or effect.
 
@@ -1065,7 +1067,7 @@ OnePolicyMigrationAlgebra:
 
 ordinary binding Policy completion
 PolicyLet outward completion
-compile:compile -> runtime:compile materialization
+forward or scoped reverse same-Type migration
   -> PreparePolicyMigrationCandidates
   -> ordinary Policy overload / unique selection
   -> selected m
@@ -1074,8 +1076,7 @@ compile:compile -> runtime:compile materialization
 ```
 
 Demand kinds restrict which direct candidates are admitted; they do not own
-different selectors. The runtime-stage case admits the one authorized atomic
-runtime-migration family described in §3.5. A PolicyLet result-slot mode
+different selectors. Stage-changing cases admit the direct authorized family of §3.5. A PolicyLet result-slot mode
 transfer admits the corresponding identity or canonical mechanical
 realization ending in Move, with any selected clone-derived producer path
 made explicit. Ordinary binding consumes the same candidate
@@ -1093,28 +1094,38 @@ Policy failure may search `ref`, `share`, `@`, or another structure-changing
 operation. Those operations occur only when separately required by their own
 language rule and then use ordinary function-object invocation.
 
-### 3.5 Existing views and atomic runtime migration
+### 3.5 Direct bidirectional migration
 
 ```text
-source -> Project_in -> one selected Migration -> ordinary result -> Project_out
+source -> Project_in -> one selected Migration -> result -> Project_out
+ExistingAcceptedView(demand,source) => identity only
+Selected(m) => same Type at both endpoints
+Reverse(m) iff any observed stage coordinate changes runtime -> compile
+Reverse(m) => ActiveBoundary_K(m)=B, P2(B)=reify, ClosedReturn_K(B)
 ```
 
-Projection selects an existing concrete view; it does not construct an object.
-If the complete query already has an accepted view, identity is the only
-migration candidate. Otherwise one admitted direct family may provide:
+Endpoints include both value and classifier observations. Thus runtime:runtime
+to runtime:compile changes the classifier observation alone; compile:compile to
+runtime:compile is the ordinary value materialization case. An endpoint may also
+carry an absent value projection. Actual Object shape, presence and Type remain
+independent premises, and the migration candidate preserves their coherence.
 
-```text
-S:S, Type T -> runtime:S, Type T    where S = compile
-```
+Both directions use the same direct family and ordinary selection. Mechanical
+generation supplies bidirectional machine-Type declarations and can derive
+further families from actual component realizations. Deletion, missing external
+realization, or a restricted library type can remove either direction. Generation
+is not capability evidence when a required declaration/realization is unavailable.
 
-The selected callable provides coherent PolicyProjection and ValueRealization.
-Pp is preserved; ordinary result semantics preserves the Pattern identity rules.
-Source and destination modes are separate ordinary endpoint coordinates: a
-declared const-compile to mut-runtime constructor can create a fresh result.
-Mode is ranked by the ordinary product order; stage, presence, Type and
-structural applicability remain hard conditions. A failed selected realization
-does not reopen selection. No chain search, reverse edge, Type repair, or
-implicit ref/share formation is admitted.
+A reverse request requires the current continuation's active reify boundary and
+independently closed return classifier, checked before invocation and publication.
+It materializes only actually dependent successor work with the same E; it does
+not return runtime information to an earlier world. The current-stage and Ready
+consumers remain separate from the endpoint relation. Storage, a freely supplied
+flag or matching Type does not supply active-boundary evidence.
+
+Mode, endpoint applicability, capability and DynamicLegality retain their ordinary
+roles. One selected failure is terminal; there is no chain search, Type repair,
+implicit borrow formation or reopening.
 
 ### 3.6 Producer visibility, admissible inputs and readiness
 
@@ -1127,7 +1138,8 @@ remove its Object, Pattern, Val2, binding or argument slot.
 
 A compile callable can have ordinary implicit dependencies. When a required
 concrete runtime value is unavailable, its actual remaining continuation waits
-for that dependency. Reify materializes that continuation for the same E; value
+for that dependency. Under a closed reify P2 boundary, selected reverse migration materializes
+only its actual dependent E cone; value
 availability does not change semantic name coordinates or producer identity.
 
 ### 3.7 Progressive evaluation and sealed source identity
@@ -1289,12 +1301,34 @@ have actual unique opaque values, permitting runtime:compile observations.
 Pure Objects retain equal value/Pattern projection constraints. R_vis preserves
 hidden resident identity; concrete value availability is a separate fact.
 
-## 5. Function-object default stage completion
+## 5. Callable P2, producer completion and return closure
 
-Omitted ordinary P1 stage follows P2: compile -> compile, runtime -> runtime.
-Explicit P1 is retained. Finally omitted mode derives mut under open + known
-OpenHere, const otherwise; required unknown OpenHere is unavailable.
-Pout.stage=P1.stage. Pin retains written stage/mode constraints or ordinary Holes.
+```text
+HorizonPolicy(compile) = ordinary compile evaluation view
+HorizonPolicy(runtime) = ordinary runtime evaluation view
+HorizonPolicy(reify) = HorizonPolicy(runtime)
+P2=runtime or P2=reify => P1.producer_stage=runtime
+P2=compile => omitted P1.producer_stage=compile
+any output producer_stage=runtime => all output producer_stages=runtime
+Pin_i.stage <= latest input availability admitted by P2
+```
+
+Explicit competing compile producer constraints at runtime/reify P2 fail the
+joint relation; they do not override its runtime requirement. Pin is a latest
+arrival constraint, so runtime and reify callables may accept compile inputs.
+The input consumer must still prove actual availability and applicability.
+Pout inherits the canonical producer stage and participates in the joint
+all-output closure before candidate maxima. Classifier observations remain
+independent coordinates: runtime:compile and runtime:runtime are both legal
+when their actual observation facts hold. Pure runtime type values use equal
+value/Pattern observations; this supplies no runtime type-calculation algebra.
+
+Only callable-head P2 admits reify. Its outward producer/horizon view equals
+runtime, while its active closed boundary admits selected reverse migration.
+The complete output classifier must be explicit or input-inferable without
+depending on reverse migration. Unknown closure/continuation facts are unavailable.
+Finally omitted mode still completes under open + known OpenHere, independently
+of these stage judgments. HoleOverride retains its independent replacement law.
 
 ## 6. Observation horizons
 
@@ -1582,7 +1616,7 @@ Operations check ordinary access, Policy and dependency premises.
 E evaluates ready actions in the current continuation. CompileInstance identity,
 visibility, Ready and legality remain independent. Unavailable concrete runtime
 input may retain an actual unfinished compile continuation, materialized by
-reify(C,R) under its closed ordinary return contract. Selected calls retain
+a callable reify P2 boundary with independently closed return classifier. Selected calls retain
 origin; newly formed runtime calls first select at the actual frontier. Region
 uses current NamePosition without future-path/optimization prerequisites.
 

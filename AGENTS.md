@@ -134,7 +134,7 @@ alternate relation or identity.
   boundaries and use admitted dependencies to reach enclosing instances.
 - Stage = {compile, runtime}. P2 is evaluation horizon; P1/Pout producer
   visibility, OpenPolicy, InputAdmissible, migration and Ready are independent.
-  Runtime P2 defaults omitted P1 to runtime.
+  Runtime or reify P2 requires runtime P1/output producers.
 - Name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
@@ -208,7 +208,7 @@ alternate relation or identity.
   Paths or R$. RHS _ is universerank; structural _ is anonymous Pattern.
   HoleOverride replaces written dimensions and inherits others, independently
   of ElabIn/ElabOut. Bare branches have a unique actual opaque value member.
-- Reify(C,R) materializes the same E with ordinary input/frontier/dependency
+- Callable-head P2 reify materializes only reverse-dependent work of the same E with ordinary input/frontier/dependency
   premises and closed normal-return delivery through R. New runtime calls
   select at their actual frontier; selected calls never reopen.
   Region_K(n)=R(NamePosition_K(n)); E requires no future-path enumeration.
@@ -283,3 +283,11 @@ not run it for corrections to the current PR.
 
 When asked to publish changes, inspect status/diff, commit intentionally, push
 with upstream tracking, and use `gh` for draft PR creation or updates.
+
+Callable-head P2 reify has outward runtime Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Only its
+active closed boundary admits selected runtime-to-compile migration. Both
+Policy observations may be runtime, including a runtime-policy type; type
+operations still use the compile algebra. Runtime/reify P2 forces runtime
+producer/output stages, while Pin can accept earlier compile inputs. See the
+[unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

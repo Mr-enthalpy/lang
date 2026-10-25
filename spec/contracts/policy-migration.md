@@ -19,11 +19,18 @@ The target demand exists before candidate enumeration. Migration never searches
 a graph, chains intermediate views, changes the source Core type, or reopens
 selection after a selected failure.
 
-Stage is one atom. The directed static-to-runtime cases preserve Pp and Type,
-including compile:compile -> runtime:compile.
-No runtime-to-compile edge exists. InputAdmissible and Ready
-are separate; waiting for unavailable concrete runtime input is a continuation dependency. Bootstrap implementations provide candidate bodies and
+Stage={compile,runtime}. A direct migration can change either observed Policy
+coordinate while preserving Type and endpoint coherence. Runtime-to-compile
+requires the active closed reify P2 boundary, never a freely supplied flag.
+Runtime:runtime -> runtime:compile migrates only the classifier observation.
+The selected dependent E work resumes at the runtime frontier; no past compile
+world receives runtime information. InputAdmissible, concrete readiness and
+endpoint capability remain independent. Bootstrap implementations provide candidate bodies and
 realization data; they do not decide the migration relation.
+
+Until active-boundary/closed-return/dependency-cone consumers are connected,
+reverse requests report unavailable before candidate execution or publication.
+Ordinary requests cannot authorize reverse migration.
 
 Every request carries explicit `PolicyView` and `ResultPolicyDemand` values.
 `PolicyPair`, whole-slot `PolicyMode`, capability realization, and dynamic

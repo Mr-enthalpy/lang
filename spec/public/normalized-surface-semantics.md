@@ -520,6 +520,12 @@ HoleDecl   { id: HoleBinderId, spelling, policy, annotation, origin }
 HoleRef    { target: HoleBinderId, spelling, origin }
 ```
 
+A declared Hole used directly in an extraction Pattern, including the value
+side of a joint binding, normalizes to its exact HoleRef. Thus
+let <runtime let o, compile let t> o:t=expr retains two independent Policy
+declarations and references their distinct HoleBinderIds at the two positions.
+Ordinary value-expression names remain unresolved by alpha normalization.
+
 A HoleDecl preserves optional local Policy and an annotation Pattern. For
 example, <mut let T:type::> retains an explicit mut dimension and full external
 Path type::. HoleOverride replaces written dimensions; omitted dimensions
@@ -806,7 +812,8 @@ General opposite-context Policy interpretation and complete source observation c
 The P1 open let form preserves OpenPolicy=open independently from const/mut
 and Stage. Close uses the same policy-prefixed binding shape. Omitted mode
 completion and instance delivery remain semantic consumers; normalization
-supplies neither identity nor OpenHere. P2 has compile and runtime atoms.
+supplies neither identity nor OpenHere. Stage atoms are compile/runtime;
+callable-head P2 additionally admits reify, with outward runtime Policy.
 
 ### Capture binding elaboration
 
@@ -1310,3 +1317,11 @@ layers decide independently. Open navigation preserves each entry's name
 Pattern. Turning an unordered result into a bare sequence requires named
 extraction followed by explicit ordered assembly. Intermediate extraction uses
 the same R_Gamma after reaching the selected layer; it does not relax Pack.
+
+Callable-head P2 reify has outward runtime Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Only its
+active closed boundary admits selected runtime-to-compile migration. Both
+Policy observations may be runtime, including a runtime-policy type; type
+operations still use the compile algebra. Runtime/reify P2 forces runtime
+producer/output stages, while Pin can accept earlier compile inputs. See the
+[unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

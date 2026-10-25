@@ -54,8 +54,8 @@ OverloadGroup is the separate aggregation algebra. Simple let a:b jointly extrac
 classifier. External constraints use full Paths or R$. RHS _ is universerank,
 structural _ is anonymous Pattern, and $ is a repeatable polarity flip.
 Hole-local Policy uses independent written-dimension replacement. Bare branches
-have actual opaque values; bool has true/false structure. Reify materializes
-the same E under a closed return contract; its execution consumer remains pending.
+have actual opaque values; bool has true/false structure. Callable-head P2 reify materializes the same E within an independently closed
+return classifier and its actual reverse-dependent cone; its execution consumer remains pending.
 
 Naked operators select
 operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
@@ -126,3 +126,11 @@ in-place syntax excludes explicit clauses and supplies no overload preference.
 Every compile call forms a CompileInstance from parent owner, selected partner
 and canonical inputs before body entry. Ordinary callable dependencies retain
 their actual identity, with no hidden caller-environment coordinate.
+
+Callable-head P2 reify has outward runtime Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Only its
+active closed boundary admits selected runtime-to-compile migration. Both
+Policy observations may be runtime, including a runtime-policy type; type
+operations still use the compile algebra. Runtime/reify P2 forces runtime
+producer/output stages, while Pin can accept earlier compile inputs. See the
+[unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

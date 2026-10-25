@@ -18,7 +18,7 @@ OpenPolicy = {open, close}
 PolicyMode = {const, mut}
 ```
 
-`P2` owns evaluation horizon. `OpenPolicy` is a P1 completion coordinate.
+`P2` owns evaluation horizon and the callable reify qualification of section 20. `OpenPolicy` is a P1 completion coordinate.
 `PolicyMode` is the value-mode coordinate. None implies either of the others.
 
 For an omitted mode:
@@ -552,31 +552,92 @@ observation supplies no candidate preference and unfolds no private self layout.
 ReturnEvent, ReturnPattern/Pout and internal completion retain their existing
 delivery and no-reopen boundaries.
 
-## 20. Runtime reification of the same E
+## 20. Reify callable P2 and scoped reverse migration
 
 ```text
-(C,R) |> reify => f
-Callable(C) and ClosedReturnContract(R)
-Invoke(f,args) ~= Deliver_R(E(Invoke(C,args)))
-Deliver_R(v) = ordinary return-boundary delivery of (v |> R)
+Stage = {compile,runtime}
+P2 = compile | runtime | reify
+EvaluationStage(reify) = runtime
+ExternalPolicy(reify) = ExternalPolicy(runtime)
 ```
 
-The equivalence requires InputAdmissible, actual evaluation-frontier facts,
-dependency validity, ordinary Pre/commit/Post and a complete result-type
-contract determined by R on every normal return. `f` is an ordinary callable
-value admitting legal runtime-policy arguments. It materializes the relevant
-compile computation and its actual remaining continuation; E resumes when
-concrete runtime inputs become available.
+Reify is a callable-head P2 annotation. Its domain is exactly the policy
+position between a callable's parameter head and return clause:
 
 ```lang
-let r_vals:R$ = runtime_vals |> ((closure,R) |> reify);
+let compare = (self, object1, object2):reify -> _:bool:: => {
+    let <runtime let o1, compile let t1> o1:t1 = object1;
+    let <runtime let o2, compile let t2> o2:t2 = object2;
+    o1 < o2;
+};
 ```
 
-The external contract is `R$`. Bare R is classifier-side extraction material.
-An already selected invocation retains its candidate/projection/frame. A call
-newly formed by runtime E first selects at its actual frontier by ordinary
-overload rules. AOT, JIT, caching and precomputed dispatch tables are equivalent
-O choices; exhaustive Cartesian-product enumeration is not an E premise.
+Ordinary closure formation still returns tau_C. The annotation supplies no
+additional Stage, Object or callable-construction operation. P1, Pin, Pout,
+Hole Policy and expression PolicyLet do not admit reify as a Policy atom.
+
+For a callable boundary B, let RevDeps(B) be its actual selected reverse
+migration dependencies. ClosedReturn(B) holds when ordinary input/contract
+elaboration determines a unique complete result classifier T_out and:
+
+```text
+Deps(TypeContract_B(inputs)) intersect RevDeps(B) = empty
+every normal return is delivered under ReturnPattern_B / Pout_B
+Type(delivered result) = T_out(inputs)
+```
+
+The classifier can be explicit, such as R$ or bool::, or deduced from input
+facts independently of reverse migration. A contract requiring a reverse
+migration to discover its own classifier fails before that migration. This
+closes the boundary rather than propagating delayed type demands to callers.
+ClosedReturn admission checks the classifier's uniqueness and dependency
+independence. The delivery clauses are enforced on each reached normal return;
+they require no advance enumeration or static proof of future branch paths.
+A reached delivery mismatch is ordinary terminal failure of the selected call.
+
+```text
+ReverseAllowed_K(m) iff
+  ActiveBoundary_K(m)=B and P2(B)=reify and ClosedReturn_K(B)
+  and m is the selected ordinary same-Type migration candidate
+```
+
+ActiveBoundary_K(m)=B is established at migration formation by the actual
+owning callable activation: B is active on K, its declaration has P2=reify,
+and this request belongs to B's body/input-consumer continuation. A nested
+ordinary callable retains its own P2; an enclosing reify activation does not
+authorize that nested callable to form a new reverse request. Already admitted
+dependent work can include ordinary helper calls, retaining the request's B
+identity and validity. Leaving B or changing to a foreign continuation supplies
+no reusable boundary authority.
+
+Compile-to-runtime and scoped runtime-to-compile migration share existing-first,
+direct candidate selection, endpoints, capability, DynamicLegality and no-reopen.
+Machine types have generated bidirectional candidate declarations. A deleted
+candidate, missing host realization or library restriction can remove either
+direction. Equal Type and Policy endpoints alone establish no capability.
+
+Reverse migration carries the affected computation to the actual runtime
+frontier; no runtime information is written into a past compile world. Let
+D_type be the dependency closure of actual runtime-value-to-compile-type edges
+within B. Only D_type requires runtime materialization of the corresponding
+restricted E work. Independent compile type work remains executable, and
+runtime-value work keeps its ordinary continuation. O may remove a value-only
+compile detour after E proves that no type dependency is involved and revalidates
+the affected projections. E needs no future-path or dispatch-table enumeration.
+
+Runtime-policy type values and runtime:runtime views are ordinary observations.
+Their type algebra is the same compile algebra; its use on runtime-only material
+requires a selected reverse migration under the reify boundary. In particular:
+
+```text
+runtime:runtime -> runtime:compile  -- migrate classifier observation only
+```
+
+The two endpoint coordinates are internal observations. Source joint extraction
+with independent Hole Policies expresses them without a public pair literal.
+Selected calls retain their candidate/projection/frame; a call newly formed by
+runtime E performs its first ordinary selection at that frontier. AOT, JIT,
+caching and tables are equivalent O representations of the same E.
 
 ## 21. Continuation-local Region
 
@@ -587,8 +648,9 @@ Region_K(n)=R(NamePosition_K(n))
 The current semantic name position, not future branch availability or physical
 execution time, determines Region. E uses current continuation Pre/commit/Post
 and fixed cleanup observations. It does not require future-path enumeration.
-`compile let val = runtime_express` may remain a delayed continuation when its
-required value is not yet available. Reification resumes the same E with actual
-inputs at args-in; ordinary origin relations stay within semantic name-position
+Inside a closed reify P2 boundary, `compile let val = runtime_express` may
+remain an actual delayed continuation when its
+required value is not yet available. A selected reverse migration inside a closed reify P2 boundary resumes
+its actual dependent E work with inputs at args-in; ordinary origin relations stay within semantic name-position
 algebra. Runtime strings supply no authority to redefine fixed structured names.
 Future-path proof, specialization and layout remain O work with E revalidation.

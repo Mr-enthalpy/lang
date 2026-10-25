@@ -74,3 +74,11 @@ computation, opaque self/dependencies, callable tags and active frames, and
 runtime reification of E with current-name-position Region. Each topic above
 keeps its own canonical judgments; the [conformance matrix](../planning/canonical-semantic-conformance.md#joint-extraction-and-runtime-reification-acceptance-targets)
 records semantic acceptance targets separately from connected execution.
+
+Callable-head P2 reify has outward runtime Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Only its
+active closed boundary admits selected runtime-to-compile migration. Both
+Policy observations may be runtime, including a runtime-policy type; type
+operations still use the compile algebra. Runtime/reify P2 forces runtime
+producer/output stages, while Pin can accept earlier compile inputs. See the
+[unified owner](unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

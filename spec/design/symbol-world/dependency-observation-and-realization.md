@@ -217,5 +217,7 @@ realizations, and current demand for available concrete values are separate.
 Runtime materialization can complete ordinary closure capture. Result-affecting
 observations enter dependency validity and instance reuse. Norm_Name(n) does not
 unfold self's capture layout; self remains observable through normalized Pattern
-algebra without public transparent structure. Reify uses the same E and ordinary
-input, dependency and current-name-position lifecycle facts.
+algebra without public transparent structure. A callable reify P2 boundary uses the same E and ordinary input, dependency
+and current-name-position lifecycle facts. Actual reverse dependencies determine
+the materialized successor cone; unrelated compile type work remains ready.
+Its outward result classifier must be fixed without reverse-dependent input.
