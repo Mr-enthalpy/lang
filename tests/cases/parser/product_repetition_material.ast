@@ -1,0 +1,227 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName packed_type
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  OperatorSugar fixity=Postfix operator="$"
+                    arg:
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  OperatorSugar fixity=Binary operator="*"
+                                    lhs:
+                                      Atom
+                                        Name _
+                                    rhs:
+                                      Atom
+                                        Name n
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName packed
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    OperatorSugar fixity=Binary operator="*"
+                      lhs:
+                        Atom
+                          Name _
+                      rhs:
+                        Atom
+                          Name n
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name input
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName anonymous
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name _
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name input
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName external
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    OperatorSugar fixity=Postfix operator="$"
+                      arg:
+                        Atom
+                          Name _
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name input
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName grouped
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    OperatorSugar fixity=Postfix operator="$"
+                      arg:
+                        Atom
+                          Group
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name _
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name input
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName singleton
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    OperatorSugar fixity=Postfix operator="$"
+                      arg:
+                        Atom
+                          Group
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    OperatorSugar fixity=Binary operator="*"
+                                      lhs:
+                                        Atom
+                                          Name _
+                                      rhs:
+                                        Atom
+                                          IntLiteral 1
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name input
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            OperatorSugar fixity=Postfix operator="?"
+              arg:
+                Atom
+                  Name pack
+  ExprForm
+    Expr
+      PolicyLet
+        policy:
+          PolicySpec
+            PolicyConjunction
+                PolicyAtom Name "compile"
+        operand:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  OperatorSugar fixity=Postfix operator="?"
+                    arg:
+                      Atom
+                        Name pack
+  ExprForm
+    Expr
+      PolicyLet
+        policy:
+          PolicySpec
+            PolicyConjunction
+                PolicyAtom Name "runtime"
+        operand:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  OperatorSugar fixity=Postfix operator="?"
+                    arg:
+                      Atom
+                        Name pack

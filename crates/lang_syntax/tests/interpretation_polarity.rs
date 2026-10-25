@@ -82,3 +82,32 @@ fn nested_structure_can_return_to_value_computation_under_the_same_horizon() {
     assert!(!dump.contains("PolicyLet"));
     assert!(!dump.contains("Unsupported"), "{dump}");
 }
+
+#[test]
+fn structural_underscore_and_external_universe_rank_keep_distinct_material() {
+    for source in [
+        "let x:_ = input;",
+        "let x:_$ = input;",
+        "let x:(_)$ = input;",
+    ] {
+        let program = normalize(source);
+        let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_slice() else {
+            panic!("declaration");
+        };
+        let pattern = &slot.annotation.as_ref().unwrap().pattern;
+        if source.contains('$') {
+            assert!(
+                matches!(pattern, NormPattern::InterpretationFlip { operand, .. }
+                if matches!(operand.as_ref(), NormExpr::UniverseRank { .. }))
+            );
+        } else {
+            assert!(matches!(
+                pattern,
+                NormPattern::Skeleton {
+                    skeleton: lang_syntax::NormSkeleton::Wildcard { .. },
+                    ..
+                }
+            ));
+        }
+    }
+}

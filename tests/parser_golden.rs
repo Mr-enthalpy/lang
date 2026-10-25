@@ -1,5 +1,9 @@
 use std::fs;
 #[test]
+fn product_repetition_material() {
+    assert_parser_case("product_repetition_material", false);
+}
+#[test]
 fn reify_p2() {
     assert_parser_case("reify_p2", false);
 }

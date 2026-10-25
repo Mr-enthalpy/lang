@@ -400,7 +400,7 @@ fn solve_value_pattern(
         NormPattern::Sequence { elements, .. } => {
             let mut terms = Vec::new();
             for element in elements {
-                collect_relational_terms(element, &mut terms);
+                collect_relational_terms(element, &mut terms)?;
             }
             solve_terms(&terms, arg, context)
         }
@@ -568,7 +568,7 @@ fn solve_skeleton(
     context: &PatternRelationContext<'_>,
 ) -> Result<Vec<PatternRelationDerivation>, PatternRelationFailure> {
     let mut terms = Vec::new();
-    collect_skeleton_terms(skeleton, &mut terms);
+    collect_skeleton_terms(skeleton, &mut terms)?;
     solve_terms(&terms, arg, context)
 }
 
@@ -691,7 +691,10 @@ fn relational_product(
     product
 }
 
-fn collect_relational_terms<'a>(pattern: &'a NormPattern, out: &mut Vec<RelationalTerm<'a>>) {
+fn collect_relational_terms<'a>(
+    pattern: &'a NormPattern,
+    out: &mut Vec<RelationalTerm<'a>>,
+) -> Result<(), PatternRelationFailure> {
     match pattern {
         NormPattern::Name { name, .. } => out.push(RelationalTerm::Named(name)),
         NormPattern::HoleRef { target, origin, .. } => {
@@ -700,17 +703,29 @@ fn collect_relational_terms<'a>(pattern: &'a NormPattern, out: &mut Vec<Relation
         NormPattern::Binder { name, .. } if name.as_deref() == Some("_") => {
             out.push(RelationalTerm::Wildcard)
         }
-        NormPattern::Skeleton { skeleton, .. } => collect_skeleton_terms(skeleton, out),
+        NormPattern::Skeleton { skeleton, .. } => collect_skeleton_terms(skeleton, out)?,
         NormPattern::Sequence { elements, .. } => {
             for element in elements {
-                collect_relational_terms(element, out);
+                collect_relational_terms(element, out)?;
             }
         }
-        _ => {}
+        other => {
+            return Err(unsupported(
+                "Pattern Sequence observation consumer is unavailable for this material",
+                Some(Provenance::from_norm_origin(
+                    "Pattern Sequence material",
+                    pattern_origin(other),
+                )),
+            ));
+        }
     }
+    Ok(())
 }
 
-fn collect_skeleton_terms<'a>(skeleton: &'a NormSkeleton, out: &mut Vec<RelationalTerm<'a>>) {
+fn collect_skeleton_terms<'a>(
+    skeleton: &'a NormSkeleton,
+    out: &mut Vec<RelationalTerm<'a>>,
+) -> Result<(), PatternRelationFailure> {
     match skeleton {
         NormSkeleton::Wildcard { .. } => out.push(RelationalTerm::Wildcard),
         NormSkeleton::Name { name, .. } => out.push(RelationalTerm::Named(name)),
@@ -719,18 +734,33 @@ fn collect_skeleton_terms<'a>(skeleton: &'a NormSkeleton, out: &mut Vec<Relation
         }
         NormSkeleton::Segment { elements, .. } => {
             for element in elements {
-                collect_skeleton_terms(element, out);
+                collect_skeleton_terms(element, out)?;
             }
         }
         NormSkeleton::Product { elements, .. } => {
             for element in elements {
-                if let NormSkeletonElem::Skeleton(skeleton) = element {
-                    collect_skeleton_terms(skeleton, out);
+                match element {
+                    NormSkeletonElem::Skeleton(skeleton) => collect_skeleton_terms(skeleton, out)?,
+                    NormSkeletonElem::Unit { origin } => {
+                        return Err(unsupported(
+                            "Pattern unit observation consumer is unavailable",
+                            Some(Provenance::from_norm_origin("Pattern unit", origin)),
+                        ));
+                    }
                 }
             }
         }
-        NormSkeleton::Nav { .. } | NormSkeleton::Literal { .. } | NormSkeleton::Error(_) => {}
+        NormSkeleton::Nav { origin, .. } | NormSkeleton::Literal { origin, .. } => {
+            return Err(unsupported(
+                "external Pattern observation consumer is unavailable in this skeleton",
+                Some(Provenance::from_norm_origin("Pattern skeleton", origin)),
+            ));
+        }
+        NormSkeleton::Error(_) => {
+            return Err(unsupported("invalid Pattern skeleton", None));
+        }
     }
+    Ok(())
 }
 
 fn first_frontend_pattern_root(

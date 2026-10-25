@@ -1,0 +1,138 @@
+NormProgram origin=Source@1:1[0..212]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..26]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..26]
+          deduce:
+            None
+          value_pattern:
+            Binder "packed_type" origin=Source@1:5[4..15]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@1:19[18..26]
+              PatternUnsupported "operator sugar in annotation pattern" origin=Generated(Unsupported)@1:20[19..24]
+    Form Let
+      Decl Let origin=Source@2:1[28..53]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[32..53]
+          deduce:
+            None
+          value_pattern:
+            Binder "packed" origin=Source@2:5[32..38]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@2:13[40..45]
+              PatternUnsupported "operator sugar in annotation pattern" origin=Generated(Unsupported)@2:13[40..45]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@2:21[48..53]
+    Form Let
+      Decl Let origin=Source@3:1[55..79]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[59..79]
+          deduce:
+            None
+          value_pattern:
+            Binder "anonymous" origin=Source@3:5[59..68]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@3:16[70..71]
+              PatternSkeleton origin=Source@3:16[70..71]
+                SkeletonWildcard origin=Source@3:16[70..71]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@3:20[74..79]
+    Form Let
+      Decl Let origin=Source@4:1[81..105]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[85..105]
+          deduce:
+            None
+          value_pattern:
+            Binder "external" origin=Source@4:5[85..93]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@4:15[95..97]
+              InterpretationFlip S->V origin=Source@4:15[95..97]
+                UniverseRank origin=Source@4:15[95..96]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@4:20[100..105]
+    Form Let
+      Decl Let origin=Source@5:1[107..132]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[111..132]
+          deduce:
+            None
+          value_pattern:
+            Binder "grouped" origin=Source@5:5[111..118]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@5:14[120..124]
+              InterpretationFlip S->V origin=Source@5:14[120..124]
+                UniverseRank origin=Source@5:15[121..122]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@5:21[127..132]
+    Form Let
+      Decl Let origin=Source@6:1[134..165]
+        BindingSlot let=true origin=Generated(PatternNormalize)@6:5[138..165]
+          deduce:
+            None
+          value_pattern:
+            Binder "singleton" origin=Source@6:5[138..147]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@6:16[149..157]
+              InterpretationFlip S->V origin=Source@6:16[149..157]
+                Call origin=Generated(OperatorLowering)@6:17[150..155]
+                  source:
+                    Product origin=Generated(OperatorLowering)@6:17[150..155]
+                      elements:
+                        ExprElem
+                          UniverseRank origin=Source@6:17[150..151]
+                        ExprElem
+                          Literal Int "1" origin=Source@6:21[154..155]
+                  target:
+                    OperatorTarget spelling="*" fixity=Binary arity=2 origin=Source@6:19[152..153]
+          with_clause:
+            None
+          initializer:
+            Name "input" origin=Source@6:27[160..165]
+    Form Expr
+      Call origin=Generated(OperatorLowering)@7:1[167..172]
+        source:
+          Product origin=Generated(ProductLift)@7:1[167..171]
+            elements:
+              ExprElem
+                Name "pack" origin=Source@7:1[167..171]
+        target:
+          OperatorTarget spelling="?" fixity=Postfix arity=1 origin=Source@7:5[171..172]
+    Form Expr
+      PolicyLet origin=Generated(PolicyLetPreserve)@8:1[174..191]
+        policy:
+          PolicySpec
+            PolicyConjunction
+                PolicyAtom Name "compile"
+        operand:
+          Call origin=Generated(OperatorLowering)@8:13[186..191]
+            source:
+              Product origin=Generated(ProductLift)@8:13[186..190]
+                elements:
+                  ExprElem
+                    Name "pack" origin=Source@8:13[186..190]
+            target:
+              OperatorTarget spelling="?" fixity=Postfix arity=1 origin=Source@8:17[190..191]
+    Form Expr
+      PolicyLet origin=Generated(PolicyLetPreserve)@9:1[193..210]
+        policy:
+          PolicySpec
+            PolicyConjunction
+                PolicyAtom Name "runtime"
+        operand:
+          Call origin=Generated(OperatorLowering)@9:13[205..210]
+            source:
+              Product origin=Generated(ProductLift)@9:13[205..209]
+                elements:
+                  ExprElem
+                    Name "pack" origin=Source@9:13[205..209]
+            target:
+              OperatorTarget spelling="?" fixity=Postfix arity=1 origin=Source@9:17[209..210]

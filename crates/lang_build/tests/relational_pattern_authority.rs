@@ -258,3 +258,134 @@ fn hole_local_policy_cannot_be_silently_dropped_by_relation_entry() {
         );
     }
 }
+
+#[test]
+fn external_universe_rank_pattern_is_not_an_anonymous_match() {
+    let argument = typed_value(
+        support::type_lookup_fixture("universe-rank/external"),
+        PatternCoordinateId(10),
+        CanonicalValueAddr(100),
+    );
+    let anonymous = normalized_closure("let f = (self, x:_) => { x; };");
+    let context =
+        PatternRelationContext::for_source_callable(&anonymous, callable_owner(), None).unwrap();
+    assert!(solve_parameter_product_relation(
+        anonymous
+            .head
+            .as_ref()
+            .unwrap()
+            .formal_frame()
+            .explicit_parameters,
+        &[argument.clone()],
+        &context,
+    )
+    .is_ok());
+
+    for pattern in ["_$", "(_)$", "(_ * 1)$", "_ * n"] {
+        let closure = normalized_closure(&format!("let f = (self, x:{pattern}) => {{ x; }};"));
+        let context =
+            PatternRelationContext::for_source_callable(&closure, callable_owner(), None).unwrap();
+        assert!(
+            matches!(
+                solve_parameter_product_relation(
+                    closure
+                        .head
+                        .as_ref()
+                        .unwrap()
+                        .formal_frame()
+                        .explicit_parameters,
+                    &[argument.clone()],
+                    &context,
+                ),
+                Err(PatternRelationFailure::Unsupported(_))
+            ),
+            "{pattern} needs its actual external/repetition Pattern consumer"
+        );
+    }
+}
+
+#[test]
+fn matching_sequence_terms_cannot_erase_external_or_unsupported_material() {
+    use lang_syntax::{NormPattern, NormPatternElem};
+
+    let resolve = |name: &str| {
+        assert_eq!(name, "matching");
+        Some(lang_build::NamedPatternObservation {
+            pattern: PatternCoordinateId(10),
+            core: Some(CanonicalValueAddr(100)),
+        })
+    };
+    for material in ["_$", "(_)$", "bool::", "(if)$", "(_ * 1)$", "_ * n"] {
+        let closure = normalized_closure(&format!("let f = (self, x:{material}) => {{ x; }};"));
+        let context =
+            PatternRelationContext::for_source_callable(&closure, callable_owner(), Some(&resolve))
+                .unwrap();
+        let anonymous = normalized_closure("let f = (self, x:_) => { x; };");
+        let NormPatternElem::BindingSlot(anonymous_slot) =
+            &anonymous.head.as_ref().unwrap().params[1]
+        else {
+            panic!("anonymous classifier slot");
+        };
+        let wildcard = anonymous_slot.annotation.as_ref().unwrap().pattern.clone();
+        let params = closure
+            .head
+            .as_ref()
+            .unwrap()
+            .formal_frame()
+            .explicit_parameters;
+        let argument = typed_value(
+            support::type_lookup_fixture("sequence/external"),
+            PatternCoordinateId(10),
+            CanonicalValueAddr(100),
+        );
+        let mut supported_params = params.to_vec();
+        let NormPatternElem::BindingSlot(supported_slot) = &mut supported_params[0] else {
+            panic!("parameter");
+        };
+        let annotation = supported_slot.annotation.as_mut().unwrap();
+        annotation.pattern = NormPattern::Sequence {
+            elements: vec![
+                wildcard.clone(),
+                NormPattern::Name {
+                    name: "matching".into(),
+                    origin: annotation.origin.clone(),
+                },
+            ],
+            origin: annotation.origin.clone(),
+        };
+        assert!(
+            solve_parameter_product_relation(&supported_params, &[argument.clone()], &context,)
+                .is_ok(),
+            "the supported terms form a successful query on their own"
+        );
+        for nested in [false, true] {
+            let mut params = params.to_vec();
+            let NormPatternElem::BindingSlot(slot) = &mut params[0] else {
+                panic!("parameter")
+            };
+            let annotation = slot.annotation.as_mut().unwrap();
+            let mut required = annotation.pattern.clone();
+            if nested {
+                required = NormPattern::Sequence {
+                    elements: vec![required],
+                    origin: annotation.origin.clone(),
+                };
+            }
+            annotation.pattern = NormPattern::Sequence {
+                elements: vec![
+                    wildcard.clone(),
+                    NormPattern::Name {
+                        name: "matching".into(),
+                        origin: annotation.origin.clone(),
+                    },
+                    required,
+                ],
+                origin: annotation.origin.clone(),
+            };
+            assert!(matches!(
+                solve_parameter_product_relation(&params, &[argument.clone()], &context),
+                Err(PatternRelationFailure::Unsupported(_))
+            ), "{material}, nested={nested}: a matching term is not permission to drop a required observation");
+        }
+    }
+}

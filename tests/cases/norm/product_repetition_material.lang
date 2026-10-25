@@ -1,0 +1,9 @@
+let packed_type = (_ * n)$;
+let packed: _ * n = input;
+let anonymous: _ = input;
+let external: _$ = input;
+let grouped: (_)$ = input;
+let singleton: (_ * 1)$ = input;
+pack?;
+compile let pack?;
+runtime let pack?;
