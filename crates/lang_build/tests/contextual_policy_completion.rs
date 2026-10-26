@@ -107,9 +107,10 @@ fn completion_policy_and_evaluation_stage_are_positionally_independent() {
         elaborate_binding_result_demand(Some(&policy("open + const")), Provenance::new("P1 open"))
             .unwrap();
     assert_eq!(open.open_policy, OpenPolicy::Open);
-    assert!(
-        matches!(open.pair_query, lang_build::P1Projection::ValueDominant { value } if value.stage.is_none())
-    );
+    assert!(matches!(
+        open.pair_query,
+        lang_build::P1Projection::Leading { stage: None }
+    ));
     let p2 =
         direct_callable_body_policy(&policy("compile"), Provenance::new("P2 compile")).unwrap();
     assert_eq!(p2.pair.value.stage(), Some(Stage::Compile));

@@ -58,16 +58,14 @@ fn reify_is_only_callable_p2_with_outward_runtime_policy() {
 }
 
 #[test]
-fn runtime_p2_cannot_keep_a_compile_producer() {
+fn runtime_p2_preserves_an_explicit_compile_producer() {
     let p = Provenance::new("runtime closure");
     let runtime = declared_policy_view(Stage::Runtime, PolicyMode::Const);
     let compile = declared_policy_view(Stage::Compile, PolicyMode::Const);
     let explicit = lang_build::ExplicitP1Selection::from_complete_view(&compile);
-    assert!(
-        canonical_function_object_view(Some(&explicit), &runtime, &runtime, None, &p)
-            .unwrap_err()
-            .message
-            .contains("runtime P1")
+    assert_eq!(
+        canonical_function_object_view(Some(&explicit), &runtime, &runtime, None, &p).unwrap(),
+        compile
     );
     assert_eq!(
         canonical_function_object_view(None, &runtime, &runtime, None, &p).unwrap(),
@@ -75,23 +73,32 @@ fn runtime_p2_cannot_keep_a_compile_producer() {
     );
     let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
     let mut world = base.semantic_world().clone();
-    let before = format!("{world:?}");
-    assert!(world
+    let registered = world
         .register_core_callable(
             base.package_root_node(),
-            "invalid_runtime",
+            "runtime_with_compile_result",
             lang_build::SymbolId(900010),
             lang_build::BuiltinCallableImpl::IdentityType,
             Some(explicit),
             lang_build::DeclaredResultClass::CompleteType,
-            compile,
+            compile.clone(),
             runtime.clone(),
-            runtime,
+            compile,
             None,
-            p
+            p,
         )
-        .is_err());
-    assert_eq!(format!("{world:?}"), before);
+        .unwrap();
+    let lang_build::SemanticValuePayload::CallEntry(entry) =
+        &world.value(registered.call_entry).unwrap().payload
+    else {
+        panic!("call entry");
+    };
+    assert_eq!(entry.callable_view.pair.leading_stage(), Stage::Compile);
+    assert_eq!(entry.body_entry_view.pair.leading_stage(), Stage::Runtime);
+    assert_eq!(
+        entry.complete_result_view.pair.leading_stage(),
+        Stage::Compile
+    );
 }
 
 #[test]

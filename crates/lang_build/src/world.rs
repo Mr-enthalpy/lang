@@ -18,14 +18,13 @@ use crate::{
         ResolverCode, SemanticNameDelta, SourceCallableSyntax, SourceCategory, SymbolKind,
         SymbolPayload,
     },
+    policy_pair::PolicyPair,
     policy_pair::{
         derive_function_object_view, direct_callable_body_policy, elaborate_binding_result_demand,
         elaborate_namespace_declaration_policy, elaborate_return_policy_pattern,
         function_object_declaration_policy, ExplicitP1Selection, NamespaceDeclarationPolicy,
         NamespaceDeclarationPosition, P1Projection, PolicyMode, PolicyView, ResultPolicyDemand,
-        ValueComponentPolicy,
     },
-    policy_pair::{PatternComponentPolicy, PolicyPair},
     return_target::{
         elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
         ReturnFrameOwner,
@@ -74,19 +73,20 @@ fn policy_let_target_demand(
     demand: &ResultPolicyDemand,
     source: &PolicyPair,
 ) -> Option<PolicyView> {
-    let (value_query, pattern_stage) = match &demand.pair_query {
-        P1Projection::Infer => (None, source.pattern.stage),
-        P1Projection::ValueDominant { value } => (Some(*value), source.pattern.stage),
-        P1Projection::Pair(pair) => (Some(pair.value.into()), pair.pattern.stage),
-    };
-    let stage = value_query.and_then(|q| q.stage).or(source.value.stage())?;
-    Some(PolicyView {
-        pair: PolicyPair {
-            value: ValueComponentPolicy::Present(stage),
-            pattern: PatternComponentPolicy {
-                stage: pattern_stage,
-            },
+    if !source.is_rank_coherent() {
+        return None;
+    }
+    let pair = match &demand.pair_query {
+        P1Projection::Infer => source.clone(),
+        P1Projection::Leading { stage } => match stage {
+            Some(stage) => source.with_leading_stage(*stage)?,
+            None => source.clone(),
         },
+        P1Projection::Pair(pair) if pair.is_rank_coherent() => pair.clone(),
+        P1Projection::Pair(_) => return None,
+    };
+    Some(PolicyView {
+        pair,
         mode: demand.mode,
     })
 }
@@ -96,11 +96,11 @@ mod stage_demand_tests {
     use super::policy_let_target_demand;
     use crate::{
         P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, ResultPolicyDemand, Stage,
-        ValueComponentPolicy, ValuePolicyQuery, ValuePresence,
+        ValueComponentPolicy,
     };
 
     #[test]
-    fn omitted_stage_on_hidden_value_has_an_unavailable_demand_without_panicking() {
+    fn leading_rank_demand_preserves_absence_and_omitted_tail() {
         let source = PolicyPair {
             value: ValueComponentPolicy::Absent,
             pattern: PatternComponentPolicy {
@@ -108,15 +108,22 @@ mod stage_demand_tests {
             },
         };
         let demand = ResultPolicyDemand {
-            pair_query: P1Projection::ValueDominant {
-                value: ValuePolicyQuery {
-                    stage: None,
-                    presence: ValuePresence::Present,
-                },
-            },
+            pair_query: P1Projection::Leading { stage: None },
             mode: PolicyMode::Mut,
         };
-        assert!(policy_let_target_demand(&demand, &source).is_none());
+        assert_eq!(
+            policy_let_target_demand(&demand, &source).unwrap().pair,
+            source
+        );
+        let runtime = ResultPolicyDemand {
+            pair_query: P1Projection::Leading {
+                stage: Some(Stage::Runtime),
+            },
+            ..demand
+        };
+        let target = policy_let_target_demand(&runtime, &source).unwrap();
+        assert_eq!(target.pair.value, ValueComponentPolicy::Absent);
+        assert_eq!(target.pair.pattern.stage, Stage::Runtime);
     }
 }
 
@@ -3296,11 +3303,8 @@ mod initializer_consumer_boundary_tests {
         let mut world = world_with_member("let f = (receiver, x):compile => { (); };");
         let expression = initializer("let result = () f;");
         let demand = ResultPolicyDemand {
-            pair_query: crate::P1Projection::ValueDominant {
-                value: crate::ValuePolicyQuery {
-                    stage: Some(Stage::Runtime),
-                    presence: crate::ValuePresence::Present,
-                },
+            pair_query: crate::P1Projection::Leading {
+                stage: Some(Stage::Runtime),
             },
             mode: PolicyMode::Const,
         };

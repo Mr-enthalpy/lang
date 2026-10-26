@@ -148,13 +148,13 @@ fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
 }
 
 #[test]
-fn p1_value_dominant_projection_restricts_the_actual_slice() {
+fn p1_leading_rank_projection_restricts_the_actual_slice() {
     let projection = elaborate_binding_p1_projection(
         Some(&policy_spec("runtime")),
         Provenance::new("runtime P1"),
     )
     .expect("valid P1");
-    assert!(matches!(projection, P1Projection::ValueDominant { .. }));
+    assert!(matches!(projection, P1Projection::Leading { .. }));
 
     let result = vec![result_entry(
         Some("same-symbol"),
@@ -248,18 +248,18 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     .expect("export preserves its internal Policy view independently of visibility");
     assert!(declaration.export_root);
     assert_eq!(declaration.visibility, Some(NamespaceVisibility::Public));
-    let P1Projection::ValueDominant { value } = &declaration.projection else {
-        panic!("single namespace policy must elaborate as value-dominant P1");
+    let P1Projection::Leading { stage } = &declaration.projection else {
+        panic!("single namespace policy must elaborate as leading-rank P1");
     };
-    assert_eq!(value.stage, Some(Stage::Runtime));
+    assert_eq!(*stage, Some(Stage::Runtime));
     assert_eq!(declaration.mode, PolicyMode::Const);
-    let Some(P1Projection::ValueDominant {
-        value: external_value,
+    let Some(P1Projection::Leading {
+        stage: external_stage,
     }) = &declaration.external_projection
     else {
         panic!("export root must carry an external value view");
     };
-    assert_eq!(external_value, value);
+    assert_eq!(external_stage, stage);
     let function_declaration = function_object_declaration_policy(&declaration);
     assert_eq!(function_declaration.mode, PolicyMode::Const);
 
@@ -269,13 +269,13 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         Provenance::new("explicit const export"),
     )
     .expect("export + const is valid");
-    let P1Projection::ValueDominant { .. } = explicit_const.projection else {
-        panic!("single namespace policy must elaborate as value-dominant P1");
+    let P1Projection::Leading { .. } = explicit_const.projection else {
+        panic!("single namespace policy must elaborate as leading-rank P1");
     };
     assert_eq!(explicit_const.mode, PolicyMode::Const);
     assert!(matches!(
         explicit_const.external_projection,
-        Some(P1Projection::ValueDominant { .. })
+        Some(P1Projection::Leading { .. })
     ));
 
     let mut_only_export = elaborate_namespace_declaration_policy(
@@ -287,7 +287,7 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
     assert_eq!(mut_only_export.mode, PolicyMode::Mut);
     assert!(matches!(
         mut_only_export.external_projection,
-        Some(P1Projection::ValueDominant { .. })
+        Some(P1Projection::Leading { .. })
     ));
 
     assert!(elaborate_namespace_declaration_policy(

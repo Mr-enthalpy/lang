@@ -48,6 +48,7 @@ pub struct PureTypeP1Elaboration<P> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum P1ElaborationFailure {
+    IncoherentRankChain,
     EmptyResult,
     ProjectionUnavailable { requested: P1Projection },
     ProjectionUnavailableWithoutValue { requested: P1Projection },
@@ -65,6 +66,7 @@ pub struct PolicyMigrationRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyMigrationRequestFailure {
+    IncoherentRankChain,
     SourceValueAbsent,
     TargetValueAbsent,
     TargetStageOmitted,
@@ -83,6 +85,9 @@ impl PolicyMigrationRequest {
     ) -> Result<Self, PolicyMigrationRequestFailure> {
         let target_pair = concrete_target_pair(&target_demand)
             .ok_or(PolicyMigrationRequestFailure::TargetStageOmitted)?;
+        if !source_view.pair.is_rank_coherent() || !target_pair.is_rank_coherent() {
+            return Err(PolicyMigrationRequestFailure::IncoherentRankChain);
+        }
         if reverse_stage_endpoint(&source_view.pair, target_pair) {
             return Err(PolicyMigrationRequestFailure::ReifyBoundaryUnavailable);
         }
@@ -135,6 +140,10 @@ impl PolicyMigrationRequest {
     }
 
     pub(crate) fn validate_connected_execution(&self) -> Result<(), crate::Diagnostic> {
+        self.source_policy()
+            .validate_rank_chain(self.provenance.clone())?;
+        self.target_pair()
+            .validate_rank_chain(self.provenance.clone())?;
         if reverse_stage_endpoint(self.source_policy(), self.target_pair()) {
             return Err(crate::Diagnostic::hard_error(
                 "runtime-to-compile migration requires the unavailable active reify P2 / closed-return / dependent-continuation consumer",
@@ -155,7 +164,7 @@ fn reverse_stage_endpoint(source: &PolicyPair, target: &PolicyPair) -> bool {
 fn concrete_target_pair(demand: &ResultPolicyDemand) -> Option<&PolicyPair> {
     match &demand.pair_query {
         P1Projection::Pair(pair) => Some(pair),
-        P1Projection::Infer | P1Projection::ValueDominant { .. } => None,
+        P1Projection::Infer | P1Projection::Leading { .. } => None,
     }
 }
 
@@ -167,6 +176,12 @@ pub fn elaborate_value_binding_p1<P: Clone>(
     explicit_p1: Option<&P1Projection>,
     _provenance: Provenance,
 ) -> Result<P1Elaboration<P>, P1ElaborationFailure> {
+    if result
+        .iter()
+        .any(|entry| !entry.view.pair.is_rank_coherent())
+    {
+        return Err(P1ElaborationFailure::IncoherentRankChain);
+    }
     if result.is_empty() {
         return Err(P1ElaborationFailure::EmptyResult);
     }
@@ -208,6 +223,12 @@ pub fn elaborate_pure_type_binding_p1<P: Clone>(
     result: &[PolicyResultEntry<Infallible, P>],
     explicit_p1: Option<&P1Projection>,
 ) -> Result<PureTypeP1Elaboration<P>, P1ElaborationFailure> {
+    if result
+        .iter()
+        .any(|entry| !entry.view.pair.is_rank_coherent())
+    {
+        return Err(P1ElaborationFailure::IncoherentRankChain);
+    }
     if result.is_empty() {
         return Err(P1ElaborationFailure::EmptyResult);
     }
@@ -235,7 +256,7 @@ fn relax_projection_presence(projection: &P1Projection) -> P1Projection {
     let mut relaxed = projection.clone();
     match &mut relaxed {
         P1Projection::Infer => {}
-        P1Projection::ValueDominant { value } => value.presence = ValuePresence::Optional,
+        P1Projection::Leading { .. } => {}
         P1Projection::Pair(pair) => {
             if let Some(stage) = pair.value.stage() {
                 pair.value = crate::ValueComponentPolicy::Optional(stage);
@@ -263,6 +284,9 @@ fn project_migration_endpoint_hard_coordinates(
     query: &PolicyPair,
     available: &PolicyPair,
 ) -> Option<PolicyPair> {
+    if !query.is_rank_coherent() || !available.is_rank_coherent() {
+        return None;
+    }
     let presence = intersect_presence(query.value.presence(), available.value.presence())?;
     if query.pattern.stage != available.pattern.stage
         || (presence != ValuePresence::Absent && query.value.stage() != available.value.stage())

@@ -77,8 +77,9 @@ impl PendingResultPolicyDemand {
     }
 }
 
-/// A declaration with a compile-available classifier. Runtime Pattern
-/// observations use their actual PolicyPair instead of this default.
+/// Ordinary declaration default: qualify the leading rank and retain its
+/// compile-available classifier. Actual rank observations are not inferred
+/// from this default.
 pub fn declared_policy_view(stage: Stage, mode: PolicyMode) -> PolicyView {
     PolicyView {
         pair: PolicyPair {
@@ -230,6 +231,39 @@ pub struct PolicyPair {
     pub pattern: PatternComponentPolicy,
 }
 
+impl PolicyPair {
+    /// Adjacent ranks of one classification chain cannot invert availability.
+    pub fn is_rank_coherent(&self) -> bool {
+        self.value.stage() != Some(Stage::Compile) || self.pattern.stage == Stage::Compile
+    }
+
+    pub fn validate_rank_chain(&self, provenance: Provenance) -> Result<(), Diagnostic> {
+        if self.is_rank_coherent() {
+            Ok(())
+        } else {
+            Err(policy_error(
+                "incoherent Policy rank chain: compile:runtime",
+                provenance,
+            ))
+        }
+    }
+
+    pub fn leading_stage(&self) -> Stage {
+        self.value.stage().unwrap_or(self.pattern.stage)
+    }
+
+    /// Form a demand on the first non-absent rank without recoloring its tail.
+    pub fn with_leading_stage(&self, stage: Stage) -> Option<Self> {
+        let mut pair = self.clone();
+        match pair.value {
+            ValueComponentPolicy::Present(_) => pair.value = ValueComponentPolicy::Present(stage),
+            ValueComponentPolicy::Optional(_) => pair.value = ValueComponentPolicy::Optional(stage),
+            ValueComponentPolicy::Absent => pair.pattern.stage = stage,
+        }
+        pair.is_rank_coherent().then_some(pair)
+    }
+}
+
 /// One complete observation edge. The pair and the whole-slot mode are
 /// orthogonal semantic facts: neither may be reconstructed from the other.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -248,16 +282,18 @@ pub struct DeclarationVisibility {
 
 /// Horizon visibility only. Ready and active-frame dominance are separate judgments.
 pub fn body_entry_visible_at(p2: &PolicyPair, horizon: ObservationHorizon) -> bool {
-    p2.value
-        .stage()
-        .unwrap_or(p2.pattern.stage)
-        .visible_at(horizon)
+    p2.is_rank_coherent()
+        && p2
+            .value
+            .stage()
+            .unwrap_or(p2.pattern.stage)
+            .visible_at(horizon)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum P1Projection {
     Infer,
-    ValueDominant { value: ValuePolicyQuery },
+    Leading { stage: Option<Stage> },
     Pair(PolicyPair),
 }
 
@@ -490,6 +526,9 @@ pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
 pub fn project_resolved_export_view(
     internal_policy: &ResolvedCandidatePolicy,
 ) -> Result<PolicyPair, Diagnostic> {
+    internal_policy
+        .pair
+        .validate_rank_chain(Provenance::new("export Policy rank chain"))?;
     let projected = internal_policy.pair.clone();
     Ok(projected)
 }
@@ -611,7 +650,10 @@ impl CallableP2Policy {
 
     pub fn require_connected_body(self, provenance: Provenance) -> Result<PolicyView, Diagnostic> {
         match self {
-            Self::Direct(view) => Ok(view),
+            Self::Direct(view) => {
+                view.pair.validate_rank_chain(provenance)?;
+                Ok(view)
+            }
             Self::Reify { .. } => Err(policy_error(
                 "reify P2 closed-return / active-boundary / dependent-continuation consumer is unavailable",
                 provenance,
@@ -631,7 +673,8 @@ pub fn elaborate_callable_p2(
     let stage = atoms
         .stage
         .ok_or_else(|| policy_error("P2 requires one concrete stage", provenance.clone()))?;
-    let pair = validate_p2_pair(declared_policy_view(stage, mode).pair, provenance)?;
+    let pair = declared_policy_view(stage, mode).pair;
+    pair.validate_rank_chain(provenance)?;
     let view = PolicyView { pair, mode };
     Ok(if atoms.reify {
         CallableP2Policy::Reify { mode }
@@ -678,6 +721,7 @@ pub fn elaborate_formal_policy_pattern(
     inherited_p2: &PolicyView,
     provenance: Provenance,
 ) -> Result<FormalPolicyPattern, Diagnostic> {
+    inherited_p2.pair.validate_rank_chain(provenance.clone())?;
     let Some(policy) = policy else {
         return Ok(FormalPolicyPattern {
             effective_pair: inherited_p2.pair.clone(),
@@ -707,6 +751,7 @@ pub fn elaborate_return_policy_pattern(
     inherited_p1: &PolicyView,
     provenance: Provenance,
 ) -> Result<ReturnPolicyPattern, Diagnostic> {
+    inherited_p1.pair.validate_rank_chain(provenance.clone())?;
     let Some(policy) = policy else {
         return Ok(ReturnPolicyPattern {
             effective_view: inherited_p1.clone(),
@@ -744,8 +789,8 @@ pub enum ExplicitP1Position {
 /// site (outer binding prefix or self-slot policy).
 ///
 /// The explicit selection keeps the complete `Pv:Pp` coordinates and its
-/// orthogonal whole-slot mode separate. Value stage, value presence, Pattern
-/// stage, and mode are independently selectable. A
+/// orthogonal whole-slot mode separate. Rank observations must remain
+/// coherent; explicit source Stage targets the first non-absent rank. A
 /// dimension that was not written stays `None` and falls back to
 /// `Derive(P2)` in `canonical_function_object_p1`; a dimension written at
 /// BOTH spelling sites must agree there or the canonicalizer hard-errors.
@@ -868,7 +913,7 @@ pub fn elaborate_namespace_declaration_policy(
 /// Validate and preview a direct export-root declaration without modifying its
 /// complete internal P1 request.
 ///
-/// This is not the final candidate view: `P1Projection::ValueDominant` still
+/// This is not the final candidate view: `P1Projection::Leading` still
 /// lacks the associated resolved Pattern component. Final external views are
 /// produced only from `ResolvedCandidatePolicy` by
 /// `project_resolved_export_view`.
@@ -905,11 +950,7 @@ fn elaborate_p1_components(
     } else {
         Some(explicit_mode_atom(&atoms, "P1", provenance.clone())?)
     };
-    let value = ValuePolicyQuery {
-        stage: atoms.stage,
-        presence: ValuePresence::Present,
-    };
-    let projection = P1Projection::ValueDominant { value };
+    let projection = P1Projection::Leading { stage: atoms.stage };
     Ok((
         projection,
         mode,
@@ -945,11 +986,15 @@ pub fn project_p1<V: Clone, P: Clone>(
 ) -> Vec<PolicyResultEntry<V, P>> {
     result
         .iter()
+        .filter(|entry| entry.view.pair.is_rank_coherent())
         .filter(|entry| match projection {
             P1Projection::Infer => true,
-            P1Projection::ValueDominant { value } => value_query_matches(*value, entry),
+            P1Projection::Leading { stage } => {
+                stage.is_none_or(|s| entry.view.pair.leading_stage() == s)
+            }
             P1Projection::Pair(pair) => {
-                value_query_matches(pair.value.into(), entry)
+                pair.is_rank_coherent()
+                    && value_query_matches(pair.value.into(), entry)
                     && pair.pattern.stage == entry.view.pair.pattern.stage
             }
         })
@@ -965,20 +1010,6 @@ fn value_query_matches<V, P>(query: ValuePolicyQuery, entry: &PolicyResultEntry<
         && query
             .stage
             .is_none_or(|s| entry.view.pair.value.stage() == Some(s))
-}
-
-fn validate_p2_pair(pair: PolicyPair, provenance: Provenance) -> Result<PolicyPair, Diagnostic> {
-    if pair
-        .value
-        .stage()
-        .is_some_and(|s| s != Stage::Runtime && s != pair.pattern.stage)
-    {
-        return Err(policy_error(
-            "P2 requires compatible value and Pattern observations",
-            provenance,
-        ));
-    }
-    Ok(pair)
 }
 
 fn reject_namespace_attributes(

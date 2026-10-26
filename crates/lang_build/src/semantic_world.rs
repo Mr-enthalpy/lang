@@ -739,7 +739,7 @@ pub struct OrdinaryCallEntry {
     /// This call entry is a terminal FunctionItem: `Type(c) = FunctionItem(Self, Args...) -> R`
     /// and `c.Val2 = ∅`.  There is no recursive callable lookup from a
     /// CallEntry — the invocation spine terminates here.
-    /// Producer result P2 exposed across the call boundary. This is the
+    /// Declared completed-result view exposed across the call boundary. This is the
     /// output-mode preference coordinate and remains distinct from the
     /// callable-internal return position.
     pub complete_result_view: PolicyView,
@@ -811,15 +811,15 @@ pub(crate) enum OrdinaryIntrinsicBody {
 /// P1(function object) = P1(outer let()) = P1(self formal = slot0).
 ///
 /// The canonical P1 is the COMPLETE `Pv:Pp` coordinate:
-/// value stage / value mutability / value presence / Pattern stage. Each
+/// leading rank / whole-slot mode / presence / classifier rank, with coherence. Each
 /// spelling is completed independently against `Derive(P2)`. When both
 /// spelling sites are present, the two complete pairs must be equal; their
 /// explicitly written dimensions are never cross-assembled into a third P1.
 ///
 /// `outer_explicit` is `Some` only when the user wrote P1-relevant
 /// material in the declaration prefix (`compile let f = ...`,
-/// `mut let f = ...`).  A stage-only prefix IS an explicit value-stage
-/// selection and always remains an explicit P1 fact.
+/// `mut let f = ...`). A stage-only prefix selects the first non-absent rank
+/// and remains an explicit P1 fact.
 /// `public/private/export` remain namespace declaration attributes and
 /// never enter the P1; visibility/export of the canonical pair always
 /// come from `outer_derived`.
@@ -830,6 +830,8 @@ pub fn canonical_function_object_view(
     closure: Option<&NormClosure>,
     provenance: &Provenance,
 ) -> Result<crate::PolicyView, crate::Diagnostic> {
+    outer_derived.pair.validate_rank_chain(provenance.clone())?;
+    p2.pair.validate_rank_chain(provenance.clone())?;
     if let Some(policy) = closure
         .and_then(|c| c.head.as_ref())
         .and_then(|h| h.call_policy.as_ref())
@@ -890,6 +892,11 @@ pub fn canonical_function_object_view(
             },
             None => crate::ValueComponentPolicy::Absent,
         };
+        if complete.pair.value == crate::ValueComponentPolicy::Absent {
+            if let Some(stage) = selection.value_stage {
+                complete.pair.pattern.stage = stage;
+            }
+        }
         if let Some(stage) = selection.pattern_stage {
             complete.pair.pattern.stage = stage;
         }
@@ -918,14 +925,7 @@ pub fn canonical_function_object_view(
         (None, Some(self_formal)) => complete(self_formal, outer_derived),
         (None, None) => outer_derived.clone(),
     };
-    if p2.pair.value.stage() == Some(crate::Stage::Runtime)
-        && canonical.pair.value.stage() != Some(crate::Stage::Runtime)
-    {
-        return Err(crate::Diagnostic::hard_error(
-            "runtime P2 requires a runtime P1 producer stage",
-            Some(provenance.clone()),
-        ));
-    }
+    canonical.pair.validate_rank_chain(provenance.clone())?;
     Ok(canonical)
 }
 
@@ -1040,6 +1040,7 @@ struct PatternConstructionFacts {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BindConflict {
+    IncoherentPolicyRankChain,
     NoNamespaceOwner,
     ValueNotInstalled,
     MultipleResidents,
@@ -3611,6 +3612,9 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternCoordinateId)> {
+        if !policy.is_rank_coherent() {
+            return None;
+        }
         let observed = match complete_type {
             Some(whole) => Some(self.complete_types.get(&whole)?.clone()),
             None => None,
@@ -3902,6 +3906,16 @@ impl SemanticWorld {
         privilege: CallablePrivilege,
         provenance: Provenance,
     ) -> Result<SemanticValueId, BuildError> {
+        for view in [
+            &canonical_view,
+            &body_entry_view,
+            &complete_result_view,
+            &return_position_view,
+        ] {
+            view.pair
+                .validate_rank_chain(provenance.clone())
+                .map_err(BuildError::single)?;
+        }
         // Capture a clone of provenance for use in error closures below —
         // `provenance` is moved into SemanticValueRecord later in this
         // function, and we cannot borrow it after the move.
@@ -3996,6 +4010,11 @@ impl SemanticWorld {
         complete_result_view: PolicyView,
         provenance: Provenance,
     ) -> Result<SemanticValueId, BuildError> {
+        for view in [&callable_view, &body_entry_view, &complete_result_view] {
+            view.pair
+                .validate_rank_chain(provenance.clone())
+                .map_err(BuildError::single)?;
+        }
         let target_pattern = self
             .type_value(target_type)
             .map(|value| value.pattern)
@@ -4243,8 +4262,8 @@ impl SemanticWorld {
                 .owner,
             receiver_type,
             canonical_view.clone(),
-            body_entry_view.clone(),
             body_entry_view,
+            return_position_view.clone(),
             return_position_view,
             namespace_visibility,
             candidate_role,
@@ -4365,8 +4384,8 @@ impl SemanticWorld {
             callable_owner,
             function_type,
             canonical_view.clone(),
-            body_entry_view.clone(),
             body_entry_view,
+            return_position_view.clone(),
             return_position_view,
             namespace_visibility,
             OrdinaryCandidateRole::Ordinary,
@@ -4428,6 +4447,18 @@ impl SemanticWorld {
         namespace_visibility: Option<NamespaceVisibility>,
         provenance: Provenance,
     ) -> Result<RegisteredCallable, BuildError> {
+        function_view
+            .pair
+            .validate_rank_chain(provenance.clone())
+            .map_err(BuildError::single)?;
+        body_entry_view
+            .pair
+            .validate_rank_chain(provenance.clone())
+            .map_err(BuildError::single)?;
+        complete_result_view
+            .pair
+            .validate_rank_chain(provenance.clone())
+            .map_err(BuildError::single)?;
         if self
             .symbol_in_namespace(namespace, name)
             .is_some_and(|cell| cell.resident.is_some())
@@ -4574,6 +4605,9 @@ impl SemanticWorld {
         view: PolicyView,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
+        if !view.pair.is_rank_coherent() {
+            return None;
+        }
         let pattern = self.type_value(type_value)?.pattern;
         let id = self.allocate_value_id();
         self.materialize_val1_object(SemanticValueRecord {
@@ -4600,6 +4634,9 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
+        if !policy.is_rank_coherent() {
+            return None;
+        }
         let pattern = self.type_value(type_value)?.pattern;
         let (canonical_family, normalized) = match (&family, exact) {
             (
@@ -4646,6 +4683,9 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
+        if !policy.is_rank_coherent() {
+            return None;
+        }
         let pattern = self.type_value(type_value)?.pattern;
         let id = self.allocate_value_id();
         self.materialize_val1_object(SemanticValueRecord {
@@ -4673,6 +4713,9 @@ impl SemanticWorld {
         view: PolicyView,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
+        if !view.pair.is_rank_coherent() {
+            return None;
+        }
         let source = self.value(source_abstract)?.clone();
         let SemanticValuePayload::AbstractLiteral {
             canonical_family,
@@ -4722,6 +4765,12 @@ impl SemanticWorld {
         complete_type: Option<&CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<SemanticSymbolIdentity, BindConflict> {
+        if views
+            .iter()
+            .any(|entry| !entry.view.pair.is_rank_coherent())
+        {
+            return Err(BindConflict::IncoherentPolicyRankChain);
+        }
         // A Core projection transports an absent-Val1 type resident; it is
         // never an ordinary value alongside that type in the destination.
         let projected_views = views
@@ -4851,6 +4900,12 @@ impl SemanticWorld {
         views: &[PolicyResultEntry<crate::SemanticValueRef, PatternCoordinateId>],
         provenance: Provenance,
     ) -> Option<SemanticSymbolIdentity> {
+        if views
+            .iter()
+            .any(|entry| !entry.view.pair.is_rank_coherent())
+        {
+            return None;
+        }
         // A Core projection transports an absent-Val1 type resident; it is
         // never an ordinary value alongside that type in the destination.
         let projected_views = views

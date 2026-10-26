@@ -189,9 +189,8 @@ pub struct PreparedCallCandidate {
     /// Declaration-local P2 used for body entry and inherited parameter
     /// position policy. Caller demand never mutates this view.
     pub body_entry_view: PolicyView,
-    /// Producer result P2 exposed across the call boundary and used by
-    /// `ResultPolicyDemand`. The declaration-local P_out is stored separately
-    /// on the call entry and never replaces this producer coordinate.
+    /// Declared completed-result observation used by ResultPolicyDemand.
+    /// Source entries obtain it from P1/Pout; core entries declare it directly.
     pub complete_result_view: PolicyView,
     /// P1 of the function object — the single policy degree of freedom.
     /// P1(function object) = P1(slot0/self) = P1(let ()).
@@ -418,28 +417,27 @@ impl SingleMemberResult {
 /// of letting one `PolicyResultEntry` field mean three things at once:
 ///
 /// ```text
-/// CompleteResultView      = P2 type/Pattern observations
+/// CompleteResultView      = declared output rank observations
 /// ExposedInvocationResult = outward_policy (canonical P1)
 ///                           + material (the completed result entries)
 /// ```
 ///
 /// The outward visibility of an invocation result is the canonical P1 —
 /// the same single output authority as the migration output endpoint —
-/// while P2 keeps only input/result compatibility and the complete result
-/// type/pattern domain.  Resident Policy views carry each value's own
+/// while P2 supplies the evaluation horizon and input boundary. Resident Policy views carry each value's own
 /// Policy and are a third, separate coordinate.
 #[derive(Clone, Debug)]
 pub struct ExposedInvocationResult {
     /// Canonical P1 of the selected callable: the invocation result's outward
     /// visibility policy.
     pub outward_policy: PolicyPair,
-    /// The completed result material (the P2-domain entries), exposed
+    /// The completed result material, with its actual declared output ranks, exposed
     /// under the callable P1 window.
     pub material: Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>,
 }
 
 impl ExposedInvocationResult {
-    /// `CompleteResultView(P2) -> expose under callable P1`.
+    /// `CompleteResultView -> expose under callable P1`.
     ///
     /// The outward demand accepts matching completed observations without
     /// rewriting their stages. Distinct P1/P2 authorities may carry equal atoms.
@@ -1872,10 +1870,8 @@ fn invoke_target_values_in_scratch(
         }
     }
 
-    // CompleteResultView — these entries carry the result P2 type/Pattern
-    // observations only. The outward
-    // visibility of the invocation result is NOT this P2: it is the
-    // canonical P1 layer, derived on demand by
+    // CompleteResultView retains the declared output rank observations.
+    // Callable P1 exposure is derived on demand by
     // `SingleMemberResult::exposed()`.
     let semantic_complete_type = match &returned {
         ReturnedSemanticEntity::CompleteType(value) => Some(value.complete_type.clone()),
@@ -2427,6 +2423,9 @@ fn compare_policy_frames(
 }
 
 fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> bool {
+    if !candidate.is_rank_coherent() {
+        return false;
+    }
     let value_admits = |required: crate::ValuePolicyQuery| {
         let presence = required.presence == crate::ValuePresence::Optional
             || candidate.value.presence() == crate::ValuePresence::Optional
@@ -2438,9 +2437,11 @@ fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> b
     };
     match demand {
         P1Projection::Infer => true,
-        P1Projection::ValueDominant { value } => value_admits(*value),
+        P1Projection::Leading { stage } => stage.is_none_or(|s| candidate.leading_stage() == s),
         P1Projection::Pair(required) => {
-            value_admits(required.value.into()) && required.pattern.stage == candidate.pattern.stage
+            required.is_rank_coherent()
+                && value_admits(required.value.into())
+                && required.pattern.stage == candidate.pattern.stage
         }
     }
 }
@@ -2544,8 +2545,8 @@ mod tests {
     fn result_pair_demand_is_a_pre_maxima_hard_coordinate() {
         let runtime = view(Stage::Runtime, Stage::Compile, PolicyMode::Const);
         let compile = view(Stage::Compile, Stage::Compile, PolicyMode::Mut);
-        let runtime_demand = P1Projection::ValueDominant {
-            value: runtime.pair.value.into(),
+        let runtime_demand = P1Projection::Leading {
+            stage: Some(Stage::Runtime),
         };
         assert!(result_pair_demand_admits(&runtime.pair, &runtime_demand));
         assert!(!result_pair_demand_admits(&compile.pair, &runtime_demand));

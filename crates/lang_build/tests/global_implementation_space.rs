@@ -103,8 +103,8 @@ fn source_closure_frontier_precedes_binding_demand() {
 #[test]
 fn result_mode_preference_is_sealed_independently_of_callable_mode() {
     let mut world = support::AssociatedFamily::new(&[
-        "close let first = (const let self, const let t: type::): const + compile -> let r: type:: => { t; };",
-        "close let second = (const let self, const let t: type::): mut + compile -> let r: type:: => { t; };",
+        "close let first = (const let self, const let t: type::): const + compile -> const let r: type:: => { t; };",
+        "close let second = (const let self, const let t: type::): const + compile -> mut let r: type:: => { t; };",
     ]);
     let call = extract_single_call_site(&initializer_from_source("let x = uint8 choose;"))
         .expect("normalized call");
