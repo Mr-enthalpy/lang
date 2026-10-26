@@ -21,9 +21,11 @@ selection after a selected failure.
 
 Stage={compile,runtime}. Endpoints observe linked adjacent ranks. A direct
 migration preserves Type and rank-chain coherence; compile:runtime is invalid.
-Ordinary PolicyLet requests only the first non-absent rank, preserving its
-classifier and further ranks. Explicit Hole Policies can constrain multiple
-rank positions. Runtime-to-compile
+Policy ranks obey absent* runtime* compile*; PolicyPair is their common
+two-rank window. Ordinary runtime PolicyLet requests only the first non-absent
+rank, preserving its classifier and further ranks. Ordinary compile PolicyLet
+requires every non-absent rank compile, preserving the absent prefix. Explicit
+Hole Policies can constrain individual rank positions. Runtime-to-compile
 requires the active closed reify P2 boundary, never a freely supplied flag.
 Runtime:runtime -> runtime:compile yields a runtime Object whose own classifier
 is compile-available. The classifier must be that Object's actual Type; a
@@ -36,6 +38,9 @@ realization data; they do not decide the migration relation.
 Until active-boundary/closed-return/dependency-cone consumers are connected,
 reverse requests report unavailable before candidate execution or publication.
 Ordinary requests cannot authorize reverse migration.
+The full-chain compile demand cannot be satisfied by merely constructing a
+compile:compile target. An actual compile observation plus legal-chain evidence
+closes its higher tail; an all-absent window requires further rank observation.
 P2 runtime / P1 compile is legal by itself; reify is required by the actual
 reverse-dependent continuation, not an in/out stage matrix. First-round Policy
 selection consumes declared input/output constraints equally and independently

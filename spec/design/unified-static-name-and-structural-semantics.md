@@ -652,14 +652,22 @@ runtime Object, not an unrelated compile type. Its same-Type and actual
 source/classifier evidence survive in the resumed continuation.
 
 ```text
-Pi_e(r)=compile => Pi_e(r+1)=compile
+Legal(Pi_e) iff Pi_e in (absent)*(runtime)*(compile)*
+PolicyPair = first two ranks of the observed chain/window
 FirstPresent(Pi_e)=min { i | Pi_e(i) != absent }
-DefaultStage_s(Pi_e)[i] = s       if i=FirstPresent(Pi_e)
-                        Pi_e(i) otherwise
+Target_runtime(Pi_e)[i] = runtime if i=FirstPresent(Pi_e)
+                         Pi_e(i) otherwise
+Target_compile(Pi_e)[i] = absent if Pi_e(i)=absent
+                         compile otherwise
 ```
 
 Ordinary `runtime let` requests this first-present-rank change only, preserving
-rank+1 and the rest of the chain. It does not request runtime:runtime. Explicit
+rank+1 and the rest of the chain. It does not request runtime:runtime.
+Unrefined `compile let` requests all non-absent ranks compile, preserving the
+absent prefix. Pair is only the commonly used two-rank projection; additional
+ranks retain actual classifier links. An observed compile rank and the chain
+law establish its entire compile tail; an all-absent prefix does not establish
+the unseen chain. Target formation supplies no migration witness. Explicit
 Hole-local Policies can target different extraction ranks under the same
 coherence relation; compile:runtime is not a valid view.
 

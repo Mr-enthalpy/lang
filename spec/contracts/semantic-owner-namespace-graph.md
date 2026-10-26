@@ -203,6 +203,8 @@ identity sets belong to the projection consumer, not the resolver.
 does not itself mean external visibility. External candidate projection keeps
 the internal candidate identity, resolved `PolicyPair`, and whole-slot
 `PolicyMode`. Stable external admission requires public path reachability and
+preserves applicable rank-chain evidence independently of the two-rank window;
+a locally legal pair does not validate an unseen tail. It
 never consumes a future caller's Policy or capability demand. Ordinary
 capability-family applicability and Policy selection occur only after external
 lookup.
@@ -415,7 +417,8 @@ Deferred:
 - end-to-end connection of every namespace snapshot consumer;
 - wiring owner-namespace admission to the canonical
   `ResolvedCandidateSnapshot` / `ExportCandidateView` payload and complete
-  external overload routing. That payload retains identity, pair, mode,
+  external overload routing. That payload retains identity, the pair window,
+  available full-chain observations or opaque remaining rank requirements, mode,
   declaration/intrinsic realization facts, and provenance but no
   context-indexed `DynamicLegality_Γ`; the current entry records eligibility
   and preserves namespace graph record identity but does not duplicate the candidate projector

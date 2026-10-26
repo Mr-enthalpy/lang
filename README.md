@@ -135,8 +135,10 @@ Callable-head P2 reify has outward runtime horizon Policy and requires a return
 classifier explicit or input-inferable without reverse migration. Its active
 closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
-reverse dependencies. PolicyPair observes linked adjacent ranks: ordinary
-runtime let changes the first non-absent observation and preserves its classifier;
-compile:runtime is incoherent. Explicit Hole Policies can address different ranks.
+reverse dependencies. Legal Policy ranks have exactly the form
+absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary
+runtime let changes the first non-absent rank; unrefined compile let requires
+all non-absent ranks compile, preserving absence. Explicit Hole Policies can
+address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

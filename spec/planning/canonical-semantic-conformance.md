@@ -594,7 +594,8 @@ unavailable diagnostics, not executed success claims.
 ### Adjacent-rank Policy and joint selection targets
 
 The [Policy owner](../design/symbol-world/policy-and-static-flow-projection.md)
-defines rank coherence and first-present-rank demand independently of ordinary
+defines the complete absent* runtime* compile* chain, runtime first-present
+and compile whole-chain demands independently of ordinary
 whole-slot Mode. Output Hole solving and actual reverse E remain pending.
 
 | ID | Scenario | Required result | Consumer status |
@@ -607,3 +608,10 @@ whole-slot Mode. Output Hole solving and actual reverse E remain pending.
 | RK06 | compile:runtime injected through installation, binding, export or migration | Reject before publication or successful projection. | Rank gate regressions connected |
 | RK07 | Equal input Policies, competing output Policies/demands | Input/output jointly participate before maxima; no second-round body execution supplies applicability. | Ordinary selection connected; general Hole solver pending |
 | RK08 | P1/P2 mixed stage pair with actual reverse-dependent successors | Require the active closed reify boundary for those successors; preserve the selected source/runtime Object and its classifier relation. | Missing-boundary rejection connected; dependent E pending |
+| RK09 | Unrefined compile let on runtime:runtime | Whole-chain target has all non-absent ranks compile; pair projection is compile:compile, not compile:runtime. | Target formation connected; reverse E pending |
+| RK10 | absent:runtime:runtime:compile under compile let | Target absent:compile:compile:compile; preserve absent prefix, do not create a value at that rank. | Arbitrary-depth prefix material connected; actual higher-rank migration pending |
+| RK11 | Runtime or compile rank followed by absent; compile followed by runtime at any depth | Reject the prefix; pair legality cannot legalize a deeper inversion. | Prefix validation and publication guards connected |
+| RK12 | absent:absent with unseen higher ranks | Legal local prefix, neither first present rank nor AllCompile proven; required higher observation is unavailable, not inapplicable fallback evidence. | Observation/selection unavailable boundary connected |
+| RK13 | Equal first pair, different higher-rank observations | Prefixes remain distinct; no whole-chain equality or hidden-tail success from the pair. | Prefix material equality connected; source full-rank transport pending |
+| RK14 | An actually observed first compile rank and legal chain | Compile tail follows the chain law without infinite enumeration; target material itself is no observation witness. | Shape relation connected; source evidence consumer pending |
+| RK15 | Compile Policy on one scoped Hole versus unrefined compile let | The Hole constrains its rank; ordinary compile let constrains every non-absent rank. | Syntax scopes connected; general Hole solver pending |

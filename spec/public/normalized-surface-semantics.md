@@ -821,6 +821,11 @@ The syntax preserves ordinary atoms, parenthesized conjunctions and orthogonal
 operators and type/call annotations retain their separate grammar.
 Internal value/type Policy observations retain adjacent-rank coherence. Direct projections
 observe the same source evaluation edge; a new binding has its own destination.
+The semantic chain is absent* runtime* compile*, and PolicyPair is its common
+two-rank projection. Ordinary runtime let addresses the first non-absent rank;
+ordinary compile let requests all non-absent ranks compile. Explicit Hole
+Policies address their scoped ranks. Syntax normalization does not inspect the
+chain or execute either migration.
 Mode, safety, visibility and migration endpoints remain independent.
 
 Concrete `runtime let` introduces no hole. Omission, concrete material,
@@ -900,7 +905,9 @@ In later resolved semantics, external explicit navigation searches the export
 view, while internal explicit navigation searches the complete namespace view.
 Declaration-side `P1Projection` first applies to actual RHS/result entries and
 produces a resolved internal `PolicyPair`. Later semantic passes preserve that
-pair and its independently selected whole-slot mode in a stable external view.
+window, its independently selected whole-slot mode and actual chain evidence
+or unresolved higher-rank obligations in a stable external view. A legal pair
+does not validate its unobserved tail.
 Export-retention-closure membership
 admits only the graph-retention dimension; external exposure additionally
 requires every path component to be publicly reachable. A private child and
@@ -1340,8 +1347,10 @@ Callable-head P2 reify has outward runtime horizon Policy and requires a return
 classifier explicit or input-inferable without reverse migration. Its active
 closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
-reverse dependencies. PolicyPair observes linked adjacent ranks: ordinary
-runtime let changes the first non-absent observation and preserves its classifier;
-compile:runtime is incoherent. Explicit Hole Policies can address different ranks.
+reverse dependencies. Legal Policy ranks have exactly the form
+absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary
+runtime let changes the first non-absent rank; unrefined compile let requires
+all non-absent ranks compile, preserving absence. Explicit Hole Policies can
+address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

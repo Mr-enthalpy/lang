@@ -7,6 +7,8 @@ Status: implementation-mapping companion. Canonical semantics are owned by
 
 ```text
 PolicyPair = Pv:Pp
+PolicyRankChain belongs to absent* runtime* compile*
+PolicyPair = first two ranks of a current observation window
 PolicyMode = const | mut
 ```
 
@@ -55,6 +57,8 @@ Pv/Pp are linked adjacent ranks, not independent stage dimensions. Ordinary
 runtime let constrains only the first non-absent observation, preserving its
 classifier. Compile:runtime is incoherent. RR -> RC restores the compile
 classifier of the same runtime Object under the admitted reify continuation.
+Unrefined compile let requires all non-absent ranks compile, preserving absence.
+Absent:absent is a legal pair; it grants no knowledge of the unseen higher ranks.
 
 ## 3. Observation horizon mapping
 

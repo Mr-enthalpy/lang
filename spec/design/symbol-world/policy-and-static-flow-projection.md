@@ -90,21 +90,28 @@ Failure of `DynamicLegality_Γ` rejects that selected invocation and never
 reopens ordinary candidate lookup or Policy maxima.
 
 The same object observed from two contexts is one object with two views. The
-policy of a result is always a pair:
+Policy of a result is a rank-indexed observation chain. Its common two-rank
+window is:
 
 ```text
-Π = Pv:Pp
+Pi_e : rank -> {absent,runtime,compile}
+Legal(Pi_e) iff Pi_e belongs to (absent)*(runtime)*(compile)*
+Pair_r(Pi_e) = <Pi_e(r),Pi_e(r+1)> = Pv:Pp
 
 Pv  policy of the value component observed at this edge
 Pp  policy of the Pattern/anonymous-type component observed at this edge
 ```
 
-There is no scalar replacement for this pair, no third `Pv`/`Pp` component, and
-no independent complete P3 Policy product. Parameter and return positions do
+The two-rank window is convenient in common encoding, not a bound on semantic
+rank depth. Every finite observed prefix must obey the displayed ordered
+blocks: absence cannot follow a present observation, and runtime cannot follow
+compile. A window may be absent:absent; such a window alone does not determine
+the first present rank or the unobserved tail. Parameter and return positions do
 nevertheless have position Policies: `P_in` overlays P2 and `P_out` overlays
 P1. Pin admits explicit stage constraints and ordinary stage holes; Pout inherits
-P1's stage. Both positions may refine their orthogonal whole-slot PolicyMode. A result object carries its
-own `PolicyPair` when it re-enters the flow.
+P1's stage. Both positions may refine their orthogonal whole-slot PolicyMode.
+A result retains its actual rank observations when it re-enters the flow;
+its pair window does not discharge unseen higher-rank obligations.
 
 The pair observes two adjacent ranks of one classification chain. Let
 Pi_e(i) be the Policy observation at rank i on the same source edge e:
@@ -112,9 +119,12 @@ Pi_e(i) be the Policy observation at rank i on the same source edge e:
 ```text
 Pv = Pi_e(r)
 Pp = Pi_e(r+1) = Policy_e(Type(x))
-Pi_e(i)=compile => Pi_e(i+1)=compile   -- when both are present
-compile:compile, runtime:compile, runtime:runtime are coherent
-compile:runtime is incoherent
+Pi_e(i)=runtime => Pi_e(i+1) in {runtime,compile}
+Pi_e(i)=compile => Pi_e(i+1)=compile
+Pi_e(i)=absent => Pi_e(i+1) in {absent,runtime,compile}
+legal two-rank prefixes = { absent:absent, absent:runtime, absent:compile,
+                           runtime:runtime, runtime:compile, compile:compile }
+illegal = { runtime:absent, compile:absent, compile:runtime }
 
 Pv = absent  does not imply  Val1?(x) = null
 
@@ -761,20 +771,35 @@ Concretely:
 Q let x = expr;
 ```
 
-It constrains the first non-absent rank observation to Q and preserves the
-classifier and subsequent ranks. Define:
+Its unrefined Stage demand has two different scopes. Define:
 
 ```text
 j = FirstPresent(Pi_e) = min { i | Pi_e(i) != absent }
-Target_Q(Pi_e)[i] = Q       if i=j
-                    Pi_e(i) otherwise
+Target_runtime(Pi_e)[i] = runtime if i=j
+                         Pi_e(i) otherwise
+Target_compile(Pi_e)[i] = absent  if Pi_e(i)=absent
+                         compile otherwise
+AllCompile(Pi_e) iff forall i. Pi_e(i) in {absent,compile}
 ```
 
 For runtime let, runtime:compile stays runtime:compile; compile:compile targets
 runtime:compile; absent:compile targets absent:runtime without manufacturing
-a value. Each target must satisfy rank coherence. Actual migration still
-requires its selected ordinary candidate and legal continuation. Explicit
-Hole-local Policies can target different ranks; ordinary Q let is not Q:Q.
+a value. Compile let requires all non-absent ranks compile, preserving the
+absent prefix: runtime:runtime targets compile:compile, and
+absent:runtime:runtime:compile targets absent:compile:compile:compile.
+This is a demand over the entire chain, not merely two writes in a pair.
+
+An observed compile rank plus Legal(Pi_e) proves the compile tail without
+enumerating further ranks. A finite all-absent prefix provides no such proof;
+its higher-rank observation consumer is required. Building a target or a
+prefix is not migration success. Actual migration still requires its selected
+ordinary candidate, actual classifier links and legal continuation. Explicit
+Hole-local Policies can target individual ranks under the same chain law.
+
+Projection preserves the complete result relation. If an entry's required
+higher rank is unknown, it reports unavailable rather than returning a
+partially classified result set or treating that entry as a mismatch. Neither
+another matching entry nor a fallback supplies the missing observation.
 
 Two ordinary observation constraints may jointly constrain both components,
 using the same source edge and candidate-local relation. The public surface
@@ -1536,7 +1561,8 @@ RHS/result entries
 
 Only the resolved complete view can enter the stable external projection.
 `P1Projection::Infer` is a valid declaration request, and
-`P1Projection::Leading` constrains only the first non-absent rank; neither
+`P1Projection::Leading` carries a local first-present query, and AllCompile
+carries the full-chain compile demand; neither
 is an external candidate view.
 
 The typed substrate therefore represents export as an identity-preserving
