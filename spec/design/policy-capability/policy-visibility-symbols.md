@@ -22,7 +22,7 @@ Concrete atoms introduce no holes: `runtime let` corresponds to
 constraint remain distinct. `<> p$ let` reuses an evaluated Policy value via
 the general polarity interpretation interface; it does not rebind its HoleIds or reparse strings.
 
-Public Policy preserves independent observations through ordinary constraints.
+Public Policy constrains linked adjacent-rank observations through ordinary extraction.
 Legal orthogonal +, ordinary extraction/holes/polarity and require
 constrain both observations within one candidate-local relation. Raw/Norm
 constraint carriers preserve ordinary atoms and orthogonal conjunction (§5).
@@ -46,10 +46,15 @@ Stage={compile,runtime}; the ordinary stage order has identity and compile-to-ru
 A selected runtime-to-compile migration requires a closed active reify P2 boundary.
 P2 is horizon, P1/Pout producer visibility. InputAdmissible, Ready and execution
 legality remain independent. The internal runtime:compile view is valid.
-Runtime or reify P2 requires runtime P1/output producers; competing compile
-producer constraints fail. Compile P2 completes omitted ordinary P1 to compile. Pin admits explicit
+P2 runtime with explicit compile P1 and mixed output Hole Policies is legal.
+The need for reify follows actual reverse-dependent work. Compile P2 completes
+omitted ordinary P1 to compile. Pin admits explicit
 constraints and Holes; Pout retains P1.stage. HoleOverride independently replaces
 written Hole Policy dimensions and inherits the others without strength checks.
+Pv/Pp are linked adjacent ranks, not independent stage dimensions. Ordinary
+runtime let constrains only the first non-absent observation, preserving its
+classifier. Compile:runtime is incoherent. RR -> RC restores the compile
+classifier of the same runtime Object under the admitted reify continuation.
 
 ## 3. Observation horizon mapping
 

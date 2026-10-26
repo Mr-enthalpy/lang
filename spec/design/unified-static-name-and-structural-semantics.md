@@ -570,7 +570,7 @@ delivery and no-reopen boundaries.
 Stage = {compile,runtime}
 P2 = compile | runtime | reify
 EvaluationStage(reify) = runtime
-ExternalPolicy(reify) = ExternalPolicy(runtime)
+OutwardHorizonPolicy(reify) = OutwardHorizonPolicy(runtime)
 ```
 
 Reify is a callable-head P2 annotation. Its domain is exactly the policy
@@ -642,11 +642,33 @@ Their type algebra is the same compile algebra; its use on runtime-only material
 requires a selected reverse migration under the reify boundary. In particular:
 
 ```text
-runtime:runtime -> runtime:compile  -- migrate classifier observation only
+runtime:runtime -> runtime:compile
+result o has Policy(o)=runtime and Policy(Type(o))=compile
 ```
 
-The two endpoint coordinates are internal observations. Source joint extraction
-with independent Hole Policies expresses them without a public pair literal.
+The endpoint observations belong to adjacent ranks of the same Object's
+classification chain. Reverse migration recovers the classifier of that
+runtime Object, not an unrelated compile type. Its same-Type and actual
+source/classifier evidence survive in the resumed continuation.
+
+```text
+Pi_e(r)=compile => Pi_e(r+1)=compile
+FirstPresent(Pi_e)=min { i | Pi_e(i) != absent }
+DefaultStage_s(Pi_e)[i] = s       if i=FirstPresent(Pi_e)
+                        Pi_e(i) otherwise
+```
+
+Ordinary `runtime let` requests this first-present-rank change only, preserving
+rank+1 and the rest of the chain. It does not request runtime:runtime. Explicit
+Hole-local Policies can target different extraction ranks under the same
+coherence relation; compile:runtime is not a valid view.
+
+P2=runtime with P1=compile and mixed-Policy output positions are legal. P1/P2
+spelling does not by itself require reify; actual reverse-dependent continuation
+work does. First-round Policy overload jointly consumes input/output positions
+on equal terms without executing second-round realizations to establish its
+own applicability facts. Source joint extraction with explicit Hole Policies
+expresses the rank observations without a public pair literal.
 Selected calls retain their candidate/projection/frame; a call newly formed by
 runtime E performs its first ordinary selection at that frontier. AOT, JIT,
 caching and tables are equivalent O representations of the same E.

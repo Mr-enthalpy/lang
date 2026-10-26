@@ -632,7 +632,7 @@ golden coverage, and may not feed semantic facts back into parsing.
 
 ## Structural interpretation handoff
 
-Policy syntax preserves ordinary independent constraints; internal Pv/Pp remain distinct.
+Policy syntax preserves ordinary independent constraints; internal Pv/Pp are linked adjacent ranks.
 Raw/Norm Policy constraints have no colon-pair or choice carrier. Concrete atoms, omission, declared holes and general
 opposite-context interpretation are distinct. `runtime let` introduces no `runtime` hole.
 
@@ -647,10 +647,12 @@ They establish no resident read, Stage change, semantic evaluation or readiness.
 requested-name selectors and expression bodies require ordinary source
 span/recovery coverage when wired. Semantic rules never feed back into parsing.
 
-Callable-head P2 reify has outward runtime Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Only its
-active closed boundary admits selected runtime-to-compile migration. Both
-Policy observations may be runtime, including a runtime-policy type; type
-operations still use the compile algebra. Runtime/reify P2 forces runtime
-producer/output stages, while Pin can accept earlier compile inputs. See the
+Callable-head P2 reify has outward runtime horizon Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Its active
+closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+and mixed-Policy outputs are legal; the need for reify follows the continuation's
+reverse dependencies. PolicyPair observes linked adjacent ranks: ordinary
+runtime let changes the first non-absent observation and preserves its classifier;
+compile:runtime is incoherent. Explicit Hole Policies can address different ranks.
+Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

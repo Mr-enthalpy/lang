@@ -106,15 +106,15 @@ P1. Pin admits explicit stage constraints and ordinary stage holes; Pout inherit
 P1's stage. Both positions may refine their orthogonal whole-slot PolicyMode. A result object carries its
 own `PolicyPair` when it re-enters the flow.
 
-The pair is an observation edge, but its two axes are constrained by whether the
-object actually has an independent value projection. This constraint does not
-constrain the whole-slot PolicyMode coordinate:
+The pair observes two adjacent ranks of one classification chain. Let
+Pi_e(i) be the Policy observation at rank i on the same source edge e:
 
 ```text
-Val1?(x) = null  =>  Pv = Pp
-
-Pv != Pp  =>  Val1?(x) != null
-          and Stage(Pv) = runtime
+Pv = Pi_e(r)
+Pp = Pi_e(r+1) = Policy_e(Type(x))
+Pi_e(i)=compile => Pi_e(i+1)=compile   -- when both are present
+compile:compile, runtime:compile, runtime:runtime are coherent
+compile:runtime is incoherent
 
 Pv = absent  does not imply  Val1?(x) = null
 
@@ -122,13 +122,11 @@ PolicyMode_Γ(slot) ∈ { const, mut }
 PolicyMode_Γ(slot) is independent of Val1?(x), Pv, and Pp
 ```
 
-The first rule does **not** say `Pv = absent`: a pure Object still has one
-Policy, observed identically as `Pv` and `Pp`. Divergence becomes meaningful only
-when an independent runtime value projection exists. The final rule preserves
-observer hiding: an edge may suppress the value projection of an object that
-does carry `Val1`. Object shape is therefore not inferred back from an
-observation, while an impossible two-policy split is not invented for a pure
-Object.
+These are linked rank observations, not independent Policy dimensions.
+Val1 absence is an Object-shape fact; it neither hides an observation nor
+equates the Policies of the Object and its classifier. Type values use this
+same adjacent-rank rule. `absent:Pp` skips the unavailable/hidden value
+observation without manufacturing a value or erasing the classifier rank.
 
 The whole-slot separation is a semantic invariant:
 
@@ -140,11 +138,9 @@ Val1?(x) = null
   =/> PolicyMode_Γ(slot) = mut
 ```
 
-`Pv = Pp` says only that the value-side and Pattern-side stage/exposure facts
-cannot split for a pure Object. It does not erase the PolicyMode of the binding,
-formal, argument, or result slot that carries that Object. The same pure value
-may therefore occupy const and mut slots without changing its Object
-identity or introducing a fourth Object component.
+Whole-slot PolicyMode is independent of this rank-chain coherence relation.
+The same complete type value may occupy const and mut slots without changing
+its Object identity or adding an Object component.
 
 Policy dimensions are typed and orthogonal:
 
@@ -389,8 +385,9 @@ Both observations retain the same source edge epsilon. Directly composing
 automatically the original x's Pp. Equal type content does not recover that edge.
 
 Whole-slot Mode, Safety and namespace visibility/export retain their independent
-owners; none is moved into Pv/Pp. The no-independent-Val1 consistency law of §1
-still applies. A hidden Val1 is not evidence of absent content.
+owners; none is moved into Pv/Pp. The adjacent-rank coherence law of §1
+applies to the same source/classifier relation. A hidden Val1 is not evidence
+of absent content.
 
 Concrete atoms, explicit holes, omission and polarity flip are distinct:
 
@@ -456,6 +453,10 @@ There is no independent policy deduction calculus:
     Pout(rho) = Overlay(P1, Delta_out(rho))
     Omega = <Actual_1,...,Actual_n,Demand?>
 
+Input and output positions participate equally in this first-round relation.
+Its Policy facts come from declarations, actual observations and total demand,
+not execution of second-round candidate bodies. The rounds are therefore
+decoupled without an input-to-output or output-to-input inference direction.
 Applicability solves the one joint relation against Omega. It does not compute
 Pin from Pout or Pout from Pin. Shared input/output holes must be in ordinary
 scope; independent holes stay distinct until require relates them. Solver order
@@ -760,8 +761,20 @@ Concretely:
 Q let x = expr;
 ```
 
-It selects the value slice exposed by `Q`, then preserves the Pattern component
-associated with that selected value slice. It does not mean `Q:Q`.
+It constrains the first non-absent rank observation to Q and preserves the
+classifier and subsequent ranks. Define:
+
+```text
+j = FirstPresent(Pi_e) = min { i | Pi_e(i) != absent }
+Target_Q(Pi_e)[i] = Q       if i=j
+                    Pi_e(i) otherwise
+```
+
+For runtime let, runtime:compile stays runtime:compile; compile:compile targets
+runtime:compile; absent:compile targets absent:runtime without manufacturing
+a value. Each target must satisfy rank coherence. Actual migration still
+requires its selected ordinary candidate and legal continuation. Explicit
+Hole-local Policies can target different ranks; ordinary Q let is not Q:Q.
 
 Two ordinary observation constraints may jointly constrain both components,
 using the same source edge and candidate-local relation. The public surface
@@ -887,7 +900,7 @@ Implementations must not collapse `const` back into an unspecified carrier.
 #### 3.2.1 Return policy refinement inherits P1
 
 There is no independent complete `P3` Policy product. A return position has a
-position Policy `P_out` formed from the callable declaration P1 plus an
+position Policy `P_out` formed by default from the callable declaration P1 plus an
 optional mode-only overlay:
 
 ```text
@@ -912,6 +925,12 @@ dimension must be classified as `InheritedOnly` or `Overridable`; evaluation
 stage is `InheritedOnly` here and whole-slot mode is `Overridable`. “No P3”
 therefore means that the return site has no third arbitrary complete Policy
 vector; it does not mean that the return position has no Policy.
+
+Hole-local return extraction is a separate HoleOverride consumer: each explicit
+Hole Policy addresses its own rank/position. Mixed coherent compile/runtime
+output observations do not recolor siblings and are not restricted by this
+ordinary-slot mode overlay. The complete output constraints participate in the
+same pre-maxima relation as input constraints.
 
 `P_in` and `P_out` are declaration/evaluation-boundary facts. A caller's
 `ResultPolicyDemand` is a distinct call-site judgment and never rewrites either
@@ -953,8 +972,8 @@ The cells assert only that the mode coordinate exists. They do not manufacture
 a value stage or any operation capability.
 
 This is a statement about the edge, not about the object behind it. Per §1,
-`Pv = absent` does not assert `Val1?(x) = null`; when `Val1?(x) = null`, the
-canonical unhidden observation instead has `Pv = Pp`.
+`Pv = absent` does not assert `Val1?(x) = null`; Val1 shape supplies no equality
+between the Policy of x and the Policy of its classifier.
 
 Value-side well-formedness may reject combinations with an absent value
 component, but that restriction does not erase or change the independent
@@ -1298,7 +1317,7 @@ PolicyMode={const,mut}
 
 Visibility, InputAdmissible, Ready and LegalToExecute are independent. Bare nodes
 have actual unique opaque values, permitting runtime:compile observations.
-Pure Objects retain equal value/Pattern projection constraints. R_vis preserves
+All Objects retain the adjacent-rank coherence constraints. R_vis preserves
 hidden resident identity; concrete value availability is a separate fact.
 
 ## 5. Callable P2, producer completion and return closure
@@ -1307,24 +1326,25 @@ hidden resident identity; concrete value availability is a separate fact.
 HorizonPolicy(compile) = ordinary compile evaluation view
 HorizonPolicy(runtime) = ordinary runtime evaluation view
 HorizonPolicy(reify) = HorizonPolicy(runtime)
-P2=runtime or P2=reify => P1.producer_stage=runtime
-P2=compile => omitted P1.producer_stage=compile
-any output producer_stage=runtime => all output producer_stages=runtime
+omitted ordinary P1 => declaration-side default from HorizonPolicy(P2)
+explicit P1 / Hole-local output Policies => ordinary joint constraints
+P2=runtime and P1=compile is legal
 Pin_i.stage <= latest input availability admitted by P2
 ```
 
-Explicit competing compile producer constraints at runtime/reify P2 fail the
-joint relation; they do not override its runtime requirement. Pin is a latest
-arrival constraint, so runtime and reify callables may accept compile inputs.
-The input consumer must still prove actual availability and applicability.
-Pout inherits the canonical producer stage and participates in the joint
-all-output closure before candidate maxima. Classifier observations remain
-independent coordinates: runtime:compile and runtime:runtime are both legal
-when their actual observation facts hold. Pure runtime type values use equal
-value/Pattern observations; this supplies no runtime type-calculation algebra.
+P2 is evaluation horizon; P1 is the declared producer observation. No stage
+matrix forces explicit producer/output constraints from P2 or from another
+output position. Pin is a latest-arrival constraint and actual availability
+remains required. An ordinary Pout slot inherits P1; explicitly scoped output
+Holes use HoleOverride and may express mixed Policies. Their linked rank
+observations must remain coherent, including runtime:compile/runtime:runtime.
+Runtime-policy type values supply no parallel runtime type-calculation algebra.
 
-Only callable-head P2 admits reify. Its outward producer/horizon view equals
+Only callable-head P2 admits reify. Its outward horizon view equals
 runtime, while its active closed boundary admits selected reverse migration.
+Whether that boundary is required follows actual runtime-to-compile dependent
+continuation work, not the spelling of a P1/P2 stage combination. A legal
+runtime-horizon callable with compile output need not perform reverse migration.
 The complete output classifier must be explicit or input-inferable without
 depending on reverse migration. Unknown closure/continuation facts are unavailable.
 Finally omitted mode still completes under open + known OpenHere, independently
@@ -1516,7 +1536,7 @@ RHS/result entries
 
 Only the resolved complete view can enter the stable external projection.
 `P1Projection::Infer` is a valid declaration request, and
-`P1Projection::ValueDominant` does not yet carry the associated `Pp`; neither
+`P1Projection::Leading` constrains only the first non-absent rank; neither
 is an external candidate view.
 
 The typed substrate therefore represents export as an identity-preserving

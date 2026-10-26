@@ -76,10 +76,12 @@ runtime reification of E with current-name-position Region. Each topic above
 keeps its own canonical judgments; the [conformance matrix](../planning/canonical-semantic-conformance.md#joint-extraction-and-runtime-reification-acceptance-targets)
 records semantic acceptance targets separately from connected execution.
 
-Callable-head P2 reify has outward runtime Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Only its
-active closed boundary admits selected runtime-to-compile migration. Both
-Policy observations may be runtime, including a runtime-policy type; type
-operations still use the compile algebra. Runtime/reify P2 forces runtime
-producer/output stages, while Pin can accept earlier compile inputs. See the
+Callable-head P2 reify has outward runtime horizon Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Its active
+closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+and mixed-Policy outputs are legal; the need for reify follows the continuation's
+reverse dependencies. PolicyPair observes linked adjacent ranks: ordinary
+runtime let changes the first non-absent observation and preserves its classifier;
+compile:runtime is incoherent. Explicit Hole Policies can address different ranks.
+Type operations use the compile algebra. See the
 [unified owner](unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

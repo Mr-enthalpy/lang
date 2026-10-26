@@ -189,7 +189,7 @@ an explicit contract and input-derived contract are equally valid when closed.
 
 ```text
 Invoke(B,args) ~= Deliver_(ReturnPattern_B,Pout_B)(E_K(Body_B,args))
-P2(B)=reify => ExternalStage(B)=runtime
+P2(B)=reify => OutwardHorizonStage(B)=runtime
 ReverseAllowed_K(m) => RuntimeMaterialize_K(DependentSuccessors(m))
 ```
 

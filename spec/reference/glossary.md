@@ -220,10 +220,14 @@ extraction. Ordinary member access does not receive this family filter.
 
 ### PolicyPair
 
-An internal pair of independent value/Pattern observations, containing stage
+An internal pair of linked adjacent-rank value/classifier observations, containing stage
 and presence facts. Direct source Policy uses ordinary single-carrier material. Direct source Policy and
 Policy of its direct type projection observe one evaluation edge; a separately
 bound type value has a new edge. Mode and safety remain independent.
+Ordinary runtime let constrains only the first non-absent rank; its classifier
+and further ranks stay unchanged. Explicit Hole Policies can target different
+ranks. Compile:runtime is incoherent; runtime:runtime -> runtime:compile
+restores the classifier of that runtime Object.
 
 ### PolicyMode
 

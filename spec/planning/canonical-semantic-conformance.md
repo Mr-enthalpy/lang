@@ -580,13 +580,30 @@ unavailable diagnostics, not executed success claims.
 | RF05 | return classifier itself requires reverse migration | reject before migration/publication | closed-boundary consumer pending |
 | RF06 | runtime->compile migration outside reify or at ordinary Runtime P2 | reject; matching endpoint/candidate grants no boundary | request boundary |
 | RF07 | reverse migration under active closed reify | select an ordinary same-Type candidate, materialize only actual dependent successors | E consumer pending |
-| RF08 | runtime:runtime->runtime:compile | classifier-only migration, value Policy preserved | source/continuation consumer pending |
-| RF09 | pure runtime-policy type | equal runtime observations; no runtime type-algebra permission | observation substrate; type consumer pending |
+| RF08 | runtime:runtime->runtime:compile | runtime Object retained with its actual classifier compile-available; unrelated compile type is no witness | source/continuation consumer pending |
+| RF09 | runtime-policy type value | coherent adjacent-rank observations, including a compile classifier; Val1 shape forces no Policy equality or type-algebra permission | observation substrate; type consumer pending |
 | RF10 | actual dependent type work plus independent compile type work | defer dependent cone only; independent work remains ready | dependency-cone consumer pending |
 | RF11 | runtime value-only compile detour | O may eliminate only with E-proved no type dependency and affected E revalidation | O consumer pending |
-| RF12 | Runtime/reify P2 with explicit compile P1 or one Runtime output among many | incompatible producer constraint fails; all outputs Runtime | P1 check; joint output consumer pending |
+| RF12 | Runtime/reify P2 with explicit compile P1 or mixed output Hole Policies | Legal coherent declared constraints; reify is required only by actual reverse-dependent continuation work | P1 acceptance connected; mixed output solver pending |
 | RF13 | Runtime/reify Pin with compile input | latest availability may accept it; Ready and applicability remain independent | InputAdmissible consumer pending |
 | RF14 | deleted migration, host asymmetry, restricted atomic library type | no generated capability may override missing/deleted realization | ordinary candidate/capability substrate |
 | RF15 | existing accepted view / selected migration failure | identity only / terminal failure, no chain or reopen | shared selection substrate |
 | RF16 | runtime newly formed multi-dispatch call | first ordinary selection at actual frontier; selected predecessors retain origin | reified E consumer pending |
 | RF17 | future false branch and lifecycle facts | current compile name/Color Region only; path elimination uses E O E | lifecycle substrate; source/O consumers pending |
+
+### Adjacent-rank Policy and joint selection targets
+
+The [Policy owner](../design/symbol-world/policy-and-static-flow-projection.md)
+defines rank coherence and first-present-rank demand independently of ordinary
+whole-slot Mode. Output Hole solving and actual reverse E remain pending.
+
+| ID | Scenario | Required result | Consumer status |
+|---|---|---|---|
+| RK01 | P2 runtime, explicit P1 compile, no reverse dependency | Accept declaration with distinct body/output views; no reify requirement from the stage combination. | Callable registration connected; source E pending |
+| RK02 | Mixed compile/runtime output Hole Policies | Keep each scoped Hole constraint; no all-output recoloring. | Syntax/identity connected; output solver pending |
+| RK03 | Ordinary runtime let on compile:compile | Target runtime:compile, preserve classifier; actual migration requires ordinary selection. | Rank demand/projection connected; general migration realization pending |
+| RK04 | Ordinary runtime let on runtime:runtime | Keep runtime:runtime; do not silently recover classifier. | Rank demand/projection connected |
+| RK05 | Ordinary runtime let on absent:compile | Target absent:runtime, preserving absent value and the higher tail; do not fabricate Present. | Demand/projection connected; higher-rank migration pending |
+| RK06 | compile:runtime injected through installation, binding, export or migration | Reject before publication or successful projection. | Rank gate regressions connected |
+| RK07 | Equal input Policies, competing output Policies/demands | Input/output jointly participate before maxima; no second-round body execution supplies applicability. | Ordinary selection connected; general Hole solver pending |
+| RK08 | P1/P2 mixed stage pair with actual reverse-dependent successors | Require the active closed reify boundary for those successors; preserve the selected source/runtime Object and its classifier relation. | Missing-boundary rejection connected; dependent E pending |

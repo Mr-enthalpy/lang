@@ -7,7 +7,7 @@ here.
 
 This note connects four thin surface forms to the existing function-object,
 Pattern-normalization, and unique-overload-selection model. Internal value/type
-Policy observations remain independent, Stage is compile/runtime, and ordinary
+Policy observations retain adjacent-rank coherence, Stage is compile/runtime, and ordinary
 overload resolution produces one result.
 
 ## 1. Callable implementation tail

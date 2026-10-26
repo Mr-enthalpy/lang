@@ -318,7 +318,7 @@ error-policy checker exists. The relevant dimensions are:
   handler call is admissible; P2 is its evaluation horizon;
 - the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material;
   there is no independent arbitrary complete return-policy `P3` or scalar
-  replacement for its independent internal value/type Policy observations.
+  replacement for its linked internal value/classifier Policy observations.
   Pout.stage=P1.stage; omitted mode inherits and an explicit mode overlay
   remains a constraint. Public Policy uses a single carrier; direct source/type
   projections retain the same edge only before a new binding boundary;

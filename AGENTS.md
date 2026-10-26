@@ -134,7 +134,7 @@ alternate relation or identity.
   boundaries and use admitted dependencies to reach enclosing instances.
 - Stage = {compile, runtime}. P2 is evaluation horizon; P1/Pout producer
   visibility, OpenPolicy, InputAdmissible, migration and Ready are independent.
-  Runtime or reify P2 requires runtime P1/output producers.
+  P2 runtime with P1 compile is legal; actual reverse-dependent work requires reify.
 - Name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
@@ -231,8 +231,8 @@ alternate relation or identity.
   with arbitrary source nesting. $ is independent from resident Read and Stage.
   Path support preserves Hole identities; ADL dynamic path segments use
   ((field#)[0])$::t.
-- Policy syntax preserves independent constraints; internal value/type observations remain
-  independent and share the source evaluation edge only for direct projections.
+- Policy syntax preserves independent constraints; internal value/type observations are linked adjacent ranks of the same source
+  edge for direct projections.
   Concrete atoms, omission, holes and opposite-context material remain distinct.
 - Terminal ReturnPattern/Pout demand precedes immediate root maxima; established
   outer P1/P2 jointly constrain inner positions, without an implicit semantic temp.
@@ -292,10 +292,12 @@ not run it for corrections to the current PR.
 When asked to publish changes, inspect status/diff, commit intentionally, push
 with upstream tracking, and use `gh` for draft PR creation or updates.
 
-Callable-head P2 reify has outward runtime Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Only its
-active closed boundary admits selected runtime-to-compile migration. Both
-Policy observations may be runtime, including a runtime-policy type; type
-operations still use the compile algebra. Runtime/reify P2 forces runtime
-producer/output stages, while Pin can accept earlier compile inputs. See the
+Callable-head P2 reify has outward runtime horizon Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Its active
+closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+and mixed-Policy outputs are legal; the need for reify follows the continuation's
+reverse dependencies. PolicyPair observes linked adjacent ranks: ordinary
+runtime let changes the first non-absent observation and preserves its classifier;
+compile:runtime is incoherent. Explicit Hole Policies can address different ranks.
+Type operations use the compile algebra. See the
 [unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

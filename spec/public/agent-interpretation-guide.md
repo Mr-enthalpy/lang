@@ -325,7 +325,7 @@ and optimizer structures cannot introduce program facts.
 
 - Stage is one atom; compile/runtime are mutually incomparable. P2 is horizon,
   P1/Pout producer visibility. InputAdmissible, migration and Ready are separate.
-  Runtime or reify P2 requires runtime P1/output producers. Omission
+  P2 runtime with P1 compile is legal; actual reverse-dependent work requires reify. Omission
   is not a hole. Known runtime inputs do not change the producer stage.
 - Resolve once, R_vis evidence, ordinary C_sigma preparation, hard A, fallback
   suppression, Policy/Pattern order, unique Selected=(c*,sigma*,frame).
@@ -389,10 +389,12 @@ ordinary binding and transfer subject to actual dependencies and ordinary
 checks; wrappers preserve those obligations without a source-origin veto. Lifetime persistence and escape remain
 checked through the explicit refinement handoff, not inferred from tau status.
 
-Callable-head P2 reify has outward runtime Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Only its
-active closed boundary admits selected runtime-to-compile migration. Both
-Policy observations may be runtime, including a runtime-policy type; type
-operations still use the compile algebra. Runtime/reify P2 forces runtime
-producer/output stages, while Pin can accept earlier compile inputs. See the
+Callable-head P2 reify has outward runtime horizon Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Its active
+closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+and mixed-Policy outputs are legal; the need for reify follows the continuation's
+reverse dependencies. PolicyPair observes linked adjacent ranks: ordinary
+runtime let changes the first non-absent observation and preserves its classifier;
+compile:runtime is incoherent. Explicit Hole Policies can address different ranks.
+Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
