@@ -286,7 +286,7 @@ fn exposure_window(value_stage: Stage, mode: PolicyMode, pattern_stage: Stage) -
         pair: PolicyPair {
             value: ValueComponentPolicy::Present(value_stage),
             pattern: PatternComponentPolicy {
-                stage: pattern_stage,
+                stage: Some(pattern_stage),
             },
         },
         mode,
@@ -308,7 +308,7 @@ fn value_entry(
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: pattern_stage,
+                    stage: Some(pattern_stage),
                 },
             },
             mode,
@@ -327,7 +327,7 @@ fn type_result_entry(
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: pattern_stage,
+                    stage: Some(pattern_stage),
                 },
             },
             mode: PolicyMode::Const,
@@ -349,7 +349,7 @@ fn expose_preserves_matching_single_stage_and_independent_mode() {
     let entry = &exposed.material[0];
     assert_eq!(entry.view.pair.value.stage(), Some(Stage::Compile));
     assert_eq!(entry.view.mode, PolicyMode::Const);
-    assert_eq!(entry.view.pair.pattern.stage, Stage::Compile);
+    assert_eq!(entry.view.pair.pattern.stage, Some(Stage::Compile));
 }
 
 /// B3 — an entry whose exposed window vanishes is not part of the outward
@@ -437,7 +437,7 @@ fn value_stage_dimension_mismatch_is_hard_error() {
 #[test]
 fn pattern_stage_dimension_mismatch_is_hard_error() {
     let outer = ExplicitP1Selection {
-        pattern_stage: Some(Stage::Runtime),
+        pattern_stage: Some(Some(Stage::Runtime)),
         ..ExplicitP1Selection::default()
     };
     let initializer = initializer_from_source("let f = (compile let self): compile => { (); };");

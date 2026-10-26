@@ -458,8 +458,8 @@ impl ExposedInvocationResult {
 
 /// Expose one complete-result entry under the callable P1 window.
 ///
-/// Stage and presence matching preserves the complete observation, including
-/// Pv=Pp on an unhidden pure Object. Mode is independent.
+/// Stage and presence matching preserves the observed rank window.
+/// Whole-slot mode is independent; Object shape supplies no rank equality.
 fn expose_result_entry(
     outward: &PolicyPair,
     entry: &PolicyResultEntry<SemanticValueRef, PatternCoordinateId>,
@@ -467,7 +467,8 @@ fn expose_result_entry(
     let material = crate::policy_pair::project_p1(
         &P1Projection::Pair(outward.clone()),
         std::slice::from_ref(entry),
-    );
+    )
+    .ok()?;
     material.into_iter().next()
 }
 
@@ -756,7 +757,13 @@ pub fn invoke_policy_migration(
     let mut demanded_view = project_p1(
         &request.target_demand().pair_query,
         &invocation.complete_result,
-    );
+    )
+    .map_err(
+        |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+            diagnostic,
+            trace: invocation.trace.clone(),
+        },
+    )?;
     if demanded_view.is_empty() {
         return Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed {
             trace: invocation.trace,
@@ -1148,11 +1155,21 @@ fn invoke_target_values_in_scratch(
         // C2 result-demand hard projection. Every pair/stage coordinate that
         // can affect producer selection is present before maxima; whole-slot
         // mode remains the independent Bp coordinate below.
-        if !result_pair_demand_admits(
+        match result_pair_demand_admits(
             &entry.complete_result_view.pair,
             &context.result_policy_demand.pair_query,
         ) {
-            continue;
+            Some(true) => {}
+            Some(false) => continue,
+            None => {
+                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                    diagnostic: Diagnostic::hard_error(
+                        "higher Policy rank observation consumer is unavailable for this demand",
+                        Some(entry.provenance.clone()),
+                    ),
+                    trace,
+                })
+            }
         }
         // The call entry carries its own declaration
         // environment (`declaration_name` / `declaration_namespace`); the
@@ -1163,6 +1180,15 @@ fn invoke_target_values_in_scratch(
         // This exposure test is not Ready evidence. The full common E
         // readiness/Pre/commit consumer remains a separate implementation gate;
         // visibility must not authorize additional body execution paths.
+        if entry.body_entry_view.pair.leading_stage().is_none() {
+            return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                diagnostic: Diagnostic::hard_error(
+                    "higher Policy rank observation for body-entry P2 is unavailable",
+                    Some(entry.provenance.clone()),
+                ),
+                trace,
+            });
+        }
         if !body_entry_visible_at(&entry.body_entry_view.pair, context.horizon) {
             horizon_obstruction.get_or_insert_with(|| ObservationObstruction {
                 class: "hidden-body-entry-observation".into(),
@@ -1670,8 +1696,8 @@ fn invoke_target_values_in_scratch(
         .pair
         .value
         .stage()
-        .unwrap_or(selected.body_entry_view.pair.pattern.stage)
-        != crate::Stage::Runtime
+        .or(selected.body_entry_view.pair.pattern.stage)
+        != Some(crate::Stage::Runtime)
     {
         let parent_owner = context
             .parent_semantic_owner
@@ -2422,9 +2448,9 @@ fn compare_policy_frames(
     ordering_from_advantages(left_better, right_better)
 }
 
-fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> bool {
-    if !candidate.is_rank_coherent() {
-        return false;
+fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> Option<bool> {
+    if !candidate.is_rank_prefix_coherent() {
+        return Some(false);
     }
     let value_admits = |required: crate::ValuePolicyQuery| {
         let presence = required.presence == crate::ValuePresence::Optional
@@ -2436,13 +2462,19 @@ fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> b
                 .is_none_or(|s| candidate.value.stage() == Some(s))
     };
     match demand {
-        P1Projection::Infer => true,
-        P1Projection::Leading { stage } => stage.is_none_or(|s| candidate.leading_stage() == s),
-        P1Projection::Pair(required) => {
-            required.is_rank_coherent()
-                && value_admits(required.value.into())
-                && required.pattern.stage == candidate.pattern.stage
+        P1Projection::Infer => Some(true),
+        P1Projection::Leading { stage: None } => Some(true),
+        P1Projection::Leading { stage: Some(stage) } => {
+            candidate.leading_stage().map(|s| s == *stage)
         }
+        P1Projection::AllCompile => candidate
+            .leading_stage()
+            .map(|s| s == crate::Stage::Compile),
+        P1Projection::Pair(required) => Some(
+            required.is_rank_prefix_coherent()
+                && value_admits(required.value.into())
+                && required.pattern.stage == candidate.pattern.stage,
+        ),
     }
 }
 
@@ -2534,7 +2566,7 @@ mod tests {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: pattern_stage,
+                    stage: Some(pattern_stage),
                 },
             },
             mode,
@@ -2548,19 +2580,53 @@ mod tests {
         let runtime_demand = P1Projection::Leading {
             stage: Some(Stage::Runtime),
         };
-        assert!(result_pair_demand_admits(&runtime.pair, &runtime_demand));
-        assert!(!result_pair_demand_admits(&compile.pair, &runtime_demand));
+        assert_eq!(
+            result_pair_demand_admits(&runtime.pair, &runtime_demand),
+            Some(true)
+        );
+        assert_eq!(
+            result_pair_demand_admits(&compile.pair, &runtime_demand),
+            Some(false)
+        );
 
         let pair_demand = P1Projection::Pair(PolicyPair {
             value: runtime.pair.value.clone(),
             pattern: PatternComponentPolicy {
-                stage: Stage::Runtime,
+                stage: Some(Stage::Runtime),
             },
         });
-        assert!(!result_pair_demand_admits(&runtime.pair, &pair_demand));
+        assert_eq!(
+            result_pair_demand_admits(&runtime.pair, &pair_demand),
+            Some(false)
+        );
         assert_ne!(
             runtime.mode, compile.mode,
             "mode remains a separate Bp coordinate"
+        );
+    }
+
+    #[test]
+    fn all_absent_window_keeps_higher_rank_demand_unknown() {
+        let absent = PolicyPair {
+            value: ValueComponentPolicy::Absent,
+            pattern: PatternComponentPolicy { stage: None },
+        };
+        assert_eq!(
+            result_pair_demand_admits(&absent, &P1Projection::AllCompile),
+            None
+        );
+        assert_eq!(
+            result_pair_demand_admits(
+                &absent,
+                &P1Projection::Leading {
+                    stage: Some(Stage::Runtime)
+                }
+            ),
+            None
+        );
+        assert_eq!(
+            result_pair_demand_admits(&absent, &P1Projection::Pair(absent.clone())),
+            Some(true)
         );
     }
 }

@@ -162,9 +162,9 @@ pub use policy_pair::{
     NamespaceDeclarationPolicy, NamespaceDeclarationPosition, NamespaceExportNode,
     NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility, ObservationHorizon,
     OpenHereAvailability, OpenPolicy, OutputModeDemand, P1Projection, PatternComponentPolicy,
-    PendingResultPolicyDemand, PolicyMode, PolicyPair, PolicyResultEntry, PolicyView,
-    ResolvedCandidatePolicy, ResultPolicyDemand, ReturnPolicyPattern, Stage, ValueComponentPolicy,
-    ValuePolicyQuery, ValuePresence,
+    PendingResultPolicyDemand, PolicyMode, PolicyPair, PolicyRank, PolicyRankPrefix,
+    PolicyResultEntry, PolicyView, ResolvedCandidatePolicy, ResultPolicyDemand,
+    ReturnPolicyPattern, Stage, ValueComponentPolicy, ValuePolicyQuery, ValuePresence,
 };
 pub use product_shape::{
     ArgProductShape, FlattenedProductInvariant, FlattenedProductMaterial, NonValueArgKind,

@@ -73,7 +73,7 @@ fn policy_let_target_demand(
     demand: &ResultPolicyDemand,
     source: &PolicyPair,
 ) -> Option<PolicyView> {
-    if !source.is_rank_coherent() {
+    if !source.is_rank_prefix_coherent() {
         return None;
     }
     let pair = match &demand.pair_query {
@@ -82,7 +82,9 @@ fn policy_let_target_demand(
             Some(stage) => source.with_leading_stage(*stage)?,
             None => source.clone(),
         },
-        P1Projection::Pair(pair) if pair.is_rank_coherent() => pair.clone(),
+        P1Projection::AllCompile if source.leading_stage().is_some() => source.compile_target(),
+        P1Projection::AllCompile => return None,
+        P1Projection::Pair(pair) if pair.is_rank_prefix_coherent() => pair.clone(),
         P1Projection::Pair(_) => return None,
     };
     Some(PolicyView {
@@ -104,7 +106,7 @@ mod stage_demand_tests {
         let source = PolicyPair {
             value: ValueComponentPolicy::Absent,
             pattern: PatternComponentPolicy {
-                stage: Stage::Compile,
+                stage: Some(Stage::Compile),
             },
         };
         let demand = ResultPolicyDemand {
@@ -123,7 +125,66 @@ mod stage_demand_tests {
         };
         let target = policy_let_target_demand(&runtime, &source).unwrap();
         assert_eq!(target.pair.value, ValueComponentPolicy::Absent);
-        assert_eq!(target.pair.pattern.stage, Stage::Runtime);
+        assert_eq!(target.pair.pattern.stage, Some(Stage::Runtime));
+    }
+
+    #[test]
+    fn compile_demand_forms_the_all_rank_target_then_requires_reverse_authority() {
+        let type_value = crate::TypeLookupIndexAllocator::new().allocate();
+        let demand = ResultPolicyDemand {
+            pair_query: P1Projection::AllCompile,
+            mode: PolicyMode::Const,
+        };
+        for source in [
+            PolicyPair {
+                value: ValueComponentPolicy::Present(Stage::Runtime),
+                pattern: PatternComponentPolicy {
+                    stage: Some(Stage::Runtime),
+                },
+            },
+            PolicyPair {
+                value: ValueComponentPolicy::Present(Stage::Runtime),
+                pattern: PatternComponentPolicy {
+                    stage: Some(Stage::Compile),
+                },
+            },
+            PolicyPair {
+                value: ValueComponentPolicy::Absent,
+                pattern: PatternComponentPolicy {
+                    stage: Some(Stage::Runtime),
+                },
+            },
+        ] {
+            let target = policy_let_target_demand(&demand, &source).unwrap();
+            assert_eq!(target.pair.pattern.stage, Some(Stage::Compile));
+            assert_eq!(target.pair.value.presence(), source.value.presence());
+            if source.value.stage().is_some() {
+                assert_eq!(target.pair.value.stage(), Some(Stage::Compile));
+                let error = crate::PolicyMigrationRequest::new(
+                    crate::PolicyView {
+                        pair: source,
+                        mode: PolicyMode::Const,
+                    },
+                    ResultPolicyDemand {
+                        pair_query: P1Projection::Pair(target.pair),
+                        mode: target.mode,
+                    },
+                    type_value,
+                    crate::SemanticValueId(1),
+                    crate::Provenance::new("compile target"),
+                )
+                .unwrap_err();
+                assert_eq!(
+                    error,
+                    crate::PolicyMigrationRequestFailure::ReifyBoundaryUnavailable
+                );
+            }
+        }
+        let hidden = PolicyPair {
+            value: ValueComponentPolicy::Absent,
+            pattern: PatternComponentPolicy { stage: None },
+        };
+        assert!(policy_let_target_demand(&demand, &hidden).is_none());
     }
 }
 
@@ -2109,10 +2170,13 @@ impl CompilationWorld {
             }
         };
 
-        let projected = crate::project_p1(&demand.pair_query, &material)
-            .into_iter()
-            .filter(|entry| entry.view.mode == demand.mode)
-            .collect::<Vec<_>>();
+        let projected = match crate::project_p1(&demand.pair_query, &material) {
+            Ok(projected) => projected,
+            Err(diagnostic) => return ConnectedInitializerOutcome::Diagnostic(diagnostic),
+        }
+        .into_iter()
+        .filter(|entry| entry.view.mode == demand.mode)
+        .collect::<Vec<_>>();
         if !projected.is_empty() {
             return ConnectedInitializerOutcome::Existing(ConnectedExistingResult {
                 material: projected,

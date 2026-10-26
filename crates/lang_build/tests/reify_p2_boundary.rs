@@ -93,11 +93,17 @@ fn runtime_p2_preserves_an_explicit_compile_producer() {
     else {
         panic!("call entry");
     };
-    assert_eq!(entry.callable_view.pair.leading_stage(), Stage::Compile);
-    assert_eq!(entry.body_entry_view.pair.leading_stage(), Stage::Runtime);
+    assert_eq!(
+        entry.callable_view.pair.leading_stage(),
+        Some(Stage::Compile)
+    );
+    assert_eq!(
+        entry.body_entry_view.pair.leading_stage(),
+        Some(Stage::Runtime)
+    );
     assert_eq!(
         entry.complete_result_view.pair.leading_stage(),
-        Stage::Compile
+        Some(Stage::Compile)
     );
 }
 
@@ -109,7 +115,7 @@ fn reverse_endpoints_cannot_forge_an_active_reify_boundary() {
         pair: PolicyPair {
             value: ValueComponentPolicy::Present(Stage::Runtime),
             pattern: PatternComponentPolicy {
-                stage: Stage::Runtime,
+                stage: Some(Stage::Runtime),
             },
         },
         mode: PolicyMode::Const,
@@ -157,7 +163,7 @@ fn runtime_policy_type_observation_does_not_supply_compile_type_operations() {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(Stage::Runtime),
                 pattern: PatternComponentPolicy {
-                    stage: Stage::Runtime,
+                    stage: Some(Stage::Runtime),
                 },
             },
             mode: PolicyMode::Const,
@@ -196,7 +202,7 @@ fn runtime_type_residency_cannot_execute_a_compile_type_builtin() {
         pair: PolicyPair {
             value: ValueComponentPolicy::Present(Stage::Runtime),
             pattern: PatternComponentPolicy {
-                stage: Stage::Runtime,
+                stage: Some(Stage::Runtime),
             },
         },
         mode: PolicyMode::Const,

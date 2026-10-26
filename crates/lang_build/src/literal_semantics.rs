@@ -235,7 +235,7 @@ pub fn compile_literal_policy() -> PolicyPair {
     PolicyPair {
         value: ValueComponentPolicy::Present(Stage::Compile),
         pattern: PatternComponentPolicy {
-            stage: Stage::Compile,
+            stage: Some(Stage::Compile),
         },
     }
 }

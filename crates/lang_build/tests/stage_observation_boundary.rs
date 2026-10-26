@@ -273,7 +273,7 @@ fn compile_p2_forms_and_reuses_a_compile_instance_for_an_external_type() {
         };
         assert_eq!(
             result.selected.body_entry_view.pair.pattern.stage,
-            Stage::Compile
+            Some(Stage::Compile)
         );
         assert_eq!(
             result.selected.frame.horizon,

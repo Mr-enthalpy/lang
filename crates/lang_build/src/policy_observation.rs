@@ -34,7 +34,7 @@ pub fn expose_policy_slice<V: Clone, P: Clone>(
     if let Err(diagnostic) = entry
         .view
         .pair
-        .validate_rank_chain(crate::Provenance::new("Policy observation"))
+        .validate_rank_prefix(crate::Provenance::new("Policy observation"))
     {
         return ExposedPolicyEntry {
             value: match &entry.value {
@@ -67,10 +67,10 @@ pub fn expose_policy_slice<V: Clone, P: Clone>(
         }
         Some(value) => FacetView::HiddenAtHorizon(value.clone()),
     };
-    let pattern = if entry.view.pair.pattern.stage.visible_at(horizon) {
-        FacetView::Exposed(entry.pattern.clone())
-    } else {
-        FacetView::HiddenAtHorizon(entry.pattern.clone())
+    let pattern = match entry.view.pair.pattern.stage {
+        Some(stage) if stage.visible_at(horizon) => FacetView::Exposed(entry.pattern.clone()),
+        Some(_) => FacetView::HiddenAtHorizon(entry.pattern.clone()),
+        None => FacetView::Absent,
     };
     ExposedPolicyEntry {
         value,

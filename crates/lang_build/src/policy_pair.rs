@@ -85,11 +85,11 @@ pub fn declared_policy_view(stage: Stage, mode: PolicyMode) -> PolicyView {
         pair: PolicyPair {
             value: ValueComponentPolicy::Present(stage),
             pattern: PatternComponentPolicy {
-                stage: if stage == Stage::Runtime {
+                stage: Some(if stage == Stage::Runtime {
                     Stage::Compile
                 } else {
                     stage
-                },
+                }),
             },
         },
         mode,
@@ -222,7 +222,113 @@ impl From<ValueComponentPolicy> for ValuePolicyQuery {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PatternComponentPolicy {
-    pub stage: Stage,
+    pub stage: Option<Stage>,
+}
+
+/// One observed rank, in the canonical absent* runtime* compile* order.
+/// Optional presence is solver/query material, not an additional rank atom.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PolicyRank {
+    Absent,
+    Runtime,
+    Compile,
+}
+
+impl PolicyRank {
+    fn from_stage(stage: Option<Stage>) -> Self {
+        match stage {
+            None => Self::Absent,
+            Some(Stage::Runtime) => Self::Runtime,
+            Some(Stage::Compile) => Self::Compile,
+        }
+    }
+
+    fn stage(self) -> Option<Stage> {
+        match self {
+            Self::Absent => None,
+            Self::Runtime => Some(Stage::Runtime),
+            Self::Compile => Some(Stage::Compile),
+        }
+    }
+}
+
+/// A shape-validated finite rank prefix. Construction validates only the
+/// ordered blocks, not an Object's ownership of these observations. It supplies
+/// no unseen rank facts and no migration/producer witness.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyRankPrefix {
+    ranks: Vec<PolicyRank>,
+}
+
+impl PolicyRankPrefix {
+    pub fn new(ranks: Vec<PolicyRank>) -> Option<Self> {
+        ranks
+            .windows(2)
+            .all(|w| w[0] <= w[1])
+            .then_some(Self { ranks })
+    }
+
+    pub fn ranks(&self) -> &[PolicyRank] {
+        &self.ranks
+    }
+
+    pub fn pair(&self) -> Option<PolicyPair> {
+        let [value, classifier, ..] = self.ranks.as_slice() else {
+            return None;
+        };
+        Some(PolicyPair {
+            value: value
+                .stage()
+                .map(ValueComponentPolicy::Present)
+                .unwrap_or(ValueComponentPolicy::Absent),
+            pattern: PatternComponentPolicy {
+                stage: classifier.stage(),
+            },
+        })
+    }
+
+    /// Compile observation closes the remaining tail by the chain law.
+    pub fn has_compile_suffix(&self) -> bool {
+        self.ranks.contains(&PolicyRank::Compile)
+    }
+
+    /// Satisfiability from this prefix's shape, not proof of a source view.
+    pub fn all_compile_query(&self) -> Option<bool> {
+        if self.ranks.contains(&PolicyRank::Runtime) {
+            Some(false)
+        } else if self.has_compile_suffix() {
+            Some(true)
+        } else {
+            None
+        }
+    }
+
+    /// Target material only: it is not an observed result or a migration.
+    pub fn compile_target(&self) -> Self {
+        Self {
+            ranks: self
+                .ranks
+                .iter()
+                .map(|r| {
+                    if *r == PolicyRank::Absent {
+                        *r
+                    } else {
+                        PolicyRank::Compile
+                    }
+                })
+                .collect(),
+        }
+    }
+
+    pub fn runtime_target(&self) -> Option<Self> {
+        let mut target = self.clone();
+        let rank = target
+            .ranks
+            .iter_mut()
+            .find(|r| **r != PolicyRank::Absent)?;
+        *rank = PolicyRank::Runtime;
+        Some(target)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -233,23 +339,23 @@ pub struct PolicyPair {
 
 impl PolicyPair {
     /// Adjacent ranks of one classification chain cannot invert availability.
-    pub fn is_rank_coherent(&self) -> bool {
-        self.value.stage() != Some(Stage::Compile) || self.pattern.stage == Stage::Compile
+    pub fn is_rank_prefix_coherent(&self) -> bool {
+        PolicyRank::from_stage(self.value.stage()) <= PolicyRank::from_stage(self.pattern.stage)
     }
 
-    pub fn validate_rank_chain(&self, provenance: Provenance) -> Result<(), Diagnostic> {
-        if self.is_rank_coherent() {
+    pub fn validate_rank_prefix(&self, provenance: Provenance) -> Result<(), Diagnostic> {
+        if self.is_rank_prefix_coherent() {
             Ok(())
         } else {
             Err(policy_error(
-                "incoherent Policy rank chain: compile:runtime",
+                "incoherent Policy rank prefix: expected absent* runtime* compile*",
                 provenance,
             ))
         }
     }
 
-    pub fn leading_stage(&self) -> Stage {
-        self.value.stage().unwrap_or(self.pattern.stage)
+    pub fn leading_stage(&self) -> Option<Stage> {
+        self.value.stage().or(self.pattern.stage)
     }
 
     /// Form a demand on the first non-absent rank without recoloring its tail.
@@ -258,13 +364,30 @@ impl PolicyPair {
         match pair.value {
             ValueComponentPolicy::Present(_) => pair.value = ValueComponentPolicy::Present(stage),
             ValueComponentPolicy::Optional(_) => pair.value = ValueComponentPolicy::Optional(stage),
-            ValueComponentPolicy::Absent => pair.pattern.stage = stage,
+            ValueComponentPolicy::Absent if pair.pattern.stage.is_some() => {
+                pair.pattern.stage = Some(stage)
+            }
+            ValueComponentPolicy::Absent => return None,
         }
-        pair.is_rank_coherent().then_some(pair)
+        pair.is_rank_prefix_coherent().then_some(pair)
+    }
+
+    /// Two-rank target projection of the whole-chain compile demand.
+    pub fn compile_target(&self) -> Self {
+        Self {
+            value: match self.value {
+                ValueComponentPolicy::Present(_) => ValueComponentPolicy::Present(Stage::Compile),
+                ValueComponentPolicy::Optional(_) => ValueComponentPolicy::Optional(Stage::Compile),
+                ValueComponentPolicy::Absent => ValueComponentPolicy::Absent,
+            },
+            pattern: PatternComponentPolicy {
+                stage: self.pattern.stage.map(|_| Stage::Compile),
+            },
+        }
     }
 }
 
-/// One complete observation edge. The pair and the whole-slot mode are
+/// A common two-rank observation window. The pair and the whole-slot mode are
 /// orthogonal semantic facts: neither may be reconstructed from the other.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyView {
@@ -282,18 +405,19 @@ pub struct DeclarationVisibility {
 
 /// Horizon visibility only. Ready and active-frame dominance are separate judgments.
 pub fn body_entry_visible_at(p2: &PolicyPair, horizon: ObservationHorizon) -> bool {
-    p2.is_rank_coherent()
+    p2.is_rank_prefix_coherent()
         && p2
             .value
             .stage()
-            .unwrap_or(p2.pattern.stage)
-            .visible_at(horizon)
+            .or(p2.pattern.stage)
+            .is_some_and(|stage| stage.visible_at(horizon))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum P1Projection {
     Infer,
     Leading { stage: Option<Stage> },
+    AllCompile,
     Pair(PolicyPair),
 }
 
@@ -528,7 +652,7 @@ pub fn project_resolved_export_view(
 ) -> Result<PolicyPair, Diagnostic> {
     internal_policy
         .pair
-        .validate_rank_chain(Provenance::new("export Policy rank chain"))?;
+        .validate_rank_prefix(Provenance::new("export Policy rank chain"))?;
     let projected = internal_policy.pair.clone();
     Ok(projected)
 }
@@ -651,7 +775,7 @@ impl CallableP2Policy {
     pub fn require_connected_body(self, provenance: Provenance) -> Result<PolicyView, Diagnostic> {
         match self {
             Self::Direct(view) => {
-                view.pair.validate_rank_chain(provenance)?;
+                view.pair.validate_rank_prefix(provenance)?;
                 Ok(view)
             }
             Self::Reify { .. } => Err(policy_error(
@@ -674,7 +798,7 @@ pub fn elaborate_callable_p2(
         .stage
         .ok_or_else(|| policy_error("P2 requires one concrete stage", provenance.clone()))?;
     let pair = declared_policy_view(stage, mode).pair;
-    pair.validate_rank_chain(provenance)?;
+    pair.validate_rank_prefix(provenance)?;
     let view = PolicyView { pair, mode };
     Ok(if atoms.reify {
         CallableP2Policy::Reify { mode }
@@ -721,7 +845,7 @@ pub fn elaborate_formal_policy_pattern(
     inherited_p2: &PolicyView,
     provenance: Provenance,
 ) -> Result<FormalPolicyPattern, Diagnostic> {
-    inherited_p2.pair.validate_rank_chain(provenance.clone())?;
+    inherited_p2.pair.validate_rank_prefix(provenance.clone())?;
     let Some(policy) = policy else {
         return Ok(FormalPolicyPattern {
             effective_pair: inherited_p2.pair.clone(),
@@ -751,7 +875,7 @@ pub fn elaborate_return_policy_pattern(
     inherited_p1: &PolicyView,
     provenance: Provenance,
 ) -> Result<ReturnPolicyPattern, Diagnostic> {
-    inherited_p1.pair.validate_rank_chain(provenance.clone())?;
+    inherited_p1.pair.validate_rank_prefix(provenance.clone())?;
     let Some(policy) = policy else {
         return Ok(ReturnPolicyPattern {
             effective_view: inherited_p1.clone(),
@@ -796,16 +920,19 @@ pub enum ExplicitP1Position {
 /// BOTH spelling sites must agree there or the canonicalizer hard-errors.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ExplicitP1Selection {
+    pub all_compile: bool,
     pub value_stage: Option<Stage>,
     pub presence: Option<ValuePresence>,
-    pub pattern_stage: Option<Stage>,
+    /// None omits this rank constraint; Some(None) explicitly retains absence.
+    pub pattern_stage: Option<Option<Stage>>,
     pub mode: Option<PolicyMode>,
     pub open_policy: Option<OpenPolicy>,
 }
 
 impl ExplicitP1Selection {
     pub fn is_empty(&self) -> bool {
-        self.value_stage.is_none()
+        !self.all_compile
+            && self.value_stage.is_none()
             && self.presence.is_none()
             && self.pattern_stage.is_none()
             && self.mode.is_none()
@@ -817,6 +944,7 @@ impl ExplicitP1Selection {
     /// is explicit by construction (there is no source spelling to parse).
     pub fn from_complete_view(view: &PolicyView) -> Self {
         Self {
+            all_compile: false,
             value_stage: view.pair.value.stage(),
             presence: Some(view.pair.value.presence()),
             pattern_stage: Some(view.pair.pattern.stage),
@@ -853,7 +981,9 @@ pub fn elaborate_explicit_p1(
             reject_namespace_attributes(&value_atoms, "self-slot explicit P1", provenance.clone())?;
         }
     }
-    if value_atoms.stage.is_some() {
+    if value_atoms.stage == Some(Stage::Compile) {
+        selection.all_compile = true;
+    } else if value_atoms.stage.is_some() {
         selection.value_stage = value_atoms.stage;
     }
     if !value_atoms.mode_atoms.is_empty() {
@@ -950,7 +1080,10 @@ fn elaborate_p1_components(
     } else {
         Some(explicit_mode_atom(&atoms, "P1", provenance.clone())?)
     };
-    let projection = P1Projection::Leading { stage: atoms.stage };
+    let projection = match atoms.stage {
+        Some(Stage::Compile) => P1Projection::AllCompile,
+        stage => P1Projection::Leading { stage },
+    };
     Ok((
         projection,
         mode,
@@ -983,23 +1116,41 @@ pub fn derive_function_object_view(
 pub fn project_p1<V: Clone, P: Clone>(
     projection: &P1Projection,
     result: &[PolicyResultEntry<V, P>],
-) -> Vec<PolicyResultEntry<V, P>> {
-    result
+) -> Result<Vec<PolicyResultEntry<V, P>>, Diagnostic> {
+    let provenance = Provenance::new("Policy projection");
+    if let P1Projection::Pair(pair) = projection {
+        pair.validate_rank_prefix(provenance.clone())?;
+    }
+    for entry in result {
+        entry.view.pair.validate_rank_prefix(provenance.clone())?;
+        if matches!(
+            projection,
+            P1Projection::AllCompile | P1Projection::Leading { stage: Some(_) }
+        ) && entry.view.pair.leading_stage().is_none()
+        {
+            return Err(policy_error(
+                "higher Policy rank observation consumer is unavailable for this projection",
+                provenance,
+            ));
+        }
+    }
+    Ok(result
         .iter()
-        .filter(|entry| entry.view.pair.is_rank_coherent())
+        .filter(|entry| entry.view.pair.is_rank_prefix_coherent())
         .filter(|entry| match projection {
             P1Projection::Infer => true,
             P1Projection::Leading { stage } => {
-                stage.is_none_or(|s| entry.view.pair.leading_stage() == s)
+                stage.is_none_or(|s| entry.view.pair.leading_stage() == Some(s))
             }
+            P1Projection::AllCompile => entry.view.pair.leading_stage() == Some(Stage::Compile),
             P1Projection::Pair(pair) => {
-                pair.is_rank_coherent()
+                pair.is_rank_prefix_coherent()
                     && value_query_matches(pair.value.into(), entry)
                     && pair.pattern.stage == entry.view.pair.pattern.stage
             }
         })
         .cloned()
-        .collect()
+        .collect())
 }
 
 fn value_query_matches<V, P>(query: ValuePolicyQuery, entry: &PolicyResultEntry<V, P>) -> bool {

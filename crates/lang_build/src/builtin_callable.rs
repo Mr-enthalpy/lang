@@ -90,15 +90,22 @@ pub(crate) fn prepare_resolved_builtin_call(
             return Err(BuildError::single(diagnostic).into());
         }
     };
-    if candidate.arg_product_shape.raw_args.iter().any(|arg| {
-        arg.known_type_member_view
-            .as_ref()
-            .is_some_and(|view| view.view.pair.pattern.stage == crate::Stage::Runtime)
-    }) {
-        return Err(BuiltinPreparationFailure::Incomplete(Diagnostic::hard_error(
-            "compile type algebra on a runtime-policy type requires the unavailable active reify reverse-migration consumer",
-            Some(provenance),
-        )));
+    if let Some(classifier_stage) = candidate
+        .arg_product_shape
+        .raw_args
+        .iter()
+        .filter_map(|arg| arg.known_type_member_view.as_ref())
+        .map(|view| view.view.pair.pattern.stage)
+        .find(|stage| *stage != Some(crate::Stage::Compile))
+    {
+        let message = if classifier_stage.is_none() {
+            "compile type algebra requires the unavailable classifier rank observation consumer"
+        } else {
+            "compile type algebra on a runtime-policy type requires the unavailable active reify reverse-migration consumer"
+        };
+        return Err(BuiltinPreparationFailure::Incomplete(
+            Diagnostic::hard_error(message, Some(provenance)),
+        ));
     }
     Ok(BuiltinBodyInput::new(candidate, primitive, provenance))
 }

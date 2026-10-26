@@ -473,7 +473,12 @@ impl ObjectHostMember {
     /// horizon predicate, never a stage-set intersection: a `compile` host
     /// legitimately carries `compile` members.
     pub fn exposed_at(&self, horizon: crate::ObservationHorizon) -> bool {
-        self.view.view.pair.pattern.stage.visible_at(horizon)
+        self.view
+            .view
+            .pair
+            .pattern
+            .stage
+            .is_some_and(|stage| stage.visible_at(horizon))
     }
 }
 
@@ -830,8 +835,10 @@ pub fn canonical_function_object_view(
     closure: Option<&NormClosure>,
     provenance: &Provenance,
 ) -> Result<crate::PolicyView, crate::Diagnostic> {
-    outer_derived.pair.validate_rank_chain(provenance.clone())?;
-    p2.pair.validate_rank_chain(provenance.clone())?;
+    outer_derived
+        .pair
+        .validate_rank_prefix(provenance.clone())?;
+    p2.pair.validate_rank_prefix(provenance.clone())?;
     if let Some(policy) = closure
         .and_then(|c| c.head.as_ref())
         .and_then(|h| h.call_policy.as_ref())
@@ -864,6 +871,15 @@ pub fn canonical_function_object_view(
         .into_iter()
         .flatten()
     {
+        if selection.value_stage.is_some()
+            && selection.pattern_stage.is_none()
+            && outer_derived.pair.leading_stage().is_none()
+        {
+            return Err(crate::Diagnostic::hard_error(
+                "first-present P1 requires the unavailable higher Policy rank observation consumer",
+                Some(provenance.clone()),
+            ));
+        }
         if selection.open_policy == Some(crate::OpenPolicy::Open) {
             return Err(crate::Diagnostic::hard_error(
                 "open-qualified callable requires the canonical CompileInstance opening/completion consumer, which is unavailable",
@@ -882,6 +898,9 @@ pub fn canonical_function_object_view(
 
     fn complete(selection: &ExplicitP1Selection, derived: &crate::PolicyView) -> crate::PolicyView {
         let mut complete = derived.clone();
+        if selection.all_compile {
+            complete.pair = complete.pair.compile_target();
+        }
         let presence = selection.presence.unwrap_or(complete.pair.value.presence());
         let stage = selection.value_stage.or(complete.pair.value.stage());
         complete.pair.value = match stage {
@@ -892,9 +911,11 @@ pub fn canonical_function_object_view(
             },
             None => crate::ValueComponentPolicy::Absent,
         };
-        if complete.pair.value == crate::ValueComponentPolicy::Absent {
+        if complete.pair.value == crate::ValueComponentPolicy::Absent
+            && complete.pair.pattern.stage.is_some()
+        {
             if let Some(stage) = selection.value_stage {
-                complete.pair.pattern.stage = stage;
+                complete.pair.pattern.stage = Some(stage);
             }
         }
         if let Some(stage) = selection.pattern_stage {
@@ -925,7 +946,15 @@ pub fn canonical_function_object_view(
         (None, Some(self_formal)) => complete(self_formal, outer_derived),
         (None, None) => outer_derived.clone(),
     };
-    canonical.pair.validate_rank_chain(provenance.clone())?;
+    if [outer_explicit, self_explicit.as_ref()]
+        .into_iter()
+        .flatten()
+        .any(|s| s.all_compile)
+        && canonical.pair.leading_stage().is_none()
+    {
+        return Err(crate::Diagnostic::hard_error("whole-chain compile P1 requires the unavailable higher Policy rank observation consumer",Some(provenance.clone())));
+    }
+    canonical.pair.validate_rank_prefix(provenance.clone())?;
     Ok(canonical)
 }
 
@@ -3612,7 +3641,7 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<(SemanticSymbolIdentity, SemanticValueId, PatternCoordinateId)> {
-        if !policy.is_rank_coherent() {
+        if !policy.is_rank_prefix_coherent() {
             return None;
         }
         let observed = match complete_type {
@@ -3913,7 +3942,7 @@ impl SemanticWorld {
             &return_position_view,
         ] {
             view.pair
-                .validate_rank_chain(provenance.clone())
+                .validate_rank_prefix(provenance.clone())
                 .map_err(BuildError::single)?;
         }
         // Capture a clone of provenance for use in error closures below —
@@ -4012,7 +4041,7 @@ impl SemanticWorld {
     ) -> Result<SemanticValueId, BuildError> {
         for view in [&callable_view, &body_entry_view, &complete_result_view] {
             view.pair
-                .validate_rank_chain(provenance.clone())
+                .validate_rank_prefix(provenance.clone())
                 .map_err(BuildError::single)?;
         }
         let target_pattern = self
@@ -4449,15 +4478,15 @@ impl SemanticWorld {
     ) -> Result<RegisteredCallable, BuildError> {
         function_view
             .pair
-            .validate_rank_chain(provenance.clone())
+            .validate_rank_prefix(provenance.clone())
             .map_err(BuildError::single)?;
         body_entry_view
             .pair
-            .validate_rank_chain(provenance.clone())
+            .validate_rank_prefix(provenance.clone())
             .map_err(BuildError::single)?;
         complete_result_view
             .pair
-            .validate_rank_chain(provenance.clone())
+            .validate_rank_prefix(provenance.clone())
             .map_err(BuildError::single)?;
         if self
             .symbol_in_namespace(namespace, name)
@@ -4605,7 +4634,7 @@ impl SemanticWorld {
         view: PolicyView,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
-        if !view.pair.is_rank_coherent() {
+        if !view.pair.is_rank_prefix_coherent() {
             return None;
         }
         let pattern = self.type_value(type_value)?.pattern;
@@ -4634,7 +4663,7 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
-        if !policy.is_rank_coherent() {
+        if !policy.is_rank_prefix_coherent() {
             return None;
         }
         let pattern = self.type_value(type_value)?.pattern;
@@ -4683,7 +4712,7 @@ impl SemanticWorld {
         policy: PolicyPair,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
-        if !policy.is_rank_coherent() {
+        if !policy.is_rank_prefix_coherent() {
             return None;
         }
         let pattern = self.type_value(type_value)?.pattern;
@@ -4713,7 +4742,7 @@ impl SemanticWorld {
         view: PolicyView,
         provenance: Provenance,
     ) -> Option<SemanticValueId> {
-        if !view.pair.is_rank_coherent() {
+        if !view.pair.is_rank_prefix_coherent() {
             return None;
         }
         let source = self.value(source_abstract)?.clone();
@@ -4767,7 +4796,7 @@ impl SemanticWorld {
     ) -> Result<SemanticSymbolIdentity, BindConflict> {
         if views
             .iter()
-            .any(|entry| !entry.view.pair.is_rank_coherent())
+            .any(|entry| !entry.view.pair.is_rank_prefix_coherent())
         {
             return Err(BindConflict::IncoherentPolicyRankChain);
         }
@@ -4902,7 +4931,7 @@ impl SemanticWorld {
     ) -> Option<SemanticSymbolIdentity> {
         if views
             .iter()
-            .any(|entry| !entry.view.pair.is_rank_coherent())
+            .any(|entry| !entry.view.pair.is_rank_prefix_coherent())
         {
             return None;
         }
@@ -6528,7 +6557,7 @@ mod tests {
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy::Absent,
             pattern: crate::PatternComponentPolicy {
-                stage: crate::Stage::Compile,
+                stage: Some(crate::Stage::Compile),
             },
         };
         world.values.insert(
@@ -6661,7 +6690,7 @@ mod tests {
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
             pattern: crate::PatternComponentPolicy {
-                stage: crate::Stage::Compile,
+                stage: Some(crate::Stage::Compile),
             },
         };
         let install_equal_literal = |world: &mut SemanticWorld| {
@@ -6874,7 +6903,7 @@ mod tests {
             PolicyPair {
                 value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
                 pattern: crate::PatternComponentPolicy {
-                    stage: crate::Stage::Compile,
+                    stage: Some(crate::Stage::Compile),
                 },
             }
         }
@@ -7023,7 +7052,7 @@ mod tests {
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
             pattern: crate::PatternComponentPolicy {
-                stage: crate::Stage::Compile,
+                stage: Some(crate::Stage::Compile),
             },
         };
         let local = world
@@ -7142,7 +7171,7 @@ mod tests {
         let policy = PolicyPair {
             value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
             pattern: crate::PatternComponentPolicy {
-                stage: crate::Stage::Compile,
+                stage: Some(crate::Stage::Compile),
             },
         };
         let old_value = world
@@ -7233,7 +7262,7 @@ mod tests {
                 PolicyPair {
                     value: crate::ValueComponentPolicy::Present(crate::Stage::Compile),
                     pattern: crate::PatternComponentPolicy {
-                        stage: crate::Stage::Compile,
+                        stage: Some(crate::Stage::Compile),
                     },
                 },
                 Provenance::new("foreign member"),

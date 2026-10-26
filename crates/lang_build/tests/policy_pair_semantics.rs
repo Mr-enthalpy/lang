@@ -49,7 +49,7 @@ fn result_entry<V, P>(
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: pattern_stage,
+                    stage: Some(pattern_stage),
                 },
             },
             mode: PolicyMode::Const,
@@ -62,7 +62,7 @@ fn policy_pair_and_whole_slot_mode_are_orthogonal_facts() {
     let pair = PolicyPair {
         value: ValueComponentPolicy::Present(Stage::Compile),
         pattern: PatternComponentPolicy {
-            stage: Stage::Compile,
+            stage: Some(Stage::Compile),
         },
     };
     let mutable = PolicyView {
@@ -143,7 +143,7 @@ fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
         let view = direct_callable_body_policy(&policy_spec(source), Provenance::new(source))
             .expect("valid P2");
         assert_eq!(view.pair.value.stage(), Some(value_stage));
-        assert_eq!(view.pair.pattern.stage, pattern_stage);
+        assert_eq!(view.pair.pattern.stage, Some(pattern_stage));
     }
 }
 
@@ -162,19 +162,20 @@ fn p1_leading_rank_projection_restricts_the_actual_slice() {
         "same-pattern",
         Stage::Compile,
     )];
-    let selected = project_p1(&projection, &result);
+    let selected = project_p1(&projection, &result).unwrap();
     assert_eq!(selected.len(), 1);
     assert_eq!(selected[0].value, Some("same-symbol"));
     assert_eq!(selected[0].pattern, "same-pattern");
     assert_eq!(selected[0].view.pair.value.stage(), Some(Stage::Runtime));
-    assert_eq!(selected[0].view.pair.pattern.stage, Stage::Compile);
+    assert_eq!(selected[0].view.pair.pattern.stage, Some(Stage::Compile));
 
     assert_eq!(
         project_p1(
             &elaborate_binding_p1_projection(None, Provenance::new("inferred"))
                 .expect("omitted P1"),
             &result,
-        ),
+        )
+        .unwrap(),
         result
     );
 }
@@ -398,13 +399,13 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
     let runtime_value = || PolicyPair {
         value: ValueComponentPolicy::Present(Stage::Runtime),
         pattern: PatternComponentPolicy {
-            stage: Stage::Compile,
+            stage: Some(Stage::Compile),
         },
     };
     let type_only = || PolicyPair {
         value: ValueComponentPolicy::Absent,
         pattern: PatternComponentPolicy {
-            stage: Stage::Compile,
+            stage: Some(Stage::Compile),
         },
     };
     fn namespace_path<'a>(
@@ -673,7 +674,7 @@ fn omitted_p1_completes_to_one_p2_stage() {
         pair: PolicyPair {
             value: ValueComponentPolicy::Present(Stage::Runtime),
             pattern: PatternComponentPolicy {
-                stage: Stage::Compile,
+                stage: Some(Stage::Compile),
             },
         },
         mode: PolicyMode::Const,
@@ -685,7 +686,7 @@ fn omitted_p1_completes_to_one_p2_stage() {
         },
     );
     assert_eq!(object.pair.value.stage(), Some(Stage::Runtime));
-    assert_eq!(object.pair.pattern.stage, Stage::Compile);
+    assert_eq!(object.pair.pattern.stage, Some(Stage::Compile));
     assert_eq!(object.mode, PolicyMode::Const);
 
     let compile =
@@ -693,7 +694,7 @@ fn omitted_p1_completes_to_one_p2_stage() {
             .expect("valid result policy");
     let object = derive_function_object_p1(&compile, &FunctionObjectDeclarationPolicy::default());
     assert_eq!(object.pair.value.stage(), Some(Stage::Runtime));
-    assert_eq!(object.pair.pattern.stage, Stage::Compile);
+    assert_eq!(object.pair.pattern.stage, Some(Stage::Compile));
     assert_eq!(object.mode, PolicyMode::Const);
     let const_projection = elaborate_binding_p1_projection(
         Some(&policy_spec("const")),
@@ -705,7 +706,7 @@ fn omitted_p1_completes_to_one_p2_stage() {
         pattern: "function-pattern",
         view: object.clone(),
     };
-    let selected = project_p1(&const_projection, &[object_entry]);
+    let selected = project_p1(&const_projection, &[object_entry]).unwrap();
     assert_eq!(selected.len(), 1);
     assert_eq!(
         selected[0].view.mode,
