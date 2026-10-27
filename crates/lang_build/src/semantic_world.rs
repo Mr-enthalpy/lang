@@ -1405,47 +1405,6 @@ impl SemanticWorld {
         Ok(())
     }
 
-    /// Atomically ensures a namespace path below `root`.  Existing
-    /// namespace-capable symbols are reused; each missing component is
-    /// installed as one name delta whose namespace node receives its
-    /// semantic owner inside the same [`Self::install_namespace_name_delta`]
-    /// operation — there is no separate owner back-fill step.
-    pub(crate) fn ensure_namespace_path(
-        &mut self,
-        root: NamespaceNodeId,
-        components: &[String],
-        node_kind: crate::NamespaceNodeKind,
-        source_category: crate::SourceCategory,
-        provenance_description: &str,
-    ) -> Result<NamespaceNodeId, BuildError> {
-        let mut current = root;
-        for component in components {
-            // Directory topology consumes declaration namespaces.
-            if let Some(existing) = self.child_namespace(current, component) {
-                current = existing;
-                continue;
-            }
-            if self.symbol_in_namespace(current, component).is_some() {
-                return Err(BuildError::single(crate::Diagnostic::hard_error(
-                    "directory navigation through an Object requires the ordinary Path consumer",
-                    None,
-                )));
-            }
-            let mut delta = self.namespace_index.empty_delta();
-            let next = crate::semantic_name_index::namespace_symbol(
-                &mut delta,
-                current,
-                component,
-                node_kind,
-                source_category,
-                crate::Provenance::new(provenance_description),
-            );
-            self.install_namespace_name_delta(delta)?;
-            current = next;
-        }
-        Ok(current)
-    }
-
     /// `Addr(v) = Intern(Norm(v))`: equal normal forms share one address.
     pub fn intern_canonical_value(&mut self, norm: CanonicalNormForm) -> CanonicalValueAddr {
         if let Some(existing) = self.canonical_value_addrs.get(&norm) {
@@ -6404,15 +6363,6 @@ mod tests {
         let before = format!("{world:?}");
         assert!(world
             .resolve_namespace_path(&["T".into()], namespace, &[], &[])
-            .is_err());
-        assert!(world
-            .ensure_namespace_path(
-                namespace,
-                &["T".into(), "nested".into()],
-                crate::NamespaceNodeKind::Physical,
-                crate::SourceCategory::PhysicalDirectory,
-                "directory through type resident"
-            )
             .is_err());
         assert_eq!(before, format!("{world:?}"));
     }

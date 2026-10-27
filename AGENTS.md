@@ -151,7 +151,8 @@ alternate relation or identity.
   independent judgments.
 - Output demand is total before maxima; selected failure never reopens.
 - Policy migration is direct, same-Type, candidate-driven, and existing-first.
-- Abstract literals form before concrete construction.
+- Abstract literals form before separately requested ordinary concrete construction.
+  External classifier Patterns constrain the unchanged RHS result and insert no constructor.
 - Structural interpretation forms complete types directly. struct:type->type
   adds standard ordinary helpers while preserving structural registration;
   *:type x type->type composes types and *=:type ref x type->unit performs the
@@ -171,6 +172,8 @@ alternate relation or identity.
 - Child directories provide inherited navigation; file P let inner=rhs becomes
   P let inner::path=rhs through the ordinary let consumer. Root and filenames
   add no segment or semantic type-composition action.
+  Empty source fragments form no semantic names or owners. Actual inherited
+  destinations require the ordinary qualified consumer; missing wiring is unavailable.
 - Host capabilities return ordinary Objects. Physical normalization and build
   facilities introduce no semantic facts; E alone owns meaning.
 - E is idempotent and saturates ready actions without rewriting continuations.

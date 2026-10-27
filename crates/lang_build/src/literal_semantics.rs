@@ -147,7 +147,7 @@ pub struct NumericTypeRegistry {
     types: BTreeMap<NumericTypeKey, TypeValueId>,
 }
 
-/// Authorized abstract-to-concrete construction family.  Type-changing
+/// Ordinary abstract-to-concrete construction family. Type-changing
 /// literal construction is distinct from same-Type Policy migration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConstructionFamily {
@@ -155,7 +155,8 @@ pub enum ConstructionFamily {
 }
 
 /// Internal ordinary construction request.  The exact target is a complete
-/// immutable tau snapshot; its callspace supplies the candidate family.
+/// immutable tau snapshot. Candidate observation uses the actual associated
+/// Val2 residents captured by its Core; the request itself grants no authority.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstructionRequest {
     pub source: crate::SemanticValueRef,

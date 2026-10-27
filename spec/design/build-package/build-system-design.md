@@ -39,6 +39,22 @@ supply inherited navigation, preserved in the same canonical name::path
 material as written qualified declarations. Discovery and normalization create
 no semantic names, Places, Objects, empty type residents or authority facts.
 
+For normalized source material L at inherited navigation p:
+
+```text
+NormalizeFile(f,p) = L
+SemanticEffects(NormalizeFile) = empty
+L = Seq{} => E(L,p,Sigma) = Sigma
+L contains a source action a => E consumes CompleteNavigation(p,a)
+```
+
+An empty `.lang` file under a/ therefore retains navigation a but forms no
+NameCoord, namespace Symbol or SemanticOwner for a. Each actual declaration
+requires the ordinary qualified name/Path consumer at its inherited destination.
+If that consumer is unavailable, the declaration fails without publishing a
+directory, owner, member or partial destination. An existing graph namespace
+does not supply the missing ordinary action evidence.
+
 The ordinary let consumer handles each qualified declaration. Initializer-bearing
 bindings infer the RHS type and perform ordinary complete binding/installation;
 initializer-free typed names use the established name-formation, explicit
@@ -56,7 +72,8 @@ Each file preserves source order. Sibling blocks start from one common snapshot,
 evaluate independent overlays and join ordinary effects. Ordering filenames for
 diagnostics supplies no execution priority and cannot expose sibling new writes.
 An unavailable target, illegal access or conflicting realization diagnoses under
-ordinary semantics rather than being repaired by physical namespace allocation.
+ordinary name/Path semantics. Source provenance supplies no additional formation
+premise.
 
 Main has runtime P2; root identity and active body evaluation are independent.
 CompileInstance formation follows ordinary compile invocation. Every action checks

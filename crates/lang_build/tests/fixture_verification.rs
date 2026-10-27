@@ -5,13 +5,11 @@ use lang_build::{BuildSession, BuildWorkspace, ToolchainGlobalSourceRoot};
 
 const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("verify_compile_conflict", "app"),
-    ("physical_subns", "app"),
-    ("same_name_distinct_namespaces", "app"),
     ("resolver_core_conflict", "app"),
     ("single_package_type_binding", "app"),
-    ("nested_physical_namespace", "app"),
-    ("multi_file_same_namespace", "app"),
     ("non_lang_files_ignored", "app"),
+    ("empty_navigation_beside_binding", "app"),
+    ("empty_inherited_navigation", "app"),
 ];
 
 const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
@@ -60,6 +58,27 @@ fn source_transport_requires_ordinary_object_path_wiring() {
 // These fixtures exercise connected declaration diagnostics and explicit
 // unavailable completion frontiers.
 const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
+    ("external_classifier_mismatch", "app", "classifier"),
+    (
+        "inherited_navigation",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
+    (
+        "child_navigation_frontier",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
+    (
+        "same_name_distinct_namespaces",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
+    (
+        "multi_file_same_namespace",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
     (
         "source_expression_frontier",
         "app",
@@ -115,7 +134,6 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "app",
         "parameter shape compatibility is not established",
     ),
-    ("source_conflict_physical_dir_symbol", "app", "conflict"),
     (
         "qualified_name_destination_frontier",
         "app",
@@ -146,7 +164,6 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "app",
         "source contribution error:",
     ),
-    ("diagnostic_conflict", "app", "conflict"),
     (
         "diagnostic_descendant",
         "app",

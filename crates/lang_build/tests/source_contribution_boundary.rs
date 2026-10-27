@@ -4,108 +4,30 @@ use support::*;
 use lang_build::{ResolveExpectation, SourceCategory, Stage, SymbolPayload};
 
 #[test]
-fn directory_context_preserves_complete_types_without_structural_composition() {
-    let world = build_single_fixture_world("nested_physical_namespace", "app");
-    let semantic = world.semantic_world();
-    let root = world.package_root_node();
-    let a = semantic.child_namespace(root, "a").unwrap();
-    let b = semantic.child_namespace(a, "b").unwrap();
-    for (parent, name) in [(root, "a"), (a, "b")] {
-        let directory = world
-            .namespace_projection()
-            .child_symbol(parent, name)
-            .unwrap();
-        assert!(matches!(directory.payload, SymbolPayload::Namespace { .. }));
-        if let Some(binding) = semantic.symbol_in_namespace(parent, name) {
-            assert!(binding.type_resident().is_none());
-            assert!(binding.ordinary_value().is_none());
-        }
-    }
-    let nested = semantic.symbol_in_namespace(b, "T").unwrap();
-    let outer = semantic.symbol_in_namespace(root, "Root").unwrap();
-    let core = semantic
-        .symbol_in_namespace(world.core_node(), "uint8")
-        .unwrap();
-    assert_eq!(
-        nested.type_resident().unwrap().complete_type,
-        core.type_resident().unwrap().complete_type
-    );
-    assert_eq!(
-        nested.type_resident().unwrap().complete_type,
-        outer.type_resident().unwrap().complete_type
-    );
-    assert_ne!(nested.identity, outer.identity);
-    assert_ne!(nested.type_resident_place(), outer.type_resident_place());
-    assert!(semantic.compile_instances().next().is_none());
-    assert!(semantic.symbol_in_namespace(b, "foo").is_none());
-    assert!(semantic.child_namespace(b, "foo").is_none());
-    assert!(semantic.child_namespace(root, "src").is_none());
+fn inherited_declaration_destination_requires_the_ordinary_consumer() {
+    let error = build_fixture_error("inherited_navigation", "app");
+    assert!(format!("{error:?}").contains("inherited navigation requires the qualified NameExpr"));
 }
 
 #[test]
-fn scalar_compile_results_use_canonical_inputs_without_a_nameexpr_result() {
-    let world = build_single_fixture_world("compile_scalar_identity", "app");
+fn empty_nested_source_does_not_create_a_namespace_beside_a_type_binding() {
+    let world = build_single_fixture_world("empty_navigation_beside_binding", "app");
     let semantic = world.semantic_world();
-    let instances = semantic.compile_instances().collect::<Vec<_>>();
-    assert_eq!(instances.len(), 3, "equal inputs reuse one instance within an owner; content and parent owner are independent axes");
-    let nested_namespace = semantic
-        .child_namespace(world.package_root_node(), "a")
-        .unwrap();
-    let nested_owner = semantic.namespace_owner(nested_namespace).unwrap();
-    assert_eq!(
-        instances
-            .iter()
-            .filter(|instance| instance.root.parent_owner == semantic.package_owner())
-            .count(),
-        2
-    );
-    assert_eq!(
-        instances
-            .iter()
-            .filter(|instance| instance.root.parent_owner == nested_owner)
-            .count(),
-        1
-    );
-    for instance in instances {
-        let result = instance
-            .delivered_result()
-            .expect("ordinary scalar result delivery");
-        assert!(result.complete_type.is_none());
-        assert!(matches!(
-            semantic.value(result.value).unwrap().payload,
-            lang_build::SemanticValuePayload::ConstructedLiteral { .. }
-        ));
-        assert!(!instance.evaluation_active());
-        let self_name = semantic.symbol(instance.invoke_name()).unwrap();
-        assert!(self_name.type_resident().is_none());
-        assert!(self_name.ordinary_value().is_none());
-    }
-    let mut observation = semantic.clone();
-    let mut address = |name| {
-        let binding = semantic
-            .symbol_in_namespace(world.package_root_node(), name)
-            .unwrap();
-        let value = binding.ordinary_value().unwrap();
-        let record = semantic.value(value).unwrap();
-        let shape =
-            lang_build::ArgProductShape::from_flattened(lang_build::FlattenedProductMaterial {
-                atoms: vec![lang_build::ProductAtom::SemanticValue {
-                    value,
-                    type_value: record.type_value,
-                    mode: record.mode,
-                    provenance: record.provenance.clone(),
-                }],
-                provenance: record.provenance.clone(),
-                invariant: lang_build::FlattenedProductInvariant {
-                    no_direct_product_atom_remains: true,
-                },
-            });
-        observation
-            .canonical_argument_address(&shape.raw_args[0], &shape.flattened.atoms[0])
-            .unwrap()
-    };
-    assert_eq!(address("first"), address("same"));
-    assert_ne!(address("first"), address("different"));
+    let root = world.package_root_node();
+    assert!(semantic
+        .symbol_in_namespace(root, "T")
+        .unwrap()
+        .type_resident()
+        .is_some());
+    assert!(semantic.child_namespace(root, "T").is_none());
+    assert!(world
+        .namespace_projection()
+        .child_symbol_with_expectation(root, "T", ResolveExpectation::NamespaceSubspace)
+        .is_err());
+    assert!(world
+        .source_fragments()
+        .iter()
+        .any(|f| f.inherited_navigation == ["T"]));
 }
 
 #[test]

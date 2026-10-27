@@ -1588,9 +1588,11 @@ availability question, not the owner of this semantic path.
 
 The frozen lexer continues to preserve spelling only. It does not choose
 width, signedness, precision, encoding, overflow behavior, or a machine type.
-Expected-type-driven insertion of the ordinary construction is a separate
-surface/diagnostic question; an expected `uint32` does not retroactively make
-`1` start with type `uint32`.
+External annotation Patterns constrain the actual classifier of the evaluated
+RHS through R_Gamma. A literal 1 has classifier integer, so uint32:: rejects
+that result. Concrete construction is a separately requested ordinary call;
+its output may then satisfy uint32::. The annotation contributes no call or
+replacement of the extraction subject.
 
 #### 4.1.1 `integer`
 

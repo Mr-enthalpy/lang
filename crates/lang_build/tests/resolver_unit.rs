@@ -101,18 +101,41 @@ fn explicit_dependency_mounts_are_visible_as_paths() {
 
 #[test]
 fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
-    // Equal spelling in distinct namespaces does not merge graph identities.
-    let world = build_single_fixture_world("same_name_distinct_namespaces", "app");
-    let left = world
-        .namespace_projection()
+    // Explicit graph records test resolver identity independently of source discovery.
+    let snapshot = SemanticNameIndex::new();
+    let root = snapshot.root_node();
+    let mut delta = snapshot.empty_delta();
+    for name in ["left", "right"] {
+        let node = delta.allocate_node_id();
+        let symbol = delta.allocate_symbol_id();
+        delta.insert_node(lang_build::NamespaceNode::new(
+            node,
+            name,
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Some(root),
+            Provenance::new("explicit resolver fixture"),
+        ));
+        delta.insert_symbol(
+            root,
+            namespace_symbol(symbol, root, name, node, "explicit resolver fixture"),
+        );
+        let child = delta.allocate_symbol_id();
+        delta.insert_symbol(
+            node,
+            object_symbol(child, node, "T", "explicit resolver child"),
+        );
+    }
+    let snapshot = snapshot.install_delta(delta).unwrap();
+    let context = ResolverContext::new(root);
+    let left = snapshot
         .capability()
-        .resolve_str("T::left::app", &world.root_context())
-        .expect("left T");
-    let right = world
-        .namespace_projection()
+        .resolve_str("T::left", &context)
+        .unwrap();
+    let right = snapshot
         .capability()
-        .resolve_str("T::right::app", &world.root_context())
-        .expect("right T");
+        .resolve_str("T::right", &context)
+        .unwrap();
     assert_eq!(left.name, right.name);
     assert_ne!(left.id, right.id);
     assert!(left.diagnostic_label().contains("symbol#"));

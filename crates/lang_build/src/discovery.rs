@@ -1,9 +1,7 @@
 //! Physical source discovery layer.
 //!
-//! This module is the lowest physical input layer below SemanticWorld
-//! namespace assembly. It finds `.lang` source files on the filesystem and records their
-//! physical identity, relative namespace directory, raw UTF-8 content, a stable
-//! content fingerprint, and diagnostic provenance.
+//! This module finds `.lang` source files and records physical identity,
+//! inherited navigation, raw UTF-8 content, content fingerprints and provenance.
 //!
 //! Discovery is intentionally non-semantic. It does **not** parse, normalize,
 //! resolve names, check types, check policy, expand compile-functions, forward
@@ -12,15 +10,13 @@
 //!
 //! ```text
 //! physical discovery   (this module)
-//!   -> namespace assembly       (world.rs: opens physical namespace nodes)
-//!   -> declaration harvesting   (world.rs: installs symbols / deltas)
+//!   -> normalized source with inherited navigation
+//!   -> ordinary source actions and committed semantic projections
 //!   -> resolver / policy / compile  (consume SemanticWorld)
 //! ```
 //!
-//! Semantic rule preserved here: physical directory structure contributes
-//! namespace skeleton components; file names never contribute namespace
-//! segments. A `.lang` file is a source fragment located inside a physical
-//! namespace directory, not a module.
+//! Child directories supply navigation material. Files and directories create
+//! no semantic names, namespace symbols, owners or construction authority.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -69,7 +65,7 @@ pub struct DiscoveredSourceRoot {
 /// source_root_index   -- which configured root produced this unit
 /// canonical_path      -- canonical physical identity (duplicate detection)
 /// root_relative_path  -- path relative to the canonical source root
-/// namespace_dir       -- relative directory namespace components (no file name)
+/// inherited_navigation -- directory-provided navigation material (no file name)
 /// fragment_name       -- file/fragment identity only (never a namespace segment)
 /// content_hash        -- deterministic physical content fingerprint
 /// content             -- validated UTF-8 source text
@@ -80,7 +76,7 @@ pub struct DiscoveredSourceUnit {
     pub source_root_index: usize,
     pub canonical_path: PathBuf,
     pub root_relative_path: PathBuf,
-    pub namespace_dir: Vec<String>,
+    pub inherited_navigation: Vec<String>,
     pub fragment_name: String,
     pub content_hash: String,
     pub content: String,
@@ -372,16 +368,16 @@ fn collect_lang_file(
         }
     };
 
-    // Directory components contribute namespace path; the file name never does.
-    let mut namespace_dir = Vec::new();
+    // Child-directory components supply inherited navigation, excluding the file name.
+    let mut inherited_navigation = Vec::new();
     if let Some(parent) = root_relative_path.parent() {
         for component in parent.components() {
             let raw = component.as_os_str().to_string_lossy();
             if raw.is_empty() {
                 continue;
             }
-            match namespace_component_from_dir_name(&raw, &canonical) {
-                Ok(name) => namespace_dir.push(name),
+            match navigation_component_from_dir_name(&raw, &canonical) {
+                Ok(name) => inherited_navigation.push(name),
                 Err(diagnostic) => {
                     diagnostics.push(diagnostic);
                     return;
@@ -397,7 +393,7 @@ fn collect_lang_file(
         source_root_index: root.root_index,
         canonical_path: canonical,
         root_relative_path,
-        namespace_dir,
+        inherited_navigation,
         fragment_name,
         content_hash,
         content,
@@ -426,14 +422,14 @@ fn detect_duplicate_identity(units: &[DiscoveredSourceUnit], diagnostics: &mut V
     }
 }
 
-/// Namespace component validation for filesystem discovery.
+/// Navigation component validation for filesystem discovery.
 ///
-/// Directory names that contribute namespace path components must be valid
+/// Directory names that contribute inherited navigation must be valid
 /// ordinary name components. Filesystem discovery accepts a narrow ASCII
 /// subset: the first character must be an ASCII letter or `_`, and the rest
 /// ASCII alphanumeric or `_`. This boundary does not define language-level
 /// identifier syntax and does not change parser/lexer behavior.
-fn namespace_component_from_dir_name(name: &str, file: &Path) -> Result<String, Diagnostic> {
+fn navigation_component_from_dir_name(name: &str, file: &Path) -> Result<String, Diagnostic> {
     let valid = !name.is_empty()
         && name.chars().enumerate().all(|(index, character)| {
             if index == 0 {
@@ -448,7 +444,7 @@ fn namespace_component_from_dir_name(name: &str, file: &Path) -> Result<String, 
     } else {
         Err(Diagnostic::hard_error(
             format!(
-                "{DISCOVERY_ERROR_PREFIX} physical directory component `{name}` is not a valid namespace name component"
+                "{DISCOVERY_ERROR_PREFIX} physical directory component `{name}` is not a valid navigation name component"
             ),
             Some(Provenance::file("physical directory component", file)),
         ))

@@ -631,6 +631,9 @@ pending and are not simulated by syntax flattening.
 The simple form let a:b=expr consumes R_Gamma(a:b,v,rho) with E(expr)=v,
 Type(v)=T, rho(a)=v and rho(b)=T at every adjacent universe rank. A bare b is a
 classifier-side binder. Existing external constraints enter as uint8:: or R$.
+They consume the unchanged RHS value and classifier; a concrete-type constraint
+does not insert a literal constructor. Explicit ordinary construction is a
+separate call whose result can subsequently satisfy the Pattern.
 Structural qualified P let name::path:t has its own name-formation premises.
 Initializer-free lexical formation requires an explicit external classifier
 T:: or R$ determining a complete type; bare a:b without a subject supplies no

@@ -731,6 +731,20 @@ constraints and Hole deduction all consume R_Gamma. Hole presence does not
 change extraction into RHS transformation. Return and parameter positions
 apply the same relation to their actual delivered values.
 
+For an external classifier Pattern A, extraction consumes the unchanged result:
+
+```text
+E(expr) = v
+Interpret(A,S) = P_A
+R_Gamma(a:A,v,rho) observes Type(v) through P_A
+```
+
+The extraction subject is exactly v, with its actual value identity and
+classifier snapshot. For example, 42 first denotes an integer; uint16:: does
+not match that classifier merely because an ordinary integer-to-uint16
+constructor exists. A separately written ordinary construction call may produce
+a uint16 result, which can then satisfy the external Pattern.
+
 The bare classifier-side binder has this interpretation also in an
 initializer-free simple head. Without an extraction subject, a:b produces no
 valuation for b and no declared Place type. Initializer-free lexical typed-name

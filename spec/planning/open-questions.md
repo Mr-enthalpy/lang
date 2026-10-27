@@ -44,8 +44,8 @@ universal result joins are not implied.
 - What is the source spelling and exact-value model for character literals?
 - Which additional exact-real spellings are supported?
 - What is the concrete machine-Type catalog?
-- Which source/context mechanism requests a concrete literal construction
-  target when no explicit annotation supplies one?
+- What source spelling explicitly requests a concrete literal construction
+  target through the ordinary constructor family?
 
 Abstract integer/real/character values form first; concrete construction and
 same-Type Policy migration are separate ordinary operations.

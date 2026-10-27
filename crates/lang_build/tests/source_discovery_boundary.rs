@@ -9,7 +9,7 @@ use lang_build::{CompilationWorld, SourceDiscoveryConfig, SourceRoot};
 // the direct discovery layer and the full `from_manifest` pipeline.
 #[test]
 fn discovers_lang_files_from_real_source_root() {
-    let manifest = fixture_manifest("nested_physical_namespace", "app");
+    let manifest = fixture_manifest("inherited_navigation", "app");
 
     let report = SourceDiscoveryConfig::from_source_roots(&manifest.source_roots).discover();
     assert!(
@@ -22,8 +22,9 @@ fn discovers_lang_files_from_real_source_root() {
         .iter()
         .all(|unit| !unit.content_hash.is_empty()));
 
-    let world = CompilationWorld::from_manifest(&manifest).expect("build world");
-    assert_eq!(world.source_fragments().len(), 2);
+    let error = CompilationWorld::from_manifest(&manifest)
+        .expect_err("qualified destination consumer is unavailable");
+    assert!(format!("{error:?}").contains("inherited navigation"));
 }
 
 // D. Deterministic traversal: a fixture whose files are not in lexical order on
@@ -42,7 +43,12 @@ fn discovery_order_is_stable_and_sorted() {
     let observed: Vec<(Vec<String>, String)> = report
         .units
         .iter()
-        .map(|unit| (unit.namespace_dir.clone(), unit.fragment_name.clone()))
+        .map(|unit| {
+            (
+                unit.inherited_navigation.clone(),
+                unit.fragment_name.clone(),
+            )
+        })
         .collect();
     assert_eq!(
         observed,

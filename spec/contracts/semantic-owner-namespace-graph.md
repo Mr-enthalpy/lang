@@ -40,6 +40,14 @@ P let inner=rhs targets inner::a. Root levels and
 implementation filenames add no segment. The physical tree installs no owner
 by discovery; see [normalization](../design/build-package/build-system-design.md).
 
+DiscoveredSourceUnit and SourceFragment retain inherited_navigation as source
+material. SourceFragment.namespace is the established install root, not a
+directory-created node. Empty fragments leave the semantic world unchanged.
+Actual actions under nonempty inherited navigation require the ordinary
+qualified destination consumer; unavailable formation publishes no namespace
+Symbol or owner. Discovery observes existing install roots without creating
+missing semantic components.
+
 The semantic owner forest contains source-established namespace owners, callable owners,
 canonical compile-instance owners, and generated owners. Every callable,
 including an in-place closure, has a lexical/code owner. Ordinary closure-to-tau construction forms its callable material and classifier

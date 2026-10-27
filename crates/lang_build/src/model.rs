@@ -45,7 +45,6 @@ impl fmt::Display for SymbolId {
 /// The structural source of a namespace node.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NamespaceNodeKind {
-    Physical,
     Declared,
     Virtual,
 }
@@ -53,7 +52,6 @@ pub enum NamespaceNodeKind {
 /// The category of contribution that introduced a symbol or node.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SourceCategory {
-    PhysicalDirectory,
     DeclaredSymbol,
     TypeAssociatedNamespace,
     GeneratedChild,

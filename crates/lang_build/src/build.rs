@@ -131,7 +131,7 @@ pub struct SourceRootMetadata {
 pub struct SourceUnitBuildMetadata {
     pub canonical_path: PathBuf,
     pub root_relative_path: PathBuf,
-    pub namespace_dir: Vec<String>,
+    pub inherited_navigation: Vec<String>,
     pub fragment_name: String,
     pub content_hash: String,
 }
@@ -284,7 +284,7 @@ impl BuildSession {
             .map(|unit| SourceUnitBuildMetadata {
                 canonical_path: unit.canonical_path.clone(),
                 root_relative_path: unit.root_relative_path.clone(),
-                namespace_dir: unit.namespace_dir.clone(),
+                inherited_navigation: unit.inherited_navigation.clone(),
                 fragment_name: unit.fragment_name.clone(),
                 content_hash: unit.content_hash.clone(),
             })
@@ -310,7 +310,7 @@ impl BuildSession {
             .map(|unit| SourceUnitBuildMetadata {
                 canonical_path: unit.canonical_path.clone(),
                 root_relative_path: unit.root_relative_path.clone(),
-                namespace_dir: unit.namespace_dir.clone(),
+                inherited_navigation: unit.inherited_navigation.clone(),
                 fragment_name: unit.fragment_name.clone(),
                 content_hash: unit.content_hash.clone(),
             })
@@ -455,7 +455,7 @@ fn compute_package_fingerprint(
     hasher.write_field(&(global_implementation_units.len() as u64).to_le_bytes());
     for unit in global_implementation_units {
         hasher.write_str_field(&relative_path_key(&unit.root_relative_path));
-        hasher.write_str_field(&unit.namespace_dir.join("::"));
+        hasher.write_str_field(&unit.inherited_navigation.join("::"));
         hasher.write_str_field(&unit.fragment_name);
         hasher.write_str_field(&unit.content_hash);
     }
@@ -467,7 +467,7 @@ fn compute_package_fingerprint(
     hasher.write_field(&(source_units.len() as u64).to_le_bytes());
     for unit in source_units {
         hasher.write_str_field(&relative_path_key(&unit.root_relative_path));
-        hasher.write_str_field(&unit.namespace_dir.join("::"));
+        hasher.write_str_field(&unit.inherited_navigation.join("::"));
         hasher.write_str_field(&unit.fragment_name);
         hasher.write_str_field(&unit.content_hash);
     }

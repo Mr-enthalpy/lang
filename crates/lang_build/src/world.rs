@@ -356,9 +356,8 @@ impl CompilationWorld {
             .extend(global_report.diagnostics.iter().cloned());
         world.consume_global_implementation_discovery(&global_report)?;
 
-        // Physical source discovery is the explicit input layer below namespace
-        // assembly. If discovery produced any hard diagnostic we must not
-        // continue into partial namespace assembly.
+        // Discovery records source material. Hard input diagnostics prevent
+        // any source action from being consumed.
         let report = SourceDiscoveryConfig::from_source_roots(&manifest.source_roots).discover();
         if report.has_hard_errors() {
             return Err(BuildError {
@@ -849,15 +848,8 @@ impl CompilationWorld {
             .map(|resolved| resolved.symbol)
     }
 
-    /// Feed discovered physical source units into namespace assembly and
-    /// declaration harvesting.
-    ///
-    /// Only directories containing discovered `.lang` source units contribute
-    /// physical namespace nodes. Empty directories are ignored by source
-    /// discovery and do not create "empty namespace existence". If explicit
-    /// empty-namespace nodes are ever required (e.g. package manifests or
-    /// explicit namespace declarations) that must be a separate semantic
-    /// decision, not a side effect of physical scanning.
+    /// Consume source at an established install root, retaining inherited
+    /// navigation as material for the ordinary declaration consumer.
     fn consume_discovery(&mut self, report: &SourceDiscoveryReport) -> Result<(), BuildError> {
         for unit in &report.units {
             let root = report
@@ -870,36 +862,32 @@ impl CompilationWorld {
                         Some(unit.provenance.clone()),
                     ))
                 })?;
-
-            let root_namespace = self.semantic_world.ensure_namespace_path(
-                self.semantic_world.namespace_index().root_node(),
-                &root.namespace_root,
-                NamespaceNodeKind::Declared,
-                SourceCategory::DeclaredSymbol,
-                "declared namespace mount",
-            )?;
-            let directory = unit
-                .canonical_path
-                .parent()
-                .unwrap_or(unit.canonical_path.as_path());
-            let unit_namespace = self.semantic_world.ensure_namespace_path(
-                root_namespace,
-                &unit.namespace_dir,
-                NamespaceNodeKind::Physical,
-                SourceCategory::PhysicalDirectory,
-                &format!("physical directory `{}`", directory.display()),
-            )?;
-            self.consume_source_unit(unit, unit_namespace)?;
+            let install_root = self.source_install_root(&root.namespace_root, &unit.provenance)?;
+            self.consume_source_unit(unit, install_root)?;
         }
-
         Ok(())
+    }
+
+    fn source_install_root(
+        &self,
+        components: &[String],
+        provenance: &Provenance,
+    ) -> Result<NamespaceNodeId, BuildError> {
+        let mut current = self.semantic_world.namespace_index().root_node();
+        for component in components {
+            current = self.semantic_world.child_namespace(current, component)
+                .ok_or_else(|| BuildError::single(Diagnostic::hard_error(
+                    "source install root requires an established namespace and the ordinary Path consumer",
+                    Some(provenance.clone()),
+                )))?;
+        }
+        Ok(current)
     }
 
     fn consume_global_implementation_discovery(
         &mut self,
         report: &SourceDiscoveryReport,
     ) -> Result<(), BuildError> {
-        let global_root = self.semantic_world.namespace_index().root_node();
         for unit in &report.units {
             let root = report
                 .roots
@@ -911,28 +899,8 @@ impl CompilationWorld {
                         Some(unit.provenance.clone()),
                     ))
                 })?;
-            let install_root = self.semantic_world.ensure_namespace_path(
-                global_root,
-                &root.namespace_root,
-                NamespaceNodeKind::Declared,
-                SourceCategory::DeclaredSymbol,
-                "declared namespace mount",
-            )?;
-            let directory = unit
-                .canonical_path
-                .parent()
-                .unwrap_or(unit.canonical_path.as_path());
-            let unit_namespace = self.semantic_world.ensure_namespace_path(
-                if root.namespace_root.is_empty() {
-                    global_root
-                } else {
-                    install_root
-                },
-                &unit.namespace_dir,
-                NamespaceNodeKind::Physical,
-                SourceCategory::PhysicalDirectory,
-                &format!("physical directory `{}`", directory.display()),
-            )?;
+            let unit_namespace =
+                self.source_install_root(&root.namespace_root, &unit.provenance)?;
             if !self
                 .semantic_world
                 .namespace_is_toolchain_owned(unit_namespace)
@@ -997,6 +965,13 @@ impl CompilationWorld {
 
         let normalized = match normalized {
             Ok(validated) => {
+                if !unit.inherited_navigation.is_empty() && !validated.as_program().forms.is_empty()
+                {
+                    return Err(BuildError::single(Diagnostic::hard_error(
+                        "inherited navigation requires the qualified NameExpr formation and ordinary Path consumer, which is unavailable",
+                        Some(unit.provenance.clone()),
+                    )));
+                }
                 self.harvest_program(namespace, validated.as_program(), &unit.canonical_path)?;
                 validated.into_program()
             }
@@ -1006,6 +981,7 @@ impl CompilationWorld {
         self.source_fragments.push(SourceFragment {
             path: unit.canonical_path.clone(),
             namespace,
+            inherited_navigation: unit.inherited_navigation.clone(),
             normalized,
             diagnostics,
             provenance,
@@ -1435,13 +1411,7 @@ impl CompilationWorld {
         provenance: Provenance,
     ) -> Result<(), BuildError> {
         let complete_type = result.complete_type;
-        let result = self.construct_abstract_literals_for_annotation(
-            namespace,
-            slot.annotation.as_ref(),
-            result.material,
-            demand,
-            &provenance,
-        )?;
+        let result = result.material;
         let external_constraint = match slot
             .annotation
             .as_ref()
@@ -1484,9 +1454,10 @@ impl CompilationWorld {
     }
 
     /// Select and execute one abstract-to-concrete constructor from the exact
-    /// target tau callspace.  The target is slot 0 and the abstract source is
+    /// target tau's captured associated Val2. The target is slot 0 and the abstract source is
     /// the sole explicit argument (slot 1).  Selection is sealed before the
     /// builtin/custom body runs, so realization failure cannot retry.
+    #[cfg(test)]
     fn invoke_literal_construction_request(
         &mut self,
         namespace: NamespaceNodeId,
@@ -1630,63 +1601,6 @@ impl CompilationWorld {
             )));
         }
         Ok((result_ref, entry.pattern, entry.view.clone()))
-    }
-
-    /// Apply an explicit concrete annotation only after abstract literal
-    /// formation.  The installed abstract source remains intact and the
-    /// result records it as construction provenance, so an expected machine
-    /// Type can never retroactively rewrite the literal's initial Type.
-    fn construct_abstract_literals_for_annotation(
-        &mut self,
-        namespace: NamespaceNodeId,
-        annotation: Option<&NormAnnotation>,
-        mut result: Vec<
-            crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>,
-        >,
-        result_demand: &ResultPolicyDemand,
-        provenance: &Provenance,
-    ) -> Result<
-        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
-        BuildError,
-    > {
-        let Some(name) = annotation.and_then(|annotation| {
-            crate::pattern_relation::external_pattern_name(&annotation.pattern)
-        }) else {
-            return Ok(result);
-        };
-        if matches!(name, "type" | "integer" | "real" | "character") {
-            return Ok(result);
-        }
-        let Some(target) = self.resolve_complete_annotation_type(namespace, name)? else {
-            return Ok(result);
-        };
-        for entry in &mut result {
-            let Some(source) = entry.value else {
-                continue;
-            };
-            if !matches!(
-                self.semantic_world
-                    .value(source.id)
-                    .map(|value| &value.payload),
-                Some(crate::SemanticValuePayload::AbstractLiteral { .. })
-            ) {
-                continue;
-            }
-            let (constructed, pattern, view) = self.invoke_literal_construction_request(
-                namespace,
-                crate::ConstructionRequest {
-                    source,
-                    target: target.clone(),
-                    result_demand: result_demand.clone(),
-                    family: crate::ConstructionFamily::ConstructOrConvert,
-                },
-                provenance,
-            )?;
-            entry.value = Some(constructed);
-            entry.pattern = pattern;
-            entry.view = view;
-        }
-        Ok(result)
     }
 
     /// Direct general same-Type satisfaction used after an ordinary existing
@@ -2986,6 +2900,45 @@ mod initializer_consumer_boundary_tests {
     }
 
     #[test]
+    fn external_classifier_checks_the_actual_literal_without_construction() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(
+            &mut world,
+            "let source = 42; let matched:integer:: = source;",
+        )
+        .unwrap();
+        let value = |name| {
+            let id = world
+                .semantic_world
+                .symbol_in_namespace(world.package_root_node(), name)
+                .unwrap()
+                .ordinary_value()
+                .unwrap();
+            world.semantic_world.value(id).unwrap().clone()
+        };
+        let source = value("source");
+        let matched = value("matched");
+        assert_eq!(source.type_value, matched.type_value);
+        assert_eq!(source.payload, matched.payload);
+        assert!(matches!(
+            matched.payload,
+            crate::SemanticValuePayload::AbstractLiteral { .. }
+        ));
+        assert!(world.semantic_world.compile_instances().next().is_none());
+        for source in [
+            "let rejected:uint16:: = source;",
+            "let rejected:uint16:: = 42;",
+        ] {
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(format!("{error:?}").contains("classifier"), "{error:?}");
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
     fn initializer_free_heads_preserve_extraction_and_name_formation_boundaries() {
         for (source, frontier) in [
             (
@@ -3143,11 +3096,7 @@ mod initializer_consumer_boundary_tests {
             complete.core()
         );
 
-        harvest_source(
-            &mut world,
-            "let V = U; let Forward = U IdentityType::core; let value:U:: = 7;",
-        )
-        .unwrap();
+        harvest_source(&mut world, "let V = U; let Forward = U IdentityType::core;").unwrap();
         let new = world
             .semantic_world
             .symbol_in_namespace(namespace, "V")
@@ -3176,20 +3125,10 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .associated_values_in_place(new.place, "later")
             .is_none());
-        let value = world
-            .semantic_world
-            .symbol_in_namespace(namespace, "value")
-            .unwrap()
-            .ordinary_value()
-            .unwrap();
-        assert_eq!(
-            world
-                .semantic_world
-                .complete_type_for_value(value)
-                .unwrap()
-                .whole(),
-            complete.whole()
-        );
+        let before = format!("{:?}", world.semantic_world);
+        let error = harvest_source(&mut world, "let value:U:: = 7;").unwrap_err();
+        assert!(format!("{error:?}").contains("classifier"));
+        assert_eq!(format!("{:?}", world.semantic_world), before);
         assert_eq!(
             world
                 .resolve_complete_annotation_type(namespace, "U")
@@ -3874,6 +3813,74 @@ mod literal_construction_tests {
     }
 
     #[test]
+    fn explicit_scalar_construction_keys_include_canonical_inputs_and_parent_owner() {
+        let mut world = world();
+        let root = world.package_root_node();
+        let mut delta = world.semantic_world.namespace_index().empty_delta();
+        let nested = namespace_symbol(
+            &mut delta,
+            root,
+            "scope",
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Provenance::new("explicit parent-owner fixture"),
+        );
+        world
+            .semantic_world
+            .install_namespace_name_delta(delta)
+            .unwrap();
+        for (namespace, literal) in [(root, "42"), (root, "42"), (root, "43"), (nested, "42")] {
+            let mut request = request(&mut world, "uint16", PolicyMode::Const);
+            request.source.id = world
+                .semantic_world
+                .install_abstract_literal_value(
+                    crate::AbstractLiteralFamily::Integer,
+                    crate::AbstractLiteralExactValue::Integer(literal.into()),
+                    request.source.type_value,
+                    crate::compile_literal_policy(),
+                    Provenance::new("explicit scalar input"),
+                )
+                .unwrap();
+            let (value, _, _) = world
+                .invoke_literal_construction_request(
+                    namespace,
+                    request,
+                    &Provenance::new("explicit scalar call"),
+                )
+                .unwrap();
+            assert!(matches!(
+                world.semantic_world.value(value.id).unwrap().payload,
+                crate::SemanticValuePayload::ConstructedLiteral { .. }
+            ));
+        }
+        let instances = world.semantic_world.compile_instances().collect::<Vec<_>>();
+        assert_eq!(instances.len(), 3);
+        assert_eq!(
+            instances
+                .iter()
+                .filter(|i| i.root.parent_owner == world.semantic_world.package_owner())
+                .count(),
+            2
+        );
+        assert_eq!(
+            instances
+                .iter()
+                .filter(|i| i.root.parent_owner
+                    == world.semantic_world.namespace_owner(nested).unwrap())
+                .count(),
+            1
+        );
+        for instance in instances {
+            let result = instance.delivered_result().unwrap();
+            assert!(result.complete_type.is_none());
+            assert!(!instance.evaluation_active());
+            let name = world.semantic_world.symbol(instance.invoke_name()).unwrap();
+            assert!(name.type_resident().is_none());
+            assert!(name.ordinary_value().is_none());
+        }
+    }
+
+    #[test]
     fn complete_type_without_constructor_is_not_constructible() {
         let mut world = world();
         let request = request(&mut world, "type", PolicyMode::Const);
@@ -4032,5 +4039,270 @@ mod literal_construction_tests {
             .expect_err("the successor selects its actual failing entry");
         assert!(error.diagnostics[0].message.contains("failed to realize"));
         assert_eq!(constructed_count(&world), before);
+    }
+}
+
+#[cfg(test)]
+mod physical_navigation_tests {
+    use super::*;
+
+    fn report(workspace: &str, root: Vec<String>) -> SourceDiscoveryReport {
+        let report = SourceDiscoveryConfig::from_source_roots(&[crate::SourceRoot {
+            path: Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/workspaces")
+                .join(workspace)
+                .join("app/src"),
+            namespace_root: root,
+        }])
+        .discover();
+        assert!(!report.has_hard_errors());
+        report
+    }
+
+    #[test]
+    fn empty_inherited_sources_preserve_semantic_world_at_package_and_global_roots() {
+        for global in [false, true] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let report = report(
+                "empty_inherited_navigation",
+                if global { vec![] } else { vec!["app".into()] },
+            );
+            let before = format!("{:?}", world.semantic_world);
+            if global {
+                world
+                    .consume_global_implementation_discovery(&report)
+                    .unwrap();
+            } else {
+                world.consume_discovery(&report).unwrap();
+            }
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+            let [fragment] = world.source_fragments.as_slice() else {
+                panic!("one fragment");
+            };
+            assert_eq!(fragment.inherited_navigation, ["a", "b"]);
+            assert!(fragment.normalized.forms.is_empty());
+            assert_eq!(
+                fragment.namespace,
+                if global {
+                    world.semantic_world.namespace_index().root_node()
+                } else {
+                    world.package_root_node()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn inherited_action_without_qualified_consumer_publishes_no_destination_or_owner() {
+        for global in [false, true] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let report = report(
+                "child_navigation_frontier",
+                if global { vec![] } else { vec!["app".into()] },
+            );
+            let before = format!("{:?}", world.semantic_world);
+            let error = if global {
+                world.consume_global_implementation_discovery(&report)
+            } else {
+                world.consume_discovery(&report)
+            }
+            .unwrap_err();
+            assert!(format!("{error:?}")
+                .contains("inherited navigation requires the qualified NameExpr"));
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+            assert!(world.source_fragments.is_empty());
+        }
+    }
+
+    #[test]
+    fn source_install_prefix_cannot_allocate_a_missing_semantic_namespace() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let report = report(
+            "empty_inherited_navigation",
+            vec!["app".into(), "unformed".into()],
+        );
+        let before = format!("{:?}", world.semantic_world);
+        let error = world.consume_discovery(&report).unwrap_err();
+        assert!(
+            format!("{error:?}").contains("source install root requires an established namespace")
+        );
+        assert_eq!(format!("{:?}", world.semantic_world), before);
+    }
+}
+
+#[cfg(test)]
+mod scoped_resolution_tests {
+    use super::*;
+    use crate::{extract_single_call_site, OrdinaryInvocationContext};
+
+    fn scope_world() -> CompilationWorld {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let mut delta = world.semantic_world.namespace_index().empty_delta();
+        let outer = namespace_symbol(
+            &mut delta,
+            world.package_root_node(),
+            "outer",
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Provenance::new("explicit scope fixture"),
+        );
+        let inner = namespace_symbol(
+            &mut delta,
+            outer,
+            "inner",
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Provenance::new("explicit scope fixture"),
+        );
+        world
+            .semantic_world
+            .install_namespace_name_delta(delta)
+            .unwrap();
+        for (namespace, source) in [
+            (outer, "let f = IdentityType; let g = IdentityType;"),
+            (inner, "let f:type:: = uint8;"),
+        ] {
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            world
+                .harvest_program(
+                    namespace,
+                    &lang_syntax::normalize_program(&parsed.program),
+                    Path::new("scope-fixture.lang"),
+                )
+                .unwrap();
+        }
+        world
+    }
+
+    fn initializer_from_source(source: &str) -> NormExpr {
+        let parsed = lang_syntax::parse(source);
+        assert!(parsed.diagnostics.is_empty());
+        let program = lang_syntax::normalize_program(&parsed.program);
+        let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_slice() else {
+            panic!("one binding");
+        };
+        slot.initializer.as_deref().unwrap().clone()
+    }
+    #[test]
+    fn bare_call_target_resolves_nearest_symbol_once_even_if_non_callable() {
+        let mut world = scope_world();
+        let package = world.package_root_node();
+        let outer_namespace = world
+            .semantic_world()
+            .child_namespace(package, "outer")
+            .expect("outer fixture namespace");
+        let inner_namespace = world
+            .semantic_world()
+            .child_namespace(outer_namespace, "inner")
+            .expect("inner fixture namespace");
+        let inner = world
+            .semantic_world()
+            .symbol_in_namespace(inner_namespace, "f")
+            .expect("inner non-callable f")
+            .clone();
+        assert!(
+            inner.ordinary_value().is_none(),
+            "near f is deliberately non-callable"
+        );
+
+        let initializer = initializer_from_source("let result = uint8 f;");
+        let call_site = extract_single_call_site(&initializer).expect("bare f call");
+        let failure = world
+            .invoke_ordinary_call(
+                inner_namespace,
+                &call_site,
+                OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+                Provenance::new("near outer core bare-name chain"),
+            )
+            .expect_err("the nearest non-callable Symbol shadows outer callable Symbols");
+        assert!(
+            matches!(
+                failure,
+                crate::OrdinaryInvocationFailure::NoTargetValues { .. }
+                    | crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+            ),
+            "call projection fails on inner.f and never re-resolves the name: {failure:?}"
+        );
+    }
+
+    #[test]
+    fn same_bare_path_has_one_terminal_symbol_before_value_type_and_call_projection() {
+        let world = scope_world();
+        let package = world.package_root_node();
+        let outer_namespace = world
+            .semantic_world()
+            .child_namespace(package, "outer")
+            .expect("outer fixture namespace");
+        let inner_namespace = world
+            .semantic_world()
+            .child_namespace(outer_namespace, "inner")
+            .expect("inner fixture namespace");
+        let inner = world
+            .semantic_world()
+            .symbol_in_namespace(inner_namespace, "f")
+            .expect("inner type-valued f")
+            .identity;
+        let initializer = initializer_from_source("let result = uint8 f;");
+        let call_site = extract_single_call_site(&initializer).expect("bare f call");
+
+        let neutral = world
+            .resolve_source_terminal_symbol(inner_namespace, &call_site.target)
+            .expect("neutral source resolution");
+        let by_symbol_path = world
+            .semantic_world()
+            .resolve_symbol_path(
+                &["f".to_string()],
+                inner_namespace,
+                &[world.semantic_world().namespace_index().root_node()],
+                &[world.core_node()],
+            )
+            .expect("context-independent Symbol resolution");
+        assert_eq!(neutral, inner);
+        assert_eq!(by_symbol_path, inner);
+        assert!(
+            world
+                .semantic_world()
+                .symbol(inner)
+                .and_then(|symbol| symbol.type_resident_pattern())
+                .is_some(),
+            "type projection observes the already resolved inner Symbol"
+        );
+    }
+
+    #[test]
+    fn explicit_call_target_is_one_symbol_and_never_falls_back() {
+        let mut world = scope_world();
+        let package = world.package_root_node();
+        let outer_namespace = world
+            .semantic_world()
+            .child_namespace(package, "outer")
+            .expect("outer fixture namespace");
+        let initializer = initializer_from_source("let result = uint8 f::inner;");
+        let call_site = extract_single_call_site(&initializer).expect("explicit inner::f call");
+        let failure = world
+            .invoke_ordinary_call(
+                outer_namespace,
+                &call_site,
+                OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+                Provenance::new("explicit target no-fallback"),
+            )
+            .expect_err("explicit inner f is non-callable and must fail");
+        assert!(
+            matches!(
+                failure,
+                crate::OrdinaryInvocationFailure::NoTargetValues { .. }
+                    | crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+            ),
+            "explicit target fails on that Symbol instead of trying outer/core: {failure:?}"
+        );
     }
 }

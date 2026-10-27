@@ -65,7 +65,7 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Structural relations | Layer-local schema normalization and a DirectPatternChild observer requiring both registration and current actual Val2 membership | Source type formation, struct helpers and ordinary * / *= require common producer Pre/Post and real role/call entries |
 | Place | Binding/resident generations, Writable and borrow substrate | Source ref/share/rebind, initialization and invalidation require common transactions |
 | Lifecycle | SemanticContinuation, LifeName, Region, supplied Pre, Kill/Preserve, fixed cleanup and Color; common transactions gate every action on earlier cleanup observations | Source producer facts, NLL/with, ReifyLife and destructors need ordinary control-flow facts; source actions must enter the common transaction |
-| Physical source | Discovery/decoding/provenance and normalized fragments | EntryContinuation, inherited navigation, sibling overlays and dependency projection need E composition |
+| Physical source | Discovery/decoding/provenance and normalized fragments retaining inherited navigation; empty fragments form no semantic names or owners | Declarations under inherited navigation require the qualified ordinary name/Path consumer; EntryContinuation, sibling overlays and dependency projection need E composition |
 | InvocationResult | Semantic result, residual and diagnostic transport | Residual requires a real remaining continuation; serial completion and residual ABI remain separate |
 
 A missing canonical consumer reports unavailable or preserves an established
