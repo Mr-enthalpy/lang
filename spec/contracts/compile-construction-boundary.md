@@ -52,8 +52,12 @@ These laws are owned by
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
 bodies perform value-side name formation and separately authorized ref/write
-or ordinary *= actions. Initializer-free P let name:t and P let name::path:t
-create typed NameExpr at lexical and structural destinations respectively.
+or ordinary *= actions. Initializer-free lexical P let name:T:: or
+P let name:R$ requires an explicit external Pattern determining a complete
+declared Place type. Qualified P let name::path:t uses structural name formation.
+Both yield typed NameExpr under their own formation premises. Bare a:b remains
+joint extraction; without a delivered subject it supplies no classifier or
+typed Place.
 Qualified formation uses resolved structural root identity and the current
 resident type's OpenHere, valid selector, non-retention and ordinary access/path/type
 checks; it requires neither parent Writable nor a parent mut type ref.

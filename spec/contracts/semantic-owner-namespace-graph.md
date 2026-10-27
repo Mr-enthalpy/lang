@@ -317,8 +317,11 @@ routes introduce no implicit chain; saved refs retain their borrowed generation
 and cannot write after Close. Initial refs remain initialization-only. See the
 [type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-open-references-and-mut-confirmation).
 
-Initializer-free P let name:t and P let name::path:t create typed NameExpr
-using lexical and structural destinations respectively, with non-Object
+Bare a:b is joint extraction: without a delivered subject it supplies neither
+a classifier binding nor a typed Place. Initializer-free lexical P let name:T::
+or P let name:R$ requires an explicit external Pattern determining a complete
+declared Place type. Qualified P let name::path:t uses structural name formation.
+Each yields a typed NameExpr under its own formation premises, with non-Object
 Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
 not an existing type resident. P let name = rhs is a complete lexical binding
 with RHS type inference, so that default does not apply. Value use requires initialization; explicit

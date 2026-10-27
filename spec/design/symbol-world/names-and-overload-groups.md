@@ -199,7 +199,8 @@ named resident nor its independent Pattern registration.
 
 ## 5. Typed name declarations and complete let bindings
 
-    P let name : t        evaluates to NameExpr(n) at a fresh lexical destination
+    P let name : T::      evaluates to NameExpr(n) at a fresh lexical destination
+    P let name : R$       evaluates to NameExpr(n) when external R determines T
     P let name::path : t  evaluates to NameExpr(n)
     P let name::path      == P let name::path : type
     NameExpr != ValueExpr
@@ -217,12 +218,29 @@ This is ordinary-value callability: ordinary Val2 member semantics at ().
 It changes no V_T and supplies no Pattern registration. Readiness, admissible
 implementation material and ordinary invocation checks still apply.
 
-The first two are typed name declarations without an initializer. They share
-typed Place formation, explicit borrowing and ordinary initialization. Their
-destination differs: the unqualified form uses the ordinary fresh lexical
-binding context, while the qualified form resolves its structural root/name
-identity and observes that binding's current type value. NameExpr formation is
-a value-side judgment, not acquisition of a parent write capability.
+Initializer-free lexical formation requires an explicitly introduced external
+classifier. Write A for a full external Path such as T::, or opposite-polarity
+R$; the external Pattern must determine a complete declared Place type T:
+
+    Gamma;K |- ExternalClassifier(A) => T : type
+    FreshLexicalDestination(Gamma,name), ordinary formation/access legality
+    --------------------------------------------------------------------
+    Gamma;K |- P let name:A => NameExpr(n)
+      PlaceType(BindingPlace(n)) = T
+      ResidentState(BindingPlace(n)) = Uninitialized
+
+Bare b in a:b is classifier-side extraction material, at the same head with
+or without an initializer. With a delivered subject v, R_Gamma binds b to
+Type(v). Without a subject, that extraction supplies neither a classifier nor
+a typed Place. An existing same-spelled binding b supplies no external
+classifier evidence. For example, let a:b alone cannot derive the formation
+judgment above; let a:uint8:: can when its external-classifier premises hold.
+
+Qualified P let name::path:t uses its resolved structural root/name identity
+and the current resident type at that root. Its declared-type judgment for t
+belongs to structural formation. The lexical external-classifier form and
+qualified structural form share typed Place formation, explicit borrowing and
+ordinary initialization. NameExpr formation is a value-side judgment.
 
 Intermediate parents must exist and be initialized/navigable; only the final
 selector is fresh. Qualified formation requires:
@@ -257,7 +275,8 @@ copying a closed type into a fresh binding does not reopen it.
 Uninitialized is evaluator/Place state, not an Object, None value, or
 fresh-name value. Creation installs no readable resident and creates no
 callability or Pattern registration. The declared t may be any ordinary type.
-Omitting :t chooses PlaceType = type, not an already constructed type value.
+In initializer-free qualified formation, omitting :t chooses PlaceType = type,
+not an already constructed type value.
 
     Read_name(NameExpr(n)) = NameValue(n)    -- complete name/path structure
     NameExpr(n) in value context -> Read_resident(Read_name(n)) = Read(q_n)

@@ -105,8 +105,10 @@ alternate relation or identity.
   resident type's OpenHere, selector/non-retention/access/path/type checks;
   parent Writable and parent mut type ref are not premises. Equal type values
   do not merge NameCoords or Places. Ref acquisition is a separate judgment.
-  Initializer-free P let name:t shares typed-name formation at a lexical
-  destination. P let name=rhs is a complete lexical binding with RHS inference;
+  Initializer-free lexical typed-name formation requires an explicit external
+  classifier T:: or R$ determining a complete type. Bare a:b is joint extraction;
+  without a subject it supplies no classifier or typed Place.
+  P let name=rhs is a complete lexical binding with RHS inference;
   the initializer-free structural default does not apply to it.
   Explicit ref then ordinary write initializes; Close requires retained members
   being published initialized, not every future coordinate realized. NameBinding is not a wrapper Object.

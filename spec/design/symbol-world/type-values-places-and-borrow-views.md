@@ -2589,17 +2589,25 @@ own topology; T*N and T*omega indexing cannot grow a Sequence through let.
 
 ### 7.1 Typed NameExpr, explicit borrowing and first write
 
-    P let name:t -> NameExpr(n) at an ordinary fresh lexical destination
+    ExternalClassifier(A) => T:type, A = full external Path or R$
+    P let name:A -> NameExpr(n) at an ordinary fresh lexical destination
+      with PlaceType(BindingPlace(n)) = T
     P let name::path:t -> NameExpr(n)
-    PlaceType(BindingPlace(n)) = t
+      with PlaceType(BindingPlace(n)) = t
     ResidentState(BindingPlace(n)) = Uninitialized
     P let name::path == P let name::path:type
 
 These initializer-free declarations share the typed Place/NameExpr rules;
 lexical and structural destinations retain their own creation authority.
-P let name = rhs is instead one complete lexical binding, with ordinary RHS
-type inference; P let name:t = rhs is its explicitly constrained form. Neither
-first defaults to :type nor decomposes into NameExpr followed by source =.
+For the simple head a:b, bare b binds Type(v) through joint extraction of a
+delivered v. Its spelling supplies no external classifier, including when no
+initializer is present. Without a subject, this head cannot determine a typed
+Place. Lexical formation instead requires ExternalClassifier(A), as in
+let a:uint8:: or let a:R$ when that external Pattern determines a complete type.
+P let name = rhs is one complete lexical binding, with ordinary RHS inference;
+P let a:b = rhs jointly extracts the value and its classifier. An explicit
+external constraint uses P let a:T:: = rhs or P let a:R$ = rhs. Complete
+bindings do not default to :type or decompose into NameExpr followed by source =.
 See [let forms](names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings).
 
 Creation does not install a resident or return a ref. In value context NameExpr

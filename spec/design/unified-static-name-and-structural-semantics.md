@@ -416,7 +416,12 @@ and a classifier Hole all use `R_Gamma`; Hole presence does not change the
 binding judgment into a result-transforming call. Structural qualified
 `P let name::path:t` is the name-formation judgment of the names owner.
 Initializer-free `let a:uint8::` can form a typed name and uninitialized Place
-when that judgment's external-type premises hold. It creates no resident.
+when that judgment's external-type premises hold. Likewise `let a:R$` requires
+the external Pattern to determine a complete classifier. Bare `b` in `a:b`
+remains classifier-side extraction material without an initializer; without a
+delivered subject it supplies no classifier or typed Place. Successful typed-name
+formation creates no resident. The [names owner](symbol-world/names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings)
+defines ExternalClassifier and the separate lexical/qualified formation premises.
 
 ```text
 Interpret(_, S)=AnonymousPattern

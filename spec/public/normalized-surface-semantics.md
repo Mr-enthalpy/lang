@@ -631,8 +631,10 @@ pending and are not simulated by syntax flattening.
 The simple form let a:b=expr consumes R_Gamma(a:b,v,rho) with E(expr)=v,
 Type(v)=T, rho(a)=v and rho(b)=T at every adjacent universe rank. A bare b is a
 classifier-side binder. Existing external constraints enter as uint8:: or R$.
-Structural qualified P let name::path:t and initializer-free typed-name
-formation have their own name-formation premises. Norm preserves these source
+Structural qualified P let name::path:t has its own name-formation premises.
+Initializer-free lexical formation requires an explicit external classifier
+T:: or R$ determining a complete type; bare a:b without a subject supplies no
+classifier or typed Place. Norm preserves these source
 shapes; it performs no extraction or annotation-induced RHS conversion.
 
 ### Annotation is pattern-side / classifier-pattern material
@@ -1263,8 +1265,11 @@ routes introduce no implicit chain; saved refs retain their borrowed generation
 and cannot write after Close. Initial refs remain initialization-only. See the
 [type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-open-references-and-mut-confirmation).
 
-Initializer-free P let name:t and P let name::path:t create typed NameExpr
-using lexical and structural destinations respectively, with non-Object
+Bare a:b is joint extraction: without a delivered subject it supplies neither
+a classifier binding nor a typed Place. Initializer-free lexical P let name:T::
+or P let name:R$ requires an explicit external Pattern determining a complete
+declared Place type. Qualified P let name::path:t uses structural name formation.
+Each yields a typed NameExpr under its own formation premises, with non-Object
 Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
 not an existing type resident. P let name = rhs is a complete lexical binding
 with RHS type inference, so that default does not apply. Value use requires initialization; explicit

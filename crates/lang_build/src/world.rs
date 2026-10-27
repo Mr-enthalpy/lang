@@ -1088,10 +1088,12 @@ impl CompilationWorld {
                 )),
             )));
         }
-        if matches!(
-            slot.annotation.as_ref().map(|a| &a.pattern),
-            Some(NormPattern::Name { .. })
-        ) {
+        if !matches!(&slot.value_pattern, NormPattern::Nav { .. })
+            && matches!(
+                slot.annotation.as_ref().map(|a| &a.pattern),
+                Some(NormPattern::Name { .. })
+            )
+        {
             return Err(BuildError::single(Diagnostic::hard_error(
                 "joint classifier binding extraction consumer is unavailable",
                 Some(Provenance::from_norm_origin("joint let extraction", origin)),
@@ -2980,6 +2982,55 @@ mod initializer_consumer_boundary_tests {
             let error = harvest_source(&mut world, source).unwrap_err();
             assert!(format!("{error:?}").contains("joint classifier binding"));
             assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
+    fn initializer_free_heads_preserve_extraction_and_name_formation_boundaries() {
+        for (source, frontier) in [
+            (
+                "let value:uint8 = 7;",
+                "joint classifier binding extraction consumer is unavailable",
+            ),
+            (
+                "let value:uint8:: = 7;",
+                "typed NameExpr and Uninitialized Place formation consumer is unavailable",
+            ),
+            (
+                "let value:(uint8)$ = 7;",
+                "typed NameExpr and Uninitialized Place formation consumer is unavailable",
+            ),
+            (
+                "let value::uint8:uint8 = 7;",
+                "qualified NameExpr formation and destination Place consumer is unavailable",
+            ),
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            // Seed the syntax-neutral handoff from parsed syntax. Ordinary
+            // source let still requires an initializer; this tests its pending
+            // semantic formation boundary without adding parser support.
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty(), "{source}");
+            let mut program = lang_syntax::normalize_program(&parsed.program);
+            let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_mut_slice() else {
+                panic!("expected one binding: {source}");
+            };
+            slot.initializer = None;
+            let before = format!("{:?}", world.semantic_world);
+            let error = world
+                .harvest_program(
+                    world.package_root_node(),
+                    &program,
+                    Path::new("initializer-free-boundary.lang"),
+                )
+                .unwrap_err();
+            assert!(
+                format!("{error:?}").contains(frontier),
+                "{source}: {error:?}"
+            );
+            assert_eq!(format!("{:?}", world.semantic_world), before, "{source}");
         }
     }
 

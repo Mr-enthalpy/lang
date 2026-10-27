@@ -731,6 +731,13 @@ constraints and Hole deduction all consume R_Gamma. Hole presence does not
 change extraction into RHS transformation. Return and parameter positions
 apply the same relation to their actual delivered values.
 
+The bare classifier-side binder has this interpretation also in an
+initializer-free simple head. Without an extraction subject, a:b produces no
+valuation for b and no declared Place type. Initializer-free lexical typed-name
+formation requires explicit external classifier material, such as uint8:: or
+R$ determining a complete type. Qualified structural P let name::path:t follows
+the [name-formation judgment](../symbol-world/names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings).
+
 ```text
 Interpret(_,S)=AnonymousPattern
 Interpret(_,V)=universerank

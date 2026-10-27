@@ -213,7 +213,9 @@ replacement. File provenance grants no authority. Sibling files use independent
 common-snapshot overlays and ordinary unordered effect join; source actions
 within one file retain their sequence.
 
-Initializer-free typed names create a NameExpr and an Uninitialized Place;
+Initializer-free qualified structural names, and lexical names with an explicit
+external classifier T:: or R$ determining a complete type, create a NameExpr
+and an Uninitialized Place under the names owner's formation premises;
 explicit borrowing and ordinary first write initialize it with one-shot
 formation authority independent of declared const/mut. Complete let bindings
 infer their RHS type. Name production and NameExpr result shape are independent.
