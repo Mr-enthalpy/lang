@@ -104,6 +104,15 @@ explicit `DirectPatternChild` evidence and applies `StructuralDefault` before
 candidate enumeration. No product shape or observed-content carrier defines
 Pattern meaning.
 
+First-round Pattern queries distinguish Match, proved Mismatch and Unavailable,
+as defined by the [relation owner](pattern-relations-observation-and-extraction.md#classifier-observation-and-decided-relation-outcomes).
+Only proved mismatch removes a candidate on Pattern grounds. Missing actual
+classifier or named-Pattern observations must not shrink the candidate set to
+an otherwise matching binder/wildcard candidate. No preference, fallback,
+maxima, selected frame or body entry is established from such incomplete
+first-round constraints. An independently known arity/kind rejection remains
+a decided rejection rather than an unavailable Pattern query.
+
 Policy holes participate in this same joint relation:
 
     Pin_i(rho) = ElabIn(HorizonPolicy(P2), Delta_in_i(rho))

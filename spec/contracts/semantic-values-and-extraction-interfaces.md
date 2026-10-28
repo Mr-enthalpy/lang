@@ -25,6 +25,12 @@ execution/formation material is consumed within its common transaction;
 only ordinary declared semantic results cross InvocationResult.
 
 `R_Gamma(P,c,rho)` is the sole Pattern applicability and extraction relation.
+Argument transport retains unknown value/type role separately from observed
+presence/absence and unavailable classifier observation separately from known
+detached Pattern-coordinate evidence. Relation consumers return a proof,
+decided mismatch, or explicit unavailable/unsupported diagnostic. Missing
+actual or named classifier observations cannot supply negative applicability
+evidence or permit selection of another candidate.
 Already selected forced extraction/delivery consumes its proved total-root
 mismatch through the result owner's [one root conversion rule](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion).
 Applicability remains conversion-free; missing mismatch/root evidence is

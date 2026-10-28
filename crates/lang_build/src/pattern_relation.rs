@@ -386,9 +386,7 @@ fn solve_value_pattern(
             ..
         } => Ok(vec![PatternRelationDerivation::default()]),
         NormPattern::HoleRef { target, origin, .. } => {
-            let observation = extracted_type(arg).ok_or_else(|| {
-                inapplicable("Pattern hole could not observe an argument type", arg)
-            })?;
+            let observation = extracted_type(arg)?;
             let provenance = Provenance::from_norm_origin("Pattern hole extraction", origin);
             let hole = context.qualify_hole(*target, &provenance)?;
             let mut derivation = PatternRelationDerivation::default();
@@ -435,11 +433,24 @@ fn solve_annotation(
 ) -> Result<(Vec<PatternRelationDerivation>, SpecificityTuple), PatternRelationFailure> {
     match &annotation.pattern {
         pattern if external_pattern_name(pattern) == Some("type") => {
-            if arg.is_value || arg.pattern_coordinate.is_none() {
-                return Err(inapplicable(
-                    "type annotation expected a complete type value",
-                    arg,
-                ));
+            match &arg.value_class {
+                crate::RawArgValueClass::Value
+                | crate::RawArgValueClass::NonValue(crate::NonValueArgKind::ProductUnit) => {
+                    return Err(inapplicable(
+                        "type annotation expected a complete type value",
+                        arg,
+                    ));
+                }
+                crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection) => {
+                    extracted_type(arg)?;
+                }
+                crate::RawArgValueClass::UnknownExpression
+                | crate::RawArgValueClass::Unsupported { .. } => {
+                    return Err(unsupported(
+                        "argument value/type role observation is unavailable",
+                        Some(arg.provenance.clone()),
+                    ));
+                }
             }
             Ok((
                 vec![PatternRelationDerivation::default()],
@@ -458,13 +469,25 @@ fn solve_annotation(
                 &annotation.origin,
             )),
         )),
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("_") => Ok((
+            vec![PatternRelationDerivation::default()],
+            specificity_for_pattern(&annotation.pattern),
+        )),
+        NormPattern::Skeleton {
+            skeleton: NormSkeleton::Wildcard { .. },
+            ..
+        } => Ok((
+            vec![PatternRelationDerivation::default()],
+            specificity_for_pattern(&annotation.pattern),
+        )),
         pattern => {
-            if !arg.is_value || extracted_type(arg).is_none() {
+            if arg.value_class != crate::RawArgValueClass::Value {
                 return Err(unsupported(
                     "classifier observation at this universe rank is unavailable",
                     Some(arg.provenance.clone()),
                 ));
             }
+            extracted_type(arg)?;
             let derived = if let Some(name) = external_pattern_name(pattern) {
                 solve_named(name, arg, context)?
             } else {
@@ -586,13 +609,18 @@ fn solve_terms(
             Some(arg.provenance.clone()),
         ));
     }
-    let observation = extracted_type(arg)
-        .ok_or_else(|| inapplicable("Pattern could not observe an argument type", arg))?;
+    if terms
+        .iter()
+        .all(|term| matches!(term, RelationalTerm::Wildcard))
+    {
+        return Ok(vec![PatternRelationDerivation::default()]);
+    }
+    let observation = extracted_type(arg)?;
     let mut solutions = Vec::new();
     for term in terms {
         match term {
             RelationalTerm::Named(name) => {
-                if named_matches(name, observation, context) {
+                if named_matches(name, observation, context, &arg.provenance)? {
                     solutions.push(PatternRelationDerivation::default());
                 }
             }
@@ -621,9 +649,8 @@ fn solve_named(
     arg: &OverloadArgShape,
     context: &PatternRelationContext<'_>,
 ) -> Result<Vec<PatternRelationDerivation>, PatternRelationFailure> {
-    let observation = extracted_type(arg)
-        .ok_or_else(|| inapplicable("named Pattern could not observe an argument type", arg))?;
-    if named_matches(name, observation, context) {
+    let observation = extracted_type(arg)?;
+    if named_matches(name, observation, context, &arg.provenance)? {
         Ok(vec![PatternRelationDerivation::default()])
     } else {
         Err(inapplicable(
@@ -655,21 +682,33 @@ fn named_matches(
     name: &str,
     actual: ExtractedTypeObservation,
     context: &PatternRelationContext<'_>,
-) -> bool {
+    provenance: &Provenance,
+) -> Result<bool, PatternRelationFailure> {
     let Some(expected) = context.resolve_named.and_then(|resolve| resolve(name)) else {
-        return false;
+        return Err(unsupported(
+            "named Pattern observation is unavailable",
+            Some(provenance.clone()),
+        ));
     };
-    relate_external_classifier(
+    Ok(relate_external_classifier(
         expected,
         actual,
         Provenance::new("external Pattern relation"),
     )
-    .is_ok()
+    .is_ok())
 }
 
-fn extracted_type(arg: &OverloadArgShape) -> Option<ExtractedTypeObservation> {
-    Some(ExtractedTypeObservation {
-        pattern: arg.pattern_coordinate?,
+fn extracted_type(
+    arg: &OverloadArgShape,
+) -> Result<ExtractedTypeObservation, PatternRelationFailure> {
+    let pattern = arg.pattern_coordinate.ok_or_else(|| {
+        unsupported(
+            "required argument classifier observation is unavailable",
+            Some(arg.provenance.clone()),
+        )
+    })?;
+    Ok(ExtractedTypeObservation {
+        pattern,
         core: arg.type_core_observation,
     })
 }

@@ -46,7 +46,7 @@ fn typed_value(
         complete_type_observation: None,
         effective_view: None,
         semantic_value: None,
-        is_value: true,
+        value_class: lang_build::RawArgValueClass::Value,
         provenance: Provenance::new("typed relational argument"),
     }
 }
@@ -445,4 +445,178 @@ fn matching_sequence_terms_cannot_erase_external_or_unsupported_material() {
             ), "{material}, nested={nested}: a matching term is not permission to drop a required observation");
         }
     }
+}
+
+#[test]
+fn required_classifier_observation_distinguishes_unknown_from_detached_evidence() {
+    for source in [
+        "let f = <T>(self, let <> T) => { self; };",
+        "let f = <T>(self, x:T) => { x; };",
+        "let f = (self, x:known::) => { x; };",
+        "let f = (self, _ | known) => { self; };",
+        "let f = (self, _ known) => { self; };",
+    ] {
+        let closure = normalized_closure(source);
+        let resolve = |_name: &str| {
+            Some(lang_build::NamedPatternObservation {
+                pattern: PatternCoordinateId(10),
+                core: None,
+            })
+        };
+        let context =
+            PatternRelationContext::for_source_callable(&closure, callable_owner(), Some(&resolve))
+                .unwrap();
+        let params = closure
+            .head
+            .as_ref()
+            .unwrap()
+            .formal_frame()
+            .explicit_parameters;
+        let mut argument = typed_value(
+            support::type_lookup_fixture("classifier/observed"),
+            PatternCoordinateId(10),
+            CanonicalValueAddr(100),
+        );
+        // An observed detached coordinate remains a valid equality observation.
+        argument.type_core_observation = None;
+        assert!(solve_parameter_product_relation(params, &[argument.clone()], &context).is_ok());
+        argument.pattern_coordinate = None;
+        assert!(
+            matches!(
+                solve_parameter_product_relation(params, &[argument], &context),
+                Err(PatternRelationFailure::Unsupported(d))
+                    if d.message.contains("classifier observation is unavailable")
+            ),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn direct_named_query_requires_named_evidence_and_preserves_decided_mismatch() {
+    let closure = normalized_closure("let f = (self, x) => { x; };");
+    let mut params = closure
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters
+        .to_vec();
+    let lang_syntax::NormPatternElem::BindingSlot(slot) = &mut params[0] else {
+        panic!("binding slot");
+    };
+    slot.value_pattern = lang_syntax::NormPattern::Name {
+        name: "known".into(),
+        origin: slot.origin.clone(),
+    };
+    let mut argument = typed_value(
+        support::type_lookup_fixture("classifier/named"),
+        PatternCoordinateId(10),
+        CanonicalValueAddr(100),
+    );
+    let unavailable = |_name: &str| None;
+    for resolve in [
+        None,
+        Some(&unavailable as &dyn Fn(&str) -> Option<lang_build::NamedPatternObservation>),
+    ] {
+        let context =
+            PatternRelationContext::for_source_callable(&closure, callable_owner(), resolve)
+                .unwrap();
+        assert!(matches!(
+            solve_parameter_product_relation(&params, &[argument.clone()], &context),
+            Err(PatternRelationFailure::Unsupported(d))
+                if d.message.contains("named Pattern observation is unavailable")
+        ));
+    }
+    let resolve = |_name: &str| {
+        Some(lang_build::NamedPatternObservation {
+            pattern: PatternCoordinateId(10),
+            core: Some(CanonicalValueAddr(100)),
+        })
+    };
+    let context =
+        PatternRelationContext::for_source_callable(&closure, callable_owner(), Some(&resolve))
+            .unwrap();
+    assert!(solve_parameter_product_relation(&params, &[argument.clone()], &context).is_ok());
+    let mut unknown = argument.clone();
+    unknown.pattern_coordinate = None;
+    assert!(matches!(
+        solve_parameter_product_relation(&params, &[unknown], &context),
+        Err(PatternRelationFailure::Unsupported(d)) if d.message.contains("classifier observation")
+    ));
+    argument.type_core_observation = Some(CanonicalValueAddr(101));
+    assert!(matches!(
+        solve_parameter_product_relation(&params, &[argument], &context),
+        Err(PatternRelationFailure::Inapplicable(_))
+    ));
+}
+
+#[test]
+fn binding_discard_and_unconstrained_pack_do_not_require_classifier_observation() {
+    let mut argument = typed_value(
+        support::type_lookup_fixture("classifier/unused"),
+        PatternCoordinateId(10),
+        CanonicalValueAddr(100),
+    );
+    argument.value_class = lang_build::RawArgValueClass::UnknownExpression;
+    argument.pattern_coordinate = None;
+    argument.type_core_observation = None;
+    for parameter in ["x", "_", "_ _", "x:_", "...xs", "..._"] {
+        let closure = normalized_closure(&format!("let f = (self, {parameter}) => {{ self; }};"));
+        let context =
+            PatternRelationContext::for_source_callable(&closure, callable_owner(), None).unwrap();
+        assert!(
+            solve_parameter_product_relation(
+                closure
+                    .head
+                    .as_ref()
+                    .unwrap()
+                    .formal_frame()
+                    .explicit_parameters,
+                &[argument.clone()],
+                &context,
+            )
+            .is_ok(),
+            "{parameter}"
+        );
+    }
+}
+
+#[test]
+fn type_role_query_distinguishes_unknown_role_known_non_type_and_missing_classifier() {
+    use lang_build::{NonValueArgKind, RawArgValueClass};
+    let closure = normalized_closure("let f = (self, x:type::) => { x; };");
+    let context =
+        PatternRelationContext::for_source_callable(&closure, callable_owner(), None).unwrap();
+    let params = closure
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters;
+    let mut argument = typed_value(
+        support::type_lookup_fixture("classifier/type-role"),
+        PatternCoordinateId(10),
+        CanonicalValueAddr(100),
+    );
+    for role in [
+        RawArgValueClass::Value,
+        RawArgValueClass::NonValue(NonValueArgKind::ProductUnit),
+    ] {
+        argument.value_class = role;
+        assert!(matches!(
+            solve_parameter_product_relation(params, &[argument.clone()], &context),
+            Err(PatternRelationFailure::Inapplicable(_))
+        ));
+    }
+    argument.value_class = RawArgValueClass::UnknownExpression;
+    assert!(
+        matches!(solve_parameter_product_relation(params, &[argument.clone()], &context), Err(PatternRelationFailure::Unsupported(d)) if d.message.contains("role observation"))
+    );
+    argument.value_class = RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection);
+    assert!(solve_parameter_product_relation(params, &[argument.clone()], &context).is_ok());
+    argument.pattern_coordinate = None;
+    assert!(
+        matches!(solve_parameter_product_relation(params, &[argument], &context), Err(PatternRelationFailure::Unsupported(d)) if d.message.contains("classifier observation"))
+    );
 }

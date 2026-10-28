@@ -27,7 +27,9 @@ pub struct OverloadArgShape {
     pub complete_type_observation: Option<crate::CanonicalValueAddr>,
     pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     pub semantic_value: Option<SemanticValueId>,
-    pub is_value: bool,
+    /// Retained argument-kind observation, including UnknownExpression.
+    /// Unknown is neither a value fact nor an absent-Val1/type fact.
+    pub value_class: RawArgValueClass,
     pub provenance: Provenance,
 }
 
@@ -123,7 +125,7 @@ pub fn overload_args_from_classified_shape(
                 complete_type_observation: raw_arg.known_complete_type_observation,
                 effective_view: raw_arg.known_type_member_view.clone(),
                 semantic_value: raw_arg.known_semantic_value,
-                is_value: matches!(raw_arg.value_class, RawArgValueClass::Value),
+                value_class: raw_arg.value_class.clone(),
                 provenance: raw_arg.provenance.clone(),
             }
         })

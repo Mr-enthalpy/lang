@@ -556,6 +556,23 @@ recorded only after its actual consumer has positive and negative tests.
 | E-R05 | Region and dynamic branch | Region_K(n)=R(NamePosition_K(n)); no future-path enumeration by E | [Lifecycle](../design/lifetime/lifetime-policy-and-overload-boundary.md#current-name-position-and-delayed-e) | lifecycle substrate connected; source position wiring pending |
 | E-R06 | AOT/JIT/cache/precomputed tables | same E semantics; no Cartesian enumeration admission axiom | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | optimization consumer pending |
 
+## Classifier observation and first-round selection
+
+The [relation owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#classifier-observation-and-decided-relation-outcomes)
+and [selection owner](../design/patterns-overload/overload-resolution-design.md)
+define these scenarios. Connected evidence covers their observation/rejection
+boundary, not general source body completion or richer Pattern evaluation.
+
+| ID | Scenario | Required result | Connected evidence |
+|---|---|---|---|
+| OBS01 | Unknown expression against Hole, named alternative, sequence and type-role constraints, with a real wildcard competitor in either order | Unavailable before maxima, selection or CompileInstance formation; no publication | classifier_observation_boundary |
+| OBS02 | Same wildcard candidate without the constrained competitor | First-round selection can finish; later input/body consumer may be unavailable | classifier_observation_boundary |
+| OBS03 | Known actual classifier, successful named alternative and another unavailable named observation | Preserve unavailable obligation; no candidate selection in either order | classifier_observation_boundary |
+| OBS04 | Known unequal actual and expected classifier, with wildcard competitor | Reject only the proved mismatch; competitor may be selected; later selected failure is terminal | classifier_observation_boundary, relational_pattern_authority |
+| OBS05 | Hole/direct named/sequence query with no actual observation; named resolver absent or returning no observation | Explicit unavailable, distinct from known detached Pattern-coordinate equality | relational_pattern_authority |
+| OBS06 | Unknown role versus observed value/unit versus observed type in type-role query | Unknown role is unavailable; known non-type is mismatch; observed type still requires classifier evidence | relational_pattern_authority |
+| OBS07 | Plain binder, anonymous wildcard or unconstrained whole-remainder Pack with unobserved classifier | Bind/discard without requesting irrelevant classifier facts; shared Hole conflict remains a decided mismatch | relational_pattern_authority |
+
 ## Implementation handoff checklist
 
 Statuses describe the stated boundary only. A connected syntax or rejection
@@ -567,6 +584,7 @@ feature. Canonical owner definitions above are authoritative for both statuses.
 | Stage={compile,runtime}, independent open/close and mode | 规范已闭合、实现已连接 | policy_pair_semantics and stage_observation_boundary |
 | Adjacent-rank joint extraction, ordinary values through higher universes | 规范已闭合、消费者待连接 | J01–J03; classifier-side binders and Type(type) observation report unavailable before publication |
 | Explicit external classifier constraint in the connected literal/type subset | 规范已闭合、实现已连接 | relational_pattern_authority, world initializer boundary tests |
+| Classifier availability and decided first-round rejection | 规范已闭合、实现已连接 | OBS01–OBS07; classifier_observation_boundary and relational_pattern_authority; general relation queries retain their unavailable frontier |
 | Empty physical fragments, neutral inherited navigation and unavailable qualified-action publication boundary | 规范已闭合、实现已连接 | SRC01–SRC04; ordinary successful qualified source consumer remains pending |
 | Literal extraction without construction and explicit constructor identity/snapshot isolation | 规范已闭合、实现已连接 | LIT01–LIT04; constructor tests use explicit ordinary invocation |
 | RHS underscore and arbitrary polarity parity carriers | 规范已闭合、实现已连接 | joint_extraction_and_polarity, parser/Norm golden fixture |

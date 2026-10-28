@@ -717,6 +717,41 @@ Raw and normalized heads agree with the explicit form and retain InPlace.
 
 ## 10. Joint extraction across adjacent universe ranks
 
+### Classifier observation and decided relation outcomes
+
+Required classifier and named-Pattern observations have explicit availability:
+
+```text
+ObserveClassifier_K(c) = Available(o) | Unavailable(d)
+ObserveNamedPattern_K(n) = Available(P_n) | Unavailable(d)
+Query_Gamma(P,c) = Match(rho) | Mismatch(proof) | Unavailable(d)
+
+NeedsClassifier(P) and ObserveClassifier_K(c)=Unavailable(d)
+  => Query_Gamma(P,c)=Unavailable(d)
+```
+
+`Mismatch` requires observed contradictory facts, such as unequal known
+classifier observations or incompatible known valuations of one HoleBinderId.
+Missing classifier coordinates, unobserved argument value/type role and missing
+named-Pattern evidence provide no such proof. Unknown role is distinct from an
+observed absent-Val1 type. The detached known Pattern-coordinate observation
+used by world-free relation clients remains an explicit equality boundary;
+it is distinct from having no observation at all.
+
+Plain binders, anonymous wildcards and unconstrained whole-remainder Pack
+binders/discards request no classifier facts merely to bind or discard an
+argument. A relation that does request them, including a Hole or named
+alternative among other alternatives, must preserve unavailable evidence.
+Partial successful derivations do not erase that obligation.
+
+Only `Mismatch(proof)` supplies Pattern-based candidate rejection. An
+unavailable required query stops first-round selection before preference,
+maxima and sealing, even if another candidate already matches. Independently
+proved hard rejection, such as arity mismatch, can reject a candidate without
+requesting irrelevant observations.
+
+### Adjacent-rank extraction
+
 Let Gamma;K |- E(RHS)=>v and Type(v)=T. At every universe level:
 
 ```text

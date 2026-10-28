@@ -46,7 +46,9 @@ fn arg(index: usize) -> OverloadArgShape {
         complete_type_observation: None,
         effective_view: None,
         semantic_value: None,
-        is_value: false,
+        value_class: lang_build::RawArgValueClass::NonValue(
+            lang_build::NonValueArgKind::CoreTypeProjection,
+        ),
         provenance: lang_build::Provenance::new(format!("arg {index}")),
     }
 }
