@@ -41,6 +41,23 @@ enclosing scratch transaction; only a nonempty valid final demanded view may
 publish its semantic changes. A projection or result-class failure publishes
 neither an instance nor a produced resident and never reopens selection.
 
+Final satisfaction includes exact Mode on the actual delivered observations:
+
+```text
+S = project_p1(D.pair_query, actual_complete_result)
+MigrationDeliveryOK(k,S,D) iff
+  S is nonempty and DeclaredResultMode(k)=D.mode
+  and for every e in S: e.view.mode=DeclaredResultMode(k)
+```
+
+Successful delivery preserves S unchanged. Preference does not prove this
+predicate, and assigning the declaration's or demand's mode to an entry cannot
+satisfy it. Actual delivery Mode belongs to the result observation edge,
+independently of resident storage metadata and outward callable exposure.
+After unique selection, a known declaration/target contradiction may fail
+before body entry; it is terminal and does not reject candidates during A or
+reopen the family. Final completed material still requires the full predicate.
+
 Until active-boundary/closed-return/dependency-cone consumers are connected,
 reverse requests report unavailable before candidate execution or publication.
 Ordinary requests cannot authorize reverse migration.

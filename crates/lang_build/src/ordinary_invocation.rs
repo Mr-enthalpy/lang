@@ -765,8 +765,9 @@ fn invoke_policy_migration_in_scratch(
             trace: OrdinaryPipelineTrace::default(),
         });
     };
-    let mut demanded_view = project_p1(
-        &request.target_demand().pair_query,
+    let demanded_view = project_migration_delivery(
+        request,
+        invocation.selected.complete_result_view.mode,
         &invocation.complete_result,
     )
     .map_err(
@@ -775,19 +776,38 @@ fn invoke_policy_migration_in_scratch(
             trace: invocation.trace.clone(),
         },
     )?;
-    if demanded_view.is_empty() {
-        return Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed {
-            trace: invocation.trace,
-        });
-    }
-    let realized_mode = invocation.selected.complete_result_view.mode;
-    for entry in &mut demanded_view {
-        entry.view.mode = realized_mode;
-    }
     Ok(PolicyMigrationResult {
         invocation,
         demanded_view,
     })
+}
+
+/// Validate supplied completed observations before the enclosing transaction
+/// publishes. This is a delivery check, not an evaluator or producer witness.
+fn project_migration_delivery(
+    request: &PolicyMigrationRequest,
+    declared_mode: PolicyMode,
+    complete_result: &[PolicyResultEntry<SemanticValueRef, PatternCoordinateId>],
+) -> Result<Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>, Diagnostic> {
+    let delivered = project_p1(&request.target_demand().pair_query, complete_result)?;
+    if delivered.is_empty() {
+        return Err(Diagnostic::hard_error(
+            "migration final output projection is empty",
+            Some(request.provenance().clone()),
+        ));
+    }
+    let target_mode = request.target_demand().mode;
+    if declared_mode != target_mode
+        || delivered
+            .iter()
+            .any(|entry| entry.view.mode != declared_mode)
+    {
+        return Err(Diagnostic::hard_error(
+            format!("migration delivered Mode does not satisfy declaration and target: declared {declared_mode:?}, target {target_mode:?}"),
+            Some(request.provenance().clone()),
+        ));
+    }
+    Ok(delivered)
 }
 
 /// Read one resolved binding before candidate projection. A type projects only
@@ -1677,6 +1697,17 @@ fn invoke_target_values_in_scratch(
         }
     };
     trace.selected = Some(selected_candidate.call_entry_value);
+    if let Some(migration) = context.migration {
+        if selected_candidate.complete_result_view.mode != migration.request.target_demand().mode {
+            return Err(OrdinaryInvocationFailure::SelectedImplementation {
+                diagnostic: Diagnostic::hard_error(
+                    "selected migration declaration Mode does not satisfy target Mode",
+                    Some(provenance.clone()),
+                ),
+                trace,
+            });
+        }
+    }
     let legality =
         validate_dynamic_legality(semantic_world, &selected_candidate, &context, &provenance)
             .map_err(|diagnostic| OrdinaryInvocationFailure::DynamicLegality {
@@ -2648,5 +2679,114 @@ mod tests {
             result_pair_demand_admits(&absent, &P1Projection::Pair(absent.clone())),
             Some(true)
         );
+    }
+
+    fn supplied_migration_material() -> (
+        crate::SemanticWorld,
+        crate::SemanticValueRef,
+        crate::PatternCoordinateId,
+    ) {
+        let base = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let mut world = base.semantic_world().clone();
+        let ty = base.resolve_type_value("uint8").unwrap();
+        let pair = crate::declared_policy_view(Stage::Compile, PolicyMode::Const).pair;
+        let value = world
+            .install_plain_value(
+                ty,
+                pair,
+                crate::Provenance::new("supplied delivery observation fixture"),
+            )
+            .unwrap();
+        let pattern = world.value(value).unwrap().pattern;
+        (
+            world,
+            crate::SemanticValueRef {
+                id: value,
+                type_value: ty,
+            },
+            pattern,
+        )
+    }
+
+    #[test]
+    fn supplied_migration_delivery_requires_actual_declared_and_target_mode_without_retagging() {
+        let (world, value, pattern) = supplied_migration_material();
+        let before = format!("{world:?}");
+        // Supplied observations exercise the completion validator, not a source
+        // body producer or successful common-E migration.
+        for actual in [PolicyMode::Const, PolicyMode::Mut] {
+            for declared in [PolicyMode::Const, PolicyMode::Mut] {
+                for target in [PolicyMode::Const, PolicyMode::Mut] {
+                    let source_view =
+                        crate::declared_policy_view(Stage::Compile, PolicyMode::Const);
+                    let request = crate::PolicyMigrationRequest::new(
+                        source_view.clone(),
+                        crate::ResultPolicyDemand {
+                            pair_query: P1Projection::Pair(source_view.pair),
+                            mode: target,
+                        },
+                        value.type_value,
+                        value.id,
+                        crate::Provenance::new("complete Mode demand"),
+                    )
+                    .unwrap();
+                    let material = vec![crate::PolicyResultEntry {
+                        value: Some(value),
+                        pattern,
+                        view: crate::declared_policy_view(Stage::Compile, actual),
+                    }];
+                    let original = material.clone();
+                    let result = super::project_migration_delivery(&request, declared, &material);
+                    if actual == declared && declared == target {
+                        assert_eq!(result.unwrap(), original);
+                    } else {
+                        let error = result.unwrap_err();
+                        assert!(error
+                            .message
+                            .contains("Mode does not satisfy declaration and target"));
+                    }
+                    assert_eq!(material, original);
+                    assert_eq!(format!("{world:?}"), before);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn supplied_migration_delivery_rejects_empty_or_mixed_mode_projection() {
+        let (world, value, pattern) = supplied_migration_material();
+        let view = crate::declared_policy_view(Stage::Compile, PolicyMode::Mut);
+        let request = crate::PolicyMigrationRequest::new(
+            view.clone(),
+            crate::ResultPolicyDemand {
+                pair_query: P1Projection::Pair(view.pair.clone()),
+                mode: PolicyMode::Mut,
+            },
+            value.type_value,
+            value.id,
+            crate::Provenance::new("all delivered entries must match"),
+        )
+        .unwrap();
+        let entry = crate::PolicyResultEntry {
+            value: Some(value),
+            pattern,
+            view,
+        };
+        let mut wrong_mode = entry.clone();
+        wrong_mode.view.mode = PolicyMode::Const;
+        let mut wrong_stage = entry.clone();
+        wrong_stage.view = crate::declared_policy_view(Stage::Runtime, PolicyMode::Mut);
+        for material in [vec![], vec![wrong_stage], vec![entry, wrong_mode]] {
+            let original = material.clone();
+            assert!(
+                super::project_migration_delivery(&request, PolicyMode::Mut, &material).is_err()
+            );
+            assert_eq!(material, original);
+        }
+        assert!(world.compile_instances().next().is_none());
     }
 }

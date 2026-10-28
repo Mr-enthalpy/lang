@@ -1402,6 +1402,26 @@ depending on reverse migration. Unknown closure/continuation facts are unavailab
 Finally omitted mode still completes under open + known OpenHere, independently
 of these stage judgments. HoleOverride retains its independent replacement law.
 
+### Migration result Mode satisfaction
+
+Let k be the uniquely selected ordinary migration candidate, D the established
+complete target demand, and S the Pair-projected actual completed observations.
+Publication requires:
+
+```text
+S != empty
+DeclaredResultMode(k) = D.mode
+for every e in S: DeliveryMode(e) = DeclaredResultMode(k)
+```
+
+DeliveryMode is the actual result edge's Mode. It is distinct from stored
+resident metadata and is not manufactured from the selected declaration.
+All delivered entries must satisfy the predicate; filtering away an entry with
+the wrong Mode or retagging it is not satisfaction. Bp preference ranks already
+admissible candidates and supplies no output Mode proof. A known contradiction
+after unique selection can terminate before body entry. A later completed-mode
+failure likewise publishes nothing and does not reopen selection.
+
 ## 6. Observation horizons
 
 ```text
