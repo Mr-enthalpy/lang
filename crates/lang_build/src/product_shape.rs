@@ -180,7 +180,8 @@ pub struct RawArgShape {
     /// consumer uses that snapshot, rather than rereading this Place. Place
     /// identity is not itself a complete type value's normal-form coordinate.
     pub known_type_carrier_place: Option<ObjectPlaceId>,
-    /// Complete immutable `tau` snapshot carried by the resolved binding.
+    /// Complete immutable `tau` carried by a type argument, or the frozen
+    /// classifier tau of an ordinary argument.
     /// This is distinct from `known_type_observation`, which is the core-only
     /// coordinate used by Pattern structural identity.
     pub known_complete_type_observation: Option<CanonicalValueAddr>,

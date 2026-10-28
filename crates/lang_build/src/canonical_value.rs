@@ -1019,6 +1019,63 @@ mod tests {
     }
 
     #[test]
+    fn nested_named_product_registration_is_preserved_inside_ordered_outer_layer() {
+        let a = StructuralSchema::Atom(CanonicalPatternAtom::Type(
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(1)),
+        ));
+        let b = StructuralSchema::Atom(CanonicalPatternAtom::Type(
+            CanonicalTypeObservation::Observed(CanonicalValueAddr(2)),
+        ));
+        let named = StructuralSchema::unordered([
+            (CanonicalFullNavigation::from_component("a"), a.clone()),
+            (CanonicalFullNavigation::from_component("b"), b.clone()),
+        ])
+        .unwrap();
+        let reversed = StructuralSchema::unordered([
+            (CanonicalFullNavigation::from_component("b"), b.clone()),
+            (CanonicalFullNavigation::from_component("a"), a.clone()),
+        ])
+        .unwrap();
+        assert_eq!(named, reversed);
+        let outer = StructuralSchema::direct_child_layer(
+            &CanonicalFullNavigation::new(Vec::<String>::new()),
+            vec![
+                PatternChildInput {
+                    navigation: None,
+                    value: named.clone(),
+                },
+                PatternChildInput {
+                    navigation: None,
+                    value: a.clone(),
+                },
+            ],
+        )
+        .unwrap();
+        let flattened = StructuralSchema::direct_child_layer(
+            &CanonicalFullNavigation::new(Vec::<String>::new()),
+            vec![
+                PatternChildInput {
+                    navigation: None,
+                    value: a.clone(),
+                },
+                PatternChildInput {
+                    navigation: None,
+                    value: b,
+                },
+                PatternChildInput {
+                    navigation: None,
+                    value: a,
+                },
+            ],
+        )
+        .unwrap();
+        assert_ne!(
+            outer, flattened,
+            "registered named layer is not bare call-input syntax"
+        );
+    }
+
+    #[test]
     fn extraction_navigation_reaching_an_implicit_top_is_an_exact_global_path() {
         let completed = expand_extraction_navigation(
             &CanonicalFullNavigation::from_component("leaf"),

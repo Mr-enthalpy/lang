@@ -35,6 +35,12 @@ world receives runtime information. InputAdmissible, concrete readiness and
 endpoint capability remain independent. Bootstrap implementations provide candidate bodies and
 realization data; they do not decide the migration relation.
 
+Migration publication includes the final demanded projection. Candidate
+execution, complete result formation and project_p1 are evaluated in one
+enclosing scratch transaction; only a nonempty valid final demanded view may
+publish its semantic changes. A projection or result-class failure publishes
+neither an instance nor a produced resident and never reopens selection.
+
 Until active-boundary/closed-return/dependency-cone consumers are connected,
 reverse requests report unavailable before candidate execution or publication.
 Ordinary requests cannot authorize reverse migration.

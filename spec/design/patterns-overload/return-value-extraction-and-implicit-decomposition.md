@@ -93,38 +93,48 @@ executable behavior.
 
 ## Forced extraction and one root conversion
 
-Ordinary applicability asks whether R_Gamma(P,v,rho) holds. A selected forced
+Ordinary applicability asks whether R_Gamma(P,Content(v),rho) holds. Its
+proof-relevant query is Query_Gamma(P,Content(v)), with Match(rho), Mismatch(m)
+and Unavailable(d) outcomes as defined by the Pattern owner. A selected forced
 extraction or result-delivery consumer additionally requires that relation to
 complete. Write F for that established obligation and RootType(P) for its total
 outward Pattern root, including the whole Product when P is structured:
 
 ```text
 SelectedForcedConsumer(F,P,v)
-R_Gamma(P,v) = Match(rho)
+Query_Gamma(P,Content(v)) = Match(rho)
 ---------------------------------
 ForcedExtract_F(P,v) = Deliver(v,rho)
 
 SelectedForcedConsumer(F,P,v)
-R_Gamma(P,v) = ProvedRootMismatch(m)
+Query_Gamma(P,Content(v)) = Mismatch(m)
+TotalRootMismatch(m,P,v)
 RootType(P) = T                         -- actual complete root evidence
+ObserveInput_K(v,source_view) = Available(input)
 SelectOrdinaryConversion(v,T) = k       -- one ordinary candidate selection
-LegalPre(k) and Invoke(k,v) = v'
-R_Gamma(P,v',rho)
+Ready_K(k,input) and LegalPre_K(k,input) and Invoke(k,input) = v'
+R_Gamma(P,Content(v'),rho)
 ---------------------------------
 ForcedExtract_F(P,v) = Deliver(v',rho)
 ```
 
-The first relation consumes the original evaluated value. Only its proved
-mismatch authorizes the second rule. A different Pattern normal form alone is
+The first query consumes the original evaluated value. Only its proved
+total-root mismatch authorizes the second rule. A different Pattern normal form alone is
 not a mismatch proof. Conversion is at the total root, with ordinary declared
 Policy planes, input/output demand, capability, access and lifecycle premises.
+The source retains its actual binding/member Policy view. ObserveInput consumes
+that view at the current horizon; a SemanticValueId or stored payload supplies
+no visibility, readiness or migration authority. A runtime-only Val1 cannot be
+read by a compile converter. Required migration or continuation materialization
+uses its own authorized ordinary consumer; missing evidence is unavailable.
 Nested annotations, individual fields and Hole sites do not each request
 conversion. Bare classifier binders continue to extract rather than denote
 conversion targets.
 
 Unknown or unsupported relation evidence is unavailable, including an unknown
 root or actual classifier snapshot. A matched input invokes no converter.
-Ordinary overload applicability uses R_Gamma directly and does not enter this
+Unavailable(d) has no conversion branch. Ordinary overload applicability uses
+the same Query_Gamma/R_Gamma interface and does not enter this
 forced-consumer rule. After selecting k, failure of its Pre/body/result or the
 final root extraction is terminal; it neither retries conversion nor reopens
 the already selected producer or surrounding candidate family. The converted

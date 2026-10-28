@@ -73,6 +73,7 @@ const CONSTRUCT_OR_CONVERT_SELECTOR: &str = "<ConstructOrConvert>";
 /// binding. Ordinary applicability does not create or consume this evidence.
 struct ProvedScalarRootMismatch {
     source: crate::SemanticValueRef,
+    source_view: PolicyView,
     actual: crate::CompleteTypeValue,
     target: crate::CompleteTypeValue,
 }
@@ -1514,21 +1515,11 @@ impl CompilationWorld {
                 Some(provenance.clone()),
             )));
         }
-        if !matches!(
-            self.semantic_world
-                .value(mismatch.source.id)
-                .map(|v| &v.payload),
-            Some(crate::SemanticValuePayload::AbstractLiteral { .. })
-        ) {
-            return Err(BuildError::single(Diagnostic::hard_error(
-                "forced root conversion execution consumer is unavailable for this source family",
-                Some(provenance.clone()),
-            )));
-        }
         let (value, pattern, view) = self.invoke_literal_construction_request(
             namespace,
             crate::ConstructionRequest {
                 source: mismatch.source,
+                source_view: mismatch.source_view,
                 target: mismatch.target,
                 result_demand: demand.clone(),
                 family: crate::ConstructionFamily::ConstructOrConvert,
@@ -1585,9 +1576,23 @@ impl CompilationWorld {
                     Some(provenance.clone()),
                 ))
             })?;
+        let observed = crate::expose_policy_slice(
+            &crate::PolicyResultEntry {
+                value: Some(request.source),
+                pattern: source_object.pattern,
+                view: request.source_view.clone(),
+            },
+            crate::ObservationHorizon::OpenStatic,
+        );
+        if crate::read_value(&observed).is_none() || crate::read_pattern(&observed).is_none() {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "literal construction input observation is unavailable at compile horizon; migration/continuation consumer is required",
+                Some(provenance.clone()),
+            )));
+        }
         let crate::SemanticValuePayload::AbstractLiteral { .. } = source_object.payload else {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "literal construction source is not an abstract semantic literal",
+                "forced root conversion execution consumer is unavailable for this source family",
                 Some(provenance.clone()),
             )));
         };
@@ -1603,7 +1608,7 @@ impl CompilationWorld {
         let explicit_atom = crate::ProductAtom::SemanticValue {
             value: request.source.id,
             type_value: request.source.type_value,
-            mode: source_object.mode,
+            mode: request.source_view.mode,
             provenance: provenance.clone(),
         };
         let explicit_product =
@@ -1630,7 +1635,7 @@ impl CompilationWorld {
             pair_query: P1Projection::Pair(crate::compile_literal_policy()),
             mode: request.result_demand.mode,
         };
-        let explicit_modes = [source_object.mode];
+        let explicit_modes = [request.source_view.mode];
         let context = crate::OrdinaryInvocationContext::open_static(&explicit_modes)
             .with_result_policy_demand(construction_demand)
             .with_construction_target(&request.target)
@@ -2846,6 +2851,7 @@ fn prove_scalar_root_mismatch(
     .err()?;
     Some(ProvedScalarRootMismatch {
         source,
+        source_view: entry.view.clone(),
         actual: actual.clone(),
         target: target.clone(),
     })
@@ -3135,6 +3141,48 @@ mod initializer_consumer_boundary_tests {
             assert!(format!("{error:?}").contains(message), "{error:?}");
             assert_eq!(format!("{:?}", world.semantic_world), before);
         }
+    }
+
+    #[test]
+    fn runtime_source_view_cannot_supply_a_compile_root_converter() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(&mut world, "let seed=42;").unwrap();
+        let root = world.package_root_node();
+        let value = world
+            .semantic_world
+            .symbol_in_namespace(root, "seed")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        let object = world.semantic_world.value(value).unwrap().clone();
+        world
+            .semantic_world
+            .bind_ordinary_new(
+                root,
+                "runtime_source",
+                &[crate::PolicyResultEntry {
+                    value: Some(crate::SemanticValueRef {
+                        id: value,
+                        type_value: object.type_value,
+                    }),
+                    pattern: object.pattern,
+                    view: declared_policy_view(Stage::Runtime, PolicyMode::Const),
+                }],
+                None,
+                Provenance::new("runtime observation of stored literal"),
+            )
+            .unwrap();
+        let before = format!("{:?}", world.semantic_world);
+        let error =
+            harvest_source(&mut world, "let converted:uint16::=runtime_source;").unwrap_err();
+        assert!(
+            format!("{error:?}").contains("input observation is unavailable at compile horizon"),
+            "{error:?}"
+        );
+        assert_eq!(format!("{:?}", world.semantic_world), before);
+        assert!(world.semantic_world.compile_instances().next().is_none());
     }
 
     #[test]
@@ -4065,6 +4113,7 @@ mod literal_construction_tests {
             .expect("target resolves to complete tau");
         crate::ConstructionRequest {
             source,
+            source_view: declared_policy_view(Stage::Compile, PolicyMode::Const),
             target,
             result_demand: ResultPolicyDemand {
                 pair_query: P1Projection::Infer,

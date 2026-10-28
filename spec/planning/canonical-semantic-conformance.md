@@ -572,6 +572,27 @@ boundary, not general source body completion or richer Pattern evaluation.
 | OBS05 | Hole/direct named/sequence query with no actual observation; named resolver absent or returning no observation | Explicit unavailable, distinct from known detached Pattern-coordinate equality | relational_pattern_authority |
 | OBS06 | Unknown role versus observed value/unit versus observed type in type-role query | Unknown role is unavailable; known non-type is mismatch; observed type still requires classifier evidence | relational_pattern_authority |
 | OBS07 | Plain binder, anonymous wildcard or unconstrained whole-remainder Pack with unobserved classifier | Bind/discard without requesting irrelevant classifier facts; shared Hole conflict remains a decided mismatch | relational_pattern_authority |
+| OBS08 | Distinct lookup keys with equal canonical Core; constrained candidate versus wildcard | Both applicable; ordinary specificity selects the constrained candidate; selected failure cannot reopen | semantic_world equal_core_distinct_lookup_arguments_select_the_constrained_candidate |
+| OBS09 | Old/new ordinary values sharing one Pattern root and lookup key but holding unequal classifier Core | First-round external classifiers distinguish their frozen snapshots; no fresh registered-Core read | classifier_snapshot_boundary |
+| OBS10 | Missing carried complete type or frozen ordinary classifier | Unavailable before applicability maxima or instance admission; no publication | semantic_world unavailable_type_input_never_enters_the_selected_body_or_publishes_an_instance and equal_core_distinct_lookup_arguments_select_the_constrained_candidate |
+| OBS11 | Ordinary self has an explicit external classifier | Compare expected Core with actual frozen classifier Core; required unknown observation is unavailable | self annotation consumer uses ordinary classifier relation; equivalent-core selection regression covers explicit arguments |
+
+## Forced input observation and complete delivery publication
+
+The [forced extraction owner](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion)
+uses Query_Gamma outcomes; TotalRootMismatch refines Mismatch evidence and
+Unavailable grants no conversion. The [migration contract](../contracts/policy-migration.md)
+requires final demanded projection within the publication boundary.
+
+| ID | Scenario | Required result | Evidence / frontier |
+|---|---|---|---|
+| FC07 | Stored compile literal observed through a runtime source binding, forced scalar root mismatch | Compile converter cannot read the hidden Val1; unavailable, no instance or destination published | world runtime_source_view_cannot_supply_a_compile_root_converter |
+| FC08 | Forced conversion with an actual source observation edge | Preserve both Policy ranks and mode through input exposure; stored value mode cannot replace edge mode | ConstructionRequest source_view and existing literal conversion regressions; general Ready/source E pending |
+| MTX01 | Ordinary migration body/result followed by final project_p1 | Publish scratch only after valid result class and nonempty final demanded projection | enclosing migration scratch gate connected; coherent successful migration producer/projection-failure execution coverage pending |
+| MTX02 | Same source lookup key, held old Core and successor current Core, with distinct migration return classifiers | Migration A compares held source Core with declaration's resolved result Core; selected failure never publishes or retries | migration_snapshot_boundary |
+| PR14 | Named nested structural registration inside an ordered outer layer | Preserve the named layer and its layer-local order; it is not exposed bare call syntax | canonical_value nested_named_product_registration_is_preserved_inside_ordered_outer_layer |
+| PR15 | Saved ordinary object used as call input | One argument; source call-input normalization does not inspect or expand the object | classifier_snapshot_boundary; registered nested schema preservation is separately PR14 |
+| PR16 | Runtime-only collection input whose length is unavailable | No static length expansion or speculative arity selection; iteration consumer required | runtime saved-value observation gate connected; actual t * ω formation/pack? consumer pending |
 
 ## Implementation handoff checklist
 
@@ -584,7 +605,8 @@ feature. Canonical owner definitions above are authoritative for both statuses.
 | Stage={compile,runtime}, independent open/close and mode | 规范已闭合、实现已连接 | policy_pair_semantics and stage_observation_boundary |
 | Adjacent-rank joint extraction, ordinary values through higher universes | 规范已闭合、消费者待连接 | J01–J03; classifier-side binders and Type(type) observation report unavailable before publication |
 | Explicit external classifier constraint in the connected literal/type subset | 规范已闭合、实现已连接 | relational_pattern_authority, world initializer boundary tests |
-| Classifier availability and decided first-round rejection | 规范已闭合、实现已连接 | OBS01–OBS07; classifier_observation_boundary and relational_pattern_authority; general relation queries retain their unavailable frontier |
+| Classifier availability, frozen Core transport and decided first-round rejection | 规范已闭合、实现已连接 | OBS01–OBS10; classifier_observation_boundary, classifier_snapshot_boundary and relational_pattern_authority; general relation queries retain their unavailable frontier |
+| Forced-conversion input horizon and enclosing migration publication boundary | 规范已闭合、实现已连接 | FC07–FC08 and MTX01; general Ready/source E and successful migration producer coverage remain pending |
 | Empty physical fragments, neutral inherited navigation and unavailable qualified-action publication boundary | 规范已闭合、实现已连接 | SRC01–SRC04; ordinary successful qualified source consumer remains pending |
 | Literal extraction without construction and explicit constructor identity/snapshot isolation | 规范已闭合、实现已连接 | LIT01–LIT04; constructor tests use explicit ordinary invocation |
 | RHS underscore and arbitrary polarity parity carriers | 规范已闭合、实现已连接 | joint_extraction_and_polarity, parser/Norm golden fixture |

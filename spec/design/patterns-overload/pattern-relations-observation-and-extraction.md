@@ -738,6 +738,21 @@ observed absent-Val1 type. The detached known Pattern-coordinate observation
 used by world-free relation clients remains an explicit equality boundary;
 it is distinct from having no observation at all.
 
+World-connected ordinary arguments retain their formation-time frozen classifier
+tau. Available snapshots are transported before first-round queries; an
+unavailable observation remains unavailable until a query requires it, without
+adding a classifier premise to a plain binder/discard. Selected invocation input
+normalization separately checks the complete identity material it needs.
+Ordinary type equality observes Norm(Core(tau)), not the lookup key
+or a fresh read of the classifier's current Place. Named external classifier
+Patterns likewise observe the complete tau resolved for that occurrence.
+Equal Core under distinct lookup keys matches; a shared Pattern root under
+unequal Core snapshots does not. Required missing Core is Unavailable, without
+a Pattern-coordinate fallback. Detached coordinate equality is restricted to
+explicit world-free relation observations; it supplies no production typing
+authority. A second annotation filter cannot reject a proved relation using
+lookup-key identity.
+
 Plain binders, anonymous wildcards and unconstrained whole-remainder Pack
 binders/discards request no classifier facts merely to bind or discard an
 argument. A relation that does request them, including a Hole or named

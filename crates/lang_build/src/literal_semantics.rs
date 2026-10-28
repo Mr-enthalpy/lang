@@ -160,6 +160,8 @@ pub enum ConstructionFamily {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstructionRequest {
     pub source: crate::SemanticValueRef,
+    /// Actual source observation edge; stored value material grants no read.
+    pub source_view: crate::PolicyView,
     pub target: crate::CompleteTypeValue,
     pub result_demand: crate::ResultPolicyDemand,
     pub family: ConstructionFamily,

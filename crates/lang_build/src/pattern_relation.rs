@@ -701,6 +701,14 @@ fn named_matches(
 fn extracted_type(
     arg: &OverloadArgShape,
 ) -> Result<ExtractedTypeObservation, PatternRelationFailure> {
+    if arg.type_core_observation.is_none()
+        && (arg.semantic_value.is_some() || arg.complete_type_observation.is_some())
+    {
+        return Err(unsupported(
+            "required frozen classifier Core observation is unavailable",
+            Some(arg.provenance.clone()),
+        ));
+    }
     let pattern = arg.pattern_coordinate.ok_or_else(|| {
         unsupported(
             "required argument classifier observation is unavailable",

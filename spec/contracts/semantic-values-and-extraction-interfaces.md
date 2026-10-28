@@ -31,6 +31,13 @@ detached Pattern-coordinate evidence. Relation consumers return a proof,
 decided mismatch, or explicit unavailable/unsupported diagnostic. Missing
 actual or named classifier observations cannot supply negative applicability
 evidence or permit selection of another candidate.
+World-connected ordinary arguments transport available frozen complete classifier
+snapshots and their Core together before first-round applicability; required
+unavailable observations stop the query, while binders/discards add no classifier
+premise. Selected input identity normalization is an independent consumer. Lookup keys locate
+observations; they are not equality proofs. Source binding/member Policy views
+remain on forced-conversion inputs through horizon and Ready checks; stored
+payload availability supplies no authority to read a runtime view at compile.
 Already selected forced extraction/delivery consumes its proved total-root
 mismatch through the result owner's [one root conversion rule](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion).
 Applicability remains conversion-free; missing mismatch/root evidence is

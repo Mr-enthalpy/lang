@@ -1841,16 +1841,35 @@ impl SemanticWorld {
         self.complete_types.get(&whole)
     }
 
-    /// Project `Addr(Norm(Core(tau)))` from the complete type arguments of an
+    /// Project `Addr(Norm(Core(tau)))` from the held argument classifiers of an
     /// invocation without reading current residency or interning a new type.
     ///
-    /// Only `NonValue(CoreTypeProjection)` arguments receive an observation; other
-    /// argument classes keep their existing observations. All required
+    /// Ordinary values use their formation-time classifier; type projections
+    /// use their carried complete tau. Other classes retain their observations. All required
     /// observations are validated before any argument material is updated.
     pub fn attach_canonical_type_observations(
         &self,
         raw_args: &mut [RawArgShape],
         atoms: &[ProductAtom],
+    ) -> Result<(), crate::Diagnostic> {
+        self.attach_classifier_observations(raw_args, atoms, true)
+    }
+
+    /// First-round transport preserves unavailable ordinary classifiers until
+    /// a relation requests them. Selected input normalization requires them.
+    pub(crate) fn attach_available_type_observations(
+        &self,
+        raw_args: &mut [RawArgShape],
+        atoms: &[ProductAtom],
+    ) -> Result<(), crate::Diagnostic> {
+        self.attach_classifier_observations(raw_args, atoms, false)
+    }
+
+    fn attach_classifier_observations(
+        &self,
+        raw_args: &mut [RawArgShape],
+        atoms: &[ProductAtom],
+        require_value_classifier: bool,
     ) -> Result<(), crate::Diagnostic> {
         Self::validate_input_material(raw_args, atoms)?;
         let observations = raw_args
@@ -1860,15 +1879,31 @@ impl SemanticWorld {
                     raw.value_class,
                     RawArgValueClass::NonValue(NonValueArgKind::CoreTypeProjection)
                 ) {
-                    Ok(Some(self.complete_type_argument_observation(raw)?.core()))
+                    let complete = self.complete_type_argument_observation(raw)?;
+                    Ok(Some((complete.core(), complete.whole())))
+                } else if let Some(value) = raw.known_semantic_value {
+                    if !require_value_classifier && self.complete_type_for_value(value).is_none() {
+                        return Ok(None);
+                    }
+                    let complete = self.complete_type_for_value(value).ok_or_else(|| {
+                        crate::Diagnostic::hard_error(
+                            "argument's frozen complete classifier observation is unavailable",
+                            Some(raw.provenance.clone()),
+                        )
+                    })?;
+                    Ok(Some((complete.core(), complete.whole())))
                 } else {
                     Ok(None)
                 }
             })
             .collect::<Result<Vec<_>, crate::Diagnostic>>()?;
         for (raw, observed) in raw_args.iter_mut().zip(observations) {
-            if let Some(core) = observed {
+            if let Some((core, whole)) = observed {
                 raw.known_type_observation = Some(core);
+                raw.known_complete_type_observation = Some(whole);
+            } else if raw.known_semantic_value.is_some() {
+                raw.known_type_observation = None;
+                raw.known_complete_type_observation = None;
             }
         }
         Ok(())
@@ -5968,7 +6003,7 @@ mod tests {
                 Provenance::new("type input observation boundary"),
             )
             .unwrap_err();
-            let crate::OrdinaryInvocationFailure::ArgumentNormalization { diagnostic, trace } =
+            let crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, trace } =
                 failure
             else {
                 panic!("input normalization failure: {failure:?}");
@@ -5979,7 +6014,7 @@ mod tests {
                     .contains("complete type argument snapshot"),
                 "{diagnostic:?}"
             );
-            assert!(trace.selected.is_some());
+            assert!(trace.selected.is_none());
             assert!(trace.compile_instance.is_none());
             assert_eq!(format!("{world:?}"), before);
         }
@@ -6094,6 +6129,204 @@ mod tests {
             val2: BTreeMap::new(),
         }));
         assert_ne!(a3, a4);
+    }
+
+    #[test]
+    fn equal_core_distinct_lookup_arguments_select_the_constrained_candidate() {
+        let base = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let mut world = base.semantic_world().clone();
+        let root = base.package_root_node();
+        let owner = world.namespace_owner(root).unwrap();
+        let rank = world.type_rank().unwrap();
+        let policy = crate::declared_policy_view(crate::Stage::Compile, PolicyMode::Const);
+        let mut types = Vec::new();
+        for ordinal in 0..2 {
+            let lookup = world.allocate_type_lookup_index();
+            let (pattern, _) = world
+                .allocate_type_core(owner, Provenance::new("equivalent structural classifier"));
+            world.pattern_structural_norms.insert(
+                pattern,
+                StructuralSchema::Atom(CanonicalPatternAtom::Type(
+                    crate::CanonicalTypeObservation::Observed(CanonicalValueAddr(41)),
+                )),
+            );
+            world.types.insert(
+                lookup,
+                SemanticTypeValue {
+                    id: lookup,
+                    pattern,
+                    provenance: Provenance::new("classifier index"),
+                },
+            );
+            world.pattern_types.insert(pattern, lookup);
+            let declaration = world.intern_symbol(
+                root,
+                owner,
+                &format!("classifier_{ordinal}"),
+                Provenance::new("classifier declaration"),
+            );
+            world.pattern_declarations.insert(pattern, declaration);
+            if ordinal == 0 {
+                world
+                    .register_type_symbol(
+                        root,
+                        "Equal",
+                        SymbolId(880010),
+                        lookup,
+                        rank,
+                        None,
+                        policy.pair.clone(),
+                        Provenance::new("external classifier"),
+                    )
+                    .unwrap();
+            }
+            types.push(lookup);
+        }
+        let value = world
+            .install_plain_value(
+                types[1],
+                policy.pair.clone(),
+                Provenance::new("equivalent-core value"),
+            )
+            .unwrap();
+        let actual = world.complete_type_for_value(value).unwrap().clone();
+        let expected = world.observe_complete_type(types[0], None).unwrap();
+        assert_ne!(types[0], types[1]);
+        assert_eq!(expected.core(), actual.core());
+        let pattern = world.type_value(types[1]).unwrap().pattern;
+        world
+            .bind_ordinary_new(
+                root,
+                "arg",
+                &[crate::PolicyResultEntry {
+                    value: Some(crate::SemanticValueRef {
+                        id: value,
+                        type_value: types[1],
+                    }),
+                    pattern,
+                    view: policy.clone(),
+                }],
+                None,
+                Provenance::new("actual argument"),
+            )
+            .unwrap();
+        let family_lookup = world.allocate_type_lookup_index();
+        let (target, _, family_pattern) = world
+            .register_type_symbol(
+                root,
+                "choices",
+                SymbolId(880011),
+                family_lookup,
+                rank,
+                Some(root),
+                policy.pair.clone(),
+                Provenance::new("candidate union"),
+            )
+            .unwrap();
+        for (index, source) in [
+            "let f=(self,_):compile -> let r:uint8:: => (\"fallback\") delete;",
+            "let f=(self,x:Equal::):compile -> let r:uint8:: => (\"constrained\") delete;",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            let norm = lang_syntax::normalize_program(&parsed.program);
+            let NormForm::Let(NormDecl::Let { slot, .. }) = &norm.forms[0] else {
+                panic!("let")
+            };
+            let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() else {
+                panic!("closure")
+            };
+            let p2 = crate::direct_callable_body_policy(
+                closure.head.as_ref().unwrap().call_policy.as_ref().unwrap(),
+                Provenance::new("P2"),
+            )
+            .unwrap();
+            let view = crate::derive_function_object_view(
+                &p2,
+                &crate::FunctionObjectDeclarationPolicy {
+                    mode: PolicyMode::Const,
+                },
+            );
+            let member = world
+                .install_callable_fixture(
+                    root,
+                    &format!("candidate_{index}"),
+                    SymbolId(880012 + index as u64),
+                    closure,
+                    None,
+                    view,
+                    p2,
+                    None,
+                    DeclaredResultClass::OrdinaryValue,
+                    Provenance::new("candidate"),
+                )
+                .unwrap();
+            world
+                .admit_direct_type_member(
+                    family_pattern,
+                    family_pattern,
+                    format!("candidate_{index}"),
+                    member.function_value,
+                )
+                .unwrap();
+        }
+        let parsed = lang_syntax::parse("let r=arg choices;");
+        let norm = lang_syntax::normalize_program(&parsed.program);
+        let NormForm::Let(NormDecl::Let { slot, .. }) = &norm.forms[0] else {
+            panic!("let")
+        };
+        let call = crate::extract_single_call_site(slot.initializer.as_deref().unwrap()).unwrap();
+        let before = format!("{world:?}");
+        let failure = crate::invoke_resolved_binding_ordinary(
+            &mut world,
+            &[],
+            target,
+            &call,
+            &base.package_context(),
+            crate::OrdinaryInvocationContext::open_static(&[]),
+            Provenance::new("canonical Core selection"),
+        )
+        .unwrap_err();
+        let crate::OrdinaryInvocationFailure::SelectedDelete {
+            diagnostic, trace, ..
+        } = failure
+        else {
+            panic!("{failure:?}")
+        };
+        assert!(diagnostic.message.contains("constrained"), "{diagnostic:?}");
+        assert_eq!(trace.a_fully_admissible.len(), 2);
+        assert!(trace.selected.is_some());
+        assert_eq!(format!("{world:?}"), before);
+        world.value_complete_types.remove(&value);
+        let before = format!("{world:?}");
+        let failure = crate::invoke_resolved_binding_ordinary(
+            &mut world,
+            &[],
+            target,
+            &call,
+            &base.package_context(),
+            crate::OrdinaryInvocationContext::open_static(&[]),
+            Provenance::new("missing frozen classifier"),
+        )
+        .unwrap_err();
+        let crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, trace } =
+            failure
+        else {
+            panic!("{failure:?}")
+        };
+        assert!(
+            diagnostic.message.contains("classifier") && diagnostic.message.contains("unavailable")
+        );
+        assert!(trace.selected.is_none());
+        assert!(trace.compile_instance.is_none());
+        assert_eq!(format!("{world:?}"), before);
     }
 
     #[test]

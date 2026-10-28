@@ -654,6 +654,17 @@ pub fn invoke_policy_migration(
     request: &PolicyMigrationRequest,
     resolver_context: &ResolverContext,
 ) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
+    let mut scratch = semantic_world.clone();
+    let result = invoke_policy_migration_in_scratch(&mut scratch, request, resolver_context)?;
+    *semantic_world = scratch;
+    Ok(result)
+}
+
+fn invoke_policy_migration_in_scratch(
+    semantic_world: &mut SemanticWorld,
+    request: &PolicyMigrationRequest,
+    resolver_context: &ResolverContext,
+) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
     request
         .validate_connected_execution()
         .map_err(
@@ -1108,11 +1119,22 @@ fn invoke_target_values_in_scratch(
     ) {
         return Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace });
     }
-    let classified = classify_type_arguments_env_with_report(
+    let mut classified = classify_type_arguments_env_with_report(
         &arg_shape,
         &SemanticTypeEnv::new(semantic_world),
         resolver_context,
     );
+    semantic_world
+        .attach_available_type_observations(
+            &mut classified.classified_shape.raw_args,
+            &classified.classified_shape.flattened.atoms,
+        )
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )?;
     if classified.classified_shape.raw_args.iter().any(|arg| {
         matches!(
             arg.value_class,
@@ -1246,13 +1268,13 @@ fn invoke_target_values_in_scratch(
                                 });
                             }
                         };
-                        match same_type_core(
+                        match value_classifier_core(
                             semantic_world,
-                            migration.request.source_type(),
-                            declared_result_type,
+                            migration.source_value,
+                            &provenance,
                         ) {
-                            Ok(true) => {}
-                            Ok(false) => continue,
+                            Ok(actual_core) if actual_core == declared_result_type => {}
+                            Ok(_) => continue,
                             Err(diagnostic) => {
                                 return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
                                     diagnostic,
@@ -1268,12 +1290,16 @@ fn invoke_target_values_in_scratch(
                             .and_then(|resolution| {
                                 let pattern =
                                     world_view.type_value(resolution.represented_type)?.pattern;
-                                let core = resolution.complete_type_observation.and_then(|whole| {
-                                    world_view
-                                        .complete_type_by_whole_observation(whole)
-                                        .map(|complete| complete.core())
-                                });
-                                Some(crate::NamedPatternObservation { pattern, core })
+                                let core =
+                                    resolution.complete_type_observation.and_then(|whole| {
+                                        world_view
+                                            .complete_type_by_whole_observation(whole)
+                                            .map(|complete| complete.core())
+                                    })?;
+                                Some(crate::NamedPatternObservation {
+                                    pattern,
+                                    core: Some(core),
+                                })
                             })
                     };
                     let mut source_shape = match applicable_candidate_from_closure(
@@ -1300,26 +1326,6 @@ fn invoke_target_values_in_scratch(
                         &mut source_shape,
                         &entry,
                         &target,
-                        semantic_world,
-                        resolver_context,
-                        provenance.clone(),
-                    ) {
-                        match failure {
-                            CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
-                                first_diagnostic.get_or_insert(diagnostic);
-                                continue;
-                            }
-                            CandidateApplicabilityFailure::Unsupported(diagnostic) => {
-                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                                    diagnostic,
-                                    trace,
-                                });
-                            }
-                        }
-                    }
-                    if let Err(failure) = validate_explicit_value_type_annotations(
-                        &entry,
-                        &classified.classified_shape,
                         semantic_world,
                         resolver_context,
                         provenance.clone(),
@@ -1874,13 +1880,24 @@ fn invoke_target_values_in_scratch(
     };
     if let Some(migration) = context.migration {
         let source = migration.request.source_type();
-        let same_type =
-            same_type_core(semantic_world, source, result_type).map_err(|diagnostic| {
-                OrdinaryInvocationFailure::SelectedImplementation {
-                    diagnostic,
-                    trace: trace.clone(),
-                }
+        let same_type = (|| {
+            let returned_value = returned_value.ok_or_else(|| {
+                Diagnostic::hard_error(
+                    "same-Type migration result has no ordinary value classifier observation",
+                    Some(provenance.clone()),
+                )
             })?;
+            Ok::<_, Diagnostic>(
+                value_classifier_core(semantic_world, migration.source_value, &provenance)?
+                    == value_classifier_core(semantic_world, returned_value, &provenance)?,
+            )
+        })()
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )?;
         if !same_type {
             return Err(OrdinaryInvocationFailure::MigrationResultTypeChanged {
                 source,
@@ -2121,24 +2138,41 @@ fn apply_self_formal_structure(
     };
 
     if let Some(annotation) = &slot.annotation {
-        let expected = resolve_type_annotation_value(
-            &annotation.pattern,
-            semantic_world,
-            resolver_context,
-            provenance.clone(),
-        )
-        .map_err(CandidateApplicabilityFailure::Unsupported)?;
-        if expected != actual.type_value {
-            return Err(CandidateApplicabilityFailure::Inapplicable(
+        let expected = crate::pattern_relation::external_pattern_name(&annotation.pattern)
+            .and_then(|name| {
+                SemanticTypeEnv::new(semantic_world).resolve_type_name(name, resolver_context)
+            })
+            .and_then(|resolved| resolved.complete_type_observation)
+            .and_then(|whole| semantic_world.complete_type_by_whole_observation(whole));
+        let actual_type = semantic_world.complete_type_for_value(actual.id);
+        let (Some(expected), Some(actual_type)) = (expected, actual_type) else {
+            return Err(CandidateApplicabilityFailure::Unsupported(
                 Diagnostic::hard_error(
-                    format!(
-                        "ordinary self type applicability failed: expected {:?}, got {:?}",
-                        expected, actual.type_value
-                    ),
+                    "ordinary self classifier Core observation is unavailable",
                     Some(provenance),
                 ),
             ));
-        }
+        };
+        crate::pattern_relation::relate_external_classifier(
+            crate::NamedPatternObservation {
+                pattern: semantic_world
+                    .type_value(expected.lookup_key())
+                    .ok_or_else(|| {
+                        CandidateApplicabilityFailure::Unsupported(Diagnostic::hard_error(
+                            "ordinary self expected classifier Pattern observation is unavailable",
+                            Some(provenance.clone()),
+                        ))
+                    })?
+                    .pattern,
+                core: Some(expected.core()),
+            },
+            crate::ExtractedTypeObservation {
+                pattern: actual.pattern,
+                core: Some(actual_type.core()),
+            },
+            provenance,
+        )
+        .map_err(CandidateApplicabilityFailure::Inapplicable)?;
         self_specificity = self_specificity.add(SpecificityTuple {
             max_depth: 1,
             sum_depth: 1,
@@ -2151,29 +2185,31 @@ fn apply_self_formal_structure(
     Ok(())
 }
 
-fn resolve_type_annotation_value(
+fn resolve_annotation_core(
     pattern: &NormPattern,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     provenance: Provenance,
-) -> Result<TypeValueId, Diagnostic> {
+) -> Result<crate::CanonicalValueAddr, Diagnostic> {
     let name = match pattern {
         pattern if crate::pattern_relation::external_pattern_name(pattern).is_some() => {
             crate::pattern_relation::external_pattern_name(pattern).unwrap()
         }
         _ => {
             return Err(Diagnostic::hard_error(
-                "ordinary self type annotation requires a resolved type-name Pattern",
+                "result classifier annotation requires an external type Pattern",
                 Some(provenance),
             ));
         }
     };
     SemanticTypeEnv::new(semantic_world)
         .resolve_type_name(name, resolver_context)
-        .map(|resolution| resolution.represented_type)
+        .and_then(|resolution| resolution.complete_type_observation)
+        .and_then(|whole| semantic_world.complete_type_by_whole_observation(whole))
+        .map(|complete| complete.core())
         .ok_or_else(|| {
             Diagnostic::hard_error(
-                format!("ordinary self annotation `{name}` is not a resolved type value"),
+                format!("result classifier `{name}` Core observation is unavailable"),
                 Some(provenance.clone()),
             )
         })
@@ -2189,7 +2225,7 @@ fn declared_value_result_type(
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     provenance: Provenance,
-) -> Result<Option<TypeValueId>, Diagnostic> {
+) -> Result<Option<crate::CanonicalValueAddr>, Diagnostic> {
     let Some(annotation) = closure
         .head
         .as_ref()
@@ -2204,7 +2240,7 @@ fn declared_value_result_type(
     ) {
         return Ok(None);
     }
-    resolve_type_annotation_value(
+    resolve_annotation_core(
         &annotation.pattern,
         semantic_world,
         resolver_context,
@@ -2213,81 +2249,20 @@ fn declared_value_result_type(
     .map(Some)
 }
 
-fn same_type_core(
-    semantic_world: &mut SemanticWorld,
-    left: TypeValueId,
-    right: TypeValueId,
-) -> Result<bool, Diagnostic> {
-    let left = semantic_world.canonical_registered_type_core_observation_address(left)?;
-    let right = semantic_world.canonical_registered_type_core_observation_address(right)?;
-    Ok(left == right)
-}
-
-fn validate_explicit_value_type_annotations(
-    entry: &OrdinaryCallEntry,
-    actuals: &ArgProductShape,
+fn value_classifier_core(
     semantic_world: &SemanticWorld,
-    resolver_context: &ResolverContext,
-    provenance: Provenance,
-) -> Result<(), CandidateApplicabilityFailure> {
-    let Some(head) = entry
-        .source_closure()
-        .and_then(|closure| closure.head.as_ref())
-    else {
-        return Ok(());
-    };
-    for (formal, actual) in head
-        .formal_frame()
-        .explicit_parameters
-        .iter()
-        .zip(&actuals.raw_args)
-    {
-        let NormPatternElem::BindingSlot(slot) = formal else {
-            continue;
-        };
-        let Some(annotation) = &slot.annotation else {
-            continue;
-        };
-        let is_type_rank_annotation = matches!(
-            &annotation.pattern,
-            pattern if crate::pattern_relation::external_pattern_name(pattern) == Some("type")
-        );
-        if is_type_rank_annotation
-            && matches!(
-                actual.value_class,
-                crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection)
+    value: SemanticValueId,
+    provenance: &Provenance,
+) -> Result<crate::CanonicalValueAddr, Diagnostic> {
+    semantic_world
+        .complete_type_for_value(value)
+        .map(|complete| complete.core())
+        .ok_or_else(|| {
+            Diagnostic::hard_error(
+                "frozen value classifier Core observation is unavailable",
+                Some(provenance.clone()),
             )
-        {
-            continue;
-        }
-        let expected = resolve_type_annotation_value(
-            &annotation.pattern,
-            semantic_world,
-            resolver_context,
-            provenance.clone(),
-        )
-        .map_err(CandidateApplicabilityFailure::Unsupported)?;
-        let Some(actual) = actual.known_first_order_type_value else {
-            return Err(CandidateApplicabilityFailure::Unsupported(
-                Diagnostic::hard_error(
-                    "ordinary value parameter requires an evaluated argument TypeValue",
-                    Some(provenance),
-                ),
-            ));
-        };
-        if expected != actual {
-            return Err(CandidateApplicabilityFailure::Inapplicable(
-                Diagnostic::hard_error(
-                    format!(
-                    "ordinary value parameter type applicability failed: expected {:?}, got {:?}",
-                    expected, actual
-                ),
-                    Some(provenance),
-                ),
-            ));
-        }
-    }
-    Ok(())
+        })
 }
 
 fn element_policy(element: &NormPatternElem) -> Option<&NormPolicySpec> {
