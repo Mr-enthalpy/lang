@@ -50,11 +50,23 @@ Merge_K(B_K(xs), B_K(ys)) = B_K(xs ++ ys)
 ```
 
 `Expose_K` and `Merge_K` describe contextual normalization of exposed material,
-not globally callable primitives. They apply at the same established source or
-Pattern layer. Ordinary expression results, explicit preserved nested layers
-and unresolved packed values retain their boundaries. Unit is an entry and is
-not silently erased. Thus `(a,(b,c))` retains its inner layer; an exposed source
-continuation still merges only its first following Product.
+not globally callable primitives. The established consumer determines which
+standard packaging is exposed. In particular, call input is a Product context:
+
+```text
+CallInput_K((a,(b,c))) = B_K(a,b,c)
+CallInput_K(((a,b),c)) = B_K(a,b,c)
+```
+
+These equations require the displayed standard `_ * ω` material to be actually
+available. Normalized syntax retains the nested source Products; call-input
+observation recursively exposes their standard packaging and merges the exposed
+entries. An ordinary expression barrier remains one expression until its result
+and applicable exposure are available. A non-standard structural layer needs its
+own admitted extraction; an unavailable runtime payload supplies no static shape.
+Unit is an entry and is not erased. Source-product continuation still merges
+only its first following Product; that source binding rule and subsequent
+contextual exposure are separate observations.
 
 The standard `_ * ω` packaging is automatically exposed and merged where the
 documented Product context requires it and the actual material is available.

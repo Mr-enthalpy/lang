@@ -252,7 +252,7 @@ fn terminal_any_unique_ambiguous_with_both_roles() {
 }
 
 #[test]
-fn expectation_field_function_resolves_object_role() {
+fn expectation_callable_resolves_object_role() {
     let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
 
@@ -270,12 +270,12 @@ fn expectation_field_function_resolves_object_role() {
         ),
     );
 
-    let field_id = delta.allocate_symbol_id();
+    let callable_id = delta.allocate_symbol_id();
     let namespace_id = delta.allocate_symbol_id();
-    let mut field_symbol = object_symbol(field_id, root, "ref", "field-function ref");
-    field_symbol.kind = SymbolKind::FieldFunction;
+    let mut callable_symbol = object_symbol(callable_id, root, "ref", "ordinary callable ref");
+    callable_symbol.kind = SymbolKind::Callable;
 
-    delta.symbols.insert(field_id, field_symbol);
+    delta.symbols.insert(callable_id, callable_symbol);
     delta.symbols.insert(
         namespace_id,
         namespace_symbol(namespace_id, root, "ref", ns_node, "namespace-subspace ref"),
@@ -283,9 +283,9 @@ fn expectation_field_function_resolves_object_role() {
     delta.child_links.push(ChildLink {
         parent: root,
         name: "ref".into(),
-        symbol: field_id,
+        symbol: callable_id,
         role: ChildNameRole::Object,
-        provenance: Provenance::new("field ref"),
+        provenance: Provenance::new("callable ref"),
     });
     delta.child_links.push(ChildLink {
         parent: root,
@@ -297,14 +297,14 @@ fn expectation_field_function_resolves_object_role() {
 
     let snapshot = snapshot
         .install_delta(delta)
-        .expect("field function + namespace-subspace coexists");
+        .expect("ordinary callable + namespace-subspace coexists");
 
     let context = ResolverContext::new(root);
     let symbol = snapshot
         .capability()
-        .resolve_str_with_expectation("ref", &context, ResolveExpectation::FieldFunction)
-        .expect("FieldFunction expectation resolves field function");
-    assert_eq!(symbol.kind, SymbolKind::FieldFunction);
+        .resolve_str_with_expectation("ref", &context, ResolveExpectation::Callable)
+        .expect("Callable expectation resolves ordinary callable");
+    assert_eq!(symbol.kind, SymbolKind::Callable);
 }
 
 #[test]

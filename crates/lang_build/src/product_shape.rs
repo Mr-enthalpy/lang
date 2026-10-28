@@ -7,7 +7,7 @@
 //! runtime ABI lowering, and **not** mechanical argument passing.
 //!
 //! Its job is to preserve and normalize product structure:
-//! - exposed Product nodes flatten in order;
+//! - available standard Product syntax material exposes/merges at call input;
 //! - Expression nodes are opaque barriers;
 //! - Unit is preserved;
 //! - provenance is preserved.
@@ -389,6 +389,8 @@ pub enum NonValueArgKind {
 }
 
 fn flatten_product(product: &NormProduct, atoms: &mut Vec<ProductAtom>) {
+    // Established call-input material context: recurse only through available
+    // standard Product syntax, without evaluating an expression's packed result.
     for element in &product.elements {
         match element {
             NormProductElem::Expr(NormExpr::Product(product)) => flatten_product(product, atoms),

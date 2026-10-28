@@ -160,10 +160,7 @@ pub fn prepare_candidate_from_fixture_symbol(
             mf.body_entry_policy.clone(),
             mf.return_object_policy.clone(),
         ),
-        SymbolPayload::FieldFunction(field) => (
-            field.callable_policy.body_entry_policy.clone(),
-            field.callable_policy.return_object_policy.clone(),
-        ),
+
         _ => panic!("fixture callee must carry a callable payload"),
     };
     prepare_callable_candidate_with_declared_planes(

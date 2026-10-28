@@ -58,6 +58,7 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Name and owner identity | Parent-linked owners, root-qualified Holes, name/Place/generation coordinates; declaration topology and actual Object navigation remain distinct | General NameValue/read, directory navigation through Objects, qualified formation and lexical Path aliases require ordinary Path consumers |
 | Applicability | R_Gamma proofs, Hole valuations and parameter preparation | Protected StructuralDefault, structural role families and richer extraction require consumers |
 | Universe classification | Explicit first-order external classifiers and unavailable higher-universe observation boundary | Adjacent-rank classifier extraction, including Type(type)=(1 type), requires the ordinary rank consumer |
+| Forced root extraction | Direct matching first; private actual scalar-root mismatch evidence and one selected ordinary literal conversion; final relation checked without recursive insertion | Compound/return roots and general conversion source families require their common E consumers; unknown evidence remains unavailable |
 | Policy | Explicit observation/demand/preference, migration and derived 2x2 capability views | Source deduction, operation-driven premises and full R_vis/C_sigma are separate obligations |
 | Policy rank chain | Shape-validated arbitrary-depth prefixes of absent* runtime* compile*, two-rank windows including absent:absent; runtime first-present and full-chain compile demand material | Actual higher-rank classifier evidence, mixed output Hole solving and reverse-dependent E remain unconnected; a prefix/target supplies no producer witness |
 | Selection | Exact receiver/call-entry enumeration, total demand, sealed selection and diagnostics | Unknown applicability cannot become fallback evidence; source completion requires common E |
@@ -126,6 +127,9 @@ nesting, Hole identity and parity. It supplies no Read, Stage change, borrow,
 mode, OpenHere or lifecycle fact. S type formation atomically publishes actual
 Val2 witnesses, registered roles and a complete type.
 
+Field/ADL consumers use ordinary semantic callable entries and actual struct
+helper registration, independently of graph rendering. General execution remains
+unavailable where those producers are not connected.
 struct preserves DirectPatternChild, ConstructEdge, ExtractEdge and FieldView
 while adding ordinary helpers. * selects ordinary type composition; *= performs
 checked read-transform-write without publishing partial state.

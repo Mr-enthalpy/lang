@@ -11,7 +11,8 @@ Object(x) = <Val1?(x), Pattern(x), Val2(x)>
 The [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md)
 defines the standard `(_ * ω)$` wrapper and `_ * ω` classifier Pattern.
 Bare Product material expands/merges contextually; actual repetition Val1
-contributes to complete identity. Syntax/material flattening supplies no
+contributes to complete identity. Call input is an established exposure context
+for available standard packaging, including nested source Products. Syntax/material flattening supplies no
 packed-value extraction or runtime length observation. Repetition formation,
 selected `pack?` and iteration consumers remain unavailable until their
 ordinary producer/Policy/Pre interfaces are connected. External S `_$` cannot
@@ -24,6 +25,10 @@ execution/formation material is consumed within its common transaction;
 only ordinary declared semantic results cross InvocationResult.
 
 `R_Gamma(P,c,rho)` is the sole Pattern applicability and extraction relation.
+Already selected forced extraction/delivery consumes its proved total-root
+mismatch through the result owner's [one root conversion rule](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion).
+Applicability remains conversion-free; missing mismatch/root evidence is
+unavailable. Selected conversion or final extraction failure never reopens.
 Its content input is the Object's `Val1?` and owned `Val2`. Structural
 extraction additionally requires explicit `DirectPatternChild` evidence and
 the `StructuralDefault` family filter.

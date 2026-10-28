@@ -1588,11 +1588,12 @@ availability question, not the owner of this semantic path.
 
 The frozen lexer continues to preserve spelling only. It does not choose
 width, signedness, precision, encoding, overflow behavior, or a machine type.
-External annotation Patterns constrain the actual classifier of the evaluated
-RHS through R_Gamma. A literal 1 has classifier integer, so uint32:: rejects
-that result. Concrete construction is a separately requested ordinary call;
-its output may then satisfy uint32::. The annotation contributes no call or
-replacement of the extraction subject.
+External annotation Patterns initially observe the actual classifier of the
+evaluated RHS through R_Gamma. A literal 1 has classifier integer, which does
+not directly match uint32::. In an already selected forced extraction, a proved
+root mismatch can request one ordinary conversion at the total outward Pattern
+root, followed by one extraction check. Matching results require no conversion;
+unknown evidence is unavailable. See the [forced extraction owner](../patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion).
 
 #### 4.1.1 `integer`
 
@@ -2455,8 +2456,9 @@ classifier material; a full external Path uint8:: or computed R$ supplies an
 existing Pattern. Deduction and explicit constraints consume the same R_Gamma.
 
 AsType(E)=E |> type denotes an explicitly selected ordinary conversion or
-validation. Annotation syntax supplies no implicit AsType action. Candidate
-applicability likewise introduces no conversion to repair a mismatch. An explicit
+validation. Annotation syntax supplies no unconditional AsType action. Candidate
+applicability introduces no conversion to repair a mismatch. Selected forced
+extraction consumes the result owner's proved-root-mismatch rule. An explicit
 operation retains its ordinary complete-type and rank-preservation premises.
 
 Initializer-free typed-name formation requires a known external classifier,

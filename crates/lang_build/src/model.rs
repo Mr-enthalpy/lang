@@ -67,7 +67,6 @@ pub enum SymbolKind {
     /// projection role, never the ontology or identity of the type itself.
     CompleteTypeProjection,
     Callable,
-    FieldFunction,
     /// An object-name slot without a specialized graph projection kind.
     Object,
 }
@@ -386,10 +385,9 @@ impl NamespaceGraphSymbol {
     pub fn child_name_role(&self) -> ChildNameRole {
         match self.kind {
             SymbolKind::Namespace => ChildNameRole::NamespaceSubspace,
-            SymbolKind::CompleteTypeProjection
-            | SymbolKind::Callable
-            | SymbolKind::FieldFunction
-            | SymbolKind::Object => ChildNameRole::Object,
+            SymbolKind::CompleteTypeProjection | SymbolKind::Callable | SymbolKind::Object => {
+                ChildNameRole::Object
+            }
         }
     }
 
@@ -410,7 +408,6 @@ pub enum SymbolPayload {
     },
     CompleteTypeProjection(CoreTypeProjection),
     Callable(CallableDeclaration),
-    FieldFunction(FieldFunctionProjection),
     /// No specialized graph projection is attached to this Symbol.
     None,
 }
@@ -453,39 +450,6 @@ pub struct TypeField {
     pub type_symbol_id: SymbolId,
     pub visibility: crate::structural_material::StructuralMemberVisibility,
     pub provenance: Provenance,
-}
-
-/// Concrete Policy views carried by callable payloads.
-///
-/// `body_entry_policy` records the body-entry observation plane; horizon
-/// visibility alone proves neither readiness nor execution legality.
-/// `return_object_policy` records the policy of the object produced by the
-/// callable. Neither field controls name resolution, which fixes binding
-/// identity before any resident facet observation.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CallablePolicyViews {
-    pub body_entry_policy: crate::policy_pair::PolicyView,
-    pub return_object_policy: crate::policy_pair::PolicyView,
-}
-
-/// Field-function projection generated under a type namespace.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldFunctionProjection {
-    pub owner_type_symbol_id: SymbolId,
-    pub field_name: String,
-    pub field_type_value: TypeValueId,
-    pub field_type_symbol_id: SymbolId,
-    pub projection: FieldProjection,
-    pub callable_policy: CallablePolicyViews,
-    pub provenance: Provenance,
-}
-
-/// Projection flavor for generated field functions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum FieldProjection {
-    Value,
-    Ref,
-    Share,
 }
 
 /// Callable declaration projection, not a semantic Object.
@@ -542,7 +506,6 @@ pub enum VerificationPrimitive {
     NamespaceKind,
     FieldNames,
     HasField,
-    FieldProjection,
     FieldOwner,
     FieldType,
     Policy,

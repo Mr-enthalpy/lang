@@ -103,12 +103,11 @@ pub use literal_semantics::{
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
 pub use model::{
-    BuiltinCallableImpl, CallableDeclaration, CallableImplementation, CallablePolicyViews,
-    ChildBucket, ChildLink, ChildNameRole, CoreTypeProjection, Diagnostic, DiagnosticSeverity,
-    FieldFunctionProjection, FieldProjection, NamespaceGraphSymbol, NamespaceNode, NamespaceNodeId,
-    NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta, SourceCallableSyntax,
-    SourceCategory, SymbolId, SymbolKind, SymbolPayload, TypeField, VerificationPrimitive,
-    VisibilityMetadata,
+    BuiltinCallableImpl, CallableDeclaration, CallableImplementation, ChildBucket, ChildLink,
+    ChildNameRole, CoreTypeProjection, Diagnostic, DiagnosticSeverity, NamespaceGraphSymbol,
+    NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance, ResolverCode, SemanticNameDelta,
+    SourceCallableSyntax, SourceCategory, SymbolId, SymbolKind, SymbolPayload, TypeField,
+    VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use ordinary_invocation::{

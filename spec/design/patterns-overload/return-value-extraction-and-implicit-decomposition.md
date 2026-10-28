@@ -91,6 +91,50 @@ PeelView(Norm(x)) = Norm(PeelView(x))
 These are future semantic requirements and are not claimed as current
 executable behavior.
 
+## Forced extraction and one root conversion
+
+Ordinary applicability asks whether R_Gamma(P,v,rho) holds. A selected forced
+extraction or result-delivery consumer additionally requires that relation to
+complete. Write F for that established obligation and RootType(P) for its total
+outward Pattern root, including the whole Product when P is structured:
+
+```text
+SelectedForcedConsumer(F,P,v)
+R_Gamma(P,v) = Match(rho)
+---------------------------------
+ForcedExtract_F(P,v) = Deliver(v,rho)
+
+SelectedForcedConsumer(F,P,v)
+R_Gamma(P,v) = ProvedRootMismatch(m)
+RootType(P) = T                         -- actual complete root evidence
+SelectOrdinaryConversion(v,T) = k       -- one ordinary candidate selection
+LegalPre(k) and Invoke(k,v) = v'
+R_Gamma(P,v',rho)
+---------------------------------
+ForcedExtract_F(P,v) = Deliver(v',rho)
+```
+
+The first relation consumes the original evaluated value. Only its proved
+mismatch authorizes the second rule. A different Pattern normal form alone is
+not a mismatch proof. Conversion is at the total root, with ordinary declared
+Policy planes, input/output demand, capability, access and lifecycle premises.
+Nested annotations, individual fields and Hole sites do not each request
+conversion. Bare classifier binders continue to extract rather than denote
+conversion targets.
+
+Unknown or unsupported relation evidence is unavailable, including an unknown
+root or actual classifier snapshot. A matched input invokes no converter.
+Ordinary overload applicability uses R_Gamma directly and does not enter this
+forced-consumer rule. After selecting k, failure of its Pre/body/result or the
+final root extraction is terminal; it neither retries conversion nor reopens
+the already selected producer or surrounding candidate family. The converted
+result is checked by R_Gamma once, without recursive insertion. Publication
+uses the enclosing common transaction; failed completion publishes no partial
+root or destination. General conversion execution requires its ordinary E
+consumer; unsupported families are explicitly unavailable.
+
+## One-layer extraction boundary
+
 Bare `?` exposes at most one admitted layer. It does not keep peeling until a target pattern
 is found, perform Error propagation, search for an extractor, or stand for
 arbitrary pattern matching. Leaves and Pattern normal forms are fixed points.

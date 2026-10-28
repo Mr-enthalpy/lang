@@ -69,6 +69,14 @@ struct ConnectedExistingResult {
 
 const CONSTRUCT_OR_CONVERT_SELECTOR: &str = "<ConstructOrConvert>";
 
+/// Internal evidence from the complete scalar root of an established forced
+/// binding. Ordinary applicability does not create or consume this evidence.
+struct ProvedScalarRootMismatch {
+    source: crate::SemanticValueRef,
+    actual: crate::CompleteTypeValue,
+    target: crate::CompleteTypeValue,
+}
+
 fn policy_let_target_demand(
     demand: &ResultPolicyDemand,
     source: &PolicyPair,
@@ -1308,20 +1316,20 @@ impl CompilationWorld {
             Some(name) => self.resolve_complete_annotation_type(namespace, name)?,
             None => None,
         };
-        assert_semantic_result_satisfies_annotation(
-            &self.semantic_world,
+        let exposed_material = self.complete_forced_binding_extraction(
+            namespace,
             external_constraint.as_ref(),
             slot.annotation.as_ref(),
-            &exposed.material,
+            exposed.material.clone(),
             complete_type_authority.as_ref(),
-            provenance.clone(),
+            demand,
+            &provenance,
         )?;
 
         let explicit_p1 = slot
             .policy
             .as_ref()
             .map(|_| &namespace_declaration.projection);
-        let exposed_material = exposed.material.clone();
         let pair_selected = match crate::elaborate_value_binding_p1(
             &exposed_material,
             explicit_p1,
@@ -1420,13 +1428,14 @@ impl CompilationWorld {
             Some(name) => self.resolve_complete_annotation_type(namespace, name)?,
             None => None,
         };
-        assert_semantic_result_satisfies_annotation(
-            &self.semantic_world,
+        let result = self.complete_forced_binding_extraction(
+            namespace,
             external_constraint.as_ref(),
             slot.annotation.as_ref(),
-            &result,
+            result,
             complete_type.as_ref(),
-            provenance.clone(),
+            demand,
+            &provenance,
         )?;
 
         let selected = self
@@ -1453,11 +1462,100 @@ impl CompilationWorld {
         .map(|_| ())
     }
 
+    /// Complete an established binding's forced extraction. Only a proved
+    /// mismatch of its entire scalar root can request one ordinary conversion.
+    fn complete_forced_binding_extraction(
+        &mut self,
+        namespace: NamespaceNodeId,
+        expected: Option<&crate::CompleteTypeValue>,
+        annotation: Option<&NormAnnotation>,
+        material: Vec<
+            crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>,
+        >,
+        semantic_complete_type: Option<&crate::CompleteTypeValue>,
+        demand: &ResultPolicyDemand,
+        provenance: &Provenance,
+    ) -> Result<
+        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
+        BuildError,
+    > {
+        let initial_failure = match assert_semantic_result_satisfies_annotation(
+            &self.semantic_world,
+            expected,
+            annotation,
+            &material,
+            semantic_complete_type,
+            provenance.clone(),
+        ) {
+            Ok(()) => return Ok(material),
+            Err(failure) => failure,
+        };
+        // The diagnostic itself is not conversion authority. Re-prove an
+        // exact root mismatch from actual complete observations; unsupported
+        // relations, compound roots and absent observations supply no witness.
+        let Some(mismatch) =
+            prove_scalar_root_mismatch(&self.semantic_world, expected, annotation, &material)
+        else {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                format!(
+                    "forced root extraction/conversion evidence is unavailable: {}",
+                    initial_failure.diagnostics[0].message
+                ),
+                Some(provenance.clone()),
+            )));
+        };
+        if self
+            .semantic_world
+            .complete_type_for_value(mismatch.source.id)
+            != Some(&mismatch.actual)
+        {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "forced root conversion needs the current actual classifier snapshot",
+                Some(provenance.clone()),
+            )));
+        }
+        if !matches!(
+            self.semantic_world
+                .value(mismatch.source.id)
+                .map(|v| &v.payload),
+            Some(crate::SemanticValuePayload::AbstractLiteral { .. })
+        ) {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "forced root conversion execution consumer is unavailable for this source family",
+                Some(provenance.clone()),
+            )));
+        }
+        let (value, pattern, view) = self.invoke_literal_construction_request(
+            namespace,
+            crate::ConstructionRequest {
+                source: mismatch.source,
+                target: mismatch.target,
+                result_demand: demand.clone(),
+                family: crate::ConstructionFamily::ConstructOrConvert,
+            },
+            provenance,
+        )?;
+        let converted = vec![crate::PolicyResultEntry {
+            value: Some(value),
+            pattern,
+            view,
+        }];
+        // Check once without recursively invoking this completion rule.
+        assert_semantic_result_satisfies_annotation(
+            &self.semantic_world,
+            expected,
+            annotation,
+            &converted,
+            None,
+            provenance.clone(),
+        )?;
+        Ok(converted)
+    }
+
     /// Select and execute one abstract-to-concrete constructor from the exact
     /// target tau's captured associated Val2. The target is slot 0 and the abstract source is
     /// the sole explicit argument (slot 1).  Selection is sealed before the
     /// builtin/custom body runs, so realization failure cannot retry.
-    #[cfg(test)]
     fn invoke_literal_construction_request(
         &mut self,
         namespace: NamespaceNodeId,
@@ -2710,7 +2808,50 @@ fn result_policy_from_closure(
     direct_callable_body_policy(annotation, provenance)
 }
 
-/// Check an explicitly supplied external result Pattern.
+fn prove_scalar_root_mismatch(
+    world: &SemanticWorld,
+    expected: Option<&crate::CompleteTypeValue>,
+    annotation: Option<&NormAnnotation>,
+    material: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
+) -> Option<ProvedScalarRootMismatch> {
+    let target = expected?;
+    let annotation = annotation?;
+    // Only this connected full external scalar-root shape is proved here.
+    // A nested annotation or a multi-entry result is not the total root.
+    crate::pattern_relation::external_pattern_name(&annotation.pattern)?;
+    if is_type_annotation(Some(annotation)) {
+        return None;
+    }
+    let [entry] = material else {
+        return None;
+    };
+    let source = entry.value?;
+    if world.value(source.id)?.type_value != source.type_value {
+        return None;
+    }
+    let actual = world.complete_type_for_value(source.id)?;
+    let target_pattern = world.type_value(target.lookup_key())?.pattern;
+    let actual_pattern = world.type_value(actual.lookup_key())?.pattern;
+    crate::pattern_relation::relate_external_classifier(
+        crate::NamedPatternObservation {
+            pattern: target_pattern,
+            core: Some(target.core()),
+        },
+        crate::ExtractedTypeObservation {
+            pattern: actual_pattern,
+            core: Some(actual.core()),
+        },
+        Provenance::new("proved forced scalar root mismatch"),
+    )
+    .err()?;
+    Some(ProvedScalarRootMismatch {
+        source,
+        actual: actual.clone(),
+        target: target.clone(),
+    })
+}
+
+/// Check an explicitly supplied external result Pattern without conversion.
 fn assert_semantic_result_satisfies_annotation(
     world: &SemanticWorld,
     expected: Option<&crate::CompleteTypeValue>,
@@ -2780,7 +2921,6 @@ fn projection_matches_expectation(
         ResolveExpectation::NamespaceCapableParent => symbol.namespace_node().is_some(),
         ResolveExpectation::CoreTypeProjection => symbol.kind == SymbolKind::CompleteTypeProjection,
         ResolveExpectation::Callable => symbol.kind == SymbolKind::Callable,
-        ResolveExpectation::FieldFunction => symbol.kind == SymbolKind::FieldFunction,
     }
 }
 
@@ -2927,15 +3067,138 @@ mod initializer_consumer_boundary_tests {
             crate::SemanticValuePayload::AbstractLiteral { .. }
         ));
         assert!(world.semantic_world.compile_instances().next().is_none());
-        for source in [
-            "let rejected:uint16:: = source;",
-            "let rejected:uint16:: = 42;",
+    }
+
+    #[test]
+    fn forced_root_mismatch_converts_once_and_preserves_the_initial_value() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(&mut world, "let source=42;").unwrap();
+        let root = world.package_root_node();
+        let source = world
+            .semantic_world
+            .symbol_in_namespace(root, "source")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        let original = world.semantic_world.value(source).unwrap().clone();
+        harvest_source(
+            &mut world,
+            "let converted:uint16::=source; let direct:uint16::=42;",
+        )
+        .unwrap();
+        assert_eq!(world.semantic_world.value(source).unwrap(), &original);
+        let target = world.resolve_type_value("uint16").unwrap();
+        for name in ["converted", "direct"] {
+            let value = world
+                .semantic_world
+                .symbol_in_namespace(root, name)
+                .unwrap()
+                .ordinary_value()
+                .unwrap();
+            assert_eq!(
+                world.semantic_world.value(value).unwrap().type_value,
+                target
+            );
+            assert!(matches!(
+                world.semantic_world.value(value).unwrap().payload,
+                crate::SemanticValuePayload::ConstructedLiteral { .. }
+            ));
+        }
+        assert_eq!(
+            world.semantic_world.compile_instances().count(),
+            1,
+            "equal canonical root conversion inputs reuse the selected compile instance"
+        );
+    }
+
+    #[test]
+    fn forced_root_conversion_failure_or_missing_consumer_publishes_nothing() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(&mut world, "let concrete:uint8::=42;").unwrap();
+        for (source, message) in [
+            ("let bad:real::=42;", "no semantic target values"),
+            (
+                "let bad:uint16::=concrete;",
+                "forced root conversion execution consumer is unavailable",
+            ),
+            (
+                "let bad:(uint16)$=42;",
+                "forced root extraction/conversion evidence is unavailable",
+            ),
         ] {
             let before = format!("{:?}", world.semantic_world);
             let error = harvest_source(&mut world, source).unwrap_err();
-            assert!(format!("{error:?}").contains("classifier"), "{error:?}");
+            assert!(format!("{error:?}").contains(message), "{error:?}");
             assert_eq!(format!("{:?}", world.semantic_world), before);
         }
+    }
+
+    #[test]
+    fn unknown_or_partial_root_material_cannot_authorize_conversion() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let root = world.package_root_node();
+        let integer = world.resolve_type_value("integer").unwrap();
+        let source = world
+            .semantic_world
+            .install_abstract_literal_value(
+                crate::AbstractLiteralFamily::Integer,
+                crate::AbstractLiteralExactValue::Integer("42".into()),
+                integer,
+                crate::compile_literal_policy(),
+                Provenance::new("known root material"),
+            )
+            .unwrap();
+        let entry = crate::PolicyResultEntry {
+            value: Some(crate::SemanticValueRef {
+                id: source,
+                type_value: integer,
+            }),
+            pattern: world.semantic_world.value(source).unwrap().pattern,
+            view: declared_policy_view(Stage::Compile, PolicyMode::Const),
+        };
+        let target = world
+            .resolve_complete_annotation_type(root, "uint16")
+            .unwrap()
+            .unwrap();
+        let parsed = lang_syntax::parse("let x:uint16::=42;");
+        let program = lang_syntax::normalize_program(&parsed.program);
+        let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_slice() else {
+            panic!("binding");
+        };
+        let mut unknown = entry.clone();
+        unknown.value.as_mut().unwrap().id = crate::SemanticValueId(u64::MAX);
+        let demand = ResultPolicyDemand {
+            pair_query: P1Projection::Infer,
+            mode: PolicyMode::Const,
+        };
+        for (root_type, material) in [
+            (None, vec![entry.clone()]),
+            (Some(&target), vec![unknown]),
+            (Some(&target), vec![entry.clone(), entry.clone()]),
+        ] {
+            let before = format!("{:?}", world.semantic_world);
+            let error = world
+                .complete_forced_binding_extraction(
+                    root,
+                    root_type,
+                    slot.annotation.as_ref(),
+                    material,
+                    None,
+                    &demand,
+                    &Provenance::new("incomplete total root"),
+                )
+                .unwrap_err();
+            assert!(format!("{error:?}")
+                .contains("forced root extraction/conversion evidence is unavailable"));
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+        assert!(world.semantic_world.compile_instances().next().is_none());
     }
 
     #[test]
@@ -3125,10 +3388,22 @@ mod initializer_consumer_boundary_tests {
             .semantic_world
             .associated_values_in_place(new.place, "later")
             .is_none());
-        let before = format!("{:?}", world.semantic_world);
-        let error = harvest_source(&mut world, "let value:U:: = 7;").unwrap_err();
-        assert!(format!("{error:?}").contains("classifier"));
-        assert_eq!(format!("{:?}", world.semantic_world), before);
+        harvest_source(&mut world, "let value:U:: = 7;").unwrap();
+        let value = world
+            .semantic_world
+            .symbol_in_namespace(namespace, "value")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        assert_eq!(
+            world
+                .semantic_world
+                .complete_type_for_value(value)
+                .unwrap()
+                .whole(),
+            complete.whole(),
+            "forced conversion consumes the held root snapshot, not its later members"
+        );
         assert_eq!(
             world
                 .resolve_complete_annotation_type(namespace, "U")
@@ -3896,6 +4171,52 @@ mod literal_construction_tests {
             .message
             .contains("no semantic target values"));
         assert_eq!(constructed_count(&world), before);
+    }
+
+    #[test]
+    fn forced_root_selected_conversion_failure_never_reopens_or_publishes() {
+        let mut world = world();
+        let target = world.resolve_type_value("real").unwrap();
+        add_test_candidate(
+            &mut world,
+            target,
+            PolicyMode::Const,
+            crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
+        );
+        let complete = world
+            .semantic_world
+            .observe_complete_type(target, None)
+            .unwrap();
+        let rank = world.semantic_world.type_rank().unwrap();
+        world
+            .semantic_world
+            .register_type_symbol_with_complete_type(
+                world.package_root_node(),
+                "FailRoot",
+                crate::SymbolId(999321),
+                target,
+                Some(complete.whole()),
+                rank,
+                None,
+                crate::compile_literal_policy(),
+                Provenance::new("explicit failing root conversion fixture"),
+            )
+            .unwrap();
+        let parsed = lang_syntax::parse("let result:FailRoot::=42;");
+        assert!(parsed.diagnostics.is_empty());
+        let before = format!("{:?}", world.semantic_world);
+        let error = world
+            .harvest_program(
+                world.package_root_node(),
+                &lang_syntax::normalize_program(&parsed.program),
+                Path::new("forced-conversion-failure.lang"),
+            )
+            .unwrap_err();
+        assert!(
+            format!("{error:?}").contains("selected literal construction candidate failed"),
+            "{error:?}"
+        );
+        assert_eq!(format!("{:?}", world.semantic_world), before);
     }
 
     #[test]

@@ -37,7 +37,7 @@ fn expression_barrier_blocks_product_flattening_from_source_fixture() {
 }
 
 #[test]
-fn nested_call_source_local_flatten_and_expression_barrier_are_not_contradictory() {
+fn call_input_exposes_available_standard_packaging_and_keeps_expression_barriers() {
     let shape_left = fixture_arg_product_shape("product_exposed_left.lang");
     assert_eq!(
         atom_labels(&shape_left.flattened.atoms),

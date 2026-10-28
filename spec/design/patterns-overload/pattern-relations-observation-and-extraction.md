@@ -193,7 +193,7 @@ At leaf positions a field accessor may perform a two-level descent. It is
 therefore not a global identity:
 
 ```text
-FieldFunction ≡ Extractor     -- NOT a global identity
+FieldObservation(s) != WholeExtraction(P,x,rho) in general
 ```
 
 The existing `ConstructEdge`, `ExtractEdge`, and `FieldView` ontology
@@ -739,11 +739,12 @@ Interpret(A,S) = P_A
 R_Gamma(a:A,v,rho) observes Type(v) through P_A
 ```
 
-The extraction subject is exactly v, with its actual value identity and
+The initial extraction subject is exactly v, with its actual value identity and
 classifier snapshot. For example, 42 first denotes an integer; uint16:: does
-not match that classifier merely because an ordinary integer-to-uint16
-constructor exists. A separately written ordinary construction call may produce
-a uint16 result, which can then satisfy the external Pattern.
+not match that classifier merely because an integer-to-uint16 constructor
+exists. An already selected forced extraction/return-delivery consumer may use
+the [single root conversion rule](return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion)
+after proved root mismatch. Applicability itself remains conversion-free.
 
 The bare classifier-side binder has this interpretation also in an
 initializer-free simple head. Without an extraction subject, a:b produces no

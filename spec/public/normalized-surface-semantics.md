@@ -278,6 +278,13 @@ The notation is normalized, not raw source: `(x)` here is a normalized source
 Product, and a nested `(a, b)` is a preserved product element, not a flattened
 list.
 
+This is syntax preservation. At the established call-input Product context,
+available standard `_ * ω` packaging is recursively exposed and merged by the
+[Product algebra](../design/patterns-overload/product-repetition-and-unpacking.md#2-bare-product-and-context).
+Thus the argument-material observation of `(a,(b,c)) |> f` has entries a,b,c.
+Expression barriers, unit positions and unavailable runtime shape still require
+their ordinary observations; parser/Norm does not execute unpacking.
+
 ## 7. Operator / Dot Name / Member / Double-Dot / Bracket Sugar
 
 All of these are normalization-level lowering into the same product-call
@@ -631,9 +638,11 @@ pending and are not simulated by syntax flattening.
 The simple form let a:b=expr consumes R_Gamma(a:b,v,rho) with E(expr)=v,
 Type(v)=T, rho(a)=v and rho(b)=T at every adjacent universe rank. A bare b is a
 classifier-side binder. Existing external constraints enter as uint8:: or R$.
-They consume the unchanged RHS value and classifier; a concrete-type constraint
-does not insert a literal constructor. Explicit ordinary construction is a
-separate call whose result can subsequently satisfy the Pattern.
+Their initial relation consumes the unchanged RHS value and classifier. At an
+already selected forced extraction/delivery boundary, proved root mismatch may
+request one ordinary root conversion, followed by one extraction check. Ordinary
+overload applicability does not perform this step; unknown evidence is unavailable.
+Norm preserves syntax and performs neither relation nor conversion.
 Structural qualified P let name::path:t has its own name-formation premises.
 Initializer-free lexical formation requires an explicit external classifier
 T:: or R$ determining a complete type; bare a:b without a subject supplies no

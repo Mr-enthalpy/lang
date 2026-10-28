@@ -6146,6 +6146,13 @@ mod tests {
         assert!(world
             .direct_pattern_child(pattern, &crate::PatternSelector::Named("helper".into()))
             .is_none());
+        for name in ["field", "ref", "share"] {
+            world
+                .associate_existing_value_in_place(place, name, helper)
+                .unwrap();
+            assert!(world.direct_pattern_child(pattern, &crate::PatternSelector::Named(name.into())).is_none(),
+                "an ordinary callable's name supplies no struct helper or structural registration evidence");
+        }
         world
             .places
             .get_mut(&place)

@@ -152,7 +152,10 @@ alternate relation or identity.
 - Output demand is total before maxima; selected failure never reopens.
 - Policy migration is direct, same-Type, candidate-driven, and existing-first.
 - Abstract literals form before separately requested ordinary concrete construction.
-  External classifier Patterns constrain the unchanged RHS result and insert no constructor.
+  External classifier Patterns first observe the unchanged RHS. Only a selected
+  forced consumer with proved total-root mismatch may request one ordinary root
+  conversion and final extraction. Applicability inserts none; unknown evidence
+  is unavailable and selected failure never reopens.
 - Structural interpretation forms complete types directly. struct:type->type
   adds standard ordinary helpers while preserving structural registration;
   *:type x type->type composes types and *=:type ref x type->unit performs the
@@ -222,8 +225,10 @@ alternate relation or identity.
   makes that whole layer ordered. Nested layers decide independently. Unordered
   to bare sequence requires named extraction and explicit ordered assembly.
 - Product packaging is `(_ * ω)$`; its classifier Pattern is `_ * ω`.
-  Bare P is contextual exposed/merged repetition material with preserved
-  expression/nested boundaries. `t * n` moves element material to Val1 while
+  Bare P is contextual exposed/merged repetition material. Norm preserves source
+  nesting; established call input exposes available standard packaging while
+  expression barriers and unavailable runtime shape remain opaque.
+  `t * n` moves element material to Val1 while
   retaining it in complete identity; legal Val1 changes need not change Pattern.
   Selected `pack?` exposes one available layer. Runtime-only `t * ω` needs an
   iteration-like consumer, not static length expansion. S `_$` / `(_)$` supply

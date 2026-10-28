@@ -608,3 +608,11 @@ forwarding requires actual registrations produced by ordinary struct open
 computation with OpenHere, |[[attribution]]>, type ref and ordinary updates.
 Borrow primitives form references and enforce lifecycle, without automatic field
 forwarding. Derived state follows concrete T0 when its former Place later holds T1.
+
+Field access and forwarding are ordinary callable families. Graph callable
+records render the committed semantic call entry; actual struct helper
+registration supplies the derivation/field-view evidence. Value access, ref
+acquisition and share acquisition are ordinary selected operations with their
+own Policy and lifecycle premises. Diagnostic field observations consume those
+ordinary entries and registered relations. A graph kind or resolver expectation
+supplies neither call authority nor structural registration.

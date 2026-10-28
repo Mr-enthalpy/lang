@@ -53,6 +53,8 @@ true lexical local let remains binding. Explicit structural contributions synthe
 OverloadGroup is the separate aggregation algebra. Simple let a:b jointly extracts the delivered value and its adjacent-rank
 classifier. External constraints use full Paths or R$. RHS _ is universerank,
 structural _ is anonymous Pattern, and $ is a repeatable polarity flip.
+Selected forced extraction may request one ordinary root conversion only after
+a proved total-root mismatch; ordinary applicability inserts none.
 Product packaging is `(_ * ω)$`, with classifier Pattern `_ * ω` and contextual
 bare expansion/merging. Repetition keeps element content in Val1 identity;
 selected `pack?` exposes available shape. In S, `_$` supplies the external

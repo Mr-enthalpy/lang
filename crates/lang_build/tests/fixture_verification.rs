@@ -10,6 +10,7 @@ const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("non_lang_files_ignored", "app"),
     ("empty_navigation_beside_binding", "app"),
     ("empty_inherited_navigation", "app"),
+    ("forced_root_conversion", "app"),
 ];
 
 const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
@@ -58,7 +59,6 @@ fn source_transport_requires_ordinary_object_path_wiring() {
 // These fixtures exercise connected declaration diagnostics and explicit
 // unavailable completion frontiers.
 const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
-    ("external_classifier_mismatch", "app", "classifier"),
     (
         "inherited_navigation",
         "app",

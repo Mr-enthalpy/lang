@@ -507,7 +507,6 @@ fn symbol_kind_fingerprint_tag(kind: SymbolKind) -> &'static str {
         SymbolKind::Namespace => "namespace",
         SymbolKind::CompleteTypeProjection => "complete_type_projection",
         SymbolKind::Callable => "callable",
-        SymbolKind::FieldFunction => "field_function",
         SymbolKind::Object => "object",
     }
 }

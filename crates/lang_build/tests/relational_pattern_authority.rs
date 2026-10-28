@@ -246,6 +246,63 @@ fn classifier_binder_does_not_resolve_an_existing_name() {
 }
 
 #[test]
+fn applicability_rejects_classifier_mismatch_even_when_a_constructor_exists() {
+    let world =
+        lang_build::CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let integer = world.resolve_type_value("integer").unwrap();
+    let target = world.resolve_type_value("uint16").unwrap();
+    let semantic = world.semantic_world();
+    let held = |name| {
+        let whole = semantic
+            .symbol_in_namespace(world.core_node(), name)
+            .unwrap()
+            .type_resident()
+            .unwrap()
+            .complete_type
+            .unwrap();
+        semantic.complete_type_by_whole_observation(whole).unwrap()
+    };
+    let actual = held("integer");
+    let expected = held("uint16");
+    assert!(!semantic
+        .associated_member_views_for_complete_type(expected, "<ConstructOrConvert>")
+        .unwrap()
+        .is_empty());
+    let closure = normalized_closure("let f = (self, x:uint16::) => { x; };");
+    let resolve = |name: &str| {
+        assert_eq!(name, "uint16");
+        Some(lang_build::NamedPatternObservation {
+            pattern: semantic.type_value(target).unwrap().pattern,
+            core: Some(expected.core()),
+        })
+    };
+    let context =
+        PatternRelationContext::for_source_callable(&closure, callable_owner(), Some(&resolve))
+            .unwrap();
+    let argument = typed_value(
+        integer,
+        semantic.type_value(integer).unwrap().pattern,
+        actual.core(),
+    );
+    let before = format!("{semantic:?}");
+    assert!(matches!(
+        solve_parameter_product_relation(
+            closure
+                .head
+                .as_ref()
+                .unwrap()
+                .formal_frame()
+                .explicit_parameters,
+            &[argument],
+            &context
+        ),
+        Err(PatternRelationFailure::Inapplicable(_))
+    ));
+    assert_eq!(format!("{:?}", world.semantic_world()), before);
+    assert!(world.semantic_world().compile_instances().next().is_none());
+}
+
+#[test]
 fn hole_local_policy_cannot_be_silently_dropped_by_relation_entry() {
     for source in [
         "let f = <mut let h>(self, x:h) => { x; };",

@@ -267,7 +267,6 @@ fn insert_verification_namespace(
         ("namespace_kind", VerificationPrimitive::NamespaceKind),
         ("field_names", VerificationPrimitive::FieldNames),
         ("has_field", VerificationPrimitive::HasField),
-        ("field_projection", VerificationPrimitive::FieldProjection),
         ("field_owner", VerificationPrimitive::FieldOwner),
         ("field_type", VerificationPrimitive::FieldType),
         ("policy", VerificationPrimitive::Policy),

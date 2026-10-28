@@ -413,7 +413,10 @@ Bare `b` at this extraction site introduces the classifier-side binder. An
 existing external Pattern enters explicitly through a full Path, such as
 `uint8::`, or opposite-polarity `R$`. Deduction, an external Pattern constraint,
 and a classifier Hole all use `R_Gamma`; Hole presence does not change the
-binding judgment into a result-transforming call. Structural qualified
+binding judgment into a result-transforming call. An already selected forced
+extraction/delivery may consume the result owner's [proved-root-mismatch conversion rule](patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion).
+It is separate from ordinary applicability and preserves selected no-reopen.
+Structural qualified
 `P let name::path:t` is the name-formation judgment of the names owner.
 Initializer-free `let a:uint8::` can form a typed name and uninitialized Place
 when that judgment's external-type premises hold. Likewise `let a:R$` requires
@@ -436,8 +439,10 @@ In S, `_$` and `(_)$` supply the external universerank Pattern, rather than
 an anonymous matching hole. The [Product owner](patterns-overload/product-repetition-and-unpacking.md)
 defines the singleton contextual form `_$ =_context (_ * 1)$` and the
 standard wrapper `product = (_ * ω)$`, with classifier Pattern `_ * ω`.
-Bare Product normalization exposes and merges available repetition material
-at the required context while preserving real nested layers. Repetition
+Bare Product normalization exposes and merges available standard repetition
+material at the required context, including call input. Syntax nesting is
+preserved separately from that observation; expression barriers, non-standard
+structural layers and unavailable runtime shape retain their own premises. Repetition
 relocates element material into Val1; compile material still participates in
 complete identity, and legal value replacement need not mutate its Pattern.
 `pack?` exposes an admitted repetition layer. Compile `t * ω` can expose an
@@ -610,7 +615,9 @@ closes the boundary rather than propagating delayed type demands to callers.
 ClosedReturn admission checks the classifier's uniqueness and dependency
 independence. The delivery clauses are enforced on each reached normal return;
 they require no advance enumeration or static proof of future branch paths.
-A reached delivery mismatch is ordinary terminal failure of the selected call.
+Reached normal-return delivery uses the result owner's forced-root extraction
+rule. Failure of that completion, including its selected conversion or final
+root relation, is terminal failure of the selected call.
 
 ```text
 ReverseAllowed_K(m) iff

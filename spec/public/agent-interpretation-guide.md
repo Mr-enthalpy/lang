@@ -49,8 +49,10 @@ See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
   (conceptual: source-product continuation; dump label: `ProductMerge`).
 - P denotes exposed bare Product material. Its semantic basis is contextual
   `_ * ω` expansion/merging, with `product = (_ * ω)$` as the standard wrapper
-  and `_ * ω` as its classifier Pattern. Preserve expression and true nested
-  boundaries; syntax flattening executes no packed-value extraction.
+  and `_ * ω` as its classifier Pattern. Preserve source nesting in Norm.
+  Established call input exposes/merges available standard packaging; expression
+  barriers and unavailable runtime shape remain opaque. Syntax flattening
+  executes no packed-value extraction.
 - A following Product is the **first source-product continuation** of an incoming
   source Product, not an argument list of the target. Only the first following
   Product merges; later material is residual.

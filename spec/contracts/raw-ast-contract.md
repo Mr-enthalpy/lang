@@ -499,6 +499,8 @@ contextual form `_$ =_context (_ * 1)$`, and ordinary `pack?` unpacking.
 Raw/Norm preserves postfix `?`; it performs neither packed-value extraction
 nor runtime-length enumeration. Bare P/E/G association and true nested
 Product boundaries keep their documented syntax normalization.
+The call-input consumer can subsequently expose available standard packaging;
+preserved syntax nesting does not prohibit that contextual Product operation.
 
 Within a BindingSlot, the leading policy is processed under inherited holes
 before the local DeduceList extends the environment for Pattern, annotation,
