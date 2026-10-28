@@ -461,7 +461,7 @@ pub struct ObjectHostMember {
     pub place: ObjectPlaceId,
     /// Whole-snapshot observation of the complete type carried by this host.
     pub complete_type: CanonicalValueAddr,
-    pub view: PolicyResultEntry<SemanticValueId, PatternCoordinateId>,
+    pub views: Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
 }
 
 impl ObjectHostMember {
@@ -473,12 +473,15 @@ impl ObjectHostMember {
     /// horizon predicate, never a stage-set intersection: a `compile` host
     /// legitimately carries `compile` members.
     pub fn exposed_at(&self, horizon: crate::ObservationHorizon) -> bool {
-        self.view
-            .view
-            .pair
-            .pattern
-            .stage
-            .is_some_and(|stage| stage.visible_at(horizon))
+        self.views.iter().any(|edge| {
+            edge.view.pair.is_rank_prefix_coherent()
+                && edge
+                    .view
+                    .pair
+                    .pattern
+                    .stage
+                    .is_some_and(|stage| stage.visible_at(horizon))
+        })
     }
 }
 
@@ -636,16 +639,20 @@ impl SemanticSymbolCell {
         self.type_resident().map(|member| member.place)
     }
 
-    /// This binding's own type resident view (`value = None`), the
+    /// This binding's own type resident views (`value = None`), the
     /// binding-level Policy authority of the pure Object.  A globally reused
     /// CoreTypeProjection is graph material and never a binding view.
-    pub fn type_resident_view(
+    pub fn type_resident_views(
         &self,
-    ) -> Option<&PolicyResultEntry<SemanticValueId, PatternCoordinateId>> {
-        let pattern = self.type_resident_pattern()?;
+    ) -> Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>> {
+        let Some(pattern) = self.type_resident_pattern() else {
+            return Vec::new();
+        };
         self.member_views
             .iter()
-            .find(|view| view.value.is_none() && view.pattern == pattern)
+            .filter(|view| view.value.is_none() && view.pattern == pattern)
+            .cloned()
+            .collect()
     }
 }
 
@@ -2545,7 +2552,7 @@ impl SemanticWorld {
     /// The host layer named by one carrier Symbol.
     ///
     /// The carrier's own type resident is the host object: its place is that
-    /// object's Val2 container and its member view is the binding-level
+    /// object's Val2 container and its member views are the binding-level
     /// Policy authority.  Two carriers of one Pattern (`let T: type:: = uint8;
     /// let U: type:: = T;`) therefore produce different hosts even though
     /// `Pattern(T) = Pattern(U)`.
@@ -2556,7 +2563,7 @@ impl SemanticWorld {
             pattern: member.pattern,
             place: member.place,
             complete_type: member.complete_type?,
-            view: cell.type_resident_view()?.clone(),
+            views: cell.type_resident_views(),
         })
     }
 

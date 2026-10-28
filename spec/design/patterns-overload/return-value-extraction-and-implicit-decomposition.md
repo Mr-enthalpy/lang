@@ -98,7 +98,45 @@ proof-relevant query is Query_Gamma(P,Content(v)), with Match(rho), Mismatch(m)
 and Unavailable(d) outcomes as defined by the Pattern owner. A selected forced
 extraction or result-delivery consumer additionally requires that relation to
 complete. Write F for that established obligation and RootType(P) for its total
-outward Pattern root, including the whole Product when P is structured:
+outward Pattern root, including the whole Product when P is structured.
+RootType(P)=T abbreviates UniqueCompleteOutwardRootType_Gamma(P)=T: the
+complete type of the entire outward extraction subject is uniquely determined
+by the already established Pattern/root constraints. It is not a field type,
+the actual subject's classifier guessed as a target, or a choice among several
+possible roots. The root-mismatch evidence rule is:
+
+```text
+Query_Gamma(P,Content(v)) = Mismatch(m)
+m : not exists rho. R_Gamma(P,Content(v),rho)
+UniqueCompleteOutwardRootType_Gamma(P) = T
+-------------------------------------------------
+TotalRootMismatch(m,P,v) with target T
+```
+
+The negative proof covers the whole relation, including every admissible Hole
+valuation and alternative. Failure of one branch, one trial valuation or one
+internal test alone does not supply it. Equal outer classifiers do not prevent
+this rule: an internal constraint can prove the whole Pattern impossible while
+the complete outward target type T remains fixed. The conversion then receives
+the entire v at T, exactly once, rather than repairing that internal site.
+An unknown query, unknown root or non-unique root is Unavailable. It authorizes
+neither conversion nor root guessing. A scalar external-classifier Core mismatch
+is one sufficient instance of this rule; compound proofs require their actual
+whole-relation consumer.
+
+Minimal cases (constraint notation here is metanotation for ordinary Patterns):
+
+- P has unique outward type T and requires field f to match Q. A v:T whose
+  field cannot match Q under any allowed valuation proves whole-query Mismatch.
+  TotalRootMismatch follows even with Core(Type(v))=Core(T); select at most one
+  conversion of the entire v to T and recheck the entire P.
+- Failure in one alternative while another alternative still matches is not
+  Mismatch. If that other alternative instead needs unavailable evidence, the
+  query is Unavailable and conversion cannot begin.
+- A proved impossible full Pattern with two unresolved possible outward types
+  T0 and T1 does not authorize choosing either. Root evidence is unavailable.
+
+Forced delivery follows:
 
 ```text
 SelectedForcedConsumer(F,P,v)

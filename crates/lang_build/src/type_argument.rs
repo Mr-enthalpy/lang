@@ -36,8 +36,8 @@ pub struct TypeArgumentClassificationReport {
 /// type identity flows through `complete_type_observation`. The carrier Symbol
 /// is graph navigation material and is absent for semantic-world resolutions.
 ///
-/// `effective_view` is the resolved carrier's own binding-level type resident
-/// view.  It travels with the resolution because a represented TypeValue is
+/// `member_views` retains all of the resolved carrier's type-resident edges.
+/// They travel with the resolution because a represented TypeValue is
 /// shared by every carrier that binds it (`P_a let T: type:: = X;` and
 /// `P_b let U: type:: = X;` have one TypeValue and two binding Policies), so no
 /// later stage can recover the binding view from the TypeValue alone.
@@ -56,11 +56,70 @@ pub struct TypeArgumentClassificationReport {
 /// form.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamedTypeResolution {
+    pub navigation: crate::ResolvedSemanticNavigation,
     pub carrier_symbol: Option<SymbolId>,
     pub represented_type: TypeValueId,
-    pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
+    pub member_views: Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     pub carrier_place: Option<ObjectPlaceId>,
     pub complete_type_observation: Option<crate::CanonicalValueAddr>,
+}
+
+impl NamedTypeResolution {
+    /// Observe a previously fixed identity; no lookup or default mode occurs here.
+    pub fn observe_argument_at(
+        &self,
+        horizon: crate::ObservationHorizon,
+    ) -> Result<PolicyResultEntry<SemanticValueId, PatternCoordinateId>, crate::Diagnostic> {
+        let visible = self.exposed_edges_at(horizon)?;
+        match visible.as_slice() {
+            [edge] => Ok(edge.clone()),
+            _ => Err(crate::Diagnostic::hard_error(
+                "type argument Policy projection is not uniquely determined",
+                None,
+            )),
+        }
+    }
+
+    /// A classifier Pattern/Core observation requests no argument mode.
+    pub fn observe_classifier_at(
+        &self,
+        horizon: crate::ObservationHorizon,
+    ) -> Result<(), crate::Diagnostic> {
+        self.exposed_edges_at(horizon).map(|_| ())
+    }
+
+    fn exposed_edges_at(
+        &self,
+        horizon: crate::ObservationHorizon,
+    ) -> Result<Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>, crate::Diagnostic>
+    {
+        if self
+            .navigation
+            .host_chain
+            .iter()
+            .any(|host| !host.exposed_at(horizon))
+        {
+            return Err(crate::Diagnostic::hard_error(
+                "hidden-navigation-host-observation",
+                None,
+            ));
+        }
+        let mut visible = Vec::new();
+        for edge in &self.member_views {
+            let exposed = crate::expose_policy_slice(edge, horizon);
+            if crate::read_pattern(&exposed).is_some() && !visible.contains(edge) {
+                visible.push(edge.clone());
+            }
+        }
+        if visible.is_empty() {
+            Err(crate::Diagnostic::hard_error(
+                "type argument Pattern observation is unavailable at this horizon",
+                None,
+            ))
+        } else {
+            Ok(visible)
+        }
+    }
 }
 
 /// Type-resolution environment boundary.
@@ -70,7 +129,7 @@ pub struct NamedTypeResolution {
 /// behind the same interface. Callers never read
 /// `SemanticNameIndex` / `SymbolPayload::CompleteTypeProjection` directly.
 pub trait TypeResolutionEnv {
-    /// Resolve one bare name as a complete type value under open-static policy.
+    /// Fix the identity and type material of one bare name, without a horizon.
     fn resolve_type_name(
         &self,
         name: &str,
@@ -127,6 +186,13 @@ impl<'a> SemanticTypeEnv<'a> {
                 &context.default_mounts,
             )
             .ok()?;
+        self.resolve_navigation_carrier(navigation)
+    }
+
+    pub(crate) fn resolve_navigation_carrier(
+        &self,
+        navigation: crate::ResolvedSemanticNavigation,
+    ) -> Option<NamedTypeResolution> {
         let cell = self.world.symbol(navigation.terminal_symbol)?;
         let pattern = cell.type_resident_pattern()?;
         Some(NamedTypeResolution {
@@ -134,9 +200,10 @@ impl<'a> SemanticTypeEnv<'a> {
                 .world
                 .backing_declaration_for_symbol(navigation.terminal_symbol),
             represented_type: self.world.type_for_pattern(pattern)?,
-            effective_view: cell.type_resident_view().cloned(),
+            member_views: cell.type_resident_views(),
             carrier_place: cell.type_resident_place(),
             complete_type_observation: cell.type_resident().and_then(|member| member.complete_type),
+            navigation,
         })
     }
 }
@@ -174,7 +241,8 @@ pub fn classify_type_arguments_env_with_report(
     shape: &ArgProductShape,
     env: &dyn TypeResolutionEnv,
     context: &ResolverContext,
-) -> TypeArgumentClassificationReport {
+    horizon: crate::ObservationHorizon,
+) -> Result<TypeArgumentClassificationReport, crate::Diagnostic> {
     let mut args = shape.raw_args.clone();
     let mut unresolved = Vec::new();
     for raw_arg in &mut args {
@@ -195,11 +263,12 @@ pub fn classify_type_arguments_env_with_report(
         let name = path.join("::");
         match env.resolve_type_path(&path, context) {
             Some(resolution) => {
+                let observed = resolution.observe_argument_at(horizon)?;
                 *raw_arg = raw_arg.clone().as_complete_type_projection_named(
                     name,
                     resolution.represented_type,
                     resolution.carrier_symbol,
-                    resolution.effective_view,
+                    Some(observed),
                     resolution.carrier_place,
                     resolution.complete_type_observation,
                 );
@@ -209,20 +278,20 @@ pub fn classify_type_arguments_env_with_report(
             }
         }
     }
-    TypeArgumentClassificationReport {
+    Ok(TypeArgumentClassificationReport {
         classified_shape: ArgProductShape {
             raw_args: args,
             ..shape.clone()
         },
         unresolved_names: unresolved,
-    }
+    })
 }
 
 /// The inner-to-outer path of one type-argument atom.
 ///
 /// Only complete name navigations participate; any other component family is
 /// left unclassified rather than partially interpreted.
-fn type_argument_path(expr: &NormExpr) -> Option<Vec<String>> {
+pub(crate) fn type_argument_path(expr: &NormExpr) -> Option<Vec<String>> {
     match expr {
         NormExpr::Name { text, .. } => Some(vec![text.clone()]),
         NormExpr::Nav { components, .. } => components

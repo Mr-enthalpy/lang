@@ -100,6 +100,23 @@ explicit navigation uses its written anchor. Empty or inapplicable projection
 does not resume lookup. Complete values keep their own captured callspaces;
 neither a source binding nor a group supplies a missing extra callspace.
 
+All E use contexts, including ordinary and type arguments, consume the same
+resolved navigation N=(host_chain,terminal identity). Bare names use the complete
+nearest-first lexical chain before default mounts. Facet/Policy observation
+occurs after that identity is fixed; hidden, ambiguous or unavailable projection
+does not search a different binding. At horizon K, every traversed host factor
+and the requested terminal facet must be exposed:
+
+```text
+Expose_K(N,facet) =
+  (and over h in N.host_chain: Navigable_K(h))
+  and ExposeFacet_K(N.terminal,facet)
+```
+
+Host navigation retains every actual binding observation edge. Its navigability
+query consumes the host Pattern exposure fact; terminal argument projection
+additionally consumes the required Policy coordinates and cannot discard them.
+
 ## 4. Different update algebras
 
 For an ordinary mutable group reference g:

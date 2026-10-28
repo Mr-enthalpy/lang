@@ -53,6 +53,13 @@ One installed name binding has at most one resident: an absent-Val1 type or an
 ordinary value with an actual destination Place. The carrier uses `resident=None`
 when no resident is established; a present ordinary resident cannot lack its Place.
 Binding Policy projections do not introduce additional residents.
+Ordinary and type argument names retain the shared resolved navigation and
+complete lexical lookup order. Every required host exposure factor is checked
+at the actual invocation horizon before terminal observation. Resident identity
+does not deduplicate distinct Policy edges. A single-argument view/mode carrier
+is formed only after a unique contextual observation is established; unresolved
+multi-edge projection is unavailable, independently of registration order.
+Host navigability requests Pattern exposure, without choosing terminal mode.
 Object Val2 normalization maps each realized selector to one resident address.
 An associated implementation ledger whose ordinary resident is not formed yet
 has no Object normal form; normalization reports the unconnected consumer.

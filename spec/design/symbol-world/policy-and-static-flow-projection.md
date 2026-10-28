@@ -546,6 +546,33 @@ relations. Ordinary Val2 payload policies remain independent. The
 [invocation owner](../static-evaluation/compile-instance-invocation-and-result-delivery.md)
 owns self-name observation, ordinary delivery, identity and current storage reads.
 
+### Observation edges and unique contextual projection
+
+An edge epsilon carries its own complete Policy view even when several edges
+observe the same resident and Pattern. Object identity never quotients these
+edges. For resolved navigation N and a consumer demand D at K:
+
+```text
+Edges_K(N,D) = {epsilon in BindingEdges(N.terminal) |
+  HostExposure_K(N) and FacetExposed_K(epsilon,D) and Admits(epsilon,D)}
+
+Observe_K(N,D) = UniqueRequiredObservation(Edges_K(N,D))
+```
+
+Only observationally equal complete required projections may coincide. A
+consumer needing a single mode/view reports Unavailable if distinct legal
+observations remain; registration order, value ID and lookup ID supply no
+preference. Explicit source constraints may select an admitted projection;
+caller mode hints cannot overwrite already observed edge disagreement.
+A classifier-only annotation requests Pattern/Core, without argument mode:
+const and mut edges of the same complete classifier have the same required
+classifier projection. An actual type argument additionally carries its Policy
+view/mode, so the same two edges need a unique contextual argument projection.
+Visibility of one host navigation edge can establish that host Pattern factor
+when no other Policy coordinate is requested there. It does not select a
+terminal argument mode, prove Ready or grant execution authority. Missing
+general projection consumers remain unavailable.
+
 ### 3.1 Ordinary binding projection
 
 P1 let x = expr forms a complete lexical binding. Written const/mut, explicit

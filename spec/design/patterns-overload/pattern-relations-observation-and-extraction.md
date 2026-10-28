@@ -732,6 +732,19 @@ NeedsClassifier(P) and ObserveClassifier_K(c)=Unavailable(d)
 
 `Mismatch` requires observed contradictory facts, such as unequal known
 classifier observations or incompatible known valuations of one HoleBinderId.
+Its negative proof has the full query scope:
+
+```text
+Query_Gamma(P,c)=Mismatch(m)
+  => m : not exists rho. R_Gamma(P,c,rho)
+```
+
+A failed alternative or partial valuation is not a negative proof for a query
+that still admits a solution or requires unavailable evidence. The
+[forced extraction owner](return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion)
+combines this proof with a unique complete outward root type to derive
+TotalRootMismatch. Equal outer classifier Core does not decide an internal
+Pattern constraint and does not forbid a proved whole-root failure.
 Missing classifier coordinates, unobserved argument value/type role and missing
 named-Pattern evidence provide no such proof. Unknown role is distinct from an
 observed absent-Val1 type. The detached known Pattern-coordinate observation

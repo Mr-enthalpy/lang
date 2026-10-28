@@ -835,8 +835,13 @@ fn navigated_path_reaches_one_terminal_symbol_in_every_context() {
     let initializer = initializer_from_source("let B = (f::T) compile_partner;");
     let call_site = extract_single_call_site(&initializer).expect("normalized call");
     let shape = call_site.to_arg_product_shape();
-    let report =
-        classify_type_arguments_env_with_report(&shape, &SemanticTypeEnv::new(&world), &context);
+    let report = classify_type_arguments_env_with_report(
+        &shape,
+        &SemanticTypeEnv::new(&world),
+        &context,
+        lang_build::ObservationHorizon::OpenStatic,
+    )
+    .unwrap();
     assert!(
         report.unresolved_names.is_empty(),
         "a navigated type argument is not an unresolved name: {:?}",

@@ -65,7 +65,7 @@ use crate::{
         ObjectPlaceId, OrdinaryCallEntry, OrdinaryCallableImplementation, OrdinaryCandidateRole,
         PatternCoordinateId, SemanticValuePayload, SemanticWorld, WritableContext,
     },
-    type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
+    type_argument::{SemanticTypeEnv, TypeResolutionEnv},
     DeclaredResultClass, NormalizedCallSite,
 };
 
@@ -1111,7 +1111,7 @@ fn invoke_target_values_in_scratch(
         });
     }
 
-    if let Err(obstruction) = classify_semantic_value_arguments(
+    if let Err(obstruction) = classify_semantic_arguments(
         &mut arg_shape,
         semantic_world,
         resolver_context,
@@ -1119,23 +1119,15 @@ fn invoke_target_values_in_scratch(
     ) {
         return Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace });
     }
-    let mut classified = classify_type_arguments_env_with_report(
-        &arg_shape,
-        &SemanticTypeEnv::new(semantic_world),
-        resolver_context,
-    );
     semantic_world
-        .attach_available_type_observations(
-            &mut classified.classified_shape.raw_args,
-            &classified.classified_shape.flattened.atoms,
-        )
+        .attach_available_type_observations(&mut arg_shape.raw_args, &arg_shape.flattened.atoms)
         .map_err(
             |diagnostic| OrdinaryInvocationFailure::ApplicabilityUnsupported {
                 diagnostic,
                 trace: trace.clone(),
             },
         )?;
-    if classified.classified_shape.raw_args.iter().any(|arg| {
+    if arg_shape.raw_args.iter().any(|arg| {
         matches!(
             arg.value_class,
             crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection)
@@ -1151,7 +1143,7 @@ fn invoke_target_values_in_scratch(
         });
     }
     let args = overload_args_from_classified_shape(
-        &classified.classified_shape,
+        &arg_shape,
         |_| None,
         |type_value| {
             semantic_world
@@ -1257,6 +1249,7 @@ fn invoke_target_values_in_scratch(
                             entry_closure,
                             semantic_world,
                             &declaration_pattern_context,
+                            context.horizon,
                             provenance.clone(),
                         ) {
                             Ok(Some(result_type)) => result_type,
@@ -1287,6 +1280,9 @@ fn invoke_target_values_in_scratch(
                     let resolve_named_pattern = |name: &str| {
                         SemanticTypeEnv::new(world_view)
                             .resolve_type_name(name, &declaration_pattern_context)
+                            .filter(|resolved| {
+                                resolved.observe_classifier_at(context.horizon).is_ok()
+                            })
                             .and_then(|resolution| {
                                 let pattern =
                                     world_view.type_value(resolution.represented_type)?.pattern;
@@ -1327,7 +1323,8 @@ fn invoke_target_values_in_scratch(
                         &entry,
                         &target,
                         semantic_world,
-                        resolver_context,
+                        &declaration_pattern_context,
+                        context.horizon,
                         provenance.clone(),
                     ) {
                         match failure {
@@ -1368,7 +1365,7 @@ fn invoke_target_values_in_scratch(
                         formal_policy_frame,
                         self_policy,
                         strategy,
-                        classified.classified_shape.clone(),
+                        arg_shape.clone(),
                     )
                 }
                 OrdinaryCallableImplementation::Builtin(_) => {
@@ -1381,7 +1378,7 @@ fn invoke_target_values_in_scratch(
                     let core_invocation =
                         match crate::builtin_callable::prepare_resolved_builtin_call(
                             &entry,
-                            classified.classified_shape.clone(),
+                            arg_shape.clone(),
                             context.horizon,
                             provenance.clone(),
                         ) {
@@ -1450,7 +1447,7 @@ fn invoke_target_values_in_scratch(
                     let [ProductAtom::SemanticValue {
                         value: source_value,
                         ..
-                    }] = classified.classified_shape.flattened.atoms.as_slice()
+                    }] = arg_shape.flattened.atoms.as_slice()
                     else {
                         continue;
                     };
@@ -1485,7 +1482,7 @@ fn invoke_target_values_in_scratch(
                         },
                         entry.callable_view.pair.clone(),
                         NormOverloadStrategy::Ordinary,
-                        classified.classified_shape.clone(),
+                        arg_shape.clone(),
                     )
                 }
             };
@@ -1717,7 +1714,7 @@ fn invoke_target_values_in_scratch(
             })?;
         let material = canonical_compile_instance_key_for_selected(
             semantic_world,
-            &classified.classified_shape,
+            &arg_shape,
             canonical_callable_identity,
             &provenance,
             &trace,
@@ -1967,7 +1964,7 @@ fn invoke_target_values_in_scratch(
     ))
 }
 
-fn classify_semantic_value_arguments(
+fn classify_semantic_arguments(
     shape: &mut ArgProductShape,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
@@ -1977,67 +1974,109 @@ fn classify_semantic_value_arguments(
         if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
             continue;
         }
-        let Some(ProductAtom::Expression {
-            expr: lang_syntax::NormExpr::Name { text, .. },
-            ..
-        }) = shape.flattened.atoms.get(raw_arg.index)
+        let Some(ProductAtom::Expression { expr, .. }) = shape.flattened.atoms.get(raw_arg.index)
         else {
             continue;
         };
-
-        let mut namespaces = Vec::with_capacity(1 + resolver_context.default_mounts.len());
-        namespaces.push(resolver_context.current_namespace);
-        namespaces.extend(resolver_context.default_mounts.iter().copied());
-        let Some(symbol) = namespaces
-            .into_iter()
-            .find_map(|namespace| semantic_world.symbol_in_namespace(namespace, text))
-        else {
+        let Some(path) = crate::type_argument::type_argument_path(expr) else {
             continue;
         };
-
-        let mut hidden_value_observation = false;
-        let mut readable = symbol
-            .member_views
+        let navigation = match semantic_world.navigate_semantic_path(
+            &path,
+            resolver_context.current_namespace,
+            &resolver_context.explicit_mount_roots,
+            &resolver_context.default_mounts,
+        ) {
+            Ok(navigation) => navigation,
+            Err(_) if path.len() == 1 => continue,
+            Err(diagnostic) => {
+                return Err(ObservationObstruction {
+                    class: diagnostic.message,
+                    provenance: raw_arg.provenance.clone(),
+                })
+            }
+        };
+        if navigation
+            .host_chain
             .iter()
-            .filter_map(|view| {
-                let value = view.value?;
-                let object = semantic_world.value(value)?;
-                // CoreTypeProjection is projection material, not an ordinary
-                // value argument. Type-resident views carry `value=None`; this
-                // check also excludes projection material stored in a
-                // value-bearing transport view.
-                if matches!(
-                    object.payload,
-                    SemanticValuePayload::CoreTypeProjection { .. }
-                ) {
-                    return None;
-                }
-                let stage = view.view.pair.value.stage()?;
-                if !stage.visible_at(horizon) {
-                    hidden_value_observation = true;
-                    return None;
-                }
-                Some((value, object.type_value, view.view.mode))
-            })
-            .collect::<Vec<_>>();
-        readable.sort_by_key(|(value, _, _)| *value);
-        readable.dedup_by_key(|(value, _, _)| *value);
-        if readable.is_empty() && hidden_value_observation {
-            // The binding has been resolved. Hidden Val1 is not an unknown
-            // expression, and neither a visible Pattern nor a caller-supplied
-            // mode makes it readable. The common continuation consumer must
-            // preserve this observation before applicability or preference.
+            .any(|host| !host.exposed_at(horizon))
+        {
             return Err(ObservationObstruction {
-                class: "hidden-argument-value-observation".to_string(),
+                class: "hidden-navigation-host-observation".into(),
                 provenance: raw_arg.provenance.clone(),
             });
         }
-        let [(value, type_value, mode)] = readable.as_slice() else {
+        let symbol = semantic_world
+            .symbol(navigation.terminal_symbol)
+            .expect("navigation fixes an existing binding");
+        if symbol.type_resident().is_some() {
+            let resolution = SemanticTypeEnv::new(semantic_world)
+                .resolve_navigation_carrier(navigation)
+                .ok_or_else(|| ObservationObstruction {
+                    class: "resolved argument type observation is unavailable".into(),
+                    provenance: raw_arg.provenance.clone(),
+                })?;
+            let observed = resolution
+                .observe_argument_at(horizon)
+                .map_err(|diagnostic| ObservationObstruction {
+                    class: diagnostic.message,
+                    provenance: raw_arg.provenance.clone(),
+                })?;
+            *raw_arg = raw_arg.clone().as_complete_type_projection_named(
+                path.join("::"),
+                resolution.represented_type,
+                resolution.carrier_symbol,
+                Some(observed),
+                resolution.carrier_place,
+                resolution.complete_type_observation,
+            );
             continue;
+        }
+        let mut readable = Vec::new();
+        for edge in &symbol.member_views {
+            let Some(value) = edge.value else {
+                continue;
+            };
+            let Some(object) = semantic_world.value(value) else {
+                return Err(ObservationObstruction {
+                    class: "resolved argument resident observation is unavailable".into(),
+                    provenance: raw_arg.provenance.clone(),
+                });
+            };
+            if matches!(
+                object.payload,
+                SemanticValuePayload::CoreTypeProjection { .. }
+            ) {
+                continue;
+            }
+            let exposed = crate::expose_policy_slice(edge, horizon);
+            if crate::read_value(&exposed).is_some() && !readable.contains(edge) {
+                readable.push(edge.clone());
+            }
+        }
+        let edge = match readable.as_slice() {
+            [edge] => edge,
+            [] => {
+                return Err(ObservationObstruction {
+                    class: "hidden-argument-value-observation".into(),
+                    provenance: raw_arg.provenance.clone(),
+                })
+            }
+            _ => {
+                return Err(ObservationObstruction {
+                    class: "ambiguous-argument-policy-observation".into(),
+                    provenance: raw_arg.provenance.clone(),
+                })
+            }
         };
+        let value = edge.value.expect("observed Val1");
+        let type_value = semantic_world
+            .value(value)
+            .expect("observed resident")
+            .type_value;
         *raw_arg = raw_arg
             .clone()
-            .as_resolved_semantic_value(*value, *type_value, *mode);
+            .as_resolved_semantic_value(value, type_value, edge.view.mode);
     }
     Ok(())
 }
@@ -2083,6 +2122,7 @@ fn apply_self_formal_structure(
     actual: &crate::semantic_world::SemanticValueRecord,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
+    horizon: ObservationHorizon,
     provenance: Provenance,
 ) -> Result<(), CandidateApplicabilityFailure> {
     let Some(head) = entry
@@ -2142,6 +2182,7 @@ fn apply_self_formal_structure(
             .and_then(|name| {
                 SemanticTypeEnv::new(semantic_world).resolve_type_name(name, resolver_context)
             })
+            .filter(|resolved| resolved.observe_classifier_at(horizon).is_ok())
             .and_then(|resolved| resolved.complete_type_observation)
             .and_then(|whole| semantic_world.complete_type_by_whole_observation(whole));
         let actual_type = semantic_world.complete_type_for_value(actual.id);
@@ -2189,6 +2230,7 @@ fn resolve_annotation_core(
     pattern: &NormPattern,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
+    horizon: ObservationHorizon,
     provenance: Provenance,
 ) -> Result<crate::CanonicalValueAddr, Diagnostic> {
     let name = match pattern {
@@ -2204,6 +2246,7 @@ fn resolve_annotation_core(
     };
     SemanticTypeEnv::new(semantic_world)
         .resolve_type_name(name, resolver_context)
+        .filter(|resolved| resolved.observe_classifier_at(horizon).is_ok())
         .and_then(|resolution| resolution.complete_type_observation)
         .and_then(|whole| semantic_world.complete_type_by_whole_observation(whole))
         .map(|complete| complete.core())
@@ -2224,6 +2267,7 @@ fn declared_value_result_type(
     closure: &lang_syntax::NormClosure,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
+    horizon: ObservationHorizon,
     provenance: Provenance,
 ) -> Result<Option<crate::CanonicalValueAddr>, Diagnostic> {
     let Some(annotation) = closure
@@ -2244,6 +2288,7 @@ fn declared_value_result_type(
         &annotation.pattern,
         semantic_world,
         resolver_context,
+        horizon,
         provenance,
     )
     .map(Some)

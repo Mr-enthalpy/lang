@@ -171,7 +171,9 @@ mod preparation_policy_tests {
                     &site.to_arg_product_shape(),
                     &crate::SemanticTypeEnv::new(&world),
                     &base.package_context(),
+                    ObservationHorizon::OpenStatic,
                 )
+                .unwrap()
                 .classified_shape,
                 ObservationHorizon::OpenStatic,
                 Provenance::new("entry observation"),

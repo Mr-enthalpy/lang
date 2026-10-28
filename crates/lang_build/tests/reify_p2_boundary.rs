@@ -239,17 +239,19 @@ fn runtime_type_residency_cannot_execute_a_compile_type_builtin() {
         Provenance::new("runtime type consumer"),
     )
     .unwrap_err();
-    let lang_build::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, trace } =
+    let lang_build::OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace } =
         error
     else {
         panic!("{error:?}")
     };
-    assert!(diagnostic.message.contains("reify reverse-migration"));
+    assert!(obstruction
+        .class
+        .contains("type argument Pattern observation"));
     assert!(trace.selected.is_none());
     assert!(trace.compile_instance.is_none());
     assert_eq!(format!("{world:?}"), before);
     let wrong_arity = lang_build::extract_single_call_site(&support::initializer_from_source(
-        "let result=(RuntimeType,uint8) IdentityType::core;",
+        "let result=(uint8,uint8) IdentityType::core;",
     ))
     .unwrap();
     let failure = lang_build::invoke_resolved_binding_ordinary(

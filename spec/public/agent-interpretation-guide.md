@@ -180,6 +180,10 @@ See `normalized-surface-semantics.md` §8–§10 for the full rules. Preserve:
   type instead. Independent let Patterns/callable heads create Pattern roots;
   duplicate holes fail only within one root.
 - Construction and extraction may be isomorphic; call and extraction are not.
+- Name resolution fixes shared navigation before observation in every E consumer,
+  including ordinary/type arguments. All traversed host exposure factors remain
+  required. Multiple Policy edges of one resident retain their individual facts;
+  a required non-unique projection is unavailable, never a first-entry choice.
 - `...Q` stays `NormPattern::Pack(Q)`, with one pack per normalized level and
   no RHS ellipsis counterpart. Ordinary repetition `pack?` is the separate
   selected extraction into bare Product; runtime-only `t * ω` needs an

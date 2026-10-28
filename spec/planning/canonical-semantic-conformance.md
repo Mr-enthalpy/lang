@@ -590,9 +590,30 @@ requires final demanded projection within the publication boundary.
 | FC08 | Forced conversion with an actual source observation edge | Preserve both Policy ranks and mode through input exposure; stored value mode cannot replace edge mode | ConstructionRequest source_view and existing literal conversion regressions; general Ready/source E pending |
 | MTX01 | Ordinary migration body/result followed by final project_p1 | Publish scratch only after valid result class and nonempty final demanded projection | enclosing migration scratch gate connected; coherent successful migration producer/projection-failure execution coverage pending |
 | MTX02 | Same source lookup key, held old Core and successor current Core, with distinct migration return classifiers | Migration A compares held source Core with declaration's resolved result Core; selected failure never publishes or retries | migration_snapshot_boundary |
+| FC09 | Unique complete outward T, equal outer classifier Core, and full Pattern unsatisfiable through an internal constraint | Derive TotalRootMismatch from whole-query negative proof; attempt one ordinary conversion of the entire subject to T, then recheck full P | canonical rule closed; compound relation/conversion consumer pending |
+| FC10 | Failed alternative/valuation with a remaining solution or unavailable required evidence | No whole-query Mismatch proof; Match or Unavailable as appropriate, no root conversion | canonical acceptance target; general alternative consumer pending |
+| FC11 | Whole-query negative proof but unknown/non-unique complete outward root type | Unavailable; do not guess a target or insert internal conversions | scalar missing-root boundary connected; general compound consumer pending |
 | PR14 | Named nested structural registration inside an ordered outer layer | Preserve the named layer and its layer-local order; it is not exposed bare call syntax | canonical_value nested_named_product_registration_is_preserved_inside_ordered_outer_layer |
 | PR15 | Saved ordinary object used as call input | One argument; source call-input normalization does not inspect or expand the object | classifier_snapshot_boundary; registered nested schema preservation is separately PR14 |
 | PR16 | Runtime-only collection input whose length is unavailable | No static length expansion or speculative arity selection; iteration consumer required | runtime saved-value observation gate connected; actual t * ω formation/pack? consumer pending |
+
+## Shared argument navigation and contextual edge observation
+
+The [names owner](../design/symbol-world/names-and-overload-groups.md#3-type-and-group-call-projection)
+fixes shared navigation before observation; the [Policy owner](../design/symbol-world/policy-and-static-flow-projection.md#observation-edges-and-unique-contextual-projection)
+keeps distinct observation edges. These rows have actual invocation evidence in
+argument_navigation_observation; they establish the connected identity/exposure
+and non-unique-projection boundaries, not general source E or joint Policy solving.
+
+| ID | Scenario | Required result | Connected evidence |
+|---|---|---|---|
+| NAV01 | Current inner namespace, outer ordinary argument, same-spelled default-mount argument | Full lexical lookup fixes outer identity first; its actual mode drives ordinary candidate preference | outer mut selects mut candidate over mount const control |
+| NAV02 | Outer binding exists but its Val1 is hidden; default same-spelled binding is visible | Stop unavailable before A/maxima; retain fixed outer identity and publish nothing | hidden outer plus readable default regression |
+| NAV03 | Same resident/Pattern with const and mut views, in either insertion order, ordinary and type arguments | Retain both complete edges; non-unique required projection is unavailable; explicit mode hints do not choose a view | both edge permutations and both hints; no selection/instance/publication |
+| NAV04 | Repeated identical observation edges | One identical required observation remains, with its actual mode | mut observation selects mut candidate |
+| NAV05 | Runtime-Pattern host but compile-visible terminal uint8 passed to IdentityType | Shared navigation retains host chain; hidden host blocks before first-round selection; direct uint8 control succeeds | hidden host / visible terminal integration |
+| NAV06 | Host has compile and runtime Pattern edges in either order; terminal type has a unique view | Host Pattern exposure can be established by the compile edge without choosing terminal mode or erasing hidden edge | both host permutations retain all edges and permit real IdentityType result |
+| NAV07 | Same complete classifier with const/mut edges used only by x:T:: | Classifier Pattern/Core observation may coincide without choosing argument mode; typed candidate wins over generic | both permutations succeed for classifier-only observation, while argument observation remains non-unique |
 
 ## Implementation handoff checklist
 
@@ -606,6 +627,7 @@ feature. Canonical owner definitions above are authoritative for both statuses.
 | Adjacent-rank joint extraction, ordinary values through higher universes | 规范已闭合、消费者待连接 | J01–J03; classifier-side binders and Type(type) observation report unavailable before publication |
 | Explicit external classifier constraint in the connected literal/type subset | 规范已闭合、实现已连接 | relational_pattern_authority, world initializer boundary tests |
 | Classifier availability, frozen Core transport and decided first-round rejection | 规范已闭合、实现已连接 | OBS01–OBS10; classifier_observation_boundary, classifier_snapshot_boundary and relational_pattern_authority; general relation queries retain their unavailable frontier |
+| Shared ordinary/type argument navigation, whole host exposure and facet-specific non-unique Policy observation rejection | 规范已闭合、实现已连接 | NAV01–NAV07; general multi-edge joint projection remains unavailable |
 | Forced-conversion input horizon and enclosing migration publication boundary | 规范已闭合、实现已连接 | FC07–FC08 and MTX01; general Ready/source E and successful migration producer coverage remain pending |
 | Empty physical fragments, neutral inherited navigation and unavailable qualified-action publication boundary | 规范已闭合、实现已连接 | SRC01–SRC04; ordinary successful qualified source consumer remains pending |
 | Literal extraction without construction and explicit constructor identity/snapshot isolation | 规范已闭合、实现已连接 | LIT01–LIT04; constructor tests use explicit ordinary invocation |
