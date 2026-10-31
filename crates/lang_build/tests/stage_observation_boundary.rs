@@ -36,13 +36,12 @@ fn fixed_callee_identity_precedes_shared_horizon_observations() {
     let path = ["candidate".to_string()];
     let resolver = world.package_context();
     let callee = capability.resolve(&path, &resolver).unwrap();
-    let body = declared_policy_view(Stage::Seal, PolicyMode::Const);
+    let body = declared_policy_view(Stage::Runtime, PolicyMode::Const);
     let result = declared_policy_view(Stage::Runtime, PolicyMode::Const);
 
     for (horizon, callee_value_visible, body_visible) in [
         (ObservationHorizon::OpenStatic, true, false),
-        (ObservationHorizon::SealStatic, true, true),
-        (ObservationHorizon::Runtime, false, false),
+        (ObservationHorizon::Runtime, false, true),
     ] {
         let callee_entry = PolicyResultEntry {
             value: Some(callee.id),
@@ -186,7 +185,7 @@ fn explicit_absence_cannot_silently_drop_an_explicit_stage() {
 #[test]
 fn explicit_pin_stage_stops_selection_until_input_admissibility_is_connected() {
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
-    for stage in ["meta", "compile", "seal", "runtime", "const + compile"] {
+    for stage in ["compile", "runtime", "const + compile"] {
         let constrained =
             format!("let constrained = (self, {stage} let x):runtime -> let r => {{ x; }};");
         let ordinary = "let ordinary = (self, let x):runtime -> let r => { x; };";
@@ -223,60 +222,113 @@ fn explicit_pin_stage_stops_selection_until_input_admissibility_is_connected() {
 }
 
 #[test]
-fn ordinary_pipeline_does_not_rank_static_stage_atoms() {
-    // Explicit substrate material; this does not evaluate source closures.
-    let cases = [
-        (
-            "let f = (self, x):meta => { (); };",
-            "let f = (self, x):compile => { (); };",
-            ObservationHorizon::OpenStatic,
-        ),
-        (
-            "let f = (self, x):compile => { (); };",
-            "let f = (self, x):seal => { (); };",
-            ObservationHorizon::SealStatic,
-        ),
-    ];
-    let expr = initializer_from_source("let result = () f;");
-    let call = extract_single_call_site(&expr).unwrap();
-    for (left, right, horizon) in cases {
-        let mut family = AssociatedFamily::new(&[left, right]);
-        let mut context = OrdinaryInvocationContext::open_static(&[]);
-        context.horizon = horizon;
-        let outcome = family.invoke_ordinary_call(
-            family.package_root_node(),
+fn compile_p2_forms_and_reuses_a_compile_instance_for_an_external_type() {
+    use lang_build::{
+        BuiltinCallableImpl, CompilationWorld, DeclaredResultClass, InvocationResult,
+        ProjectedInvocationOutcome, SymbolId,
+    };
+    let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let namespace = base.package_root_node();
+    let mut world = base.semantic_world().clone();
+    let compile_view = declared_policy_view(Stage::Compile, PolicyMode::Const);
+    let registered = world
+        .register_core_callable(
+            namespace,
+            "compile_identity",
+            SymbolId(900001),
+            BuiltinCallableImpl::IdentityType,
+            None,
+            DeclaredResultClass::CompleteType,
+            compile_view.clone(),
+            compile_view.clone(),
+            compile_view,
+            None,
+            Provenance::new("compile body and result planes"),
+        )
+        .unwrap();
+    let call = extract_single_call_site(&initializer_from_source(
+        "let result = uint8 compile_identity;",
+    ))
+    .unwrap();
+    let mut identities = Vec::new();
+    for label in ["first compile invocation", "same canonical inputs"] {
+        let mut context = OrdinaryInvocationContext::open_static(&[PolicyMode::Const]);
+        context.horizon = ObservationHorizon::OpenStatic;
+        let result = lang_build::invoke_resolved_binding_ordinary(
+            &mut world,
+            &[],
+            registered.symbol,
             &call,
+            &base.root_context(),
             context,
-            Provenance::new("single-stage maxima"),
+            Provenance::new(label),
+        )
+        .unwrap();
+        let InvocationResult::SemanticResult {
+            value: ProjectedInvocationOutcome::SingleMember(result),
+            ..
+        } = result
+        else {
+            panic!("ordinary external type result");
+        };
+        assert_eq!(
+            result.selected.body_entry_view.pair.pattern.stage,
+            Some(Stage::Compile)
         );
-        assert!(
-            matches!(outcome, Err(OrdinaryInvocationFailure::Ambiguous { .. })),
-            "{outcome:?}"
+        assert_eq!(
+            result.selected.frame.horizon,
+            ObservationHorizon::OpenStatic
         );
+        let instance = result.trace.compile_instance.unwrap();
+        let state = world.compile_instance(instance).unwrap();
+        assert_eq!(
+            state.root.material.callable.selected_function_value,
+            registered.function_value
+        );
+        assert_eq!(
+            state.root.material.callable.selected_call_entry,
+            registered.call_entry
+        );
+        assert_eq!(
+            state.delivered_result().unwrap().complete_type,
+            result.complete_type.map(|ty| ty.whole())
+        );
+        assert!(!state.evaluation_active());
+        assert!(world
+            .symbol(state.invoke_name())
+            .unwrap()
+            .type_resident()
+            .is_none());
+        identities.push(instance);
     }
+    assert_eq!(identities[0], identities[1]);
+    assert_eq!(world.compile_instances().count(), 1);
 }
 
 #[test]
 fn hidden_body_observation_is_an_explicit_invocation_frontier() {
     // P1 is visible; the actual declared P2 observation is hidden.
-    let mut family = AssociatedFamily::new(&["compile let f = (receiver, x):seal => { (); };"]);
+    let mut family = AssociatedFamily::new(&["runtime let f = (receiver, x):compile => { (); };"]);
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     let outcome = family.invoke_ordinary_call(
         family.package_root_node(),
         &call,
-        OrdinaryInvocationContext::open_static(&[]),
+        OrdinaryInvocationContext {
+            horizon: ObservationHorizon::Runtime,
+            ..OrdinaryInvocationContext::open_static(&[])
+        },
         Provenance::new("visible callable, hidden body"),
     );
     assert!(
-        matches!(outcome, Err(OrdinaryInvocationFailure::Residual { residual, .. })
-        if residual.class == "hidden-body-entry-observation")
+        matches!(outcome, Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, .. })
+        if obstruction.class == "hidden-body-entry-observation")
     );
 }
 
 #[test]
 fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
-    let visible = "let f = (receiver, x):meta => (\"visible rejection\") delete;";
-    let hidden = "compile let f = (receiver, x):seal => { (); };";
+    let visible = "let f = (receiver, x):runtime => (\"visible rejection\") delete;";
+    let hidden = "runtime let f = (receiver, x):compile => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [
         vec![visible, hidden],
@@ -288,7 +340,10 @@ fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
         let outcome = family.invoke_ordinary_call(
             family.package_root_node(),
             &call,
-            OrdinaryInvocationContext::open_static(&[]),
+            OrdinaryInvocationContext {
+                horizon: ObservationHorizon::Runtime,
+                ..OrdinaryInvocationContext::open_static(&[])
+            },
             Provenance::new("mixed body observations"),
         );
         if ambiguous {
@@ -310,15 +365,18 @@ fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
 
 #[test]
 fn hidden_body_does_not_override_a_reached_applicability_diagnostic() {
-    let visible = "let f = (receiver, x:type):meta => { (); };";
-    let hidden = "compile let f = (receiver, x):seal => { (); };";
+    let visible = "let f = (receiver, x:type::):runtime => { (); };";
+    let hidden = "runtime let f = (receiver, x):compile => { (); };";
     let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
     for sources in [[visible, hidden], [hidden, visible]] {
         let mut family = AssociatedFamily::new(&sources);
         let outcome = family.invoke_ordinary_call(
             family.package_root_node(),
             &call,
-            OrdinaryInvocationContext::open_static(&[]),
+            OrdinaryInvocationContext {
+                horizon: ObservationHorizon::Runtime,
+                ..OrdinaryInvocationContext::open_static(&[])
+            },
             Provenance::new("mixed applicability and body observation"),
         );
         assert!(
@@ -341,7 +399,7 @@ fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
         extract_single_call_site(&initializer_from_source("let result = () uint8;")).unwrap();
     for hidden_first in [false, true] {
         let mut family = AssociatedFamily::new(&[
-            "let f = (receiver, x):meta => (\"visible rejection\") delete;",
+            "let f = (receiver, x):compile => (\"visible rejection\") delete;",
         ]);
         let visible = family.target_binding().ordinary_value().unwrap();
         let world = family.semantic_world_mut();
@@ -349,7 +407,7 @@ fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
         let hidden = world
             .install_plain_value(
                 classifier,
-                declared_policy_view(Stage::Seal, PolicyMode::Const).pair,
+                declared_policy_view(Stage::Runtime, PolicyMode::Const).pair,
                 Provenance::new("hidden receiver"),
             )
             .unwrap();
@@ -357,7 +415,11 @@ fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
             .symbol_in_namespace(base.core_node(), "uint8")
             .unwrap()
             .identity;
-        let pattern = world.symbol(target).unwrap().pure_p_pattern().unwrap();
+        let pattern = world
+            .symbol(target)
+            .unwrap()
+            .type_resident_pattern()
+            .unwrap();
         let receivers = if hidden_first {
             [hidden, visible]
         } else {

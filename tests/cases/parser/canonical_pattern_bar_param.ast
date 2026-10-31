@@ -19,8 +19,8 @@ Program
                                 CanonicalSegment
                                   elements:
                                     CanonicalWildcard _
-                                    CanonicalName role=NodeName name=if
-                                    CanonicalName role=NodeName name=else
+                                    CanonicalName role=NodeName name=true
+                                    CanonicalName role=NodeName name=false
                             annotation:
                               AnnotationExpr
                                 Expr
@@ -28,7 +28,9 @@ Program
                                     Segment has_incoming=false
                                       OperatorExpr
                                         Atom
-                                          Name type
+                                          NavPath terminated
+                                            components:
+                                              component Name type
                             with_clause:
                               None
                             initializer:

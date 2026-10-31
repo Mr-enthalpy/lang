@@ -1,6 +1,6 @@
 let ordinary_result_annotation =
-  (self, t: type): compile
-    -> r: symbol =>
+  (self, t: type::): compile
+    -> r: symbol:: =>
 {
   r;
 };

@@ -55,7 +55,9 @@ NormProgram origin=Source@1:1[0..47]
                   HoleDecl "T" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
                     annotation:
                       AnnotationPattern origin=Generated(PrefixNegativeLowering)@4:1[22..24]
-                        PatternName "type" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                        PatternNav terminated=true origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                          components:
+                            Name "type" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
                 params:
                   BindingSlotElem
                     BindingSlot let=false origin=Generated(PrefixNegativeLowering)@4:1[22..24]
@@ -133,7 +135,9 @@ NormProgram origin=Source@1:1[0..47]
                   HoleDecl "T" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
                     annotation:
                       AnnotationPattern origin=Generated(PrefixNegativeLowering)@6:1[31..39]
-                        PatternName "type" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                        PatternNav terminated=true origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                          components:
+                            Name "type" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
                 params:
                   BindingSlotElem
                     BindingSlot let=false origin=Generated(PrefixNegativeLowering)@6:1[31..39]
@@ -199,7 +203,9 @@ NormProgram origin=Source@1:1[0..47]
                             HoleDecl "T" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                               annotation:
                                 AnnotationPattern origin=Generated(PrefixNegativeLowering)@7:5[45..47]
-                                  PatternName "type" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                  PatternNav terminated=true origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                    components:
+                                      Name "type" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                           params:
                             BindingSlotElem
                               BindingSlot let=false origin=Generated(PrefixNegativeLowering)@7:5[45..47]

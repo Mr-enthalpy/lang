@@ -8,13 +8,40 @@ The semantic value universe is the ordinary Object universe:
 Object(x) = <Val1?(x), Pattern(x), Val2(x)>
 ```
 
-Construction bodies may use private replay material, but only the declared
-semantic result crosses the invocation boundary. `struct` materializes and
-returns a complete type value. `StructConstructionMaterial` remains private to
-execution. Struct Pattern syntax material is converted to
-`CanonicalPatternValue` before it participates in semantic relations.
+The [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md)
+defines the standard `(_ * ω)$` wrapper and `_ * ω` classifier Pattern.
+Bare Product material expands/merges contextually; actual repetition Val1
+contributes to complete identity. Call input is an established exposure context
+for available standard packaging, including nested source Products. Syntax/material flattening supplies no
+packed-value extraction or runtime length observation. Repetition formation,
+selected `pack?` and iteration consumers remain unavailable until their
+ordinary producer/Policy/Pre interfaces are connected. External S `_$` cannot
+be erased or interpreted as the anonymous `_` hole by a partial matcher.
+
+Structural interpretation forms complete types atomically with actual Val2
+witnesses and registered roles. struct:type->type receives the complete type
+and adds helpers without changing its structural registrations. Private
+execution/formation material is consumed within its common transaction;
+only ordinary declared semantic results cross InvocationResult.
 
 `R_Gamma(P,c,rho)` is the sole Pattern applicability and extraction relation.
+Argument transport retains unknown value/type role separately from observed
+presence/absence and unavailable classifier observation separately from known
+detached Pattern-coordinate evidence. Relation consumers return a proof,
+decided mismatch, or explicit unavailable/unsupported diagnostic. Missing
+actual or named classifier observations cannot supply negative applicability
+evidence or permit selection of another candidate.
+World-connected ordinary arguments transport available frozen complete classifier
+snapshots and their Core together before first-round applicability; required
+unavailable observations stop the query, while binders/discards add no classifier
+premise. Selected input identity normalization is an independent consumer. Lookup keys locate
+observations; they are not equality proofs. Source binding/member Policy views
+remain on forced-conversion inputs through horizon and Ready checks; stored
+payload availability supplies no authority to read a runtime view at compile.
+Already selected forced extraction/delivery consumes its proved total-root
+mismatch through the result owner's [one root conversion rule](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion).
+Applicability remains conversion-free; missing mismatch/root evidence is
+unavailable. Selected conversion or final extraction failure never reopens.
 Its content input is the Object's `Val1?` and owned `Val2`. Structural
 extraction additionally requires explicit `DirectPatternChild` evidence and
 the `StructuralDefault` family filter.
@@ -26,6 +53,13 @@ One installed name binding has at most one resident: an absent-Val1 type or an
 ordinary value with an actual destination Place. The carrier uses `resident=None`
 when no resident is established; a present ordinary resident cannot lack its Place.
 Binding Policy projections do not introduce additional residents.
+Ordinary and type argument names retain the shared resolved navigation and
+complete lexical lookup order. Every required host exposure factor is checked
+at the actual invocation horizon before terminal observation. Resident identity
+does not deduplicate distinct Policy edges. A single-argument view/mode carrier
+is formed only after a unique contextual observation is established; unresolved
+multi-edge projection is unavailable, independently of registration order.
+Host navigability requests Pattern exposure, without choosing terminal mode.
 Object Val2 normalization maps each realized selector to one resident address.
 An associated implementation ledger whose ordinary resident is not formed yet
 has no Object normal form; normalization reports the unconnected consumer.
@@ -58,7 +92,7 @@ implementation enum. An incomplete applicability relation stops the candidate
 family before maxima. In particular, Assert/Verify currently have unconnected
 parameter relations; they cannot be removed to select a known runner-up.
 Builtin body handling returns private material to the ordinary declared-result
-consumer. Source completion remains unavailable; no separate meta block evaluator
+consumer. Source completion remains unavailable; no separate compile block evaluator
 supplies a substitute result. Preparation supplies no Ready or common commit proof.
 `BuiltinBodyMaterial` belongs only to selected builtin leaves. The source-body
 frontier has a diagnostic-only interface and cannot produce that private material.
@@ -76,6 +110,7 @@ is a projection, with no private continuation or action-commit API.
 
 ```text
 selected action + fixed continuation cut
+  -> common cleanup gate on the current state and continuation
   -> all affected projection Pre checks on the current state
   -> one common transaction commit
   -> joint Post publication at that same action identity/cut
@@ -104,12 +139,12 @@ the complete prefix through k, including empty cuts, without shifting any point.
 It linearizes same-point events while preserving all previously fixed order.
 New generations may receive placements strictly beyond that prefix and the
 committed frontier. Future material remains a separate, unfinalized suffix;
-`cleanup()` exposes only the fixed sequence. Every lifecycle Pre requires its
-requested cut to be covered by the fixed prefix.
+`cleanup()` exposes only the fixed sequence. Every common transaction requires
+its requested cut to be covered by the fixed prefix.
 At the scheduled cut cleanup submits Drop,
 not a separate lifecycle event. A committed Kill/Drop discharges the generation's
-obligation. Every lifecycle action's Pre rejects crossing any earlier fixed
-cleanup point whose obligation remains outstanding, even for another subject.
+obligation. The common transaction rejects crossing any earlier fixed cleanup
+point whose obligation remains outstanding, even for another subject.
 Failure leaves the fixed Drop executable at its original cut; neither the cut
 nor the ordinal advances. At its own fixed endpoint, Use/Preserve fail; Drop
 and a Kill replacing that Drop must follow the fixed sequence. Kill before
@@ -119,13 +154,18 @@ at a cut already containing Use/Preserve of that subject, even without a
 scheduled Drop. Action ordinals do not enlarge Region membership.
 Preserve discharges no cleanup obligation.
 
-Full E integration must enforce the outstanding-cleanup boundary for every
-semantic action, including actions without a lifecycle projection. Currently
-that check resides in `LifecycleState::check_pre`; `commit_action` does not
-perform it automatically. Before any action commits at k, every fixed cleanup
-strictly before k must have been committed or its obligation discharged.
-The shared scheduler or common transaction must enforce this gate; inclusion
-of lifecycle Pre by an individual caller is not sufficient integration evidence.
+`commit_action` enforces this boundary before projection Pre for every action,
+including actions without a lifecycle projection. Its state implements the
+`CleanupObligations` observation relation relative to the supplied continuation.
+Every fixed cleanup strictly before k must be discharged. Outstanding blocks
+the action; missing, foreign or future facts report unavailable and also block
+it. Roster discovery and absence from active storage prove no discharge.
+Lifecycle storage validates continuation identity, committed event ordinals and
+positions, and generation birth before exposing an observation. The common
+transaction depends on this relation, not a concrete lifecycle storage type.
+Same-cut endpoint and ending-event precedence remain lifecycle Pre obligations.
+Source actions still require the common E consumer to enter this transaction;
+passing transaction tests supplies no source scheduling or readiness witness.
 
 Roster discovery establishes only the stable value-to-LifeName map. It supplies
 neither Alive nor a Region nor an origin proposition. Formation consumes an
@@ -154,7 +194,9 @@ retained origins still include permitted additions to active ancestors.
 Bare LifeName numbers
 are interpreted within the supplied K, never as independent authority.
 
-ReifyLife must describe the fully fixed generation continuation. A frozen
+ReifyLife describes fixed generation and cleanup facts of the current semantic
+continuation K, with Region_K(n)=R(NamePosition_K(n)). Future branch enumeration
+is not a premise of E. A frozen
 cleanup table alone proves neither its full endpoint nor the absence of other
 generation-ending actions. The operational active Region is not a completed
 LifetimeValue. Until that continuation projection is connected, `reify_value`

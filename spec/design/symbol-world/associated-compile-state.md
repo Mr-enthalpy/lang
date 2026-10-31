@@ -1,13 +1,14 @@
-# Associated Compile-Time State as a Meta Invocation
+# Associated Compile-Time State
 
 Status: canonical derived instance; source integration pending. A and the member
 spelling state below are notation, not frozen public callable/member spellings.
 
-## 1. Derivation from ordinary meta invocation
+## 1. An ordinary self-root result program
 
-[Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
-constructs an instance name whose value is its instance type. A uses this general
-facility and stores an ordinary OverloadGroup in that type's Val2:
+[Compile invocation](../static-evaluation/compile-instance-invocation-and-result-delivery.md)
+forms a stable instance independent of result kind. A specifically constructs
+and returns its single self-root complete type, storing an ordinary OverloadGroup
+in that type's Val2:
 
     m_A(t) = InvokeName(A, t)
     Value(m_A(t)) = tau_A(t)
@@ -16,7 +17,7 @@ facility and stores an ordinary OverloadGroup in that type's Val2:
     initial group value = epsilon_OG
 
 The group can have its ordinary type without being registered in the instance's
-V_tau or Pattern. The direct meta result remains tau_A(t); the instance name is
+V_tau or Pattern. The direct A result is tau_A(t); the instance name is
 not itself a group-valued wrapper. Ordinary navigation retrieves its payload.
 
 A's input dependency is the existing construction subject of t:
@@ -26,13 +27,13 @@ A's input dependency is the existing construction subject of t:
     m_A(t1) = m_A(t2) iff subject(t1) = subject(t2)
       for the same resolved A and parent semantic owner
 
-The subject carries Anchor, GenerationRegime and WindowLive; it is not a new
+The subject carries Anchor and WindowLive; it is not a new
 Object. Copies preserve it, authorized updates and Close do not rename it, and
 independent equal-Core formation does not merge it. Ordinary Core equality,
 group bucket equality, whole-snapshot equality and TypeValueId cannot substitute
 for that dependency. Incidental lexical carrier Places do not enter this key.
 
-The general meta invocation cache retains the instance and its ordinary member
+The general compile invocation cache retains the instance and its ordinary member
 Places/current state. A needs no separate GlobalMap primitive. Sparse maps can
 implement the general facility; their representation does not define A.
 
@@ -41,17 +42,17 @@ implement the general facility; their representation does not define A.
 Schematic uses of the existing syntax are:
 
 ```lang
-meta let instance = t |> A;
+open let instance = t |> A;
 let group_value = state::instance;
 let group_ref = (state::instance) ref;
 ```
 
-P1 meta retains the instance under its input-derived source. Its name is its type
+P1 open retains the instance under its input-derived source. Its name is its type
 value, so OpenHere governs its mutation qualification and must hold before
 acquiring an instance mut view. Only finally omitted Mode becomes mut under
-meta + current OpenHere; explicit or deduced const/mut remains independent.
+open + current OpenHere; explicit or deduced const/mut remains independent.
 Classic close let instead completes and closes the instance;
-meta let cannot reopen it later.
+open let cannot reopen it later.
 
 The state member is an ordinary group name/value. Its declared ordinary member
 policy exposes mutable views while the construction source remains open.
@@ -63,8 +64,8 @@ The local `instance` spelling does not imply place forwarding. Ordinary outer
 binding may hold a snapshot in its own destination; a reference to a member of
 that copied resident targets the copy. Shared persistent-state mutation must
 select the actual member Place of the invocation-generated instance name.
-See the [acquisition/binding trace](../meta-invocation/meta-object-invocation-and-policy-reduction.md#204-worked-example-instance-acquisition-and-outer-binding)
-for repeated acquisition, copied values and saved references. P1 meta preserves
+See the [instance state and binding rules](../static-evaluation/compile-instance-invocation-and-result-delivery.md#5-lifetime-references-and-retained-state)
+for repeated acquisition, copied values and saved references. P1 open preserves
 openness, not an implicit alias to a cache entry.
 
 A hypothetical A::t would occupy t's namespace. Here:
@@ -115,17 +116,17 @@ receiver invokes the explicit group value with its own construction reference:
 
 Ordinary call projection selects one candidate. First self is the selected
 callable object; r is a later argument. The body may inspect the target, branch,
-invoke compile functions or host Objects, create intermediate Objects, or inject
-several times. Source group mutation and target injection have separate premises:
+invoke compile functions or host Objects, create intermediate Objects, or perform ordinary *=
+updates. Source group mutation and target update have separate premises:
 
     source: updating state requires its ordinary writable view and live source
-    target: extending/injecting r requires its own OpenHere/Writable
+    target: composing/updating r requires its own OpenHere/Writable
 
 Calling grants no hidden target access. Ambiguity remains ordinary ambiguity;
 there is no implicit fan-out. A dispatcher can be an ordinary entry.
 
 For an actually closed instance with exactly one ordinary Val2 entry, the
-[compile extraction helper](../meta-invocation/meta-object-invocation-and-policy-reduction.md#31-ordinary-val2-extraction-and-compile-convenience)
+[compile extraction helper](../static-evaluation/compile-instance-invocation-and-result-delivery.md#7-requested-names-and-ordinary-associated-state)
 can provide value convenience via `instance |> only_val2` or `instance only_val2`.
 The helper is not an implicit conversion or an open-state mutation path. While
 constructing or borrowing state, use its ordinary explicit member name.
@@ -139,11 +140,11 @@ common snapshot with independent overlays. Commutative associative contributions
 may join; conflicting replacements report ordinary unordered write conflicts.
 Scheduling does not expose another sibling's new writes.
 
-A consumes the general meta instance cache: stable identity, construction status,
+A consumes the general compile instance cache: stable identity, construction status,
 current type/member observations, dependency validity and current Pre. Cache reuse
 preserves effects and entry multiplicity without replaying initialization or
 restoring an earlier group value. Previously copied snapshots stay immutable.
 
 Public spelling, source definition, sparse storage, persistence and entry encoding
-remain implementation work. The general meta facilities must be implemented
+remain implementation work. The general compile facilities must be implemented
 first; they satisfy A's needs. No A-specific capability remains to be generalized.

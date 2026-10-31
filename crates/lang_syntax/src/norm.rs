@@ -94,6 +94,15 @@ pub enum NormDecl {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormExpr {
+    /// RHS underscore is universe-rank material, independent from name lookup.
+    UniverseRank {
+        origin: NormOrigin,
+    },
+    /// Structural operand interpreted under the polarity opposite to V.
+    InterpretationFlip {
+        operand: Box<NormPattern>,
+        origin: NormOrigin,
+    },
     PolicyLet {
         policy: NormPolicySpec,
         operand: Box<NormExpr>,
@@ -199,8 +208,8 @@ pub enum NormPattern {
         skeleton: NormSkeleton,
         origin: NormOrigin,
     },
-    /// RHS operand evaluated once, then reinjected by the current Pattern consumer.
-    Splice {
+    /// Value operand interpreted under the polarity opposite to S.
+    InterpretationFlip {
         operand: Box<NormExpr>,
         origin: NormOrigin,
     },
@@ -220,6 +229,82 @@ pub enum NormPatternElem {
     Pattern(NormPattern),
     BindingSlot(NormBindingSlot),
     Unit { origin: NormOrigin },
+}
+
+/// Visit syntactic value operands embedded in structural material. This does
+/// not interpret material, read residents or determine semantic dependencies.
+pub fn visit_structural_value_occurrences<'a>(
+    pattern: &'a NormPattern,
+    visitor: &mut impl FnMut(&'a NormExpr),
+) {
+    fn slot<'a>(slot: &'a NormBindingSlot, visitor: &mut impl FnMut(&'a NormExpr)) {
+        visit_structural_value_occurrences(&slot.value_pattern, visitor);
+        if let Some(annotation) = &slot.annotation {
+            visit_structural_value_occurrences(&annotation.pattern, visitor);
+        }
+        if let Some(initializer) = &slot.initializer {
+            visitor(initializer);
+        }
+        for hole in &slot.deduce {
+            if let Some(annotation) = &hole.annotation {
+                visit_structural_value_occurrences(&annotation.pattern, visitor);
+            }
+        }
+    }
+    fn navigation<'a>(components: &'a [NormNavComponent], visitor: &mut impl FnMut(&'a NormExpr)) {
+        for component in components {
+            match component {
+                NormNavComponent::InterpretationFlip { operand, .. }
+                | NormNavComponent::Group { expr: operand, .. } => visitor(operand),
+                NormNavComponent::PatternGroup { pattern, .. } => {
+                    visit_structural_value_occurrences(pattern, visitor)
+                }
+                _ => {}
+            }
+        }
+    }
+    fn skeleton<'a>(node: &'a NormSkeleton, visitor: &mut impl FnMut(&'a NormExpr)) {
+        match node {
+            NormSkeleton::Segment { elements, .. } => {
+                for element in elements {
+                    skeleton(element, visitor);
+                }
+            }
+            NormSkeleton::Product { elements, .. } => {
+                for element in elements {
+                    if let NormSkeletonElem::Skeleton(node) = element {
+                        skeleton(node, visitor);
+                    }
+                }
+            }
+            NormSkeleton::Nav { components, .. } => navigation(components, visitor),
+            _ => {}
+        }
+    }
+    match pattern {
+        NormPattern::InterpretationFlip { operand, .. } => visitor(operand),
+        NormPattern::Pack { inner, .. } => visit_structural_value_occurrences(inner, visitor),
+        NormPattern::Sequence { elements, .. } => {
+            for element in elements {
+                visit_structural_value_occurrences(element, visitor);
+            }
+        }
+        NormPattern::Product { elements, .. } => {
+            for element in elements {
+                match element {
+                    NormPatternElem::Pattern(pattern) => {
+                        visit_structural_value_occurrences(pattern, visitor)
+                    }
+                    NormPatternElem::BindingSlot(binding) => slot(binding, visitor),
+                    NormPatternElem::Unit { .. } => {}
+                }
+            }
+        }
+        NormPattern::BindingSlot { slot: binding, .. } => slot(binding, visitor),
+        NormPattern::Nav { components, .. } => navigation(components, visitor),
+        NormPattern::Skeleton { skeleton: node, .. } => skeleton(node, visitor),
+        _ => {}
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -312,7 +397,7 @@ pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPat
         | NormPattern::Name { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Nav { .. }
-        | NormPattern::Splice { .. }
+        | NormPattern::InterpretationFlip { .. }
         | NormPattern::Skeleton { .. }
         | NormPattern::Error(_)
         | NormPattern::Unsupported { .. } => Ok(()),
@@ -452,7 +537,9 @@ fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PatternVa
             }
             collect_pattern_pack_errors(inner, errors);
         }
-        NormPattern::Splice { operand, .. } => collect_expr_pack_errors(operand, errors),
+        NormPattern::InterpretationFlip { operand, .. } => {
+            collect_expr_pack_errors(operand, errors)
+        }
         NormPattern::BindingSlot { slot, .. } => collect_slot_pack_errors(slot, errors),
         NormPattern::Nav { components, .. } => {
             collect_nav_component_pack_errors(components, errors);
@@ -523,6 +610,9 @@ fn direct_pack_pattern_origin(pattern: &NormPattern) -> Option<&NormOrigin> {
 
 fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PatternValidationError>) {
     match expr {
+        NormExpr::InterpretationFlip { operand, .. } => {
+            collect_pattern_pack_errors(operand, errors)
+        }
         NormExpr::PolicyLet { operand, .. } => collect_expr_pack_errors(operand, errors),
         NormExpr::Call { source, target, .. } => {
             for element in &source.elements {
@@ -543,7 +633,8 @@ fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PatternValidationE
             collect_nav_component_pack_errors(components, errors);
         }
         NormExpr::Closure(closure) => collect_closure_pack_errors(closure, errors),
-        NormExpr::Name { .. }
+        NormExpr::UniverseRank { .. }
+        | NormExpr::Name { .. }
         | NormExpr::Literal { .. }
         | NormExpr::OperatorTarget { .. }
         | NormExpr::Error(_)
@@ -612,7 +703,7 @@ fn collect_nav_component_pack_errors(
 ) {
     for component in components {
         if let NormNavComponent::Group { expr, .. }
-        | NormNavComponent::Splice { operand: expr, .. } = component
+        | NormNavComponent::InterpretationFlip { operand: expr, .. } = component
         {
             collect_expr_pack_errors(expr, errors);
         } else if let NormNavComponent::PatternGroup { pattern, .. } = component {
@@ -696,6 +787,7 @@ pub enum NormPolicyAtom {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormHoleDecl {
+    pub policy: Option<NormPolicySpec>,
     pub id: HoleBinderId,
     pub name: String,
     pub annotation: Option<NormAnnotation>,
@@ -989,7 +1081,7 @@ pub enum NormNavComponent {
         pattern: Box<NormPattern>,
         origin: NormOrigin,
     },
-    Splice {
+    InterpretationFlip {
         operand: Box<NormExpr>,
         origin: NormOrigin,
     },
@@ -1103,7 +1195,7 @@ pub enum NormRule {
     PrefixNegativeLowering,
     DotNameLowering,
     MemberLowering,
-    DoubleDotLowering,
+    PipelineDotLowering,
     BracketCallLowering,
     MemberViewAnnotationLowering,
     AliasPreserve,
@@ -1299,6 +1391,9 @@ impl HoleAlphaNormalizer {
         for hole in deduce {
             // A telescope annotation sees ancestors and earlier binders, but
             // never the binder being declared or a later binder.
+            if let Some(policy) = &mut hole.policy {
+                self.normalize_policy_spec(policy, &visible);
+            }
             if let Some(annotation) = &mut hole.annotation {
                 self.normalize_pattern(&mut annotation.pattern, &visible, root, declared);
             }
@@ -1334,6 +1429,10 @@ impl HoleAlphaNormalizer {
         owner: NormSemanticOwnerId,
     ) {
         match expr {
+            NormExpr::InterpretationFlip { operand, .. } => {
+                let root = self.fresh_pattern_root(owner);
+                self.normalize_pattern(operand, holes, root, &mut BTreeMap::new());
+            }
             NormExpr::PolicyLet {
                 policy, operand, ..
             } => {
@@ -1349,7 +1448,8 @@ impl HoleAlphaNormalizer {
                 self.normalize_nav_components(components, holes, owner);
             }
             NormExpr::Closure(closure) => self.normalize_closure(closure, holes, owner),
-            NormExpr::Name { .. }
+            NormExpr::UniverseRank { .. }
+            | NormExpr::Name { .. }
             | NormExpr::Literal { .. }
             | NormExpr::OperatorTarget { .. }
             | NormExpr::Error(_)
@@ -1501,7 +1601,7 @@ impl HoleAlphaNormalizer {
                             self.normalize_pattern(pattern, holes, root, declared)
                         }
                         NormNavComponent::Group { expr, .. }
-                        | NormNavComponent::Splice { operand: expr, .. } => {
+                        | NormNavComponent::InterpretationFlip { operand: expr, .. } => {
                             self.normalize_expr(expr, holes, root.owner)
                         }
                         _ => {}
@@ -1516,7 +1616,9 @@ impl HoleAlphaNormalizer {
             NormPattern::Skeleton { skeleton, .. } => {
                 self.normalize_skeleton(skeleton, holes, root.owner);
             }
-            NormPattern::Splice { operand, .. } => self.normalize_expr(operand, holes, root.owner),
+            NormPattern::InterpretationFlip { operand, .. } => {
+                self.normalize_expr(operand, holes, root.owner)
+            }
             NormPattern::BindingSlot { slot, .. } => {
                 self.normalize_slot(slot, holes, root, declared);
             }
@@ -1594,7 +1696,7 @@ impl HoleAlphaNormalizer {
     ) {
         for component in components {
             if let NormNavComponent::Group { expr, .. }
-            | NormNavComponent::Splice { operand: expr, .. } = component
+            | NormNavComponent::InterpretationFlip { operand: expr, .. } = component
             {
                 self.normalize_expr(expr, holes, owner);
             }
@@ -2102,11 +2204,11 @@ fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
         }
         OperatorExprKind::OperatorSugar {
             operator,
-            args: _,
+            args,
             span,
             ..
-        } if operator.spelling == "$" => NormExpr::Unsupported {
-            raw_kind_summary: "Pattern splice outside a Pattern/Path consumer".into(),
+        } if operator.spelling == "$" && args.len() == 1 => NormExpr::InterpretationFlip {
+            operand: Box::new(normalize_operator_expr_as_pattern(&args[0], &[])),
             origin: NormOrigin::Source(*span),
         },
         OperatorExprKind::OperatorSugar {
@@ -2147,6 +2249,9 @@ fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
 
 fn normalize_atom(atom: &AtomAst) -> NormExpr {
     match &atom.kind {
+        AtomKind::Name(name) if name.text == "_" => NormExpr::UniverseRank {
+            origin: NormOrigin::Source(name.span),
+        },
         AtomKind::Name(name) => NormExpr::Name {
             text: name.text.clone(),
             origin: NormOrigin::Source(name.span),
@@ -2313,38 +2418,19 @@ fn normalize_double_dot_sugar(
     args: &ProductExprAst,
     span: Span,
 ) -> NormExpr {
-    let selector_name = selector_name(selector);
-    let mut elements = vec![NormProductElem::Expr(generated_name(
-        "val",
-        span,
-        NormRule::DoubleDotLowering,
-    ))];
-    elements.extend(normalize_product_elements(args, false));
-    let body = make_call(
+    let mut elements = source_product_from_expr(object, span).elements;
+    elements.extend(normalize_product_elements(args, true));
+    make_call(
         NormProduct {
             elements,
             origin: NormOrigin::Generated {
-                rule: NormRule::DoubleDotLowering,
+                rule: NormRule::PipelineDotLowering,
                 span,
             },
         },
-        generated_nav(
-            &[selector_name.as_str(), "T"],
-            span,
-            NormRule::DoubleDotLowering,
-        ),
+        normalize_dot_name(selector, span),
         NormOrigin::Generated {
-            rule: NormRule::DoubleDotLowering,
-            span,
-        },
-    );
-    let closure = generated_receiver_closure(NormRule::DoubleDotLowering, span, body);
-
-    make_call(
-        source_product_from_expr(object, span),
-        NormExpr::Closure(closure),
-        NormOrigin::Generated {
-            rule: NormRule::DoubleDotLowering,
+            rule: NormRule::PipelineDotLowering,
             span,
         },
     )
@@ -2617,6 +2703,9 @@ fn collect_free_non_call_names_expr(
     names: &mut BTreeSet<String>,
 ) {
     match expr {
+        NormExpr::InterpretationFlip { operand, .. } => {
+            collect_value_occurrences_in_structure(operand, bound, names);
+        }
         NormExpr::PolicyLet { operand, .. } => {
             collect_free_non_call_names_expr(operand, bound, direct_call_target, names);
         }
@@ -2643,7 +2732,7 @@ fn collect_free_non_call_names_expr(
         NormExpr::Nav { components, .. } => {
             for component in components {
                 if let NormNavComponent::Group { expr, .. }
-                | NormNavComponent::Splice { operand: expr, .. } = component
+                | NormNavComponent::InterpretationFlip { operand: expr, .. } = component
                 {
                     collect_free_non_call_names_expr(expr, bound, false, names);
                 }
@@ -2652,11 +2741,22 @@ fn collect_free_non_call_names_expr(
         NormExpr::Closure(closure) => {
             collect_free_non_call_names_closure(closure, bound, names);
         }
-        NormExpr::Literal { .. }
+        NormExpr::UniverseRank { .. }
+        | NormExpr::Literal { .. }
         | NormExpr::OperatorTarget { .. }
         | NormExpr::Error(_)
         | NormExpr::Unsupported { .. } => {}
     }
+}
+
+fn collect_value_occurrences_in_structure(
+    pattern: &NormPattern,
+    bound: &BTreeSet<String>,
+    names: &mut BTreeSet<String>,
+) {
+    visit_structural_value_occurrences(pattern, &mut |expr| {
+        collect_free_non_call_names_expr(expr, bound, false, names);
+    });
 }
 
 fn collect_free_non_call_names_closure(
@@ -2774,7 +2874,7 @@ fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<Stri
         | NormPattern::Name { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Nav { .. }
-        | NormPattern::Splice { .. }
+        | NormPattern::InterpretationFlip { .. }
         | NormPattern::Skeleton { .. }
         | NormPattern::Error(_)
         | NormPattern::Unsupported { .. } => {}
@@ -2869,6 +2969,7 @@ fn normalize_deduce_list(
                 .as_ref()
                 .map(|annotation| normalize_annotation_term(annotation, &visible));
             normalized.push(NormHoleDecl {
+                policy: binder.policy.as_ref().map(normalize_policy_spec),
                 id,
                 name: binder.name.text.clone(),
                 annotation,
@@ -2924,18 +3025,19 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole])
     // Extraction-side entry point. Binder/name/skeleton material stays in the
     // NormPattern family and is not treated as value-side call target material.
     match pattern {
+        BindingPatternAst::Binder(BinderNameAst::Text(name))
+            if find_visible_source_hole(holes, &name.text).is_some() =>
+        {
+            NormPattern::HoleRef {
+                target: find_visible_source_hole(holes, &name.text).unwrap().id,
+                name: name.text.clone(),
+                origin: NormOrigin::Source(name.span),
+            }
+        }
         BindingPatternAst::Binder(BinderNameAst::Text(name)) => NormPattern::Binder {
             identity: None,
             name: Some(name.text.clone()),
             origin: NormOrigin::Source(name.span),
-        },
-        BindingPatternAst::Binder(BinderNameAst::GeneratedSelf { span }) => NormPattern::Binder {
-            identity: None,
-            name: None,
-            origin: NormOrigin::Generated {
-                rule: NormRule::ClosureNormalize,
-                span: *span,
-            },
         },
         BindingPatternAst::Binder(BinderNameAst::Operator(operator)) => {
             NormPattern::OperatorBinder {
@@ -3148,7 +3250,8 @@ fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[VisibleHole]) -> NormPatte
     // extraction contexts. Names become PatternName/HoleRef, not NormExpr::Name.
     match &expr.kind {
         ExprKind::Colon { .. } => NormPattern::Unsupported {
-            raw_kind_summary: "RHS structural colon outside a splice operand".to_string(),
+            raw_kind_summary: "RHS structural colon outside an opposite-context operand"
+                .to_string(),
             origin: NormOrigin::Source(expr.span),
         },
         ExprKind::PolicyLet(policy_let) => NormPattern::Unsupported {
@@ -3234,7 +3337,7 @@ fn normalize_operator_expr_as_pattern(
             args,
             span,
             ..
-        } if operator.spelling == "$" && args.len() == 1 => NormPattern::Splice {
+        } if operator.spelling == "$" && args.len() == 1 => NormPattern::InterpretationFlip {
             operand: Box::new(normalize_operator_expr(&args[0])),
             origin: NormOrigin::Source(*span),
         },
@@ -3243,7 +3346,7 @@ fn normalize_operator_expr_as_pattern(
             explicit_terminated: false,
             ..
         } if matches!(components.as_slice(), [NavComponentAst::Operator(_)]) => {
-            NormPattern::Splice {
+            NormPattern::InterpretationFlip {
                 operand: Box::new(normalize_operator_expr(expr)),
                 origin: NormOrigin::Source(expr.span),
             }
@@ -3284,6 +3387,12 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPatte
     // PatternName/PatternNav/HoleRef labels are intentionally distinct from
     // value-side Name/Nav dumps.
     match &atom.kind {
+        AtomKind::Name(name) if name.text == "_" => NormPattern::Skeleton {
+            skeleton: NormSkeleton::Wildcard {
+                origin: NormOrigin::Source(name.span),
+            },
+            origin: NormOrigin::Source(name.span),
+        },
         AtomKind::Name(name) if find_visible_source_hole(holes, &name.text).is_some() => {
             let target = find_visible_source_hole(holes, &name.text)
                 .expect("guard proved visible hole")
@@ -3437,7 +3546,9 @@ fn normalize_pattern_nav_component(
 ) -> NormNavComponent {
     match component {
         NavComponentAst::Group(expr) => match normalize_expr_as_pattern(expr, holes) {
-            NormPattern::Splice { operand, origin } => NormNavComponent::Splice { operand, origin },
+            NormPattern::InterpretationFlip { operand, origin } => {
+                NormNavComponent::InterpretationFlip { operand, origin }
+            }
             pattern => NormNavComponent::PatternGroup {
                 pattern: Box::new(pattern),
                 origin: NormOrigin::Source(expr.span),
@@ -3458,8 +3569,10 @@ fn normalize_nav_component(component: &NavComponentAst) -> NormNavComponent {
             origin: NormOrigin::Source(operator.span),
         },
         NavComponentAst::Group(expr) => {
-            if let NormPattern::Splice { operand, origin } = normalize_expr_as_pattern(expr, &[]) {
-                NormNavComponent::Splice { operand, origin }
+            if let NormPattern::InterpretationFlip { operand, origin } =
+                normalize_expr_as_pattern(expr, &[])
+            {
+                NormNavComponent::InterpretationFlip { operand, origin }
             } else {
                 NormNavComponent::Group {
                     expr: Box::new(normalize_expr(expr)),
@@ -3518,11 +3631,16 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
         placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {
             deduce: vec![NormHoleDecl {
+                policy: None,
                 id: type_hole_id,
                 name: "T".to_string(),
                 annotation: Some(NormAnnotation {
-                    pattern: NormPattern::Name {
-                        name: "type".to_string(),
+                    pattern: NormPattern::Nav {
+                        components: vec![NormNavComponent::Name {
+                            name: "type".to_string(),
+                            origin: NormOrigin::Generated { rule, span },
+                        }],
+                        explicit_terminated: true,
                         origin: NormOrigin::Generated { rule, span },
                     },
                     origin: NormOrigin::Generated { rule, span },
@@ -3617,8 +3735,10 @@ fn normalize_error(error: &ErrorAst) -> NormError {
 
 fn expr_span(expr: &NormExpr) -> Option<Span> {
     match expr {
-        NormExpr::PolicyLet { origin, .. }
+        NormExpr::InterpretationFlip { origin, .. }
+        | NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
+        | NormExpr::UniverseRank { origin }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
@@ -3756,6 +3876,14 @@ fn dump_norm_decl(output: &mut String, decl: &NormDecl, indent: usize) {
 
 fn dump_norm_expr(output: &mut String, expr: &NormExpr, indent: usize) {
     match expr {
+        NormExpr::InterpretationFlip { operand, origin } => {
+            line(
+                output,
+                indent,
+                &format!("InterpretationFlip V->S {}", origin_inline(origin)),
+            );
+            dump_pattern(output, operand, indent + 1);
+        }
         NormExpr::PolicyLet {
             policy,
             operand,
@@ -3783,6 +3911,11 @@ fn dump_norm_expr(output: &mut String, expr: &NormExpr, indent: usize) {
             dump_norm_expr(output, target, indent + 2);
         }
         NormExpr::Product(product) => dump_product(output, product, indent),
+        NormExpr::UniverseRank { origin } => line(
+            output,
+            indent,
+            &format!("UniverseRank {}", origin_inline(origin)),
+        ),
         NormExpr::Name { text, origin } => line(
             output,
             indent,
@@ -3963,6 +4096,10 @@ fn dump_hole_decl(output: &mut String, hole: &NormHoleDecl, indent: usize) {
             origin_inline(&hole.origin)
         ),
     );
+    if let Some(policy) = &hole.policy {
+        line(output, indent + 1, "policy:");
+        dump_norm_policy_spec(output, policy, indent + 2);
+    }
     line(output, indent + 1, "annotation:");
     match &hole.annotation {
         Some(annotation) => dump_annotation(output, annotation, indent + 2),
@@ -4092,11 +4229,11 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
             );
             dump_skeleton(output, skeleton, indent + 1);
         }
-        NormPattern::Splice { operand, origin } => {
+        NormPattern::InterpretationFlip { operand, origin } => {
             line(
                 output,
                 indent,
-                &format!("PatternSplice {}", origin_inline(origin)),
+                &format!("InterpretationFlip S->V {}", origin_inline(origin)),
             );
             dump_norm_expr(output, operand, indent + 1);
         }
@@ -4215,7 +4352,7 @@ fn dump_skeleton(output: &mut String, skeleton: &NormSkeleton, indent: usize) {
                         NormNavComponent::Operator { spelling, .. } => spelling.clone(),
                         NormNavComponent::PatternGroup { .. } | NormNavComponent::Group { .. } =>
                             "(...)".to_string(),
-                        NormNavComponent::Splice { .. } => "(...)$".to_string(),
+                        NormNavComponent::InterpretationFlip { .. } => "(...)$".to_string(),
                         NormNavComponent::Error(_) => "<?>".to_string(),
                     })
                     .collect::<Vec<_>>()
@@ -4453,11 +4590,14 @@ fn dump_nav_component(output: &mut String, component: &NormNavComponent, indent:
                 origin_inline(origin)
             ),
         ),
-        NormNavComponent::Splice { operand, origin } => {
+        NormNavComponent::InterpretationFlip { operand, origin } => {
             line(
                 output,
                 indent,
-                &format!("component PatternSplice {}", origin_inline(origin)),
+                &format!(
+                    "component InterpretationFlip S->V {}",
+                    origin_inline(origin)
+                ),
             );
             dump_norm_expr(output, operand, indent + 1);
         }
@@ -4542,7 +4682,7 @@ fn rule_label(rule: NormRule) -> &'static str {
         NormRule::PrefixNegativeLowering => "PrefixNegativeLowering",
         NormRule::DotNameLowering => "DotNameLowering",
         NormRule::MemberLowering => "MemberLowering",
-        NormRule::DoubleDotLowering => "DoubleDotLowering",
+        NormRule::PipelineDotLowering => "PipelineDotLowering",
         NormRule::BracketCallLowering => "BracketCallLowering",
         NormRule::MemberViewAnnotationLowering => "MemberViewAnnotationLowering",
         NormRule::AliasPreserve => "AliasPreserve",
@@ -4617,7 +4757,7 @@ fn collect_path_value_observations(
     names: &mut BTreeSet<String>,
 ) {
     match pattern {
-        NormPattern::Splice { operand, .. } => {
+        NormPattern::InterpretationFlip { operand, .. } => {
             collect_free_non_call_names_expr(operand, bound, false, names)
         }
         NormPattern::Sequence { elements, .. } => {
@@ -4628,7 +4768,7 @@ fn collect_path_value_observations(
         NormPattern::Nav { components, .. } => {
             for item in components {
                 if let NormNavComponent::Group { expr, .. }
-                | NormNavComponent::Splice { operand: expr, .. } = item
+                | NormNavComponent::InterpretationFlip { operand: expr, .. } = item
                 {
                     collect_free_non_call_names_expr(expr, bound, false, names);
                 } else if let NormNavComponent::PatternGroup { pattern, .. } = item {

@@ -2,7 +2,7 @@
 //!
 //! Semantic identity is derived from an owner graph. Source files, byte
 //! offsets, display paths, and provenance never participate in equality.
-//! Callable nesting and canonical meta invocation nesting use the same parent
+//! Callable nesting and canonical compile invocation nesting use the same parent
 //! relation.
 
 use std::{
@@ -10,7 +10,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::meta_key::{MetaInstanceMaterialKey, MetaInstanceRootKey};
+use crate::compile_key::{CompileInstanceKey, CompileInvocationMaterialKey};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PackageId(pub u64);
@@ -174,8 +174,8 @@ pub enum SemanticOwnerKind {
         local_callable: LocalCallableIdentity,
         placement: CallableOwnerPlacement,
     },
-    MetaInstance {
-        material_key: MetaInstanceMaterialKey,
+    CompileInstance {
+        material_key: CompileInvocationMaterialKey,
     },
     Generated {
         local_generation: LocalGenerationIdentity,
@@ -202,7 +202,7 @@ pub struct SemanticOwnerGraph {
     package_roots: BTreeMap<PackageId, SemanticOwnerId>,
     namespaces: BTreeMap<(SemanticOwnerId, String), SemanticOwnerId>,
     callables: BTreeMap<(SemanticOwnerId, LocalCallableIdentity), SemanticOwnerId>,
-    meta_instances: BTreeMap<MetaInstanceRootKey, SemanticOwnerId>,
+    compile_instances: BTreeMap<CompileInstanceKey, SemanticOwnerId>,
     generated: BTreeMap<(SemanticOwnerId, LocalGenerationIdentity), SemanticOwnerId>,
     next_owner: u64,
 }
@@ -217,7 +217,7 @@ impl Default for SemanticOwnerGraph {
             package_roots: BTreeMap::new(),
             namespaces: BTreeMap::new(),
             callables: BTreeMap::new(),
-            meta_instances: BTreeMap::new(),
+            compile_instances: BTreeMap::new(),
             generated: BTreeMap::new(),
             next_owner: 0,
         }
@@ -304,25 +304,25 @@ impl SemanticOwnerGraph {
         owner
     }
 
-    /// Intern a canonical meta invocation below `parent`.
+    /// Intern a canonical compile invocation below `parent`.
     ///
-    /// Repeating the same selected meta callable value and canonical argument
+    /// Repeating the same selected compile callable value and canonical argument
     /// key returns the same owner. Different canonical arguments — or a
     /// different selected function value under the same carrier Symbol —
     /// produce a distinct owner.
-    pub fn meta_instance(&mut self, key: MetaInstanceRootKey) -> SemanticOwnerId {
-        if let Some(existing) = self.meta_instances.get(&key) {
+    pub fn compile_instance(&mut self, key: CompileInstanceKey) -> SemanticOwnerId {
+        if let Some(existing) = self.compile_instances.get(&key) {
             return *existing;
         }
         let package = self.package_of(key.parent_owner);
         let owner = self.allocate(
             Some(key.parent_owner),
             package,
-            SemanticOwnerKind::MetaInstance {
+            SemanticOwnerKind::CompileInstance {
                 material_key: key.material.clone(),
             },
         );
-        self.meta_instances.insert(key, owner);
+        self.compile_instances.insert(key, owner);
         owner
     }
 

@@ -4,28 +4,23 @@ Status: canonical acceptance scenarios; evaluator/source consumers pending.
 These are semantic counterexamples and equalities, not claims that the current
 parser supports every displayed spelling or that executable tests already
 cover them. The topic owners define meaning; this matrix indexes their checks.
-The 64 PR105 IDs are retained, with N01/N03 clarified by PR106. The review
-revision distinguishes ordinary/type calls and replaces in-place permission
-restrictions with automatic dependency formation; the existing CL/PT/AD/LF
-case IDs record the corrected relations. Type identity is independent of
-self-construction; type calls select once over all callable/implementation pairs,
-and dependency realization is fixed by the selected ordinary source action.
-The 132 PR106 scenarios bring this index to 196 cases, including independent
-callable construction axes, closure contribution consumers and two-level Path
-observations. The 30 pre-implementation ALIGN cases below bring the total to
-226 semantic acceptance obligations, not 226 executed tests.
+The cases distinguish ordinary/type call entrances, immutable snapshots,
+instance identity and result structure, interpretation polarity, role
+registration, name realization and ordinary dependency/lifecycle checks.
+Each row is an acceptance obligation, independently of executable coverage.
+
 
 | Case group | Canonical owners | Implementation gate |
 |---|---|---|
-| S01–S12 | [Policy](../design/symbol-world/symbol-policy-and-compile-flow-projection.md), [calls](../design/symbol-world/function-object-call-model.md), [selection](../design/patterns-overload/overload-resolution-design.md) | Single-stage positions; two rounds and sealed origin |
-| E01–E09 | [Evaluation](../design/meta-invocation/evaluation-residual-and-optimization.md), [meta invocation](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md), [build](../design/build-package/build-system-design.md) | Runtime entry, dominance and readiness |
+| S01–S12 | [Policy](../design/symbol-world/policy-and-static-flow-projection.md), [calls](../design/symbol-world/function-object-call-model.md), [selection](../design/patterns-overload/overload-resolution-design.md) | Single-stage positions; two rounds and sealed origin |
+| E01–E09 | [Evaluation](../design/static-evaluation/evaluation-residual-and-optimization.md), [compile invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md), [build](../design/build-package/build-system-design.md) | Runtime entry, dominance and readiness |
 | L01–L08, W01–W08 | [Lifecycle](../design/lifetime/lifetime-policy-and-overload-boundary.md), [mechanical placement](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) | Instance effects and cleanup |
-| P01–P12 | [Residual/completion](../design/patterns-overload/static-pattern-spaces-and-extraction-chains.md), [target return](../design/control-flow/targeted-return-and-d-reduction.md), [meta state](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md) | Restricted Split, escape and current meta facts |
+| P01–P12 | [Residual/completion](../design/patterns-overload/static-pattern-spaces-and-extraction-chains.md), [target return](../design/control-flow/targeted-return-and-d-reduction.md), [compile state](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md) | Restricted Split, escape and current compile facts |
 | O01–O07 | [Operator families](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Operator roles and OG_s |
-| N01–N08 | [Names](../design/symbol-world/names-and-overload-groups.md), [construction](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md), [source composition](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Expression formation and conservative contributions |
+| N01–N08 | [Names](../design/symbol-world/names-and-overload-groups.md), [construction](../design/symbol-world/structural-type-formation-and-composition.md), [source composition](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Expression formation and conservative contributions |
 
 Every row currently requires consumer alignment; see the
-[implementation evidence and gates](roadmap.md#canonical-semantic-revision-implementation-gates).
+[implementation evidence and gates](roadmap.md#8-acceptance-evidence).
 Single-atom Policy carriers, omitted-P1 completion and horizon facet visibility
 have substrate coverage after Stage cleanup. Name resolution fixes identity
 before exposure; hidden value and Pattern facets retain their resolved material
@@ -39,7 +34,7 @@ body-entry observation use one invocation horizon, retaining distinct facts;
 the horizon alone proves neither readiness nor execution legality. Ordinary
 initializer bindings require the common continuation preservation consumer
 when evaluation cannot complete; until it is connected they fail before
-installation, without deriving runtime from residual or pending seal work.
+installation, without deriving runtime from residual or pending continuation work.
 Exact empty V_tau, visible non-callable values and fully observed result-Policy
 mismatches have terminal no-candidate coverage at both initializer boundaries.
 Actual hidden observations are reported by invocation itself, never inferred
@@ -52,7 +47,7 @@ argument mode. Readable binding observations retain their mode; genuinely
 unknown expressions remain a separate case. Stage and horizon carriers expose
 no enum-order preference, and facet observation defines no alternate resolver.
 Candidate errors and selected-body failures remain diagnostics, with no second
-meta evaluator mode or function/world stage partition. Ordinary
+compile evaluator mode or function/world stage partition. Ordinary
 deduction, R_vis/C_sigma and E readiness/saturation still require consumer
 coverage. Carrier test success is not general source coverage of these semantics.
 Construction-window checks consume explicit WindowLive and authority facts;
@@ -66,30 +61,30 @@ fails OpenHere, and saved authority cannot revive an explicitly closed window.
 | ID | Scenario | Required result |
 |---|---|---|
 | S01 | P2=runtime with omitted P1 stage | Complete to runtime, without a runtime/compile union. |
-| S02 | P2=seal with omitted P1 stage | Complete to seal, without a composite stage. |
+| S02 | P2=compile with omitted P1 stage | Complete to compile; OpenPolicy and mode remain independent. |
 | S03 | Bare let in a compile binding context | Complete the stage from context; leave no hole for a later runtime consumer. |
 | S04 | A runtime callable has an explicitly compile Pin | Apply ordinary input admission; the whole call need not be pure. |
 | S05 | An explicit formal-stage hole | Extract from actual/position rules; distinguish it from omission. |
 | S06 | A runtime-policy value happens to be known | E does not promote it to compile. |
-| S07 | A compile callable accepts a seal actual | The call may defer; there is no seal-to-compile migration. |
+| S07 | Closed reify body needs unavailable runtime Val1 | Only its actual reverse-dependent continuation resumes with runtime inputs. |
 | S08 | A static type has no runtime realization | Target demand does not manufacture a runtime slice. |
 | S09 | Round one retains two stage derivations | Do not run both observable bodies; round two selects or reports ambiguity. |
 | S10 | A selected compile realization has runtime residue | Preserve the selected origin; runtime does not reselect. |
 | S11 | Pre or coherence fails after migration selection | Terminal failure, without a runner-up or chained repair. |
 | S12 | An external demand constrains Pout stage | The consumer cannot overwrite established P1/Pout producer facts. |
 
-## Main, Seal and static dominance
+## Main, reification and current evaluation
 
 | ID | Scenario | Required result |
 |---|---|---|
-| E01 | Program entry at main | P2 is runtime; meta root history creates no permanent MetaDom. |
-| E02 | Meta invokes a compile helper reaching a seal candidate | The seal candidate is invisible. |
-| E03 | Seal invokes a compile helper reaching meta invocation | Meta invocation is invisible. |
-| E04 | A meta invocation returns to main | Do not retain MetaDom over unrelated later calls. |
-| E05 | Seal reads a completed meta payload | Use ordinary access rules; this is not a new meta call. |
-| E06 | SealStatic first needs an absent default meta instance | A compiler trait query cannot bypass the invocation restriction. |
-| E07 | A seal-dependent action is ordered relative to a write | Deferral preserves the dependency and cannot cross the write arbitrarily. |
-| E08 | An internal seal:seal view must provide runtime:seal | Succeed only through an actual legal migration. |
+| E01 | Program entry at main | P2 is runtime; stable root identity creates no ambient active body evaluation. |
+| E02 | Selected compile invocation | Form a stable instance before entry; Ready and legality remain separate. |
+| E03 | Compile helper/cache reuse | Retain dependency validity and current storage; cache grants no execution authority. |
+| E04 | Invocation returns to main | Restore enclosing continuation; self-name resident reads do not enter an active body. |
+| E05 | Read a completed compile payload | Ordinary resident observation does not EnterBody. |
+| E06 | callable P2 reify with closed contract | Callable P2 annotation materializes only actual reverse-dependent E work; unsupported producer is unavailable. |
+| E07 | Pending action depends on a write | Preserve actual dependency/effect ordering on the current continuation. |
+| E08 | compile:compile demand for runtime:compile | Reverse migration requires a selected same-Type candidate and active closed reify P2 boundary; no backflow to a past world. |
 | E09 | Compilation cache reuse | Neither reopen a closed subject nor retain permanent authority. |
 
 ## Instance lifecycle and with
@@ -130,9 +125,9 @@ substrate tests do not establish either gate:
 
 | ID | Scenario | Required result |
 |---|---|---|
-| L01 | A killing move transfers a meta-local type instance | End the source generation at that cut. |
+| L01 | A killing move transfers a compile-local type instance | End the source generation at that cut. |
 | L02 | A global type resident and an equal local copy | Value equality does not share Killable or lifetime. |
-| L03 | A legal preserving move observes a stable meta instance | Do not kill the meta root; this does not make all global resources copyable. |
+| L03 | A legal preserving move observes a stable compile instance | Do not kill the compile root; this does not make all global resources copyable. |
 | L04 | Conflicting active borrow at a move frontier | Movable/Pre may fail; do not change the predetermined MoveEffect. |
 | L05 | Copy uses a clone with observable postconditions | Do not force a preserving move to use that clone. |
 | W01 | x with {a}, followed by more uses of x | Account for those points when placing a's destruction. |
@@ -147,20 +142,20 @@ substrate tests do not establish either gate:
 | L07 | No source @ appears | Lifecycle Pre/Post still applies. |
 | L08 | Lifecycle Pre fails | Do not mutate facts or move cleanup backward. |
 
-## Patterns, completion and meta queries
+## Patterns, completion and compile queries
 
 | ID | Scenario | Required result |
 |---|---|---|
 | P01 | An else residual remains after an if arm | It is legal inside the chain and may reach the following else arm. |
-| P02 | Else tries to escape a forbidden boundary | The fixed consumer rejects using ordinary meta facts. |
+| P02 | Else tries to escape a forbidden boundary | The fixed consumer rejects using ordinary compile facts. |
 | P03 | An ordinary Pattern residual may escape | Retain its input material without implicit discard. |
 | P04 | An arm has completed | Later sibling arms do not match its completed result again. |
 | P05 | A user declares a type named Done | It remains an ordinary type, distinct from internal Done. |
 | P06 | Nested chains complete | Consume each marker without observable Done nesting. |
 | P07 | A selected extractor body fails | Do not treat failure as a sum miss or try another arm. |
 | P08 | An expected result Pattern exists | Deliver through ordinary R_Gamma, without a private ControlResult. |
-| P09 | A default meta trait instance is mutated while OpenHere holds | Write the actual instance; later queries read current committed state. |
-| P10 | Only an outer snapshot copy of the meta result is changed | Do not mutate the retained meta instance. |
+| P09 | A default compile trait instance is mutated while OpenHere holds | Write the actual instance; later queries read current committed state. |
+| P10 | Only an outer snapshot copy of the compile result is changed | Do not mutate the retained compile instance. |
 | P11 | Trait state changes later | Do not rewrite an already formed Pattern or selected invocation. |
 | P12 | A Pattern requires unordered interpretation | E uses that relation from the start; O cannot decide it later. |
 
@@ -175,9 +170,9 @@ substrate tests do not establish either gate:
 | O05 | Convert OG_s to ordinary OverloadGroup | Use ordinary explicit conversion; no subtype or implicit reverse recovery. |
 | O06 | An invalid new token string attempts operator-family construction | Do not extend lexer/parser grammar retroactively. |
 | O07 | Dot .op or an explicit path | Retain its own entrance without unrelated forwarding. |
-| N01 | A closure expression at any level; revised by PR106 | Legal completion produces full tau_C; distinguish file installation and lexical binding. See 106-CL01 and 106-NS01–04. |
+| N01 | A closure expression at any level | Legal completion produces full tau_C; distinguish file installation and lexical binding. See 106-CL01 and 106-NS01–04. |
 | N02 | A legal same-name closure contribution is added later | Do not change the earlier RHS evaluation category retroactively. |
-| N03 | Only let a=uint8; clarified by PR106 | The RHS is exactly tau_uint8; file installation and local binding neither wrap nor arbitrarily merge it. See 106-NS03–04. |
+| N03 | Only let a=uint8 | The RHS is exactly tau_uint8; file installation and local binding neither wrap nor arbitrarily merge it. See 106-NS03–04. |
 | N04 | Legal inner lexical shadowing | Do not reinterpret it as contribution to the outer same-name object. |
 | N05 | OpenHere/Pre fails for a named contribution | Ergonomic repair cannot bypass the failure. |
 | N06 | Binding and contribution effects address the same coordinate | Use established role and conflict rules; spelling alone cannot mix them. |
@@ -185,55 +180,79 @@ substrate tests do not establish either gate:
 | N08 | A sibling reads a value newly written by another sibling | File sorting cannot create otherwise absent dependency visibility. |
 
 
-## PR106 acceptance cases
+## Consumer acceptance cases
 
 ### 106.1 Product layer ordering
 
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| 106-PD01 | All direct entries are named, without a top Pattern name | The layer is unordered; no added top name or wildcard is needed. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PD02 | One bare entry is added to that layer | The whole layer becomes ordered; named entries do not form a local unordered region. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PD03 | An all-named child layer inside an ordered parent | The child decides independently and is not forced into the parent's order. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PD04 | Local variables a and b appear as bare Product values | Their variable spellings do not become structural names. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PD05 | An unordered structure must become a bare sequence | Extract by name, then explicitly assemble in the requested order; no default sorting. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PD06 | Explicit ? removes the top name | An all-named layer stays unordered; preserve real nesting. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PD07 | Unordered result structure formed through observable effects | Result unorderedness alone does not authorize effect reordering. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PD08 | A future ordinal operation observes bare entries | Ordinals do not create names; the complete public ordinal API remains open. | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD01 | All direct entries are named, without a top Pattern name | The layer is unordered; no added top name or wildcard is needed. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD02 | One bare entry is added to that layer | The whole layer becomes ordered; named entries do not form a local unordered region. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD03 | An all-named child layer inside an ordered parent | The child decides independently and is not forced into the parent's order. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD04 | Local variables a and b appear as bare Product values | Their variable spellings do not become structural names. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD05 | An unordered structure must become a bare sequence | Extract by name, then explicitly assemble in the requested order; no default sorting. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD06 | Explicit ? removes the top name | An all-named layer stays unordered; preserve real nesting. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD07 | Unordered result structure formed through observable effects | Result unorderedness alone does not authorize effect reordering. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PD08 | A future ordinal operation observes bare entries | Ordinals do not create names; the complete public ordinal API remains open. | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | Defined semantics; source/evaluator consumer pending |
+
+### Product repetition and unpacking acceptance targets
+
+The [Product owner](../design/patterns-overload/product-repetition-and-unpacking.md)
+defines these semantic targets. Syntax preservation, existing material
+normalization and explicit unavailable boundaries are separate evidence from
+complete source formation/unpacking. No unconnected target is reported as an
+executed success.
+
+| ID | Scenario | Required result | Consumer status |
+|---|---|---|---|
+| PR01 | Standard product packaging and its classifier | `product = (_ * ω)$`; classifier Pattern `_ * ω` uses ordinary repetition. | Norm operator material preserved/unsupported; wrapper formation pending |
+| PR02 | P/E/G source continuation with a bare Product | Grammar merges only the first following Product; established call input recursively exposes/merges available standard packaging. | Existing source association and product_shape tests connected |
+| PR03 | (a,(b,c)) and ((a,b),c) at call input, expression barriers, unit slots | Norm preserves source nesting; call material exposes a,b,c. Keep units and expression barriers; unavailable runtime shape and non-standard layers need their own evidence. | Norm goldens and product_shape connected; arbitrary packed-result exposure pending |
+| PR04 | S `_`, S `_$` and S `(_)$` | Anonymous deduction/matching differs from external universerank extraction; the latter never becomes a wildcard. | Polarity carrier and unavailable relation boundary connected; external extraction pending |
+| PR05 | S `bool::`, `(if)$` or `_$` in a partial Sequence | Require the actual external Pattern; other matching terms cannot erase it or establish applicability. | Explicit unavailable boundary regression connected |
+| PR06 | Singleton contextual form `_$ =_context (_ * 1)$` | Preserve polarity and group interpretation; derive contextual expansion without equating arbitrary wrapper Object identities. | Syntax coverage connected; singleton semantic consumer pending |
+| PR07 | Different compile element material, same `t * n` Pattern | Val1 participates in complete identity, so different normalized payloads remain distinct. | General Object identity substrate connected; repetition formation pending |
+| PR08 | Legal replacement inside a `t * n` wrapper | Val1 and complete normal form may change while Pattern stays fixed; require ordinary write/Pre checks. | Repetition mutation consumer pending |
+| PR09 | Compile `t * ω` with an available finite payload, then `pack?` | Selected extraction exposes exactly that finite bare Product. | Ordinary unpack consumer pending |
+| PR10 | Runtime-only `t * ω`, then `pack?` | No static variable-arity expansion; require an ordinary iteration-like consumer. | No runtime expansion success path; iteration/unpack consumers pending |
+| PR11 | Unordered packed layer exposed through `?` | One-layer named peel preserves its body and ordering; subsequent Product-context exposure uses its own law. Positional sequence needs named extraction and ordered assembly. | General ordering substrate connected; packed extraction pending |
+| PR12 | Runtime data requests a compile view for expansion | Require the admitted reify/reverse-migration boundary; neither `?` nor Product context grants authority. | Missing-authority rejection connected; reverse execution pending |
+| PR13 | `t * n` versus `T * D` | Ordinary operator applicability distinguishes repetition cardinality and type composition; spelling grants no private bypass. | Unresolved syntax connected; both ordinary semantic families pending |
 
 ### 106.2 Path structure and reading
 
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| 106-PT01 | bool::a::path and bool:: have equal second-level resident observations | Eval_value may agree while Read_name and # differ; no bare Path equality is implied. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT02 | Project a pure NameValue with no existing external target | Obtain legal structure without requiring final-target lookup. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT03 | Equivalent internal Path constructions | Path projection observes normalized structure, not whitespace, parentheses or source positions. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT04 | Three legal internally composed Path segments | Preserve associativity and the language's name::path direction. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT05 | The endpoints of ::a and a:: | Retain the difference rather than erasing both to an undirected sequence. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT06 | Ordinary extraction and validation of path_pattern | Expose nodes, links and endpoints. PathShaped rejects empty standalone/cyclic chains, multiple or nonterminal explicit roots, non-string names and incompatible endpoints; representation alone is insufficient. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT07 | Construct Path material from a string | Create Names([s]) with RelativeSingleName=(Select,OpenRoot), without lookup or access authority. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT08 | A string contains :: or parentheses | Do not automatically re-lex or parse it as more paths or arbitrary source. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT09 | Project and reinject into a Path consumer | Recover equivalent internal structure within the legal domain. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT10 | An inner binding shadows the textual root of a pure Path | Resolve at that external read and use the applicable inner root. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT11 | A Path explicitly retains an ordinary value root | Preserve that material under ordinary value rules; a same-spelled name does not replace it. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT12 | A Path explicitly retains a reference root | Preserve target/generation without lifetime extension or automatic retargeting. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT13 | A Path is sealed into a selected invocation's runtime residue | Runtime does not resolve by spelling or select again. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT14 | The target is invisible, unrealized or illegal | Structure formation grants no read authority; ordinary Read fails without reopening. | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT01 | bool::a::path and bool:: have equal second-level resident observations | Eval_value may agree while Read_name and # differ; no bare Path equality is implied. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT02 | Project a pure NameValue with no existing external target | Obtain legal structure without requiring final-target lookup. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT03 | Equivalent internal Path constructions | Path projection observes normalized structure, not whitespace, parentheses or source positions. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT04 | Three legal internally composed Path segments | Preserve associativity and the language's name::path direction. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT05 | The endpoints of ::a and a:: | Retain the difference rather than erasing both to an undirected sequence. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT06 | Ordinary extraction and validation of path_pattern | Expose nodes, links and endpoints. PathShaped rejects empty standalone/cyclic chains, multiple or nonterminal explicit roots, non-string names and incompatible endpoints; representation alone is insufficient. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT07 | Construct Path material from a string | Create Names([s]) with RelativeSingleName=(Select,OpenRoot), without lookup or access authority. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT08 | A string contains :: or parentheses | Do not automatically re-lex or parse it as more paths or arbitrary source. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT09 | Project and reinject into a Path consumer | Recover equivalent internal structure within the legal domain. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT10 | An inner binding shadows the textual root of a pure Path | Resolve at that external read and use the applicable inner root. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT11 | A Path explicitly retains an ordinary value root | Preserve that material under ordinary value rules; a same-spelled name does not replace it. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT12 | A Path explicitly retains a reference root | Preserve target/generation without lifetime extension or automatic retargeting. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT13 | A Path is sealed into a selected invocation's runtime residue | Runtime does not resolve by spelling or select again. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT14 | The target is invisible, unrealized or illegal | Structure formation grants no read authority; ordinary Read fails without reopening. | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
 
-### 106.3 General splice and strong Pattern contexts
+### 106.3 Interpretation polarity and strong structural contexts
 
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| 106-SP01 | Reuse an obtained Policy p with <> p$ let | Use p's value, not a new hole or spelling-only interpretation. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-SP02 | runtime let | A concrete constraint with no new deduction binder, not an implicit <runtime>. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-SP03 | Explicit <p> p versus omitted Policy | Keep HoleBinderId, omission and concrete material distinct. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-SP04 | Splice material containing existing HoleRefs | Preserve actual PatternRoot/HoleBinderId rather than rebinding by spelling. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-SP05 | Splice material with invalid scope or structure | Ordinary inapplicability/error; no alpha-renaming or alternate-interpretation fallback. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-SP06 | A splice operand has observable evaluation | Evaluate the reached occurrence ordinarily, without repetition for projections. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-SP07 | Required splice material is runtime-only or not ready | Do not fabricate static Pattern material; retain continuation and legality boundaries. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-SP08 | General splice is defined | General splice establishes neither arbitrary source quotation nor # outside the domain of an applicable path_pattern projection. | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL01 | Reuse an obtained Policy p with <> p$ let | Use p's value, not a new hole or spelling-only interpretation. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL02 | runtime let | A concrete constraint with no new deduction binder, not an implicit <runtime>. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL03 | Explicit <p> p versus omitted Policy | Keep HoleBinderId, omission and concrete material distinct. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL04 | Opposite-context material containing existing HoleRefs | Preserve actual PatternRoot/HoleBinderId rather than rebinding by spelling. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL05 | Opposite-context material with invalid scope or structure | Ordinary inapplicability/error; no alpha-renaming or alternate-interpretation fallback. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL06 | A polarity-flip operand has observable evaluation | Evaluate the reached occurrence ordinarily, without repetition for projections. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL07 | Required opposite-context material is runtime-only or not ready | Do not fabricate static Pattern material; retain continuation and legality boundaries. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-FL08 | General interpretation polarity is defined | The polarity flip establishes neither arbitrary source quotation nor # outside the domain of an applicable path_pattern projection. | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
 
 ### 106.4 Open Products and name labels
 
@@ -261,7 +280,7 @@ substrate tests do not establish either gate:
 | 106-NS03 | File-level let a=uint8 | Install the RHS value without wrapping it in a new type. | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Defined semantics; source/evaluator consumer pending |
 | 106-NS04 | Local let a=uint8 | Create a new binding/Place without changing the RHS internal structure. | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Defined semantics; source/evaluator consumer pending |
 | 106-NS05 | Install an ordinary Val2 value | Do not infer Pattern or V_tau registration. | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Defined semantics; source/evaluator consumer pending |
-| 106-NS06 | Direct struct and incremental extend have equal final structure | Observe equality under all required premises; retain no irrelevant formation history. | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Defined semantics; source/evaluator consumer pending |
+| 106-NS06 | Direct structural formation and ordinary composition have equal final structure | Observe equality under all required premises; retain no irrelevant formation history. | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Defined semantics; source/evaluator consumer pending |
 | 106-NS07 | Reads or effects already occurred during construction | Final structural equality cannot erase them. | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Defined semantics; source/evaluator consumer pending |
 | 106-NS08 | Sibling files join from a common snapshot | Merge legal contributions and reject conflicts; no first-file winner. | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Defined semantics; source/evaluator consumer pending |
 
@@ -275,7 +294,7 @@ substrate tests do not establish either gate:
 | 106-GN03 | Concrete and general generators both apply | Use ordinary specificity, without a separate generator priority. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN04 | Incomparable maxima or failure after selection | Ordinary ambiguity/terminal failure; do not reopen generation. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN05 | Expression body versus an ordinary enclosing body | Use the same result delivery without inserting a semantic temporary for surface differences. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
-| 106-GN06 | Value/call and Pattern/name forms of one meta declaration | Preserve the established equivalence domain without extending it to arbitrary lexical let. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
+| 106-GN06 | Value/call and Pattern/name forms of one compile declaration | Preserve the established equivalence domain without extending it to arbitrary lexical let. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN07 | let a=e and let _=e | Remain extraction/binding of an existing RHS, not generation. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN08 | let <a> (c Pattern) a | Reach a's layer, then apply the same R_Gamma with compatible valuations. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN09 | Intermediate extraction in an unordered layer | At most one whole intermediate extraction, which may contain several named fields. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
@@ -286,18 +305,18 @@ substrate tests do not establish either gate:
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| 106-RP01 | Terminal G(...) supplies F's result | F's ReturnPattern/Pout is G's immediate demand before maxima. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP02 | Implementation uses SSA temporaries or registers | Add no language binding, Policy default or observable lifecycle. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP03 | User explicitly writes let temp=G(...); temp; | Retain the real binding boundary; equivalence with direct forwarding is not required. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP04 | Transparent F forwards to G | P1_F and P2_F jointly constrain G, without linear one-way propagation. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP05 | Interpret the body after selecting F | F's established signature and valuation are known immediate context for G. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP06 | Terminal H(G(...)) | Result demand first constrains H; do not inject unselected H formals into G. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP07 | Pout stage and explicit Pin holes | P1 still determines Pout stage; generic Pin does not change producer stage. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP08 | Public Policy pair literal/extraction through colon | Retired from the public algebra; retain both internal observations. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP09 | Direct policy(x) and Policy after direct get_type | Observe value/type facts on the same source evaluation edge. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP10 | Bind t=get_type(x), then observe t's Policy | Do not unconditionally recover x's Pp; t may have a new destination view. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP11 | Constrain both projections | Use one invocation applicability relation, without a public pair or global propagation pass. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
-| 106-RP12 | A migration target exposes only one Policy atom | Still check full endpoints, presence and capabilities; preserve existing-first and no-reopen. | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP01 | Terminal G(...) supplies F's result | F's ReturnPattern/Pout is G's immediate demand before maxima. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP02 | Implementation uses SSA temporaries or registers | Add no language binding, Policy default or observable lifecycle. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP03 | User explicitly writes let temp=G(...); temp; | Retain the real binding boundary; equivalence with direct forwarding is not required. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP04 | Transparent F forwards to G | P1_F and P2_F jointly constrain G, without linear one-way propagation. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP05 | Interpret the body after selecting F | F's established signature and valuation are known immediate context for G. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP06 | Terminal H(G(...)) | Result demand first constrains H; do not inject unselected H formals into G. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP07 | Pout stage and explicit Pin holes | P1 still determines Pout stage; generic Pin does not change producer stage. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP08 | Independent value/type Policy observations | Preserve both internal observations through their explicit ordinary projections. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP09 | Direct policy(x) and Policy after direct get_type | Observe value/type facts on the same source evaluation edge. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP10 | Bind t=get_type(x), then observe t's Policy | Do not unconditionally recover x's Pp; t may have a new destination view. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP11 | Constrain both projections | Use one invocation applicability relation, without a public pair or global propagation pass. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
+| 106-RP12 | A migration target exposes only one Policy atom | Still check full endpoints, presence and capabilities; preserve existing-first and no-reopen. | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md) | Defined semantics; source/evaluator consumer pending |
 
 ### 106.8 Ordinary ADL forwarding
 
@@ -337,14 +356,14 @@ substrate tests do not establish either gate:
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
 | 106-CL01 | Legal completion of a closure expression at any level | Return full tau, without a local-object/file-type split. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL02 | Closure formation through struct | Head, body and dependencies use the existing formation relation; no new ClosureObject ontology. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CL02 | Atomic complete closure-type formation | Head, body and dependencies form one complete structural type under the common transaction. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL03 | The callable implementation endpoint | Stop at an established leaf, without recursively expanding the same closure expression. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL04 | tau_C, c_C, A_C and Impl_C | c_C belongs to V_tau_C; A_C=Type(c_C); AssociatedNamespace(A_C)=MemberScope(Core(A_C)), whose Val2[()] supplies Impl_C. AssociatedName is NameCoord at that root, not /tau(A_C); Core equality does not merge actual Places. | [CL owner](../design/symbol-world/function-object-call-model.md), [type owner](../design/symbol-world/type-values-places-and-borrow-views.md#associated-namespace-is-the-core-member-scope) | Defined semantics; source/evaluator consumer pending |
-| 106-CL05 | Pure Q with no self-construction; well-formed tau with nonempty V_tau | Q has TypeRole and tau is a complete type. Applicable V_tau implementation entries can make it callable without making it SelfConstructible. Payload-bearing x remains an ordinary value. Empty V_tau likewise does not remove type identity. | [type owner](../design/symbol-world/type-values-places-and-borrow-views.md), [Pattern owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md#13-structural-role-registration-and-ordinary-callables) | Defined semantics; source/evaluator consumer pending |
+| 106-CL05 | Pure Q with no self-construction; well-formed tau with nonempty V_tau | Q has TypeRole and tau is a complete type. Applicable V_tau implementation entries can make it callable without making it SelfConstructible. Payload-bearing x remains an ordinary value. Empty V_tau likewise does not remove type identity. | [type owner](../design/symbol-world/type-values-places-and-borrow-views.md), [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#13-structural-role-registration-and-ordinary-callables) | Defined semantics; source/evaluator consumer pending |
 | 106-CL06 | Type tau has several c, each with several associated implementations | Project every (c,Impl) entry into one family. Compute applicability and maxima once across the union, report ties as ordinary ambiguity, and seal the winning pair/projection/frame. Actual self is c, not tau; selected failure and runtime residue cannot reselect either component. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL07 | An ordinary x:T has applicable associated Val2[()] but empty V_T | Call x through the associated entry with self=x; V_T membership is unnecessary. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL08 | The first callable material | Form it in the same structural operation; require no prior arbitrary x:tau_C instance. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
-| 106-CL09 | Replace the sole Val2 self-construction witness without registering a new ConstructEdge | Purity and TypeRole persist; SelfConstructible may fail. Independently recheck WellFormedTau, including stale registration and both closure-home constraints. Equal pure Core gives the same TypeRole answer but not compatibility with distinct /tau homes. Type identity requires no dummy/deleted constructor. | [type owner](../design/symbol-world/type-values-places-and-borrow-views.md), [Pattern owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md#13-structural-role-registration-and-ordinary-callables) | Defined semantics; source/evaluator consumer pending |
+| 106-CL09 | Replace the sole Val2 self-construction witness without registering a new ConstructEdge | Purity and TypeRole persist; SelfConstructible may fail. Independently recheck WellFormedTau, including stale registration and both closure-home constraints. Equal pure Core gives the same TypeRole answer but not compatibility with distinct /tau homes. Type identity requires no dummy/deleted constructor. | [type owner](../design/symbol-world/type-values-places-and-borrow-views.md), [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#13-structural-role-registration-and-ordinary-callables) | Defined semantics; source/evaluator consumer pending |
 | 106-CL10 | Contribute an already formed value to another target | Keep the original owner; use a legal replication witness where required. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL11 | In-place closure with free external observations | Form Needs and ordinary realizations at formation; bind the resulting tau ordinarily. Invocation does not recapture. A legal write-capable realization permits outer writes; absent capability still fails. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CL12 | Wrap an in-place result in Product, group or tau and transfer it | Preserve actual dependencies and lifecycle obligations. No placement-based ban applies; wrapping cannot extend ValidRegion or erase escape checks. | [CL owner](../design/symbol-world/function-object-call-model.md) | Defined semantics; source/evaluator consumer pending |
@@ -359,18 +378,18 @@ substrate tests do not establish either gate:
 | 106-LF02 | Return a closure with empty or reference-bearing dependencies | Neither source form is categorically rejected. Check ordinary Pre/LifetimeLegal/EscapeLegal; a retained reference outside ValidRegion fails, and an empty dependency set supplies no source-based veto. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 | 106-LF03 | Ordinary versus in-place classification | Neither classification replaces concrete MoveEffect/Movable or escape judgments. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 | 106-LF04 | Construction and anchored Paths need validity evidence | Preserve dependencies and check interfaces; the handoff does not waive checks. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
-| 106-LF05 | Bounded runtime state coexists with stable descriptions | Record lifetime implementation/refinement work, not a PR106 blocker. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
+| 106-LF05 | Bounded runtime state coexists with stable descriptions | Record lifetime implementation/refinement work, not a canonical consumer blocker. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 | 106-LF06 | Conformance versus implementation | Report semantic scenarios, pending consumers and executed tests separately; claim no new end-to-end support. | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Checks retained; refinement handed off |
 
-### 106.12 Meta declaration capture boundary
+### 106.12 Compile partner dependencies
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| 106-MD01 | [cap] (...) :meta => B | Invalid MetaDecl: the declaration layer has no capture slot. Do not form a captured ordinary closure and reinterpret it as meta. | [declaration owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md#1-one-declaration-two-surface-projections) | Defined semantics; declaration consumer pending |
-| 106-MD02 | P let H { B } | Not an in-place spelling of generative MetaDecl; the implementation requires =>. Ordinary non-meta block syntax retains its own meaning. | [declaration owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md#11-general-heads-and-expression-bodies) | Defined semantics; declaration consumer pending |
-| 106-MD03 | MetaDecl body reads an unpassed enclosing local x | x is unavailable/masked. No automatic closure dependency may bypass input admission; explicitly passing x through In is the lawful route subject to ordinary checks. | [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity) | Defined semantics; source/evaluator consumer pending |
-| 106-MD04 | Equal parent, selected callable and canonical In under different caller-local environments | Same MetaInstanceRootKey and instance; no CapturedEnv coordinate or hidden capture in callee identity. Hidden caller locals cannot affect results; repeated acquisition preserves current lawful instance state without reinitialization. | [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity) | Defined semantics; source/evaluator consumer pending |
-| 106-MD05 | Meta body forms an ordinary closure from admitted inputs, or In carries a dependency-bearing ordinary closure | Permit ordinary explicit/automatic dependencies on legally available material, retaining input normalization, transitive dependency and lifetime checks. The nested closure cannot recover a masked enclosing local or add a MetaDecl capture axis. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md#41-meta-declarations-have-no-closure-capture-channel), [meta owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md) | Defined semantics; source/evaluator consumer pending |
+| C-DP01 | [cap] (...) :compile => B | Ordinary capture formation retains actual dependencies; selected partner identity is stable. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
+| C-DP02 | P let H => E | Requested-name producer may deliver any ordinary declared result; no implicit actual or authority follows from absent head. | [declaration owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Source consumer pending |
+| C-DP03 | Callable observes an enclosing local | Form an ordinary admitted dependency at callable formation; invocation never recaptures by caller spelling. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
+| C-DP04 | Equal parent/selected partner/canonical In with different incidental caller environments | Same key and instance; no hidden caller coordinate, replay or stale authority. | [invocation owner](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md) | Source consumer pending |
+| C-DP05 | Nested ordinary or in-place closure reaches enclosing instance | Preserve lexical/Self/navigation layer and use ordinary self-name plus admitted dependency. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
 
 ### 106.13 Callable construction and contribution consumers
 
@@ -386,21 +405,23 @@ substrate tests do not establish either gate:
 | 106-CA08 | Same-spelled ordinary lexical lets with closure RHS | Retain binding/shadowing/duplicate rules; spelling and RHS confer no ContributionRole or TypeAdd. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CA09 | v in V_T | Require present Val1, ordinary callability, target classifier home and registration. Enter Type(v)'s associated Val2[()] in the single candidate union. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
 | 106-CA10 | Known-target formation versus later contribution of existing c | Initially form c_C^T directly; later rehosting uses AnchorFor(c,T) and required witness on c, preserving old identity/dependencies. Never rehost tau_C or replay initializers. | [Owner](../design/symbol-world/names-and-overload-groups.md) | Defined semantics; source/evaluator consumer pending |
+| 106-CA11 | An associated operation consumes a held tau after another same-P Core changes | Enumerate only actual Val2 resident witnesses captured by Core(tau); later candidates or declaration-cell replacements remain outside that snapshot. | [Owner](../design/symbol-world/function-object-call-model.md) | Connected literal-construction slice covered |
+| 106-CA12 | P is allocated without a Core Object, or an implementation ledger has no resident | No Object/member authority follows; required observation is unavailable and publishes no result. | [Owner](../design/symbol-world/function-object-call-model.md) | Registered Core and ordinary-call entry boundaries covered |
 
 ### 106.14 Two-level NameValue and Path observations
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| 106-PT15 | NameExpr in Path and value-expected contexts | Read_name retains full NameValue; only value use performs Read_resident. Equal residents do not equate structures. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT16 | Compare e# and path_pattern projection | One defined projection: NameExpr stops at its first level; general values require applicable projection, with no source quotation fallback. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT17 | Round-trip a NameExpr n and an already bound NameValue a in the Path consumer | For n, first obtain Read_name(n), then project/reinject. For a=NameValue(field::adl), Interpret_Path(PathPatternProjection(a)) =_Path a and reprojection yields a#. Preserve the bound structure without repeating NameExpr lookup or making a node from binder spelling a. General splice supplies no Path decoder and performs no resident read. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT18 | Compare direct name_express$ with projection followed by splice | Direct splice uses the current Pattern; projected splice first converts it. No implicit conversion or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT19 | Index ((field::adl)#)[0] | Return relative field:: path_pattern, not string or a path retaining the adl endpoint. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT20 | Equal segment strings with different endpoints or explicit roots | Omega retains endpoint distinctions and actual root material, not an extra dependency coordinate. Ordinary dependency/lifetime obligations remain in force; strings cannot recover identity or authority. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT21 | Reconstruct a Path whose target became unavailable | Surrounding Read_resident checks current access/validity without reopening or deriving authority from projection. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT22 | Ordinary slice construction versus indexing | Indexing yields a relative single-name path_pattern. RHS colon forms ordinary Product |> slice; empty colon/comma slots are unit. Path/container families define ordinary Pattern extraction and boundary interpretation, with no Slice_Omega primitive. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT15 | NameExpr in Path and value-expected contexts | Read_name retains full NameValue; only value use performs Read_resident. Equal residents do not equate structures. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT16 | Compare e# and path_pattern projection | One defined projection: NameExpr stops at its first level; general values require applicable projection, with no source quotation fallback. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT17 | Round-trip a NameExpr n and an already bound NameValue a in the Path consumer | For n, first obtain Read_name(n), then project/reinject. For a=NameValue(field::adl), Interpret_Path(PathPatternProjection(a)) =_Path a and reprojection yields a#. Preserve the bound structure without repeating NameExpr lookup or making a node from binder spelling a. The polarity flip supplies no Path decoder and performs no resident read. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT18 | Compare direct name_express$ with projection followed by $ | Each operand is interpreted in the opposite context; explicit path_pattern also performs its ordinary projection. No implicit conversion or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT19 | Index ((field::adl)#)[0] | Return relative field:: path_pattern, not string or a path retaining the adl endpoint. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT20 | Equal segment strings with different endpoints or explicit roots | Omega retains endpoint distinctions and actual root material, not an extra dependency coordinate. Ordinary dependency/lifetime obligations remain in force; strings cannot recover identity or authority. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT21 | Reconstruct a Path whose target became unavailable | Surrounding Read_resident checks current access/validity without reopening or deriving authority from projection. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT22 | Ordinary slice construction versus indexing | Indexing yields a relative single-name path_pattern. RHS colon forms ordinary Product |> slice; empty colon/comma slots are unit. Path/container families define ordinary Pattern extraction and boundary interpretation, with no Slice_Omega primitive. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
 
-The PR106 extension contains **132 cases**. Each acceptance or rejection depends
+The consumer scenarios are independently testable. Each acceptance or rejection depends
 on its owner's premises; schematic source is not an unconditional theorem.
 
 ## Pre-implementation alignment acceptance cases
@@ -413,26 +434,26 @@ They add no executable tests or new semantic ontology.
 | ALIGN-01 | P \|> E, P E, ()f, x f, (x,y) f | Delete only the pipe. Never exchange operands or accept traditional callee-first calls as this source grammar. | [Owner](../design/symbol-world/function-object-call-model.md) |
 | ALIGN-02 | x.field or movement of its ordinary result | Use x.field == x \|> .field == x \|> field::adl through ordinary invocation. No NameExpr/Place shortcut or partial-parent field move. | [Owner](../design/symbol-world/function-object-call-model.md) |
 | ALIGN-03 | A new legal name::adl request after Close | Frozen finite generative rule answers it without reopening adl/t, enumerating infinite Val2 or changing Pattern/V_tau registrations. | [Owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) |
-| ALIGN-04 | Default field::adl forwarder | Bind a=NameValue(field::adl); ((a#)[0])$::t reconstructs field::t. Preserve callable self and ordinary selected call. | [Owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) |
-| ALIGN-05 | The same name::path material in construction and extraction positions | Keep direction and structural isomorphism; no path::name reversal or second namespace algebra. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
-| ALIGN-06 | name::a and name::(a$) in their legal common non-extraction domain | Same Path result with the established ordinary evaluation; no unconditional source rewrite. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
-| ALIGN-07 | The same two shapes in extraction position | Bare a inherits navigation; a$ evaluates then reinjects material. Do not equate their judgments by the non-extraction law. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
-| ALIGN-08 | A complex name_express with calls, meta/compile work and express$::express$ operands, followed by # | Complete ordinary computation once to NameValue, then project without resident read. No AST capture, skipped effect or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
-| ALIGN-09 | name_express$ versus (name_express \|> path_pattern)$ | Direct splice inserts current Pattern material; the latter first projects. Missing projection applicability cannot be repaired by source quotation. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
-| ALIGN-10 | NameExpr and already bound NameValue Path round-trips | Path consumer preserves structural equality and anchors, not arbitrary Object identity or binder spelling. Resident authority is rechecked only by its own consumer. | [Owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md) |
-| ALIGN-11 | Name-headed in-place callable in ordinary and type calls | Formal head retains (self, <> name). Selected ordinary x or projected c reaches slot zero; the explicit actual never supplies self. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| ALIGN-04 | Generative field::adl receiver and type-path candidates | Requested-name projection ((field#)[0])$::t supplies the ordinary target Path. Select method or type-path candidates by general applicability and specificity, preserving actual self. | [Owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) |
+| ALIGN-05 | The same name::path material in construction and extraction positions | Keep direction and structural isomorphism; no path::name reversal or second namespace algebra. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
+| ALIGN-06 | name::a and name::(a$) in Path interpretation | Interpret bare a in S with inherited navigation and a$ in V. Check actual material and ordinary Path equality; syntax alone guarantees no equality. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
+| ALIGN-07 | a, a$, a$$ and a$$$ in extraction interpretation | Use S, V, S and V respectively, preserving Hole identity. Each actual result is checked by the extraction consumer through R_Gamma; neither equality nor inequality follows merely from spelling. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
+| ALIGN-08 | A complex name_express with ordinary compile calls and express$::express$ operands, followed by # | Complete ordinary computation once to NameValue, then project without resident read. No AST capture, skipped effect or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
+| ALIGN-09 | name_express$ versus (name_express \|> path_pattern)$ | Each $ flips interpretation polarity; the latter operand also performs ordinary Path projection. Missing projection applicability cannot be repaired by source quotation. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
+| ALIGN-10 | NameExpr and already bound NameValue Path round-trips | Path consumer preserves structural equality and anchors, not arbitrary Object identity or binder spelling. Resident authority is rechecked only by its own consumer. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
+| ALIGN-11 | Name-headed in-place callable in ordinary and type calls | Formal head retains (_, let _: (name)$). Selected ordinary x or projected c reaches slot zero; the explicit actual never supplies self. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
 | ALIGN-12 | E return versus plain E at a path tail | The former already has ReturnEvent and infers only target; the latter first uses the serial consumer. Do not merge these operations in Omitted. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-13 | A non-tail serial expression yields non-unit | UnitDiscard rejects; it does not silently discard the result, synthesize a lexical temp or turn it into return. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-14 | Tail unit versus explicit unit_value return | Tail unit falls through; explicit unit produces ReturnEvent. Neither fabricates a local return contribution. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-15 | Each branch has a true non-unit tail, or a following continuation | Determine tailness per control-flow path, not AST list position. Synthesize return only at the true tail, then infer the outermost function target. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-16 | A non-unit tail's root overload and established ReturnPattern/Pout | Apply immediate demand before sealed maxima, retain both outer P1/P2 constraints; no speculative body, hidden temp, second evaluation or reopen. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
-| ALIGN-17 | Construction material is incomplete, or construction Pre fails | No partial Object identity exists. Successful atomic ConstructCommit establishes one complete result; failure publishes none. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
-| ALIGN-18 | A selected consuming parent decomposition | Atomic ExtractCommit ends parent identity and establishes complete children. No observable partly extracted parent or field-death bitmap. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
-| ALIGN-19 | Applicability proof or non-consuming registered borrowed observation | R_Gamma/FieldView evidence alone performs no destructive commit and grants no missing authority. | [Owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| ALIGN-17 | Construction material is incomplete, or construction Pre fails | No partial Object identity exists. Successful atomic ConstructCommit establishes one complete result; failure publishes none. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
+| ALIGN-18 | A selected consuming parent decomposition | Atomic ExtractCommit ends parent identity and establishes complete children. No observable partly extracted parent or field-death bitmap. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
+| ALIGN-19 | Applicability proof or non-consuming registered borrowed observation | R_Gamma/FieldView evidence alone performs no destructive commit and grants no missing authority. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
 | ALIGN-20 | A destructor begins | It receives complete extracted children and runs ordinary NLL/with/use/move/drop, never a second destructor evaluator or partially destroyed parent. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
 | ALIGN-21 | Selected affine field : T -> F candidate | Complete F follows ordinary movement/lifecycle. Affine use alone proves neither Kill nor a partial aggregate; custom ADL cannot redefine structural extraction. | [Owner](../design/symbol-world/type-associated-function-objects-and-access-trees.md) |
 | ALIGN-22 | A legal Preserve Move and a separately available observable clone | Do not invoke clone for Preserve. Movable, Killable and fixed MoveEffect remain distinct; failed Pre does not switch effects. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
-| ALIGN-23 | Stable non-meta type, meta type outside OpenHere, or accessible closed/global resident | Apply existing instance survival and frontier checks. Local observation transport cannot kill the stable subject; equality does not merge lifecycle instances. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
+| ALIGN-23 | Stable ordinary type, compile type outside OpenHere, or accessible closed/global resident | Apply existing instance survival and frontier checks. Local observation transport cannot kill the stable subject; equality does not merge lifecycle instances. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
 | ALIGN-24 | A Kill would invalidate an established admitted observation | Reject at Pre before mutation. Alive/dead status alone adds no new observable branch when all admitted observations are unaffected. | [Owner](../design/lifetime/lifetime-policy-and-overload-boundary.md) |
 | ALIGN-25 | Ordinary value copy-derived route, or ref/share copy-derived route | Select share+clone or rebind+clone respectively, form fresh complete result and terminal Move; never pre-move source or add Copy as terminal pass. | [Owner](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
 | ALIGN-26 | Selected clone supplies a lawful non-source origin post | Use that post; no universal origin(result)=source. Copyable implies neither default copy nor movement permission; failure never reopens selection. | [Owner](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
@@ -445,26 +466,241 @@ They add no executable tests or new semantic ontology.
 
 | Decision | Canonical owner / checks |
 |---|---|
-| D01 | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md), 106-PD cases above |
-| D02 | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md), 106-PD cases above |
-| D03 | [PD owner](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md), 106-PD cases above |
+| D01 | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md), 106-PD cases above |
+| D02 | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md), 106-PD cases above |
+| D03 | [PD owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md), 106-PD cases above |
 | D04 | [NS owner](../design/symbol-world/symbol-construction-units-and-namespace-origin.md), 106-NS cases above |
-| D05 | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-PT cases above |
-| D06 | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-SP cases above |
-| D07 | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-PT cases above |
-| D08 | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-PT cases above |
+| D05 | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md), 106-PT cases above |
+| D06 | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md), 106-FL cases above |
+| D07 | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md), 106-PT cases above |
+| D08 | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md), 106-PT cases above |
 | D09 | [NM owner](../design/symbol-world/names-and-overload-groups.md), 106-NM cases above |
 | D10 | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md), 106-GN cases above |
 | D11 | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md), 106-GN cases above |
 | D12 | [AD owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md), 106-AD cases above |
-| D13 | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md), 106-RP cases above |
-| D14 | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md), 106-RP cases above |
-| D15 | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-SP cases above |
-| D16 | [SP owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-SP cases above |
-| D17 | [RP owner](../design/symbol-world/symbol-policy-and-compile-flow-projection.md), 106-RP cases above |
-| D18 | [PT owner](../design/symbol-world/structured-path-algebra-and-pattern-splice.md), 106-PT cases above |
-| D19 | [DP owner](../design/symbol-world/dependency-observation-and-realization.md), 106-DP and 106-MD boundary cases above |
+| D13 | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md), 106-RP cases above |
+| D14 | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md), 106-RP cases above |
+| D15 | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md), 106-FL cases above |
+| D16 | [polarity owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md), 106-FL cases above |
+| D17 | [RP owner](../design/symbol-world/policy-and-static-flow-projection.md), 106-RP cases above |
+| D18 | [PT owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md), 106-PT cases above |
+| D19 | [DP owner](../design/symbol-world/dependency-observation-and-realization.md), 106-DP and C-DP boundary cases above |
 | D20 | [CL owner](../design/symbol-world/function-object-call-model.md), 106-CL cases above |
 | D21 | [CL owner](../design/symbol-world/function-object-call-model.md), 106-CL cases above |
 | D22 | [CL owner](../design/symbol-world/function-object-call-model.md), 106-CL cases above |
 | D23 | [LF owner](../design/lifetime/lifetime-policy-and-overload-boundary.md), 106-LF cases above |
+
+## Joint extraction and runtime reification acceptance targets
+
+These are canonical semantic acceptance scenarios. Pending consumer rows are
+specification targets, not executable success claims. Connected evidence is
+recorded only after its actual consumer has positive and negative tests.
+
+| ID | Scenario | Required judgment / counterexample | Owner | Consumer status |
+|---|---|---|---|---|
+| J01 | let a:b over value, type and higher ranks | rho(a)=v, rho(b)=Type(v), Rank(b)=Rank(a)+1 at every adjacent rank | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md#10-joint-extraction-across-adjacent-universe-ranks) | consumer pending |
+| J02 | bare b versus R$ and uint8:: | b extracts locally; external Pattern explicitly constrains via R_Gamma; annotated Packs require the whole remaining Product, including an empty one | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | consumer pending |
+| J03 | P let name::path:t | separate structural name/Place judgment; no resident on initializer-free formation | [Names](../design/symbol-world/names-and-overload-groups.md) | consumer pending |
+| J04 | underscore in V and S | V supplies universerank, S anonymous Pattern; neither is a named Hole | [Unified](../design/unified-static-name-and-structural-semantics.md#13-adjacent-universe-joint-extraction) | frontend carrier; semantic formation pending |
+| J05 | dollar 0/1/2/3/deep | even restores polarity, odd flips; no resident read or stage action | [Polarity](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | frontend connected; evaluation pending |
+| J06 | initializer-free simple let a:b, including an existing same-spelled b | bare b remains classifier extraction material; no subject means no extracted classifier or typed Place | [Names](../design/symbol-world/names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings) | formation pending; Norm handoff rejection/no-publication tested in initializer_free_heads_preserve_extraction_and_name_formation_boundaries |
+| J07 | initializer-free let a:T:: and let a:R$ | explicit external Pattern must determine a complete classifier; fresh lexical formation yields typed NameExpr and Uninitialized Place, no resident | [Names](../design/symbol-world/names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings) | formation pending; same test covers unavailable external-classifier formation, not syntax or successful realization |
+| J08 | initializer-free P let name::path:t, with :t omitted or written | qualified structural formation checks root/OpenHere/selector/freshness and declared type; only its omitted :t defaults to type | [Names](../design/symbol-world/names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings) | formation pending; same test covers qualified-head rejection/no-publication with written :t |
+| SRC01 | empty .lang under a/b at package or toolchain root | preserve inherited navigation; semantic world, names, owners and namespace projection are unchanged | [Physical](../design/build-package/build-system-design.md#2-neutral-physical-normalization) | connected: empty_inherited_sources_preserve_semantic_world_at_package_and_global_roots |
+| SRC02 | actual declaration under inherited navigation | requires ordinary qualified destination consumer; missing consumer publishes no directory, owner or member | [Physical](../design/build-package/build-system-design.md#2-neutral-physical-normalization) | rejection connected: inherited_action_without_qualified_consumer_publishes_no_destination_or_owner; successful consumer pending |
+| SRC03 | empty nested file beneath a same-spelled initialized type binding | file material creates no namespace-subspace beside the Object | [Physical](../design/build-package/build-system-design.md#2-neutral-physical-normalization) | connected: empty_nested_source_does_not_create_a_namespace_beside_a_type_binding |
+| SRC04 | source install prefix names a missing namespace | discovery cannot realize that namespace; unavailable Path boundary leaves semantic world unchanged | [Namespace](../design/build-package/namespace-assembly.md) | connected rejection: source_install_prefix_cannot_allocate_a_missing_semantic_namespace |
+| LIT01 | let a:integer::=42, or the same already formed abstract value | extraction preserves actual integer classifier and literal payload; forms no constructor CompileInstance | [Literal](../design/symbol-world/type-values-places-and-borrow-views.md#41-abstract-literal-denotations-and-concrete-machine-types) | connected: external_classifier_checks_the_actual_literal_without_construction and abstract_literal_pipeline fixture |
+| LIT02 | let a:uint16::=42, or the same already formed abstract value | direct relation proves root mismatch; selected forced binding requests one ordinary root conversion and checks its result; original abstract value remains intact | [Result](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion) | scalar literal slice connected: forced_root_mismatch_converts_once_and_preserves_the_initial_value and forced_root_conversion fixture |
+| LIT03 | explicit ordinary numeric constructor request | selected call produces a concrete result, retains abstract source, and obeys exact held Core/no-reopen | [Literal](../design/symbol-world/type-values-places-and-borrow-views.md#41-abstract-literal-denotations-and-concrete-machine-types) | connected ordinary constructor slice: literal_construction_tests |
+| LIT04 | explicit scalar constructor with equal/different canonical inputs and distinct explicit parent owners | equal keys reuse instance; changed inputs or parent remain distinct; scalar result creates no self-name residency | [Invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md) | connected: explicit_scalar_construction_keys_include_canonical_inputs_and_parent_owner |
+| FC01 | selected forced extraction with a directly matching root | deliver original value with no converter call | [Result](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion) | scalar binding connected: external_classifier_checks_the_actual_literal_without_construction |
+| FC02 | missing root, unavailable actual classifier or partial multi-entry material | supplies no proved total-root mismatch; unavailable without conversion/publication | [Result](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion) | connected: unknown_or_partial_root_material_cannot_authorize_conversion |
+| FC03 | selected root converter fails | terminal failure; no converter retry, producer reopen or partial publication | [Result](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion) | scalar slice connected: forced_root_selected_conversion_failure_never_reopens_or_publishes |
+| FC04 | ordinary overload applicability has classifier mismatch although constructor exists | inapplicable relation remains inapplicable; no forced-consumer conversion | [Overload](../design/patterns-overload/overload-resolution-design.md#4-pattern-applicability) | connected: applicability_rejects_classifier_mismatch_even_when_a_constructor_exists |
+| FC05 | structured Product/return-delivery root mismatch | one conversion at the total outward root; none at individual fields/Holes; final relation checked once | [Result](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion) | general root material, conversion and source return consumers pending |
+| FC06 | missing conversion family or unconnected general source family | explicit terminal failure/unavailable with no publication | [Result](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion) | connected: forced_root_conversion_failure_or_missing_consumer_publishes_nothing |
+| FA01 | graph Callable and same-spelled namespace | ordinary Callable expectation selects the object role; graph record establishes no implementation or field authority | [Fields](../design/symbol-world/type-associated-function-objects-and-access-trees.md#struct-owned-derived-forwarding-formation) | connected graph slice: expectation_callable_resolves_object_role |
+| FA02 | ordinary callable residents named field/ref/share | names and residency supply no DirectPatternChild or struct helper registration | [Fields](../design/symbol-world/type-associated-function-objects-and-access-trees.md#struct-owned-derived-forwarding-formation) | connected: ordinary_val2_members_never_create_direct_pattern_children |
+| FA03 | dot/ADL and struct helpers | dot syntax enters ordinary field::adl; helper formation needs actual struct registration; missing producer publishes nothing | [Fields](../design/symbol-world/type-associated-function-objects-and-access-trees.md#struct-owned-derived-forwarding-formation) | syntax goldens and structural_helper_boundary connected; general ADL/helper execution pending |
+| P01 | Relative/Relative and Relative/Absolute | preserve existing endpoint-compatible results | [Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md#13-composition-and-endpoints) | consumer pending |
+| P02 | Absolute/Relative | undefined for all actual values | [Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | consumer pending |
+| P03 | Absolute/Absolute | require actual rooted structural suffix overlap | [Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | consumer pending |
+| P04 | ((a::b::)#)$::(b::) | equals a::b::, including computed equal Path values | [Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | consumer pending |
+| P05 | same text, different roots/anchors/endpoints | reject overlap; preserve root identity and dependencies | [Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | consumer pending |
+| P06 | let a p1 p2 p3 | complete suffixes p1::p2::p3, p2::p3, p3:: under common root | [Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | consumer pending |
+| P07 | explicit full-navigation module | reset inherited chain; normalized identity retains actual structure/extraction | [Path](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | consumer pending |
+| P08 | T.a.b | equals b::a::T only when each selected candidate advances type Path | [Unified](../design/unified-static-name-and-structural-semantics.md#16-fully-specified-path-and-structural-navigation) | consumer pending |
+| H01 | omitted Hole Policy | inherit outer coordinates | [Policy](../design/symbol-world/policy-and-static-flow-projection.md#61-hole-local-dimension-replacement) | syntax carrier; consumer pending |
+| H02 | written Hole dimensions | active replacement; omitted dimensions inherit; no outer-strength gate | [Policy](../design/symbol-world/policy-and-static-flow-projection.md) | consumer pending |
+| H03 | distinct Pin/Pout/HoleOverride | Hole override does not inherit ElabIn/ElabOut restrictions | [Policy](../design/symbol-world/policy-and-static-flow-projection.md) | consumer pending |
+| H04 | each Hole Pattern and Policy | solve independently through ordinary relation; compatible valuations required | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | consumer pending |
+| H05 | <p> let <p let h> | inner p references preceding exact PatternRoot/HoleBinderId | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | frontend scope; semantic consumer pending |
+| B01 | bool formation | true|false unique structural branches; if/else ordinary value bindings | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md#9-bare-nodes-and-pipe-branch-shorthand) | consumer pending |
+| B02 | bare branch | unique actual opaque value; no observable machine encoding or automatic field | [Unified](../design/unified-static-name-and-structural-semantics.md#15-bare-branches-and-ordinary-bool-values) | consumer pending |
+| B03 | compile Pattern/runtime value | ordinary branch matching; no extra runtime-policy type | [Policy](../design/symbol-world/policy-and-static-flow-projection.md) | consumer pending |
+| B04 | pipe name versus explicit head | Raw/Norm head equals (_, let _: (name)$) | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | frontend connected: joint_extraction_and_polarity / parser and Norm goldens |
+| O01 | struct(T) | preserve structural registration; add actual ordinary helpers only | [Construction](../design/symbol-world/structural-type-formation-and-composition.md) | producer unavailable |
+| O02 | derived T ref forwarding | generated by ordinary struct open computation and actual registration | [Associated](../design/symbol-world/type-associated-function-objects-and-access-trees.md) | producer unavailable |
+| O03 | ref without helper registration | borrow/lifecycle only; no automatic structural forwarding | [Associated](../design/symbol-world/type-associated-function-objects-and-access-trees.md) | no forwarding producer |
+| O04 | derived state(T0), then Write(place,T1) | state stays on concrete T0; new call required for T1 members | [Construction](../design/symbol-world/structural-type-formation-and-composition.md) | general state consumer pending |
+| R01 | type call | CallTarget=tau, ActualSelf=c*, actual slot zero unchanged | [Call](../design/symbol-world/function-object-call-model.md#callable-tag-and-activation-observations) | selection connected; tag consumer pending |
+| R02 | ordinary value call | actual implicit self=x; tag=x | [Call](../design/symbol-world/function-object-call-model.md) | ordinary selection connected |
+| R03 | recursive and nested tags | tag plus actual activation selects distinct frames | [Return](../design/control-flow/targeted-return-and-d-reduction.md#callable-tag-to-active-frame) | routing consumer pending |
+| R04 | compile implicit dependencies | ordinary formation allowed; unavailable concrete runtime read waits | [Dependency](../design/symbol-world/dependency-observation-and-realization.md) | general realization pending |
+| R05 | NameExpr with opaque self | Norm_Name independent of capture-layout unfolding; result dependencies retained | [Unified](../design/unified-static-name-and-structural-semantics.md#18-dependencies-and-opaque-self) | consumer pending |
+| E-R01 | callable P2 reify | outward runtime callable; result classifier independent of reverse migration; ordinary ReturnPattern/Pout delivery | [E](../design/static-evaluation/evaluation-residual-and-optimization.md#8-runtime-reification-of-e) | active closed-boundary execution unavailable |
+| E-R02 | (self,args):reify -> _:R$ => body | explicit external contract; bare R is extraction binder | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | consumer pending |
+| E-R03 | compile let val=runtime_express inside closed reify P2 | actual dependent continuation resumed by same E with runtime input | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | continuation materialization pending |
+| E-R04 | already selected versus newly formed runtime call | no reopen versus first ordinary selection at actual frontier | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | no-reopen connected; reified execution pending |
+| E-R05 | Region and dynamic branch | Region_K(n)=R(NamePosition_K(n)); no future-path enumeration by E | [Lifecycle](../design/lifetime/lifetime-policy-and-overload-boundary.md#current-name-position-and-delayed-e) | lifecycle substrate connected; source position wiring pending |
+| E-R06 | AOT/JIT/cache/precomputed tables | same E semantics; no Cartesian enumeration admission axiom | [E](../design/static-evaluation/evaluation-residual-and-optimization.md) | optimization consumer pending |
+
+## Classifier observation and first-round selection
+
+The [relation owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#classifier-observation-and-decided-relation-outcomes)
+and [selection owner](../design/patterns-overload/overload-resolution-design.md)
+define these scenarios. Connected evidence covers their observation/rejection
+boundary, not general source body completion or richer Pattern evaluation.
+
+| ID | Scenario | Required result | Connected evidence |
+|---|---|---|---|
+| OBS01 | Unknown expression against Hole, named alternative, sequence and type-role constraints, with a real wildcard competitor in either order | Unavailable before maxima, selection or CompileInstance formation; no publication | classifier_observation_boundary |
+| OBS02 | Same wildcard candidate without the constrained competitor | First-round selection can finish; later input/body consumer may be unavailable | classifier_observation_boundary |
+| OBS03 | Known actual classifier, successful named alternative and another unavailable named observation | Preserve unavailable obligation; no candidate selection in either order | classifier_observation_boundary |
+| OBS04 | Known unequal actual and expected classifier, with wildcard competitor | Reject only the proved mismatch; competitor may be selected; later selected failure is terminal | classifier_observation_boundary, relational_pattern_authority |
+| OBS05 | Hole/direct named/sequence query with no actual observation; named resolver absent or returning no observation | Explicit unavailable, distinct from known detached Pattern-coordinate equality | relational_pattern_authority |
+| OBS06 | Unknown role versus observed value/unit versus observed type in type-role query | Unknown role is unavailable; known non-type is mismatch; observed type still requires classifier evidence | relational_pattern_authority |
+| OBS07 | Plain binder, anonymous wildcard or unconstrained whole-remainder Pack with unobserved classifier | Bind/discard without requesting irrelevant classifier facts; shared Hole conflict remains a decided mismatch | relational_pattern_authority |
+| OBS08 | Distinct lookup keys with equal canonical Core; constrained candidate versus wildcard | Both applicable; ordinary specificity selects the constrained candidate; selected failure cannot reopen | semantic_world equal_core_distinct_lookup_arguments_select_the_constrained_candidate |
+| OBS09 | Old/new ordinary values sharing one Pattern root and lookup key but holding unequal classifier Core | First-round external classifiers distinguish their frozen snapshots; no fresh registered-Core read | classifier_snapshot_boundary |
+| OBS10 | Missing carried complete type or frozen ordinary classifier | Unavailable before applicability maxima or instance admission; no publication | semantic_world unavailable_type_input_never_enters_the_selected_body_or_publishes_an_instance and equal_core_distinct_lookup_arguments_select_the_constrained_candidate |
+| OBS11 | Ordinary self has an explicit external classifier | Compare expected Core with actual frozen classifier Core; required unknown observation is unavailable | self annotation consumer uses ordinary classifier relation; equivalent-core selection regression covers explicit arguments |
+
+## Forced input observation and complete delivery publication
+
+The [forced extraction owner](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion)
+uses Query_Gamma outcomes; TotalRootMismatch refines Mismatch evidence and
+Unavailable grants no conversion. The [migration contract](../contracts/policy-migration.md)
+requires final demanded projection within the publication boundary.
+
+| ID | Scenario | Required result | Evidence / frontier |
+|---|---|---|---|
+| FC07 | Stored compile literal observed through a runtime source binding, forced scalar root mismatch | Compile converter cannot read the hidden Val1; unavailable, no instance or destination published | world runtime_source_view_cannot_supply_a_compile_root_converter |
+| FC08 | Forced conversion with an actual source observation edge | Preserve both Policy ranks and mode through input exposure; stored value mode cannot replace edge mode | ConstructionRequest source_view and existing literal conversion regressions; general Ready/source E pending |
+| MTX01 | Actual ordinary migration body/result followed by complete final demand satisfaction | Publish scratch only after valid result class, nonempty Pair projection and delivered=declared=target Mode | scratch placement and supplied-result validator tested; successful source producer, independent delivery observations and post-production projection-failure execution coverage pending |
+| MTX02 | Same source lookup key, held old Core and successor current Core, with distinct migration return classifiers | Migration A compares held source Core with declaration's resolved result Core; selected failure never publishes or retries | migration_snapshot_boundary |
+| MTX03 | Only one fully admissible candidate, with const result declaration and mut target | Normal selection retains the candidate; selected declaration contradiction terminates before body/instance entry, without fallback or publication | migration_snapshot_boundary sole_admissible_migration_with_wrong_output_mode_fails_after_selection_without_publication |
+| MTX04 | Supplied actual delivery, selected declared Mode and target Mode, all const/mut combinations | Only exact three-way agreement succeeds; preserve complete delivered entries unchanged; every disagreement rejects | ordinary_invocation supplied_migration_delivery unit tests; supplied completion seam, not executed source migration |
+| MTX05 | Empty/wrong-Pair projection or mixed delivered Modes under one complete demand | Reject whole delivery; no Mode retagging or partial filtering to manufacture success | ordinary_invocation supplied_migration_delivery unit tests; actual source completion pending |
+| FC09 | Unique complete outward T, equal outer classifier Core, and full Pattern unsatisfiable through an internal constraint | Derive TotalRootMismatch from whole-query negative proof; attempt one ordinary conversion of the entire subject to T, then recheck full P | canonical rule closed; compound relation/conversion consumer pending |
+| FC10 | Failed alternative/valuation with a remaining solution or unavailable required evidence | No whole-query Mismatch proof; Match or Unavailable as appropriate, no root conversion | canonical acceptance target; general alternative consumer pending |
+| FC11 | Whole-query negative proof but unknown/non-unique complete outward root type | Unavailable; do not guess a target or insert internal conversions | scalar missing-root boundary connected; general compound consumer pending |
+| PR14 | Named nested structural registration inside an ordered outer layer | Preserve the named layer and its layer-local order; it is not exposed bare call syntax | canonical_value nested_named_product_registration_is_preserved_inside_ordered_outer_layer |
+| PR15 | Saved ordinary object used as call input | One argument; source call-input normalization does not inspect or expand the object | classifier_snapshot_boundary; registered nested schema preservation is separately PR14 |
+| PR16 | Runtime-only collection input whose length is unavailable | No static length expansion or speculative arity selection; iteration consumer required | runtime saved-value observation gate connected; actual t * ω formation/pack? consumer pending |
+
+## Shared argument navigation and contextual edge observation
+
+The [names owner](../design/symbol-world/names-and-overload-groups.md#3-type-and-group-call-projection)
+fixes shared navigation before observation; the [Policy owner](../design/symbol-world/policy-and-static-flow-projection.md#observation-edges-and-unique-contextual-projection)
+keeps distinct observation edges. These rows have actual invocation evidence in
+argument_navigation_observation; they establish the connected identity/exposure
+and non-unique-projection boundaries, not general source E or joint Policy solving.
+
+| ID | Scenario | Required result | Connected evidence |
+|---|---|---|---|
+| NAV01 | Current inner namespace, outer ordinary argument, same-spelled default-mount argument | Full lexical lookup fixes outer identity first; its actual mode drives ordinary candidate preference | outer mut selects mut candidate over mount const control |
+| NAV02 | Outer binding exists but its Val1 is hidden; default same-spelled binding is visible | Stop unavailable before A/maxima; retain fixed outer identity and publish nothing | hidden outer plus readable default regression |
+| NAV03 | Same resident/Pattern with const and mut views, in either insertion order, ordinary and type arguments | Retain both complete edges; non-unique required projection is unavailable; explicit mode hints do not choose a view | both edge permutations and both hints; no selection/instance/publication |
+| NAV04 | Repeated identical observation edges | One identical required observation remains, with its actual mode | mut observation selects mut candidate |
+| NAV05 | Runtime-Pattern host but compile-visible terminal uint8 passed to IdentityType | Shared navigation retains host chain; hidden host blocks before first-round selection; direct uint8 control succeeds | hidden host / visible terminal integration |
+| NAV06 | Host has compile and runtime Pattern edges in either order; terminal type has a unique view | Host Pattern exposure can be established by the compile edge without choosing terminal mode or erasing hidden edge | both host permutations retain all edges and permit real IdentityType result |
+| NAV07 | Same complete classifier with const/mut edges used only by x:T:: | Classifier Pattern/Core observation may coincide without choosing argument mode; typed candidate wins over generic | both permutations succeed for classifier-only observation, while argument observation remains non-unique |
+
+## Implementation handoff checklist
+
+Statuses describe the stated boundary only. A connected syntax or rejection
+boundary does not establish successful execution of the corresponding language
+feature. Canonical owner definitions above are authoritative for both statuses.
+
+| Item | Status | Evidence / next consumer |
+|---|---|---|
+| Stage={compile,runtime}, independent open/close and mode | 规范已闭合、实现已连接 | policy_pair_semantics and stage_observation_boundary |
+| Adjacent-rank joint extraction, ordinary values through higher universes | 规范已闭合、消费者待连接 | J01–J03; classifier-side binders and Type(type) observation report unavailable before publication |
+| Explicit external classifier constraint in the connected literal/type subset | 规范已闭合、实现已连接 | relational_pattern_authority, world initializer boundary tests |
+| Classifier availability, frozen Core transport and decided first-round rejection | 规范已闭合、实现已连接 | OBS01–OBS10; classifier_observation_boundary, classifier_snapshot_boundary and relational_pattern_authority; general relation queries retain their unavailable frontier |
+| Shared ordinary/type argument navigation, whole host exposure and facet-specific non-unique Policy observation rejection | 规范已闭合、实现已连接 | NAV01–NAV07; general multi-edge joint projection remains unavailable |
+| Forced-conversion input horizon | 规范已闭合、实现已连接 | FC07–FC08; general Ready/source E remains pending |
+| Selected migration declaration-Mode rejection and supplied-result final demand validation | 规范已闭合、实现已连接 | MTX03–MTX05; negative real selection plus supplied-material seam, without a positive source migration claim |
+| General same-Type migration producer and actual completed delivery | 规范已闭合、消费者待连接 | MTX01; independent actual producer observations, common E completion and post-production failure coverage required |
+| Empty physical fragments, neutral inherited navigation and unavailable qualified-action publication boundary | 规范已闭合、实现已连接 | SRC01–SRC04; ordinary successful qualified source consumer remains pending |
+| Literal extraction without construction and explicit constructor identity/snapshot isolation | 规范已闭合、实现已连接 | LIT01–LIT04; constructor tests use explicit ordinary invocation |
+| RHS underscore and arbitrary polarity parity carriers | 规范已闭合、实现已连接 | joint_extraction_and_polarity, parser/Norm golden fixture |
+| Universe-rank material semantic formation | 规范已闭合、消费者待连接 | J04; semantic evaluation reports unavailable |
+| Full rooted Path suffix composition and module reset | 规范已闭合、消费者待连接 | P01–P08; shared Path consumers |
+| Hole-local Policy syntax and alpha identities | 规范已闭合、实现已连接 | local Policy preserved before own declaration; exact HoleBinderId test |
+| HoleOverride and independent Pattern/Policy solving | 规范已闭合、消费者待连接 | H01–H05; source/relation entries reject unavailable Policy solving; annotated Packs reject unavailable remainder extraction |
+| Opaque bare-branch members and bool ordinary bindings | 规范已闭合、消费者待连接 | B01–B03; common structural producer |
+| Anonymous pipe-branch extraction expansion | 规范已闭合、实现已连接 | B04; Raw/Norm equality with explicit head |
+| General open calls, struct helper registration, * / *= | 规范已闭合、消费者待连接 | O01–O04; ordinary producer Pre/commit/Post |
+| Ref/share field-forwarding registration | 规范已闭合、消费者待连接 | actual struct helper registration required; reference primitives supply no forwarder |
+| Held complete type snapshots and late-member isolation | 规范已闭合、实现已连接 | world snapshot-binding and recursive_object_identity tests |
+| Compile dependencies, delayed inputs and opaque self observation | 规范已闭合、消费者待连接 | R04–R05; formation/readiness/materialization consumers |
+| Callable-tag to actual activation materialization | 规范已闭合、消费者待连接 | R01–R03; CallTarget and ActualSelf remain independent |
+| Active-frame return binding, recursion identity and inactive-target rejection | 规范已闭合、实现已连接 | return_target_binding; no self-type or spelling resolution fallback |
+| Callable P2 reify elaboration and unavailable execution boundary | 规范已闭合、实现已连接 | P2 policy tests; closed-boundary execution unavailable before publication |
+| Callable reify boundary, dependency-cone E resumption and closed delivery | 规范已闭合、消费者待连接 | E-R01–E-R04; common continuation and return contract consumers |
+| Current-position lifecycle and mandatory transaction cleanup gate | 规范已闭合、实现已连接 | lifecycle substrate tests over supplied continuation facts |
+| Source NamePosition, cleanup placement and reified continuation wiring | 规范已闭合、消费者待连接 | E-R05; ordinary source/control-flow facts |
+| AOT/JIT/cache/table optimization representations | 规范已闭合、消费者待连接 | E-R06; equivalent O rewrites with E revalidation |
+
+## Reify P2 and bidirectional migration acceptance
+
+All rows define semantic acceptance targets. Pending consumers provide explicit
+unavailable diagnostics, not executed success claims.
+
+| ID | Scenario | Required result | Consumer |
+|---|---|---|---|
+| RF01 | callable-head :reify | outward Runtime, distinct evaluation qualification, two Stage atoms | P2 elaboration |
+| RF02 | reify in P1/Pin/Pout/Hole/expression Policy | reject that Policy atom position; ordinary spelling stays a Name | Policy elaboration |
+| RF03 | explicit R$ or bool:: return classifier | close from input facts before any reverse migration | closed-boundary consumer pending |
+| RF04 | deduced return classifier | accept iff its dependency closure excludes reverse migration | closed-boundary consumer pending |
+| RF05 | return classifier itself requires reverse migration | reject before migration/publication | closed-boundary consumer pending |
+| RF06 | runtime->compile migration outside reify or at ordinary Runtime P2 | reject; matching endpoint/candidate grants no boundary | request boundary |
+| RF07 | reverse migration under active closed reify | select an ordinary same-Type candidate, materialize only actual dependent successors | E consumer pending |
+| RF08 | runtime:runtime->runtime:compile | runtime Object retained with its actual classifier compile-available; unrelated compile type is no witness | source/continuation consumer pending |
+| RF09 | runtime-policy type value | coherent adjacent-rank observations, including a compile classifier; Val1 shape forces no Policy equality or type-algebra permission | observation substrate; type consumer pending |
+| RF10 | actual dependent type work plus independent compile type work | defer dependent cone only; independent work remains ready | dependency-cone consumer pending |
+| RF11 | runtime value-only compile detour | O may eliminate only with E-proved no type dependency and affected E revalidation | O consumer pending |
+| RF12 | Runtime/reify P2 with explicit compile P1 or mixed output Hole Policies | Legal coherent declared constraints; reify is required only by actual reverse-dependent continuation work | P1 acceptance connected; mixed output solver pending |
+| RF13 | Runtime/reify Pin with compile input | latest availability may accept it; Ready and applicability remain independent | InputAdmissible consumer pending |
+| RF14 | deleted migration, host asymmetry, restricted atomic library type | no generated capability may override missing/deleted realization | ordinary candidate/capability substrate |
+| RF15 | existing accepted view / selected migration failure | identity only / terminal failure, no chain or reopen | shared selection substrate |
+| RF16 | runtime newly formed multi-dispatch call | first ordinary selection at actual frontier; selected predecessors retain origin | reified E consumer pending |
+| RF17 | future false branch and lifecycle facts | current compile name/Color Region only; path elimination uses E O E | lifecycle substrate; source/O consumers pending |
+
+### Adjacent-rank Policy and joint selection targets
+
+The [Policy owner](../design/symbol-world/policy-and-static-flow-projection.md)
+defines the complete absent* runtime* compile* chain, runtime first-present
+and compile whole-chain demands independently of ordinary
+whole-slot Mode. Output Hole solving and actual reverse E remain pending.
+
+| ID | Scenario | Required result | Consumer status |
+|---|---|---|---|
+| RK01 | P2 runtime, explicit P1 compile, no reverse dependency | Accept declaration with distinct body/output views; no reify requirement from the stage combination. | Callable registration connected; source E pending |
+| RK02 | Mixed compile/runtime output Hole Policies | Keep each scoped Hole constraint; no all-output recoloring. | Syntax/identity connected; output solver pending |
+| RK03 | Ordinary runtime let on compile:compile | Target runtime:compile, preserve classifier; actual migration requires ordinary selection. | Rank demand/projection connected; general migration realization pending |
+| RK04 | Ordinary runtime let on runtime:runtime | Keep runtime:runtime; do not silently recover classifier. | Rank demand/projection connected |
+| RK05 | Ordinary runtime let on absent:compile | Target absent:runtime, preserving absent value and the higher tail; do not fabricate Present. | Demand/projection connected; higher-rank migration pending |
+| RK06 | compile:runtime injected through installation, binding, export or migration | Reject before publication or successful projection. | Rank gate regressions connected |
+| RK07 | Equal input Policies, competing output Policies/demands | Input/output jointly participate before maxima; no second-round body execution supplies applicability. | Ordinary selection connected; general Hole solver pending |
+| RK08 | P1/P2 mixed stage pair with actual reverse-dependent successors | Require the active closed reify boundary for those successors; preserve the selected source/runtime Object and its classifier relation. | Missing-boundary rejection connected; dependent E pending |
+| RK09 | Unrefined compile let on runtime:runtime | Whole-chain target has all non-absent ranks compile; pair projection is compile:compile, not compile:runtime. | Target formation connected; reverse E pending |
+| RK10 | absent:runtime:runtime:compile under compile let | Target absent:compile:compile:compile; preserve absent prefix, do not create a value at that rank. | Arbitrary-depth prefix material connected; actual higher-rank migration pending |
+| RK11 | Runtime or compile rank followed by absent; compile followed by runtime at any depth | Reject the prefix; pair legality cannot legalize a deeper inversion. | Prefix validation and publication guards connected |
+| RK12 | absent:absent with unseen higher ranks | Legal local prefix, neither first present rank nor AllCompile proven; required higher observation is unavailable, not inapplicable fallback evidence. | Observation/selection unavailable boundary connected |
+| RK13 | Equal first pair, different higher-rank observations | Prefixes remain distinct; no whole-chain equality or hidden-tail success from the pair. | Prefix material equality connected; source full-rank transport pending |
+| RK14 | An actually observed first compile rank and legal chain | Compile tail follows the chain law without infinite enumeration; target material itself is no observation witness. | Shape relation connected; source evidence consumer pending |
+| RK15 | Compile Policy on one scoped Hole versus unrefined compile let | The Hole constrains its rank; ordinary compile let constrains every non-absent rank. | Syntax scopes connected; general Hole solver pending |

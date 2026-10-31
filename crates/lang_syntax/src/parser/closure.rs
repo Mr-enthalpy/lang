@@ -1,19 +1,15 @@
 use crate::{
-    AtomAst, AtomKind, BinderNameAst, BindingPatternAst, BindingSlotAst, BodyBlockAst,
-    CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst, ClosurePlacementAst,
-    DeleteBodyAst, DiagnosticCode, ExprAst, FnHeadPrefixAst, FormAst, HeadClauseAst, NameAst,
-    ParamClauseAst, ProductExtractAst, ProductExtractElementAst, ReturnClauseAst, Span, Symbol,
-    TokenKind,
+    AtomAst, AtomKind, BindingPatternAst, BindingSlotAst, BodyBlockAst, CaptureClauseAst,
+    CaptureItemAst, ClosureAst, ClosureBodyAst, ClosurePlacementAst, DeleteBodyAst, DiagnosticCode,
+    ExprAst, FnHeadPrefixAst, FormAst, HeadClauseAst, NameAst, ParamClauseAst, ProductExtractAst,
+    ProductExtractElementAst, ReturnClauseAst, Span, Symbol, TokenKind,
 };
 
 use super::{
     deduce::parse_deduce_list,
     expr::parse_expr_until,
     form::Parser,
-    let_stmt::{
-        parse_binding_slot, parse_product_extract, parse_synthesized_empty_deduce_binding_slot,
-        BindingSlotContext,
-    },
+    let_stmt::{parse_binding_slot, parse_product_extract, BindingSlotContext},
     policy::parse_policy_spec_until,
     product::error_expr,
 };
@@ -357,17 +353,69 @@ fn closure_atom(
     }
 }
 
-/// Parse the one atomic Pattern and body of `|> P { ... }` as the same
-/// `(self, <> P) { ... }` head, retaining the callable's invocation slot zero.
-/// A head without `=>` remains an in-place closure.
-pub(super) fn parse_binderless_pipe_branch_closure(parser: &mut Parser<'_>) -> AtomAst {
-    let slot = parse_synthesized_empty_deduce_binding_slot(parser, BindingSlotContext::Param);
-    let head_span = slot.span;
+/// Expand an atomic pipe branch to (_, let _: (name)$).
+pub(super) fn parse_pipe_branch_closure(parser: &mut Parser<'_>) -> AtomAst {
+    use crate::{
+        BindingAnnotationAst, CanonicalSkeletonAst, ExprKind, OperatorExprAst, OperatorExprKind,
+        OperatorFixity, OperatorNameAst, PipeExprAst, SegmentAst, SegmentElementAst,
+    };
+    let name_token = parser.cursor.bump_non_trivia();
+    let head_span = name_token.span;
+    let wrap = |operator| ExprAst {
+        kind: ExprKind::Pipe(PipeExprAst {
+            segments: vec![SegmentAst {
+                elements: vec![SegmentElementAst::OperatorExpr(operator)],
+                has_incoming: false,
+                span: head_span,
+            }],
+            span: head_span,
+        }),
+        span: head_span,
+    };
+    let operand = wrap(OperatorExprAst {
+        kind: OperatorExprKind::Atom(AtomAst {
+            kind: AtomKind::Name(NameAst {
+                text: name_token.text.clone(),
+                span: head_span,
+            }),
+            span: head_span,
+        }),
+        span: head_span,
+    });
+    let grouped = OperatorExprAst {
+        kind: OperatorExprKind::Atom(AtomAst {
+            kind: AtomKind::Group(Box::new(operand)),
+            span: head_span,
+        }),
+        span: head_span,
+    };
+    let annotation = wrap(OperatorExprAst {
+        kind: OperatorExprKind::OperatorSugar {
+            operator: OperatorNameAst {
+                spelling: "$".into(),
+                span: head_span,
+            },
+            fixity: OperatorFixity::Postfix,
+            args: vec![grouped],
+            span: head_span,
+        },
+        span: head_span,
+    });
+    let slot = BindingSlotAst {
+        policy: None,
+        has_let: true,
+        deduce: None,
+        pattern: BindingPatternAst::Skeleton(CanonicalSkeletonAst::Wildcard { span: head_span }),
+        annotation: Some(BindingAnnotationAst::Expr(annotation)),
+        with_clause: None,
+        initializer: None,
+        span: head_span,
+    };
     let self_slot = BindingSlotAst {
         policy: None,
         has_let: false,
         deduce: None,
-        pattern: BindingPatternAst::Binder(BinderNameAst::GeneratedSelf { span: head_span }),
+        pattern: BindingPatternAst::Skeleton(CanonicalSkeletonAst::Wildcard { span: head_span }),
         annotation: None,
         with_clause: None,
         initializer: None,

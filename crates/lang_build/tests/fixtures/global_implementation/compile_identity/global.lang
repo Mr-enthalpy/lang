@@ -1,11 +1,11 @@
 public + compile let compile_identity =
-  (self, t: type): compile -> let r: type =>
+  (self, t: type::): compile -> let r: type:: =>
 {
   t;
 };
 
 public + compile let forward_type_value =
-  (self, object: type): compile -> let result: type =>
+  (self, object: type::): compile -> let result: type:: =>
 {
   object;
 };

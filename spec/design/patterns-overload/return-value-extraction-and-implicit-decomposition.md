@@ -4,13 +4,13 @@
 
 The relational meaning of Pattern observation/extraction and the fact that
 constructor/extractor inverses are family-specific theorems are canonical in
-`pattern-values-relational-semantics-and-extraction.md`. This document applies
+`pattern-relations-observation-and-extraction.md`. This document applies
 that authority to result delivery and one-layer view construction; it does not
 define a second base Pattern calculus.
 
 Policy staging of this extraction flow, including runtime Pattern retention and
 automatic require, is canonical in
-`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+`../symbol-world/policy-and-static-flow-projection.md`.
 
 An evaluation returns one result object. The result object's value normal form is
 one of two shapes:
@@ -20,7 +20,7 @@ e:
   ordinary non-product value point
 
 P:
-  product value / product normal form
+  exposed bare Product normal form
 ```
 
 The distinction is semantic, not an implementation-language distinction between
@@ -34,16 +34,23 @@ P return;
   -> value normal form is P
 ```
 
-`P` is not an outer call wrapper. If a function returns a product, the result is
-product normal form.
+`P` is exposed Product material, with the contextual `_ * ω` expansion and
+merging defined by the [Product owner](product-repetition-and-unpacking.md).
+The complete type `product = (_ * ω)$` packages that material; its classifier
+Pattern is `_ * ω`. A repetition wrapper in expression position keeps its
+ordinary Object identity until the applicable Product context or selected
+extraction exposes it.
 
-`?` does not mean destructure or enable extraction. Its current default meaning
-is one top-Pattern peel:
+`?` selects the admitted one-layer extraction interface. For a repetition
+wrapper it can expose the complete payload as bare Product. For the default
+named view its operation is one top-Pattern peel:
 
 ```text
 leaf? = leaf
 
 P? = P
+
+pack? = P      -- selected repetition interface, available shape and ordinary Pre
 
 TopPattern(P)? = P
 
@@ -84,11 +91,104 @@ PeelView(Norm(x)) = Norm(PeelView(x))
 These are future semantic requirements and are not claimed as current
 executable behavior.
 
-Bare `?` peels at most one layer. It does not keep peeling until a target pattern
+## Forced extraction and one root conversion
+
+Ordinary applicability asks whether R_Gamma(P,Content(v),rho) holds. Its
+proof-relevant query is Query_Gamma(P,Content(v)), with Match(rho), Mismatch(m)
+and Unavailable(d) outcomes as defined by the Pattern owner. A selected forced
+extraction or result-delivery consumer additionally requires that relation to
+complete. Write F for that established obligation and RootType(P) for its total
+outward Pattern root, including the whole Product when P is structured.
+RootType(P)=T abbreviates UniqueCompleteOutwardRootType_Gamma(P)=T: the
+complete type of the entire outward extraction subject is uniquely determined
+by the already established Pattern/root constraints. It is not a field type,
+the actual subject's classifier guessed as a target, or a choice among several
+possible roots. The root-mismatch evidence rule is:
+
+```text
+Query_Gamma(P,Content(v)) = Mismatch(m)
+m : not exists rho. R_Gamma(P,Content(v),rho)
+UniqueCompleteOutwardRootType_Gamma(P) = T
+-------------------------------------------------
+TotalRootMismatch(m,P,v) with target T
+```
+
+The negative proof covers the whole relation, including every admissible Hole
+valuation and alternative. Failure of one branch, one trial valuation or one
+internal test alone does not supply it. Equal outer classifiers do not prevent
+this rule: an internal constraint can prove the whole Pattern impossible while
+the complete outward target type T remains fixed. The conversion then receives
+the entire v at T, exactly once, rather than repairing that internal site.
+An unknown query, unknown root or non-unique root is Unavailable. It authorizes
+neither conversion nor root guessing. A scalar external-classifier Core mismatch
+is one sufficient instance of this rule; compound proofs require their actual
+whole-relation consumer.
+
+Minimal cases (constraint notation here is metanotation for ordinary Patterns):
+
+- P has unique outward type T and requires field f to match Q. A v:T whose
+  field cannot match Q under any allowed valuation proves whole-query Mismatch.
+  TotalRootMismatch follows even with Core(Type(v))=Core(T); select at most one
+  conversion of the entire v to T and recheck the entire P.
+- Failure in one alternative while another alternative still matches is not
+  Mismatch. If that other alternative instead needs unavailable evidence, the
+  query is Unavailable and conversion cannot begin.
+- A proved impossible full Pattern with two unresolved possible outward types
+  T0 and T1 does not authorize choosing either. Root evidence is unavailable.
+
+Forced delivery follows:
+
+```text
+SelectedForcedConsumer(F,P,v)
+Query_Gamma(P,Content(v)) = Match(rho)
+---------------------------------
+ForcedExtract_F(P,v) = Deliver(v,rho)
+
+SelectedForcedConsumer(F,P,v)
+Query_Gamma(P,Content(v)) = Mismatch(m)
+TotalRootMismatch(m,P,v)
+RootType(P) = T                         -- actual complete root evidence
+ObserveInput_K(v,source_view) = Available(input)
+SelectOrdinaryConversion(v,T) = k       -- one ordinary candidate selection
+Ready_K(k,input) and LegalPre_K(k,input) and Invoke(k,input) = v'
+R_Gamma(P,Content(v'),rho)
+---------------------------------
+ForcedExtract_F(P,v) = Deliver(v',rho)
+```
+
+The first query consumes the original evaluated value. Only its proved
+total-root mismatch authorizes the second rule. A different Pattern normal form alone is
+not a mismatch proof. Conversion is at the total root, with ordinary declared
+Policy planes, input/output demand, capability, access and lifecycle premises.
+The source retains its actual binding/member Policy view. ObserveInput consumes
+that view at the current horizon; a SemanticValueId or stored payload supplies
+no visibility, readiness or migration authority. A runtime-only Val1 cannot be
+read by a compile converter. Required migration or continuation materialization
+uses its own authorized ordinary consumer; missing evidence is unavailable.
+Nested annotations, individual fields and Hole sites do not each request
+conversion. Bare classifier binders continue to extract rather than denote
+conversion targets.
+
+Unknown or unsupported relation evidence is unavailable, including an unknown
+root or actual classifier snapshot. A matched input invokes no converter.
+Unavailable(d) has no conversion branch. Ordinary overload applicability uses
+the same Query_Gamma/R_Gamma interface and does not enter this
+forced-consumer rule. After selecting k, failure of its Pre/body/result or the
+final root extraction is terminal; it neither retries conversion nor reopens
+the already selected producer or surrounding candidate family. The converted
+result is checked by R_Gamma once, without recursive insertion. Publication
+uses the enclosing common transaction; failed completion publishes no partial
+root or destination. General conversion execution requires its ordinary E
+consumer; unsupported families are explicitly unavailable.
+
+## One-layer extraction boundary
+
+Bare `?` exposes at most one admitted layer. It does not keep peeling until a target pattern
 is found, perform Error propagation, search for an extractor, or stand for
 arbitrary pattern matching. Leaves and Pattern normal forms are fixed points.
 
-Destructuring is a pattern-matcher operation, not value-level `?` semantics:
+Pattern-directed destructuring consumes the supplied structure through the
+Pattern matcher:
 
 ```text
 bind ProductPattern against P
@@ -141,11 +241,12 @@ construct_C(extract_C(v)) = v
 
 This `extract_C` is a named constructor/extractor pair, not bare `?`.
 
-Downward, `?` peels one top Pattern layer:
+Downward, `?` exposes one admitted layer, preserving bare normal forms:
 
 ```text
 leaf e?       = e
 product P?    = P
+repetition pack? = P       -- selected Policy permits its available shape
 TopPattern(P)? = P
 ```
 
@@ -170,7 +271,11 @@ constructor/extractor isomorphism is a separate named interface.
 
 ### `?` Peels One Top Pattern Layer
 
-Bare `?` attempts to peel one top Pattern layer.
+For the default named view, bare `?` attempts to peel one top Pattern layer.
+For `t * n`, the repetition interface exposes one packed layer as bare Product.
+Compile `t * ω` requires an available finite payload; its runtime-only view
+cannot create a static bare Product and instead needs an iteration-like
+consumer. These are ordinary Policy-sensitive candidates for the same value.
 
 It is not recursive by default, and it is not an error-propagation shorthand.
 
@@ -188,8 +293,8 @@ TopPattern(P):
 Pattern matching may consume a symbol's Pattern layer directly without `?`;
 `?` itself does not recursively search for a matching pattern.
 
-A future extension may allow a type to declare one custom exposed view, but the
-extension is not frozen here. It must remain bounded and must not imply
+General custom exposed views remain a representation/interface question beyond
+the closed repetition family. Any such interface must remain bounded and must not imply
 arbitrary multi-layer skipping, recursive search, AST rewriting, or macro
 capability. Repeated explicit `?` remains ordinary composition:
 
@@ -197,34 +302,21 @@ capability. Repeated explicit `?` remains ordinary composition:
 x?? = (x?)?
 ```
 
-### Minimal Sum-Pattern Example: `bool`
+### Minimal Sum-Pattern Example: bool
 
 ```lang
-let bool: type = ((if | else) bool) |> struct;
+let bool = ((true | false)bool)$;
+let true = true::bool;
+let false = false::bool;
+let if = true::bool;
+let else = false::bool;
 ```
 
-The first `bool` is the symbol being bound. The second `bool` is the pattern /
-construction name attached to the sum Pattern `if | else`.
-
-Logical operators return ordinary bool symbols:
-
-```text
-not  : bool -> bool
-and  : (bool, bool) -> bool
-or   : (bool, bool) -> bool
-```
-
-The bool symbol's Pattern layer carries exactly one alternative space:
-
-```text
-if | else
-```
-
-`true === if::bool` and `false === else::bool` are aliases of those Pattern
-symbols. They do not create a second `true | false` alternative space.
-
-Pattern matching reads that layer directly; conditional control flow does not
-require `?`. Explicit `bool_value?` only asks for the one-layer top Pattern view.
+The two structural branches have unique actual value members nu_true/nu_false
+with unobservable machine encoding. The names are ordinary bindings. Matching
+uses R_Gamma on the same true|false structure for compile or runtime values
+with compile Pattern. An explicit bool_value? requests only the one-layer
+Pattern view, not another branch universe.
 
 The same mechanism generalizes beyond `bool`:
 
@@ -319,9 +411,9 @@ Therefore:
 
 ```text
 binding/pattern matching reads Pattern without `?`
-only explicit source `?` requests the one-layer view
+explicit source `?` requests the selected one-layer extraction view
 value equality never inserts `?`
-ordinary expression evaluation never inserts `?`
+Product contexts expose standard material by their own normalization rule
 ```
 
 ### 3.1 Callable result extraction uses the same binding judgment
@@ -351,7 +443,7 @@ introduced. `let (r first,d second)=expr` denotes delivery to the already
 selected ReturnPattern, not a fresh lexical binding. Its Pout demand reaches
 expr's root before maxima. No independent `let temp=expr; result=temp` Policy
 completion or observable LifeName is inserted. A user-written temp remains
-an actual ordinary binding boundary. See the [Policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md)
+an actual ordinary binding boundary. See the [Policy owner](../symbol-world/policy-and-static-flow-projection.md)
 for two-sided forwarding and call-local no-reopen.
 
 ## 4. Equality Examples
@@ -406,7 +498,7 @@ can read the Pattern directly.
 Given:
 
 ```lang
-let t = (uint8 a, uint8 b)struct;
+let t = ((uint8 a, uint8 b)t)$ |> struct;
 
 let val = complete_t_value;
 ```
@@ -462,9 +554,9 @@ that sequence implicitly.
 ```text
 1. Evaluation result normalizes to e or P.
 
-2. `?` attempts to peel one top Pattern layer. It does not mean destructure,
-   search, recursive decomposition, cross-rank conversion, or Error
-   propagation.
+2. `?` exposes one selected layer: a repetition payload or a named top view.
+   It supplies no recursive search, cross-rank conversion or Error propagation.
+   Runtime-only t * ω supplies no static variable-arity expansion.
 
 3. On leaf values, `?` is idempotent:
    e? = e
@@ -480,8 +572,8 @@ that sequence implicitly.
 7. Binding/pattern matching may read the Pattern layer directly; `?` is not an
    enabling repair step.
 
-8. Product matching consumes P in the pattern matcher; value-level `?` does not
-   produce a separate split result.
+8. Product matching consumes P in the pattern matcher. A selected consuming
+   unpack action obeys atomic ExtractCommit; observation alone proves no death.
 ```
 
 For product return:
@@ -509,12 +601,12 @@ through `R_Gamma`. Direct Product observation and explicit one-layer `?` view
 formation are distinct operations. A failed direct observation never inserts
 an implicit `?`, and ordinary equality never calls an extraction helper.
 
-## 7. Relationship to Control-Flow-Local Meta Evaluation
+## 7. Relationship to Control-Flow-Local Evaluation
 
 The one-layer extraction view is complemented by a branch-local evaluation
-substrate (see [semantic evaluation](../meta-invocation/evaluation-residual-and-optimization.md)). That
-substrate uses sum-pattern spaces (e.g. `if | else`) as branch-selection material.
-It enforces that only the selected branch may perform lookup, policy check, meta
+substrate (see [semantic evaluation](../static-evaluation/evaluation-residual-and-optimization.md)). That
+substrate uses sum-pattern spaces (e.g. `true | false`) as branch-selection material.
+It enforces that only the selected branch may perform lookup, policy check, compile
 invocation, or local symbol construction. Unselected branches have no lookup,
 policy, invocation, or `NamespaceDelta` obligation.
 
@@ -524,7 +616,7 @@ projection retains the Pattern and inferred require retains all
 runtime-reachable alternatives as pattern-guarded contracts.
 
 
-Type/meta/Pattern material remains ordinary instance material with normal
+Type/compile/Pattern material remains ordinary instance material with normal
 pass and lifecycle obligations; shape or stage creates no automatic exemption. Mechanical elaboration supplies the
-continuation to [E](../meta-invocation/evaluation-residual-and-optimization.md);
+continuation to [E](../static-evaluation/evaluation-residual-and-optimization.md);
 optional optimizer search cannot change its rules.

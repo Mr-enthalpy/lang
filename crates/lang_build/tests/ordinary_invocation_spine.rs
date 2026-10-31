@@ -3,7 +3,7 @@ mod support;
 use lang_build::{
     extract_single_call_site, BuildManifest, CapabilityRealization, CapabilityRealizationCell,
     CompilationWorld, LifecyclePrecondition, LifecycleValidationContext, OrdinaryInvocationContext,
-    PolicyMode, Provenance, SemanticOwnerKind, SemanticValuePayload, WritableContext,
+    PolicyMode, Provenance, SemanticValuePayload, WritableContext,
 };
 
 use support::{build_single_fixture_world, initializer_from_source};
@@ -16,7 +16,7 @@ fn type_projection_is_not_an_ordinary_resident() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
     assert!(uint8.ordinary_value().is_none());
-    assert!(uint8.pure_p_pattern().is_some());
+    assert!(uint8.type_resident_pattern().is_some());
     // CoreTypeProjection graph value is accessible through core_type_projection_value_for_symbol,
     // never through an ordinary resident.
     let type_obj = world
@@ -31,14 +31,14 @@ fn type_projection_is_not_an_ordinary_resident() {
 }
 
 #[test]
-fn struct_binding_carries_exact_tau_independently_of_core_projection() {
-    let world = build_single_fixture_world("struct_single_field", "app");
+fn forwarded_type_binding_carries_exact_tau_independently_of_core_projection() {
+    let world = build_single_fixture_world("single_package_type_binding", "app");
     let binding = world
         .semantic_world()
-        .symbol_in_namespace(world.package_root_node(), "T")
-        .expect("struct result is bound as T");
+        .symbol_in_namespace(world.package_root_node(), "PatternResult")
+        .expect("forwarded type result is bound");
     let member = binding
-        .pure_p()
+        .type_resident()
         .expect("T carries the returned pure type Object");
     let whole = member
         .complete_type
@@ -76,9 +76,9 @@ fn source_body_frontiers_never_produce_builtin_material_or_reopen_selection() {
         ),
     ] {
         let selected_source =
-            format!("let chosen = (self, _ uint8: type): compile -> let r: type => {tail};");
+            format!("let chosen = (self, _ uint8: type::): compile -> let r: type:: => {tail};");
         let mut world = support::AssociatedFamily::new(&[
-            "let fallback = (self, t: type): compile -> let r: type => (\"must not reopen\") delete;",
+            "let fallback = (self, t: type::): compile -> let r: type:: => (\"must not reopen\") delete;",
             &selected_source,
         ]);
         let before = format!("{:?}", world.semantic_world());
@@ -106,6 +106,10 @@ fn source_body_frontiers_never_produce_builtin_material_or_reopen_selection() {
         assert_eq!(trace.b3_pattern_specific.len(), 1);
         assert!(trace.selected.is_some());
         assert!(trace.dynamic_legality.is_some());
+        assert!(
+            trace.compile_instance.is_some(),
+            "identity admission precedes selected body failure"
+        );
         assert_eq!(
             format!("{:?}", world.semantic_world()),
             before,
@@ -117,10 +121,10 @@ fn source_body_frontiers_never_produce_builtin_material_or_reopen_selection() {
 #[test]
 fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
     let mut world = support::AssociatedFamily::new(&[
-        "let first = (self, t: type): compile -> let r: type => { t; };",
-        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+        "let first = (self, t: type::): compile -> let r: type:: => { t; };",
+        "let second = (self, _ uint8: type::): compile -> let r: type:: => { self; };",
     ]);
-    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let initializer = initializer_from_source("let R: type:: = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
     let failure = world
@@ -151,10 +155,10 @@ fn dynamic_legality_runs_after_unique_selection_and_never_reopens_the_family() {
 #[test]
 fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
     let mut world = support::AssociatedFamily::new(&[
-        "let first = (self, t: type): compile -> let r: type => { t; };",
-        "let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+        "let first = (self, t: type::): compile -> let r: type:: => { t; };",
+        "let second = (self, _ uint8: type::): compile -> let r: type:: => { self; };",
     ]);
-    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let initializer = initializer_from_source("let R: type:: = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
     let lifecycle = LifecycleValidationContext {
@@ -193,7 +197,7 @@ fn lifecycle_pre_failure_is_post_selection_and_never_reopens_the_family() {
 #[test]
 fn configured_capability_cell_is_proof_material_not_policy_preference() {
     let mut world = support::AssociatedFamily::new(&[
-        "let member = (self, _ uint8:type):compile -> let r:uint8 => { r; };",
+        "let member = (self, _ uint8:type::):compile -> let r:uint8:: => { r; };",
     ]);
     let keep = world.target_binding();
     let entries = keep
@@ -221,7 +225,7 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
             .expect("terminal call entry accepts candidate-local realization");
     }
 
-    let initializer = initializer_from_source("let R: type = uint8 keep;");
+    let initializer = initializer_from_source("let R: type:: = uint8 keep;");
     let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
     let actual = [PolicyMode::Const];
     let failure = world
@@ -248,10 +252,10 @@ fn configured_capability_cell_is_proof_material_not_policy_preference() {
 #[test]
 fn mut_policy_mode_does_not_grant_writable() {
     let mut world = support::AssociatedFamily::new(&[
-        "mut let first = (self, t: type): compile -> let r: type => { t; };",
-        "mut let second = (self, _ uint8: type): compile -> let r: type => { self; };",
+        "mut let first = (self, t: type::): compile -> let r: type:: => { t; };",
+        "mut let second = (self, _ uint8: type::): compile -> let r: type:: => { self; };",
     ]);
-    let initializer = initializer_from_source("let R: type = uint8 pick;");
+    let initializer = initializer_from_source("let R: type:: = uint8 pick;");
     let call_site = extract_single_call_site(&initializer).expect("normalized overloaded call");
     let actual = [PolicyMode::Const];
     let writable = WritableContext::default();
@@ -276,7 +280,7 @@ fn mut_policy_mode_does_not_grant_writable() {
 #[test]
 fn actual_callable_binding_place_authorizes_target_sensitive_legality() {
     let mut world = support::AssociatedFamily::new(&[
-        "let member = (self, t:type):compile -> let r:type => { t; };",
+        "let member = (self, t:type::):compile -> let r:type:: => { t; };",
     ]);
     let binding = world.target_binding();
     let value = binding.ordinary_value().unwrap();
@@ -395,7 +399,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         .expect("uint8 value facet");
     assert_eq!(
         bound_type, core_type,
-        "`let T: type = uint8` binds the existing type pattern; it does not allocate a second type pattern"
+        "`let T: type:: = uint8` binds the existing type pattern; it does not allocate a second type pattern"
     );
     let rebound_type = world
         .semantic_world()
@@ -403,7 +407,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         .expect("U pure type Object value");
     assert_eq!(
         rebound_type, bound_type,
-        "`let U: type = T` reads the value carried by T and binds that same value; the RHS carrier is not identity"
+        "`let U: type:: = T` reads the value carried by T and binds that same value; the RHS carrier is not identity"
     );
     let SemanticValuePayload::CoreTypeProjection {
         represented_type,
@@ -431,7 +435,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
             .pattern_owner(core_value.pattern)
             .expect("core Pattern owner")
             .owner,
-        "binding installation must not reroot PatternValue ownership"
+        "binding installation must not reroot Pattern coordinate ownership"
     );
 
     let bound_graph_symbol = world
@@ -478,7 +482,7 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
             .semantic_world()
             .pattern_for_associated_namespace(companion),
         Some(bound_value.pattern),
-        "navigation through the fresh carrier place still obtains the bound value's existing PatternValue"
+        "navigation through the fresh carrier place still obtains the bound value's existing Pattern coordinate"
     );
     assert_ne!(
         world
@@ -488,26 +492,26 @@ fn ordinary_type_binding_reuses_type_and_pattern_without_rerooting() {
         world
             .semantic_world()
             .pattern_owner(bound_value.pattern)
-            .expect("bound PatternValue keeps its owner")
+            .expect("bound Pattern coordinate keeps its owner")
             .owner,
-        "routing a carrier place to the existing PatternValue must not reroot its Pattern owner"
+        "routing a carrier place to the existing Pattern coordinate must not reroot its Pattern owner"
     );
 }
 
 #[test]
-fn rebound_type_value_is_canonical_struct_field_material() {
+fn rebound_type_value_keeps_complete_identity_and_distinct_carriers() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let direct = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "Direct")
-        .expect("struct whose field spells uint8");
+        .expect("Direct type binding");
     let rebound = world
         .semantic_world()
         .symbol_in_namespace(world.package_root_node(), "Rebound")
         .expect("carrier rebinding of Direct");
 
     assert_eq!(
-        direct.pure_p_pattern(), rebound.pure_p_pattern(),
+        direct.type_resident_pattern(), rebound.type_resident_pattern(),
         "a carrier rebinding refers to the same complete type, so the rebound carrier name cannot change type identity"
     );
 
@@ -532,11 +536,10 @@ fn rebound_type_value_is_canonical_struct_field_material() {
         rebound_type.carrier_symbol_id
     );
     assert_eq!(direct_type.represented_type, rebound_type.represented_type);
-    // Field material lives on the complete type result's own projection; a
-    // carrier rebinding is a bare reference and carries no field material
-    // of its own.
-    assert!(!direct_type.field_type_values.is_empty());
-    assert!(rebound_type.field_type_values.is_empty());
+    let direct_snapshot = direct.type_resident().unwrap().complete_type.unwrap();
+    let rebound_snapshot = rebound.type_resident().unwrap().complete_type.unwrap();
+    assert_eq!(direct_snapshot, rebound_snapshot);
+    assert_ne!(direct.type_resident_place(), rebound.type_resident_place());
 }
 
 #[test]
@@ -555,9 +558,13 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
         .symbol_in_namespace(world.package_root_node(), "U")
         .expect("source binding U");
 
-    let bound_pure = bound.pure_p_pattern().expect("T has pure_p");
-    let core_pure = core.pure_p_pattern().expect("uint8 has pure_p");
-    let rebound_pure = rebound.pure_p_pattern().expect("U has pure_p");
+    let bound_pure = bound.type_resident_pattern().expect("T has type_resident");
+    let core_pure = core
+        .type_resident_pattern()
+        .expect("uint8 has type_resident");
+    let rebound_pure = rebound
+        .type_resident_pattern()
+        .expect("U has type_resident");
 
     assert_eq!(bound_pure, core_pure);
     assert_eq!(rebound_pure, core_pure);
@@ -565,15 +572,15 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
     let bound_declaration = world
         .semantic_world()
         .pattern_declaration(bound_pure)
-        .expect("T PatternValue has original declaration");
+        .expect("T Pattern coordinate has original declaration");
     let core_declaration = world
         .semantic_world()
         .pattern_declaration(core_pure)
-        .expect("uint8 PatternValue has original declaration");
+        .expect("uint8 Pattern coordinate has original declaration");
     let rebound_declaration = world
         .semantic_world()
         .pattern_declaration(rebound_pure)
-        .expect("U PatternValue has original declaration");
+        .expect("U Pattern coordinate has original declaration");
 
     assert_eq!(
         bound_declaration, core_declaration,
@@ -589,7 +596,7 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
     );
 }
 
-/// `let T: type = uint8; let U: type = T;` — shared Pattern identity, three
+/// `let T: type:: = uint8; let U: type:: = T;` — shared Pattern identity, three
 /// separate objects:
 ///
 /// ```text
@@ -600,8 +607,8 @@ fn original_declaration_is_preserved_across_carrier_rebinding() {
 /// ```
 ///
 /// The place inequality is what makes `let f::T = ...` a write to `T`'s own
-/// pure-pure type Object instead of to the PatternValue that `U` and `uint8`
-/// share, so it is the structural difference between `let =` and `let ===`.
+/// resident Object. The P coordinate shared by `U` and `uint8` does not
+/// identify that resident or its Place.
 #[test]
 fn ordinary_type_bindings_own_distinct_val2_places() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
@@ -616,14 +623,16 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
 
-    let pattern = core.pure_p_pattern().expect("uint8 has pure_p");
-    assert_eq!(bound.pure_p_pattern(), Some(pattern));
-    assert_eq!(rebound.pure_p_pattern(), Some(pattern));
+    let pattern = core
+        .type_resident_pattern()
+        .expect("uint8 has type_resident");
+    assert_eq!(bound.type_resident_pattern(), Some(pattern));
+    assert_eq!(rebound.type_resident_pattern(), Some(pattern));
     let type_value = semantic
         .type_for_pattern(pattern)
         .expect("the shared Pattern denotes one TypeValue");
     assert_eq!(
-        semantic.type_for_pattern(bound.pure_p_pattern().expect("T pure_p")),
+        semantic.type_for_pattern(bound.type_resident_pattern().expect("T type_resident")),
         Some(type_value),
         "a carrier rebinding never mints a new TypeValue"
     );
@@ -632,35 +641,39 @@ fn ordinary_type_bindings_own_distinct_val2_places() {
     assert_ne!(rebound.identity, core.identity);
     assert_ne!(bound.identity, rebound.identity);
 
-    let bound_place = bound.pure_p_place().expect("T's pure P is a real object");
-    let rebound_place = rebound.pure_p_place().expect("U's pure P is a real object");
+    let bound_place = bound
+        .type_resident_place()
+        .expect("T's pure Object is a real object");
+    let rebound_place = rebound
+        .type_resident_place()
+        .expect("U's pure Object is a real object");
     let core_place = core
-        .pure_p_place()
-        .expect("uint8's pure P is a real object");
+        .type_resident_place()
+        .expect("uint8's pure Object is a real object");
     assert_ne!(
         bound_place, core_place,
-        "`let T: type = uint8` binds a new object, so T owns a fresh writable place"
+        "`let T: type:: = uint8` binds a new object, so T owns a fresh writable place"
     );
     assert_ne!(
         rebound_place, core_place,
-        "`let U: type = T` binds a new object too"
+        "`let U: type:: = T` binds a new object too"
     );
     assert_ne!(
         bound_place, rebound_place,
         "two ordinary bindings of one Pattern never share one Val2 place"
     );
 
-    // The Pattern's canonical pure type Object belongs to the declaration that
+    // The explicitly registered Core Object belongs to the declaration that
     // declared the Pattern; neither rebinding writes there.
     let canonical = semantic
-        .pattern_place(pattern)
-        .expect("the Pattern has a canonical pure type Object");
+        .registered_core_place(pattern)
+        .expect("the P index locates an explicitly registered Core Object");
     assert_ne!(bound_place, canonical);
     assert_ne!(rebound_place, canonical);
 }
 
 #[test]
-fn named_pattern_applicability_consumes_pattern_value_not_carrier_name() {
+fn named_pattern_applicability_consumes_p_coordinate_not_carrier_name() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let rebound = world
         .semantic_world()
@@ -675,10 +688,13 @@ fn named_pattern_applicability_consumes_pattern_value_not_carrier_name() {
         .symbol_in_namespace(world.core_node(), "uint8")
         .expect("core uint8");
 
-    assert_eq!(rebound.pure_p_pattern(), core.pure_p_pattern());
     assert_eq!(
-        result.pure_p_pattern(), core.pure_p_pattern(),
-        "named Pattern applicability must compare the resolved PatternValue reached through T, not the spelling `T`"
+        rebound.type_resident_pattern(),
+        core.type_resident_pattern()
+    );
+    assert_eq!(
+        result.type_resident_pattern(), core.type_resident_pattern(),
+        "named Pattern applicability must compare the resolved Pattern coordinate reached through T, not the spelling `T`"
     );
 }
 
@@ -715,6 +731,31 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
         identity.ordinary_value().into_iter().collect::<Vec<_>>()
     );
     assert_eq!(result.trace.c3_call_entries.len(), 1);
+    let instance = result
+        .trace
+        .compile_instance
+        .expect("external type result has an instance");
+    let state = world.semantic_world().compile_instance(instance).unwrap();
+    assert_eq!(
+        state.root.parent_owner,
+        world
+            .semantic_world()
+            .namespace_owner(world.package_root_node())
+            .unwrap()
+    );
+    assert!(
+        world
+            .semantic_world()
+            .symbol(state.invoke_name())
+            .unwrap()
+            .type_resident()
+            .is_none(),
+        "returning an existing type does not install it as the instance self resident"
+    );
+    assert_eq!(
+        state.delivered_result().unwrap().complete_type,
+        result.complete_type.as_ref().map(|ty| ty.whole())
+    );
 
     let uint8 = world
         .semantic_world()
@@ -735,7 +776,7 @@ fn core_identity_is_a_function_object_on_the_ordinary_spine() {
             .value(uint8_type)
             .expect("uint8 pure type Object")
             .pattern,
-        "the core identity implementation returns the uint8 PatternValue"
+        "the core identity implementation returns the uint8 Pattern coordinate"
     );
 }
 
@@ -828,7 +869,7 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
     assert!(result.complete_result[0].value.is_none());
     assert_eq!(
         result.complete_result[0].pattern,
-        uint8.pure_p_pattern().unwrap()
+        uint8.type_resident_pattern().unwrap()
     );
     let lang_build::ReturnedSemanticEntity::CompleteType(value) = result.returned else {
         panic!("IdentityType returns the evaluated complete type value");
@@ -852,224 +893,82 @@ fn core_identity_consumes_type_value_not_rhs_carrier_symbol() {
 }
 
 #[test]
-fn bare_call_target_resolves_nearest_symbol_once_even_if_non_callable() {
-    let mut world = build_single_fixture_world("bare_scope_chain", "app");
-    let package = world.package_root_node();
-    let outer_namespace = world
-        .semantic_world()
-        .child_namespace(package, "outer")
-        .expect("outer physical namespace");
-    let inner_namespace = world
-        .semantic_world()
-        .child_namespace(outer_namespace, "inner")
-        .expect("inner physical namespace");
-    let inner = world
-        .semantic_world()
-        .symbol_in_namespace(inner_namespace, "f")
-        .expect("inner non-callable f")
-        .clone();
-    assert!(
-        inner.ordinary_value().is_none(),
-        "near f is deliberately non-callable"
-    );
-
-    let initializer = initializer_from_source("let result = uint8 f;");
-    let call_site = extract_single_call_site(&initializer).expect("bare f call");
-    let failure = world
-        .invoke_ordinary_call(
-            inner_namespace,
-            &call_site,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-            Provenance::new("near outer core bare-name chain"),
-        )
-        .expect_err("the nearest non-callable Symbol shadows outer callable Symbols");
-    assert!(
-        matches!(
-            failure,
-            lang_build::OrdinaryInvocationFailure::NoTargetValues { .. }
-                | lang_build::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
-        ),
-        "call projection fails on inner.f and never re-resolves the name: {failure:?}"
-    );
-}
-
-#[test]
-fn same_bare_path_has_one_terminal_symbol_before_value_type_and_call_projection() {
-    let world = build_single_fixture_world("bare_scope_chain", "app");
-    let package = world.package_root_node();
-    let outer_namespace = world
-        .semantic_world()
-        .child_namespace(package, "outer")
-        .expect("outer physical namespace");
-    let inner_namespace = world
-        .semantic_world()
-        .child_namespace(outer_namespace, "inner")
-        .expect("inner physical namespace");
-    let inner = world
-        .semantic_world()
-        .symbol_in_namespace(inner_namespace, "f")
-        .expect("inner type-valued f")
-        .identity;
-    let initializer = initializer_from_source("let result = uint8 f;");
-    let call_site = extract_single_call_site(&initializer).expect("bare f call");
-
-    let neutral = world
-        .resolve_source_terminal_symbol(inner_namespace, &call_site.target)
-        .expect("neutral source resolution");
-    let by_symbol_path = world
-        .semantic_world()
-        .resolve_symbol_path(
-            &["f".to_string()],
-            inner_namespace,
-            &[world.semantic_world().namespace_index().root_node()],
-            &[world.core_node()],
-        )
-        .expect("context-independent Symbol resolution");
-    assert_eq!(neutral, inner);
-    assert_eq!(by_symbol_path, inner);
-    assert!(
-        world
-            .semantic_world()
-            .symbol(inner)
-            .and_then(|symbol| symbol.pure_p_pattern())
-            .is_some(),
-        "type projection observes the already resolved inner Symbol"
-    );
-}
-
-#[test]
-fn explicit_call_target_is_one_symbol_and_never_falls_back() {
-    let mut world = build_single_fixture_world("bare_scope_chain", "app");
-    let package = world.package_root_node();
-    let outer_namespace = world
-        .semantic_world()
-        .child_namespace(package, "outer")
-        .expect("outer physical namespace");
-    let initializer = initializer_from_source("let result = uint8 f::inner;");
-    let call_site = extract_single_call_site(&initializer).expect("explicit inner::f call");
-    let failure = world
-        .invoke_ordinary_call(
-            outer_namespace,
-            &call_site,
-            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
-            Provenance::new("explicit target no-fallback"),
-        )
-        .expect_err("explicit inner f is non-callable and must fail");
-    assert!(
-        matches!(
-            failure,
-            lang_build::OrdinaryInvocationFailure::NoTargetValues { .. }
-                | lang_build::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
-        ),
-        "explicit target fails on that Symbol instead of trying outer/core: {failure:?}"
-    );
-}
-
-#[test]
-fn privileged_struct_enters_ordinary_overload_and_returns_complete_tau() {
+fn selected_type_forwarder_delivers_exact_external_snapshot() {
     let mut world =
         CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".to_string()]))
-            .expect("core semantic world builds");
-    let initializer = initializer_from_source("let T: type = (uint8 a) struct;");
-    let call_site = extract_single_call_site(&initializer).expect("normalized struct call");
-    let actual_mutability = [PolicyMode::Const];
+            .unwrap();
+    let input = world
+        .semantic_world()
+        .symbol_in_namespace(world.core_node(), "uint8")
+        .unwrap()
+        .type_resident()
+        .unwrap();
+    let source = initializer_from_source("let T = uint8 IdentityType::core;");
+    let call = extract_single_call_site(&source).unwrap();
     let result = world
         .invoke_ordinary_call(
             world.package_root_node(),
-            &call_site,
-            OrdinaryInvocationContext::open_static(&actual_mutability),
-            Provenance::new("core struct ordinary invocation"),
+            &call,
+            OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+            Provenance::new("external type forwarding"),
         )
-        .expect("privileged AST decoding is an ordinary call-entry body capability");
+        .unwrap();
     let lang_build::InvocationResult::SemanticResult {
         value: lang_build::ProjectedInvocationOutcome::SingleMember(result),
         ..
     } = result
     else {
-        panic!("struct has the unified CompleteType result class");
+        panic!("ordinary complete result");
     };
-
-    // No overload bypass: the caller package differs from the toolchain
-    // package, so this call goes through the external member view, and
-    // `struct` is still selected through the normal
-    // C0 -> C1 -> C2 -> Cc -> C3 -> A -> Bp' -> B3 spine.
     assert_eq!(result.trace.c0_target_values.len(), 1);
     assert_eq!(
-        result.trace.c1_visible_values, result.trace.c0_target_values,
-        "core struct is a declaration-boundary public export; External C1 keeps it"
+        result.trace.c1_visible_values,
+        result.trace.c0_target_values
     );
     assert_eq!(result.trace.c3_call_entries.len(), 1);
-    assert!(
-        result.trace.selected.is_some(),
-        "privilege applies only to the selected body, after ordinary selection"
-    );
-
-    // The selected result is a complete tau value.  Replayable construction
-    // material may remain attached for namespace projection, but it is not
-    // the semantic result authority.  `struct` is a
-    // builtin privileged meta function: it never creates a
-    // `MetaInstance(struct, arguments)` scope of its own, so the generated
-    // Pattern owner is the ambient declaration environment (the caller's
-    // package root), not a MetaInstance.
+    assert!(result.trace.selected.is_some());
+    let instance = result.trace.compile_instance.unwrap();
     let lang_build::ReturnedSemanticEntity::CompleteType(returned) = &result.returned else {
-        panic!("world-connected struct must return complete tau, not private builtin material");
+        panic!("exact tau");
     };
-    assert_eq!(
-        result.complete_type.as_ref(),
-        Some(&returned.complete_type),
-        "every CompleteType semantic success carries its exact whole tau explicitly"
-    );
-    let view = &result.complete_result[0];
-    assert!(
-        view.value.is_some(),
-        "complete tau is an ordinary first-class semantic value"
-    );
-    let owner = world
-        .semantic_world()
-        .pattern_owner(returned.pattern)
-        .expect("complete type Pattern has a resolved owner")
-        .owner;
-    let ambient_owner = world
-        .semantic_world()
-        .namespace_owner(world.package_root_node())
-        .expect("package root has a semantic owner");
-    assert_eq!(
-        owner, ambient_owner,
-        "direct `struct` attaches its complete type to the ambient declaration environment"
-    );
-    assert_eq!(
-        returned.complete_type.lookup_key(),
-        world
-            .semantic_world()
-            .type_for_pattern(returned.pattern)
-            .expect("returned tau core has a registered Pattern"),
-    );
+    assert_eq!(result.complete_type.as_ref(), Some(&returned.complete_type));
+    assert_eq!(returned.pattern, input.pattern);
     assert_eq!(
         world
             .semantic_world()
             .complete_type_by_whole_observation(returned.complete_type.whole()),
-        Some(&returned.complete_type),
-        "the ordinary result carries the interned whole-snapshot observation"
+        Some(&returned.complete_type)
     );
-    assert!(matches!(
+    assert_ne!(
         world
             .semantic_world()
-            .owners()
-            .node(owner)
-            .expect("generated Pattern owner exists")
-            .kind,
-        SemanticOwnerKind::PackageRoot { .. }
-    ));
+            .pattern_owner(returned.pattern)
+            .unwrap()
+            .owner,
+        instance.owner()
+    );
+    let self_name = world
+        .semantic_world()
+        .compile_instance(instance)
+        .unwrap()
+        .invoke_name();
+    assert!(world
+        .semantic_world()
+        .symbol(self_name)
+        .unwrap()
+        .type_resident()
+        .is_none());
 }
 
 #[test]
 fn unsupported_pattern_query_terminates_before_candidate_selection() {
     let mut world = support::AssociatedFamily::new(&[
-        "let first = (self, if | else: type): compile -> let r: uint8 => { self; };",
-        "let second = (self, t: type): compile -> let r: uint8 => { self; };",
+        "let first = (self, true | false: type::): compile -> let r: uint8:: => { self; };",
+        "let second = (self, t: type::): compile -> let r: uint8:: => { self; };",
     ]);
     let initializer = initializer_from_source("let result = uint8 choose;");
     let call_site = extract_single_call_site(&initializer).expect("normalized ordinary call");
+    let before = format!("{:?}", world.semantic_world());
     let failure = world
         .invoke_ordinary_call(
             world.package_root_node(),
@@ -1097,6 +996,9 @@ fn unsupported_pattern_query_terminates_before_candidate_selection() {
         trace.selected.is_none(),
         "no candidate may be selected from an incomplete A-stage"
     );
+    assert!(trace.bp_prime.is_empty());
+    assert!(trace.compile_instance.is_none());
+    assert_eq!(format!("{:?}", world.semantic_world()), before);
 }
 
 #[test]

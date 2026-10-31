@@ -1,4 +1,12 @@
 use std::fs;
+#[test]
+fn product_repetition_material() {
+    assert_norm_case("product_repetition_material", false);
+}
+#[test]
+fn reify_p2() {
+    assert_norm_case("reify_p2", false);
+}
 use std::path::PathBuf;
 
 use lang_syntax::norm::{
@@ -52,7 +60,22 @@ fn contextual_structural_material() {
 }
 
 #[test]
-fn navigation_group_preserves_pattern_context_until_explicit_splice() {
+fn joint_extraction_polarity() {
+    assert_norm_case("joint_extraction_polarity", false);
+}
+
+#[test]
+fn interpretation_polarity() {
+    assert_norm_case("29_interpretation_polarity", false);
+}
+
+#[test]
+fn pipeline_dot_equivalence() {
+    assert_norm_case("30_pipeline_dot_equivalence", false);
+}
+
+#[test]
+fn navigation_group_preserves_pattern_context_until_explicit_flip() {
     let normalized = norm_program_from_source("let a === name::(scope); let b === name::(scope$);");
     let targets = normalized
         .forms
@@ -71,12 +94,12 @@ fn navigation_group_preserves_pattern_context_until_explicit_splice() {
         matches!(targets[0], NormNavComponent::PatternGroup { pattern, .. } if matches!(pattern.as_ref(), NormPattern::Name { name, .. } if name == "scope"))
     );
     assert!(
-        matches!(targets[1], NormNavComponent::Splice { operand, .. } if matches!(operand.as_ref(), NormExpr::Name { text, .. } if text == "scope"))
+        matches!(targets[1], NormNavComponent::InterpretationFlip { operand, .. } if matches!(operand.as_ref(), NormExpr::Name { text, .. } if text == "scope"))
     );
 }
 
 #[test]
-fn splice_operand_is_rhs_and_navigation_after_it_resumes_pattern_context() {
+fn structural_flip_operand_is_value_context_and_navigation_after_it_resumes_pattern_context() {
     let output = lang_syntax::parse("let short === a::(b:c)$::(d e);");
     assert!(output.diagnostics.is_empty());
     let normalized = lang_syntax::normalize_program(&output.program);
@@ -86,8 +109,8 @@ fn splice_operand_is_rhs_and_navigation_after_it_resumes_pattern_context() {
     let NormPattern::Nav { components, .. } = target.pattern.as_ref() else {
         panic!("navigation");
     };
-    let NormNavComponent::Splice { operand, .. } = &components[0] else {
-        panic!("splice");
+    let NormNavComponent::InterpretationFlip { operand, .. } = &components[0] else {
+        panic!("interpretation flip");
     };
     let NormExpr::Nav {
         components: rhs, ..
@@ -216,7 +239,8 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_rem
     expect_generated(&head.deduce[0].origin, rule);
     assert!(matches!(
         head.deduce[0].annotation.as_ref().map(|annotation| &annotation.pattern),
-        Some(NormPattern::Name { name, .. }) if name == "type"
+        Some(NormPattern::Nav { components, explicit_terminated: true, .. })
+            if matches!(components.as_slice(), [NormNavComponent::Name { name, .. }] if name == "type")
     ));
 
     assert_eq!(
@@ -617,20 +641,14 @@ fn member_sugar_has_unresolved_adl_target() {
 }
 
 #[test]
-fn double_dot_generated_closure_has_unresolved_nav_target() {
+fn pipeline_dot_has_ordinary_adl_target() {
     let expr = single_expr_from_source("obj..method(a)");
-    let (source, _, origin) = expect_call(&expr);
-    expect_generated(origin, NormRule::DoubleDotLowering);
+    let (source, target, origin) = expect_call(&expr);
+    expect_generated(origin, NormRule::PipelineDotLowering);
+    assert_eq!(source.elements.len(), 2);
     expect_product_elem_name(source, 0, "obj");
-
-    let closure = expect_generated_closure(&expr, NormRule::DoubleDotLowering);
-    expect_generated_receiver_head(closure, NormRule::DoubleDotLowering, false);
-    let (body_source, body_target, body_origin) = expect_generated_body_call(closure);
-    expect_generated(body_origin, NormRule::DoubleDotLowering);
-    assert_eq!(body_source.elements.len(), 2);
-    expect_product_elem_name(body_source, 0, "val");
-    expect_product_elem_name(body_source, 1, "a");
-    expect_nav_names(body_target, &["method", "T"]);
+    expect_product_elem_name(source, 1, "a");
+    expect_nav_names(target, &["method", "adl"]);
 }
 
 #[test]

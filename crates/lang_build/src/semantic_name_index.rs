@@ -455,7 +455,6 @@ pub enum ResolveExpectation {
     NamespaceCapableParent,
     CoreTypeProjection,
     Callable,
-    FieldFunction,
 }
 
 /// Shared capability API for graph reads and delta construction.
@@ -496,7 +495,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
     /// | `NamespaceCapableParent` | Terminal must be a namespace-capable symbol (object with `namespace_node` or namespace-subspace) |
     /// | `CoreTypeProjection` | Terminal with kind `Type` |
     /// | `Callable` | Terminal with kind `Callable` |
-    /// | `FieldFunction` | Terminal with kind `FieldFunction` |
     ///
     /// Intermediate path components always resolve as
     /// `NamespaceCapableParent` regardless of the terminal expectation.
@@ -639,21 +637,6 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         self.resolve_str_with_expectation(source_order_path, context, ResolveExpectation::Callable)
     }
 
-    /// Resolve a terminal symbol whose kind is `FieldFunction`.
-    ///
-    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::FieldFunction)`.
-    pub fn resolve_field_function(
-        &self,
-        source_order_path: &str,
-        context: &ResolverContext,
-    ) -> Result<NamespaceGraphSymbol, Diagnostic> {
-        self.resolve_str_with_expectation(
-            source_order_path,
-            context,
-            ResolveExpectation::FieldFunction,
-        )
-    }
-
     /// Resolve a terminal symbol in the namespace-subspace role.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::NamespaceSubspace)`.
@@ -726,7 +709,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
         delta
     }
 
-    pub fn inject_child(
+    pub fn add_child_projection(
         &self,
         parent: NamespaceNodeId,
         symbol: NamespaceGraphSymbol,
@@ -766,7 +749,7 @@ impl<'snapshot> SemanticNameResolver<'snapshot> {
             provenance,
         );
         symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-            crate::Stage::Meta,
+            crate::Stage::Compile,
             crate::PolicyMode::Const,
         ));
         delta.insert_node(node);
@@ -869,7 +852,7 @@ pub(crate) fn namespace_symbol(
         provenance,
     );
     symbol.policy_view = Some(crate::policy_pair::declared_policy_view(
-        crate::Stage::Meta,
+        crate::Stage::Compile,
         crate::PolicyMode::Const,
     ));
     delta.insert_node(node);
@@ -932,11 +915,6 @@ fn select_symbol_from_bucket<'symbols>(
         ResolveExpectation::Callable => {
             select_unique_object_symbol(symbols, bucket, name, |symbol| {
                 symbol.kind == SymbolKind::Callable
-            })
-        }
-        ResolveExpectation::FieldFunction => {
-            select_unique_object_symbol(symbols, bucket, name, |symbol| {
-                symbol.kind == SymbolKind::FieldFunction
             })
         }
     }

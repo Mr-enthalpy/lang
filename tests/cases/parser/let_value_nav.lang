@@ -1,1 +1,1 @@
-let x: type = a::b
+let x: type:: = a::b

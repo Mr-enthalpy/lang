@@ -31,7 +31,10 @@ fn verification_namespace_is_ordinary_and_operations_have_associated_call_entrie
         .symbol_in_namespace(namespace.namespace_node().unwrap(), "exists")
         .unwrap();
     let value = binding.ordinary_value().unwrap();
-    let entries = world.semantic_world().callable_entries_for_value(value);
+    let entries = world
+        .semantic_world()
+        .callable_entries_for_value(value)
+        .expect("actual classifier resident observation");
     assert!(!entries.is_empty());
     for entry in entries {
         let lang_build::SemanticValuePayload::CallEntry(entry) =
@@ -98,18 +101,41 @@ fn explicit_dependency_mounts_are_visible_as_paths() {
 
 #[test]
 fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
-    // Equal spelling in distinct namespaces does not merge graph identities.
-    let world = build_single_fixture_world("same_name_distinct_namespaces", "app");
-    let left = world
-        .namespace_projection()
+    // Explicit graph records test resolver identity independently of source discovery.
+    let snapshot = SemanticNameIndex::new();
+    let root = snapshot.root_node();
+    let mut delta = snapshot.empty_delta();
+    for name in ["left", "right"] {
+        let node = delta.allocate_node_id();
+        let symbol = delta.allocate_symbol_id();
+        delta.insert_node(lang_build::NamespaceNode::new(
+            node,
+            name,
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Some(root),
+            Provenance::new("explicit resolver fixture"),
+        ));
+        delta.insert_symbol(
+            root,
+            namespace_symbol(symbol, root, name, node, "explicit resolver fixture"),
+        );
+        let child = delta.allocate_symbol_id();
+        delta.insert_symbol(
+            node,
+            object_symbol(child, node, "T", "explicit resolver child"),
+        );
+    }
+    let snapshot = snapshot.install_delta(delta).unwrap();
+    let context = ResolverContext::new(root);
+    let left = snapshot
         .capability()
-        .resolve_str("T::left::app", &world.root_context())
-        .expect("left T");
-    let right = world
-        .namespace_projection()
+        .resolve_str("T::left", &context)
+        .unwrap();
+    let right = snapshot
         .capability()
-        .resolve_str("T::right::app", &world.root_context())
-        .expect("right T");
+        .resolve_str("T::right", &context)
+        .unwrap();
     assert_eq!(left.name, right.name);
     assert_ne!(left.id, right.id);
     assert!(left.diagnostic_label().contains("symbol#"));
@@ -128,10 +154,10 @@ fn typed_resolver_helpers_select_expected_kind() {
         .expect("uint8 is a pure type Object");
     assert_eq!(type_symbol.kind, SymbolKind::CompleteTypeProjection);
 
-    let meta_symbol = capability
+    let compile_symbol = capability
         .resolve_callable("struct", &context)
         .expect("struct is a builtin callable");
-    assert_eq!(meta_symbol.kind, SymbolKind::Callable);
+    assert_eq!(compile_symbol.kind, SymbolKind::Callable);
 
     let error = capability
         .resolve_complete_type_projection("struct", &context)

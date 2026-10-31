@@ -1,13 +1,15 @@
 use std::path::Path;
 
+#[cfg(test)]
+use crate::{declared_policy_view, Stage};
+
 use lang_syntax::{
     norm::NormNavComponent, NormAnnotation, NormClosure, NormDecl, NormExpr, NormForm, NormOrigin,
     NormPattern, NormPolicySpec, NormProgram,
 };
 
 use crate::{
-    builtin_callable::expand_struct_construction_material,
-    core::{core_declared_pair, install_core_bootstrap},
+    core::install_core_bootstrap,
     discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
     manifest::{BuildManifest, NamespaceMount},
     model::{
@@ -16,14 +18,13 @@ use crate::{
         ResolverCode, SemanticNameDelta, SourceCallableSyntax, SourceCategory, SymbolKind,
         SymbolPayload,
     },
+    policy_pair::PolicyPair,
     policy_pair::{
-        declared_policy_view, derive_function_object_view, elaborate_binding_result_demand,
+        derive_function_object_view, direct_callable_body_policy, elaborate_binding_result_demand,
         elaborate_namespace_declaration_policy, elaborate_return_policy_pattern,
-        function_object_declaration_policy, normalize_p2_policy, ExplicitP1Selection,
-        NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyMode,
-        PolicyView, ResultPolicyDemand, ValueComponentPolicy,
+        function_object_declaration_policy, ExplicitP1Selection, NamespaceDeclarationPolicy,
+        NamespaceDeclarationPosition, P1Projection, PolicyMode, PolicyView, ResultPolicyDemand,
     },
-    policy_pair::{PatternComponentPolicy, PolicyPair, Stage},
     return_target::{
         elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
         ReturnFrameOwner,
@@ -46,7 +47,7 @@ use crate::{
 /// the invocation gates on every layer.
 #[derive(Clone, Debug)]
 pub struct ResolvedCallTarget {
-    pub host_chain: Vec<crate::PatternHostMember>,
+    pub host_chain: Vec<crate::ObjectHostMember>,
     pub symbol: crate::SemanticSymbolIdentity,
 }
 
@@ -54,16 +55,12 @@ pub struct ResolvedCallTarget {
 enum ConnectedInitializerOutcome {
     Ordinary(crate::InvocationOutcome),
     Existing(ConnectedExistingResult),
-    Residual {
-        reason: crate::ResidualReason,
-        provenance: Provenance,
-    },
     Diagnostic(Diagnostic),
 }
 
 #[derive(Clone, Debug)]
 struct ConnectedExistingResult {
-    material: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
+    material: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
     /// Exact complete tau carried by an existing type result. This coordinate
     /// comes from the semantic binding's immutable snapshot, never from a
     /// CoreTypeProjection graph payload.
@@ -72,23 +69,35 @@ struct ConnectedExistingResult {
 
 const CONSTRUCT_OR_CONVERT_SELECTOR: &str = "<ConstructOrConvert>";
 
+/// Internal evidence from the complete scalar root of an established forced
+/// binding. Ordinary applicability does not create or consume this evidence.
+struct ProvedScalarRootMismatch {
+    source: crate::SemanticValueRef,
+    source_view: PolicyView,
+    actual: crate::CompleteTypeValue,
+    target: crate::CompleteTypeValue,
+}
+
 fn policy_let_target_demand(
     demand: &ResultPolicyDemand,
     source: &PolicyPair,
 ) -> Option<PolicyView> {
-    let (value_query, pattern_stage) = match &demand.pair_query {
-        P1Projection::Infer => (None, source.pattern.stage),
-        P1Projection::ValueDominant { value } => (Some(*value), source.pattern.stage),
-        P1Projection::Pair(pair) => (Some(pair.value.into()), pair.pattern.stage),
-    };
-    let stage = value_query.and_then(|q| q.stage).or(source.value.stage())?;
-    Some(PolicyView {
-        pair: PolicyPair {
-            value: ValueComponentPolicy::Present(stage),
-            pattern: PatternComponentPolicy {
-                stage: pattern_stage,
-            },
+    if !source.is_rank_prefix_coherent() {
+        return None;
+    }
+    let pair = match &demand.pair_query {
+        P1Projection::Infer => source.clone(),
+        P1Projection::Leading { stage } => match stage {
+            Some(stage) => source.with_leading_stage(*stage)?,
+            None => source.clone(),
         },
+        P1Projection::AllCompile if source.leading_stage().is_some() => source.compile_target(),
+        P1Projection::AllCompile => return None,
+        P1Projection::Pair(pair) if pair.is_rank_prefix_coherent() => pair.clone(),
+        P1Projection::Pair(_) => return None,
+    };
+    Some(PolicyView {
+        pair,
         mode: demand.mode,
     })
 }
@@ -98,27 +107,93 @@ mod stage_demand_tests {
     use super::policy_let_target_demand;
     use crate::{
         P1Projection, PatternComponentPolicy, PolicyMode, PolicyPair, ResultPolicyDemand, Stage,
-        ValueComponentPolicy, ValuePolicyQuery, ValuePresence,
+        ValueComponentPolicy,
     };
 
     #[test]
-    fn omitted_stage_on_hidden_value_has_an_unavailable_demand_without_panicking() {
+    fn leading_rank_demand_preserves_absence_and_omitted_tail() {
         let source = PolicyPair {
             value: ValueComponentPolicy::Absent,
             pattern: PatternComponentPolicy {
-                stage: Stage::Compile,
+                stage: Some(Stage::Compile),
             },
         };
         let demand = ResultPolicyDemand {
-            pair_query: P1Projection::ValueDominant {
-                value: ValuePolicyQuery {
-                    stage: None,
-                    presence: ValuePresence::Present,
-                },
-            },
+            pair_query: P1Projection::Leading { stage: None },
             mode: PolicyMode::Mut,
         };
-        assert!(policy_let_target_demand(&demand, &source).is_none());
+        assert_eq!(
+            policy_let_target_demand(&demand, &source).unwrap().pair,
+            source
+        );
+        let runtime = ResultPolicyDemand {
+            pair_query: P1Projection::Leading {
+                stage: Some(Stage::Runtime),
+            },
+            ..demand
+        };
+        let target = policy_let_target_demand(&runtime, &source).unwrap();
+        assert_eq!(target.pair.value, ValueComponentPolicy::Absent);
+        assert_eq!(target.pair.pattern.stage, Some(Stage::Runtime));
+    }
+
+    #[test]
+    fn compile_demand_forms_the_all_rank_target_then_requires_reverse_authority() {
+        let type_value = crate::TypeLookupIndexAllocator::new().allocate();
+        let demand = ResultPolicyDemand {
+            pair_query: P1Projection::AllCompile,
+            mode: PolicyMode::Const,
+        };
+        for source in [
+            PolicyPair {
+                value: ValueComponentPolicy::Present(Stage::Runtime),
+                pattern: PatternComponentPolicy {
+                    stage: Some(Stage::Runtime),
+                },
+            },
+            PolicyPair {
+                value: ValueComponentPolicy::Present(Stage::Runtime),
+                pattern: PatternComponentPolicy {
+                    stage: Some(Stage::Compile),
+                },
+            },
+            PolicyPair {
+                value: ValueComponentPolicy::Absent,
+                pattern: PatternComponentPolicy {
+                    stage: Some(Stage::Runtime),
+                },
+            },
+        ] {
+            let target = policy_let_target_demand(&demand, &source).unwrap();
+            assert_eq!(target.pair.pattern.stage, Some(Stage::Compile));
+            assert_eq!(target.pair.value.presence(), source.value.presence());
+            if source.value.stage().is_some() {
+                assert_eq!(target.pair.value.stage(), Some(Stage::Compile));
+                let error = crate::PolicyMigrationRequest::new(
+                    crate::PolicyView {
+                        pair: source,
+                        mode: PolicyMode::Const,
+                    },
+                    ResultPolicyDemand {
+                        pair_query: P1Projection::Pair(target.pair),
+                        mode: target.mode,
+                    },
+                    type_value,
+                    crate::SemanticValueId(1),
+                    crate::Provenance::new("compile target"),
+                )
+                .unwrap_err();
+                assert_eq!(
+                    error,
+                    crate::PolicyMigrationRequestFailure::ReifyBoundaryUnavailable
+                );
+            }
+        }
+        let hidden = PolicyPair {
+            value: ValueComponentPolicy::Absent,
+            pattern: PatternComponentPolicy { stage: None },
+        };
+        assert!(policy_let_target_demand(&demand, &hidden).is_none());
     }
 }
 
@@ -266,6 +341,11 @@ impl CompilationWorld {
             )?;
         }
 
+        world
+            .semantic_world
+            .finalize_bootstrap_type_carriers()
+            .map_err(BuildError::single)?;
+
         let global_roots = manifest
             .global_implementation_roots
             .iter()
@@ -285,9 +365,8 @@ impl CompilationWorld {
             .extend(global_report.diagnostics.iter().cloned());
         world.consume_global_implementation_discovery(&global_report)?;
 
-        // Physical source discovery is the explicit input layer below namespace
-        // assembly. If discovery produced any hard diagnostic we must not
-        // continue into partial namespace assembly.
+        // Discovery records source material. Hard input diagnostics prevent
+        // any source action from being consumed.
         let report = SourceDiscoveryConfig::from_source_roots(&manifest.source_roots).discover();
         if report.has_hard_errors() {
             return Err(BuildError {
@@ -376,7 +455,7 @@ impl CompilationWorld {
             .canonical_type_core_observation_address(type_value, place)
     }
 
-    /// Test-support passthrough for an ordinary Val2 injection
+    /// Test-support passthrough for an ordinary Val2 member formation
     /// (`let name::target = symbol;`): records `name -> symbol` in the given
     /// object place.  Resident-observation tests use it to change one type
     /// object's observed Val2 between two invocations without a second build.
@@ -391,7 +470,7 @@ impl CompilationWorld {
     }
 
     /// Install one already-evaluated semantic value without inventing a
-    /// binding Symbol or rerooting its canonical PatternValue.
+    /// binding Symbol or rerooting its canonical Pattern coordinate.
     pub fn install_semantic_value(
         &mut self,
         type_value: crate::TypeValueId,
@@ -406,54 +485,12 @@ impl CompilationWorld {
     /// candidate enumeration and the sealed no-reopen invocation trunk.
     pub fn invoke_policy_migration(
         &mut self,
+        namespace: NamespaceNodeId,
         request: &crate::PolicyMigrationRequest,
     ) -> Result<crate::PolicyMigrationResult, crate::OrdinaryInvocationFailure> {
-        let resolver_context = self.root_context();
+        let mut resolver_context = self.package_context();
+        resolver_context.current_namespace = namespace;
         crate::invoke_policy_migration(&mut self.semantic_world, request, &resolver_context)
-    }
-
-    /// Invoke one already-authorized Pattern-associated operation without
-    /// fabricating a source path or a migration-specific resolver.
-    pub fn invoke_pattern_associated_operation(
-        &mut self,
-        pattern: crate::PatternValueId,
-        operation_name: &str,
-        receiver: crate::SemanticValueId,
-        explicit_args: crate::ArgProductShape,
-        context: crate::OrdinaryInvocationContext<'_>,
-        provenance: Provenance,
-    ) -> Result<crate::InvocationOutcome, crate::OrdinaryInvocationFailure> {
-        let resolver_context = self.root_context();
-        if operation_name == "()" {
-            crate::invoke_pattern_associated_ordinary(
-                &mut self.semantic_world,
-                pattern,
-                operation_name,
-                receiver,
-                explicit_args,
-                &resolver_context,
-                context,
-                provenance,
-            )
-        } else {
-            let mut explicit_modes = Vec::with_capacity(1 + context.explicit_argument_modes.len());
-            explicit_modes.push(crate::PolicyMode::Const);
-            explicit_modes.extend_from_slice(context.explicit_argument_modes);
-            let named_context = crate::OrdinaryInvocationContext {
-                explicit_argument_modes: &explicit_modes,
-                ..context
-            };
-            crate::invoke_pattern_associated_value_ordinary(
-                &mut self.semantic_world,
-                pattern,
-                operation_name,
-                receiver,
-                explicit_args,
-                &resolver_context,
-                named_context,
-                provenance,
-            )
-        }
     }
 
     pub fn source_fragments(&self) -> &[SourceFragment] {
@@ -582,7 +619,7 @@ impl CompilationWorld {
         let pattern = self
             .semantic_world
             .symbol(identity)
-            .and_then(|symbol| symbol.pure_p_pattern())
+            .and_then(|symbol| symbol.type_resident_pattern())
             .ok_or_else(|| {
                 Diagnostic::hard_error(
                     format!("resolver error: `{source_order_path}` is not a semantic type carrier"),
@@ -636,6 +673,7 @@ impl CompilationWorld {
     /// candidates are enumerated from the immutable callspace on this value.
     fn resolve_complete_annotation_type(
         &mut self,
+        namespace: NamespaceNodeId,
         source_order_path: &str,
     ) -> Result<Option<crate::CompleteTypeValue>, BuildError> {
         let components = source_order_path
@@ -645,7 +683,7 @@ impl CompilationWorld {
             .collect::<Vec<_>>();
         let identity = match self.semantic_world.resolve_symbol_path(
             &components,
-            self.package_root_node,
+            namespace,
             &[self.semantic_world.namespace_index().root_node()],
             &[self.core_node],
         ) {
@@ -655,17 +693,24 @@ impl CompilationWorld {
         let Some(member) = self
             .semantic_world
             .symbol(identity)
-            .and_then(|symbol| symbol.pure_p())
+            .and_then(|symbol| symbol.type_resident())
         else {
             return Ok(None);
         };
-        let Some(target_type) = self.semantic_world.type_for_pattern(member.pattern) else {
-            return Ok(None);
-        };
-        self.semantic_world
-            .observe_complete_type(target_type, Some(member.place))
-            .map(Some)
-            .map_err(BuildError::single)
+        let complete = member
+            .complete_type
+            .and_then(|whole| {
+                self.semantic_world
+                    .complete_type_by_whole_observation(whole)
+            })
+            .cloned()
+            .ok_or_else(|| {
+                BuildError::single(Diagnostic::hard_error(
+                    "type annotation requires the resident's exact complete type observation",
+                    None,
+                ))
+            })?;
+        Ok(Some(complete))
     }
 
     /// Resolve a normalized source call through the semantic Symbol/value/type
@@ -812,15 +857,8 @@ impl CompilationWorld {
             .map(|resolved| resolved.symbol)
     }
 
-    /// Feed discovered physical source units into namespace assembly and
-    /// declaration harvesting.
-    ///
-    /// Only directories containing discovered `.lang` source units contribute
-    /// physical namespace nodes. Empty directories are ignored by source
-    /// discovery and do not create "empty namespace existence". If explicit
-    /// empty-namespace nodes are ever required (e.g. package manifests or
-    /// explicit namespace declarations) that must be a separate semantic
-    /// decision, not a side effect of physical scanning.
+    /// Consume source at an established install root, retaining inherited
+    /// navigation as material for the ordinary declaration consumer.
     fn consume_discovery(&mut self, report: &SourceDiscoveryReport) -> Result<(), BuildError> {
         for unit in &report.units {
             let root = report
@@ -833,36 +871,32 @@ impl CompilationWorld {
                         Some(unit.provenance.clone()),
                     ))
                 })?;
-
-            let root_namespace = self.semantic_world.ensure_namespace_path(
-                self.semantic_world.namespace_index().root_node(),
-                &root.namespace_root,
-                NamespaceNodeKind::Declared,
-                SourceCategory::DeclaredSymbol,
-                "declared namespace mount",
-            )?;
-            let directory = unit
-                .canonical_path
-                .parent()
-                .unwrap_or(unit.canonical_path.as_path());
-            let unit_namespace = self.semantic_world.ensure_namespace_path(
-                root_namespace,
-                &unit.namespace_dir,
-                NamespaceNodeKind::Physical,
-                SourceCategory::PhysicalDirectory,
-                &format!("physical directory `{}`", directory.display()),
-            )?;
-            self.consume_source_unit(unit, unit_namespace)?;
+            let install_root = self.source_install_root(&root.namespace_root, &unit.provenance)?;
+            self.consume_source_unit(unit, install_root)?;
         }
-
         Ok(())
+    }
+
+    fn source_install_root(
+        &self,
+        components: &[String],
+        provenance: &Provenance,
+    ) -> Result<NamespaceNodeId, BuildError> {
+        let mut current = self.semantic_world.namespace_index().root_node();
+        for component in components {
+            current = self.semantic_world.child_namespace(current, component)
+                .ok_or_else(|| BuildError::single(Diagnostic::hard_error(
+                    "source install root requires an established namespace and the ordinary Path consumer",
+                    Some(provenance.clone()),
+                )))?;
+        }
+        Ok(current)
     }
 
     fn consume_global_implementation_discovery(
         &mut self,
         report: &SourceDiscoveryReport,
     ) -> Result<(), BuildError> {
-        let global_root = self.semantic_world.namespace_index().root_node();
         for unit in &report.units {
             let root = report
                 .roots
@@ -874,28 +908,8 @@ impl CompilationWorld {
                         Some(unit.provenance.clone()),
                     ))
                 })?;
-            let install_root = self.semantic_world.ensure_namespace_path(
-                global_root,
-                &root.namespace_root,
-                NamespaceNodeKind::Declared,
-                SourceCategory::DeclaredSymbol,
-                "declared namespace mount",
-            )?;
-            let directory = unit
-                .canonical_path
-                .parent()
-                .unwrap_or(unit.canonical_path.as_path());
-            let unit_namespace = self.semantic_world.ensure_namespace_path(
-                if root.namespace_root.is_empty() {
-                    global_root
-                } else {
-                    install_root
-                },
-                &unit.namespace_dir,
-                NamespaceNodeKind::Physical,
-                SourceCategory::PhysicalDirectory,
-                &format!("physical directory `{}`", directory.display()),
-            )?;
+            let unit_namespace =
+                self.source_install_root(&root.namespace_root, &unit.provenance)?;
             if !self
                 .semantic_world
                 .namespace_is_toolchain_owned(unit_namespace)
@@ -960,6 +974,13 @@ impl CompilationWorld {
 
         let normalized = match normalized {
             Ok(validated) => {
+                if !unit.inherited_navigation.is_empty() && !validated.as_program().forms.is_empty()
+                {
+                    return Err(BuildError::single(Diagnostic::hard_error(
+                        "inherited navigation requires the qualified NameExpr formation and ordinary Path consumer, which is unavailable",
+                        Some(unit.provenance.clone()),
+                    )));
+                }
                 self.harvest_program(namespace, validated.as_program(), &unit.canonical_path)?;
                 validated.into_program()
             }
@@ -969,6 +990,7 @@ impl CompilationWorld {
         self.source_fragments.push(SourceFragment {
             path: unit.canonical_path.clone(),
             namespace,
+            inherited_navigation: unit.inherited_navigation.clone(),
             normalized,
             diagnostics,
             provenance,
@@ -1037,11 +1059,31 @@ impl CompilationWorld {
         &mut self,
         namespace: NamespaceNodeId,
         decl: &NormDecl,
-        file: &Path,
+        _file: &Path,
     ) -> Result<(), BuildError> {
         let NormDecl::Let { slot, origin } = decl else {
             return Ok(());
         };
+        if !slot.deduce.is_empty() || slot.with_clause.is_some() {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "binding Hole extraction / Path-relative cleanup consumer is unavailable",
+                Some(Provenance::from_norm_origin(
+                    "binding relation frontier",
+                    origin,
+                )),
+            )));
+        }
+        if !matches!(&slot.value_pattern, NormPattern::Nav { .. })
+            && matches!(
+                slot.annotation.as_ref().map(|a| &a.pattern),
+                Some(NormPattern::Name { .. })
+            )
+        {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "joint classifier binding extraction consumer is unavailable",
+                Some(Provenance::from_norm_origin("joint let extraction", origin)),
+            )));
+        }
 
         if matches!(
             &slot.value_pattern,
@@ -1061,7 +1103,7 @@ impl CompilationWorld {
                 .pattern_for_associated_namespace(namespace)
             else {
                 return Err(BuildError::single(Diagnostic::hard_error(
-                    "source contribution error: `let ()` is valid only in a namespace owned by an existing PatternValue",
+                    "source contribution error: `let ()` is valid only in a namespace owned by an existing Pattern coordinate",
                     Some(Provenance::from_norm_origin(
                         "associated call entry",
                         origin,
@@ -1111,7 +1153,7 @@ impl CompilationWorld {
             | NormPattern::Sequence { .. }
             | NormPattern::Skeleton { .. } => {
                 return Err(BuildError::single(Diagnostic::hard_error(
-                    "source contribution error: ordinary parent-to-descendant injection is rejected in file contribution context",
+                    "source contribution error: qualified NameExpr formation and destination Place consumer is unavailable",
                     Some(Provenance::from_norm_origin(
                         "top-level declaration binder",
                         pattern_origin(&slot.value_pattern),
@@ -1144,9 +1186,9 @@ impl CompilationWorld {
             declaration_provenance.clone(),
         )
         .map_err(BuildError::single)?;
-        if namespace_declaration.meta_instance_policy == crate::MetaInstancePolicy::Meta {
+        if namespace_declaration.open_policy == crate::OpenPolicy::Open {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "MetaInstance result delivery and completion consumer is unavailable",
+                "CompileInstance result delivery and completion consumer is unavailable",
                 Some(declaration_provenance),
             )));
         }
@@ -1184,97 +1226,16 @@ impl CompilationWorld {
                         declaration_provenance,
                     );
                 }
-                ConnectedInitializerOutcome::Residual { reason, provenance } => {
-                    // Incomplete evaluation is not a runtime producer. Until
-                    // the common continuation can be retained, do not install
-                    // a binding, even when its written demand is runtime.
-                    return Err(BuildError::single(crate::residual_diagnostic(
-                        &reason, provenance,
-                    )));
-                }
                 ConnectedInitializerOutcome::Diagnostic(diagnostic) => {
                     return Err(BuildError::single(diagnostic));
                 }
             }
         }
 
-        let mut declared_type_carrier = None;
-        let mut delta = if is_type_annotation(slot.annotation.as_ref()) {
-            let represented_type = self.semantic_world.allocate_type_lookup_index();
-            let carrier = declared_type_projection_delta(
-                self.semantic_world.namespace_index(),
-                namespace,
-                &binder_name,
-                represented_type,
-                declaration_provenance.clone(),
-            );
-            declared_type_carrier = Some((
-                carrier.symbol_id,
-                carrier.represented_type,
-                carrier.associated_namespace,
-            ));
-            carrier.delta
-        } else {
-            self.semantic_world.namespace_index().capability().declare(
-                namespace,
-                binder_name.clone(),
-                SymbolKind::Object,
-                SourceCategory::DeclaredSymbol,
-                Provenance::file("declared source symbol", file),
-            )
-        };
-        {
-            let policy_view = if is_type_annotation(slot.annotation.as_ref()) {
-                declared_policy_view(Stage::Meta, namespace_declaration.mode)
-            } else {
-                declared_policy_view(Stage::Runtime, namespace_declaration.mode)
-            };
-            for symbol in delta.symbols.values_mut() {
-                if symbol.name == binder_name {
-                    symbol.policy_view = Some(policy_view.clone());
-                    symbol.visibility_metadata.namespace_visibility =
-                        namespace_declaration.visibility;
-                    symbol.visibility_metadata.export_root = namespace_declaration.export_root;
-                }
-            }
-        }
-        // Install the authoritative semantic carrier before
-        // its graph rendering, in one staged world transaction.
-        let semantic_entry = if let Some((symbol_id, represented_type, associated_namespace)) =
-            declared_type_carrier
-        {
-            SemanticDeclarationEntry::TypeCarrier {
-                name: binder_name.clone(),
-                binding: symbol_id,
-                represented_type,
-                complete_type: None,
-                associated_namespace: Some((
-                    associated_namespace,
-                    format!("{binder_name}<type-associated>"),
-                )),
-                policy: declared_type_binding_pair(&namespace_declaration),
-                provenance: declaration_provenance,
-            }
-        } else {
-            let backing_declaration = delta
-                .symbols
-                .values()
-                .find(|symbol| symbol.name == binder_name)
-                .map(|symbol| symbol.id)
-                .expect("initializer-free binding delta contains its declaration projection");
-            SemanticDeclarationEntry::ProjectionOnly {
-                name: binder_name.clone(),
-                backing_declaration,
-                provenance: declaration_provenance,
-            }
-        };
-        self.semantic_world
-            .install_namespace_delta(SemanticNamespaceDelta {
-                namespace,
-                entries: vec![semantic_entry],
-            })?;
-        self.semantic_world.install_namespace_name_delta(delta)?;
-        Ok(())
+        Err(BuildError::single(Diagnostic::hard_error(
+            "typed NameExpr and Uninitialized Place formation consumer is unavailable",
+            Some(declaration_provenance),
+        )))
     }
 
     fn bind_connected_ordinary_result(
@@ -1348,18 +1309,28 @@ impl CompilationWorld {
                 Some(provenance),
             )));
         }
-        assert_semantic_result_satisfies_annotation(
+        let external_constraint = match slot
+            .annotation
+            .as_ref()
+            .and_then(|a| crate::pattern_relation::external_pattern_name(&a.pattern))
+        {
+            Some(name) => self.resolve_complete_annotation_type(namespace, name)?,
+            None => None,
+        };
+        let exposed_material = self.complete_forced_binding_extraction(
+            namespace,
+            external_constraint.as_ref(),
             slot.annotation.as_ref(),
-            &exposed.material,
+            exposed.material.clone(),
             complete_type_authority.as_ref(),
-            provenance.clone(),
+            demand,
+            &provenance,
         )?;
 
         let explicit_p1 = slot
             .policy
             .as_ref()
             .map(|_| &namespace_declaration.projection);
-        let exposed_material = exposed.material.clone();
         let pair_selected = match crate::elaborate_value_binding_p1(
             &exposed_material,
             explicit_p1,
@@ -1394,39 +1365,27 @@ impl CompilationWorld {
                         provenance,
                     )
                     .map(|_| ()),
-                crate::ReturnedSemanticEntity::CompleteType(value) => {
+                crate::ReturnedSemanticEntity::CompleteType(_) => {
                     let complete_type = complete_type_authority.as_ref().ok_or_else(|| {
                         BuildError::single(Diagnostic::hard_error(
                             "CompleteType binding lost its exact semantic tau",
                             Some(provenance.clone()),
                         ))
                     })?;
-                    if let Some(material) = value.construction_material {
-                        self.bind_connected_struct_material_result(
-                            namespace,
-                            binder_name,
-                            namespace_declaration,
-                            &selected,
-                            material,
-                            complete_type,
-                            provenance,
-                        )
-                    } else {
-                        self.install_connected_semantic_binding(
-                            namespace,
-                            binder_name,
-                            namespace_declaration,
-                            &selected,
-                            Some(complete_type),
-                            provenance,
-                        )
-                        .map(|_| ())
-                    }
+                    self.install_connected_semantic_binding(
+                        namespace,
+                        binder_name,
+                        namespace_declaration,
+                        &selected,
+                        Some(complete_type),
+                        provenance,
+                    )
+                    .map(|_| ())
                 }
             }
         } else {
             let demanded_views = self
-                .invoke_general_binding_migration(&exposed_material, demand, &provenance)
+                .invoke_general_binding_migration(namespace, &exposed_material, demand, &provenance)
                 .map_err(|failure| {
                     BuildError::single(
                         Diagnostic::hard_error(
@@ -1450,86 +1409,6 @@ impl CompilationWorld {
         }
     }
 
-    /// Graph projection of the connected builtin struct result's material.
-    ///
-    /// The selected ordinary result (including a complete tau value) is the
-    /// semantic authority.  This helper only expands graph/projection material
-    /// required by the current namespace renderer.
-    fn bind_connected_struct_material_result(
-        &mut self,
-        namespace: NamespaceNodeId,
-        binder_name: &str,
-        namespace_declaration: &NamespaceDeclarationPolicy,
-        selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
-        material: crate::StructConstructionMaterial,
-        complete_type: &crate::CompleteTypeValue,
-        provenance: Provenance,
-    ) -> Result<(), BuildError> {
-        let canonical_type = material.canonical_type;
-        let result_view = uniform_result_policy_view(selected);
-        let mut expansion = expand_struct_construction_material(
-            material,
-            complete_type,
-            self.semantic_world.namespace_index(),
-            namespace,
-            binder_name,
-            provenance.clone(),
-        )?;
-        override_delta_binding_policy_view(
-            &mut expansion.namespace_delta,
-            binder_name,
-            result_view.clone(),
-        );
-        override_delta_binding_visibility(
-            &mut expansion.namespace_delta,
-            binder_name,
-            namespace_declaration,
-        );
-        expansion.replacement_symbol.policy_view = result_view;
-        expansion
-            .replacement_symbol
-            .visibility_metadata
-            .namespace_visibility = namespace_declaration.visibility;
-        expansion.replacement_symbol.visibility_metadata.export_root =
-            namespace_declaration.export_root;
-        self.semantic_world
-            .bind_ordinary_new(namespace, binder_name, selected, provenance.clone())
-            .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
-        // Semantic type and projection Symbols are installed before their
-        // graph rendering.
-        if let Some(entry) = selected.first() {
-            let pair = declared_pair_from_result_entry(entry, namespace_declaration);
-            let associated_namespace = match &expansion.replacement_symbol.payload {
-                SymbolPayload::CompleteTypeProjection(projection) => {
-                    projection.type_associated_namespace
-                }
-                _ => None,
-            };
-            self.register_installed_type_carrier(
-                namespace,
-                &expansion.replacement_symbol.name,
-                expansion.replacement_symbol.id,
-                complete_type.lookup_key(),
-                Some(complete_type.whole()),
-                associated_namespace,
-                pair,
-                expansion.replacement_symbol.provenance.clone(),
-            )?;
-        }
-        self.semantic_world
-            .register_generated_projection_symbols(&expansion.namespace_delta)?;
-        self.semantic_world
-            .install_namespace_name_delta(expansion.namespace_delta)?;
-        self.diagnostics.extend(expansion.diagnostics);
-        if let Some(canonical_type) = canonical_type {
-            self.semantic_world.record_ambient_type_binder(
-                canonical_type,
-                crate::AmbientTypeBinder::WholeSymbol(binder_name.to_string()),
-            );
-        }
-        Ok(())
-    }
-
     fn bind_connected_existing_result(
         &mut self,
         namespace: NamespaceNodeId,
@@ -1541,21 +1420,27 @@ impl CompilationWorld {
         provenance: Provenance,
     ) -> Result<(), BuildError> {
         let complete_type = result.complete_type;
-        let result = self.construct_abstract_literals_for_annotation(
+        let result = result.material;
+        let external_constraint = match slot
+            .annotation
+            .as_ref()
+            .and_then(|a| crate::pattern_relation::external_pattern_name(&a.pattern))
+        {
+            Some(name) => self.resolve_complete_annotation_type(namespace, name)?,
+            None => None,
+        };
+        let result = self.complete_forced_binding_extraction(
+            namespace,
+            external_constraint.as_ref(),
             slot.annotation.as_ref(),
-            result.material,
+            result,
+            complete_type.as_ref(),
             demand,
             &provenance,
         )?;
-        assert_semantic_result_satisfies_annotation(
-            slot.annotation.as_ref(),
-            &result,
-            complete_type.as_ref(),
-            provenance.clone(),
-        )?;
 
         let selected = self
-            .satisfy_binding_result_demand(&result, demand, &provenance)
+            .satisfy_binding_result_demand(namespace, &result, demand, &provenance)
             .map_err(|failure| {
                 BuildError::single(
                     Diagnostic::hard_error(
@@ -1578,15 +1463,103 @@ impl CompilationWorld {
         .map(|_| ())
     }
 
+    /// Complete an established binding's forced extraction. Only a proved
+    /// mismatch of its entire scalar root can request one ordinary conversion.
+    fn complete_forced_binding_extraction(
+        &mut self,
+        namespace: NamespaceNodeId,
+        expected: Option<&crate::CompleteTypeValue>,
+        annotation: Option<&NormAnnotation>,
+        material: Vec<
+            crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>,
+        >,
+        semantic_complete_type: Option<&crate::CompleteTypeValue>,
+        demand: &ResultPolicyDemand,
+        provenance: &Provenance,
+    ) -> Result<
+        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
+        BuildError,
+    > {
+        let initial_failure = match assert_semantic_result_satisfies_annotation(
+            &self.semantic_world,
+            expected,
+            annotation,
+            &material,
+            semantic_complete_type,
+            provenance.clone(),
+        ) {
+            Ok(()) => return Ok(material),
+            Err(failure) => failure,
+        };
+        // The diagnostic itself is not conversion authority. Re-prove an
+        // exact root mismatch from actual complete observations; unsupported
+        // relations, compound roots and absent observations supply no witness.
+        let Some(mismatch) =
+            prove_scalar_root_mismatch(&self.semantic_world, expected, annotation, &material)
+        else {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                format!(
+                    "forced root extraction/conversion evidence is unavailable: {}",
+                    initial_failure.diagnostics[0].message
+                ),
+                Some(provenance.clone()),
+            )));
+        };
+        if self
+            .semantic_world
+            .complete_type_for_value(mismatch.source.id)
+            != Some(&mismatch.actual)
+        {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "forced root conversion needs the current actual classifier snapshot",
+                Some(provenance.clone()),
+            )));
+        }
+        let (value, pattern, view) = self.invoke_literal_construction_request(
+            namespace,
+            crate::ConstructionRequest {
+                source: mismatch.source,
+                source_view: mismatch.source_view,
+                target: mismatch.target,
+                result_demand: demand.clone(),
+                family: crate::ConstructionFamily::ConstructOrConvert,
+            },
+            provenance,
+        )?;
+        let converted = vec![crate::PolicyResultEntry {
+            value: Some(value),
+            pattern,
+            view,
+        }];
+        // Check once without recursively invoking this completion rule.
+        assert_semantic_result_satisfies_annotation(
+            &self.semantic_world,
+            expected,
+            annotation,
+            &converted,
+            None,
+            provenance.clone(),
+        )?;
+        Ok(converted)
+    }
+
     /// Select and execute one abstract-to-concrete constructor from the exact
-    /// target tau callspace.  The target is slot 0 and the abstract source is
+    /// target tau's captured associated Val2. The target is slot 0 and the abstract source is
     /// the sole explicit argument (slot 1).  Selection is sealed before the
     /// builtin/custom body runs, so realization failure cannot retry.
     fn invoke_literal_construction_request(
         &mut self,
+        namespace: NamespaceNodeId,
         request: crate::ConstructionRequest,
         provenance: &Provenance,
-    ) -> Result<(crate::SemanticValueRef, crate::PatternValueId, PolicyView), BuildError> {
+    ) -> Result<
+        (
+            crate::SemanticValueRef,
+            crate::PatternCoordinateId,
+            PolicyView,
+        ),
+        BuildError,
+    > {
         if request.family != crate::ConstructionFamily::ConstructOrConvert {
             return Err(BuildError::single(Diagnostic::hard_error(
                 "unsupported literal construction candidate family",
@@ -1603,9 +1576,23 @@ impl CompilationWorld {
                     Some(provenance.clone()),
                 ))
             })?;
+        let observed = crate::expose_policy_slice(
+            &crate::PolicyResultEntry {
+                value: Some(request.source),
+                pattern: source_object.pattern,
+                view: request.source_view.clone(),
+            },
+            crate::ObservationHorizon::OpenStatic,
+        );
+        if crate::read_value(&observed).is_none() || crate::read_pattern(&observed).is_none() {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "literal construction input observation is unavailable at compile horizon; migration/continuation consumer is required",
+                Some(provenance.clone()),
+            )));
+        }
         let crate::SemanticValuePayload::AbstractLiteral { .. } = source_object.payload else {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "literal construction source is not an abstract semantic literal",
+                "forced root conversion execution consumer is unavailable for this source family",
                 Some(provenance.clone()),
             )));
         };
@@ -1621,7 +1608,7 @@ impl CompilationWorld {
         let explicit_atom = crate::ProductAtom::SemanticValue {
             value: request.source.id,
             type_value: request.source.type_value,
-            mode: source_object.mode,
+            mode: request.source_view.mode,
             provenance: provenance.clone(),
         };
         let explicit_product =
@@ -1632,16 +1619,13 @@ impl CompilationWorld {
                     no_direct_product_atom_remains: true,
                 },
             });
-        let target_pattern = self
+        let target_members = self
             .semantic_world
-            .type_value(request.target.lookup_key())
-            .expect("complete target lookup key remains installed")
-            .pattern;
-        let target_members = self.semantic_world.associated_member_views_for_pattern(
-            target_pattern,
-            CONSTRUCT_OR_CONVERT_SELECTOR,
-            crate::ObservationHorizon::OpenStatic,
-        );
+            .associated_member_views_for_complete_type(
+                &request.target,
+                CONSTRUCT_OR_CONVERT_SELECTOR,
+            )
+            .map_err(BuildError::single)?;
 
         // Abstract-to-concrete construction itself produces a compile view.
         // A surrounding runtime demand is satisfied only afterwards by the
@@ -1651,18 +1635,23 @@ impl CompilationWorld {
             pair_query: P1Projection::Pair(crate::compile_literal_policy()),
             mode: request.result_demand.mode,
         };
-        let explicit_modes = [source_object.mode];
+        let explicit_modes = [request.source_view.mode];
         let context = crate::OrdinaryInvocationContext::open_static(&explicit_modes)
             .with_result_policy_demand(construction_demand)
-            .with_construction_target(&request.target);
-        let resolver_context = self.root_context();
+            .with_construction_target(&request.target)
+            .with_parent_semantic_owner(
+                self.semantic_world
+                    .namespace_owner(namespace)
+                    .expect("source namespace has a semantic owner"),
+            );
+        let mut resolver_context = self.package_context();
+        resolver_context.current_namespace = namespace;
         let outcome = crate::ordinary_invocation::invoke_target_values(
             &mut self.semantic_world,
-            crate::OrdinaryCandidateOrigin::PatternAssociatedCallEntry(target_pattern),
+            crate::OrdinaryCandidateOrigin::CompleteTypeAssociatedCallEntry(request.target.whole()),
             target_members,
             std::collections::BTreeMap::new(),
             Some(target_receiver),
-            None,
             explicit_product,
             &resolver_context,
             context,
@@ -1693,7 +1682,7 @@ impl CompilationWorld {
         };
         let Some(result_ref) = entry.value else {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "literal construction returned a pure Pattern instead of a value",
+                "literal construction returned absent-Val1 material instead of a value",
                 Some(provenance.clone()),
             )));
         };
@@ -1717,72 +1706,23 @@ impl CompilationWorld {
         Ok((result_ref, entry.pattern, entry.view.clone()))
     }
 
-    /// Apply an explicit concrete annotation only after abstract literal
-    /// formation.  The installed abstract source remains intact and the
-    /// result records it as construction provenance, so an expected machine
-    /// Type can never retroactively rewrite the literal's initial Type.
-    fn construct_abstract_literals_for_annotation(
-        &mut self,
-        annotation: Option<&NormAnnotation>,
-        mut result: Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
-        result_demand: &ResultPolicyDemand,
-        provenance: &Provenance,
-    ) -> Result<
-        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>,
-        BuildError,
-    > {
-        let Some(NormPattern::Name { name, .. }) = annotation.map(|annotation| &annotation.pattern)
-        else {
-            return Ok(result);
-        };
-        if matches!(name.as_str(), "type" | "integer" | "real" | "character") {
-            return Ok(result);
-        }
-        let Some(target) = self.resolve_complete_annotation_type(name)? else {
-            return Ok(result);
-        };
-        for entry in &mut result {
-            let Some(source) = entry.value else {
-                continue;
-            };
-            if !matches!(
-                self.semantic_world
-                    .value(source.id)
-                    .map(|value| &value.payload),
-                Some(crate::SemanticValuePayload::AbstractLiteral { .. })
-            ) {
-                continue;
-            }
-            let (constructed, pattern, view) = self.invoke_literal_construction_request(
-                crate::ConstructionRequest {
-                    source,
-                    target: target.clone(),
-                    result_demand: result_demand.clone(),
-                    family: crate::ConstructionFamily::ConstructOrConvert,
-                },
-                provenance,
-            )?;
-            entry.value = Some(constructed);
-            entry.pattern = pattern;
-            entry.view = view;
-        }
-        Ok(result)
-    }
-
     /// Direct general same-Type satisfaction used after an ordinary existing
     /// view projection has failed.  Each source produces at most one
     /// migration request; results are never fed back into candidate lookup.
     fn invoke_general_binding_migration(
         &mut self,
-        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        namespace: NamespaceNodeId,
+        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
         demand: &ResultPolicyDemand,
         provenance: &Provenance,
-    ) -> Result<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>, String>
-    {
+    ) -> Result<
+        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
+        String,
+    > {
         let mut completed = Vec::new();
         for entry in result {
             let Some(source) = entry.value else {
-                return Err("a pure-P entry has no value realization to migrate".into());
+                return Err("a absent-Val1 entry has no value realization to migrate".into());
             };
             let source_view = entry.view.clone();
             let target_view =
@@ -1802,7 +1742,7 @@ impl CompilationWorld {
             )
             .map_err(|failure| format!("request formation: {failure:?}"))?;
             let migration = self
-                .invoke_policy_migration(&request)
+                .invoke_policy_migration(namespace, &request)
                 .map_err(|failure| format!("selection/execution: {failure:?}"))?;
             // The selected migration body already produced the coherent
             // ValueRealization carried by demanded_view.  Callable identity
@@ -1822,12 +1762,15 @@ impl CompilationWorld {
     /// match; otherwise exactly one direct same-Type migration is selected.
     fn satisfy_binding_result_demand(
         &mut self,
-        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        namespace: NamespaceNodeId,
+        result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
         demand: &ResultPolicyDemand,
         provenance: &Provenance,
-    ) -> Result<Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>>, String>
-    {
-        // Binding P1 has one deliberate pure-P rule: a value-presence
+    ) -> Result<
+        Vec<crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>>,
+        String,
+    > {
+        // Binding P1 has one deliberate absent-Val1 rule: a value-presence
         // coordinate cannot require migration when the semantic result has
         // no Val1, but its requested stage slice still applies.  Reuse that
         // binding elaboration here; all non-identity completion below goes
@@ -1846,7 +1789,7 @@ impl CompilationWorld {
         if !projected.is_empty() {
             return Ok(projected);
         }
-        self.invoke_general_binding_migration(result, demand, provenance)
+        self.invoke_general_binding_migration(namespace, result, demand, provenance)
     }
 
     /// Installs the selected connected result views under a fresh
@@ -1856,7 +1799,10 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
         binder_name: &str,
         namespace_declaration: &NamespaceDeclarationPolicy,
-        selected: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+        selected: &[crate::PolicyResultEntry<
+            crate::SemanticValueRef,
+            crate::PatternCoordinateId,
+        >],
         semantic_complete_type: Option<&crate::CompleteTypeValue>,
         provenance: Provenance,
     ) -> Result<crate::SemanticSymbolIdentity, BuildError> {
@@ -1868,7 +1814,7 @@ impl CompilationWorld {
         };
         if selected.iter().any(|entry| entry.pattern != first_pattern) {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "ordinary semantic binding cannot install result entries with different PatternValue identities under one Symbol",
+                "ordinary semantic binding cannot install result entries with different Pattern coordinate identities under one Symbol",
                 Some(provenance),
             )));
         }
@@ -1883,11 +1829,17 @@ impl CompilationWorld {
                     .type_for_pattern(pattern)
                     .ok_or_else(|| {
                         BuildError::single(Diagnostic::hard_error(
-                            "ordinary semantic binding: pure-P result uses an unregistered PatternValue",
+                            "ordinary semantic binding: absent-Val1 result uses an unregistered Pattern coordinate",
                             Some(provenance.clone()),
                         ))
                     })?,
             };
+            if self.semantic_world.type_rank() == Some(represented_type) {
+                return Err(BuildError::single(Diagnostic::hard_error(
+                    "higher-universe classifier observation consumer is unavailable",
+                    Some(provenance),
+                )));
+            }
             let mut delta = {
                 let carrier = declared_bound_type_value_delta(
                     self.semantic_world.namespace_index(),
@@ -1915,7 +1867,13 @@ impl CompilationWorld {
                 .collect();
             let destination = self
                 .semantic_world
-                .bind_ordinary_new(namespace, binder_name, &pure_selected, provenance.clone())
+                .bind_ordinary_new(
+                    namespace,
+                    binder_name,
+                    &pure_selected,
+                    semantic_complete_type,
+                    provenance.clone(),
+                )
                 .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
             // Install the authoritative semantic carrier
             // before its graph rendering.
@@ -1969,7 +1927,13 @@ impl CompilationWorld {
         override_delta_binding_visibility(&mut delta, binder_name, namespace_declaration);
         let destination = self
             .semantic_world
-            .bind_ordinary_new(namespace, binder_name, selected, provenance.clone())
+            .bind_ordinary_new(
+                namespace,
+                binder_name,
+                selected,
+                semantic_complete_type,
+                provenance.clone(),
+            )
             .map_err(|conflict| bind_conflict_error(conflict, binder_name, &provenance))?;
         // Install the authoritative semantic carrier before
         // its graph rendering.
@@ -2000,6 +1964,22 @@ impl CompilationWorld {
         result_policy_demand: ResultPolicyDemand,
         provenance: Provenance,
     ) -> ConnectedInitializerOutcome {
+        if let NormExpr::InterpretationFlip { operand, .. } = initializer {
+            if let NormPattern::InterpretationFlip { operand, .. } = operand.as_ref() {
+                // Flip^2=Id preserves the same ordinary occurrence context and
+                // result demand. It grants no observation or execution facts.
+                return self.evaluate_connected_initializer_fragment(
+                    namespace,
+                    operand,
+                    result_policy_demand,
+                    provenance,
+                );
+            }
+            return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
+                "structural type formation consumer is unavailable: actual Val2 witnesses, registered roles and common producer Pre/Post are required",
+                Some(provenance),
+            ));
+        }
         if let NormExpr::PolicyLet {
             policy,
             operand,
@@ -2057,10 +2037,10 @@ impl CompilationWorld {
                     })
                 }
                 Err(crate::AbstractLiteralFormationFailure::CharacterSpellingOpen) => {
-                    ConnectedInitializerOutcome::Residual {
-                        reason: crate::ResidualReason::UnsupportedExpression,
-                        provenance,
-                    }
+                    ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
+                        "character literal spelling relation is unavailable",
+                        Some(provenance),
+                    ))
                 }
                 Err(failure) => ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
                     format!("abstract literal formation failed: {failure:?}"),
@@ -2078,12 +2058,12 @@ impl CompilationWorld {
                 let explicit_modes = [];
                 // B8: a world-level connected declaration's environment is the
                 // namespace level itself (no enclosing callable), so the
-                // ambient construction owner is supplied explicitly here.  A
+                // explicit parent semantic owner is supplied explicitly here.  A
                 // future callable-body evaluator must supply the enclosing
                 // anonymous function object's Self scope owner instead.
                 let mut context = crate::OrdinaryInvocationContext::open_static(&explicit_modes)
                     .with_result_policy_demand(result_policy_demand);
-                context.ambient_construction_owner = self.semantic_world.namespace_owner(namespace);
+                context.parent_semantic_owner = self.semantic_world.namespace_owner(namespace);
                 return match self.invoke_ordinary_call(
                     namespace,
                     &call_site,
@@ -2102,15 +2082,9 @@ impl CompilationWorld {
             return ConnectedInitializerOutcome::Existing(existing);
         }
 
-        // No second semantic machine.  An initializer
-        // whose call target does not resolve to a connected callable binding
-        // and which names no existing semantic material is residualized as
-        // unsupported; no second evaluator is reachable from the connected
-        // world.
-        ConnectedInitializerOutcome::Residual {
-            reason: crate::ResidualReason::UnsupportedExpression,
-            provenance,
-        }
+        ConnectedInitializerOutcome::Diagnostic(
+            crate::initializer_eval::unavailable_initializer_diagnostic(provenance),
+        )
     }
 
     /// Evaluate one explicit PolicyLet result boundary.
@@ -2129,9 +2103,9 @@ impl CompilationWorld {
     ) -> ConnectedInitializerOutcome {
         let demand = match elaborate_binding_result_demand(Some(policy), provenance.clone())
             .and_then(|pending| {
-                if pending.meta_instance_policy == crate::MetaInstancePolicy::Meta {
+                if pending.open_policy == crate::OpenPolicy::Open {
                     return Err(Diagnostic::hard_error(
-                        "MetaInstance result delivery and completion consumer is unavailable",
+                        "CompileInstance result delivery and completion consumer is unavailable",
                         Some(provenance.clone()),
                     ));
                 }
@@ -2149,7 +2123,7 @@ impl CompilationWorld {
                 let explicit_modes = [];
                 let mut context = crate::OrdinaryInvocationContext::open_static(&explicit_modes)
                     .with_result_policy_demand(demand.clone());
-                context.ambient_construction_owner = self.semantic_world.namespace_owner(namespace);
+                context.parent_semantic_owner = self.semantic_world.namespace_owner(namespace);
                 match self.invoke_ordinary_call(namespace, &call_site, context, provenance.clone())
                 {
                     Ok(result) => ConnectedInitializerOutcome::Ordinary(result),
@@ -2158,10 +2132,9 @@ impl CompilationWorld {
                     ),
                 }
             } else {
-                ConnectedInitializerOutcome::Residual {
-                    reason: crate::ResidualReason::UnsupportedExpression,
-                    provenance: provenance.clone(),
-                }
+                ConnectedInitializerOutcome::Diagnostic(
+                    crate::initializer_eval::unavailable_initializer_diagnostic(provenance.clone()),
+                )
             }
         } else if matches!(operand, NormExpr::PolicyLet { .. }) {
             self.evaluate_connected_initializer_fragment(
@@ -2173,10 +2146,9 @@ impl CompilationWorld {
         } else if let Some(existing) = self.existing_semantic_result(namespace, operand) {
             ConnectedInitializerOutcome::Existing(existing)
         } else {
-            ConnectedInitializerOutcome::Residual {
-                reason: crate::ResidualReason::UnsupportedExpression,
-                provenance: provenance.clone(),
-            }
+            ConnectedInitializerOutcome::Diagnostic(
+                crate::initializer_eval::unavailable_initializer_diagnostic(provenance.clone()),
+            )
         };
 
         let (material, complete_type) = match inner {
@@ -2212,18 +2184,18 @@ impl CompilationWorld {
             ConnectedInitializerOutcome::Existing(existing) => {
                 (existing.material, existing.complete_type)
             }
-            ConnectedInitializerOutcome::Residual { reason, provenance } => {
-                return ConnectedInitializerOutcome::Residual { reason, provenance };
-            }
             ConnectedInitializerOutcome::Diagnostic(diagnostic) => {
                 return ConnectedInitializerOutcome::Diagnostic(diagnostic);
             }
         };
 
-        let projected = crate::project_p1(&demand.pair_query, &material)
-            .into_iter()
-            .filter(|entry| entry.view.mode == demand.mode)
-            .collect::<Vec<_>>();
+        let projected = match crate::project_p1(&demand.pair_query, &material) {
+            Ok(projected) => projected,
+            Err(diagnostic) => return ConnectedInitializerOutcome::Diagnostic(diagnostic),
+        }
+        .into_iter()
+        .filter(|entry| entry.view.mode == demand.mode)
+        .collect::<Vec<_>>();
         if !projected.is_empty() {
             return ConnectedInitializerOutcome::Existing(ConnectedExistingResult {
                 material: projected,
@@ -2236,7 +2208,7 @@ impl CompilationWorld {
             let source_view = entry.view;
             let Some(source) = entry.value else {
                 return ConnectedInitializerOutcome::Diagnostic(Diagnostic::hard_error(
-                    "PolicyLet cannot migrate a pure-P result: absent Val1 is outside same-Type Policy migration; an authorized constructor/materializer must produce a value first",
+                    "PolicyLet cannot migrate a absent-Val1 result: absent Val1 is outside same-Type Policy migration; an authorized constructor/materializer must produce a value first",
                     Some(provenance),
                 ));
             };
@@ -2267,7 +2239,7 @@ impl CompilationWorld {
                     ));
                 }
             };
-            let migration = match self.invoke_policy_migration(&request) {
+            let migration = match self.invoke_policy_migration(namespace, &request) {
                 Ok(migration) => migration,
                 Err(failure) => {
                     return ConnectedInitializerOutcome::Diagnostic(
@@ -2300,7 +2272,7 @@ impl CompilationWorld {
             .symbol;
         let symbol = self.semantic_world.symbol(symbol)?;
         let complete_type = symbol
-            .pure_p()
+            .type_resident()
             .and_then(|member| member.complete_type)
             .and_then(|whole| {
                 self.semantic_world
@@ -2484,7 +2456,7 @@ fn declared_type_projection_delta(
     represented_type: crate::TypeValueId,
     provenance: Provenance,
 ) -> DeclaredTypeCarrierDelta {
-    // Graph projection for a declared type carrier. `let t: type =
+    // Graph projection for a declared type carrier. `let t: type:: =
     // uint8` is an ordinary fresh Symbol/Place binding, not type generation or
     // aliasing. Canonical Core/whole equality and Writable judgments live in
     // SemanticWorld; this graph symbol only renders the already-decided type
@@ -2585,20 +2557,6 @@ fn declared_bound_type_value_delta(
     carrier
 }
 
-/// The declared canonical `PolicyPair` for a type-carrier binding: the
-/// explicit declaration projection when the user wrote one, otherwise the
-/// meta-formed type-carrier observation. Namespace attributes remain on
-/// the declaration object and never enter this `Pv:Pp` value.
-fn declared_type_binding_pair(namespace_declaration: &NamespaceDeclarationPolicy) -> PolicyPair {
-    match &namespace_declaration.projection {
-        P1Projection::Pair(pair) => pair.clone(),
-        P1Projection::ValueDominant { value } => {
-            core_declared_pair(value.stage.unwrap_or(Stage::Meta), false)
-        }
-        P1Projection::Infer => core_declared_pair(Stage::Meta, false),
-    }
-}
-
 /// The one complete result demand established by a binding spelling.
 ///
 /// Namespace visibility/export remain declaration coordinates. Only the
@@ -2657,14 +2615,6 @@ fn source_callable_delta(
 ) -> Result<SourceCallableDelta, BuildError> {
     let result_p2 =
         result_policy_from_closure(closure, provenance.clone()).map_err(BuildError::single)?;
-    // Semantic invariant — a runtime-only result P2 normalizes to
-    // `runtime:compile` (`N2(runtime) = runtime:compile`), whose value stage
-    // is disjoint from its Pattern stage. A pure-P return slot
-    // (`let r: type`) declares a member with no value dimension, so the
-    // declared runtime value slice could never be filled: the declaration
-    // itself is a hard error at this elaboration boundary.
-    ensure_runtime_result_slice_has_value_dimension(closure, &result_p2.pair, provenance.clone())
-        .map_err(BuildError::single)?;
     // Elaborate the declared result class once from the return slot. The body
     // is never inspected, Policy does not determine the class, and the full
     // return Pattern remains in the closure.
@@ -2783,7 +2733,7 @@ fn ordinary_invocation_failure_diagnostic(
         crate::OrdinaryInvocationFailure::SelectedDelete { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedImplementation { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::DynamicLegality { diagnostic, .. }
-        | crate::OrdinaryInvocationFailure::CyclicVal2 { diagnostic, .. }
+        | crate::OrdinaryInvocationFailure::ArgumentNormalization { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::ApplicabilityUnsupported { diagnostic, .. }
         | crate::OrdinaryInvocationFailure::SelectedBody {
             failure: crate::SourceBodyFrontierFailure { diagnostic, .. },
@@ -2805,13 +2755,13 @@ fn ordinary_invocation_failure_diagnostic(
             )
             .with_code(ResolverCode::NoCallCandidate)
         }
-        crate::OrdinaryInvocationFailure::Residual { residual, .. } => Diagnostic::hard_error(
+        crate::OrdinaryInvocationFailure::ObservationUnavailable { obstruction, .. } => Diagnostic::hard_error(
             format!(
-                "invocation observation obstruction `{}` requires the common continuation preservation consumer, which is not connected",
-                residual.class
+                "invocation observation `{}` is unavailable at the current horizon; no remaining continuation has been established",
+                obstruction.class
             ),
-            Some(residual.provenance),
-        ).with_code(ResolverCode::UnsupportedInitializerContinuation),
+            Some(obstruction.provenance),
+        ).with_code(ResolverCode::ObservationUnavailable),
         crate::OrdinaryInvocationFailure::Ambiguous { .. } => Diagnostic::hard_error(
             "ordinary invocation has multiple maximal candidates",
             Some(provenance),
@@ -2820,7 +2770,7 @@ fn ordinary_invocation_failure_diagnostic(
         crate::OrdinaryInvocationFailure::ResultTypeHasNoPattern { type_value, .. } => {
             Diagnostic::hard_error(
                 format!(
-                    "ordinary invocation result TypeValue {:?} has no installed PatternValue",
+                    "ordinary invocation result TypeValue {:?} has no installed Pattern coordinate",
                     type_value
                 ),
                 Some(provenance),
@@ -2856,53 +2806,100 @@ fn result_policy_from_closure(
     };
     let Some(annotation) = &head.call_policy else {
         return Err(Diagnostic::hard_error(
-            "source callable declaration requires a P2 annotation such as `: meta ->`",
+            "source callable declaration requires a P2 annotation such as `: compile ->`",
             Some(provenance),
         ));
     };
-    normalize_p2_policy(annotation, provenance)
+    direct_callable_body_policy(annotation, provenance)
 }
 
-/// A result P2 whose value stage is `runtime`, paired with a
-/// pure-P return slot (`let r: type`) declares a runtime value slice that
-/// carries no value dimension. `N2(runtime) = runtime:compile` makes Pv
-/// disjoint from Pp, so the declared value slice can never be filled by a
-/// pure-P member; the declaration is rejected here. Static single policies
-/// keep Pv == Pp (`N2(P) = P:(P - runtime)`), so pure-P return slots under
-/// `meta`/`compile`/`seal` remain legal.
-fn ensure_runtime_result_slice_has_value_dimension(
-    closure: &NormClosure,
-    result_p2: &PolicyPair,
-    provenance: Provenance,
-) -> Result<(), Diagnostic> {
-    let runtime_only = result_p2.value.stage() == Some(Stage::Runtime);
-    if !runtime_only {
-        return Ok(());
-    }
-    let pure_p_return_slot = closure
-        .head
-        .as_ref()
-        .and_then(|head| head.returns.as_ref())
-        .is_some_and(|returns| is_type_annotation(returns.annotation.as_ref()));
-    if pure_p_return_slot {
-        return Err(Diagnostic::hard_error(
-            "runtime-only result P2 (`: runtime ->` = `runtime:compile`) declares a runtime \
-             value slice, but the pure-P return slot (`let r: type`) carries no value \
-             dimension; the declaration is illegal",
-            Some(provenance),
-        )
-        .with_code(ResolverCode::RuntimeSliceWithoutValueDimension));
-    }
-    Ok(())
-}
-
-fn assert_semantic_result_satisfies_annotation(
+fn prove_scalar_root_mismatch(
+    world: &SemanticWorld,
+    expected: Option<&crate::CompleteTypeValue>,
     annotation: Option<&NormAnnotation>,
-    result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternValueId>],
+    material: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
+) -> Option<ProvedScalarRootMismatch> {
+    let target = expected?;
+    let annotation = annotation?;
+    // Only this connected full external scalar-root shape is proved here.
+    // A nested annotation or a multi-entry result is not the total root.
+    crate::pattern_relation::external_pattern_name(&annotation.pattern)?;
+    if is_type_annotation(Some(annotation)) {
+        return None;
+    }
+    let [entry] = material else {
+        return None;
+    };
+    let source = entry.value?;
+    if world.value(source.id)?.type_value != source.type_value {
+        return None;
+    }
+    let actual = world.complete_type_for_value(source.id)?;
+    let target_pattern = world.type_value(target.lookup_key())?.pattern;
+    let actual_pattern = world.type_value(actual.lookup_key())?.pattern;
+    crate::pattern_relation::relate_external_classifier(
+        crate::NamedPatternObservation {
+            pattern: target_pattern,
+            core: Some(target.core()),
+        },
+        crate::ExtractedTypeObservation {
+            pattern: actual_pattern,
+            core: Some(actual.core()),
+        },
+        Provenance::new("proved forced scalar root mismatch"),
+    )
+    .err()?;
+    Some(ProvedScalarRootMismatch {
+        source,
+        source_view: entry.view.clone(),
+        actual: actual.clone(),
+        target: target.clone(),
+    })
+}
+
+/// Check an explicitly supplied external result Pattern without conversion.
+fn assert_semantic_result_satisfies_annotation(
+    world: &SemanticWorld,
+    expected: Option<&crate::CompleteTypeValue>,
+    annotation: Option<&NormAnnotation>,
+    result: &[crate::PolicyResultEntry<crate::SemanticValueRef, crate::PatternCoordinateId>],
     semantic_complete_type: Option<&crate::CompleteTypeValue>,
     provenance: Provenance,
 ) -> Result<(), BuildError> {
-    if !is_type_annotation(annotation) {
+    let Some(annotation) = annotation else {
+        return Ok(());
+    };
+    if !is_type_annotation(Some(annotation)) {
+        let expected = expected.ok_or_else(|| {
+            BuildError::single(Diagnostic::hard_error(
+                "joint classifier extraction / external Pattern result consumer is unavailable",
+                Some(provenance.clone()),
+            ))
+        })?;
+        let expected_pattern = world.type_value(expected.lookup_key()).unwrap().pattern;
+        for entry in result {
+            let actual = entry
+                .value
+                .and_then(|v| world.complete_type_for_value(v.id))
+                .ok_or_else(|| {
+                    BuildError::single(Diagnostic::hard_error(
+                        "external Pattern needs the actual classifier snapshot",
+                        Some(provenance.clone()),
+                    ))
+                })?;
+            crate::pattern_relation::relate_external_classifier(
+                crate::NamedPatternObservation {
+                    pattern: expected_pattern,
+                    core: Some(expected.core()),
+                },
+                crate::ExtractedTypeObservation {
+                    pattern: world.type_value(actual.lookup_key()).unwrap().pattern,
+                    core: Some(actual.core()),
+                },
+                provenance.clone(),
+            )
+            .map_err(BuildError::single)?;
+        }
         return Ok(());
     }
     if semantic_complete_type.is_none() {
@@ -2930,7 +2927,6 @@ fn projection_matches_expectation(
         ResolveExpectation::NamespaceCapableParent => symbol.namespace_node().is_some(),
         ResolveExpectation::CoreTypeProjection => symbol.kind == SymbolKind::CompleteTypeProjection,
         ResolveExpectation::Callable => symbol.kind == SymbolKind::Callable,
-        ResolveExpectation::FieldFunction => symbol.kind == SymbolKind::FieldFunction,
     }
 }
 
@@ -2965,14 +2961,16 @@ fn override_delta_binding_visibility(
 fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
     matches!(
         annotation.map(|annotation| &annotation.pattern),
-        Some(NormPattern::Name { name, .. }) if name == "type"
+        Some(pattern) if crate::pattern_relation::external_pattern_name(pattern) == Some("type")
     )
 }
 
 fn norm_expr_span(expr: &NormExpr) -> lang_syntax::Span {
     let origin = match expr {
-        NormExpr::PolicyLet { origin, .. }
+        NormExpr::InterpretationFlip { origin, .. }
+        | NormExpr::PolicyLet { origin, .. }
         | NormExpr::Call { origin, .. }
+        | NormExpr::UniverseRank { origin }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }
@@ -3004,15 +3002,516 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::Sequence { origin, .. }
         | NormPattern::Skeleton { origin, .. }
         | NormPattern::BindingSlot { origin, .. }
-        | NormPattern::Splice { origin, .. }
+        | NormPattern::InterpretationFlip { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
     }
 }
 
 #[cfg(test)]
-mod initializer_residual_boundary_tests {
+mod initializer_consumer_boundary_tests {
     use super::*;
+
+    #[test]
+    fn higher_universe_classifier_is_unavailable_without_publication() {
+        for source in [
+            "let U = type;",
+            "let U:type:: = type;",
+            "let U = type IdentityType::core;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(
+                format!("{error:?}").contains("higher-universe classifier"),
+                "{error:?}"
+            );
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
+    fn unconnected_joint_classifier_binding_publishes_nothing() {
+        for source in ["let value:uint8 = 7;", "let T:type = uint8;"] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(format!("{error:?}").contains("joint classifier binding"));
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
+    fn external_classifier_checks_the_actual_literal_without_construction() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(
+            &mut world,
+            "let source = 42; let matched:integer:: = source;",
+        )
+        .unwrap();
+        let value = |name| {
+            let id = world
+                .semantic_world
+                .symbol_in_namespace(world.package_root_node(), name)
+                .unwrap()
+                .ordinary_value()
+                .unwrap();
+            world.semantic_world.value(id).unwrap().clone()
+        };
+        let source = value("source");
+        let matched = value("matched");
+        assert_eq!(source.type_value, matched.type_value);
+        assert_eq!(source.payload, matched.payload);
+        assert!(matches!(
+            matched.payload,
+            crate::SemanticValuePayload::AbstractLiteral { .. }
+        ));
+        assert!(world.semantic_world.compile_instances().next().is_none());
+    }
+
+    #[test]
+    fn forced_root_mismatch_converts_once_and_preserves_the_initial_value() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(&mut world, "let source=42;").unwrap();
+        let root = world.package_root_node();
+        let source = world
+            .semantic_world
+            .symbol_in_namespace(root, "source")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        let original = world.semantic_world.value(source).unwrap().clone();
+        harvest_source(
+            &mut world,
+            "let converted:uint16::=source; let direct:uint16::=42;",
+        )
+        .unwrap();
+        assert_eq!(world.semantic_world.value(source).unwrap(), &original);
+        let target = world.resolve_type_value("uint16").unwrap();
+        for name in ["converted", "direct"] {
+            let value = world
+                .semantic_world
+                .symbol_in_namespace(root, name)
+                .unwrap()
+                .ordinary_value()
+                .unwrap();
+            assert_eq!(
+                world.semantic_world.value(value).unwrap().type_value,
+                target
+            );
+            assert!(matches!(
+                world.semantic_world.value(value).unwrap().payload,
+                crate::SemanticValuePayload::ConstructedLiteral { .. }
+            ));
+        }
+        assert_eq!(
+            world.semantic_world.compile_instances().count(),
+            1,
+            "equal canonical root conversion inputs reuse the selected compile instance"
+        );
+    }
+
+    #[test]
+    fn forced_root_conversion_failure_or_missing_consumer_publishes_nothing() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(&mut world, "let concrete:uint8::=42;").unwrap();
+        for (source, message) in [
+            ("let bad:real::=42;", "no semantic target values"),
+            (
+                "let bad:uint16::=concrete;",
+                "forced root conversion execution consumer is unavailable",
+            ),
+            (
+                "let bad:(uint16)$=42;",
+                "forced root extraction/conversion evidence is unavailable",
+            ),
+        ] {
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(format!("{error:?}").contains(message), "{error:?}");
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
+    fn runtime_source_view_cannot_supply_a_compile_root_converter() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(&mut world, "let seed=42;").unwrap();
+        let root = world.package_root_node();
+        let value = world
+            .semantic_world
+            .symbol_in_namespace(root, "seed")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        let object = world.semantic_world.value(value).unwrap().clone();
+        world
+            .semantic_world
+            .bind_ordinary_new(
+                root,
+                "runtime_source",
+                &[crate::PolicyResultEntry {
+                    value: Some(crate::SemanticValueRef {
+                        id: value,
+                        type_value: object.type_value,
+                    }),
+                    pattern: object.pattern,
+                    view: declared_policy_view(Stage::Runtime, PolicyMode::Const),
+                }],
+                None,
+                Provenance::new("runtime observation of stored literal"),
+            )
+            .unwrap();
+        let before = format!("{:?}", world.semantic_world);
+        let error =
+            harvest_source(&mut world, "let converted:uint16::=runtime_source;").unwrap_err();
+        assert!(
+            format!("{error:?}").contains("input observation is unavailable at compile horizon"),
+            "{error:?}"
+        );
+        assert_eq!(format!("{:?}", world.semantic_world), before);
+        assert!(world.semantic_world.compile_instances().next().is_none());
+    }
+
+    #[test]
+    fn unknown_or_partial_root_material_cannot_authorize_conversion() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let root = world.package_root_node();
+        let integer = world.resolve_type_value("integer").unwrap();
+        let source = world
+            .semantic_world
+            .install_abstract_literal_value(
+                crate::AbstractLiteralFamily::Integer,
+                crate::AbstractLiteralExactValue::Integer("42".into()),
+                integer,
+                crate::compile_literal_policy(),
+                Provenance::new("known root material"),
+            )
+            .unwrap();
+        let entry = crate::PolicyResultEntry {
+            value: Some(crate::SemanticValueRef {
+                id: source,
+                type_value: integer,
+            }),
+            pattern: world.semantic_world.value(source).unwrap().pattern,
+            view: declared_policy_view(Stage::Compile, PolicyMode::Const),
+        };
+        let target = world
+            .resolve_complete_annotation_type(root, "uint16")
+            .unwrap()
+            .unwrap();
+        let parsed = lang_syntax::parse("let x:uint16::=42;");
+        let program = lang_syntax::normalize_program(&parsed.program);
+        let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_slice() else {
+            panic!("binding");
+        };
+        let mut unknown = entry.clone();
+        unknown.value.as_mut().unwrap().id = crate::SemanticValueId(u64::MAX);
+        let demand = ResultPolicyDemand {
+            pair_query: P1Projection::Infer,
+            mode: PolicyMode::Const,
+        };
+        for (root_type, material) in [
+            (None, vec![entry.clone()]),
+            (Some(&target), vec![unknown]),
+            (Some(&target), vec![entry.clone(), entry.clone()]),
+        ] {
+            let before = format!("{:?}", world.semantic_world);
+            let error = world
+                .complete_forced_binding_extraction(
+                    root,
+                    root_type,
+                    slot.annotation.as_ref(),
+                    material,
+                    None,
+                    &demand,
+                    &Provenance::new("incomplete total root"),
+                )
+                .unwrap_err();
+            assert!(format!("{error:?}")
+                .contains("forced root extraction/conversion evidence is unavailable"));
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+        assert!(world.semantic_world.compile_instances().next().is_none());
+    }
+
+    #[test]
+    fn initializer_free_heads_preserve_extraction_and_name_formation_boundaries() {
+        for (source, frontier) in [
+            (
+                "let value:uint8 = 7;",
+                "joint classifier binding extraction consumer is unavailable",
+            ),
+            (
+                "let value:uint8:: = 7;",
+                "typed NameExpr and Uninitialized Place formation consumer is unavailable",
+            ),
+            (
+                "let value:(uint8)$ = 7;",
+                "typed NameExpr and Uninitialized Place formation consumer is unavailable",
+            ),
+            (
+                "let value::uint8:uint8 = 7;",
+                "qualified NameExpr formation and destination Place consumer is unavailable",
+            ),
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            // Seed the syntax-neutral handoff from parsed syntax. Ordinary
+            // source let still requires an initializer; this tests its pending
+            // semantic formation boundary without adding parser support.
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty(), "{source}");
+            let mut program = lang_syntax::normalize_program(&parsed.program);
+            let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_mut_slice() else {
+                panic!("expected one binding: {source}");
+            };
+            slot.initializer = None;
+            let before = format!("{:?}", world.semantic_world);
+            let error = world
+                .harvest_program(
+                    world.package_root_node(),
+                    &program,
+                    Path::new("initializer-free-boundary.lang"),
+                )
+                .unwrap_err();
+            assert!(
+                format!("{error:?}").contains(frontier),
+                "{source}: {error:?}"
+            );
+            assert_eq!(format!("{:?}", world.semantic_world), before, "{source}");
+        }
+    }
+
+    #[test]
+    fn binding_holes_and_cleanup_material_cannot_be_discarded() {
+        for source in [
+            "let <mut let h> x = uint8;",
+            "let x with {future::path} = uint8;",
+        ] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let before = format!("{:?}", world.semantic_world);
+            let error = harvest_source(&mut world, source).unwrap_err();
+            assert!(
+                format!("{error:?}").contains("binding Hole extraction / Path-relative cleanup")
+            );
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    fn harvest_source(world: &mut CompilationWorld, source: &str) -> Result<(), BuildError> {
+        let parsed = lang_syntax::parse(source);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "{source}: {:?}",
+            parsed.diagnostics
+        );
+        world.harvest_program(
+            world.package_root_node(),
+            &lang_syntax::normalize_program(&parsed.program),
+            Path::new("snapshot-binding.lang"),
+        )
+    }
+
+    #[test]
+    fn type_binding_and_annotation_keep_the_read_snapshot_after_new_members() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        harvest_source(&mut world, "let U = uint8;").unwrap();
+        let namespace = world.package_root_node();
+        let old = world
+            .semantic_world
+            .symbol_in_namespace(namespace, "U")
+            .unwrap()
+            .type_resident()
+            .unwrap();
+        let complete = world
+            .semantic_world
+            .complete_type_by_whole_observation(old.complete_type.unwrap())
+            .unwrap()
+            .clone();
+        let pattern = old.pattern;
+        let helper = world
+            .semantic_world
+            .symbol_in_namespace(world.core_node(), "IdentityType")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        world
+            .semantic_world
+            .associate_existing_value(pattern, "later", helper)
+            .unwrap();
+        world
+            .semantic_world
+            .admit_direct_type_member(pattern, pattern, "later", helper)
+            .unwrap();
+        let current = world
+            .semantic_world
+            .observe_complete_type(
+                complete.lookup_key(),
+                world.semantic_world.registered_core_place(pattern),
+            )
+            .unwrap();
+        assert_ne!(current.core(), complete.core());
+        assert_ne!(current.whole(), complete.whole());
+
+        let type_rank = world.semantic_world.type_rank().unwrap();
+        let (_, _, registered_pattern) = world
+            .semantic_world
+            .register_type_symbol_with_complete_type(
+                namespace,
+                "Registered",
+                crate::SymbolId(900010),
+                complete.lookup_key(),
+                Some(complete.whole()),
+                type_rank,
+                None,
+                crate::declared_policy_view(Stage::Compile, PolicyMode::Const).pair,
+                Provenance::new("exact type carrier installation"),
+            )
+            .unwrap();
+        let registered = world
+            .semantic_world
+            .symbol_in_namespace(namespace, "Registered")
+            .unwrap()
+            .type_resident()
+            .unwrap();
+        assert_eq!(registered_pattern, pattern);
+        assert_eq!(registered.complete_type, old.complete_type);
+        assert_eq!(
+            world
+                .semantic_world
+                .canonical_type_core_observation_address(
+                    complete.lookup_key(),
+                    Some(registered.place)
+                )
+                .unwrap(),
+            complete.core()
+        );
+
+        harvest_source(&mut world, "let V = U; let Forward = U IdentityType::core;").unwrap();
+        let new = world
+            .semantic_world
+            .symbol_in_namespace(namespace, "V")
+            .unwrap()
+            .type_resident()
+            .unwrap();
+        assert_ne!(new.place, old.place);
+        assert_ne!(new.object, old.object);
+        assert_eq!(new.complete_type, old.complete_type);
+        let forwarded = world
+            .semantic_world
+            .symbol_in_namespace(namespace, "Forward")
+            .unwrap()
+            .type_resident()
+            .unwrap();
+        assert_eq!(forwarded.complete_type, old.complete_type);
+        assert_ne!(forwarded.place, old.place);
+        assert_eq!(
+            world
+                .semantic_world
+                .canonical_type_core_observation_address(complete.lookup_key(), Some(new.place))
+                .unwrap(),
+            complete.core()
+        );
+        assert!(world
+            .semantic_world
+            .associated_values_in_place(new.place, "later")
+            .is_none());
+        harvest_source(&mut world, "let value:U:: = 7;").unwrap();
+        let value = world
+            .semantic_world
+            .symbol_in_namespace(namespace, "value")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        assert_eq!(
+            world
+                .semantic_world
+                .complete_type_for_value(value)
+                .unwrap()
+                .whole(),
+            complete.whole(),
+            "forced conversion consumes the held root snapshot, not its later members"
+        );
+        assert_eq!(
+            world
+                .resolve_complete_annotation_type(namespace, "U")
+                .unwrap()
+                .unwrap(),
+            complete
+        );
+    }
+
+    #[test]
+    fn unavailable_captured_child_material_cannot_publish_a_type_binding() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let core = world.core_node();
+        let pattern = world
+            .semantic_world
+            .symbol_in_namespace(core, "uint8")
+            .unwrap()
+            .type_resident_pattern()
+            .unwrap();
+        let helper = world
+            .semantic_world
+            .symbol_in_namespace(core, "IdentityType")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        world
+            .semantic_world
+            .associate_existing_value(pattern, "helper", helper)
+            .unwrap();
+        // Fix a complete observation containing the actual helper resident.
+        world
+            .semantic_world
+            .finalize_bootstrap_type_carriers()
+            .unwrap();
+        harvest_source(&mut world, "let U = uint8;").unwrap();
+        let helper_place = world.semantic_world.value_residencies(helper)[0];
+        let changed_child = world
+            .semantic_world
+            .symbol_in_namespace(core, "struct")
+            .unwrap()
+            .ordinary_value()
+            .unwrap();
+        world
+            .semantic_world
+            .associate_existing_value_in_place(helper_place, "changed", changed_child)
+            .unwrap();
+        let before = format!("{:?}", world.semantic_world);
+        let error = harvest_source(&mut world, "let V = U;").unwrap_err();
+        assert!(error
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("CompleteTypeCoreMaterialUnavailable")));
+        assert!(world
+            .semantic_world
+            .symbol_in_namespace(world.package_root_node(), "V")
+            .is_none());
+        assert_eq!(format!("{:?}", world.semantic_world), before);
+    }
 
     fn initializer(source: &str) -> NormExpr {
         let parsed = lang_syntax::parse(source);
@@ -3088,13 +3587,13 @@ mod initializer_residual_boundary_tests {
                 .unwrap_err();
             assert!(matches!(
                 failure,
-                crate::OrdinaryInvocationFailure::Residual { residual, .. }
-                    if residual.class == "hidden-callee-observation"
+                crate::OrdinaryInvocationFailure::ObservationUnavailable { obstruction, .. }
+                    if obstruction.class == "hidden-callee-observation"
             ));
             assert!(matches!(
                 evaluate(&mut world, source),
                 ConnectedInitializerOutcome::Diagnostic(diagnostic)
-                    if diagnostic.code == Some(ResolverCode::UnsupportedInitializerContinuation)
+                    if diagnostic.code == Some(ResolverCode::ObservationUnavailable)
             ));
         }
     }
@@ -3111,7 +3610,7 @@ mod initializer_residual_boundary_tests {
                     .semantic_world
                     .symbol_in_namespace(world.core_node(), "uint8")
                     .unwrap()
-                    .pure_p_pattern()
+                    .type_resident_pattern()
                     .unwrap(),
             )
             .unwrap();
@@ -3126,6 +3625,7 @@ mod initializer_residual_boundary_tests {
         assert!(world
             .semantic_world
             .callable_entries_for_value(value)
+            .expect("actual classifier resident observation")
             .is_empty());
         let views = world
             .semantic_world
@@ -3146,6 +3646,7 @@ mod initializer_residual_boundary_tests {
                 world.package_root_node(),
                 "f",
                 &views,
+                None,
                 Provenance::new("fixture binding"),
             )
             .unwrap();
@@ -3176,14 +3677,11 @@ mod initializer_residual_boundary_tests {
 
     #[test]
     fn fully_observed_result_policy_mismatch_is_not_a_continuation() {
-        let mut world = world_with_member("let f = (receiver, x):meta => { (); };");
+        let mut world = world_with_member("let f = (receiver, x):compile => { (); };");
         let expression = initializer("let result = () f;");
         let demand = ResultPolicyDemand {
-            pair_query: crate::P1Projection::ValueDominant {
-                value: crate::ValuePolicyQuery {
-                    stage: Some(Stage::Runtime),
-                    presence: crate::ValuePresence::Present,
-                },
+            pair_query: crate::P1Projection::Leading {
+                stage: Some(Stage::Runtime),
             },
             mode: PolicyMode::Const,
         };
@@ -3222,7 +3720,7 @@ mod initializer_residual_boundary_tests {
     #[test]
     fn reached_candidate_error_is_not_residual_completion() {
         for source in ["let result = () f;", "let result = close let () f;"] {
-            let mut world = world_with_member("let f = (receiver, x:type):meta => { (); };");
+            let mut world = world_with_member("let f = (receiver, x:type::):compile => { (); };");
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             let failure = world
                 .invoke_ordinary_call(
@@ -3248,10 +3746,52 @@ mod initializer_residual_boundary_tests {
     }
 
     #[test]
+    fn interpretation_pairs_preserve_the_ordinary_result_and_policy() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let ConnectedInitializerOutcome::Existing(expected) =
+            evaluate(&mut world, "let result = uint8;")
+        else {
+            panic!("complete builtin type observation");
+        };
+        for depth in [0, 2, 4, 32] {
+            let source = format!("let result = uint8{};", "$".repeat(depth));
+            let ConnectedInitializerOutcome::Existing(actual) = evaluate(&mut world, &source)
+            else {
+                panic!("an even number of flips restores ordinary interpretation: {source}");
+            };
+            assert_eq!(actual.material, expected.material);
+            assert_eq!(actual.complete_type, expected.complete_type);
+        }
+    }
+
+    #[test]
+    fn structural_interpretation_requires_a_real_producer_without_publication() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let before = format!("{:?}", world.semantic_world);
+        for source in [
+            "let result = uint8$;",
+            "let result = uint8$$$;",
+            "let result = ((bool inner)a)$;",
+        ] {
+            let ConnectedInitializerOutcome::Diagnostic(diagnostic) = evaluate(&mut world, source)
+            else {
+                panic!("a missing structural producer is unavailable: {source}");
+            };
+            assert!(diagnostic.message.contains("common producer Pre/Post"));
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+        }
+    }
+
+    #[test]
     fn selected_delete_remains_a_terminal_diagnostic_at_both_initializer_boundaries() {
         for source in ["let result = () f;", "let result = close let () f;"] {
-            let mut world =
-                world_with_member("let f = (receiver, x):meta => (\"selected rejection\") delete;");
+            let mut world = world_with_member(
+                "let f = (receiver, x):compile => (\"selected rejection\") delete;",
+            );
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             assert!(matches!(
                 world.invoke_ordinary_call(
@@ -3319,15 +3859,14 @@ mod initializer_residual_boundary_tests {
     }
 
     #[test]
-    fn pending_seal_cannot_install_runtime_binding_or_change_existing_facts() {
+    fn pending_runtime_cannot_install_runtime_binding_or_change_existing_facts() {
         for source in [
             "let result = () f;",
             "runtime let result = () f;",
-            "seal let result = () f;",
             "let result = close let () f;",
-            "let result:type = () f;",
+            "let result:type:: = () f;",
         ] {
-            let mut world = world_with_member("let f = (receiver, x):seal => { (); };");
+            let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
             let namespace = world.package_root_node();
             let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
             let target = world
@@ -3342,11 +3881,11 @@ mod initializer_residual_boundary_tests {
             assert!(!original_views.is_empty());
             assert!(original_views
                 .iter()
-                .all(|view| view.view.pair.value.stage() == Some(Stage::Seal)));
+                .all(|view| view.view.pair.value.stage() == Some(Stage::Runtime)));
             assert!(matches!(
                 evaluate(&mut world, source),
                 ConnectedInitializerOutcome::Diagnostic(diagnostic)
-                    if diagnostic.code == Some(ResolverCode::UnsupportedInitializerContinuation)
+                    if diagnostic.code == Some(ResolverCode::ObservationUnavailable)
             ));
             let before_semantic = format!("{:?}", world.semantic_world);
             let before_projection = format!("{:?}", world.semantic_world.namespace_index());
@@ -3354,10 +3893,12 @@ mod initializer_residual_boundary_tests {
             assert!(parsed.diagnostics.is_empty());
             let program = lang_syntax::normalize_program(&parsed.program);
             let error = world
-                .harvest_program(namespace, &program, Path::new("pending-seal.lang"))
+                .harvest_program(namespace, &program, Path::new("pending-runtime.lang"))
                 .unwrap_err();
-            assert!(error.diagnostics.iter().any(|diagnostic| diagnostic.code
-                == Some(ResolverCode::UnsupportedInitializerContinuation)));
+            assert!(error
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == Some(ResolverCode::ObservationUnavailable)));
             assert!(world
                 .semantic_world
                 .symbol_in_namespace(namespace, "result")
@@ -3397,7 +3938,7 @@ mod initializer_residual_boundary_tests {
                 .harvest_program(namespace, &program, Path::new("incomplete.lang"))
                 .unwrap_err();
             assert!(error.diagnostics.iter().any(|diagnostic| diagnostic.code
-                == Some(ResolverCode::UnsupportedInitializerContinuation)));
+                == Some(ResolverCode::UnsupportedInitializerExpression)));
             assert!(world
                 .semantic_world
                 .symbol_in_namespace(namespace, "result")
@@ -3467,8 +4008,8 @@ mod source_closure_frontier_tests {
     #[test]
     fn closure_declarations_fail_without_installing_callable_value_or_type() {
         for source in [
-            "let f = (receiver, t:type):compile -> let r:type => { t; };",
-            "let f = (receiver, t:type) { t; };",
+            "let f = (receiver, t:type::):compile -> let r:type:: => { t; };",
+            "let f = (receiver, t:type::) { t; };",
             "let f = { 1; };",
             "let f = [let captured = 1] (receiver) => { captured; };",
         ] {
@@ -3567,11 +4108,12 @@ mod literal_construction_tests {
     ) -> crate::ConstructionRequest {
         let source = abstract_integer(world);
         let target = world
-            .resolve_complete_annotation_type(target_name)
+            .resolve_complete_annotation_type(world.package_root_node(), target_name)
             .expect("target observation succeeds")
             .expect("target resolves to complete tau");
         crate::ConstructionRequest {
             source,
+            source_view: declared_policy_view(Stage::Compile, PolicyMode::Const),
             target,
             result_demand: ResultPolicyDemand {
                 pair_query: P1Projection::Infer,
@@ -3595,12 +4137,81 @@ mod literal_construction_tests {
     }
 
     #[test]
+    fn explicit_scalar_construction_keys_include_canonical_inputs_and_parent_owner() {
+        let mut world = world();
+        let root = world.package_root_node();
+        let mut delta = world.semantic_world.namespace_index().empty_delta();
+        let nested = namespace_symbol(
+            &mut delta,
+            root,
+            "scope",
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Provenance::new("explicit parent-owner fixture"),
+        );
+        world
+            .semantic_world
+            .install_namespace_name_delta(delta)
+            .unwrap();
+        for (namespace, literal) in [(root, "42"), (root, "42"), (root, "43"), (nested, "42")] {
+            let mut request = request(&mut world, "uint16", PolicyMode::Const);
+            request.source.id = world
+                .semantic_world
+                .install_abstract_literal_value(
+                    crate::AbstractLiteralFamily::Integer,
+                    crate::AbstractLiteralExactValue::Integer(literal.into()),
+                    request.source.type_value,
+                    crate::compile_literal_policy(),
+                    Provenance::new("explicit scalar input"),
+                )
+                .unwrap();
+            let (value, _, _) = world
+                .invoke_literal_construction_request(
+                    namespace,
+                    request,
+                    &Provenance::new("explicit scalar call"),
+                )
+                .unwrap();
+            assert!(matches!(
+                world.semantic_world.value(value.id).unwrap().payload,
+                crate::SemanticValuePayload::ConstructedLiteral { .. }
+            ));
+        }
+        let instances = world.semantic_world.compile_instances().collect::<Vec<_>>();
+        assert_eq!(instances.len(), 3);
+        assert_eq!(
+            instances
+                .iter()
+                .filter(|i| i.root.parent_owner == world.semantic_world.package_owner())
+                .count(),
+            2
+        );
+        assert_eq!(
+            instances
+                .iter()
+                .filter(|i| i.root.parent_owner
+                    == world.semantic_world.namespace_owner(nested).unwrap())
+                .count(),
+            1
+        );
+        for instance in instances {
+            let result = instance.delivered_result().unwrap();
+            assert!(result.complete_type.is_none());
+            assert!(!instance.evaluation_active());
+            let name = world.semantic_world.symbol(instance.invoke_name()).unwrap();
+            assert!(name.type_resident().is_none());
+            assert!(name.ordinary_value().is_none());
+        }
+    }
+
+    #[test]
     fn complete_type_without_constructor_is_not_constructible() {
         let mut world = world();
         let request = request(&mut world, "type", PolicyMode::Const);
         let before = constructed_count(&world);
         let error = world
             .invoke_literal_construction_request(
+                world.package_root_node(),
                 request,
                 &Provenance::new("missing constructor candidate"),
             )
@@ -3612,7 +4223,53 @@ mod literal_construction_tests {
     }
 
     #[test]
-    fn selected_constructor_failure_does_not_run_opposite_mode_runner_up() {
+    fn forced_root_selected_conversion_failure_never_reopens_or_publishes() {
+        let mut world = world();
+        let target = world.resolve_type_value("real").unwrap();
+        add_test_candidate(
+            &mut world,
+            target,
+            PolicyMode::Const,
+            crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
+        );
+        let complete = world
+            .semantic_world
+            .observe_complete_type(target, None)
+            .unwrap();
+        let rank = world.semantic_world.type_rank().unwrap();
+        world
+            .semantic_world
+            .register_type_symbol_with_complete_type(
+                world.package_root_node(),
+                "FailRoot",
+                crate::SymbolId(999321),
+                target,
+                Some(complete.whole()),
+                rank,
+                None,
+                crate::compile_literal_policy(),
+                Provenance::new("explicit failing root conversion fixture"),
+            )
+            .unwrap();
+        let parsed = lang_syntax::parse("let result:FailRoot::=42;");
+        assert!(parsed.diagnostics.is_empty());
+        let before = format!("{:?}", world.semantic_world);
+        let error = world
+            .harvest_program(
+                world.package_root_node(),
+                &lang_syntax::normalize_program(&parsed.program),
+                Path::new("forced-conversion-failure.lang"),
+            )
+            .unwrap_err();
+        assert!(
+            format!("{error:?}").contains("selected literal construction candidate failed"),
+            "{error:?}"
+        );
+        assert_eq!(format!("{:?}", world.semantic_world), before);
+    }
+
+    #[test]
+    fn held_target_does_not_observe_later_failing_constructor() {
         let mut world = world();
         let target = world.resolve_type_value("uint16").expect("uint16 resolves");
         let request = request(&mut world, "uint16", PolicyMode::Mut);
@@ -3623,22 +4280,19 @@ mod literal_construction_tests {
             crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
         );
         let before = constructed_count(&world);
-        let error = world
+        let result = world
             .invoke_literal_construction_request(
+                world.package_root_node(),
                 request,
-                &Provenance::new("selected constructor failure"),
+                &Provenance::new("held target constructor"),
             )
-            .expect_err("the preferred selected body fails terminally");
-        assert!(error.diagnostics[0].message.contains("failed to realize"));
-        assert_eq!(
-            constructed_count(&world),
-            before,
-            "the runnable const builtin was not retried"
-        );
+            .expect("the held Core contains only the original constructor");
+        assert_eq!(result.2.mode, PolicyMode::Const);
+        assert_eq!(constructed_count(&world), before + 1);
     }
 
     #[test]
-    fn selected_delete_and_ambiguity_do_not_fabricate_literal_results() {
+    fn held_target_does_not_observe_later_delete_or_competing_constructor() {
         let mut deleted = world();
         let target = deleted
             .resolve_type_value("uint16")
@@ -3651,14 +4305,14 @@ mod literal_construction_tests {
             crate::semantic_world::OrdinaryIntrinsicBody::Delete,
         );
         let before = constructed_count(&deleted);
-        let error = deleted
+        deleted
             .invoke_literal_construction_request(
+                deleted.package_root_node(),
                 deleted_request,
                 &Provenance::new("deleted constructor"),
             )
-            .expect_err("delete winner rejects");
-        assert!(error.diagnostics[0].message.contains("deleted"));
-        assert_eq!(constructed_count(&deleted), before);
+            .expect("the later Delete entry is absent from the held Core");
+        assert_eq!(constructed_count(&deleted), before + 1);
 
         let mut ambiguous = world();
         let target = ambiguous
@@ -3677,13 +4331,348 @@ mod literal_construction_tests {
             crate::semantic_world::OrdinaryIntrinsicBody::AbstractLiteralConstruct(builtin_spec),
         );
         let before = constructed_count(&ambiguous);
-        let error = ambiguous
+        ambiguous
             .invoke_literal_construction_request(
+                ambiguous.package_root_node(),
                 ambiguous_request,
                 &Provenance::new("ambiguous constructors"),
             )
-            .expect_err("equal maxima are ambiguous");
-        assert!(error.diagnostics[0].message.contains("multiple maximal"));
-        assert_eq!(constructed_count(&ambiguous), before);
+            .expect("the later competing entry is absent from the held Core");
+        assert_eq!(constructed_count(&ambiguous), before + 1);
+        let before = format!("{:?}", ambiguous.semantic_world);
+        let error = ambiguous
+            .semantic_world
+            .observe_complete_type(target, None)
+            .expect_err("an implementation ledger cannot supply a formed family resident");
+        assert!(error.message.contains("ordinary resident formation"));
+        assert_eq!(
+            before,
+            format!("{:?}", ambiguous.semantic_world),
+            "failed family observation publishes no semantic facts"
+        );
+    }
+
+    #[test]
+    fn empty_held_core_and_successor_core_have_distinct_constructor_candidates() {
+        let mut world = world();
+        let mut old_request = request(&mut world, "type", PolicyMode::Const);
+        let target = old_request.target.lookup_key();
+        let old = old_request.target.clone();
+        let candidate = add_test_candidate(
+            &mut world,
+            target,
+            PolicyMode::Const,
+            crate::semantic_world::OrdinaryIntrinsicBody::FailSelected,
+        );
+        let successor = world
+            .semantic_world
+            .observe_complete_type(target, None)
+            .expect("a single actual resident forms a complete successor Core");
+        assert_ne!(old.core(), successor.core());
+        assert_eq!(old.lookup_key(), successor.lookup_key());
+        assert!(world
+            .semantic_world
+            .associated_member_views_for_complete_type(&old, CONSTRUCT_OR_CONVERT_SELECTOR)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            world
+                .semantic_world
+                .associated_member_views_for_complete_type(
+                    &successor,
+                    CONSTRUCT_OR_CONVERT_SELECTOR
+                )
+                .unwrap()[0]
+                .value,
+            Some(candidate)
+        );
+        let before = format!("{:?}", world.semantic_world);
+        let error = world
+            .invoke_literal_construction_request(
+                world.package_root_node(),
+                old_request.clone(),
+                &Provenance::new("empty held Core"),
+            )
+            .expect_err("later members supply no old-snapshot candidate");
+        assert!(error.diagnostics[0]
+            .message
+            .contains("no semantic target values"));
+        assert_eq!(before, format!("{:?}", world.semantic_world));
+        old_request.target = successor;
+        let before = constructed_count(&world);
+        let error = world
+            .invoke_literal_construction_request(
+                world.package_root_node(),
+                old_request,
+                &Provenance::new("selected successor failure"),
+            )
+            .expect_err("the successor selects its actual failing entry");
+        assert!(error.diagnostics[0].message.contains("failed to realize"));
+        assert_eq!(constructed_count(&world), before);
+    }
+}
+
+#[cfg(test)]
+mod physical_navigation_tests {
+    use super::*;
+
+    fn report(workspace: &str, root: Vec<String>) -> SourceDiscoveryReport {
+        let report = SourceDiscoveryConfig::from_source_roots(&[crate::SourceRoot {
+            path: Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/fixtures/workspaces")
+                .join(workspace)
+                .join("app/src"),
+            namespace_root: root,
+        }])
+        .discover();
+        assert!(!report.has_hard_errors());
+        report
+    }
+
+    #[test]
+    fn empty_inherited_sources_preserve_semantic_world_at_package_and_global_roots() {
+        for global in [false, true] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let report = report(
+                "empty_inherited_navigation",
+                if global { vec![] } else { vec!["app".into()] },
+            );
+            let before = format!("{:?}", world.semantic_world);
+            if global {
+                world
+                    .consume_global_implementation_discovery(&report)
+                    .unwrap();
+            } else {
+                world.consume_discovery(&report).unwrap();
+            }
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+            let [fragment] = world.source_fragments.as_slice() else {
+                panic!("one fragment");
+            };
+            assert_eq!(fragment.inherited_navigation, ["a", "b"]);
+            assert!(fragment.normalized.forms.is_empty());
+            assert_eq!(
+                fragment.namespace,
+                if global {
+                    world.semantic_world.namespace_index().root_node()
+                } else {
+                    world.package_root_node()
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn inherited_action_without_qualified_consumer_publishes_no_destination_or_owner() {
+        for global in [false, true] {
+            let mut world =
+                CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                    .unwrap();
+            let report = report(
+                "child_navigation_frontier",
+                if global { vec![] } else { vec!["app".into()] },
+            );
+            let before = format!("{:?}", world.semantic_world);
+            let error = if global {
+                world.consume_global_implementation_discovery(&report)
+            } else {
+                world.consume_discovery(&report)
+            }
+            .unwrap_err();
+            assert!(format!("{error:?}")
+                .contains("inherited navigation requires the qualified NameExpr"));
+            assert_eq!(format!("{:?}", world.semantic_world), before);
+            assert!(world.source_fragments.is_empty());
+        }
+    }
+
+    #[test]
+    fn source_install_prefix_cannot_allocate_a_missing_semantic_namespace() {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let report = report(
+            "empty_inherited_navigation",
+            vec!["app".into(), "unformed".into()],
+        );
+        let before = format!("{:?}", world.semantic_world);
+        let error = world.consume_discovery(&report).unwrap_err();
+        assert!(
+            format!("{error:?}").contains("source install root requires an established namespace")
+        );
+        assert_eq!(format!("{:?}", world.semantic_world), before);
+    }
+}
+
+#[cfg(test)]
+mod scoped_resolution_tests {
+    use super::*;
+    use crate::{extract_single_call_site, OrdinaryInvocationContext};
+
+    fn scope_world() -> CompilationWorld {
+        let mut world =
+            CompilationWorld::from_manifest(&BuildManifest::new("app", vec!["app".into()]))
+                .unwrap();
+        let mut delta = world.semantic_world.namespace_index().empty_delta();
+        let outer = namespace_symbol(
+            &mut delta,
+            world.package_root_node(),
+            "outer",
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Provenance::new("explicit scope fixture"),
+        );
+        let inner = namespace_symbol(
+            &mut delta,
+            outer,
+            "inner",
+            NamespaceNodeKind::Declared,
+            SourceCategory::DeclaredSymbol,
+            Provenance::new("explicit scope fixture"),
+        );
+        world
+            .semantic_world
+            .install_namespace_name_delta(delta)
+            .unwrap();
+        for (namespace, source) in [
+            (outer, "let f = IdentityType; let g = IdentityType;"),
+            (inner, "let f:type:: = uint8;"),
+        ] {
+            let parsed = lang_syntax::parse(source);
+            assert!(parsed.diagnostics.is_empty());
+            world
+                .harvest_program(
+                    namespace,
+                    &lang_syntax::normalize_program(&parsed.program),
+                    Path::new("scope-fixture.lang"),
+                )
+                .unwrap();
+        }
+        world
+    }
+
+    fn initializer_from_source(source: &str) -> NormExpr {
+        let parsed = lang_syntax::parse(source);
+        assert!(parsed.diagnostics.is_empty());
+        let program = lang_syntax::normalize_program(&parsed.program);
+        let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_slice() else {
+            panic!("one binding");
+        };
+        slot.initializer.as_deref().unwrap().clone()
+    }
+    #[test]
+    fn bare_call_target_resolves_nearest_symbol_once_even_if_non_callable() {
+        let mut world = scope_world();
+        let package = world.package_root_node();
+        let outer_namespace = world
+            .semantic_world()
+            .child_namespace(package, "outer")
+            .expect("outer fixture namespace");
+        let inner_namespace = world
+            .semantic_world()
+            .child_namespace(outer_namespace, "inner")
+            .expect("inner fixture namespace");
+        let inner = world
+            .semantic_world()
+            .symbol_in_namespace(inner_namespace, "f")
+            .expect("inner non-callable f")
+            .clone();
+        assert!(
+            inner.ordinary_value().is_none(),
+            "near f is deliberately non-callable"
+        );
+
+        let initializer = initializer_from_source("let result = uint8 f;");
+        let call_site = extract_single_call_site(&initializer).expect("bare f call");
+        let failure = world
+            .invoke_ordinary_call(
+                inner_namespace,
+                &call_site,
+                OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+                Provenance::new("near outer core bare-name chain"),
+            )
+            .expect_err("the nearest non-callable Symbol shadows outer callable Symbols");
+        assert!(
+            matches!(
+                failure,
+                crate::OrdinaryInvocationFailure::NoTargetValues { .. }
+                    | crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+            ),
+            "call projection fails on inner.f and never re-resolves the name: {failure:?}"
+        );
+    }
+
+    #[test]
+    fn same_bare_path_has_one_terminal_symbol_before_value_type_and_call_projection() {
+        let world = scope_world();
+        let package = world.package_root_node();
+        let outer_namespace = world
+            .semantic_world()
+            .child_namespace(package, "outer")
+            .expect("outer fixture namespace");
+        let inner_namespace = world
+            .semantic_world()
+            .child_namespace(outer_namespace, "inner")
+            .expect("inner fixture namespace");
+        let inner = world
+            .semantic_world()
+            .symbol_in_namespace(inner_namespace, "f")
+            .expect("inner type-valued f")
+            .identity;
+        let initializer = initializer_from_source("let result = uint8 f;");
+        let call_site = extract_single_call_site(&initializer).expect("bare f call");
+
+        let neutral = world
+            .resolve_source_terminal_symbol(inner_namespace, &call_site.target)
+            .expect("neutral source resolution");
+        let by_symbol_path = world
+            .semantic_world()
+            .resolve_symbol_path(
+                &["f".to_string()],
+                inner_namespace,
+                &[world.semantic_world().namespace_index().root_node()],
+                &[world.core_node()],
+            )
+            .expect("context-independent Symbol resolution");
+        assert_eq!(neutral, inner);
+        assert_eq!(by_symbol_path, inner);
+        assert!(
+            world
+                .semantic_world()
+                .symbol(inner)
+                .and_then(|symbol| symbol.type_resident_pattern())
+                .is_some(),
+            "type projection observes the already resolved inner Symbol"
+        );
+    }
+
+    #[test]
+    fn explicit_call_target_is_one_symbol_and_never_falls_back() {
+        let mut world = scope_world();
+        let package = world.package_root_node();
+        let outer_namespace = world
+            .semantic_world()
+            .child_namespace(package, "outer")
+            .expect("outer fixture namespace");
+        let initializer = initializer_from_source("let result = uint8 f::inner;");
+        let call_site = extract_single_call_site(&initializer).expect("explicit inner::f call");
+        let failure = world
+            .invoke_ordinary_call(
+                outer_namespace,
+                &call_site,
+                OrdinaryInvocationContext::open_static(&[PolicyMode::Const]),
+                Provenance::new("explicit target no-fallback"),
+            )
+            .expect_err("explicit inner f is non-callable and must fail");
+        assert!(
+            matches!(
+                failure,
+                crate::OrdinaryInvocationFailure::NoTargetValues { .. }
+                    | crate::OrdinaryInvocationFailure::NoFullyAdmissibleCandidate { .. }
+            ),
+            "explicit target fails on that Symbol instead of trying outer/core: {failure:?}"
+        );
     }
 }

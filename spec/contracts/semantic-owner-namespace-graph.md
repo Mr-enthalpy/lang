@@ -5,7 +5,7 @@
 The language-level Pattern relation, binderless Pattern semantics, and the
 distinction between ordinary `Val2` presence and direct structural incidence
 are canonical in
-`../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`.
+`../design/patterns-overload/pattern-relations-observation-and-extraction.md`.
 This contract owns only the persistent owner/root/binder identities and the
 build handoff consumed by that relation.
 
@@ -35,13 +35,21 @@ contributions. Resident-specific ProjectionSlot identities remain a different
 layer, invalidated according to ordinary parent-resident rules.
 
 Source files, paths, spans and printable navigation strings are provenance.
-Child-directory selectors are first normalized into ordinary fresh-name actions;
-only their evaluation establishes named types/Places/owners. Root levels and
+Child-directory selectors supply inherited navigation: under a, ordinary
+P let inner=rhs targets inner::a. Root levels and
 implementation filenames add no segment. The physical tree installs no owner
 by discovery; see [normalization](../design/build-package/build-system-design.md).
 
+DiscoveredSourceUnit and SourceFragment retain inherited_navigation as source
+material. SourceFragment.namespace is the established install root, not a
+directory-created node. Empty fragments leave the semantic world unchanged.
+Actual actions under nonempty inherited navigation require the ordinary
+qualified destination consumer; unavailable formation publishes no namespace
+Symbol or owner. Discovery observes existing install roots without creating
+missing semantic components.
+
 The semantic owner forest contains source-established namespace owners, callable owners,
-canonical meta-instance owners, and generated owners. Every callable,
+canonical compile-instance owners, and generated owners. Every callable,
 including an in-place closure, has a lexical/code owner. Ordinary closure-to-tau construction forms its callable material and classifier
 under the authorized home; the source callable owner remains distinct:
 
@@ -61,7 +69,7 @@ printable string is not identity and does not determine any receiver type.
 role.
 
 Allocating a lexical owner is not value construction. Every legal completed
-closure expression returns tau_C by ordinary struct formation, with c_C in
+closure expression returns tau_C by atomic structural formation, with c_C in
 V_tau_C, classifier A_C and terminal () implementation. Source carriers preserve
 syntax before this consumer. No future destination can retroactively choose an
 already evaluated RHS owner. An established same-name bucket consumes
@@ -85,25 +93,23 @@ first self for the associated entry of that instance's exact complete type.
 Anchored replication may create an eligible new closure instance; it cannot
 modify the original callable's owner or capture lifetime.
 
-A meta instance is interned by:
+A CompileInstance is interned by:
 
 ```text
-(parent owner, resolved meta-function identity, canonical argument key)
+ParentSemanticOwner x SelectedCompilePartner x CanonicalizeInvocationInputs(In)
 ```
 
-CanonicalizeInvocationInputs preserves the selected invocation's value
-observations and semantically observed name/subject/borrow dependencies. Repeated
-completed invocation reuses its instance name/type and ordinary member Places; a
-different full key yields a different invocation. Result names are not input
-structural children. Current instance/member observations and dependency validity
-are checked at use; identity reuse does not freeze a value or grant authority. The
-[invocation owner](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md)
-defines the full law: the direct result is tau_M rooted at M; arbitrary Val2
-payloads use ordinary navigation. P1 meta retains dependency-derived OpenHere
-and close let completes/closes the instance. P2 meta is its evaluation horizon. Stable owner ancestry creates no active
-MetaDom; actual stack frames impose meta/seal dominance.
+Formation precedes selected body entry, independent of ordinary result kind
+and P2. The selected partner retains the actual receiver/call-entry pair.
+The current self-name is ordinary NameValue, with initialized resident reads
+separate from EnterBody. Only the direct single instance-open self-root type
+result supplies a computed NameExpr; external types retain their own identity.
+Reachability checks include accessible aggregates, captures and ref/share
+targets before outward delivery. OpenPolicy={open,close} is independent of
+Mode={const,mut} and Stage={compile,runtime}; a compile invocation forms a
+CompileInstance. Current storage and immutable prior snapshots stay distinct.
 
-Source navigation remains inner-to-outer. A generated meta-call scope used as
+Source navigation remains inner-to-outer. A generated compile-call scope used as
 one outer component must group the complete call expression:
 
 ```lang
@@ -175,7 +181,7 @@ They remain orthogonal to:
 ```text
 Σ_full
 Σ_export
-Wfinal = Wpre ∪ Wseal
+CommittedBindings(K) = actual materialized bindings of K
 ```
 
 Non-export does not imply private or same-level-only. Existing lexical
@@ -205,6 +211,8 @@ identity sets belong to the projection consumer, not the resolver.
 does not itself mean external visibility. External candidate projection keeps
 the internal candidate identity, resolved `PolicyPair`, and whole-slot
 `PolicyMode`. Stable external admission requires public path reachability and
+preserves applicable rank-chain evidence independently of the two-rank window;
+a locally legal pair does not validate an unseen tail. It
 never consumes a future caller's Policy or capability demand. Ordinary
 capability-family applicability and Policy selection occur only after external
 lookup.
@@ -223,7 +231,7 @@ consumer Policy-selection and dynamic-legality failures.
 
 ## Structural members and associated Val2 contributions
 
-`struct` forms a complete type value `tau` whose core `Q_struct = Core(tau)`
+Structural interpretation atomically forms a complete type `tau` whose Core(tau)
 satisfies `Pure(Q_struct)` and `TypeRole(Q_struct)`; structural leaves and
 associated lets contribute to that construction. Mechanically produced field/access/
 assignment/borrow partners with non-generative registration enter V_tau at the formation
@@ -254,7 +262,7 @@ E name [[public]]
 E name [[private]]
 ```
 
-Only the struct decoder interprets it as:
+The structural interpretation consumer interprets it as:
 
 ```text
 StructuralMember {
@@ -267,7 +275,7 @@ StructuralMember {
 The annotation slot accepts only `public` or `private`; it is not a general
 PolicySpec.
 
-Struct/type construction may also consume an ordinary let-shaped declaration:
+Structural type formation may also consume an ordinary let-shaped declaration:
 
 ```lang
 let name = expr
@@ -287,7 +295,7 @@ uses common-snapshot one-shot formation and initialization, without choosing
 a first sibling RHS. Ordinary singleton closure installation binds tau_C:type;
 a contribution consumes Delta_C,T^call to form one ordinary member c_C^T,
 never inserting tau_C or bulk-importing its V_tau. Updates to an existing
-resident use extend/inject/TypeAdd with complete /tau home and registration
+resident use ordinary * / *= / TypeAdd with complete /tau home and registration
 checks. Ordinary Delta_v^value follows Val2 installation instead. Rehosting
 an existing callable member requires its witness, never a blind V_tau copy.
 
@@ -311,14 +319,17 @@ resident type's OpenHere, selector validity, non-retention and ordinary
 access/path/type legality. It requires no parent Writable or parent mut type ref.
 Equal type values do not merge structural root/name/Place identities. Borrowing
 is a separate Place-side judgment. Initialized type names admit direct mut
-borrowing or explicit meta type ref followed by ConfirmMut, subject to the same
+borrowing or explicit open type ref followed by ConfirmMut, subject to the same
 current OpenHere, target Writable, capability and lifetime checks. These coherent
 routes introduce no implicit chain; saved refs retain their borrowed generation
 and cannot write after Close. Initial refs remain initialization-only. See the
-[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+[type/ref owner](../design/symbol-world/type-values-places-and-borrow-views.md#522-initialized-type-names-open-references-and-mut-confirmation).
 
-Initializer-free P let name:t and P let name::path:t create typed NameExpr
-using lexical and structural destinations respectively, with non-Object
+Bare a:b is joint extraction: without a delivered subject it supplies neither
+a classifier binding nor a typed Place. Initializer-free lexical P let name:T::
+or P let name:R$ requires an explicit external Pattern determining a complete
+declared Place type. Qualified P let name::path:t uses structural name formation.
+Each yields a typed NameExpr under its own formation premises, with non-Object
 Uninitialized Place state. In (P let name::path), omitted :t defaults to :type,
 not an existing type resident. P let name = rhs is a complete lexical binding
 with RHS type inference, so that default does not apply. Value use requires initialization; explicit
@@ -326,8 +337,7 @@ ref borrows the Place using its declared type without reading. Ordinary write
 initializes it using authority independent of the name's declaration policy,
 including const. Successful first commit consumes that authority; saved initial
 references do not grant replacement power. Later writes require ordinary
-replacement capability and resident compatibility. The structural let=compound
-is not canonical. Close requires retained structural names being published to be
+replacement capability and resident compatibility. A qualified let with RHS forms a complete binding using RHS inference. Close requires retained structural names being published to be
 initialized, not every future generated coordinate realized. Ordinary lexical
 let remains unchanged.
 Anchored replication targets the complete type's /tau layer without RHS feedback.
@@ -378,7 +388,7 @@ Namespace/index edges project ordinary committed source actions. Physical
 normalization has no mount or package authority. Redirect representations can
 encode an already established path without copying the target's identity.
 
-External navigation into a meta construction result waits until its visible
+External navigation into a compile construction result waits until its visible
 name set is closed. Anonymous implementation layers remain under /tau.
 SemanticOwnerId and navigation nodes need not be one-to-one: callable owners
 and Pattern roots may have no ordinary user navigation entry.
@@ -387,10 +397,10 @@ and Pattern roots may have no ordinary user navigation entry.
 
 Implemented substrate:
 
-- parent-linked `SemanticOwnerGraph`, namespace/callable/meta/generated owner
+- parent-linked `SemanticOwnerGraph`, namespace/callable/compile/generated owner
   interning, owner-derived standalone anonymous callable types, an explicit
-  callable-owner/receiver-type binding carrier, hygienic meta-instance
-  interning, and owner-derived identity of a legacy Rust symbol carrier;
+  callable-owner/receiver-type binding carrier, hygienic compile-instance
+  interning, and owner-derived identity of a namespace graph record;
 - frontend callable owners, PatternRoot alpha boundaries, same-root duplicate
   validation, cross-root shadowing, and an explicit
   `SemanticOwnerQualification` handoff that rejects an unmapped or
@@ -399,9 +409,8 @@ Implemented substrate:
 - owner-aware namespace views and public/private path checks. Configured
   package/mount routing is an implementation path pending source-normalization
   migration; it is not canonical semantic authority;
-- narrow member-view Raw/Norm shape, struct structural visibility, private
-  extraction filtering, and a typed associated-Val2/call-entry contribution
-  decoder that preserves value-bearing initializer policy.
+- narrow member-view Raw/Norm shape and explicit structural visibility carriers;
+  real associated-Val2/call-entry declarations retain their independent Policy planes.
 
 Deferred:
 
@@ -419,14 +428,14 @@ Deferred:
 - end-to-end connection of every namespace snapshot consumer;
 - wiring owner-namespace admission to the canonical
   `ResolvedCandidateSnapshot` / `ExportCandidateView` payload and complete
-  external overload routing. That payload retains identity, pair, mode,
+  external overload routing. That payload retains identity, the pair window,
+  available full-chain observations or opaque remaining rank requirements, mode,
   declaration/intrinsic realization facts, and provenance but no
   context-indexed `DynamicLegality_Γ`; the current entry records eligibility
-  and preserves legacy Rust symbol carrier identity but does not duplicate the candidate projector
+  and preserves namespace graph record identity but does not duplicate the candidate projector
   or form consumer legality;
-- recursive materialization of visibility-bearing structured fields beyond
-  the current simple-field struct slice (the decoded Pattern retains the
-  visibility metadata);
+- structural source formation with actual Val2 witnesses and registered roles,
+  visibility-bearing fields, and ordinary struct helper formation;
 - full custom `?`, general Pattern execution, capture discovery, closure
   materialization, lifetime checking and ABI/layout/materialization;
 - end-to-end installation of associated Val2 contributions, external navigated

@@ -14,7 +14,10 @@ spec/planning/open-questions.md
 ```
 
 For semantic work, also read `spec/design/README.md` and every canonical topic
-owner named there for the concepts being changed. For implementation
+owner named there for the concepts being changed. Static evaluation, compile
+instances, name production, structural interpretation/type formation and dot
+navigation are jointly owned by
+`spec/design/unified-static-name-and-structural-semantics.md`. For implementation
 sequencing, read `spec/planning/roadmap.md`.
 
 Documents under `spec/history/**` are non-authoritative and are read only when
@@ -65,12 +68,12 @@ alternate relation or identity.
 - A headed closure without `=>` is in-place; `=>` forms an ordinary closure.
 - `<...>` is a DeduceList only in documented strong binding contexts.
 - `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
-- `|> P { ... }` preserves the callable head (self, <> P).
+- `|> P { ... }` preserves the callable head (_, let _: (P)$).
 - Value-side expressions and Pattern-side material remain distinct.
 - `let binder === PathMaterial` preserves a lexical Path alias: form the RHS once
   in the old Path environment, store material, never cache terminal binding identity.
 - `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
-  `type`, `meta`, `runtime`, `compile`, `namespace`, and `struct` are not lexer
+  `type`, `compile`, `runtime`, `open`, `close`, `namespace`, and `struct` are not lexer
   keywords.
 - The parser must not create semantic declarations such as `FnDecl`,
   `StructDecl`, `ImportDecl`, HIR, MIR, or codegen nodes.
@@ -102,8 +105,10 @@ alternate relation or identity.
   resident type's OpenHere, selector/non-retention/access/path/type checks;
   parent Writable and parent mut type ref are not premises. Equal type values
   do not merge NameCoords or Places. Ref acquisition is a separate judgment.
-  Initializer-free P let name:t shares typed-name formation at a lexical
-  destination. P let name=rhs is a complete lexical binding with RHS inference;
+  Initializer-free lexical typed-name formation requires an explicit external
+  classifier T:: or R$ determining a complete type. Bare a:b is joint extraction;
+  without a subject it supplies no classifier or typed Place.
+  P let name=rhs is a complete lexical binding with RHS inference;
   the initializer-free structural default does not apply to it.
   Explicit ref then ordinary write initializes; Close requires retained members
   being published initialized, not every future coordinate realized. NameBinding is not a wrapper Object.
@@ -114,38 +119,24 @@ alternate relation or identity.
   iff WellFormedTau(tau). HasRegisteredSelfConstruction defines only
   SelfConstructible, not type identity. Complete tau consistency checks both registered
   closure roles' /tau homes separately.
-- Contextual meta qualification is limited to type/type ref, not a fourth
-  PolicyMode. Initialized type names retain direct mut borrowing and explicit
-  meta-ref-to-mut confirmation; both require current OpenHere, target Writable
-  and ordinary capability/access/lifetime. Same-position routes are coherent,
-  not implicit chains. Meta refs retain their actual Place and original borrowed
-  generation/opening subject. Close defeats both mutable routes and saved-ref
-  writes. InitialTypeSlotRef remains separate one-shot initialization authority.
-  Frozen generated Val2 realization after Close invokes none of these ref paths.
+- OpenPolicy = {open, close} is independent from PolicyMode = {const, mut}.
+  An omitted mode completes to mut exactly when OpenPolicy=open and current
+  OpenHere is available; otherwise it completes to const. Unknown required
+  OpenHere is unavailable. OpenHere, Writable, PolicyMode, construction
+  authority and lifetime remain independent judgments.
 - Type +=/-= changes only V_tau under Writable, OpenHere, complete-type /tau
   classifier home and non-generative registration. Named Val2 residency is neither
   required nor implied; classifier navigation is not callable-value navigation.
   Witnessed anchored replication never reparents an existing value.
-- OverloadGroup aggregation buckets whole bound type snapshots, never Core classes,
-  has its own entry algebra and requires Writable.
-  Ordinary meta constructs an instance name/type tau_M outside input structure;
-  arbitrary payloads occupy ordinary Val2. V_tau callability registration and
-  Pattern-role registration are independent; neither follows from Val2 presence.
-  Input identity retains observed name/subject dependencies; output openness follows
-  their meet. P1 meta let retains the instance under OpenHere, which governs mut
-  acquisition; close let completes/closes it. P2 meta remains evaluation stage.
-  Invocation caches retain instances/member Places and current state. A consumes
-  these facilities; saved references recheck the original source at write Pre.
-  MetaDecl requires Ordinary placement, => and no capture clause. It admits no
-  automatic closure dependency on an unpassed enclosing local. Such locals are
-  masked; invocation dependence enters In or established stable meta-owner
-  relations. MetaInstanceRootKey has no CapturedEnv axis. Nested ordinary
-  closures may use only material legally available inside the invocation.
-- Stage is one atom; static stages are pairwise incomparable. P2 is horizon,
-  P1/Pout producer visibility; InputAdmissible, migration and Ready are separate.
-  Runtime P2 defaults omitted P1 to runtime; seal defaults to seal.
-- Main has runtime horizon; stable roots imply no active MetaDom. Actual
-  meta/seal frames exclude seal/meta work through helpers and cache hits.
+- Every compile call forms a stable CompileInstance from parent owner, selected
+  CompilePartner and canonical inputs. Its ordinary self-name is readable without
+  reentry. Result kind is determined by result structure: an instance-open type
+  may escape only as the single self-rooted complete type, which exposes the
+  instance NameExpr. In-place closures retain ordinary lexical/Self/navigation
+  boundaries and use admitted dependencies to reach enclosing instances.
+- Stage = {compile, runtime}. P2 is evaluation horizon; P1/Pout producer
+  visibility, OpenPolicy, InputAdmissible, migration and Ready are independent.
+  P2 runtime with P1 compile is legal; actual reverse-dependent work requires reify.
 - Name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
@@ -156,18 +147,20 @@ alternate relation or identity.
   NameCoord. This is distinct from TypeMemberScope(T)=/tau(T).
   V_tau registration, Val2 residency, Pattern registration and ConstructEdge
   remain independent; no self-construction witness proves type callability.
-- `PolicyMode = {const, mut}`; `MetaInstancePolicy = {meta, close}` is independent.
-  Complete only omitted mode: meta + current OpenHere yields mut, otherwise const.
-  Unknown required OpenHere is unavailable, never a negative proof.
 - Policy preference, CapabilityRealization, Writable, and DynamicLegality are
   independent judgments.
 - Output demand is total before maxima; selected failure never reopens.
 - Policy migration is direct, same-Type, candidate-driven, and existing-first.
-- Abstract literals form before concrete construction.
-- `OpenHere`, Writable, PolicyMode, and construction authority do not imply one
-  another. `extend` is pure; `inject` is read + extend + write.
-- `InvocationResult` is the single semantic result envelope; `struct` returns
-  complete tau.
+- Abstract literals form before separately requested ordinary concrete construction.
+  External classifier Patterns first observe the unchanged RHS. Only a selected
+  forced consumer with proved total-root mismatch may request one ordinary root
+  conversion and final extraction. Applicability inserts none; unknown evidence
+  is unavailable and selected failure never reopens.
+- Structural interpretation forms complete types directly. struct:type->type
+  adds standard ordinary helpers while preserving structural registration;
+  *:type x type->type composes types and *=:type ref x type->unit performs the
+  ordinary read-transform-write update under its normal Pre premises.
+- InvocationResult is the single semantic result envelope.
 - Lifecycle facts are relative to one SemanticContinuation. Killable is instance-local, MoveEffect is fixed, Movable is frontier legality.
   Move does not imply Kill; Preserve Move is not copy and invokes no clone.
   Pass=Move; copy-derived paths are share/rebind -> selected clone -> fresh complete result -> Move.
@@ -179,8 +172,11 @@ alternate relation or identity.
 - Color vocabulary is extensible and relation rows are explicit and directed.
 - SafetyPolicy is orthogonal to PolicyMode; unsafe admits compatible external
   semantic axioms, never missing Pre facts or private optimizer assumptions.
-- Child-directory names normalize to ordinary fresh-name actions followed by
-  explicit ref and one-shot directory type initialization before body evaluation; root and filenames add no segment.
+- Child directories provide inherited navigation; file P let inner=rhs becomes
+  P let inner::path=rhs through the ordinary let consumer. Root and filenames
+  add no segment or semantic type-composition action.
+  Empty source fragments form no semantic names or owners. Actual inherited
+  destinations require the ordinary qualified consumer; missing wiring is unavailable.
 - Host capabilities return ordinary Objects. Physical normalization and build
   facilities introduce no semantic facts; E alone owns meaning.
 - E is idempotent and saturates ready actions without rewriting continuations.
@@ -194,50 +190,60 @@ alternate relation or identity.
   UnitDiscard; continuation-path tail unit falls through, non-unit synthesizes return.
   Explicit unit return still returns; AST-list position is not semantic tailness.
 - Done is internal chain/target completion, never an Object or Pattern.
-  Split/D is restricted; residual escape separately reads ordinary meta facts.
+  Split/D is restricted; residual escape separately reads ordinary compile facts.
   Return has no synthetic local unit contribution.
-- Every legal completed closure expression returns full tau_C through ordinary
-  struct, with tau_C/c_C/A_C/() distinct and a finite implementation leaf.
+- Every legal completed closure expression returns full tau_C through atomic structural formation, with tau_C/c_C/A_C/() distinct and a finite implementation leaf.
   File implementation-layer let installs at the established package root;
   true lexical local let remains binding. Contribution repair preserves all legal binding/shadow/write/group
   actions and never retries failed execution as contribution.
 - NameCoord precedes Retained/typed Place realization; Fresh means not Retained.
   Ordinary name writes may change Val2(Core) without either registration.
-  Pattern-registered extension uses extend/inject; TypeAdd changes V_tau only.
-- Meta call/value and Pattern/name declarations are equal surface projections.
-  Grammar-fixed operator use selects operator[op]; dot .op selects op::adl;
-  explicit paths remain explicit. OperatorNameValue reads without recursive
-  dispatch. OG_s retains spelling and selects the current slot. Ordinary
-  call/extract/generative relations apply;
-  generated occurrences supply no Pattern or V_tau registration evidence.
-  x.field == x |> .field == x |> field::adl is an ordinary call, not NameExpr
-  or a private Place projection. A finite generator answers an unbounded name family
-  without infinite predeclaration/reopening. A T -> F accessor is affine value access;
-  it does not imply parent death or leave a partial aggregate.
+  Registered structural composition uses ordinary * / *=; TypeAdd changes V_tau only.
+- Requested-name producers are ordinary compile computations over a requested
+  NameValue and may realize any ordinary resident. Dot enters the generative
+  field::adl overload family: receiver candidates perform ordinary method calls,
+  type-valued receiver candidates advance NameExpr paths. x.field lowers through
+  x |> .field to field::adl. e..field(args) is exactly e |> .field(args).
+  Generated occurrences supply no structural-registration evidence. A T -> F
+  accessor is affine value access; it does not imply parent death or leave a
+  partial aggregate.
 - Close freezes non-generative registered structure, not future ordinary generated
   Val2 realization. Such results reopen no construction view and do not alter old
   snapshots. Current Norm/only_val2 observations remain continuation-relative.
 
+- Simple let a:b extracts v and Type(v) at adjacent universe ranks; bare b
+  introduces a classifier-side name. External constraints enter through full
+  Paths or R$. RHS _ is universerank; structural _ is anonymous Pattern.
+  HoleOverride replaces written dimensions and inherits others, independently
+  of ElabIn/ElabOut. Bare branches have a unique actual opaque value member.
+- Callable-head P2 reify materializes only reverse-dependent work of the same E with ordinary input/frontier/dependency
+  premises and closed normal-return delivery through R. New runtime calls
+  select at their actual frontier; selected calls never reopen.
+  Region_K(n)=R(NamePosition_K(n)); E requires no future-path enumeration.
+  ReturnTarget uses callable tag plus actual activation, independently of ActualSelf.
 - Product layers with all direct entries named are unordered; any bare entry
   makes that whole layer ordered. Nested layers decide independently. Unordered
   to bare sequence requires named extraction and explicit ordered assembly.
-- Read_name completes full NameExpr computation to NameValue, including ordinary,
-  meta and compile subexpressions. e# projects that result and blocks only resident
-  reading; it is neither quotation nor an evaluation stop. name::path preserves
-  Pattern/path construction/extraction direction. Bare a inherits navigation in
-  extraction; evaluated a$ reinjects material, so the non-extraction equality
-  name::a == name::(a$) is not an unconditional extraction rewrite.
-  (n#)$ reconstructs structure only under the Path consumer; p[i] yields
-  relative single-name path_pattern.
-  RHS colon forms ordinary Product |> slice; empty colon/comma slots are unit.
-  LHS colon remains annotation; FullExpr > : > comma structurally, :: > : lexically.
-  with items are Path material and forward references are legal; instantiate cleanup
-  relations conditionally per actual Self/navigation layer after complete control flow. Textual roots resolve at resident use;
-  explicit roots retain anchors/dependencies. General $ inserts no implicit
-  Path projection and preserves Hole identities. ADL uses ((a#)[0])$::t.
-- Public Policy pair syntax is retired; internal value/type observations remain
-  independent and share the source evaluation edge only for direct projections.
-  Concrete atoms, omission, holes and splice remain distinct.
+- Product packaging is `(_ * ω)$`; its classifier Pattern is `_ * ω`.
+  Bare P is contextual exposed/merged repetition material. Norm preserves source
+  nesting; established call input exposes available standard packaging while
+  expression barriers and unavailable runtime shape remain opaque.
+  `t * n` moves element material to Val1 while
+  retaining it in complete identity; legal Val1 changes need not change Pattern.
+  Selected `pack?` exposes one available layer. Runtime-only `t * ω` needs an
+  iteration-like consumer, not static length expansion. S `_$` / `(_)$` supply
+  an external universerank Pattern, not anonymous `_`; the singleton contextual
+  form is `(_ * 1)$`. Missing external Pattern consumers cannot be discarded.
+- Read_name completes full NameExpr computation to NameValue. e# projects that
+  result and blocks only resident reading. Structural bare names share one
+  navigation-completion law across Path and extraction consumers. $ is a stable
+  interpretation-polarity flip: Interpret(e$,C)=Interpret(e,Flip(C)), Flip^2=Id,
+  with arbitrary source nesting. $ is independent from resident Read and Stage.
+  Path support preserves Hole identities; ADL dynamic path segments use
+  ((field#)[0])$::t.
+- Policy syntax preserves independent constraints; internal value/type observations are linked adjacent ranks of the same source
+  edge for direct projections.
+  Concrete atoms, omission, holes and opposite-context material remain distinct.
 - Terminal ReturnPattern/Pout demand precedes immediate root maxima; established
   outer P1/P2 jointly constrain inner positions, without an implicit semantic temp.
 - Dependencies separate requirements, semantic realization and layout. [] is one
@@ -248,7 +254,7 @@ alternate relation or identity.
   In-place syntax forms dependencies automatically and produces an ordinary
   first-class result. Invocation does not recapture; binding, transfer and outer
   writes use actual access/capability/lifetime, with no placement-based veto.
-  Non-MetaDecl DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
+  Closure DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
   per occurrence; resolved explicit capture binders replace corresponding outer
   observations. Ordinary => closures may have both. InPlace excludes explicit
   clauses, but automatic dependencies do not imply InPlace. Placement and
@@ -295,3 +301,15 @@ not run it for corrections to the current PR.
 
 When asked to publish changes, inspect status/diff, commit intentionally, push
 with upstream tracking, and use `gh` for draft PR creation or updates.
+
+Callable-head P2 reify has outward runtime horizon Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Its active
+closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+and mixed-Policy outputs are legal; the need for reify follows the continuation's
+reverse dependencies. Legal Policy ranks have exactly the form
+absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary
+runtime let changes the first non-absent rank; unrefined compile let requires
+all non-absent ranks compile, preserving absence. Explicit Hole Policies can
+address individual ranks. Unknown higher observations remain unavailable.
+Type operations use the compile algebra. See the
+[unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

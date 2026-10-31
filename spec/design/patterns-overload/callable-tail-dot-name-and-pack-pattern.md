@@ -6,8 +6,9 @@ strategy-specific later work; their syntax and semantic boundaries are fixed
 here.
 
 This note connects four thin surface forms to the existing function-object,
-Pattern-normalization, and unique-overload-selection model. It retains the internal value/type Policy observations, the three execution phases, or the requirement that ordinary overload
-resolution produce one result.
+Pattern-normalization, and unique-overload-selection model. Internal value/type
+Policy observations retain adjacent-rank coherence, Stage is compile/runtime, and ordinary
+overload resolution produces one result.
 
 ## 1. Callable implementation tail
 
@@ -82,28 +83,16 @@ Placement is formation syntax only. After formation it supplies no overload
 applicability, specificity or preference evidence and cannot break a tie
 between otherwise equally preferred distinct candidates.
 
-### Meta declaration context
+### Requested-name producer context
 
-The callable layer establishing MetaDecl/MetaInvoke identity has the narrower
-surface defined by the [meta declaration owner](operator-patterns-and-generative-declarations.md#1-one-declaration-two-surface-projections):
-
-```text
-MetaDecl(C) => Placement(C) = Ordinary
-MetaDecl(C) => CaptureClause(C) = absent
-MetaDecl implementation requires =>
-```
-
-`[cap] (...) :meta => B` is invalid MetaDecl material. `P let H { B }` is not
-an in-place form of a generative declaration. The declaration consumer rejects
-these shapes directly; it does not first form an ordinary captured closure
-and reinterpret it as meta. Generic Raw/Norm preservation is not acceptance of
-MetaDecl, and the lexer still treats meta as a contextual Name.
-
-MetaDecl also has no implicit/automatic capture of unpassed enclosing locals.
-Its inputs and stable definition environment obey the meta owner's masking
-and identity laws. Ordinary closures inside the body retain their own capture
-grammar and may use only material legally available there. The restriction
-does not propagate to those nested non-MetaDecl closure forms.
+Ordinary => implementation syntax is also used for requested-name producers.
+The body may deliver any ordinary declared result; NameProducingAction and
+NameExprResult are independent. CompilePartner formation follows ordinary
+callable dependencies and each closure retains its lexical/Self/navigation
+layer. Generic Raw/Norm preservation supplies no semantic declaration, instance
+or authority. Requested-name material is part of the canonical invocation
+inputs. The [declaration owner](operator-patterns-and-generative-declarations.md)
+owns application and specificity.
 
 ### 1.1 Strong-context boundary
 
@@ -249,7 +238,7 @@ defines Needs and requirement/realization/layout. Capture is one surface consume
 external values, types, host resources and actual late Path reads use the same
 framework. This section owns the existing [] syntax and binder scope.
 
-The capture surface for an ordinary non-MetaDecl closure is:
+The capture surface for an ordinary ordinary closure is:
 
 ```text
 CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
@@ -374,8 +363,7 @@ DependencyMaterial(C) is the union of explicit capture occurrences and eligible
 free observations not replaced by resolved explicit capture binders. An ordinary
 `=>` closure may have both; automatic dependencies do not imply in-place syntax.
 In-place syntax merely excludes an explicit clause. After formation, origin
-does not add a call, transfer or overload dimension. MetaDecl is excluded from
-this enclosing-local capture mechanism by the boundary above.
+does not add a call, transfer or overload dimension. Compile partners use the same admitted dependency relations.
 Outer writes require an actually write-capable dependency realization and
 ordinary access/capability/lifetime checks. Explicit versus automatic formation
 does not independently grant or veto write authority.
@@ -458,8 +446,8 @@ let f = <A>(self, x: A) -> r: A => {
 
 Here `r` is the explicit binder bound to the returned object, while `A` is the
 postfix annotation Pattern on that binder. If the callable returns an ordinary
-value, `r` denotes that value; if it returns a type/Pattern object, `r` denotes
-that type/Pattern object. The parser does not classify `r` itself as a type.
+value, `r` denotes that value; if it returns a complete type, `r` denotes
+that type. The parser does not classify `r` itself as a type.
 
 The anonymous constrained form is `-> _: A`. `-> A r` is an extraction
 Pattern and must not be reinterpreted as the annotated-result shorthand
@@ -651,18 +639,21 @@ Nested Product/Sequence levels remain independent:
 (a, ...x, ...y)               // validator error
 ```
 
-### 4.4 No unpack operator
+### 4.4 Bare remainder composition and packed extraction
 
-There is no corresponding right-value spread syntax. The remainder bound to
-`args` is already ordinary normalized Pattern/value product material. Existing
-product normalization composes it in:
+The remainder bound to `args` is already bare normalized Pattern/value Product
+material. Contextual `_ * ω` expansion and merging compose it in:
 
 ```lang
 (val, args) |> name::T
 ```
 
-Introducing `*args`, `unpack(args)`, or an RHS meaning for `...args` would add
-a redundant second algebra and is outside this design.
+An ordinary repetition wrapper instead uses its selected `pack?` interface to
+expose bare Product material, as defined by the
+[Product owner](product-repetition-and-unpacking.md). Compile `t * ω` requires
+an available finite payload; runtime-only variable length uses an ordinary
+iteration-like consumer. Ellipsis itself remains Pattern-side remainder
+matching; `...args` has no RHS spread meaning.
 
 ## 5. Pack specificity evidence
 

@@ -5,7 +5,7 @@ use crate::{
 };
 
 use super::{
-    closure::{parse_binderless_pipe_branch_closure, parse_body_block},
+    closure::{parse_body_block, parse_pipe_branch_closure},
     cursor::ParenClassification,
     form::Parser,
     operator::parse_operator_expr,
@@ -216,10 +216,7 @@ fn try_parse_incoming_product_branch(parser: &mut Parser<'_>) -> Option<Vec<Segm
         return None;
     }
 
-    // Binderless heads, including `(self, <> P)`, are ordinary headed closures. Let the closure
-    // parser consume it so the branch shorthand and its explicit expansion
-    // share one BindingSlot/Pattern construction. Other parenthesized heads,
-    // including `(_ P)`, remain on the established Product + body path.
+    // Explicit extraction heads are consumed by the ordinary closure parser.
     let (first_index, first) = parser.cursor.peek_at_skip_trivia(start_index + 1);
     let head_index = if matches!(first.kind, TokenKind::Name) {
         let (comma_index, comma) = parser.cursor.peek_at_skip_trivia(first_index + 1);
@@ -232,6 +229,9 @@ fn try_parse_incoming_product_branch(parser: &mut Parser<'_>) -> Option<Vec<Segm
         first_index
     };
     let (less_index, less) = parser.cursor.peek_at_skip_trivia(head_index);
+    if matches!(less.kind, TokenKind::Name) && less.text == "let" {
+        return None;
+    }
     if matches!(less.kind, TokenKind::Symbol(Symbol::Less)) {
         let (_, greater) = parser.cursor.peek_at_skip_trivia(less_index + 1);
         if matches!(greater.kind, TokenKind::Symbol(Symbol::Greater)) {
@@ -267,7 +267,7 @@ fn try_parse_bare_name_pipe_branch_sugar(
     }
 
     parser.cursor.set_index(start_index);
-    let atom = parse_binderless_pipe_branch_closure(parser);
+    let atom = parse_pipe_branch_closure(parser);
     let span = atom.span;
     Some(vec![SegmentElementAst::OperatorExpr(OperatorExprAst {
         kind: OperatorExprKind::Atom(atom),
@@ -311,13 +311,12 @@ fn parse_segment_element(
                 let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
                 if matches!(
                     after.kind,
-                    TokenKind::Symbol(Symbol::LBracket)
+                    TokenKind::Symbol(Symbol::LBracket | Symbol::Dot | Symbol::DotDot)
                         | TokenKind::Operator(crate::OperatorSpelling::Dollar)
                 ) {
-                    // A Product followed by `[...]` remains in the ordinary
-                    // postfix-expression path. This preserves cases such as
-                    // `()[[capture] => { ... }]`; only a complete
-                    // `[[Name]] {` continuation above proves a closure head.
+                    // Suffixes consume the complete Product through the ordinary
+                    // postfix-expression path. Only a complete `[[Name]] {`
+                    // continuation above proves a closure head.
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }

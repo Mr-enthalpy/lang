@@ -1,0 +1,2 @@
+let source = 42;
+let constrained:uint16:: = source;

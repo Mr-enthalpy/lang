@@ -1,4 +1,12 @@
 use std::fs;
+#[test]
+fn product_repetition_material() {
+    assert_parser_case("product_repetition_material", false);
+}
+#[test]
+fn reify_p2() {
+    assert_parser_case("reify_p2", false);
+}
 use std::path::PathBuf;
 
 fn case_path(name: &str, extension: &str) -> PathBuf {
@@ -47,9 +55,9 @@ fn assert_parser_cases_same_head_shape(left: &str, right: &str) {
     assert!(left_output.diagnostics.is_empty());
     assert!(right_output.diagnostics.is_empty());
     assert_eq!(
-        lang_syntax::dump_ast(&left_output.program).replace("GeneratedSelf", "TextName self"),
+        lang_syntax::dump_ast(&left_output.program),
         lang_syntax::dump_ast(&right_output.program),
-        "`{left}` and `{right}` share head structure modulo the fresh versus textual self binder"
+        "`{left}` and `{right}` share the explicit structural extraction head"
     );
 }
 
@@ -76,8 +84,18 @@ fn expr_name() {
 }
 
 #[test]
+fn joint_extraction_polarity() {
+    assert_parser_case("joint_extraction_polarity", false);
+}
+
+#[test]
 fn contextual_structural_material() {
     assert_parser_case("contextual_structural_material", false);
+}
+
+#[test]
+fn product_receiver_dot_suffixes() {
+    assert_parser_case("product_receiver_dot_suffixes", false);
 }
 
 #[test]
@@ -186,20 +204,20 @@ fn pipe_branch_name_shorthand() {
 }
 
 #[test]
-fn pipe_branch_name_binderless_explicit() {
-    assert_parser_case("pipe_branch_name_binderless_explicit", false);
+fn pipe_branch_name_external_pattern_explicit() {
+    assert_parser_case("pipe_branch_name_external_pattern_explicit", false);
     assert_parser_cases_same_head_shape(
         "pipe_branch_name_shorthand",
-        "pipe_branch_name_binderless_explicit",
+        "pipe_branch_name_external_pattern_explicit",
     );
 }
 
 #[test]
-fn pipe_branch_underscore_binderless_explicit() {
-    assert_parser_case("pipe_branch_underscore_binderless_explicit", false);
+fn pipe_branch_underscore_external_pattern_explicit() {
+    assert_parser_case("pipe_branch_underscore_external_pattern_explicit", false);
     assert_parser_cases_same_head_shape(
         "pipe_branch_underscore_shorthand",
-        "pipe_branch_underscore_binderless_explicit",
+        "pipe_branch_underscore_external_pattern_explicit",
     );
 }
 

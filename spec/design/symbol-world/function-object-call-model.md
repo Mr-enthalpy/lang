@@ -28,7 +28,8 @@ CallType(tau)
 
 CallCandidates(G)
     = disjoint_union over tau in G of CallCandidates_type(tau)
-Type(actual callee) = Type(first self)
+CallOrdinary(x): CallTarget(I)=x, ActualSelf(I)=x
+CallType(tau): CallTarget(I)=tau, ActualSelf(I)=c*
 ```
 
 Entries denotes the implementation family offered to candidate preparation,
@@ -59,10 +60,10 @@ absent Val1; ConstructEdge witnesses structural construction, not type identity
 or type-callee projection.
 
 Every closure expression's legal completed evaluation returns a complete tau_C,
-whether ordinary, in-place, generated, file-level or local. Formation is ordinary
-struct construction of head/body/dependency material; equivalent material can
-participate in extend/inject under their own premises. See
-[construction](symbol-first-meta-construction-and-pattern-injection.md#211-v_τ-closure-materialization-derived-semantics).
+whether ordinary, in-place, generated, file-level or local. Formation atomically constructs the complete type and its structural witnesses
+from head/body/dependency material. Complete types can participate in ordinary
+* / *= under their own premises. See
+[construction](structural-type-formation-and-composition.md#7-closures-and-anchored-contributions).
 This is not an extra conversion of a type into a value, nor a promise of readiness
 or lifetime permission in every context.
 
@@ -134,7 +135,7 @@ Traditional callee-first f() / f(x) are not source call spellings.
 Call(...), Invoke(...), Entries(...) and nested H(G(...)) in semantic
 equations are metanotation, not exceptions to this direction.
 
-A name-headed callable shorthand preserves (self, <> name) as its semantic
+A name-headed callable shorthand preserves (_, let _: (name)$) as its semantic
 head. It must not lose slot zero by expanding to (<> name) alone; see the
 Pattern owner §9. This retains the selected ordinary x or type-projected c
 all the way into the actual invocation.
@@ -165,7 +166,7 @@ consumer demand
   -> if successful, use it and stop
   -> otherwise, if the query accepts runtime, extract its runtime branch
   -> select an existing static source Policy view
-  -> from the held source PatternValue, enter its resolved Pattern owner
+  -> from the held source P coordinate, enter its resolved Pattern owner
   -> enumerate the language-authorized associated Val2 family
   -> obtain each candidate value's TypeValue
   -> resolve associated ()
@@ -204,7 +205,7 @@ Stage, presence, Pp capability, Type, and structural applicability remain hard
 conditions.
 
 As an explanatory model rather than frozen surface syntax, one type name binding may
-carry the pure Pattern member `:t` plus ordinary value members over the four current
+carry the type resident `:t` plus ordinary value members over the four current
 `output PolicyMode <- input PolicyMode` coordinates. Every coordinate is
 expressible, but no coordinate is required to exist: each may be absent or
 realized by `default`, `delete`, or `custom`. More specific Pattern members may
@@ -235,7 +236,7 @@ The model does not freeze a special global `transition` name binding or a new
 callable ontology. It freezes complete-choice existing projection followed,
 only when that projection is empty and the choice accepts runtime, by one
 ordinary function-object call toward the extracted runtime branch. The
-connected atomic slice begins from the source value's existing PatternValue
+connected atomic slice begins from the source value's existing P-coordinate
 owner and its associated `()` Val2; independently authorized mechanical
 operations may select other ordinary associated families without changing
 this demand rule.
@@ -244,19 +245,18 @@ The connected `lang_build` slice now implements this routing for source
 function objects and toolchain-source associated `()` entries:
 
 ```text
-Semantic name binding / Pattern owner
-  -> CallCandidates(NamedType(S))
-  -> TypeValue
-  -> PatternValue / ResolvedPatternScope
-  -> associated ()
+Semantic name binding
+  -> ordinary resident x
+  -> Type(x)
+  -> associated Val2[()]
   -> PreparedCallCandidate
   -> InvocationFrame
   -> ordinary result entries
 ```
 
-The source-name binding and already-held-Pattern entrances merge at the same
-candidate pipeline. The latter carries an explicit semantic receiver and does
-not fabricate a source path or require migration metadata.
+The source-name binding and held-complete-type operation entrances merge at
+the same candidate pipeline. The latter consumes actual resident witnesses
+from the captured Core and carries an explicit semantic receiver.
 
 Name-based source calls and compiler-authorized operations therefore have
 different candidate entrances but one ordinary call trunk. Neither entrance
@@ -280,7 +280,7 @@ recovery, most-recent carrier, or reverse `AsType` candidate entrance.
 Associated source navigation obeys the same forward-only rule. If:
 
 ```lang
-let T: type = uint8;
+let T:type:: = uint8;
 ```
 
 then a target selected through `T` resolves T to one terminal NameBinding and reads the complete
@@ -288,6 +288,14 @@ type snapshot. Type-as-callee candidates come from its `V_τ`; an ordinary
 navigated member may additionally be selected through `Q`/`Val2` under the
 normal navigation rules. Neither path inspects provenance or searches for
 uint8's defining binding.
+
+Associated operation candidates observed through a complete type value come
+from the owned Val2 material captured by that exact `Core(tau)`. Every admitted
+candidate requires a resident witness in that snapshot. A Pattern coordinate
+may index an explicitly registered Core Object; it supplies no member lookup
+authority by itself. Later changes to another Object with the same Pattern
+cannot add candidates to a held snapshot, and navigation through a resident
+Object observes that Object's own Val2.
 
 Migration callables obtain their result Pattern and complete type observations
 from registered semantic entities. Constructor/extractor materialization and
@@ -323,7 +331,7 @@ late adaptation.
 
 The compiler-authorized stage migration of §2.1 (static-value-to-runtime-value)
 and the explicit `const` / `mut` reconstruction of
-`symbol-policy-and-compile-flow-projection.md` §1.2 are distinct:
+`policy-and-static-flow-projection.md` §1.2 are distinct:
 
 ```text
 compiler-authorized stage migration
@@ -429,7 +437,7 @@ a standalone value.
 
 ## 6. Implicit `self`
 
-Every callable, including ordinary, in-place, meta, and compiler-generated
+Every callable, including ordinary, in-place, and compiler-generated
 closures, has an implicit first parameter position for the caller object.
 When the source writes any formal position, the first written formal explicitly
 declares the Pattern/binder for that position. Its spelling is unrestricted;
@@ -466,11 +474,12 @@ A head with no written formal still has invocation-frame slot 0, but it does
 not bind that object to a source Pattern.
 
 No separate self-policy plane is required. P1/P2 are independent. For
-omitted ordinary P1 stage, runtime P2 defaults to runtime, seal to seal, and
-compile to compile; meta qualification follows its own owner. Explicit P1
+omitted ordinary P1 stage, runtime P2 defaults to runtime, and
+compile to compile; open qualification follows its own owner. Explicit P1
 is never overwritten. The completed view must supply legal self material.
 
-Pin = ElabIn(P2, Delta_in). Omission inherits the applicable base; explicit
+Pin = ElabIn(HorizonPolicy(P2), Delta_in). Reify projects to the ordinary runtime
+horizon for this input view. Omission inherits the applicable base; explicit
 const/mut refines mode, and explicit stage atoms/holes constrain stage.
 Thus a runtime callable may have heterogeneous compile and runtime Pins.
 Pout = ElabOut(P1, Delta_out), with Pout.stage = P1.stage. A mode qualifier
@@ -497,16 +506,10 @@ associated () implementation:
   ReceiverType(C) = type carrying the selected call entry
 ```
 
-The callable-local `Self` frame may therefore combine these local projections:
-
-```text
-namespace role          = callable-local semantic space
-receiver-type projection = ReceiverType(C)
-caller value slot       = invocation slot 0
-```
-
-These are callable-frame labels, not independently stored name binding facets in the
-target Object ontology.
+The callable-local Self observation preserves namespace, receiver and activation
+relations without exposing a public frame/capture tuple. Norm_Name is independent
+of structural unfolding of self. ActualSelf, CallTarget and active return frame
+are distinct observations of the same call.
 
 This does not inject callable-local declarations into the named receiver
 type's namespace. Nested owner paths use source navigation order:
@@ -515,23 +518,17 @@ identity and does not assert that each receiver type is anonymous. Canonical
 ownership contains no synthetic `__inner_space` or `__inner_namespace`
 component.
 
-A local `struct` evaluated by an ordinary or `compile` callable uses the
-current callable owner as its ambient Pattern owner. A `compile` invocation
-does not manufacture a meta-style canonical-arguments owner.
+Every compile call forms a CompileInstance from the current parent semantic
+owner, selected CompilePartner and canonical inputs before EnterBody. The
+result may be any declared ordinary value; a single direct instance-open
+self-root type provides a computed NameExpr. The [invocation owner](../static-evaluation/compile-instance-invocation-and-result-delivery.md)
+owns result reachability, delivery, current storage and open/close completion.
 
-An ordinary meta invocation constructs an ordinary result name under
-MetaInstanceRoot(parent, callee, CanonicalizeInvocationInputs(In)). Its direct
-result is the instance type tau_M rooted at M; arbitrary values and borrows may
-be ordinary Val2 payloads. P1 meta retains the instance under OpenHere; close let
-completes and closes it. Member value/ref observation and migration are ordinary. The
-[invocation owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
-defines result-name identity, dependency-derived openness and residency/cache
-reuse. All of these use the implicit-self mechanics above.
-
-A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct`,
-`extend`, or `inject`, also has a function object, type, associated `()`, and implicit self,
-but may use its specified special owner/scope rule instead of creating an
-ordinary externally navigable `MetaInstanceScope`.
+struct is an ordinary type-to-type helper call. Structural formation belongs
+to S interpretation, with actual Val2 role witnesses published atomically.
+Every ordinary and in-place closure keeps its own lexical/Self/navigation layer.
+Selected semantic call entries supply implementation, Policy and privilege;
+graph declarations remain rendering projections.
 
 ## 7. ZST function objects
 
@@ -545,7 +542,7 @@ type equality do not replace those judgments.
 
 The binding created by `let fn = () => { ... }` has no written mode override.
 Inherited/contextual constraints are considered before a separate applicable
-DefaultModeCompletion chooses mut only under meta + current OpenHere, const
+DefaultModeCompletion chooses mut only under open + current OpenHere, const
 otherwise. Required missing evidence is unavailable. Omission is neither an
 explicit mode constraint nor a deduction hole; P1 mode is not generally copied from P2. An
 explicit declaration P1 supplies its written constraint. The
@@ -596,7 +593,7 @@ FreeExternalObservation(C, d) and not ReplacedByExplicitCapture(C, d)
     => d in AutomaticDeps(C)
     => Needs(Form(C), Source(d), observation, Gamma, Sigma)
 DependencyRequirement -> DependencyRealization
-ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial(C))
+ClosureFormation(C) = FormCompleteType(Head_C, Body_C, DependencyMaterial(C))
 
 InPlace(C) => ExplicitDeps(C) = empty
 AutomaticDeps(C) != empty does not imply InPlace(C)
@@ -604,12 +601,11 @@ AutomaticDeps(C) != empty does not imply InPlace(C)
 Eval(InPlaceClosure_C) = tau_C
 ```
 
-These occurrence rules apply to ordinary non-MetaDecl closures. An ordinary
-`=>` closure may combine an explicit clause with automatic dependencies for
-other free observations. A resolved capture binder replaces its corresponding
-outer occurrence; source spelling alone does not deduplicate dependencies.
-MetaDecl has no explicit capture clause or unpassed-local automatic capture
-channel; its ordinary `=>` form follows the meta owner's input/definition scope.
+These occurrence rules apply to all closures. An ordinary => closure may
+combine explicit and automatic dependencies for distinct occurrences. Resolved
+capture binders replace the corresponding outer observations. CompilePartner
+selection preserves these established dependencies and their ordinary identity.
+Invocation preserves the actual lexical owner and admitted dependency coordinates.
 
 Free external observations are handled at formation through ordinary resolution
 and dependency realization fixed by the source occurrence's selected ordinary
@@ -675,7 +671,7 @@ DynamicLegality -> Ready execution or retained continuation
 ```
 
 The two rounds are owned by
-[Policy §12](symbol-policy-and-compile-flow-projection.md#12-unified-binding-and-overload-selection).
+[Policy §12](policy-and-static-flow-projection.md#12-unified-binding-and-overload-selection).
 Round one executes no speculative body or migration. Round two is ordinary
 overload selection. Unresolved projection evidence retains a continuation.
 Each nested producer seals under candidate-independent immediate-consumer
@@ -695,12 +691,11 @@ It hides unreadable runtime Val1 without erasing an argument, its Pattern,
 Val2 or semantic identity. Every projection and runtime residue retains the
 sealed (c*,sigma*,frame); runtime does not reselect.
 
-Generic meta partner M(F) has a separate symbolic anchor and invocation
-identity. It is not C_sigma(F). A cached companion entry records a derivation;
-it neither creates semantic callability nor grants a second dispatch route.
-Existing ordinary source-call and associated-entry carriers implement only
-the connected slice recorded in the roadmap; they do not establish the full
-R_vis/C_sigma consumer.
+Each C_sigma(c) is a realization of the selected CompilePartner, retaining the
+source receiver/call-entry pair and sealed projection/frame. It forms its
+CompileInstance through the common invocation relation, independently of result
+kind and P2. Cached correspondence supplies neither callability nor execution
+permission; source and projection consumers obey the same ordinary relations.
 
 ## 9. Normalized call-site handoff
 
@@ -753,16 +748,31 @@ Current source carriers do not implement this full consumer.
 - In-place syntax forms dependencies automatically and returns ordinary tau.
   Invocation uses those dependencies without recapture. Binding, transfer and
   outer writes depend on actual access/capability/lifetime, not source placement.
-- Ordinary and built-in privileged meta functions follow the same
-  function-object and implicit-self call model.
-- Ordinary/compile local pattern construction uses the function-object internal
-  Self frame; compile does not create a MetaInstanceScope.
-- Ordinary meta construction is anchored by the canonical MetaInstance anchor
-  `M` (a symbolic-navigation layer); its direct result is `τ_M` rooted at `M`;
-  built-in privileged AST meta functions may instead use their declared special
-  scope/owner rule.
-- `.name` uses ordinary name::adl generation/forwarding; E.name shares that
-  entrance, while ..name retains its direct-call surface. Private normalized
-  forwarding-body generation is a legacy carrier, not canonical authority.
+- Every compile call forms a CompileInstance before body evaluation, independent
+  of result kind and P2; selected call entries retain their ordinary self.
+- Every closure keeps its lexical/Self/navigation/dependency layer.
+- struct adds ordinary type helpers while preserving structural registration.
+- .name enters name::adl; receiver and type-path candidates use ordinary
+  applicability/specificity. e..name(args) equals e |> .name(args).
+
+
 - Callable-tail named strategy metadata operates only on fully admissible
   candidates and cannot reopen ordinary overload enumeration.
+
+## Callable tag and activation observations
+
+```text
+CallType(tau):
+  select (c*,Impl*,projection*,frame*) from V_tau
+  ActualSelf(I)=c*
+  CallTarget(I)=tau
+CallValue(x): ActualSelf(I)=x; CallTarget(I)=x
+ReturnTargetTag(I)=CallTarget(I)
+```
+
+The tag is the currently invoked callable Object, independent of the chosen
+implementation receiver. Tag plus actual control-flow activation identifies
+one active return frame. Recursive activations of the same tag remain distinct.
+Type(tau_C)=type and Type(type)=(1 type); classifier extraction observes this
+rank, independently of Type(c*). Self is Pattern-observable without transparent
+capture-layout unfolding. Neither tag nor its representation affects selection.

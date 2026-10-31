@@ -1,1 +1,1 @@
-mut + runtime let verify: uint8 = 1;
+mut + runtime let verify: uint8:: = 1;

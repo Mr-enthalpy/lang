@@ -109,8 +109,8 @@ later use cannot reopen the selected call.
 Completion is internal and target/chain-qualified. It is not an Object or
 Pattern, has no public constructor, and cannot re-enter lookup, storage, @,
 ref/share or ordinary value observation. Return contributes no synthetic local
-unit value. Whole-Pattern delivery checks ordinary payload against the target
-Pattern; it is not structural inject or broadcast to all result binders.
+unit value. Whole-Pattern delivery checks the ordinary payload against the
+target Pattern as one ordinary result delivery.
 
 The following consumers remain unconnected:
 

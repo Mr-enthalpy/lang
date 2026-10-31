@@ -66,6 +66,32 @@ pub struct CleanupPlacement {
     pub declaration_order: u64,
 }
 
+/// An observation of one generation's scheduled cleanup in the current K.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CleanupObligation {
+    Outstanding,
+    Discharged,
+    Unavailable,
+}
+
+/// Common transactions query established cleanup facts even when their action
+/// has no lifecycle projection. Implementations read the supplied state and K;
+/// missing, foreign or future facts must return Unavailable.
+pub trait CleanupObligations {
+    fn cleanup_obligation(
+        &self,
+        continuation: &SemanticContinuation,
+        name: LifeName,
+    ) -> CleanupObligation;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CleanupGateFailure {
+    PrefixNotFixed,
+    Outstanding(LifeName),
+    ObservationUnavailable(LifeName),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ContinuationFailure {
     CleanupPrefixAlreadyFixed,
@@ -81,6 +107,7 @@ pub enum ContinuationFailure {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SemanticCommitFailure<E> {
     Continuation(ContinuationFailure),
+    Cleanup(CleanupGateFailure),
     Pre(E),
     Projection(E),
 }
@@ -127,10 +154,11 @@ impl SemanticContinuation {
     }
 
     /// All Pre callbacks read the original state. Post projections publish as
-    /// one transaction; even an invalid/stale projection witness publishes
-    /// neither partial state nor a continuation position. No projection owns
+    /// one transaction. The common cleanup gate precedes every action's Pre,
+    /// including actions without lifecycle projections. An invalid/stale witness
+    /// publishes neither partial state nor a continuation position. No projection owns
     /// position allocation. Multiple ordered actions may occupy one fixed cut.
-    pub fn commit_action<S: Clone, A, P, R, E>(
+    pub fn commit_action<S: Clone + CleanupObligations, A, P, R, E>(
         &mut self,
         at: SemanticPosition,
         state: &mut S,
@@ -143,6 +171,8 @@ impl SemanticContinuation {
                 ContinuationFailure::PositionBeforeFrontier,
             ));
         }
+        self.check_cleanup_before(at, state)
+            .map_err(SemanticCommitFailure::Cleanup)?;
         let next_action =
             self.next_action
                 .checked_add(1)
@@ -167,6 +197,28 @@ impl SemanticContinuation {
         self.position = at;
         self.next_action = next_action;
         Ok(result)
+    }
+
+    pub(crate) fn check_cleanup_before(
+        &self,
+        at: SemanticPosition,
+        state: &impl CleanupObligations,
+    ) -> Result<(), CleanupGateFailure> {
+        if !self.cleanup_is_fixed_through(at) {
+            return Err(CleanupGateFailure::PrefixNotFixed);
+        }
+        for placement in self.cleanup().iter().filter(|entry| entry.at < at) {
+            match state.cleanup_obligation(self, placement.name) {
+                CleanupObligation::Discharged => {}
+                CleanupObligation::Outstanding => {
+                    return Err(CleanupGateFailure::Outstanding(placement.name));
+                }
+                CleanupObligation::Unavailable => {
+                    return Err(CleanupGateFailure::ObservationUnavailable(placement.name));
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn place_cleanup(
@@ -303,6 +355,17 @@ impl SemanticContinuation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct ProjectionState(u64, u64);
+
+    impl CleanupObligations for ProjectionState {
+        fn cleanup_obligation(&self, _: &SemanticContinuation, _: LifeName) -> CleanupObligation {
+            // This fixture contains no lifecycle facts. Empty fixed prefixes
+            // need no observation; an actual obligation would be unavailable.
+            CleanupObligation::Unavailable
+        }
+    }
 
     fn placement(name: u64, at: u64, declaration_order: u64) -> CleanupPlacement {
         CleanupPlacement {
@@ -458,10 +521,32 @@ mod tests {
     }
 
     #[test]
+    fn unknown_cleanup_prefix_blocks_every_action_before_pre() {
+        let mut k = SemanticContinuation::default();
+        let mut state = ProjectionState(0, 0);
+        let before = (k.clone(), state.clone());
+        let result = k.commit_action(
+            SemanticPosition(0),
+            &mut state,
+            "ordinary action",
+            |_, _, _, _| -> Result<(), ()> { panic!("cleanup gate precedes Pre") },
+            |_, _, _| -> Result<(), ()> { panic!("cleanup gate precedes Post") },
+        );
+        assert_eq!(
+            result,
+            Err(SemanticCommitFailure::Cleanup(
+                CleanupGateFailure::PrefixNotFixed
+            ))
+        );
+        assert_eq!((k, state), before);
+    }
+
+    #[test]
     fn failed_projection_publication_changes_neither_other_projection_nor_cut() {
         let mut k = SemanticContinuation::default();
+        k.freeze_cleanup_through(SemanticPosition(2)).unwrap();
         let before = k.clone();
-        let mut state = (0u64, 0u64);
+        let mut state = ProjectionState(0, 0);
         let result = k.commit_action(
             SemanticPosition(2),
             &mut state,
@@ -478,7 +563,7 @@ mod tests {
                 "second projection rejects a stale witness"
             ))
         );
-        assert_eq!(state, (0, 0));
+        assert_eq!(state, ProjectionState(0, 0));
         assert_eq!(k, before);
         let identity = k
             .commit_action(
@@ -496,7 +581,7 @@ mod tests {
             identity.ordinal, 0,
             "failed publication did not allocate a semantic action"
         );
-        assert_eq!(state, (0, 6));
+        assert_eq!(state, ProjectionState(0, 6));
         assert_eq!(k.position(), SemanticPosition(2));
         let before = k.clone();
         let invalid = k.commit_action(

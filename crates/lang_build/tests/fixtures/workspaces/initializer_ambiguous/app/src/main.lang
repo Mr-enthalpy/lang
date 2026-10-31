@@ -1,17 +1,17 @@
-let int: type = uint16;
+let int: type:: = uint16;
 
 let f =
-  (self, t: type): meta -> r: symbol =>
+  (self, t: type::): compile -> r: symbol:: =>
 {
   let r = (t inner) |> struct;
   r;
 };
 
 let f =
-  (self, t: type): meta -> r: symbol =>
+  (self, t: type::): compile -> r: symbol:: =>
 {
   let r = (t inner) |> struct;
   r;
 };
 
-let X: type = int f;
+let X: type:: = int f;

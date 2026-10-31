@@ -1,2 +1,2 @@
 let + === +::checked_int
-let x: type = y
+let x: type:: = y

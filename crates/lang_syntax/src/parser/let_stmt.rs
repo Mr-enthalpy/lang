@@ -126,36 +126,6 @@ pub fn parse_binding_slot(
     )
 }
 
-/// Parse the atomic Pattern of pipe branch shorthand through the same
-/// BindingSlot path as an explicitly written `(<> P)` parameter.
-///
-/// The empty DeduceList is semantic, not decorative: it selects a binderless
-/// Pattern position. The caller is responsible for proving that the current
-/// token is the one atomic Pattern admitted by branch shorthand.
-pub(super) fn parse_synthesized_empty_deduce_binding_slot(
-    parser: &mut Parser<'_>,
-    context: BindingSlotContext,
-) -> BindingSlotAst {
-    let start = parser.cursor.current_span();
-    let inherited_deduce = parser.active_deduce_list();
-    let deduce = Some(DeduceListAst {
-        binders: Vec::new(),
-        span: start,
-    });
-
-    parse_binding_slot_after_prefix(
-        parser,
-        context,
-        inherited_deduce.as_ref(),
-        false,
-        start,
-        None,
-        false,
-        true,
-        deduce,
-    )
-}
-
 #[allow(clippy::too_many_arguments)]
 fn parse_binding_slot_after_prefix(
     parser: &mut Parser<'_>,
@@ -381,7 +351,7 @@ fn parse_binding_pattern(
         return BindingPatternAst::Error(parser.error_ast(message, token.span));
     }
 
-    let grouped_splice = parser
+    let grouped_flip = parser
         .cursor
         .classify_paren_at_segment_position()
         .1
@@ -391,7 +361,7 @@ fn parse_binding_pattern(
                 TokenKind::Operator(crate::OperatorSpelling::Dollar)
             )
         });
-    if grouped_splice {
+    if grouped_flip {
         let expression = super::expr::parse_pattern_expr_until(parser, |p| {
             at_binding_pattern_boundary(p, context) || p.cursor.at_name("with")
         });
@@ -977,7 +947,6 @@ fn binder_name_span(name: &BinderNameAst) -> Span {
     match name {
         BinderNameAst::Text(name) => name.span,
         BinderNameAst::Operator(name) => name.span,
-        BinderNameAst::GeneratedSelf { span } => *span,
     }
 }
 

@@ -40,7 +40,7 @@ fn serial_expressions_preserve_shape_without_inferred_completion() {
 }
 
 #[test]
-fn atomic_name_head_keeps_self_separate_from_binderless_argument() {
+fn atomic_name_head_has_anonymous_self_and_external_branch_pattern() {
     let parsed = parse("value |> Widget { self; };");
     assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
     let program = normalize_program(&parsed.program);
@@ -52,7 +52,7 @@ fn atomic_name_head_keeps_self_separate_from_binderless_argument() {
     };
     let frame = closure.head.as_ref().unwrap().formal_frame();
     assert!(
-        matches!(frame.self_formal, Some(NormPatternElem::BindingSlot(slot)) if matches!(&slot.value_pattern, NormPattern::Binder { identity: Some(identity), name: None, .. } if identity.root.owner == closure.semantic_owner.unwrap().id))
+        matches!(frame.self_formal, Some(NormPatternElem::BindingSlot(slot)) if matches!(&slot.value_pattern, NormPattern::Skeleton { skeleton: lang_syntax::NormSkeleton::Wildcard { .. }, .. }))
     );
     assert!(
         matches!(frame.explicit_parameters, [NormPatternElem::BindingSlot(slot)] if !matches!(slot.value_pattern, NormPattern::Binder { .. }))
@@ -60,27 +60,17 @@ fn atomic_name_head_keeps_self_separate_from_binderless_argument() {
 }
 
 #[test]
-fn generated_self_is_fresh_and_does_not_bind_source_self() {
-    let parsed = parse("value |> Widget { self; }; value |> Widget { self; };");
-    assert!(parsed.diagnostics.is_empty());
+fn anonymous_branch_self_does_not_bind_the_body_name() {
+    let parsed = parse("value |> Widget { self; };");
     let program = normalize_program(&parsed.program);
-    let owners = program.forms.iter().map(|form| {
-        let NormForm::Expr(NormExpr::Call { target, .. }) = form else { panic!("call") };
-        let NormExpr::Closure(closure) = target.as_ref() else { panic!("closure") };
-        let Some(NormPatternElem::BindingSlot(slot)) = closure.head.as_ref().unwrap().formal_frame().self_formal else { panic!("self slot") };
-        let NormPattern::Binder { identity: Some(identity), name: None, .. } = slot.value_pattern else { panic!("fresh binder identity") };
-        assert_eq!(identity.root.owner, closure.semantic_owner.unwrap().id);
-        assert!(matches!(closure.body.user_body().unwrap().forms.as_slice(), [NormForm::Expr(NormExpr::Name { text, .. })] if text == "self"));
-        identity
-    }).collect::<Vec<_>>();
-    assert_ne!(owners[0], owners[1]);
-
-    // Capture inference must still see the free body name through the shorthand.
-    let closure = closure("let f = [() |> Widget { self; }]() => { value; };");
-    assert!(
-        matches!(&closure.head.as_ref().unwrap().captures[0].slot.value_pattern,
-        NormPattern::Binder { name, .. } if name.as_deref() == Some("self"))
-    );
+    let NormForm::Expr(NormExpr::Call { target, .. }) = &program.forms[0] else {
+        panic!("call")
+    };
+    let NormExpr::Closure(c) = target.as_ref() else {
+        panic!("closure")
+    };
+    assert!(matches!(c.body.user_body().unwrap().forms.as_slice(),
+        [NormForm::Expr(NormExpr::Name { text, .. })] if text == "self"));
 }
 
 #[test]
@@ -155,7 +145,7 @@ fn incomplete_policy_constraints_report_diagnostics() {
 fn explicit_callable_self_position_is_not_spelling_restricted() {
     for spelling in ["receiver", "callable", "x"] {
         let parsed = parse(&format!(
-            "value |> ({spelling}, <> Widget) {{ {spelling}; }};"
+            "value |> ({spelling}, let _: (Widget)$) {{ {spelling}; }};"
         ));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         let program = normalize_program(&parsed.program);

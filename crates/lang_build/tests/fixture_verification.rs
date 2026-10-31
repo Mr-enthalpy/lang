@@ -4,23 +4,13 @@ use support::*;
 use lang_build::{BuildSession, BuildWorkspace, ToolchainGlobalSourceRoot};
 
 const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
-    ("vertical_slice", "app"),
-    ("verify_meta_conflict", "app"),
-    ("early_struct_meta", "app"),
-    ("struct_single_field", "app"),
-    ("struct_invalid_field_syntax", "app"),
-    ("field_named_ref", "app"),
-    ("field_named_share", "app"),
-    ("physical_subns", "app"),
-    ("type_named_struct", "app"),
-    ("struct_uint8", "app"),
-    ("struct_uint16", "app"),
-    ("same_name_distinct_namespaces", "app"),
+    ("verify_compile_conflict", "app"),
     ("resolver_core_conflict", "app"),
     ("single_package_type_binding", "app"),
-    ("nested_physical_namespace", "app"),
-    ("multi_file_same_namespace", "app"),
     ("non_lang_files_ignored", "app"),
+    ("empty_navigation_beside_binding", "app"),
+    ("empty_inherited_navigation", "app"),
+    ("forced_root_conversion", "app"),
 ];
 
 const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
@@ -49,10 +39,10 @@ fn runtime_transport_fixture(workspace: &str) -> BuildWorkspace {
 }
 
 #[test]
-fn source_transport_without_execution_cannot_materialize_runtime_values() {
+fn source_transport_requires_ordinary_object_path_wiring() {
     for workspace in [
         "verify_runtime_shadow",
-        "policy_aware_early_meta",
+        "policy_aware_static_program",
         "user_runtime_values",
     ] {
         let mut session = BuildSession::new();
@@ -60,7 +50,7 @@ fn source_transport_without_execution_cannot_materialize_runtime_values() {
             .build_workspace(&runtime_transport_fixture(workspace))
             .expect_err("unconnected single-stage transport cannot produce a migrated value");
         assert!(
-            format!("{error:?}").contains("closure-to-tau formation consumer"),
+            format!("{error:?}").contains("ordinary Path consumer"),
             "{workspace}: {error:?}"
         );
     }
@@ -69,6 +59,26 @@ fn source_transport_without_execution_cannot_materialize_runtime_values() {
 // These fixtures exercise connected declaration diagnostics and explicit
 // unavailable completion frontiers.
 const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
+    (
+        "inherited_navigation",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
+    (
+        "child_navigation_frontier",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
+    (
+        "same_name_distinct_namespaces",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
+    (
+        "multi_file_same_namespace",
+        "app",
+        "inherited navigation requires the qualified NameExpr",
+    ),
     (
         "source_expression_frontier",
         "app",
@@ -79,40 +89,60 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "app",
         "source expression completion requires common E",
     ),
-    ("struct_duplicate_field", "app", "duplicate field name"),
-    ("struct_non_type_field", "app", "unknown struct field type"),
-    ("struct_nested_product", "app", "invalid struct syntax"),
-    ("struct_unit_field", "app", "unit field or trailing unit"),
     (
-        "struct_target_not_name",
+        "structural_single_child_frontier",
         "app",
-        "expected a field binder name",
+        "structural type formation consumer is unavailable",
     ),
     (
-        "struct_operator_private_syntax",
+        "structural_nested_layer_frontier",
         "app",
-        "invalid struct syntax",
+        "structural type formation consumer is unavailable",
     ),
     (
-        "struct_unknown_field_type",
+        "structural_empty_layer_frontier",
         "app",
-        "unknown struct field type",
+        "structural type formation consumer is unavailable",
     ),
     (
-        "runtime_value_as_struct_field_type",
+        "structural_named_slots_frontier",
         "app",
-        "unknown struct field type",
-    ),
-    ("source_conflict_physical_dir_symbol", "app", "conflict"),
-    (
-        "descendant_injection",
-        "app",
-        "ordinary parent-to-descendant injection",
+        "structural type formation consumer is unavailable",
     ),
     (
-        "deep_descendant_injection",
+        "structural_duplicate_navigation_frontier",
         "app",
-        "ordinary parent-to-descendant injection",
+        "structural type formation consumer is unavailable",
+    ),
+    (
+        "struct_helper_frontier",
+        "app",
+        "struct helper formation consumer is unavailable",
+    ),
+    (
+        "struct_helper_explicit_core_frontier",
+        "app",
+        "struct helper formation consumer is unavailable",
+    ),
+    (
+        "struct_helper_argument_arity",
+        "app",
+        "candidate preparation arity mismatch",
+    ),
+    (
+        "struct_helper_unobserved_argument",
+        "app",
+        "parameter shape compatibility is not established",
+    ),
+    (
+        "qualified_name_destination_frontier",
+        "app",
+        "qualified NameExpr formation and destination Place consumer is unavailable",
+    ),
+    (
+        "nested_qualified_name_destination_frontier",
+        "app",
+        "qualified NameExpr formation and destination Place consumer is unavailable",
     ),
     (
         "product_binder_rejected",
@@ -122,10 +152,10 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     (
         "discard_binder_rejected",
         "app",
-        "ordinary parent-to-descendant injection",
+        "qualified NameExpr formation and destination Place consumer is unavailable",
     ),
     (
-        "alias_external_injection_future",
+        "path_alias_destination_frontier",
         "app",
         "lexical Path alias formation/composition consumer is unavailable",
     ),
@@ -134,23 +164,21 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "app",
         "source contribution error:",
     ),
-    ("diagnostic_conflict", "app", "conflict"),
-    ("diagnostic_descendant", "app", "parent-to-descendant"),
+    (
+        "diagnostic_descendant",
+        "app",
+        "qualified NameExpr formation",
+    ),
     ("duplicate_declaration", "app", "conflict"),
     (
-        "non_meta_target",
+        "noncallable_target",
         "app",
         "ordinary invocation found no fully admissible candidate",
     ),
     (
-        "ambient_struct_collision",
-        "app",
-        "ambient struct collision",
-    ),
-    (
         "identity_type_missing_rank",
         "app",
-        "could not be resolved as a pure type Object",
+        "parameter shape compatibility is not established",
     ),
 ];
 

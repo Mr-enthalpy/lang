@@ -110,11 +110,6 @@ pub enum BindingPatternAst {
 pub enum BinderNameAst {
     Text(NameAst),
     Operator(OperatorNameAst),
-    /// Syntax-generated slot-zero binder with no source-visible spelling.
-    /// Normalization anchors its identity to the enclosing callable owner.
-    GeneratedSelf {
-        span: Span,
-    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -144,6 +139,7 @@ pub struct DeduceListAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BinderDeclAst {
+    pub policy: Option<PolicySpecAst>,
     pub name: NameAst,
     pub annotation: Option<AnnotationTermAst>,
     pub span: Span,
@@ -373,8 +369,8 @@ pub enum AtomKind {
     },
     /// Narrow postfix structural-member view annotation.
     ///
-    /// This remains generic Raw AST shape. Only the struct decoder interprets
-    /// it as member visibility; it is not an arbitrary PolicySpec.
+    /// This is generic Raw AST shape consumed as structural member visibility.
+    /// Policy constraints use their independent PolicySpec shape.
     MemberViewAnnotation {
         object: Box<AtomAst>,
         visibility: MemberVisibilityAst,

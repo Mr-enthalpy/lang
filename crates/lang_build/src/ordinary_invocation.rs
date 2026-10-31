@@ -63,10 +63,10 @@ use crate::{
     semantic_owner::{SemanticOwnerId, SemanticSymbolIdentity},
     semantic_world::{
         ObjectPlaceId, OrdinaryCallEntry, OrdinaryCallableImplementation, OrdinaryCandidateRole,
-        PatternValueId, SemanticValuePayload, SemanticWorld, WritableContext,
+        PatternCoordinateId, SemanticValuePayload, SemanticWorld, WritableContext,
     },
-    type_argument::{classify_type_arguments_env_with_report, SemanticTypeEnv, TypeResolutionEnv},
-    DeclaredResultClass, InvocationResidual, NormalizedCallSite,
+    type_argument::{SemanticTypeEnv, TypeResolutionEnv},
+    DeclaredResultClass, NormalizedCallSite,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -86,7 +86,7 @@ pub struct OrdinaryInvocationContext<'a> {
     pub explicit_argument_modes: &'a [PolicyMode],
     /// Completion context for omitted source occurrence modes. A known resident
     /// mode takes precedence; this never changes an observed mode.
-    pub omitted_argument_policy: crate::MetaInstancePolicy,
+    pub omitted_argument_policy: crate::OpenPolicy,
     /// Total before candidate maxima. Pair/stage coordinates are hard
     /// admissibility; the concrete mode coordinate participates in Bp.
     pub result_policy_demand: ResultPolicyDemand,
@@ -99,13 +99,9 @@ pub struct OrdinaryInvocationContext<'a> {
     /// Post-selection capability/place demand. This coordinate never
     /// participates in candidate ordering and therefore cannot reopen maxima.
     pub dynamic_legality: DynamicLegalityDemand<'a>,
-    /// Semantic owner of the declaration environment that constructed
-    /// results attach to.  When the declaration sits
-    /// inside a callable body this must be the innermost enclosing
-    /// anonymous function object's Self scope owner — owner identity is
-    /// parent-linked, so this single node carries the whole Self chain.
-    /// Only a top-level declaration supplies its namespace-level owner.
-    pub ambient_construction_owner: Option<SemanticOwnerId>,
+    /// Current invocation parent. Callable bodies supply their actual lexical
+    /// owner; a top-level invocation uses the resolved namespace owner.
+    pub parent_semantic_owner: Option<SemanticOwnerId>,
 }
 
 impl<'a> OrdinaryInvocationContext<'a> {
@@ -113,20 +109,19 @@ impl<'a> OrdinaryInvocationContext<'a> {
         Self {
             horizon: ObservationHorizon::OpenStatic,
             explicit_argument_modes,
-            omitted_argument_policy: crate::MetaInstancePolicy::Close,
+            omitted_argument_policy: crate::OpenPolicy::Close,
             result_policy_demand: ResultPolicyDemand::default(),
             visibility: VisibilityView::Internal,
             migration: None,
             construction_target: None,
             dynamic_legality: DynamicLegalityDemand::default(),
-            ambient_construction_owner: None,
+            parent_semantic_owner: None,
         }
     }
 
-    /// Supply the declaration-environment owner (Self scope chain node or
-    /// namespace-level owner) that ambient constructions root under.
-    pub fn with_ambient_construction_owner(mut self, owner: SemanticOwnerId) -> Self {
-        self.ambient_construction_owner = Some(owner);
+    /// Supply the parent of this invocation's stable compile instance.
+    pub fn with_parent_semantic_owner(mut self, owner: SemanticOwnerId) -> Self {
+        self.parent_semantic_owner = Some(owner);
         self
     }
 
@@ -178,8 +173,7 @@ pub struct DynamicLegalityDemand<'a> {
 pub enum OrdinaryCandidateOrigin {
     SourceSymbol(SemanticSymbolIdentity),
     TypeCallSpace(crate::CanonicalValueAddr),
-    PatternAssociatedCallEntry(PatternValueId),
-    PatternAssociatedValue(PatternValueId),
+    CompleteTypeAssociatedCallEntry(crate::CanonicalValueAddr),
 }
 
 #[derive(Clone, Debug)]
@@ -195,9 +189,8 @@ pub struct PreparedCallCandidate {
     /// Declaration-local P2 used for body entry and inherited parameter
     /// position policy. Caller demand never mutates this view.
     pub body_entry_view: PolicyView,
-    /// Producer result P2 exposed across the call boundary and used by
-    /// `ResultPolicyDemand`. The declaration-local P_out is stored separately
-    /// on the call entry and never replaces this producer coordinate.
+    /// Declared completed-result observation used by ResultPolicyDemand.
+    /// Source entries obtain it from P1/Pout; core entries declare it directly.
     pub complete_result_view: PolicyView,
     /// P1 of the function object — the single policy degree of freedom.
     /// P1(function object) = P1(slot0/self) = P1(let ()).
@@ -364,6 +357,7 @@ pub struct CallableTarget {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct OrdinaryPipelineTrace {
+    pub compile_instance: Option<crate::CompileInstanceId>,
     pub c0_target_values: Vec<SemanticValueId>,
     pub c1_visible_values: Vec<SemanticValueId>,
     pub c2_horizon_values: Vec<SemanticValueId>,
@@ -393,7 +387,7 @@ pub struct SingleMemberResult {
     /// `Project_out`. This is
     /// NOT the outward exposure policy of the invocation result: outward
     /// visibility is the canonical P1 layer (`exposed()`).
-    pub complete_result: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
+    pub complete_result: Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>,
     pub trace: OrdinaryPipelineTrace,
 }
 
@@ -423,34 +417,33 @@ impl SingleMemberResult {
 /// of letting one `PolicyResultEntry` field mean three things at once:
 ///
 /// ```text
-/// CompleteResultView      = P2 type/Pattern observations
+/// CompleteResultView      = declared output rank observations
 /// ExposedInvocationResult = outward_policy (canonical P1)
 ///                           + material (the completed result entries)
 /// ```
 ///
 /// The outward visibility of an invocation result is the canonical P1 —
 /// the same single output authority as the migration output endpoint —
-/// while P2 keeps only input/result compatibility and the complete result
-/// type/pattern domain.  Resident Policy views carry each value's own
+/// while P2 supplies the evaluation horizon and input boundary. Resident Policy views carry each value's own
 /// Policy and are a third, separate coordinate.
 #[derive(Clone, Debug)]
 pub struct ExposedInvocationResult {
     /// Canonical P1 of the selected callable: the invocation result's outward
     /// visibility policy.
     pub outward_policy: PolicyPair,
-    /// The completed result material (the P2-domain entries), exposed
+    /// The completed result material, with its actual declared output ranks, exposed
     /// under the callable P1 window.
-    pub material: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
+    pub material: Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>,
 }
 
 impl ExposedInvocationResult {
-    /// `CompleteResultView(P2) -> expose under callable P1`.
+    /// `CompleteResultView -> expose under callable P1`.
     ///
     /// The outward demand accepts matching completed observations without
     /// rewriting their stages. Distinct P1/P2 authorities may carry equal atoms.
     pub fn expose(
         outward_policy: PolicyPair,
-        complete_result: &[PolicyResultEntry<SemanticValueRef, PatternValueId>],
+        complete_result: &[PolicyResultEntry<SemanticValueRef, PatternCoordinateId>],
     ) -> Self {
         let material = complete_result
             .iter()
@@ -465,20 +458,21 @@ impl ExposedInvocationResult {
 
 /// Expose one complete-result entry under the callable P1 window.
 ///
-/// Stage and presence matching preserves the complete observation, including
-/// Pv=Pp on an unhidden pure Object. Mode is independent.
+/// Stage and presence matching preserves the observed rank window.
+/// Whole-slot mode is independent; Object shape supplies no rank equality.
 fn expose_result_entry(
     outward: &PolicyPair,
-    entry: &PolicyResultEntry<SemanticValueRef, PatternValueId>,
-) -> Option<PolicyResultEntry<SemanticValueRef, PatternValueId>> {
+    entry: &PolicyResultEntry<SemanticValueRef, PatternCoordinateId>,
+) -> Option<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>> {
     let material = crate::policy_pair::project_p1(
         &P1Projection::Pair(outward.clone()),
         std::slice::from_ref(entry),
-    );
+    )
+    .ok()?;
     material.into_iter().next()
 }
 
-/// Result of an invocation declaring `Unit` (`_: unit`). This is a value-less
+/// Result of an invocation declaring `Unit` (`_: unit::`). This is a value-less
 /// result. Reserved carrier — no executable producer exists yet; the
 /// declaration level validates the class and invocation reports the
 /// execution gap explicitly.
@@ -514,22 +508,17 @@ fn semantic_invocation_outcome(
 }
 
 /// Complete type value returned by a world-connected invocation.
-///
-/// `construction_material` is replay/install material for graph replay
-/// binding and namespace projection.  Semantic consumers use
-/// `complete_type`; the material never defines type identity or equality.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReturnedCompleteType {
     pub complete_type: crate::CompleteTypeValue,
     pub carrier_value: SemanticValueId,
-    pub pattern: PatternValueId,
-    pub construction_material: Option<crate::StructConstructionMaterial>,
+    pub pattern: PatternCoordinateId,
 }
 
 #[derive(Clone, Debug)]
 pub struct PolicyMigrationResult {
     pub invocation: SingleMemberResult,
-    pub demanded_view: Vec<PolicyResultEntry<SemanticValueRef, PatternValueId>>,
+    pub demanded_view: Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -542,6 +531,12 @@ pub enum ReturnedSemanticEntity {
 enum SelectedBodyOutput {
     BuiltinMaterial(BuiltinBodyMaterial),
     OrdinaryValue(SemanticValueId),
+}
+
+#[derive(Clone, Debug)]
+pub struct ObservationObstruction {
+    pub class: String,
+    pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug)]
@@ -568,18 +563,15 @@ pub enum OrdinaryInvocationFailure {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
-    /// Explicit remaining-observation material recorded at its source. This
-    /// frontier is not inferred from an ordinary no-candidate failure and
-    /// does not promise future applicability or assign an execution stage.
-    Residual {
-        residual: InvocationResidual,
+    /// An observation at the current horizon is unavailable. This fact supplies
+    /// neither a remaining continuation nor future applicability or Stage.
+    ObservationUnavailable {
+        obstruction: ObservationObstruction,
         trace: OrdinaryPipelineTrace,
     },
-    /// Argument normalization hit an illegal cyclic Val2: Val2 normalization
-    /// is well-founded finite recursion, so an object reached again while its
-    /// own Val2 is still being normalized has no normal form and the
-    /// invocation is rejected before any instance key exists.
-    CyclicVal2 {
+    /// Canonical input observation failed, for example due to unavailable
+    /// complete snapshots, inconsistent material or an illegal cyclic Val2.
+    ArgumentNormalization {
         diagnostic: Diagnostic,
         trace: OrdinaryPipelineTrace,
     },
@@ -612,79 +604,45 @@ pub enum OrdinaryInvocationFailure {
     },
 }
 
-/// Hard-error message for a second direct `struct` generation of the same
-/// normalized navigation shape at the same declaration level.  The recorded
-/// binder never feeds type identity; it only makes the guidance ergonomic:
-/// the first generation is source-visible at this level, so the collision
-/// points at its existing binding.
-fn ambient_struct_collision_message(binder: Option<&crate::AmbientTypeBinder>) -> String {
-    let base = "ambient struct collision: a type with the same navigation name and top pattern \
-                was already generated by `struct` at this level";
-    match binder {
-        Some(crate::AmbientTypeBinder::WholeSymbol(name)) => format!(
-            "{base}; its value is bound to symbol `{name}` here — use the existing `{name}` to \
-             continue the type computation"
-        ),
-        Some(crate::AmbientTypeBinder::ExtractionMembers(names)) => {
-            let members = names
-                .iter()
-                .map(|name| format!("`{name}`"))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!(
-                "{base}; its extraction binding exposes the member symbols {members} — use \
-                 these extracted symbols to continue the type computation"
-            )
-        }
-        Some(crate::AmbientTypeBinder::CallableParameter(name)) => format!(
-            "{base}; its value was only bound to the callable parameter `{name}`, which lives \
-             one level below this declaration environment and is not visible here — first bind \
-             the temporary value to a symbol at this level (e.g. `let t = ... struct;`), then \
-             use that symbol to continue the type computation"
-        ),
-        None => format!("{base}; use its existing binding to continue the type computation"),
-    }
-}
-
-/// Attach `Addr(Norm_type)` observations to the candidate's classified type
+/// Attach `Addr(Norm(Core(tau)))` observations to the candidate's classified type
 /// arguments before crossing the formal invocation boundary.
 ///
-/// Candidate preparation runs behind an immutable `SemanticTypeEnv` and
-/// cannot intern observation addresses; the world-connected invoke sites are
-/// the earliest point with a `&mut SemanticWorld` channel.  A cyclic Val2
-/// surfaces the same rejection as canonical instance-key normalization.
+/// Prepared material retains its completed type read. The handoff projects
+/// that snapshot's Core through this world's immutable observation registry;
+/// it neither reads current carrier material nor interns a successor tau.
 fn attach_candidate_type_observations(
-    semantic_world: &mut SemanticWorld,
+    semantic_world: &SemanticWorld,
     input: &mut crate::BuiltinBodyInput,
     trace: &OrdinaryPipelineTrace,
 ) -> Result<(), OrdinaryInvocationFailure> {
     let shape = &mut input.candidate.arg_product_shape;
     semantic_world
         .attach_canonical_type_observations(&mut shape.raw_args, &shape.flattened.atoms)
-        .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
-            diagnostic,
-            trace: trace.clone(),
-        })
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ArgumentNormalization {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )
 }
 
-/// Form an ordinary MetaInstance key only for an invocation whose declared
-/// result/owner rule actually establishes a MetaInstance.  Ordinary value
-/// forwarding, same-Type migration, and privileged `struct` do not acquire a
-/// hidden meta identity merely because they reuse the invocation trunk.
-fn canonical_meta_instance_key_for_selected(
+/// Normalize inputs for a selected compile partner, independently of its result.
+fn canonical_compile_instance_key_for_selected(
     semantic_world: &mut SemanticWorld,
     shape: &ArgProductShape,
-    callable: crate::SelectedCallableIdentity,
+    callable: crate::CompilePartner,
     provenance: &Provenance,
     trace: &OrdinaryPipelineTrace,
-) -> Result<crate::MetaInstanceMaterialKey, OrdinaryInvocationFailure> {
+) -> Result<crate::CompileInvocationMaterialKey, OrdinaryInvocationFailure> {
     let arguments_product_addr = semantic_world
         .canonical_arguments_product_address(&shape.raw_args, &shape.flattened.atoms)
-        .map_err(|diagnostic| OrdinaryInvocationFailure::CyclicVal2 {
-            diagnostic,
-            trace: trace.clone(),
-        })?;
-    Ok(crate::compute_meta_instance_material_key(
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ArgumentNormalization {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )?;
+    Ok(crate::compute_compile_instance_material_key(
         callable,
         arguments_product_addr,
         provenance.clone(),
@@ -696,6 +654,25 @@ pub fn invoke_policy_migration(
     request: &PolicyMigrationRequest,
     resolver_context: &ResolverContext,
 ) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
+    let mut scratch = semantic_world.clone();
+    let result = invoke_policy_migration_in_scratch(&mut scratch, request, resolver_context)?;
+    *semantic_world = scratch;
+    Ok(result)
+}
+
+fn invoke_policy_migration_in_scratch(
+    semantic_world: &mut SemanticWorld,
+    request: &PolicyMigrationRequest,
+    resolver_context: &ResolverContext,
+) -> Result<PolicyMigrationResult, OrdinaryInvocationFailure> {
+    request
+        .validate_connected_execution()
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                diagnostic,
+                trace: OrdinaryPipelineTrace::default(),
+            },
+        )?;
     let Some(source) = semantic_world.value(request.source_value()).cloned() else {
         return Err(OrdinaryInvocationFailure::NoTargetValues {
             trace: OrdinaryPipelineTrace::default(),
@@ -756,11 +733,10 @@ pub fn invoke_policy_migration(
         target_members,
         target_places,
         None,
-        None,
         migration_args,
         resolver_context,
         OrdinaryInvocationContext {
-            omitted_argument_policy: crate::MetaInstancePolicy::Close,
+            omitted_argument_policy: crate::OpenPolicy::Close,
             horizon: ObservationHorizon::OpenStatic,
             explicit_argument_modes: &no_explicit_modes,
             result_policy_demand: request.target_demand().clone(),
@@ -771,9 +747,8 @@ pub fn invoke_policy_migration(
             }),
             construction_target: None,
             dynamic_legality: DynamicLegalityDemand::default(),
-            // Migration transport never performs an ambient struct
-            // construction; no declaration-environment owner applies.
-            ambient_construction_owner: None,
+            // This migration occurs in the supplied caller environment.
+            parent_semantic_owner: None,
         },
         request.provenance().clone(),
     )?;
@@ -790,23 +765,49 @@ pub fn invoke_policy_migration(
             trace: OrdinaryPipelineTrace::default(),
         });
     };
-    let mut demanded_view = project_p1(
-        &request.target_demand().pair_query,
+    let demanded_view = project_migration_delivery(
+        request,
+        invocation.selected.complete_result_view.mode,
         &invocation.complete_result,
-    );
-    if demanded_view.is_empty() {
-        return Err(OrdinaryInvocationFailure::MigrationOutputProjectionFailed {
-            trace: invocation.trace,
-        });
-    }
-    let realized_mode = invocation.selected.complete_result_view.mode;
-    for entry in &mut demanded_view {
-        entry.view.mode = realized_mode;
-    }
+    )
+    .map_err(
+        |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+            diagnostic,
+            trace: invocation.trace.clone(),
+        },
+    )?;
     Ok(PolicyMigrationResult {
         invocation,
         demanded_view,
     })
+}
+
+/// Validate supplied completed observations before the enclosing transaction
+/// publishes. This is a delivery check, not an evaluator or producer witness.
+fn project_migration_delivery(
+    request: &PolicyMigrationRequest,
+    declared_mode: PolicyMode,
+    complete_result: &[PolicyResultEntry<SemanticValueRef, PatternCoordinateId>],
+) -> Result<Vec<PolicyResultEntry<SemanticValueRef, PatternCoordinateId>>, Diagnostic> {
+    let delivered = project_p1(&request.target_demand().pair_query, complete_result)?;
+    if delivered.is_empty() {
+        return Err(Diagnostic::hard_error(
+            "migration final output projection is empty",
+            Some(request.provenance().clone()),
+        ));
+    }
+    let target_mode = request.target_demand().mode;
+    if declared_mode != target_mode
+        || delivered
+            .iter()
+            .any(|entry| entry.view.mode != declared_mode)
+    {
+        return Err(Diagnostic::hard_error(
+            format!("migration delivered Mode does not satisfy declaration and target: declared {declared_mode:?}, target {target_mode:?}"),
+            Some(request.provenance().clone()),
+        ));
+    }
+    Ok(delivered)
 }
 
 /// Read one resolved binding before candidate projection. A type projects only
@@ -816,11 +817,12 @@ fn resolved_binding_call_views(
     world: &SemanticWorld,
     binding: SemanticSymbolIdentity,
     provenance: &Provenance,
-) -> Result<Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>, OrdinaryInvocationFailure> {
+) -> Result<Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>, OrdinaryInvocationFailure>
+{
     let Some(cell) = world.symbol(binding) else {
         return Ok(Vec::new());
     };
-    if let Some(ty) = cell.pure_p() {
+    if let Some(ty) = cell.type_resident() {
         let complete = ty
             .complete_type
             .and_then(|whole| world.complete_type_by_whole_observation(whole));
@@ -862,7 +864,7 @@ fn resolved_binding_call_views(
 ///
 /// The member factor is the per-member exposure stage decided downstream in
 /// this pipeline; the host factors are decided here, each from that host
-/// carrier's own binding-level pure-P member view.  A single host anywhere in
+/// carrier's own binding-level type resident view.  A single host anywhere in
 /// the chain that is not navigable at this horizon hides everything reached
 /// through it, so the whole chain must be exposed; the failure is reported as
 /// an explicit hidden-observation frontier for the already resolved binding.
@@ -873,7 +875,7 @@ fn resolved_binding_call_views(
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_resolved_binding_ordinary(
     semantic_world: &mut SemanticWorld,
-    hosts: &[crate::PatternHostMember],
+    hosts: &[crate::ObjectHostMember],
     symbol: SemanticSymbolIdentity,
     call_site: &NormalizedCallSite,
     resolver_context: &ResolverContext,
@@ -881,8 +883,8 @@ pub fn invoke_resolved_binding_ordinary(
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
     if hosts.iter().any(|host| !host.exposed_at(context.horizon)) {
-        return Err(OrdinaryInvocationFailure::Residual {
-            residual: InvocationResidual {
+        return Err(OrdinaryInvocationFailure::ObservationUnavailable {
+            obstruction: ObservationObstruction {
                 class: "hidden-navigation-host-observation".into(),
                 provenance,
             },
@@ -897,119 +899,7 @@ pub fn invoke_resolved_binding_ordinary(
         target_members,
         target_places,
         None,
-        Some(call_site),
         call_site.to_arg_product_shape(),
-        resolver_context,
-        context,
-        provenance,
-    )
-}
-
-/// Invoke an authorized operation family reached from an existing
-/// PatternValue's owner.  No source path or TypeValue reverse lookup is
-/// fabricated.
-pub fn invoke_pattern_associated_ordinary(
-    semantic_world: &mut SemanticWorld,
-    pattern: PatternValueId,
-    operation_name: &str,
-    receiver_value: SemanticValueId,
-    explicit_arg_product: ArgProductShape,
-    resolver_context: &ResolverContext,
-    context: OrdinaryInvocationContext<'_>,
-    provenance: Provenance,
-) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    if semantic_world
-        .host_member_for_pattern(pattern)
-        .is_some_and(|host| !host.exposed_at(context.horizon))
-    {
-        return Err(OrdinaryInvocationFailure::Residual {
-            residual: InvocationResidual {
-                class: "hidden-associated-host-observation".into(),
-                provenance,
-            },
-            trace: OrdinaryPipelineTrace::default(),
-        });
-    }
-    let target_members = semantic_world.associated_member_views_for_pattern(
-        pattern,
-        operation_name,
-        context.horizon,
-    );
-    invoke_target_values(
-        semantic_world,
-        OrdinaryCandidateOrigin::PatternAssociatedCallEntry(pattern),
-        target_members,
-        BTreeMap::new(),
-        Some(receiver_value),
-        None,
-        explicit_arg_product,
-        resolver_context,
-        context,
-        provenance,
-    )
-}
-
-/// Invoke a named ordinary value member obtained from a Pattern owner's
-/// associated Val2. The authorized receiver is inserted as the first explicit
-/// argument; slot 0 remains the selected function object, exactly as for a
-/// source-visible named function.
-#[allow(clippy::too_many_arguments)]
-pub fn invoke_pattern_associated_value_ordinary(
-    semantic_world: &mut SemanticWorld,
-    pattern: PatternValueId,
-    operation_name: &str,
-    receiver_value: SemanticValueId,
-    mut explicit_arg_product: ArgProductShape,
-    resolver_context: &ResolverContext,
-    context: OrdinaryInvocationContext<'_>,
-    provenance: Provenance,
-) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    let Some(receiver) = semantic_world.value(receiver_value) else {
-        return Err(OrdinaryInvocationFailure::NoTargetValues {
-            trace: OrdinaryPipelineTrace::default(),
-        });
-    };
-    let receiver_mode = receiver.mode;
-    let mut atoms = Vec::with_capacity(1 + explicit_arg_product.flattened.atoms.len());
-    atoms.push(ProductAtom::SemanticValue {
-        value: receiver_value,
-        type_value: receiver.type_value,
-        mode: receiver_mode,
-        provenance: provenance.clone(),
-    });
-    atoms.append(&mut explicit_arg_product.flattened.atoms);
-    let explicit_arg_product = ArgProductShape::from_flattened(FlattenedProductMaterial {
-        atoms,
-        provenance: provenance.clone(),
-        invariant: FlattenedProductInvariant {
-            no_direct_product_atom_remains: true,
-        },
-    });
-    if semantic_world
-        .host_member_for_pattern(pattern)
-        .is_some_and(|host| !host.exposed_at(context.horizon))
-    {
-        return Err(OrdinaryInvocationFailure::Residual {
-            residual: InvocationResidual {
-                class: "hidden-associated-host-observation".into(),
-                provenance,
-            },
-            trace: OrdinaryPipelineTrace::default(),
-        });
-    }
-    let target_members = semantic_world.associated_member_views_for_pattern(
-        pattern,
-        operation_name,
-        context.horizon,
-    );
-    invoke_target_values(
-        semantic_world,
-        OrdinaryCandidateOrigin::PatternAssociatedValue(pattern),
-        target_members,
-        BTreeMap::new(),
-        None,
-        None,
-        explicit_arg_product,
         resolver_context,
         context,
         provenance,
@@ -1021,11 +911,11 @@ pub fn invoke_pattern_associated_value_ordinary(
 fn filter_callable(
     semantic_world: &SemanticWorld,
     values: &[SemanticValueId],
-) -> Vec<CallableTarget> {
+) -> Result<Vec<CallableTarget>, Diagnostic> {
     values
         .iter()
-        .filter_map(|value| {
-            let entries = semantic_world.callable_entries_for_value(*value);
+        .map(|value| {
+            let entries = semantic_world.callable_entries_for_value(*value)?;
             let call_entries: Vec<SemanticValueId> = entries
                 .into_iter()
                 .filter(|entry| {
@@ -1036,30 +926,73 @@ fn filter_callable(
                 })
                 .collect();
             if call_entries.is_empty() {
-                return None;
+                return Ok(None);
             }
-            Some(CallableTarget {
+            Ok(Some(CallableTarget {
                 callable_value: *value,
                 call_entries,
-            })
+            }))
         })
-        .collect()
+        .collect::<Result<Vec<_>, Diagnostic>>()
+        .map(|targets| targets.into_iter().flatten().collect())
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn invoke_target_values(
     semantic_world: &mut SemanticWorld,
     origin: OrdinaryCandidateOrigin,
-    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
     target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
     associated_receiver: Option<SemanticValueId>,
-    source_call_site: Option<&NormalizedCallSite>,
+    arg_shape: ArgProductShape,
+    resolver_context: &ResolverContext,
+    context: OrdinaryInvocationContext<'_>,
+    provenance: Provenance,
+) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
+    if let Some(migration) = &context.migration {
+        migration
+            .request
+            .validate_connected_execution()
+            .map_err(
+                |diagnostic| OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                    diagnostic,
+                    trace: OrdinaryPipelineTrace::default(),
+                },
+            )?;
+    }
+    // Selection, instance admission and result storage publish together.
+    // Storage staging supplies no lifecycle, readiness or execution proof.
+    let mut scratch = semantic_world.clone();
+    let result = invoke_target_values_in_scratch(
+        &mut scratch,
+        origin,
+        target_members,
+        target_places,
+        associated_receiver,
+        arg_shape,
+        resolver_context,
+        context,
+        provenance,
+    )?;
+    if matches!(result, crate::InvocationResult::SemanticResult { .. }) {
+        *semantic_world = scratch;
+    }
+    Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn invoke_target_values_in_scratch(
+    semantic_world: &mut SemanticWorld,
+    origin: OrdinaryCandidateOrigin,
+    target_members: Vec<PolicyResultEntry<SemanticValueId, PatternCoordinateId>>,
+    target_places: BTreeMap<SemanticValueId, ObjectPlaceId>,
+    associated_receiver: Option<SemanticValueId>,
     mut arg_shape: ArgProductShape,
     resolver_context: &ResolverContext,
     context: OrdinaryInvocationContext<'_>,
     provenance: Provenance,
 ) -> Result<InvocationOutcome, OrdinaryInvocationFailure> {
-    // C0: canonical member views of the resolved target.  Pure-P member
+    // C0: canonical member views of the resolved target. Type-resident
     // views (value = None) have no ordinary Val1 and are never invocation
     // candidates; only value-bearing views continue.  All subsequent
     // exposure decisions read the per-member view Policy — never a flat
@@ -1077,9 +1010,9 @@ pub(crate) fn invoke_target_values(
         return Err(OrdinaryInvocationFailure::NoTargetValues { trace });
     }
 
-    let direct_pattern_entries = matches!(
+    let direct_core_entries = matches!(
         origin,
-        OrdinaryCandidateOrigin::PatternAssociatedCallEntry(_)
+        OrdinaryCandidateOrigin::CompleteTypeAssociatedCallEntry(_)
     );
 
     // C1: member-level visibility exposure.  Internal callers see every
@@ -1112,7 +1045,7 @@ pub(crate) fn invoke_target_values(
         .filter(|view| match view.view.pair.value.stage() {
             Some(stage) if stage.visible_at(context.horizon) => true,
             Some(_) => {
-                horizon_obstruction.get_or_insert_with(|| InvocationResidual {
+                horizon_obstruction.get_or_insert_with(|| ObservationObstruction {
                     class: "hidden-callee-observation".into(),
                     provenance: provenance.clone(),
                 });
@@ -1133,21 +1066,26 @@ pub(crate) fn invoke_target_values(
 
     // Cc: filter ordinary values that are callable.  A value v is callable iff
     // (v |> type).Val2 contains an associated `()` call entry.
-    let callable_targets = filter_callable(semantic_world, &c2);
+    let callable_targets = filter_callable(semantic_world, &c2).map_err(|diagnostic| {
+        OrdinaryInvocationFailure::ApplicabilityUnsupported {
+            diagnostic,
+            trace: trace.clone(),
+        }
+    })?;
     trace.callable_values = callable_targets
         .iter()
         .map(|target| target.callable_value)
         .collect();
 
     // C3: for each ordinary callable value, resolve its call entries.
-    // A compiler-authorized Pattern entrance has already reached associated
-    // Val2 and therefore feeds those call-entry values directly into C3.
+    // A complete-type operation entrance supplies actual resident witnesses
+    // from the held Core's Val2 and feeds those call-entry values into C3.
     let mut c3 = Vec::new();
-    if direct_pattern_entries {
+    if direct_core_entries {
         let Some(receiver_value) = associated_receiver else {
             return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
                 first_diagnostic: Some(Diagnostic::hard_error(
-                    "Pattern-associated ordinary call entries require an explicit semantic receiver",
+                    "Core-associated ordinary call entries require an explicit semantic receiver",
                     Some(provenance.clone()),
                 )),
                 trace,
@@ -1183,21 +1121,49 @@ pub(crate) fn invoke_target_values(
     c3.dedup();
     trace.c3_call_entries = c3.iter().map(|(entry, _, _)| *entry).collect();
 
-    if let Err(residual) = classify_semantic_value_arguments(
+    if c3.is_empty() {
+        if let Some(obstruction) = horizon_obstruction {
+            return Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace });
+        }
+        return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
+            first_diagnostic: None,
+            trace,
+        });
+    }
+
+    if let Err(obstruction) = classify_semantic_arguments(
         &mut arg_shape,
         semantic_world,
         resolver_context,
         context.horizon,
     ) {
-        return Err(OrdinaryInvocationFailure::Residual { residual, trace });
+        return Err(OrdinaryInvocationFailure::ObservationUnavailable { obstruction, trace });
     }
-    let classified = classify_type_arguments_env_with_report(
-        &arg_shape,
-        &SemanticTypeEnv::new(semantic_world),
-        resolver_context,
-    );
+    semantic_world
+        .attach_available_type_observations(&mut arg_shape.raw_args, &arg_shape.flattened.atoms)
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )?;
+    if arg_shape.raw_args.iter().any(|arg| {
+        matches!(
+            arg.value_class,
+            crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection)
+        ) && arg.known_first_order_type_value.is_some()
+            && arg.known_first_order_type_value == semantic_world.type_rank()
+    }) {
+        return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+            diagnostic: Diagnostic::hard_error(
+                "higher-universe classifier observation consumer is unavailable",
+                Some(provenance),
+            ),
+            trace,
+        });
+    }
     let args = overload_args_from_classified_shape(
-        &classified.classified_shape,
+        &arg_shape,
         |_| None,
         |type_value| {
             semantic_world
@@ -1223,11 +1189,21 @@ pub(crate) fn invoke_target_values(
         // C2 result-demand hard projection. Every pair/stage coordinate that
         // can affect producer selection is present before maxima; whole-slot
         // mode remains the independent Bp coordinate below.
-        if !result_pair_demand_admits(
+        match result_pair_demand_admits(
             &entry.complete_result_view.pair,
             &context.result_policy_demand.pair_query,
         ) {
-            continue;
+            Some(true) => {}
+            Some(false) => continue,
+            None => {
+                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                    diagnostic: Diagnostic::hard_error(
+                        "higher Policy rank observation consumer is unavailable for this demand",
+                        Some(entry.provenance.clone()),
+                    ),
+                    trace,
+                })
+            }
         }
         // The call entry carries its own declaration
         // environment (`declaration_name` / `declaration_namespace`); the
@@ -1238,8 +1214,17 @@ pub(crate) fn invoke_target_values(
         // This exposure test is not Ready evidence. The full common E
         // readiness/Pre/commit consumer remains a separate implementation gate;
         // visibility must not authorize additional body execution paths.
+        if entry.body_entry_view.pair.leading_stage().is_none() {
+            return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
+                diagnostic: Diagnostic::hard_error(
+                    "higher Policy rank observation for body-entry P2 is unavailable",
+                    Some(entry.provenance.clone()),
+                ),
+                trace,
+            });
+        }
         if !body_entry_visible_at(&entry.body_entry_view.pair, context.horizon) {
-            horizon_obstruction.get_or_insert_with(|| InvocationResidual {
+            horizon_obstruction.get_or_insert_with(|| ObservationObstruction {
                 class: "hidden-body-entry-observation".into(),
                 provenance: entry.provenance.clone(),
             });
@@ -1284,6 +1269,7 @@ pub(crate) fn invoke_target_values(
                             entry_closure,
                             semantic_world,
                             &declaration_pattern_context,
+                            context.horizon,
                             provenance.clone(),
                         ) {
                             Ok(Some(result_type)) => result_type,
@@ -1295,13 +1281,13 @@ pub(crate) fn invoke_target_values(
                                 });
                             }
                         };
-                        match same_type_core(
+                        match value_classifier_core(
                             semantic_world,
-                            migration.request.source_type(),
-                            declared_result_type,
+                            migration.source_value,
+                            &provenance,
                         ) {
-                            Ok(true) => {}
-                            Ok(false) => continue,
+                            Ok(actual_core) if actual_core == declared_result_type => {}
+                            Ok(_) => continue,
                             Err(diagnostic) => {
                                 return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
                                     diagnostic,
@@ -1314,15 +1300,22 @@ pub(crate) fn invoke_target_values(
                     let resolve_named_pattern = |name: &str| {
                         SemanticTypeEnv::new(world_view)
                             .resolve_type_name(name, &declaration_pattern_context)
+                            .filter(|resolved| {
+                                resolved.observe_classifier_at(context.horizon).is_ok()
+                            })
                             .and_then(|resolution| {
                                 let pattern =
                                     world_view.type_value(resolution.represented_type)?.pattern;
-                                let core = resolution.complete_type_observation.and_then(|whole| {
-                                    world_view
-                                        .complete_type_by_whole_observation(whole)
-                                        .map(|complete| complete.core())
-                                });
-                                Some(crate::NamedPatternObservation { pattern, core })
+                                let core =
+                                    resolution.complete_type_observation.and_then(|whole| {
+                                        world_view
+                                            .complete_type_by_whole_observation(whole)
+                                            .map(|complete| complete.core())
+                                    })?;
+                                Some(crate::NamedPatternObservation {
+                                    pattern,
+                                    core: Some(core),
+                                })
                             })
                     };
                     let mut source_shape = match applicable_candidate_from_closure(
@@ -1350,27 +1343,8 @@ pub(crate) fn invoke_target_values(
                         &entry,
                         &target,
                         semantic_world,
-                        resolver_context,
-                        provenance.clone(),
-                    ) {
-                        match failure {
-                            CandidateApplicabilityFailure::Inapplicable(diagnostic) => {
-                                first_diagnostic.get_or_insert(diagnostic);
-                                continue;
-                            }
-                            CandidateApplicabilityFailure::Unsupported(diagnostic) => {
-                                return Err(OrdinaryInvocationFailure::ApplicabilityUnsupported {
-                                    diagnostic,
-                                    trace,
-                                });
-                            }
-                        }
-                    }
-                    if let Err(failure) = validate_explicit_value_type_annotations(
-                        &entry,
-                        &classified.classified_shape,
-                        semantic_world,
-                        resolver_context,
+                        &declaration_pattern_context,
+                        context.horizon,
                         provenance.clone(),
                     ) {
                         match failure {
@@ -1411,7 +1385,7 @@ pub(crate) fn invoke_target_values(
                         formal_policy_frame,
                         self_policy,
                         strategy,
-                        classified.classified_shape.clone(),
+                        arg_shape.clone(),
                     )
                 }
                 OrdinaryCallableImplementation::Builtin(_) => {
@@ -1421,21 +1395,10 @@ pub(crate) fn invoke_target_values(
                         // as same-Type migration candidates by assumption.
                         continue;
                     }
-                    let Some(call_site) = source_call_site else {
-                        first_diagnostic.get_or_insert_with(|| {
-                            Diagnostic::hard_error(
-                        "core ordinary call entry requires its already-normalized source call site",
-                        Some(provenance.clone()),
-                    )
-                        });
-                        continue;
-                    };
                     let core_invocation =
                         match crate::builtin_callable::prepare_resolved_builtin_call(
                             &entry,
-                            call_site,
-                            &SemanticTypeEnv::new(&*semantic_world),
-                            resolver_context,
+                            arg_shape.clone(),
                             context.horizon,
                             provenance.clone(),
                         ) {
@@ -1504,7 +1467,7 @@ pub(crate) fn invoke_target_values(
                     let [ProductAtom::SemanticValue {
                         value: source_value,
                         ..
-                    }] = classified.classified_shape.flattened.atoms.as_slice()
+                    }] = arg_shape.flattened.atoms.as_slice()
                     else {
                         continue;
                     };
@@ -1539,7 +1502,7 @@ pub(crate) fn invoke_target_values(
                         },
                         entry.callable_view.pair.clone(),
                         NormOverloadStrategy::Ordinary,
-                        classified.classified_shape.clone(),
+                        arg_shape.clone(),
                     )
                 }
             };
@@ -1662,8 +1625,11 @@ pub(crate) fn invoke_target_values(
         // can reach this unavailable boundary; ordinary mismatches never create
         // it, and a reached diagnostic remains a diagnostic.
         if first_diagnostic.is_none() {
-            if let Some(residual) = horizon_obstruction {
-                return Err(OrdinaryInvocationFailure::Residual { residual, trace });
+            if let Some(obstruction) = horizon_obstruction {
+                return Err(OrdinaryInvocationFailure::ObservationUnavailable {
+                    obstruction,
+                    trace,
+                });
             }
         }
         return Err(OrdinaryInvocationFailure::NoFullyAdmissibleCandidate {
@@ -1731,6 +1697,17 @@ pub(crate) fn invoke_target_values(
         }
     };
     trace.selected = Some(selected_candidate.call_entry_value);
+    if let Some(migration) = context.migration {
+        if selected_candidate.complete_result_view.mode != migration.request.target_demand().mode {
+            return Err(OrdinaryInvocationFailure::SelectedImplementation {
+                diagnostic: Diagnostic::hard_error(
+                    "selected migration declaration Mode does not satisfy target Mode",
+                    Some(provenance.clone()),
+                ),
+                trace,
+            });
+        }
+    }
     let legality =
         validate_dynamic_legality(semantic_world, &selected_candidate, &context, &provenance)
             .map_err(|diagnostic| OrdinaryInvocationFailure::DynamicLegality {
@@ -1744,25 +1721,57 @@ pub(crate) fn invoke_target_values(
         legality,
     };
 
-    let canonical_callable_identity = crate::SelectedCallableIdentity {
+    let canonical_callable_identity = crate::CompilePartner {
         selected_function_value: selected.target_value,
         selected_call_entry: selected.call_entry_value,
     };
-    let is_ambient_struct = matches!(
-        &selected.implementation,
-        PreparedImplementation::Builtin(input) if input.implementation == crate::BuiltinCallableImpl::Struct
-    );
-    let ambient_construction_owner = context
-        .ambient_construction_owner
-        .or_else(|| semantic_world.namespace_owner(resolver_context.current_namespace));
-
-    // Ordinary meta invocation identity is computed once for the selected
-    // candidate and shared by every ordinary meta construction path.  The
-    // privileged `struct` builtin is intentionally excluded: its canonical
-    // owner rule establishes no MetaInstance root, so forcing its private AST
-    // carrier through an ordinary meta material key would invent semantic
-    // identity that the language does not have.
-    let mut canonical_instance_key = None;
+    if selected
+        .body_entry_view
+        .pair
+        .value
+        .stage()
+        .or(selected.body_entry_view.pair.pattern.stage)
+        != Some(crate::Stage::Runtime)
+    {
+        let parent_owner = context
+            .parent_semantic_owner
+            .or_else(|| semantic_world.namespace_owner(resolver_context.current_namespace))
+            .ok_or_else(|| OrdinaryInvocationFailure::SelectedImplementation {
+                diagnostic: Diagnostic::hard_error(
+                    "compile invocation requires its current semantic parent owner",
+                    Some(provenance.clone()),
+                ),
+                trace: trace.clone(),
+            })?;
+        let material = canonical_compile_instance_key_for_selected(
+            semantic_world,
+            &arg_shape,
+            canonical_callable_identity,
+            &provenance,
+            &trace,
+        )?;
+        let key = crate::CompileInstanceKey {
+            parent_owner,
+            material,
+        };
+        let instance = semantic_world
+            .intern_compile_instance(key.clone(), provenance.clone())
+            .map_err(
+                |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+                    diagnostic,
+                    trace: trace.clone(),
+                },
+            )?;
+        trace.compile_instance = Some(instance);
+        semantic_world
+            .enter_compile_body(instance, selected.frame.clone(), provenance.clone())
+            .map_err(
+                |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+                    diagnostic,
+                    trace: trace.clone(),
+                },
+            )?;
+    }
 
     // A declared `Unit` result is validated at the declaration boundary but
     // has no executable producer yet: report the execution gap explicitly
@@ -1882,36 +1891,12 @@ pub(crate) fn invoke_target_values(
         },
     };
 
-    if canonical_instance_key.is_none()
-        && !is_ambient_struct
-        && matches!(
-            returned,
-            SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(_))
-        )
-    {
-        canonical_instance_key = Some(canonical_meta_instance_key_for_selected(
-            semantic_world,
-            &classified.classified_shape,
-            canonical_callable_identity,
-            &provenance,
-            &trace,
-        )?);
-    }
-    let identity = ordinary_result_identity(
-        semantic_world,
-        &selected,
-        canonical_instance_key.as_ref(),
-        is_ambient_struct
-            .then_some(ambient_construction_owner)
-            .flatten(),
-        returned,
-    )
-    .map_err(
-        |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+    let identity = ordinary_result_identity(semantic_world, returned).map_err(|diagnostic| {
+        OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic,
             trace: trace.clone(),
-        },
-    )?;
+        }
+    })?;
     let Some((result_type, pattern, returned_value, returned)) = identity else {
         return Err(OrdinaryInvocationFailure::SelectedImplementation {
             diagnostic: Diagnostic::hard_error(
@@ -1923,13 +1908,24 @@ pub(crate) fn invoke_target_values(
     };
     if let Some(migration) = context.migration {
         let source = migration.request.source_type();
-        let same_type =
-            same_type_core(semantic_world, source, result_type).map_err(|diagnostic| {
-                OrdinaryInvocationFailure::SelectedImplementation {
-                    diagnostic,
-                    trace: trace.clone(),
-                }
+        let same_type = (|| {
+            let returned_value = returned_value.ok_or_else(|| {
+                Diagnostic::hard_error(
+                    "same-Type migration result has no ordinary value classifier observation",
+                    Some(provenance.clone()),
+                )
             })?;
+            Ok::<_, Diagnostic>(
+                value_classifier_core(semantic_world, migration.source_value, &provenance)?
+                    == value_classifier_core(semantic_world, returned_value, &provenance)?,
+            )
+        })()
+        .map_err(
+            |diagnostic| OrdinaryInvocationFailure::SelectedImplementation {
+                diagnostic,
+                trace: trace.clone(),
+            },
+        )?;
         if !same_type {
             return Err(OrdinaryInvocationFailure::MigrationResultTypeChanged {
                 source,
@@ -1945,10 +1941,8 @@ pub(crate) fn invoke_target_values(
         }
     }
 
-    // CompleteResultView — these entries carry the result P2 type/Pattern
-    // observations only. The outward
-    // visibility of the invocation result is NOT this P2: it is the
-    // canonical P1 layer, derived on demand by
+    // CompleteResultView retains the declared output rank observations.
+    // Callable P1 exposure is derived on demand by
     // `SingleMemberResult::exposed()`.
     let semantic_complete_type = match &returned {
         ReturnedSemanticEntity::CompleteType(value) => Some(value.complete_type.clone()),
@@ -1976,6 +1970,19 @@ pub(crate) fn invoke_target_values(
     }];
 
     let declared_result_class = selected.declared_result_class.clone();
+    if let Some(instance) = trace.compile_instance {
+        let carrier = match &returned {
+            ReturnedSemanticEntity::CompleteType(value) => value.carrier_value,
+            ReturnedSemanticEntity::OrdinaryValue(value) => *value,
+        };
+        semantic_world.deliver_compile_result(
+            instance,
+            crate::semantic_world::CompileResultObservation {
+                value: carrier,
+                complete_type: semantic_complete_type.as_ref().map(|value| value.whole()),
+            },
+        );
+    }
     Ok(semantic_invocation_outcome(
         declared_result_class,
         ProjectedInvocationOutcome::SingleMember(SingleMemberResult {
@@ -1988,77 +1995,119 @@ pub(crate) fn invoke_target_values(
     ))
 }
 
-fn classify_semantic_value_arguments(
+fn classify_semantic_arguments(
     shape: &mut ArgProductShape,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
     horizon: ObservationHorizon,
-) -> Result<(), InvocationResidual> {
+) -> Result<(), ObservationObstruction> {
     for raw_arg in &mut shape.raw_args {
         if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
             continue;
         }
-        let Some(ProductAtom::Expression {
-            expr: lang_syntax::NormExpr::Name { text, .. },
-            ..
-        }) = shape.flattened.atoms.get(raw_arg.index)
+        let Some(ProductAtom::Expression { expr, .. }) = shape.flattened.atoms.get(raw_arg.index)
         else {
             continue;
         };
-
-        let mut namespaces = Vec::with_capacity(1 + resolver_context.default_mounts.len());
-        namespaces.push(resolver_context.current_namespace);
-        namespaces.extend(resolver_context.default_mounts.iter().copied());
-        let Some(symbol) = namespaces
-            .into_iter()
-            .find_map(|namespace| semantic_world.symbol_in_namespace(namespace, text))
-        else {
+        let Some(path) = crate::type_argument::type_argument_path(expr) else {
             continue;
         };
-
-        let mut hidden_value_observation = false;
-        let mut readable = symbol
-            .member_views
+        let navigation = match semantic_world.navigate_semantic_path(
+            &path,
+            resolver_context.current_namespace,
+            &resolver_context.explicit_mount_roots,
+            &resolver_context.default_mounts,
+        ) {
+            Ok(navigation) => navigation,
+            Err(_) if path.len() == 1 => continue,
+            Err(diagnostic) => {
+                return Err(ObservationObstruction {
+                    class: diagnostic.message,
+                    provenance: raw_arg.provenance.clone(),
+                })
+            }
+        };
+        if navigation
+            .host_chain
             .iter()
-            .filter_map(|view| {
-                let value = view.value?;
-                let object = semantic_world.value(value)?;
-                // CoreTypeProjection is projection material, not an ordinary
-                // value argument. Pure-P/type views carry `value=None`; this
-                // check also excludes projection material stored in a
-                // value-bearing transport view.
-                if matches!(
-                    object.payload,
-                    SemanticValuePayload::CoreTypeProjection { .. }
-                ) {
-                    return None;
-                }
-                let stage = view.view.pair.value.stage()?;
-                if !stage.visible_at(horizon) {
-                    hidden_value_observation = true;
-                    return None;
-                }
-                Some((value, object.type_value, view.view.mode))
-            })
-            .collect::<Vec<_>>();
-        readable.sort_by_key(|(value, _, _)| *value);
-        readable.dedup_by_key(|(value, _, _)| *value);
-        if readable.is_empty() && hidden_value_observation {
-            // The binding has been resolved. Hidden Val1 is not an unknown
-            // expression, and neither a visible Pattern nor a caller-supplied
-            // mode makes it readable. The common continuation consumer must
-            // preserve this observation before applicability or preference.
-            return Err(InvocationResidual {
-                class: "hidden-argument-value-observation".to_string(),
+            .any(|host| !host.exposed_at(horizon))
+        {
+            return Err(ObservationObstruction {
+                class: "hidden-navigation-host-observation".into(),
                 provenance: raw_arg.provenance.clone(),
             });
         }
-        let [(value, type_value, mode)] = readable.as_slice() else {
+        let symbol = semantic_world
+            .symbol(navigation.terminal_symbol)
+            .expect("navigation fixes an existing binding");
+        if symbol.type_resident().is_some() {
+            let resolution = SemanticTypeEnv::new(semantic_world)
+                .resolve_navigation_carrier(navigation)
+                .ok_or_else(|| ObservationObstruction {
+                    class: "resolved argument type observation is unavailable".into(),
+                    provenance: raw_arg.provenance.clone(),
+                })?;
+            let observed = resolution
+                .observe_argument_at(horizon)
+                .map_err(|diagnostic| ObservationObstruction {
+                    class: diagnostic.message,
+                    provenance: raw_arg.provenance.clone(),
+                })?;
+            *raw_arg = raw_arg.clone().as_complete_type_projection_named(
+                path.join("::"),
+                resolution.represented_type,
+                resolution.carrier_symbol,
+                Some(observed),
+                resolution.carrier_place,
+                resolution.complete_type_observation,
+            );
             continue;
+        }
+        let mut readable = Vec::new();
+        for edge in &symbol.member_views {
+            let Some(value) = edge.value else {
+                continue;
+            };
+            let Some(object) = semantic_world.value(value) else {
+                return Err(ObservationObstruction {
+                    class: "resolved argument resident observation is unavailable".into(),
+                    provenance: raw_arg.provenance.clone(),
+                });
+            };
+            if matches!(
+                object.payload,
+                SemanticValuePayload::CoreTypeProjection { .. }
+            ) {
+                continue;
+            }
+            let exposed = crate::expose_policy_slice(edge, horizon);
+            if crate::read_value(&exposed).is_some() && !readable.contains(edge) {
+                readable.push(edge.clone());
+            }
+        }
+        let edge = match readable.as_slice() {
+            [edge] => edge,
+            [] => {
+                return Err(ObservationObstruction {
+                    class: "hidden-argument-value-observation".into(),
+                    provenance: raw_arg.provenance.clone(),
+                })
+            }
+            _ => {
+                return Err(ObservationObstruction {
+                    class: "ambiguous-argument-policy-observation".into(),
+                    provenance: raw_arg.provenance.clone(),
+                })
+            }
         };
+        let value = edge.value.expect("observed Val1");
+        let type_value = semantic_world
+            .value(value)
+            .expect("observed resident")
+            .type_value;
         *raw_arg = raw_arg
             .clone()
-            .as_resolved_semantic_value(*value, *type_value, *mode);
+            .as_resolved_semantic_value(value, type_value, edge.view.mode);
     }
     Ok(())
 }
@@ -2104,6 +2153,7 @@ fn apply_self_formal_structure(
     actual: &crate::semantic_world::SemanticValueRecord,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
+    horizon: ObservationHorizon,
     provenance: Provenance,
 ) -> Result<(), CandidateApplicabilityFailure> {
     let Some(head) = entry
@@ -2159,24 +2209,42 @@ fn apply_self_formal_structure(
     };
 
     if let Some(annotation) = &slot.annotation {
-        let expected = resolve_type_annotation_value(
-            &annotation.pattern,
-            semantic_world,
-            resolver_context,
-            provenance.clone(),
-        )
-        .map_err(CandidateApplicabilityFailure::Unsupported)?;
-        if expected != actual.type_value {
-            return Err(CandidateApplicabilityFailure::Inapplicable(
+        let expected = crate::pattern_relation::external_pattern_name(&annotation.pattern)
+            .and_then(|name| {
+                SemanticTypeEnv::new(semantic_world).resolve_type_name(name, resolver_context)
+            })
+            .filter(|resolved| resolved.observe_classifier_at(horizon).is_ok())
+            .and_then(|resolved| resolved.complete_type_observation)
+            .and_then(|whole| semantic_world.complete_type_by_whole_observation(whole));
+        let actual_type = semantic_world.complete_type_for_value(actual.id);
+        let (Some(expected), Some(actual_type)) = (expected, actual_type) else {
+            return Err(CandidateApplicabilityFailure::Unsupported(
                 Diagnostic::hard_error(
-                    format!(
-                        "ordinary self type applicability failed: expected {:?}, got {:?}",
-                        expected, actual.type_value
-                    ),
+                    "ordinary self classifier Core observation is unavailable",
                     Some(provenance),
                 ),
             ));
-        }
+        };
+        crate::pattern_relation::relate_external_classifier(
+            crate::NamedPatternObservation {
+                pattern: semantic_world
+                    .type_value(expected.lookup_key())
+                    .ok_or_else(|| {
+                        CandidateApplicabilityFailure::Unsupported(Diagnostic::hard_error(
+                            "ordinary self expected classifier Pattern observation is unavailable",
+                            Some(provenance.clone()),
+                        ))
+                    })?
+                    .pattern,
+                core: Some(expected.core()),
+            },
+            crate::ExtractedTypeObservation {
+                pattern: actual.pattern,
+                core: Some(actual_type.core()),
+            },
+            provenance,
+        )
+        .map_err(CandidateApplicabilityFailure::Inapplicable)?;
         self_specificity = self_specificity.add(SpecificityTuple {
             max_depth: 1,
             sum_depth: 1,
@@ -2189,27 +2257,33 @@ fn apply_self_formal_structure(
     Ok(())
 }
 
-fn resolve_type_annotation_value(
+fn resolve_annotation_core(
     pattern: &NormPattern,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
+    horizon: ObservationHorizon,
     provenance: Provenance,
-) -> Result<TypeValueId, Diagnostic> {
+) -> Result<crate::CanonicalValueAddr, Diagnostic> {
     let name = match pattern {
-        NormPattern::Name { name, .. } => name,
+        pattern if crate::pattern_relation::external_pattern_name(pattern).is_some() => {
+            crate::pattern_relation::external_pattern_name(pattern).unwrap()
+        }
         _ => {
             return Err(Diagnostic::hard_error(
-                "ordinary self type annotation requires a resolved type-name Pattern",
+                "result classifier annotation requires an external type Pattern",
                 Some(provenance),
             ));
         }
     };
     SemanticTypeEnv::new(semantic_world)
         .resolve_type_name(name, resolver_context)
-        .map(|resolution| resolution.represented_type)
+        .filter(|resolved| resolved.observe_classifier_at(horizon).is_ok())
+        .and_then(|resolution| resolution.complete_type_observation)
+        .and_then(|whole| semantic_world.complete_type_by_whole_observation(whole))
+        .map(|complete| complete.core())
         .ok_or_else(|| {
             Diagnostic::hard_error(
-                format!("ordinary self annotation `{name}` is not a resolved type value"),
+                format!("result classifier `{name}` Core observation is unavailable"),
                 Some(provenance.clone()),
             )
         })
@@ -2224,8 +2298,9 @@ fn declared_value_result_type(
     closure: &lang_syntax::NormClosure,
     semantic_world: &SemanticWorld,
     resolver_context: &ResolverContext,
+    horizon: ObservationHorizon,
     provenance: Provenance,
-) -> Result<Option<TypeValueId>, Diagnostic> {
+) -> Result<Option<crate::CanonicalValueAddr>, Diagnostic> {
     let Some(annotation) = closure
         .head
         .as_ref()
@@ -2236,94 +2311,34 @@ fn declared_value_result_type(
     };
     if matches!(
         &annotation.pattern,
-        NormPattern::Name { name, .. } if matches!(name.as_str(), "type" | "symbol" | "unit")
+        pattern if matches!(crate::pattern_relation::external_pattern_name(pattern), Some("type" | "symbol" | "unit"))
     ) {
         return Ok(None);
     }
-    resolve_type_annotation_value(
+    resolve_annotation_core(
         &annotation.pattern,
         semantic_world,
         resolver_context,
+        horizon,
         provenance,
     )
     .map(Some)
 }
 
-fn same_type_core(
-    semantic_world: &mut SemanticWorld,
-    left: TypeValueId,
-    right: TypeValueId,
-) -> Result<bool, Diagnostic> {
-    let left = semantic_world.canonical_registered_type_core_observation_address(left)?;
-    let right = semantic_world.canonical_registered_type_core_observation_address(right)?;
-    Ok(left == right)
-}
-
-fn validate_explicit_value_type_annotations(
-    entry: &OrdinaryCallEntry,
-    actuals: &ArgProductShape,
+fn value_classifier_core(
     semantic_world: &SemanticWorld,
-    resolver_context: &ResolverContext,
-    provenance: Provenance,
-) -> Result<(), CandidateApplicabilityFailure> {
-    let Some(head) = entry
-        .source_closure()
-        .and_then(|closure| closure.head.as_ref())
-    else {
-        return Ok(());
-    };
-    for (formal, actual) in head
-        .formal_frame()
-        .explicit_parameters
-        .iter()
-        .zip(&actuals.raw_args)
-    {
-        let NormPatternElem::BindingSlot(slot) = formal else {
-            continue;
-        };
-        let Some(annotation) = &slot.annotation else {
-            continue;
-        };
-        let is_type_rank_annotation = matches!(
-            &annotation.pattern,
-            NormPattern::Name { name, .. } if name == "type"
-        );
-        if is_type_rank_annotation
-            && matches!(
-                actual.value_class,
-                crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection)
+    value: SemanticValueId,
+    provenance: &Provenance,
+) -> Result<crate::CanonicalValueAddr, Diagnostic> {
+    semantic_world
+        .complete_type_for_value(value)
+        .map(|complete| complete.core())
+        .ok_or_else(|| {
+            Diagnostic::hard_error(
+                "frozen value classifier Core observation is unavailable",
+                Some(provenance.clone()),
             )
-        {
-            continue;
-        }
-        let expected = resolve_type_annotation_value(
-            &annotation.pattern,
-            semantic_world,
-            resolver_context,
-            provenance.clone(),
-        )
-        .map_err(CandidateApplicabilityFailure::Unsupported)?;
-        let Some(actual) = actual.known_first_order_type_value else {
-            return Err(CandidateApplicabilityFailure::Unsupported(
-                Diagnostic::hard_error(
-                    "ordinary value parameter requires an evaluated argument TypeValue",
-                    Some(provenance),
-                ),
-            ));
-        };
-        if expected != actual {
-            return Err(CandidateApplicabilityFailure::Inapplicable(
-                Diagnostic::hard_error(
-                    format!(
-                    "ordinary value parameter type applicability failed: expected {:?}, got {:?}",
-                    expected, actual
-                ),
-                    Some(provenance),
-                ),
-            ));
-        }
-    }
-    Ok(())
+        })
 }
 
 fn element_policy(element: &NormPatternElem) -> Option<&NormPolicySpec> {
@@ -2432,7 +2447,7 @@ fn observed_argument_modes(
                 return crate::PendingResultPolicyDemand {
                     pair_query: P1Projection::Infer,
                     mode: None,
-                    meta_instance_policy: context.omitted_argument_policy,
+                    open_policy: context.omitted_argument_policy,
                 }
                 .complete(crate::OpenHereAvailability::Unavailable, provenance.clone())
                 .map(|demand| demand.mode);
@@ -2484,7 +2499,10 @@ fn compare_policy_frames(
     ordering_from_advantages(left_better, right_better)
 }
 
-fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> bool {
+fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> Option<bool> {
+    if !candidate.is_rank_prefix_coherent() {
+        return Some(false);
+    }
     let value_admits = |required: crate::ValuePolicyQuery| {
         let presence = required.presence == crate::ValuePresence::Optional
             || candidate.value.presence() == crate::ValuePresence::Optional
@@ -2495,11 +2513,19 @@ fn result_pair_demand_admits(candidate: &PolicyPair, demand: &P1Projection) -> b
                 .is_none_or(|s| candidate.value.stage() == Some(s))
     };
     match demand {
-        P1Projection::Infer => true,
-        P1Projection::ValueDominant { value } => value_admits(*value),
-        P1Projection::Pair(required) => {
-            value_admits(required.value.into()) && required.pattern.stage == candidate.pattern.stage
+        P1Projection::Infer => Some(true),
+        P1Projection::Leading { stage: None } => Some(true),
+        P1Projection::Leading { stage: Some(stage) } => {
+            candidate.leading_stage().map(|s| s == *stage)
         }
+        P1Projection::AllCompile => candidate
+            .leading_stage()
+            .map(|s| s == crate::Stage::Compile),
+        P1Projection::Pair(required) => Some(
+            required.is_rank_prefix_coherent()
+                && value_admits(required.value.into())
+                && required.pattern.stage == candidate.pattern.stage,
+        ),
     }
 }
 
@@ -2514,14 +2540,11 @@ fn ordering_from_advantages(left: bool, right: bool) -> PolicyPartialOrdering {
 
 fn ordinary_result_identity(
     semantic_world: &mut SemanticWorld,
-    selected: &PreparedCallCandidate,
-    canonical_key: Option<&crate::MetaInstanceMaterialKey>,
-    ambient_struct_owner: Option<SemanticOwnerId>,
     returned: SelectedBodyOutput,
 ) -> Result<
     Option<(
         TypeValueId,
-        PatternValueId,
+        PatternCoordinateId,
         Option<SemanticValueId>,
         ReturnedSemanticEntity,
     )>,
@@ -2533,7 +2556,7 @@ fn ordinary_result_identity(
             let Some(pattern) = semantic_world.type_value(represented).map(|t| t.pattern) else {
                 return Ok(None);
             };
-            let crate::CanonicalTypeObservation::Observed(whole) = value.type_observation;
+            let whole = value.complete_type_observation;
             let complete_type = semantic_world
                 .complete_type_by_whole_observation(whole)
                 .cloned()
@@ -2559,67 +2582,14 @@ fn ordinary_result_identity(
                     complete_type,
                     carrier_value,
                     pattern,
-                    construction_material: None,
                 }),
             )))
         }
-        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructConstructionMaterial(
-            mut value,
-        )) => {
-            let installed = if let Some(ambient_owner) = ambient_struct_owner {
-                if let Some((_existing, binder)) =
-                    semantic_world.ambient_struct_collision(ambient_owner, value.material_id)
-                {
-                    return Err(Diagnostic::hard_error(
-                        ambient_struct_collision_message(binder),
-                        Some(value.provenance.clone()),
-                    ));
-                }
-                semantic_world.install_ambient_struct_type_value(
-                    ambient_owner,
-                    value.material_id,
-                    value.canonical_pattern_value(),
-                    selected.complete_result_view.pair.clone(),
-                    value.provenance.clone(),
-                )
-            } else {
-                let canonical_key = canonical_key
-                    .expect("meta struct result requires a canonical MetaInstance key");
-                let Some(placement_parent) =
-                    semantic_world.callable_declaration_environment(selected.call_entry_value)
-                else {
-                    return Ok(None);
-                };
-                let meta_root = crate::MetaInstanceRootKey {
-                    parent_owner: placement_parent,
-                    material: canonical_key.clone(),
-                };
-                semantic_world.install_meta_struct_complete_type(
-                    meta_root,
-                    value.material_id,
-                    value.canonical_pattern_value(),
-                    selected.complete_result_view.pair.clone(),
-                    value.provenance.clone(),
-                )?
-            };
-            let Some((carrier_value, pattern, complete_type)) = installed else {
-                return Err(Diagnostic::hard_error(
-                    "struct result installation could not form its complete type",
-                    Some(value.provenance.clone()),
-                ));
-            };
-            value.canonical_type = Some(complete_type.lookup_key());
-            Ok(Some((
-                complete_type.lookup_key(),
-                pattern,
-                Some(carrier_value),
-                ReturnedSemanticEntity::CompleteType(ReturnedCompleteType {
-                    complete_type,
-                    carrier_value,
-                    pattern,
-                    construction_material: Some(value),
-                }),
-            )))
+        SelectedBodyOutput::BuiltinMaterial(BuiltinBodyMaterial::StructHelpers(value)) => {
+            Err(Diagnostic::hard_error(
+                "struct helper formation consumer is unavailable for the complete input type",
+                Some(value.provenance),
+            ))
         }
         SelectedBodyOutput::OrdinaryValue(value_id) => {
             Ok(semantic_world.value(value_id).map(|value| {
@@ -2647,7 +2617,7 @@ mod tests {
             pair: PolicyPair {
                 value: ValueComponentPolicy::Present(value_stage),
                 pattern: PatternComponentPolicy {
-                    stage: pattern_stage,
+                    stage: Some(pattern_stage),
                 },
             },
             mode,
@@ -2658,20 +2628,165 @@ mod tests {
     fn result_pair_demand_is_a_pre_maxima_hard_coordinate() {
         let runtime = view(Stage::Runtime, Stage::Compile, PolicyMode::Const);
         let compile = view(Stage::Compile, Stage::Compile, PolicyMode::Mut);
-        let runtime_demand = P1Projection::ValueDominant {
-            value: runtime.pair.value.into(),
+        let runtime_demand = P1Projection::Leading {
+            stage: Some(Stage::Runtime),
         };
-        assert!(result_pair_demand_admits(&runtime.pair, &runtime_demand));
-        assert!(!result_pair_demand_admits(&compile.pair, &runtime_demand));
+        assert_eq!(
+            result_pair_demand_admits(&runtime.pair, &runtime_demand),
+            Some(true)
+        );
+        assert_eq!(
+            result_pair_demand_admits(&compile.pair, &runtime_demand),
+            Some(false)
+        );
 
         let pair_demand = P1Projection::Pair(PolicyPair {
             value: runtime.pair.value.clone(),
-            pattern: PatternComponentPolicy { stage: Stage::Seal },
+            pattern: PatternComponentPolicy {
+                stage: Some(Stage::Runtime),
+            },
         });
-        assert!(!result_pair_demand_admits(&runtime.pair, &pair_demand));
+        assert_eq!(
+            result_pair_demand_admits(&runtime.pair, &pair_demand),
+            Some(false)
+        );
         assert_ne!(
             runtime.mode, compile.mode,
             "mode remains a separate Bp coordinate"
         );
+    }
+
+    #[test]
+    fn all_absent_window_keeps_higher_rank_demand_unknown() {
+        let absent = PolicyPair {
+            value: ValueComponentPolicy::Absent,
+            pattern: PatternComponentPolicy { stage: None },
+        };
+        assert_eq!(
+            result_pair_demand_admits(&absent, &P1Projection::AllCompile),
+            None
+        );
+        assert_eq!(
+            result_pair_demand_admits(
+                &absent,
+                &P1Projection::Leading {
+                    stage: Some(Stage::Runtime)
+                }
+            ),
+            None
+        );
+        assert_eq!(
+            result_pair_demand_admits(&absent, &P1Projection::Pair(absent.clone())),
+            Some(true)
+        );
+    }
+
+    fn supplied_migration_material() -> (
+        crate::SemanticWorld,
+        crate::SemanticValueRef,
+        crate::PatternCoordinateId,
+    ) {
+        let base = crate::CompilationWorld::from_manifest(&crate::BuildManifest::new(
+            "app",
+            vec!["app".into()],
+        ))
+        .unwrap();
+        let mut world = base.semantic_world().clone();
+        let ty = base.resolve_type_value("uint8").unwrap();
+        let pair = crate::declared_policy_view(Stage::Compile, PolicyMode::Const).pair;
+        let value = world
+            .install_plain_value(
+                ty,
+                pair,
+                crate::Provenance::new("supplied delivery observation fixture"),
+            )
+            .unwrap();
+        let pattern = world.value(value).unwrap().pattern;
+        (
+            world,
+            crate::SemanticValueRef {
+                id: value,
+                type_value: ty,
+            },
+            pattern,
+        )
+    }
+
+    #[test]
+    fn supplied_migration_delivery_requires_actual_declared_and_target_mode_without_retagging() {
+        let (world, value, pattern) = supplied_migration_material();
+        let before = format!("{world:?}");
+        // Supplied observations exercise the completion validator, not a source
+        // body producer or successful common-E migration.
+        for actual in [PolicyMode::Const, PolicyMode::Mut] {
+            for declared in [PolicyMode::Const, PolicyMode::Mut] {
+                for target in [PolicyMode::Const, PolicyMode::Mut] {
+                    let source_view =
+                        crate::declared_policy_view(Stage::Compile, PolicyMode::Const);
+                    let request = crate::PolicyMigrationRequest::new(
+                        source_view.clone(),
+                        crate::ResultPolicyDemand {
+                            pair_query: P1Projection::Pair(source_view.pair),
+                            mode: target,
+                        },
+                        value.type_value,
+                        value.id,
+                        crate::Provenance::new("complete Mode demand"),
+                    )
+                    .unwrap();
+                    let material = vec![crate::PolicyResultEntry {
+                        value: Some(value),
+                        pattern,
+                        view: crate::declared_policy_view(Stage::Compile, actual),
+                    }];
+                    let original = material.clone();
+                    let result = super::project_migration_delivery(&request, declared, &material);
+                    if actual == declared && declared == target {
+                        assert_eq!(result.unwrap(), original);
+                    } else {
+                        let error = result.unwrap_err();
+                        assert!(error
+                            .message
+                            .contains("Mode does not satisfy declaration and target"));
+                    }
+                    assert_eq!(material, original);
+                    assert_eq!(format!("{world:?}"), before);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn supplied_migration_delivery_rejects_empty_or_mixed_mode_projection() {
+        let (world, value, pattern) = supplied_migration_material();
+        let view = crate::declared_policy_view(Stage::Compile, PolicyMode::Mut);
+        let request = crate::PolicyMigrationRequest::new(
+            view.clone(),
+            crate::ResultPolicyDemand {
+                pair_query: P1Projection::Pair(view.pair.clone()),
+                mode: PolicyMode::Mut,
+            },
+            value.type_value,
+            value.id,
+            crate::Provenance::new("all delivered entries must match"),
+        )
+        .unwrap();
+        let entry = crate::PolicyResultEntry {
+            value: Some(value),
+            pattern,
+            view,
+        };
+        let mut wrong_mode = entry.clone();
+        wrong_mode.view.mode = PolicyMode::Const;
+        let mut wrong_stage = entry.clone();
+        wrong_stage.view = crate::declared_policy_view(Stage::Runtime, PolicyMode::Mut);
+        for material in [vec![], vec![wrong_stage], vec![entry, wrong_mode]] {
+            let original = material.clone();
+            assert!(
+                super::project_migration_delivery(&request, PolicyMode::Mut, &material).is_err()
+            );
+            assert_eq!(material, original);
+        }
+        assert!(world.compile_instances().next().is_none());
     }
 }

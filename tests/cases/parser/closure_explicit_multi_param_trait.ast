@@ -36,7 +36,9 @@ Program
                                     Segment has_incoming=false
                                       OperatorExpr
                                         Atom
-                                          Name type
+                                          NavPath terminated
+                                            components:
+                                              component Name type
                             with_clause:
                               None
                             initializer:
@@ -44,7 +46,7 @@ Program
                   call_policy:
                     PolicySpec
                       PolicyConjunction
-                          PolicyAtom Name "meta"
+                          PolicyAtom Name "compile"
                   returns:
                     ReturnClause
                       slot:
@@ -61,7 +63,9 @@ Program
                                   Segment has_incoming=false
                                     OperatorExpr
                                       Atom
-                                        Name type
+                                        NavPath terminated
+                                          components:
+                                            component Name type
                           with_clause:
                             None
                           initializer:

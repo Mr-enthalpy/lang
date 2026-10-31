@@ -43,19 +43,17 @@ fn bind_closure(source: &str) -> ReturnTargetBindingReport {
     )
 }
 
-fn bind_closure_with_own_self_identity(source: &str) -> ReturnTargetBindingReport {
+fn bind_closure_with_current_activation(source: &str) -> ReturnTargetBindingReport {
     let closure = closure_initializer(source);
-    let callable_owner = closure
-        .semantic_owner
-        .expect("normalized closure has callable owner")
-        .id;
     elaborate_return_targets_in_returnable_closure_with_resolver(
         &closure,
         ReturnFrameOwner::SourceCallable {
             symbol_id: None,
             name: Some("f".to_string()),
         },
-        &move |_target: &NormExpr| ExplicitReturnTargetResolution::CallableSelf(callable_owner),
+        &move |_target: &NormExpr| {
+            ExplicitReturnTargetResolution::ActiveFrame(lang_build::ReturnFrameId(0))
+        },
     )
 }
 
@@ -115,7 +113,7 @@ let f = (self, x: int): runtime -> r: int => {
 }
 
 #[test]
-fn generated_self_retains_owner_identity_without_a_display_name() {
+fn anonymous_self_retains_owner_identity_without_a_display_name() {
     let normalized = normalize_source("value |> Widget { self return; };");
     let [NormForm::Expr(NormExpr::Call { target, .. })] = normalized.forms.as_slice() else {
         panic!("pipe call");
@@ -254,7 +252,7 @@ let f = (self): runtime -> r: _ => {
 
 #[test]
 fn explicit_self_return_matches_active_self_frame() {
-    let report = bind_closure_with_own_self_identity(
+    let report = bind_closure_with_current_activation(
         r#"
 let f = (self): runtime -> r: int => {
     1 |> (self return);
@@ -277,7 +275,7 @@ let f = (self): runtime -> r: int => {
 
 #[test]
 fn first_written_formal_is_self_even_when_its_name_is_not_self() {
-    let report = bind_closure_with_own_self_identity(
+    let report = bind_closure_with_current_activation(
         r#"
 let f = (callable, x): runtime -> r: int => {
     x |> (callable return);
@@ -396,8 +394,8 @@ let f = (self): runtime -> r: int => {
 }
 
 #[test]
-fn resolved_callable_owner_not_target_spelling_selects_the_frame() {
-    let report = bind_closure_with_own_self_identity(
+fn resolved_activation_not_target_spelling_selects_the_frame() {
+    let report = bind_closure_with_current_activation(
         r#"
 let f = (self_formal): runtime -> r: int => {
     1 |> (completely_different_text return);
@@ -411,6 +409,46 @@ let f = (self_formal): runtime -> r: int => {
         active_frame_id(&report.bound_events[0]),
         report.frames[0].frame_id.0
     );
+}
+
+#[test]
+fn repeated_callable_owner_has_distinct_active_return_frames() {
+    let report = bind_closure("let f = (self) -> r => { 1 return; };");
+    let template = &report.frames[0];
+    let mut stack = lang_build::ReturnTargetStack::new();
+    let push = |stack: &mut lang_build::ReturnTargetStack| {
+        stack.push_frame(
+            template.owner.clone(),
+            template.return_slot.clone(),
+            template.self_identity.clone(),
+            template.callable_self_owner,
+            template.origin.clone(),
+        )
+    };
+    let outer = push(&mut stack);
+    let inner = push(&mut stack);
+    assert_eq!(outer.callable_self_owner, inner.callable_self_owner);
+    assert_ne!(outer.frame_id, inner.frame_id);
+    assert_eq!(stack.active_frame(outer.frame_id), Some(&outer));
+    assert_eq!(stack.active_frame(inner.frame_id), Some(&inner));
+    assert_eq!(stack.pop_frame(), Some(inner.clone()));
+    assert!(stack.active_frame(inner.frame_id).is_none());
+    assert_eq!(stack.active_frame(outer.frame_id), Some(&outer));
+}
+
+#[test]
+fn resolved_inactive_activation_cannot_bind_to_equal_callable_owner() {
+    let closure = closure_initializer("let f = (self) -> r => { 1 |> (self return); };");
+    let report = elaborate_return_targets_in_returnable_closure_with_resolver(
+        &closure,
+        ReturnFrameOwner::AnonymousClosure,
+        &|_: &NormExpr| ExplicitReturnTargetResolution::ActiveFrame(lang_build::ReturnFrameId(99)),
+    );
+    assert_eq!(report.diagnostics.len(), 1);
+    assert!(report.bound_events.iter().all(|event| matches!(
+        event.resolved_target,
+        ResolvedReturnTarget::DiagnosticTarget
+    )));
 }
 
 #[test]

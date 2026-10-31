@@ -1,10 +1,10 @@
-let int: type = uint16;
+let int: type:: = uint16;
 
 compile let narrow =
-  (self, t: type): compile
-    -> let r: type =>
+  (self, t: type::): compile
+    -> let r: type:: =>
 {
   t;
 };
 
-meta let X: type = int narrow;
+compile let X: type:: = int narrow;

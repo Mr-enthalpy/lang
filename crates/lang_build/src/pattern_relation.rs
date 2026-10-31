@@ -13,9 +13,9 @@ use lang_syntax::{
 };
 
 use crate::{
-    CanonicalFullNavigation, CanonicalPatternValue, CanonicalValueAddr, Diagnostic,
-    OverloadArgShape, PatternValueId, Provenance, ResolvedHoleBinderId, ResolvedPatternRootId,
-    SemanticOwnerId, SemanticValueId, SpecificityTuple,
+    CanonicalFullNavigation, CanonicalValueAddr, Diagnostic, OverloadArgShape, PatternCoordinateId,
+    Provenance, ResolvedHoleBinderId, ResolvedPatternRootId, SemanticOwnerId, SemanticValueId,
+    SpecificityTuple, StructuralSchema,
 };
 
 /// Stable implicit candidate-family filter used only while Pattern itself
@@ -32,53 +32,14 @@ pub enum PatternSelector {
     Positional(usize),
 }
 
-/// Proof that one child comes from the Pattern's registered structural value,
-/// rather than from an ordinary navigable Val2 member.
+/// Registered structural incidence witnessed by one actual Val2 member.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DirectPatternChildEvidence {
-    pub parent: PatternValueId,
+    pub parent: PatternCoordinateId,
     pub selector: PatternSelector,
-    pub child: CanonicalPatternValue,
+    pub member: SemanticValueId,
+    pub child: StructuralSchema,
     pub extraction_family: StructuralDefault,
-}
-
-/// Query a recorded canonical structural Pattern value for direct incidence.
-/// Ordinary Val2 state is intentionally absent from this interface.
-pub fn direct_pattern_child_from_canonical_value(
-    parent: PatternValueId,
-    value: &CanonicalPatternValue,
-    selector: &PatternSelector,
-) -> Option<DirectPatternChildEvidence> {
-    let body = match value {
-        CanonicalPatternValue::NamedPattern { body, .. } => body.as_ref(),
-        other => other,
-    };
-    let child = match (body, selector) {
-        (CanonicalPatternValue::UnorderedLayer(entries), PatternSelector::Named(name)) => entries
-            .iter()
-            .find(|(navigation, _)| navigation.components().first() == Some(name))
-            .map(|(_, child)| child.clone()),
-        (CanonicalPatternValue::OrderedLayer(entries), PatternSelector::Positional(index)) => {
-            entries.get(*index).map(|entry| entry.value.clone())
-        }
-        (CanonicalPatternValue::OrderedLayer(entries), PatternSelector::Named(name)) => entries
-            .iter()
-            .find(|entry| {
-                entry
-                    .navigation
-                    .as_ref()
-                    .and_then(|navigation| navigation.components().first())
-                    == Some(name)
-            })
-            .map(|entry| entry.value.clone()),
-        _ => None,
-    }?;
-    Some(DirectPatternChildEvidence {
-        parent,
-        selector: selector.clone(),
-        child,
-        extraction_family: StructuralDefault,
-    })
 }
 
 /// Root-local identity of an ordinary value binder in a Pattern query.
@@ -96,7 +57,7 @@ pub struct ResolvedPatternBinderId {
 /// bare TypeValueId never participates in equality here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExtractedTypeObservation {
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub core: Option<CanonicalValueAddr>,
 }
 
@@ -207,7 +168,7 @@ impl PatternApplicabilityProof {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NamedPatternObservation {
-    pub pattern: PatternValueId,
+    pub pattern: PatternCoordinateId,
     pub core: Option<CanonicalValueAddr>,
 }
 
@@ -229,6 +190,22 @@ impl<'a> PatternRelationContext<'a> {
         callable_owner: SemanticOwnerId,
         resolve_named: Option<&'a dyn Fn(&str) -> Option<NamedPatternObservation>>,
     ) -> Result<Self, PatternRelationFailure> {
+        if closure.head.as_ref().is_some_and(|head| {
+            head.deduce.iter().any(|hole| hole.policy.is_some())
+                || head.params.iter().any(|param| {
+                    matches!(param,
+                    NormPatternElem::BindingSlot(slot)
+                        if slot.deduce.iter().any(|hole| hole.policy.is_some()))
+                })
+        }) {
+            return Err(unsupported(
+                "Hole-local Policy extraction consumer is unavailable",
+                Some(Provenance::from_norm_origin(
+                    "Hole-local Policy",
+                    &closure.origin,
+                )),
+            ));
+        }
         let frontend_owner = closure
             .semantic_owner
             .map(|owner| owner.id)
@@ -283,6 +260,16 @@ pub fn solve_parameter_product_relation(
     args: &[OverloadArgShape],
     context: &PatternRelationContext<'_>,
 ) -> Result<PatternApplicabilityProof, PatternRelationFailure> {
+    if params.iter().any(|param| {
+        matches!(param,
+        NormPatternElem::BindingSlot(slot)
+            if slot.deduce.iter().any(|hole| hole.policy.is_some()))
+    }) {
+        return Err(unsupported(
+            "Hole-local Policy extraction consumer is unavailable",
+            params.first().and_then(param_provenance),
+        ));
+    }
     let pack_index = params.iter().position(param_is_pack);
     let fixed_suffix = pack_index.map_or(0, |index| params.len() - index - 1);
     let mut solutions = vec![PatternRelationDerivation::default()];
@@ -399,9 +386,7 @@ fn solve_value_pattern(
             ..
         } => Ok(vec![PatternRelationDerivation::default()]),
         NormPattern::HoleRef { target, origin, .. } => {
-            let observation = extracted_type(arg).ok_or_else(|| {
-                inapplicable("Pattern hole could not observe an argument type", arg)
-            })?;
+            let observation = extracted_type(arg)?;
             let provenance = Provenance::from_norm_origin("Pattern hole extraction", origin);
             let hole = context.qualify_hole(*target, &provenance)?;
             let mut derivation = PatternRelationDerivation::default();
@@ -413,7 +398,7 @@ fn solve_value_pattern(
         NormPattern::Sequence { elements, .. } => {
             let mut terms = Vec::new();
             for element in elements {
-                collect_relational_terms(element, &mut terms);
+                collect_relational_terms(element, &mut terms)?;
             }
             solve_terms(&terms, arg, context)
         }
@@ -427,18 +412,45 @@ fn solve_value_pattern(
     }
 }
 
+pub(crate) fn external_pattern_name(pattern: &NormPattern) -> Option<&str> {
+    match pattern {
+        NormPattern::Nav {
+            components,
+            explicit_terminated: true,
+            ..
+        } => match components.as_slice() {
+            [lang_syntax::NormNavComponent::Name { name, .. }] => Some(name),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 fn solve_annotation(
     annotation: &NormAnnotation,
     arg: &OverloadArgShape,
     context: &PatternRelationContext<'_>,
 ) -> Result<(Vec<PatternRelationDerivation>, SpecificityTuple), PatternRelationFailure> {
     match &annotation.pattern {
-        NormPattern::Name { name, .. } if name == "type" => {
-            if arg.is_value || arg.pattern_value.is_none() {
-                return Err(inapplicable(
-                    "type annotation expected a complete type value",
-                    arg,
-                ));
+        pattern if external_pattern_name(pattern) == Some("type") => {
+            match &arg.value_class {
+                crate::RawArgValueClass::Value
+                | crate::RawArgValueClass::NonValue(crate::NonValueArgKind::ProductUnit) => {
+                    return Err(inapplicable(
+                        "type annotation expected a complete type value",
+                        arg,
+                    ));
+                }
+                crate::RawArgValueClass::NonValue(crate::NonValueArgKind::CoreTypeProjection) => {
+                    extracted_type(arg)?;
+                }
+                crate::RawArgValueClass::UnknownExpression
+                | crate::RawArgValueClass::Unsupported { .. } => {
+                    return Err(unsupported(
+                        "argument value/type role observation is unavailable",
+                        Some(arg.provenance.clone()),
+                    ));
+                }
             }
             Ok((
                 vec![PatternRelationDerivation::default()],
@@ -450,22 +462,45 @@ fn solve_annotation(
                 },
             ))
         }
+        NormPattern::Name { .. } => Err(unsupported(
+            "classifier-side binding extraction consumer is unavailable",
+            Some(Provenance::from_norm_origin(
+                "joint extraction",
+                &annotation.origin,
+            )),
+        )),
+        NormPattern::Binder { name, .. } if name.as_deref() == Some("_") => Ok((
+            vec![PatternRelationDerivation::default()],
+            specificity_for_pattern(&annotation.pattern),
+        )),
+        NormPattern::Skeleton {
+            skeleton: NormSkeleton::Wildcard { .. },
+            ..
+        } => Ok((
+            vec![PatternRelationDerivation::default()],
+            specificity_for_pattern(&annotation.pattern),
+        )),
         pattern => {
-            if !arg.is_value || extracted_type(arg).is_none() {
-                return Err(inapplicable(
-                    "value Pattern annotation expected a typed Val1 argument",
-                    arg,
+            if arg.value_class != crate::RawArgValueClass::Value {
+                return Err(unsupported(
+                    "classifier observation at this universe rank is unavailable",
+                    Some(arg.provenance.clone()),
                 ));
             }
-            let derived = solve_value_pattern(
-                pattern,
-                arg,
-                ResolvedPatternBinderId {
-                    root: context.root,
-                    local_ordinal: u32::MAX,
-                },
-                context,
-            )?;
+            extracted_type(arg)?;
+            let derived = if let Some(name) = external_pattern_name(pattern) {
+                solve_named(name, arg, context)?
+            } else {
+                solve_value_pattern(
+                    pattern,
+                    arg,
+                    ResolvedPatternBinderId {
+                        root: context.root,
+                        local_ordinal: u32::MAX,
+                    },
+                    context,
+                )?
+            };
             Ok((derived, specificity_for_pattern(pattern)))
         }
     }
@@ -482,6 +517,15 @@ fn solve_pack(
             param_provenance(element),
         ));
     };
+    if slot.annotation.is_some() {
+        return Err(unsupported(
+            "Pack classifier extraction consumer is unavailable",
+            Some(Provenance::from_norm_origin(
+                "Pack classifier",
+                &slot.origin,
+            )),
+        ));
+    }
     let NormPattern::Pack { inner, origin } = &slot.value_pattern else {
         return Err(unsupported(
             "non-pack parameter cannot consume an argument slice",
@@ -547,7 +591,7 @@ fn solve_skeleton(
     context: &PatternRelationContext<'_>,
 ) -> Result<Vec<PatternRelationDerivation>, PatternRelationFailure> {
     let mut terms = Vec::new();
-    collect_skeleton_terms(skeleton, &mut terms);
+    collect_skeleton_terms(skeleton, &mut terms)?;
     solve_terms(&terms, arg, context)
 }
 
@@ -565,13 +609,18 @@ fn solve_terms(
             Some(arg.provenance.clone()),
         ));
     }
-    let observation = extracted_type(arg)
-        .ok_or_else(|| inapplicable("Pattern could not observe an argument type", arg))?;
+    if terms
+        .iter()
+        .all(|term| matches!(term, RelationalTerm::Wildcard))
+    {
+        return Ok(vec![PatternRelationDerivation::default()]);
+    }
+    let observation = extracted_type(arg)?;
     let mut solutions = Vec::new();
     for term in terms {
         match term {
             RelationalTerm::Named(name) => {
-                if named_matches(name, observation, context) {
+                if named_matches(name, observation, context, &arg.provenance)? {
                     solutions.push(PatternRelationDerivation::default());
                 }
             }
@@ -600,9 +649,8 @@ fn solve_named(
     arg: &OverloadArgShape,
     context: &PatternRelationContext<'_>,
 ) -> Result<Vec<PatternRelationDerivation>, PatternRelationFailure> {
-    let observation = extracted_type(arg)
-        .ok_or_else(|| inapplicable("named Pattern could not observe an argument type", arg))?;
-    if named_matches(name, observation, context) {
+    let observation = extracted_type(arg)?;
+    if named_matches(name, observation, context, &arg.provenance)? {
         Ok(vec![PatternRelationDerivation::default()])
     } else {
         Err(inapplicable(
@@ -612,23 +660,63 @@ fn solve_named(
     }
 }
 
+pub(crate) fn relate_external_classifier(
+    expected: NamedPatternObservation,
+    actual: ExtractedTypeObservation,
+    provenance: Provenance,
+) -> Result<PatternRelationDerivation, Diagnostic> {
+    if actual.semantic_eq(ExtractedTypeObservation {
+        pattern: expected.pattern,
+        core: expected.core,
+    }) {
+        Ok(PatternRelationDerivation::default())
+    } else {
+        Err(Diagnostic::hard_error(
+            "external Pattern classifier extraction failed",
+            Some(provenance),
+        ))
+    }
+}
+
 fn named_matches(
     name: &str,
     actual: ExtractedTypeObservation,
     context: &PatternRelationContext<'_>,
-) -> bool {
+    provenance: &Provenance,
+) -> Result<bool, PatternRelationFailure> {
     let Some(expected) = context.resolve_named.and_then(|resolve| resolve(name)) else {
-        return false;
+        return Err(unsupported(
+            "named Pattern observation is unavailable",
+            Some(provenance.clone()),
+        ));
     };
-    actual.semantic_eq(ExtractedTypeObservation {
-        pattern: expected.pattern,
-        core: expected.core,
-    })
+    Ok(relate_external_classifier(
+        expected,
+        actual,
+        Provenance::new("external Pattern relation"),
+    )
+    .is_ok())
 }
 
-fn extracted_type(arg: &OverloadArgShape) -> Option<ExtractedTypeObservation> {
-    Some(ExtractedTypeObservation {
-        pattern: arg.pattern_value?,
+fn extracted_type(
+    arg: &OverloadArgShape,
+) -> Result<ExtractedTypeObservation, PatternRelationFailure> {
+    if arg.type_core_observation.is_none()
+        && (arg.semantic_value.is_some() || arg.complete_type_observation.is_some())
+    {
+        return Err(unsupported(
+            "required frozen classifier Core observation is unavailable",
+            Some(arg.provenance.clone()),
+        ));
+    }
+    let pattern = arg.pattern_coordinate.ok_or_else(|| {
+        unsupported(
+            "required argument classifier observation is unavailable",
+            Some(arg.provenance.clone()),
+        )
+    })?;
+    Ok(ExtractedTypeObservation {
+        pattern,
         core: arg.type_core_observation,
     })
 }
@@ -650,7 +738,10 @@ fn relational_product(
     product
 }
 
-fn collect_relational_terms<'a>(pattern: &'a NormPattern, out: &mut Vec<RelationalTerm<'a>>) {
+fn collect_relational_terms<'a>(
+    pattern: &'a NormPattern,
+    out: &mut Vec<RelationalTerm<'a>>,
+) -> Result<(), PatternRelationFailure> {
     match pattern {
         NormPattern::Name { name, .. } => out.push(RelationalTerm::Named(name)),
         NormPattern::HoleRef { target, origin, .. } => {
@@ -659,17 +750,29 @@ fn collect_relational_terms<'a>(pattern: &'a NormPattern, out: &mut Vec<Relation
         NormPattern::Binder { name, .. } if name.as_deref() == Some("_") => {
             out.push(RelationalTerm::Wildcard)
         }
-        NormPattern::Skeleton { skeleton, .. } => collect_skeleton_terms(skeleton, out),
+        NormPattern::Skeleton { skeleton, .. } => collect_skeleton_terms(skeleton, out)?,
         NormPattern::Sequence { elements, .. } => {
             for element in elements {
-                collect_relational_terms(element, out);
+                collect_relational_terms(element, out)?;
             }
         }
-        _ => {}
+        other => {
+            return Err(unsupported(
+                "Pattern Sequence observation consumer is unavailable for this material",
+                Some(Provenance::from_norm_origin(
+                    "Pattern Sequence material",
+                    pattern_origin(other),
+                )),
+            ));
+        }
     }
+    Ok(())
 }
 
-fn collect_skeleton_terms<'a>(skeleton: &'a NormSkeleton, out: &mut Vec<RelationalTerm<'a>>) {
+fn collect_skeleton_terms<'a>(
+    skeleton: &'a NormSkeleton,
+    out: &mut Vec<RelationalTerm<'a>>,
+) -> Result<(), PatternRelationFailure> {
     match skeleton {
         NormSkeleton::Wildcard { .. } => out.push(RelationalTerm::Wildcard),
         NormSkeleton::Name { name, .. } => out.push(RelationalTerm::Named(name)),
@@ -678,18 +781,33 @@ fn collect_skeleton_terms<'a>(skeleton: &'a NormSkeleton, out: &mut Vec<Relation
         }
         NormSkeleton::Segment { elements, .. } => {
             for element in elements {
-                collect_skeleton_terms(element, out);
+                collect_skeleton_terms(element, out)?;
             }
         }
         NormSkeleton::Product { elements, .. } => {
             for element in elements {
-                if let NormSkeletonElem::Skeleton(skeleton) = element {
-                    collect_skeleton_terms(skeleton, out);
+                match element {
+                    NormSkeletonElem::Skeleton(skeleton) => collect_skeleton_terms(skeleton, out)?,
+                    NormSkeletonElem::Unit { origin } => {
+                        return Err(unsupported(
+                            "Pattern unit observation consumer is unavailable",
+                            Some(Provenance::from_norm_origin("Pattern unit", origin)),
+                        ));
+                    }
                 }
             }
         }
-        NormSkeleton::Nav { .. } | NormSkeleton::Literal { .. } | NormSkeleton::Error(_) => {}
+        NormSkeleton::Nav { origin, .. } | NormSkeleton::Literal { origin, .. } => {
+            return Err(unsupported(
+                "external Pattern observation consumer is unavailable in this skeleton",
+                Some(Provenance::from_norm_origin("Pattern skeleton", origin)),
+            ));
+        }
+        NormSkeleton::Error(_) => {
+            return Err(unsupported("invalid Pattern skeleton", None));
+        }
     }
+    Ok(())
 }
 
 fn first_frontend_pattern_root(
@@ -831,7 +949,7 @@ fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
         | NormPattern::Sequence { origin, .. }
         | NormPattern::Skeleton { origin, .. }
         | NormPattern::BindingSlot { origin, .. }
-        | NormPattern::Splice { origin, .. }
+        | NormPattern::InterpretationFlip { origin, .. }
         | NormPattern::Unsupported { origin, .. } => origin,
         NormPattern::Error(error) => &error.origin,
     }

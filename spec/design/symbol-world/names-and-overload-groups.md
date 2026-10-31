@@ -4,7 +4,7 @@ Status: canonical semantics. Source consumers are tracked in the roadmap.
 
 ## 1. Notation and existing observations
 
-T and tau both denote complete pattern/type values throughout the canonical
+T and tau both denote complete type values throughout the canonical
 owners. Q denotes a Core projection, never the complete type:
 
     T = bind alpha.<Core(T), V_T[alpha]>
@@ -54,15 +54,14 @@ Lexical aliases retain formed Path material without becoming values themselves.
 They compose through Path algebra, preserving roots and dependencies; they do
 not cache a terminal binding identity.
 
-Meta invocation also constructs ordinary names. Their formation owner is the
-invocation identity, and they are not structural children of input values.
-The direct instance name denotes its instance type tau_M itself. Arbitrary
-values and borrows reside in ordinary Val2, accessed through name::path.
-P1 meta retains the instance under OpenHere; close let closes it on completion.
-Explicit borrowing uses the selected actual Place; it is not the direct result
-of meta invocation. NameBinding gains no Object wrapper or extra value algebra.
-[Meta invocation](../meta-invocation/meta-object-invocation-and-policy-reduction.md)
-owns their identity, opening-source propagation, completion and cache laws.
+Every compile call forms a stable CompileInstance before its selected body.
+Invocation ownership creates no structural child of an input. A direct single
+instance-open self-root type exposes InvokeName(I) as a computed NameExpr;
+external types and ordinary values keep their result identity. Requested-name
+production may separately realize any declared ordinary result at its requested
+coordinate. Explicit borrowing still uses the actual Place and ordinary checks.
+The [invocation owner](../static-evaluation/compile-instance-invocation-and-result-delivery.md)
+owns input identity, accessible result closure, opening sources and completion.
 
 An initialized structural name declared :type denotes a named type T. At named-contribution positions,
 same-name contributions synthesize that type and its V_T, not an OverloadGroup at the name position. Occupancy is
@@ -100,6 +99,23 @@ Names resolve once. Bare lookup stops at the nearest same-spelled binding;
 explicit navigation uses its written anchor. Empty or inapplicable projection
 does not resume lookup. Complete values keep their own captured callspaces;
 neither a source binding nor a group supplies a missing extra callspace.
+
+All E use contexts, including ordinary and type arguments, consume the same
+resolved navigation N=(host_chain,terminal identity). Bare names use the complete
+nearest-first lexical chain before default mounts. Facet/Policy observation
+occurs after that identity is fixed; hidden, ambiguous or unavailable projection
+does not search a different binding. At horizon K, every traversed host factor
+and the requested terminal facet must be exposed:
+
+```text
+Expose_K(N,facet) =
+  (and over h in N.host_chain: Navigable_K(h))
+  and ExposeFacet_K(N.terminal,facet)
+```
+
+Host navigation retains every actual binding observation edge. Its navigability
+query consumes the host Pattern exposure fact; terminal argument projection
+additionally consumes the required Policy coordinates and cannot discard them.
 
 ## 4. Different update algebras
 
@@ -154,7 +170,7 @@ argument applicability and unique selection are checked at invocation.
 
 TypeAdd changes V_T, never Core(T). Type subtraction likewise changes only V_T and
 requires Writable and OpenHere. Pattern-registered structural extension remains
-the work of extend/inject. Ordinary name initialization/replacement can also
+the work of ordinary * / *=. Ordinary name initialization/replacement can also
 change the Val2 component of Core, without adding either role registration. Complete values remain immutable snapshots: a successful write
 replaces the value at the target, without changing an earlier copy.
 
@@ -193,14 +209,15 @@ independent residency/binding action, not a required callspace representation.
 
 Ordinary name writes and generated name occurrences can establish Val2 residents
 without either registration. A generated occurrence cannot supply V_T or Pattern
-registration evidence. Non-generative one-shot/extend formation may establish
+registration evidence. Non-generative one-shot structural formation or ordinary type composition may establish
 the roles requested by its material, once each. Type subtraction removes the
 selected callability contribution only; it neither removes an independently
 named resident nor its independent Pattern registration.
 
 ## 5. Typed name declarations and complete let bindings
 
-    P let name : t        evaluates to NameExpr(n) at a fresh lexical destination
+    P let name : T::      evaluates to NameExpr(n) at a fresh lexical destination
+    P let name : R$       evaluates to NameExpr(n) when external R determines T
     P let name::path : t  evaluates to NameExpr(n)
     P let name::path      == P let name::path : type
     NameExpr != ValueExpr
@@ -218,12 +235,29 @@ This is ordinary-value callability: ordinary Val2 member semantics at ().
 It changes no V_T and supplies no Pattern registration. Readiness, admissible
 implementation material and ordinary invocation checks still apply.
 
-The first two are typed name declarations without an initializer. They share
-typed Place formation, explicit borrowing and ordinary initialization. Their
-destination differs: the unqualified form uses the ordinary fresh lexical
-binding context, while the qualified form resolves its structural root/name
-identity and observes that binding's current type value. NameExpr formation is
-a value-side judgment, not acquisition of a parent write capability.
+Initializer-free lexical formation requires an explicitly introduced external
+classifier. Write A for a full external Path such as T::, or opposite-polarity
+R$; the external Pattern must determine a complete declared Place type T:
+
+    Gamma;K |- ExternalClassifier(A) => T : type
+    FreshLexicalDestination(Gamma,name), ordinary formation/access legality
+    --------------------------------------------------------------------
+    Gamma;K |- P let name:A => NameExpr(n)
+      PlaceType(BindingPlace(n)) = T
+      ResidentState(BindingPlace(n)) = Uninitialized
+
+Bare b in a:b is classifier-side extraction material, at the same head with
+or without an initializer. With a delivered subject v, R_Gamma binds b to
+Type(v). Without a subject, that extraction supplies neither a classifier nor
+a typed Place. An existing same-spelled binding b supplies no external
+classifier evidence. For example, let a:b alone cannot derive the formation
+judgment above; let a:uint8:: can when its external-classifier premises hold.
+
+Qualified P let name::path:t uses its resolved structural root/name identity
+and the current resident type at that root. Its declared-type judgment for t
+belongs to structural formation. The lexical external-classifier form and
+qualified structural form share typed Place formation, explicit borrowing and
+ordinary initialization. NameExpr formation is a value-side judgment.
 
 Intermediate parents must exist and be initialized/navigable; only the final
 selector is fresh. Qualified formation requires:
@@ -250,7 +284,7 @@ not turn it into parent Place writability. A path may retain a borrowed target
 identity when explicitly supplied, but such a borrow is not required to form
 the child name. Borrowing the resulting child Place is a subsequent judgment.
 
-NameCoord's root is r, never Norm(T). For let T:type = uint8, value equality
+NameCoord's root is r, never Norm(T). For let T:type:: = uint8, value equality
 does not equate NameCoord(T,f) with NameCoord(uint8,f), their binding identities
 or their Places. Each formation still checks OpenHere of the current value;
 copying a closed type into a fresh binding does not reopen it.
@@ -258,7 +292,8 @@ copying a closed type into a fresh binding does not reopen it.
 Uninitialized is evaluator/Place state, not an Object, None value, or
 fresh-name value. Creation installs no readable resident and creates no
 callability or Pattern registration. The declared t may be any ordinary type.
-Omitting :t chooses PlaceType = type, not an already constructed type value.
+In initializer-free qualified formation, omitting :t chooses PlaceType = type,
+not an already constructed type value.
 
     Read_name(NameExpr(n)) = NameValue(n)    -- complete name/path structure
     NameExpr(n) in value context -> Read_resident(Read_name(n)) = Read(q_n)
@@ -302,10 +337,13 @@ during first initialization. Value reads of an uninitialized target fail.
 The complete two-case Write derivation and the const-name example are in
 [Place/write algebra](type-values-places-and-borrow-views.md#711-initialization-authority-and-the-two-write-cases).
 
-Structural `P let name::path = e` is not a canonical compound expression,
-and there is no equality with `(P let name::path) = e`. Any future convenience
-must be pure sugar for the explicit creation/borrow/write sequence and cannot
-own a separate initialization rule.
+With an RHS, structural P let name::path = e uses the resolved structural
+destination and the complete result of E(e), inferring its classifier when :t
+is omitted. Formation and initialization publish atomically under the same
+ordinary name/Place and result-delivery premises. Written :t belongs to this
+structural formation judgment. The initializer-free form instead publishes an
+uninitialized Place for later explicit borrowing and Write. File hierarchy
+only supplies the inherited destination path.
 
     NamedType(n) iff DeclaredType(n) = type
                     and Resident(n) = T : type
@@ -313,31 +351,20 @@ own a separate initialization rule.
 Named type is an initialized case of a general structural name, not a distinct
 name-creation primitive.
 
-An initializer changes which complete let form is present. In ordinary lexical
-context, P let name = rhs is a whole let binding whose declared type is inferred
-from its RHS under the existing inference rules. It is not a typed-name
-declaration defaulted to type followed by a separate assignment. An explicit
-annotation in P let name:t = rhs supplies the type constraint instead.
+For lexical binding with RHS, E(rhs)=v supplies ordinary complete residency.
+At every adjacent universe rank, the simplest annotated form jointly extracts:
 
-```lang
-mut let local_ref = (const let local:uint8) ref;
-local_ref = 1uint8;
-
-const let inferred = 1uint8;
-const let annotated:uint8 = 1uint8;
+```text
+R_Gamma(a:b,v,rho) => rho(a)=v, rho(b)=Type(v)
+Rank(rho(b))=Rank(rho(a))+1
 ```
 
-The first pair explicitly creates and initializes a typed local Place. The
-last two lines are complete lexical bindings: both create initialized uint8
-destinations using the ordinary binding/transfer rules. Their internal first
-resident installation obeys the same Place initialization law; it is not an
-implicit source-level ref or an assignment suffix appended to NameExpr.
-
-Thus the default :type for the initializer-free structural expression
-(P let name::path) does not participate in lexical RHS type inference. Only
-the separately designated named-contribution position changes unqualified
-let name = rhs into named-type synthesis (§6); ordinary lexical binding never
-acquires that meaning merely by spelling.
+Bare b is classifier-side extraction material. External uint8:: or R$ explicitly
+introduces an existing Pattern. Qualified structural P let name::path:t retains
+the separate coordinate/type/Place formation judgment above. Initializer-free
+let name:uint8:: can create a typed lexical name with an uninitialized Place;
+value use still requires explicit initialization. No resident is inferred from
+absence of RHS. P let name=rhs has ordinary complete binding/transfer semantics.
 
 For example, let path resolve to a type value T with OpenHere(T), and v:uint8:
 
@@ -354,9 +381,9 @@ byte::path reads v; later writes use replacement checks. This ordinary Val2
 payload contributes neither a callability nor a Pattern registration.
 
 For an uninitialized :type Place, that initial reference is InitialTypeSlotRef,
-not meta type ref and not an initialized-type replacement capability. Once it
-holds T:type, ordinary direct mut borrowing and the narrow meta type/ref view
-family apply as specified by [type-reference views](type-values-places-and-borrow-views.md#522-initialized-type-names-meta-references-and-mut-confirmation).
+not open type ref and not an initialized-type replacement capability. Once it
+holds T:type, ordinary direct mut borrowing and the narrow compile type/ref view
+family apply as specified by [type-reference views](type-values-places-and-borrow-views.md#522-initialized-type-names-open-references-and-mut-confirmation).
 
 ### 5.1 Closure requires initialized structural names
 
@@ -377,8 +404,8 @@ all coordinates or possible future realizations.
 
 ## 6. Positional synthesis and lexical let
 
-Every closure expression's legal completed result is tau_C through ordinary
-struct construction, regardless of file or local position. An ordinary lexical
+Every closure expression's legal completed result is tau_C through atomic
+complete-type formation, regardless of file or local position. An ordinary lexical
 `let f=C` binds it without a wrapper; `let a=uint8` binds the RHS type itself.
 
 File implementation declarations have an established structural destination.
@@ -398,10 +425,10 @@ nor a shared spelling automatically grants TypeAdd or either registration.
 
 ### 6.0 Open navigation and name buckets
 
-The [Path owner](structured-path-algebra-and-pattern-splice.md) defines
+The [Path owner](structured-path-algebra-and-interpretation-polarity.md) defines
 `Read(::host) = Product[v_i (s_i |> name)]` for the current finite observation.
 Each item keeps its member name Pattern, not a second bare tuple value.
-`s |> name` is an ordinary meta family with extractable string parameter.
+`s |> name` is an ordinary compile family with extractable string parameter.
 
 A local `let a=bool::` keeps bool's internal if/else layer; it adds no inner
 a wrapper. Observing an actual outer layer with a and b members instead yields
@@ -438,9 +465,9 @@ ordinary typed Place and explicit borrow/write relation:
     r_f = explicit Borrow(q_f)
     Initialize(q_f, T_f)
 
-OneShotFormation is existing struct/member formation at the authorized target,
+OneShotFormation is atomic complete structural type/member formation at the authorized target,
 including the complete implementation home and requested non-generative
-registrations. It creates neither an empty resident nor an initial inject.
+registrations. It creates neither an empty resident nor an initial update.
 Failure before commit leaves no readable resident, subject to ordinary
 transaction rules; Close cannot publish the uninitialized name.
 
@@ -477,8 +504,8 @@ This equality is restricted to the legal formation/equivalence domain with
 the same base, target home, dependencies and entry identities. TypeAdd consumes
 the ordinary members formed from those materials, not the Delta notation as
 an Object. It grants no missing Writable/OpenHere or lifetime authority,
-requires no discovery order and replays no RHS/dependency effects. Extend
-returns the whole snapshot; inject reads, extends and writes an existing
+requires no discovery order and replays no RHS/dependency effects. `*`
+returns the whole snapshot; `*=` checks, composes and writes an existing
 resident, with each requested contribution once and no extra implicit +=.
 
 ### 6.2 Unordered siblings share the coordinate before realization
@@ -504,7 +531,7 @@ first-initialization capability and no permission to collapse distinct entries.
 ## 7. Identity and closure
 
 Name binding, entry identity, value equality, complete type, Place and lookup
-index remain distinct. Copying a pattern value preserves its anchor and does
+index remain distinct. Copying a type value preserves its anchor and does
 not open a new construction window. OpenHere uses the existing Core, anchor,
 WindowLive and evaluation-stack judgments independently of carrier writability.
 
@@ -529,9 +556,9 @@ only_val2 counts remain tied to their snapshot/continuation position.
 
 This is the selected generative rule's result realization, not a derivation
 through explicit NameExpr formation, GetMutRef and Write. It implies neither
-OpenHere(T), meta type ref nor mut type ref. It is not permission to
+OpenHere(T), open type ref nor mut type ref. It is not permission to
 obtain a mut construction view of closed T, perform arbitrary structural let,
-inject a Pattern extension or update V_T. Its ordinary name/result formation,
+compose a structural extension or update V_T. Its ordinary name/result formation,
 access, dependency, Place and lifecycle checks still apply. A saved construction
 ref remains closed. Generation cannot replace an existing registered witness
 and thereby alter the frozen Pattern structure.

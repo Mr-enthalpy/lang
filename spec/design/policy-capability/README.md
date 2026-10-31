@@ -2,14 +2,14 @@
 
 **Status:** focused reference for the canonical Policy and capability
 relations. The normative owner is
-`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+`../symbol-world/policy-and-static-flow-projection.md`.
 
 The semantic coordinates are:
 
 ```text
 PolicyView = <PolicyPair, PolicyMode>
 PolicyMode = const | mut
-MetaInstancePolicy = meta | close
+OpenPolicy = compile | close
 ResultPolicyDemand = <P1Projection, PolicyMode, ...future dimensions>
 ```
 
@@ -23,6 +23,6 @@ PolicyMode. Caller result demand does not propagate into declaration-local
 parameter/return policies.
 
 Read `policy-visibility-symbols.md` for the focused model and the symbol-world
-owner for compile projection, PolicyLet, migration, seal, and invocation
+owner for compile projection, PolicyLet, migration, reification, and invocation
 integration. Mechanical return normalization and lifetime validation remain in
 their own design blocks.

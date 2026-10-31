@@ -104,9 +104,18 @@ explicit `DirectPatternChild` evidence and applies `StructuralDefault` before
 candidate enumeration. No product shape or observed-content carrier defines
 Pattern meaning.
 
+First-round Pattern queries distinguish Match, proved Mismatch and Unavailable,
+as defined by the [relation owner](pattern-relations-observation-and-extraction.md#classifier-observation-and-decided-relation-outcomes).
+Only proved mismatch removes a candidate on Pattern grounds. Missing actual
+classifier or named-Pattern observations must not shrink the candidate set to
+an otherwise matching binder/wildcard candidate. No preference, fallback,
+maxima, selected frame or body entry is established from such incomplete
+first-round constraints. An independently known arity/kind rejection remains
+a decided rejection rather than an unavailable Pattern query.
+
 Policy holes participate in this same joint relation:
 
-    Pin_i(rho) = ElabIn(P2, Delta_in_i(rho))
+    Pin_i(rho) = ElabIn(HorizonPolicy(P2), Delta_in_i(rho))
     Pout(rho)  = ElabOut(P1, Delta_out(rho))
 
 Pin allows explicit stage atoms/holes; Pout.stage=P1.stage. R_vis executes no
@@ -147,4 +156,4 @@ deduce its demand by running G's unresolved formal or its body. Ready dependency
 initializers execute once in the ordinary formation order; speculative body
 execution cannot justify a dependency or Policy hole. Explicit user temporaries
 remain real boundaries, and selection failure never reopens a sealed inner call.
-See the [Policy owner](../symbol-world/symbol-policy-and-compile-flow-projection.md).
+See the [Policy owner](../symbol-world/policy-and-static-flow-projection.md).

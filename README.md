@@ -32,26 +32,38 @@ The semantic layer is organized around these independent coordinates:
   selection shared by static projections and runtime residue;
 - unique sealed invocation, no reopen, and unified `InvocationResult`;
 - candidate-driven same-Type Policy migration;
-- construction authority, `OpenHere`, Writable, `extend`, and `inject`;
+- construction authority, `OpenHere`, Writable and ordinary type operators * / *=;
 - continuation-relative lifecycle facts, Region generations, Pre/Post, and an
   extensible directed Color algebra;
-- meta instance names/types, P1 meta retention versus close completion/closure,
+- compile instance names/types, P1 open retention versus close completion/closure,
   dependency-derived openness, ordinary Val2 payloads, generic instance caching,
   derived associated state A, and witnessed closure re-instantiation;
 - unsafe semantic axiom admission and ordinary host-capability Objects;
 - source-only namespace construction, unordered physical normalization, and
   one evaluator E with synchronized projections and validated optimization.
 
-Stage is a single atom. P2 is horizon, Pin admits explicit stage constraints,
-and Pout follows P1. Runtime main enters one E/K; active meta/seal dominance
+Stage={compile,runtime} is a single atom. P2 is horizon, Pin admits explicit stage constraints,
+and Pout follows P1. Runtime main enters one E/K; active compile dominance
 is independent of stable root history. Instance move effects and directed with
 cleanup feed the same lifecycle observations. Done is internal completion;
-residual escape separately consumes ordinary meta facts.
+residual escape separately consumes ordinary compile facts.
 
-Every legal completed closure expression produces full tau_C through ordinary
-struct. File implementation-layer let installs at the established package root;
+Every legal completed closure expression produces full tau_C through atomic structural type formation. File implementation-layer let installs at the established package root;
 true lexical local let remains binding. Explicit structural contributions synthesize named types;
-OverloadGroup is the separate aggregation algebra. Naked operators select
+OverloadGroup is the separate aggregation algebra. Simple let a:b jointly extracts the delivered value and its adjacent-rank
+classifier. External constraints use full Paths or R$. RHS _ is universerank,
+structural _ is anonymous Pattern, and $ is a repeatable polarity flip.
+Selected forced extraction may request one ordinary root conversion only after
+a proved total-root mismatch; ordinary applicability inserts none.
+Product packaging is `(_ * ω)$`, with classifier Pattern `_ * ω` and contextual
+bare expansion/merging. Repetition keeps element content in Val1 identity;
+selected `pack?` exposes available shape. In S, `_$` supplies the external
+universerank Pattern rather than anonymous matching.
+Hole-local Policy uses independent written-dimension replacement. Bare branches
+have actual opaque values; bool has true/false structure. Callable-head P2 reify materializes the same E within an independently closed
+return classifier and its actual reverse-dependent cone; its execution consumer remains pending.
+
+Naked operators select
 operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
 
@@ -117,5 +129,18 @@ well-formed complete tau is a type. Dependency realization follows the selected
 ordinary source action, uniquely up to observational equivalence.
 Ordinary closures may combine explicit and automatic dependency occurrences;
 in-place syntax excludes explicit clauses and supplies no overload preference.
-Meta declarations require => and no closure capture channel; unpassed locals
-remain masked and invocation identity has no hidden captured-environment axis.
+Every compile call forms a CompileInstance from parent owner, selected partner
+and canonical inputs before body entry. Ordinary callable dependencies retain
+their actual identity, with no hidden caller-environment coordinate.
+
+Callable-head P2 reify has outward runtime horizon Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Its active
+closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+and mixed-Policy outputs are legal; the need for reify follows the continuation's
+reverse dependencies. Legal Policy ranks have exactly the form
+absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary
+runtime let changes the first non-absent rank; unrefined compile let requires
+all non-absent ranks compile, preserving absence. Explicit Hole Policies can
+address individual ranks. Unknown higher observations remain unavailable.
+Type operations use the compile algebra. See the
+[unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

@@ -1,0 +1,1380 @@
+# Pattern Relations, Observation, and Extraction
+
+**Status: canonical semantic authority.**
+
+This document is the canonical owner of the language-level Pattern relation,
+Pattern observation and extraction, structural Pattern incidence, binderless
+Pattern semantics, and structural role registrations over actual Val2 members.
+Ordinary `struct` helpers preserve these registrations; `*` / `*=` compose them.
+
+Other documents may define consumers of this relation. In particular:
+
+- `pattern-normalization-and-first-order-overload.md` owns candidate-shape
+  preparation, not the Pattern relation;
+- `overload-resolution-design.md` owns candidate ordering after applicability,
+  not Pattern observation;
+- [Operator Patterns and generative declarations](operator-patterns-and-generative-declarations.md)
+  applies this same relation to operator call/extract/generative projections.
+  Policy deduction uses those registered relations, ordinary HoleBinderId and
+  require constraints; it introduces no separate inference calculus;
+- `static-pattern-spaces-and-extraction-chains.md` owns residual / `Done` /
+  control-pattern algebra, not the base matching relation;
+- `return-value-extraction-and-implicit-decomposition.md` applies the
+  extraction relation at result boundaries, but does not define a second
+  extraction calculus;
+- `../symbol-world/type-values-places-and-borrow-views.md` owns complete type
+  values, places, `ProjectionSlot`, and borrow observations;
+- `../symbol-world/structural-type-formation-and-composition.md`
+  owns name binding construction, `struct`, `*`, `*=`, and installation;
+- `../../contracts/semantic-owner-namespace-graph.md` owns
+  `SemanticOwnerId`, `PatternRoot`, and `HoleBinderId` identity.
+
+The frontend and normalization stages preserve Pattern material without
+performing matching or Pattern-head resolution. This document owns the later
+semantic relation.
+
+## 1. Scope and authority
+
+The load-bearing boundary is:
+
+```text
+Object content
+  related by Pattern
+  -> zero or more successful derivations
+  -> observations / extractions justified by those derivations
+```
+
+A Pattern is neither a pointer to one `Val1` schema nor a nominal tag attached
+to a value. It is the relation coordinate of an ordinary Object. It may
+constrain and correlate both value axes, and a successful derivation may carry
+structural or extraction evidence.
+
+This document does not define parser or Normalized-AST behavior, a complete
+pattern-space solver, overload ordering, runtime matching IR, exhaustiveness
+diagnostics, or a custom `?` protocol.
+
+## 2. Pattern is the relational Object coordinate
+
+Every language Object has the common shape:
+
+```text
+Object x = <Val1?(x), P(x), Val2(x)>
+
+Val1?(x) in 1 + Object
+Val2(x)   : finite SemanticSelector -> Object
+```
+
+Define the content observed by the Pattern coordinate as:
+
+```text
+Content(x) = <Val1?(x), Val2(x)>
+```
+
+The base Pattern judgment is proof-relevant:
+
+```text
+R_Gamma(P, c, rho)
+```
+
+where:
+
+- `P` is a Pattern;
+- `c` is complete Object content, not only `Val1` and not only `Val2`;
+- `rho` is one successful relational derivation.
+
+The solution and satisfaction judgments are:
+
+```text
+Solutions_Gamma(P, c)
+  = { rho | R_Gamma(P, c, rho) }
+
+Sat_Gamma(P, c)
+  iff Solutions_Gamma(P, c) != empty
+
+PatternAdmissible_Gamma(x)
+  iff Sat_Gamma(P(x), Content(x))
+```
+
+`R_Gamma` may constrain `Val1`, `Val2`, or correlations between them. For
+example, a derivation may require that one structural selector agrees with a
+classifier carried by `Val1`. Such cross-axis correlation is ordinary Pattern
+semantics; it is not an escape into a fourth Object axis.
+
+`PatternAdmissible` is not the whole Object well-formedness judgment. Ownership,
+Policy, borrow validity, construction openness, global-key legality, and
+namespace installation are checked by their own authorities. An Object may be
+an ordinary semantic object without `P` determining a unique inverse image for
+its content.
+
+The following reductions are forbidden:
+
+```text
+P -> one schema of Val1
+P = nominal type tag
+P = structural metadata copied from Val2
+```
+
+## 3. Observation, entailment, and extraction
+
+An observation query `q` is interpreted over content and a successful
+derivation:
+
+```text
+ObsSet_Gamma(q; P, c)
+  = {
+      o |
+      exists rho.
+        R_Gamma(P, c, rho)
+        and Q_q(c, rho, o)
+    }
+```
+
+Unique determination is a derived property, not a base axiom:
+
+```text
+Determines_Gamma(q; P, c, o)
+  iff Sat_Gamma(P, c)
+  and ObsSet_Gamma(q; P, c) = {o}
+```
+
+Pattern entailment requires at least one successful derivation and agreement
+of every successful derivation:
+
+```text
+Entails_Gamma(P, c, phi)
+  iff Sat_Gamma(P, c)
+  and forall rho.
+        R_Gamma(P, c, rho) => phi(c, rho)
+```
+
+For an extraction interface `pi`:
+
+```text
+ExtractSet_Gamma(pi; P, c)
+  = {
+      e |
+      exists rho.
+        R_Gamma(P, c, rho)
+        and pi(c, rho, e)
+    }
+```
+
+The base calculus does not require every Pattern to have one environment, one
+observation, or one inverse. It also does not require every Pattern family to
+be invertible. `rho` may carry facts such as the selected alternative,
+structural-child evidence, extraction roles, or binder observations. Those
+facts are semantic evidence; they are not required to be stored as a compiler
+object after the consuming judgment completes.
+
+### 3.1 Atomic extraction, whole extraction, and protected observation
+
+**Atomic vs whole extraction.** Two extraction granularities are
+distinguished:
+
+```text
+AtomicExtraction(s, F, x)
+  -- one registered structural observation of element F from source x
+     along a single P-registered edge
+
+WholeExtraction(P, rhs, ρ)
+  -- R(P, rhs, ρ): the complete Pattern solves against the RHS,
+     ultimately assigning one valuation to a set of HoleIds
+```
+
+For most non-leaf structural positions, the field observation and the atomic
+extraction coincide and may even be performed by the same ordinary callable
+Object:
+
+```text
+FieldObservation(s) ≈ AtomicExtraction(s)
+```
+
+At leaf positions a field accessor may perform a two-level descent. It is
+therefore not a global identity:
+
+```text
+FieldObservation(s) != WholeExtraction(P,x,rho) in general
+```
+
+The existing `ConstructEdge`, `ExtractEdge`, and `FieldView` ontology
+already supports this; no new callable categories are introduced.
+
+**Protected P-internal extraction.** When the language interprets
+`R(P, x, ρ)` — i.e. P itself drives the extraction — virtual/custom Val2
+callables must not alter the real structure that P describes. The language
+fixes:
+
+```text
+AtomicExtract_P(s, x)
+  = Resolve(
+      RegisteredRealFieldFamily(P, s),
+      x,
+      CallSiteFamilyFilter = StructuralDefault
+    )
+```
+
+where `StructuralDefault` is a stable registered-structural candidate-family
+identity applied *implicitly* by the language as a call-site filter before
+C0 (see `overload-resolution-design.md` §3). Structural formation
+atomically establishes actual members and their ExtractEdge/FieldView roles.
+Candidates witnessing the requested registered route inhabit
+`StableFamilyId(TypeMemberScope(tau_T), name, StructuralDefault)`, keyed by the
+complete type's stable implementation home. The filter preserves those
+registered candidates under `StructuralFamilyStability`. Ordinary helper
+augmentation by `struct:type->type` preserves the existing role registrations
+(`symbol-world/type-associated-function-objects-and-access-trees.md`,
+"Family registration"). The pipeline order is:
+
+```text
+P interpretation
+  ↓
+implicit StructuralDefault family filter
+  ↓
+C0
+  ↓
+ordinary admissibility
+  ↓
+ordinary selection
+```
+
+This is not a privileged callable lookup bypass, not a shortcut past the
+overload resolver, and not a second lookup mechanism. It is one true
+semantic consumer connected to the existing call-site annotation stage.
+
+By contrast, ordinary user-written `x.field` does **not** receive this
+hidden filter: virtual/custom getters may beat the generated getter there.
+
+The implicit filter is part of the language interpretation of P. It is NOT
+stored in P and does NOT participate in `Norm(P)`:
+
+```text
+UserPatternData
+  must not contain arbitrary overload-family selectors
+```
+
+otherwise `Norm(P)` would depend on overload-family organization, which
+itself comes from the same `τ`/`Val2` snapshot — an identity loop.
+
+**Construction is ordinary.** Construction happens in the RHS and is ordinary
+expression evaluation. There is no symmetric hidden filter on the constructor
+side. A caller that needs the generated/default member may explicitly use
+`|[[default]]>` or the final chosen default-family spelling. The asymmetry
+comes from the evaluation direction (extraction reads known structure;
+construction builds from an expression), not from a language exception.
+
+### 3.2 Atomic Object identity commits
+
+Construction material may form incrementally; Object identity does not.
+
+```text
+ConstructionMaterial -> Pre -> atomic ConstructCommit -> complete Object identity
+
+complete parent Object -> Pre -> atomic ExtractCommit
+  -> parent identity ends
+  -> complete child Object identities become established
+```
+
+ConstructCommit and ExtractCommit name boundaries of existing ordinary
+construction/consuming-decomposition actions under Pre/action/Post. They are
+not new primitives, IR kinds or evaluators. Before construction commit there
+is material, not a partially constructed Object. Consuming extraction exposes
+no partly extracted parent with some fields dead and others still owned.
+Failure at Pre establishes neither a partial object nor a partial mutation.
+
+R_Gamma proofs, applicability and non-consuming borrow/field observations do
+not themselves commit destructive decomposition. The word atomic in §3.1
+also identifies a single registered observation edge; it does not equate
+every such observation with parent death. A selected consuming decomposition
+commits its complete result atomically; an affine value accessor follows its
+independently selected MoveEffect, not an implicit field-removal rule.
+
+A destructor starts after atomic parent decomposition and receives complete
+child objects. Its body is an ordinary continuation: those children obey the
+same NLL, with, use, move and drop relations. There is no partially destroyed
+parent, field-death bitmap or separate destructor evaluator. The lifetime
+owner determines generation effects, cleanup and subsequent observations.
+
+An Uninitialized Place has no resident Object; it is not a partially
+constructed Object. Legal later namespace/member realization and immutable
+type composition likewise remain complete semantic actions at their existing boundaries.
+
+## 4. Presence, constraint, structure, and navigation are distinct
+
+For selector `s` and child Object `y`, direct structural incidence implies
+presence:
+
+```text
+DirectPatternChild_Gamma(P, c, s, y)
+  => Val2(c)[s] = y
+```
+
+The converse is false:
+
+```text
+Val2(c)[s] = y
+  !=> DirectPatternChild_Gamma(P, c, s, y)
+```
+
+The following predicates are independent unless a particular Pattern family
+proves a relation between them:
+
+```text
+PresentInVal2(c, s, y)
+ConstrainedBy(P, c, s, y)
+DirectPatternChild(P, c, s, y)
+NavigableMember(c, s, y)
+ExtractionVisible(P, c, s, y)
+OrdinaryAssociatedHelper(c, s, y)
+```
+
+An associated helper can be navigable without being structurally constrained
+or extraction-visible. A private structural child can remain a direct child
+while being omitted from a default extraction view. Pattern structure is
+therefore neither namespace shape nor the set of currently callable helpers.
+
+For value:ValueType, ordinary navigated creation and initialization, including:
+
+```lang
+mut let f_ref = (let f::s:ValueType) ref;
+f_ref = value;
+```
+
+create a typed structural name and then initialize its ordinary `Val2` resident. It cannot add a
+`DirectPatternChild`, `ConstructEdge`, `ExtractEdge`, or `FieldView`. Structural
+registration is established by atomic structural type formation or ordinary
+registered type composition through `*`. `*=` publishes the composed complete
+type under its ordinary Pre premises. `struct` preserves registration while
+adding standard helpers.
+
+## 5. Relational equivalence and Pattern normalization
+
+Satisfaction equivalence is:
+
+```text
+P ~=sat Q
+  iff forall c.
+        Sat(P, c) <=> Sat(Q, c)
+```
+
+Relational equivalence is stronger:
+
+```text
+P ~=R Q
+```
+
+and preserves, up to alpha-renaming / canonical binder renaming:
+
+- successful derivation structure;
+- the observable and extractable interface;
+- direct structural incidence.
+
+Therefore:
+
+```text
+P ~=R Q => P ~=sat Q
+```
+
+but not conversely. Two Patterns may accept the same content while exposing
+different structural or extraction evidence.
+
+Pattern normalization is sound in one direction:
+
+```text
+Norm_P(P) = Norm_P(Q)
+  => P ~=R Q
+```
+
+The converse is not required. Canonical normal form may refine relational
+equivalence rather than solve equivalence completely.
+
+Object normalization composes the three coordinates without copying either
+content axis into `P`:
+
+```text
+Norm(x)
+  = <
+      Norm_Val1?^(P(x))(Val1?(x)),
+      Norm_P(P(x)),
+      Norm_Val2(Val2(x))
+    >
+```
+
+Cross-axis comparison uses normalized Object equality. A resident place,
+source carrier, construction spelling, or defining name binding is not Pattern
+content identity.
+
+## 6. Navigation formation and Pattern identity
+
+Canonical Pattern identity may erase:
+
+- explicit versus inherited navigation formation;
+- the labels “internal” and “external” as formation provenance;
+- source carrier and spelling provenance.
+
+It must preserve:
+
+- completed canonical navigation;
+- the actual Pattern child entity;
+- structural incidence and its selector.
+
+The valid normalization principle is:
+
+```text
+same Pattern child identity
++ different navigation formation
+-> same completed canonical Pattern entry
+```
+
+It is never:
+
+```text
+different Pattern child identity
+-> equal after deleting the child or its name
+```
+
+Internal Path formation and its default external Read are separate; see the
+[Path owner](../symbol-world/structured-path-algebra-and-interpretation-polarity.md).
+Inherited navigation is composition under existing Pattern-parent links, not
+an alternate lookup calculus. Pure projected Path structure need not yet resolve.
+
+For a child `inner`, explicit/external and inherited formation routes complete
+to the same canonical entry `inner::bool` and the same child identity. Exact
+source spelling follows the current grammar; normalization preserves `inner`.
+
+## 7. Product ordering is local to each layer
+
+Product is the ordinary carrier, distinct from parentheses Group and from
+OverloadGroup. For the direct entries of each layer L:
+
+```text
+Unordered(L) iff every direct entry of L is Named
+Ordered(L) iff some direct entry of L is Bare
+RootNamed(L) is independent of Order(L)
+```
+
+An all-named Product needs no top Pattern name, wildcard or special anonymous
+wrapper to be unordered. Adding one bare entry makes the entire layer ordered.
+Nested layers make their own decision; an ordered parent does not order an
+all-named child. In `(a,b)` where a and b are ordinary local values, their
+variable spellings do not confer structural names: this is a BareProduct.
+
+BareProduct retains positional selectors and order. An unordered Product has
+no implicit conversion to a bare ordered sequence by source order, serializer
+sorting or selector enumeration. Extract named entries with R_Gamma, then
+explicitly assemble `BareProduct(extracted_a,extracted_b)` in the wanted order.
+NamedSelector and OrdinalSelector are distinct; a public ordinal API is deferred.
+
+All-named permutations preserve normalized structure under ordinary conflict
+checks. True nested boundaries remain intact, and result order-insensitivity
+does not reorder construction effects. `?` may remove one top name without
+changing the direct-entry criterion or flattening a real layer.
+
+## 8. Binder presence, holes, and binderless Patterns
+
+Binder presence is a semantic property of a binding position:
+
+```text
+BinderPresence = Absent | Present(BinderIdentity)
+```
+
+The explicit source form:
+
+```lang
+let <> P
+```
+
+means:
+
+```text
+DeduceList = explicit empty list
+BinderPresence = Absent
+Pattern = P
+```
+
+`<>` selects binder absence in a strong binding context. The source token does
+not become an Object component or a `BinderlessObject`.
+
+By contrast:
+
+```lang
+let _ P
+```
+
+contains a real anonymous / wildcard matching position. It does not mean no
+binder, empty content, or padding. Consequently:
+
+```text
+let <> P != let _ P
+```
+
+Ordinary binder shorthand remains algebraically continuous:
+
+```text
+let h P1 P2  ~=  let <h> h P1 P2
+let h        ~=  let <h> h
+```
+
+The bare spelling `let P` is therefore the simplest ordinary binder form, not
+a binderless Pattern. A source form requiring no binder must use `let <> P`.
+
+DeduceList holes are resolved to exact `HoleBinderId` / `HoleRef` identities
+under their `PatternRoot`; spelling alone is not semantic identity.
+
+The decisive corollary is that implicit-hole shorthand is local to its binding
+site:
+
+```text
+ImplicitDeductionIsSiteLocal:
+
+Site_1:
+  let t
+  ~= let <t₁> t₁
+
+Site_2:
+  let t
+  ~= let <t₂> t₂
+
+HoleBinderId(t₁) != HoleBinderId(t₂)
+```
+
+Two independent deduction sites that both spell `t` do **not** denote the same
+hole, even though the display spelling is identical: spelling is never semantic
+identity. The shorthand introduces a fresh hole at each binding site.
+
+Only an explicit shared `DeduceList` establishes shared-hole identity:
+
+```text
+<t>(..., site1 uses t, site2 uses t, ...)
+
+HoleRef(site1.t) -> same HoleBinderId
+HoleRef(site2.t) -> same HoleBinderId
+```
+
+So:
+
+```text
+explicit shared DeduceList
+    = equality constraint / shared unknown
+
+multiple local shorthand holes
+    = independent unknowns
+```
+
+The counterexample that must be in the specification:
+
+```text
+<t>(..., x:t, y:t)
+```
+
+requires the two positions to share one hole, while dropping the shared `<t>`
+and using implicit deduction shorthand at each position in principle yields two
+independent unknowns `t₁` / `t₂` that may be deduced separately. It is exactly
+this that makes the general equivalence
+
+```text
+RemoveOuterDeduceList
+=/=>
+SemanticsPreserved
+```
+
+false: it holds only inside a specific candidate where the remaining
+constraints happen to force `t₁ = t₂`, so the observable result is the same.
+That coincidence must not be promoted into a language theorem. This is why the
+old `ref` declarations' `<t>` could be dropped in those particular examples
+while behaving identically, without any general equivalence existing.
+
+### 8.1 Deduction as extraction
+
+Parameter genericity and DeduceList deduction are extraction, not universal
+introduction. The canonical direction is:
+
+```text
+known RHS / actual argument
+  ↓
+Pattern extraction
+  ↓
+valuation ρ
+  ↓
+bind HoleIds
+```
+
+Function parameters are let-shaped binding positions. A call
+
+```text
+(a1, ..., an) |> F
+```
+
+is applicable exactly when the extraction succeeds:
+
+```text
+Applicable(F, a1...an)
+  iff ∃ρ.
+      Extract(H1, a1, ρ)
+    ∧ Extract(H2, a2, ρ)
+    ∧ ...
+    ∧ Extract(Hn, an, ρ)
+```
+
+An explicit shared `DeduceList` produces shared `HoleBinderId`s, so
+extractions at different parameters must agree on the same `ρ(t)`.
+Site-local shorthand (§8, `ImplicitDeductionIsSiteLocal`) produces
+independent holes instead.
+
+A restriction such as `<t:type>` is a constraint on the extracted value:
+
+```text
+Extract(..., ρ) ∧ ρ(t) : type
+```
+
+It is not a kinded universal generic binder. There is no primitive semantic
+category `GenericParameter`, no `∀t. ...` introduction rule, and no
+"choose arbitrary t, then type-check the body under t". Overloading is
+therefore competition among admissible extraction heads:
+
+```text
+candidate
+  -> parameter extraction heads
+  -> successful Hole valuation
+  -> admissible candidate
+  -> specificity/policy preference
+
+Overloading is competition among admissible extraction heads.
+```
+
+This is an intentional design tradeoff:
+
+```text
+The language sacrifices unrestricted bidirectional global constraint
+solving in exchange for compositional one-way structural observation
+from known RHS / argument prefixes.
+```
+
+and:
+
+```text
+The semantic depth of one extraction expression
+is bounded by the Pattern the user can write,
+not by a language-level solver-depth limit.
+```
+
+This is not Hindley-Milner-style global unification, not concept/trait-solver
+bidirectional constraint propagation, and not "the compiler supports only
+fixed-N-depth pattern matching". Note that mathematical `∀` in compile-level
+statements (for example `RankTransparent(F) iff ∀n. F : U_n -> U_n`) is
+ordinary mathematical quantification and remains valid. Language genericity is
+Hole extraction and valuation, not a language-level `forall` ontology.
+
+### 8.2 Intermediate-layer extraction
+
+For `let <a> (c Pattern) a`, first reach the a layer, retaining the evidence
+and that layer's material u_a, then apply the same relation again:
+
+```text
+OuterExtract_Gamma(a,x,rho0,u_a)
+R_(Gamma,rho0)(P_c,u_a,rho1)
+rho = rho0 join rho1  -- compatible valuations required
+```
+
+The name observation, reached layer and its payload are different observations;
+they are not all rho(a). An unordered layer admits at most one unpositioned
+whole intermediate extraction; that whole Pattern may contain many named
+children. An ordered layer admits multiple extractions aligned in its order.
+This does not relax Pack cardinality or admit several arbitrary remainders.
+Generation reverses the direction of the declaration consumer, not this
+known-content extraction judgment.
+
+## 9. Bare nodes and pipe branch shorthand
+
+```text
+Bare(s)=<nu_s,P(s),Val2(s)>
+UniqueValueMember(Bare(s),nu_s)
+```
+
+The member actually exists. Its machine representation is unobservable;
+ordinary Pattern relations distinguish branch identity without a public integer
+encoding or synthesized extraction field. Binder absence and value presence are
+independent. Compile Pattern / runtime value is a legal view.
+
+```lang
+let bool = ((true | false)bool)$;
+let true = true::bool;
+let false = false::bool;
+let if = true::bool;
+let else = false::bool;
+```
+
+true|false is the structural sum; the four names are ordinary value bindings.
+
+```lang
+|> name { B }
+// syntax-directed expansion:
+|> (_, let _: (name)$) { B }
+```
+
+Both anonymous positions are structural. The complete (name)$ operand is
+interpreted in V, supplying the existing value Pattern to ordinary extraction.
+Raw and normalized heads agree with the explicit form and retain InPlace.
+
+## 10. Joint extraction across adjacent universe ranks
+
+### Classifier observation and decided relation outcomes
+
+Required classifier and named-Pattern observations have explicit availability:
+
+```text
+ObserveClassifier_K(c) = Available(o) | Unavailable(d)
+ObserveNamedPattern_K(n) = Available(P_n) | Unavailable(d)
+Query_Gamma(P,c) = Match(rho) | Mismatch(proof) | Unavailable(d)
+
+NeedsClassifier(P) and ObserveClassifier_K(c)=Unavailable(d)
+  => Query_Gamma(P,c)=Unavailable(d)
+```
+
+`Mismatch` requires observed contradictory facts, such as unequal known
+classifier observations or incompatible known valuations of one HoleBinderId.
+Its negative proof has the full query scope:
+
+```text
+Query_Gamma(P,c)=Mismatch(m)
+  => m : not exists rho. R_Gamma(P,c,rho)
+```
+
+A failed alternative or partial valuation is not a negative proof for a query
+that still admits a solution or requires unavailable evidence. The
+[forced extraction owner](return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion)
+combines this proof with a unique complete outward root type to derive
+TotalRootMismatch. Equal outer classifier Core does not decide an internal
+Pattern constraint and does not forbid a proved whole-root failure.
+Missing classifier coordinates, unobserved argument value/type role and missing
+named-Pattern evidence provide no such proof. Unknown role is distinct from an
+observed absent-Val1 type. The detached known Pattern-coordinate observation
+used by world-free relation clients remains an explicit equality boundary;
+it is distinct from having no observation at all.
+
+World-connected ordinary arguments retain their formation-time frozen classifier
+tau. Available snapshots are transported before first-round queries; an
+unavailable observation remains unavailable until a query requires it, without
+adding a classifier premise to a plain binder/discard. Selected invocation input
+normalization separately checks the complete identity material it needs.
+Ordinary type equality observes Norm(Core(tau)), not the lookup key
+or a fresh read of the classifier's current Place. Named external classifier
+Patterns likewise observe the complete tau resolved for that occurrence.
+Equal Core under distinct lookup keys matches; a shared Pattern root under
+unequal Core snapshots does not. Required missing Core is Unavailable, without
+a Pattern-coordinate fallback. Detached coordinate equality is restricted to
+explicit world-free relation observations; it supplies no production typing
+authority. A second annotation filter cannot reject a proved relation using
+lookup-key identity.
+
+Plain binders, anonymous wildcards and unconstrained whole-remainder Pack
+binders/discards request no classifier facts merely to bind or discard an
+argument. A relation that does request them, including a Hole or named
+alternative among other alternatives, must preserve unavailable evidence.
+Partial successful derivations do not erase that obligation.
+
+Only `Mismatch(proof)` supplies Pattern-based candidate rejection. An
+unavailable required query stops first-round selection before preference,
+maxima and sealing, even if another candidate already matches. Independently
+proved hard rejection, such as arity mismatch, can reject a candidate without
+requesting irrelevant observations.
+
+### Adjacent-rank extraction
+
+Let Gamma;K |- E(RHS)=>v and Type(v)=T. At every universe level:
+
+```text
+R_Gamma(a:b,v,rho)
+  => rho(a)=v and rho(b)=T
+     Rank(rho(b))=Rank(rho(a))+1
+```
+
+Bare b introduces the classifier-side binder at this site. External constraints
+use a full Path uint8:: or opposite-polarity R$. Inference, external Pattern
+constraints and Hole deduction all consume R_Gamma. Hole presence does not
+change extraction into RHS transformation. Return and parameter positions
+apply the same relation to their actual delivered values.
+
+For an external classifier Pattern A, extraction consumes the unchanged result:
+
+```text
+E(expr) = v
+Interpret(A,S) = P_A
+R_Gamma(a:A,v,rho) observes Type(v) through P_A
+```
+
+The initial extraction subject is exactly v, with its actual value identity and
+classifier snapshot. For example, 42 first denotes an integer; uint16:: does
+not match that classifier merely because an integer-to-uint16 constructor
+exists. An already selected forced extraction/return-delivery consumer may use
+the [single root conversion rule](return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion)
+after proved root mismatch. Applicability itself remains conversion-free.
+
+The bare classifier-side binder has this interpretation also in an
+initializer-free simple head. Without an extraction subject, a:b produces no
+valuation for b and no declared Place type. Initializer-free lexical typed-name
+formation requires explicit external classifier material, such as uint8:: or
+R$ determining a complete type. Qualified structural P let name::path:t follows
+the [name-formation judgment](../symbol-world/names-and-overload-groups.md#5-typed-name-declarations-and-complete-let-bindings).
+
+```text
+Interpret(_,S)=AnonymousPattern
+Interpret(_,V)=universerank
+```
+
+universerank is ordinary universe-rank material for structural/callable formation;
+it supplies neither anonymous matching nor an arbitrary rank lift.
+
+In S, `_` is an anonymous deduction/matching position, without a named
+HoleBinderId. `_$` and `(_)$` instead supply the existing universerank Pattern
+through V interpretation. Like `bool::` and `(if)$`, they require the actual
+external Pattern extraction relation; they cannot be dropped or treated as
+wildcards. A Sequence containing such material requires all its observations,
+even when another term already matches. A missing consumer is unavailable.
+The [Product owner](product-repetition-and-unpacking.md) defines singleton
+contextual expansion, `_ * ω` repetition and compile Val1 identity.
+
+### 10.1 Independent Hole Policy
+
+```text
+P let <P_h let h> LHS = RHS
+Policy(h)=HoleOverride(P,Delta_h)
+HoleOverride(P,Delta)[d] = Delta[d] if d in WrittenDims(Delta)
+                         P[d]     otherwise
+```
+
+Omitted dimensions inherit. Written dimensions replace without outer-strength
+restriction. This third operation is independent of Pin/ElabIn and Pout/ElabOut.
+Each Hole's Pattern and Policy solve in the ordinary relation with exact
+PatternRoot/HoleBinderId. In <p> let <p let h>, inner p references the preceding
+Hole identity; Policy uses no separate Hole solver.
+
+## 11. Constructor and extractor contracts are family theorems
+
+For a particular Pattern family `C`, the family may expose:
+
+```text
+construct_C : Pattern_C -> Value_C
+extract_C   : Value_C   -> Pattern_C
+```
+
+and prove:
+
+```text
+extract_C(construct_C(P)) = P
+construct_C(extract_C(v)) = v
+```
+
+when those equations are part of that family's contract. They are not axioms
+of `R_Gamma`, and Patterns without such a theorem remain valid.
+
+Construction, extraction, ordinary callability, and field observation are
+separate roles. One ordinary callable may implement more than one role without
+being copied into multiple semantic objects.
+
+## 12. Structural type formation and registered children
+
+For:
+
+```lang
+let t = ((uint8 inner)t)$;
+```
+
+Structural interpretation atomically establishes the complete type and its
+actual Val2 role witnesses, including the canonical leaf:
+
+```text
+StructuralLeaf(
+  parent   = t,
+  selector = inner,
+  source   = uint8
+)
+```
+
+with the theorem:
+
+```text
+exists exactly one C.
+  C = inner::t
+  and DirectPatternChild(t, inner, C)
+  and LeafSource(C, uint8)
+```
+
+The child exists independently of any generated getter or extractor callable.
+The ordering is:
+
+```text
+actual Val2 members + registered structural roles + complete type
+  -> ordinary helper augmentation
+```
+
+never the reverse.
+
+For leaf source `A`, child `C`, and parent type `T`, a registered structural family may expose:
+
+```text
+K_C : A -> C
+E_C : C -> A
+
+K_T : C -> T
+E_T : T -> C
+```
+
+For `n` fields:
+
+```text
+K_i : A_i -> C_i
+E_i : C_i -> A_i
+
+K_T : (C_1, ..., C_n) -> T
+E_T : T -> Product(C_1, ..., C_n)  -- preserve each child's structural name
+```
+
+The formula `Field_i = E_i o pi_i o E_T` is not universal. A terminal leaf
+view may cross two structural layers, while a higher extractor crosses one.
+The registered role contract records the actual structural route.
+
+## 13. Structural role registration and ordinary callables
+
+V_tau registration and Val2 residency are distinct judgments. Structural roles
+are explicit registrations over actual Val2 witnesses: a role implies residency,
+while residency does not imply a role. ConstructEdge is independent of V_tau. A construction witness is not a prerequisite for
+type-callee projection. The call owner distinguishes type invocation through
+V_tau from ordinary invocation through the classifier's associated Val2[()]:
+
+```text
+tau -> V_tau -> c -> Type(c).associated Val2[()] -> Impl, self=c
+x -> Type(x).associated Val2[()] -> Impl, self=x
+```
+
+No new ConstructEdge or change to TypeRole follows merely from either call.
+
+
+For a registered structural Pattern `P_T`, role registration may include:
+
+```text
+ConstructEdge_P_T(C, T, K_T)
+ExtractEdge_P_T(T, C, E_T)
+
+ConstructEdge_P_T(A, C, K_C)
+ExtractEdge_P_T(C, A, E_C)
+
+FieldView_P_T(T, inner, A, F)
+```
+
+`K`, `E`, and `F` are ordinary callable Objects stored in the ordinary name binding /
+`Val2` / type-member value universe. `P_T` does not own a second copy. It only
+registers the structural or interface role played by that callable.
+
+A Pattern-registered extraction/construction closure must have the required
+classifier under the containing tau. This is independent of registration for
+that type's own callability in V_tau: neither registration implies the other.
+Ordinary Val2 membership needs neither registration and permits arbitrary
+resident types. Authorized classifier home is eligibility, not automatic
+registration in either role family.
+
+Pattern structural registration is non-generative because it determines the
+structured construction/extraction form. A requested-name generative occurrence
+may yield an ordinary Val2 value but supplies none of these structural witnesses.
+V_tau registration is also non-generative and does not require or grant named
+Val2 navigation to its callable value; classifier home is a separate condition.
+
+TypeRole(Q) iff Pure(Q) iff Val1?(Q) is absent, as defined by the type-value
+owner. Registered self-construction is an independent capability of Q:
+
+```text
+HasRegisteredSelfConstruction(Q)
+  iff exists Pattern P of Q, exists s, exists C, exists K:
+      Val2(Q)[s] = K
+      and ConstructEdge_P_Q(C, Q, K)
+      -- P is the Pattern of Q, C is a structural input pattern, K is the
+         ordinary callable/interface registered for that construction path
+         (same registration family and parameter order as ConstructEdge_P_T
+         above), and K must be the member actually registered in Val2(Q)
+         under some selector s.
+```
+
+The witness `K` is an actual ordinary callable/interface member registered in
+`Val2(Q)`, never a hypothetical edge. This gives three explicit levels:
+
+```text
+1. Val2 presence          Val2(Q)[s] = K
+                          -- ordinary membership: K is a member of Val2(Q)
+
+2. ConstructEdge          ConstructEdge_P_Q(C, Q, K)
+                          -- structural role: K plays the construction role
+                             registered on Q's Pattern
+
+3. Registered construction witness
+                          Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
+                          -- the Val2 member and the ConstructEdge agree on the
+                             same K; HasRegisteredSelfConstruction(Q) requires
+                             this joint witness, not either half alone
+```
+
+`HasRegisteredSelfConstruction(Q)` is the existence of a structural
+construction role registered on `Q`'s Pattern, witnessed by an actual `Val2`
+member. It is the formal criterion for self-construction, not type identity:
+
+```text
+SelfConstructible(Q) iff HasRegisteredSelfConstruction(Q)
+
+NamespaceWithoutSelfConstruction(Q)
+  iff NamespaceRole(Q)
+  and not HasRegisteredSelfConstruction(Q)
+      -- Q still has TypeRole; only the construction witness is absent
+```
+
+These are Q-local structural judgments. They have no hidden tau argument and
+do not check a complete type's classifier home. CompleteType(tau) separately
+requires PatternClosureConsistent(tau) (§15 and the type-value owner §2.2).
+That complete-closure judgment checks Home(TypeOf(K)) = TypeMemberScope(tau)
+for every Pattern-registered construction/extraction closure, independently of
+whether K is also registered for callability in V_tau. Ordinary Val2 residents
+with neither role need no such home. Registration witnesses in Q and their
+compatibility with a particular /tau(tau) home must not be conflated.
+
+Therefore:
+
+```text
+Pattern identity != callable availability
+TypeRole(Q) <=> Pure(Q) <=> NamespaceRole(Q)
+SelfConstructible(Q) <=> HasRegisteredSelfConstruction(Q)
+```
+
+Copying or installing an ordinary callable does not grant it structural role.
+An implementation may replace a callable while preserving the Pattern role
+contract and therefore preserving Pattern identity. Ordinary slot
+replacement (`Write(slot, new_value)`) does not register `ConstructEdge`;
+therefore SelfConstructible must be checked from the result structure. A
+Val2-only write preserves purity and TypeRole, but may invalidate a joint
+construction witness or complete-closure consistency. See
+`type-values-places-and-borrow-views.md` §2.2.
+
+### 13.1 Real fields versus virtual observations
+
+Structural reality comes from P registration alone:
+
+```text
+RealField_P(s, F)
+  iff F is registered as a field/interface role on P(s)
+
+RealField_P(s, F) => PresentInVal2(s, F)
+PresentInVal2(s, F) =/=> RealField_P(s, F)
+```
+
+An ordinary `let virtual = ...` may add a same-name callable to `Val2(s)`,
+forming a `VirtualField(s, F)`. A virtual field may win ordinary overload
+resolution against the generated real-field getter, and may form a custom
+setter or member operation. But it cannot change any structural role:
+
+```text
+VirtualField(s, F)
+  =/=> RealField_P(s, F)
+  =/=> DirectPatternChild(s, F)
+  =/=> FieldView_P(s, F)
+  =/=> ExtractEdge_P(s, F)
+  =/=> ConstructEdge_P(s, F)
+```
+
+"Real" is semantic structural reality, never ABI/layout reality. And a
+callable with signature `(self, object:T) -> A` is not ipso facto a
+P-structural field; Val2 membership ≠ structural child. This preserves the
+existing separation:
+
+```text
+Val2 membership
+  !=
+DirectPatternChild / FieldView / ExtractEdge
+```
+
+## 14. Borrowed extraction is derived from ProjectionSlot
+
+Suppose a by-value structural extraction is:
+
+```text
+E : T -o U
+```
+
+and its extraction corresponds to a real projection selector `pi_E`. Then:
+
+```text
+E_ref   : T ref   -> U ref
+E_share : T share -> U share
+
+E_ref(r)
+  = Ref(ProjectionSlot(Target(r), pi_E))
+
+E_share(r)
+  = Share(ProjectionSlot(Target(r), pi_E))
+```
+
+Thus:
+
+```text
+StructuralExtraction(E)
+and HasProjectionSlot(E)
+  => BorrowLift(E)
+```
+
+but:
+
+```text
+ValueIso(T, U) !=> BorrowIso(T, U)
+ValueConstructor(K) !=> BorrowLift(K)
+```
+
+No primitive `BorrowLiftable` Pattern flag exists. `struct` generates the
+ordinary value/ref/share callable objects required by its interface. Built-in
+borrow operations associate those already existing callables with their
+ProjectionSlots; they do not synthesize transformed callable objects.
+This borrowed-extraction law is a theorem of the rank and typing-naturality
+section (`../symbol-world/type-values-places-and-borrow-views.md` §2.3).
+
+Borrow observations are horizontal edges and do not become owned Pattern
+children.
+
+## 15. Boundary to complete type values
+
+A type is one semantic entity with two equivalent views. The description view
+and the type-closure view constrain the same entity, not two objects that are
+later mapped to each other:
+
+```text
+One semantic type entity X has two equivalent views:
+
+DescriptionView(X) = ⟨P, Val2⟩
+TypeClosureView(X) = τ = ⟨Q, V_τ⟩
+
+τ ≡ DescriptionClosure(P, Val2)
+```
+
+This is not `V_τ = Val2`: `V_τ` is the type-callspace snapshot observed from
+the same closed entity, and `Q` is its core/Object-structure observation. The
+consistency law is:
+
+```text
+A constraint on ⟨P,Val2⟩
+and
+a constraint on ⟨Q,V_τ⟩
+
+constrain the same semantic entity.
+```
+
+Closed(tau) freezes the non-generative Pattern structure and V_tau registration;
+ordinary generated Val2 results may still be realized without either role.
+WellFormedTau(tau) guarantees that the P/Val2
+structural registration and the V_τ anchored callspace are compatible.
+There is no formation order "Q formed first, then some namespace inspected,
+then V_τ attached, then τ obtained"; there is no "P structure is one object,
+V_τ/type callability is another side table"; and there is never a state where
+"τ is already closed but V_τ can still be augmented."
+
+The Core component of a type is the ordinary pure Object `Q`, including its
+relational Pattern coordinate. The canonical type-value authority closes
+that core over its direct TypeMember callspace:
+
+```text
+tau = <Q, V_τ>
+
+Core(tau)      = Q
+CallSpace(tau) = V_τ
+
+WellFormedTau(tau)
+  iff tau = <Q, V_τ>
+  and Q is a well-formed pure Object
+  and V_τ is a well-formed TypeMember set
+      (each F in V_τ satisfies TypeMember_tau(F))
+  and AllBoundRefsBoundAndRestricted(bind alpha.⟨Norm(Q), Norm_V^alpha(V_τ)⟩)
+      (every BoundRef reachable during Norm_type^alpha(Q, V_τ) is bound
+       by alpha and belongs to an authorized static edge kind;
+       BoundRef(alpha) notin Children_owned)
+  and PatternClosureConsistent(tau)
+      -- structural, history-free; depends only on the current closure value
+         (canonical definition: type-values-places-and-borrow-views.md §2.2)
+
+CompleteType(tau) iff WellFormedTau(tau)   -- TypeValueRole
+ConstructibleType(tau)
+  iff CompleteType(tau) and HasRegisteredSelfConstruction(Core(tau))
+NamespaceWithoutSelfConstruction(tau)
+  iff CompleteType(tau) and not HasRegisteredSelfConstruction(Core(tau))
+      -- a complete type even with no registered self-construction
+
+tau = bind alpha. <Q, V_τ[alpha]>
+```
+
+`V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
+direct TypeMember members placed into `tau` when it was produced
+(`TypeMember_tau` handoff invariants below), not a global function of
+the bare core `Q` and not a post-hoc partition of a shared name binding space.
+Members created under the same `Q` later never retroactively enter
+an existing snapshot, and a copied or extracted `tau` keeps its captured `V_τ`.
+
+where `V_τ` contains the ordinary val members that belong directly to this type
+snapshot and references to `Self_τ` normalize as binder back-references
+(`SymbolicReferenceEdge`, not an evaluation reentry;
+`../symbol-world/type-values-places-and-borrow-views.md` §2.1.1).
+`tau` is not an Object embedding or a fourth Object coordinate. `Q` and every
+member in `V_τ` remain ordinary Objects; the closure records the type-specific
+pairing needed by type-as-callee, copying, `*`, and `*=`. Per the
+minimal-change rule (`../symbol-world/type-values-places-and-borrow-views.md`
+§2.2), ordinary type-rank equality and keying keep observing
+`Core(tau) = Q` by default; `Addr(Norm_type(tau))` is the snapshot identity,
+used in transport and in positions the language has independently frozen to
+whole-snapshot semantics. Ordinary Pattern and namespace observation also uses
+`Core(tau) = Q`.
+
+The handoff invariants distinguish Core's Pattern anchor from the complete
+bound type's implementation home. Equal Core alone cannot merge type homes.
+Val2 residency, callability registration and Pattern-role registration remain
+independent; both registered closure roles require the same complete-type home:
+
+
+```text
+CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)      -- canonical §2.1
+TypeMemberScope(tau) = /tau(tau)  -- complete bound type implementation home
+
+HomeEligible_tau(F)                                -- classifier home only
+  iff Anonymous(F)
+  and Home(TypeOf(F)) = TypeMemberScope(tau)
+
+OrdinaryCallableValue(F)
+  implies Val1?(F) != absent
+  and ordinary implementation entries at AssociatedNamespace(Type(F)).Val2[()]
+
+TypeMember_τ(F)
+  iff OrdinaryCallableValue(F)
+  and HomeEligible_τ(F)
+  and RegisteredCallability_τ(F)  -- non-generative V_τ registration
+
+F in V_τ => TypeMember_τ(F)
+CallCandidates_type(τ) = disjoint_union over F in V_τ of CallCandidates_ordinary(F)
+
+CreateClassifier_Gamma(
+  F,
+  Home(TypeOf(F)) = TypeMemberScope(tau)
+)
+  => CurrentAuthority_Γ(tau)
+
+V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partition
+
+Norm_type^alpha(Self_τ) = BoundRef(alpha)
+BoundRef(alpha) notin Children_owned
+```
+
+OrdinaryCallableValue is the ordinary associated () member judgment, not
+another registration. P let ()::path:t forms a typed structural member/Place;
+legal initialization of AssociatedNamespace(T).Val2[()] supplies x:T's ordinary
+call entrance without changing V_T. TypeAdd(T,v) adds only the eligible ordinary
+callable AnchorFor(v,T) to V_T, without installing T's associated ():
+
+    TypeAdd(T,v) does not imply AssociatedNamespace(T).Val2[()] = v
+    AssociatedNamespace(T).Val2[()] = k does not imply k in V_T
+
+Standalone closure tau_C is a type, not an OrdinaryCallableValue. An established
+same-name contribution consumes closure formation material to create c_C^T;
+it neither inserts tau_C into V_T nor imports all of V_tau_C.
+
+TypeMember registration does not require a named Val2 resident or grant a
+val::path selector for F. The anonymous classifier has its /tau home; navigation
+to that classifier is not navigation to F. A separate ordinary binding may expose
+the same value without changing its callability or Pattern registration.
+
+Pattern-registered members determine the structured construction/extraction
+relation and must be non-generative. GeneratedOccurrence cannot supply
+DirectPatternChild, ConstructEdge, ExtractEdge, FieldView or V_tau evidence.
+This is an occurrence restriction, not a permanent prohibition on the value.
+Mechanically produced struct helpers belong to their ordinary non-generative
+formation; a frontend Generated provenance tag is not a generative name rule.
+
+`V_τ` is fixed at formation and never grows: classifiers created later under
+the same scope may enter, when registered, only the new snapshot `V_τ'` (composition preserves
+the complete bound implementation owner, so its home is stable), never an older `V_τ` — no
+retroactive membership.
+
+Direct canonical home is fixed at classifier creation. Selecting that home is
+itself privileged: only a process holding current construction authority for
+the complete type tau may create a classifier directly in TypeMemberScope(tau). Ordinary
+callable creation, navigated `let`, copying, writing, rebinding, or namespace
+installation cannot forge the home at formation and cannot establish
+membership afterward. Descendant ownership is also insufficient.
+After authorized `BoundRef` edges are erased, the owned graph must satisfy
+`WellFounded_kappa` (`../symbol-world/type-values-places-and-borrow-views.md`
+§2.1): finite, acyclic, fully bound, and restricted to authorized static
+edge kinds under static-eval generation (for compile)
+and acyclic once materialized at runtime.
+
+This document uses `Q` when discussing structural Pattern relations and `tau`
+when discussing a complete type value. `AsType` and type projection produce
+`tau = <Q,V_τ>`, not bare `Q`. Complete type normalization is
+`Norm_type(tau) = bind alpha.<Norm(Q),Norm_V^alpha(V_τ)>`; it is not a second
+shape for `Norm(Object)`. The TypeMember partition, `Self_τ` normal form, core
+observation, and callspace identity are owned by
+`../symbol-world/type-values-places-and-borrow-views.md` and
+`../symbol-world/structural-type-formation-and-composition.md`.
+
+## 16. Ordinary type composition and update
+
+```text
+* : type x type -> type
+*= : type ref x type -> unit
+T * D => T'
+r *= D => Read(r), ordinary selected composition, Write(r,T')
+```
+
+Composition produces one complete snapshot with actual Val2 witnesses and
+registered roles. Update requires current OpenHere, actual Writable, capability,
+access, lifecycle and continuation legality before common commit and joint Post.
+No failed action publishes state; no selected failure reopens the candidate
+family. struct:type->type adds helpers with StructuralRegistration(T') equal
+to StructuralRegistration(T). Equal roots do not imply equal snapshots or
+callspaces. Ordinary name writes alone supply no structural registration.
+
+## 17. Current semantic boundaries
+
+- Pattern is the Object's relational P coordinate, not a schema pointer, type tag, or
+  copy of Val2 metadata.
+- Matching may yield multiple valuations; invertibility is not universal.
+- Structural incidence requires explicit evidence; Val2 or callable presence is
+  insufficient.
+- Formation provenance does not enter Pattern identity.
+- Bare positional material uses the ordinary Product calculus.
+- Interpret(_,S)=AnonymousPattern; Interpret(_,V)=universerank; binder absence is explicit.
+- Pipe branch expansion is (_, let _: (name)$), with an anonymous self slot and ordinary classifier-side extraction.
+- A complete type value contains Core and immutable callspace observations.
+- Complete types retain their own callspaces without defining-binding recovery.
+- TypeMember home is explicit and is not implied by descendant classification.
+- Immutable snapshots do not share one mutable current callspace.
+- Recursive references obey stage-sensitive `WellFounded_kappa`: finite static
+  generation and acyclic runtime materialization. `Self_τ` is a restricted
+  static `SymbolicReferenceEdge`, not evaluation reentry.
+
+## 18. Remaining deferred work
+
+The following do not reopen this base authority:
+
+- a future custom `?` extraction protocol;
+- concrete runtime/static IR for derivations and residual pattern spaces;
+- D-reduction / `Done` representation and control-pattern transforms;
+- diagnostics and recovery for later semantic matching;
+- user-visible tuple-style namespace syntax for intrinsic Product selectors.
+
+These are extension, representation, or surface questions. They may consume
+the judgments above but may not redefine them.
+
+
+Closure membership may be established by a fresh anchored replica only when
+its ReinstantiationWitness permits that construction. The original callable
+and capture identities are not mutated; see
+[closure replication](../symbol-world/closure-anchored-replication.md).
+Named type synthesis and explicit candidate groups use their distinct
+[name/type algebras](../symbol-world/names-and-overload-groups.md).
+
+## Restricted residual consumer
+
+[Extraction chains](static-pattern-spaces-and-extraction-chains.md#5-residual-splitting-and-extraction-chains)
+consume R_Gamma through Split_Gamma(A,S)=<H,R,delta>; D returns R. Finite
+registered sum cases admit direct splitting, but this interface establishes
+no general Boolean difference, arbitrary inverse, or universal result join.
+Product integrity and sum miss remain separate. A sealed extractor's failure
+is terminal, never another derivation or arm. Internal Done is not a Pattern
+constructor and residual escape is a distinct boundary consumer.

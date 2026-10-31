@@ -1,0 +1,7 @@
+let a = e..field();
+let b = e |> .field();
+let c = e..field(a,b);
+let d = e |> .field(a,b);
+let e = (a,b)..field(c,(d,e));
+let f = (a,b) |> .field(c,(d,e));
+let g = (a,b).field;

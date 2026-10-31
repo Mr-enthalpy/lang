@@ -104,7 +104,7 @@ does not expand automatic borrowing, copying or writing.
 
 ## 4. Explicit and automatic dependency formation
 
-For a non-MetaDecl closure, classify dependency occurrences, not the closure's
+For every closure, classify dependency occurrences, not the closure's
 placement. A single ordinary closure may contain both kinds:
 
 ```text
@@ -115,7 +115,7 @@ FreeExternalObservation(C, d) and not ReplacedByExplicitCapture(C, d)
     => d in AutomaticDeps(C)
     => Needs(Form(C), Source(d), observation, Gamma, Sigma)
 DependencyRequirement -> DependencyRealization
-ClosureFormation(C) = Struct(Head_C, Body_C, DependencyMaterial(C))
+ClosureFormation(C) = FormCompleteType(Head_C, Body_C, DependencyMaterial(C))
 
 InPlace(C) => ExplicitDeps(C) = empty
 AutomaticDeps(C) != empty does not imply InPlace(C)
@@ -151,33 +151,18 @@ After formation, explicit/automatic origin supplies no additional call,
 overload, move, return or other operation dimension. Actual dependency material,
 binder identities and ordinary evidence remain observable under their own rules.
 
-### 4.1 Meta declarations have no closure capture channel
+### 4.1 Compile partner dependencies
 
-The callable that establishes MetaDecl/MetaInvoke identity is excluded from
-the ordinary closure capture rules above:
+A selected CompilePartner retains the dependencies established by ordinary
+callable formation. Its CompileInstance key observes the parent owner, selected
+receiver/call-entry pair and canonical invocation inputs. Dependencies legally
+retained by that selected callable preserve their actual identity and lifetime;
+there is no hidden caller-environment input. Requested-name material enters In.
 
-```text
-MetaDecl(C) => Placement(C) = Ordinary
-MetaDecl(C) => CaptureClause(C) = absent
-MetaDecl(C) => no ExplicitClosureCapture(C)
-MetaDecl(C) => no AutomaticClosureDependencyFromUnpassedOuterLocal(C)
-```
-
-Its external material must come from admitted invocation inputs and their
-dependency closure, the stable definition environment already fixed by the
-selected callable/parent owner, lawful instance state/members, or another
-mechanism explicitly established by the meta owner with no hidden capture
-coordinate. Unpassed caller/enclosing locals remain masked; material that must
-affect the invocation must enter through In. CapturedEnv is not an extra input
-to MetaInstanceRootKey. See the
-[meta owner](../meta-invocation/meta-object-invocation-and-policy-reduction.md#2-meta-instance-identity).
-
-This restriction applies only to the declaration layer establishing that
-identity. Its body may form ordinary closures using material legally available
-inside the invocation; a nested closure cannot capture a masked outer local.
-An ordinary dependency-bearing closure explicitly passed through In retains its
-admitted transitive dependencies and ordinary identity/lifetime checks. That
-input is not a capture channel of the MetaDecl itself.
+Every closure keeps its lexical, Self, navigation and dependency layer. A nested
+closure may use only legally available material, including an enclosing instance
+self-name through ordinary admitted dependencies. Invocation consumes those
+realizations at their established lexical and navigation coordinates.
 
 ## 5. Projections of one dependency
 
@@ -191,12 +176,12 @@ not resolve the concrete source again.
 
 If initialization itself contains runtime actions, their formation residue
 must remain. Compile evaluation cannot fabricate an already initialized
-capture value. A head, meta key or complete normalization requiring that value
+capture value. A head, compile key or complete normalization requiring that value
 must satisfy readiness and legality; unknown material is not proof of equal
 Core.
 
-Seal deferral preserves these dependencies and effects. A closure dependency
-does not bypass MetaDom or SealDom.
+Continuation deferral preserves these dependencies and effects. A closure dependency
+remains subject to its actual horizon, readiness and execution legality.
 
 ## 6. Semantic state cannot be hidden in a side table
 
@@ -224,3 +209,15 @@ extend a referenced object's lifetime.
 The [lifetime handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
 owns persistence and move/escape refinement. This dependency relation adds no
 universal lifetime theorem.
+
+## Delayed concrete input and opaque self
+
+Compile callables admit ordinary implicit dependencies. Requirements, selected
+realizations, and current demand for available concrete values are separate.
+Runtime materialization can complete ordinary closure capture. Result-affecting
+observations enter dependency validity and instance reuse. Norm_Name(n) does not
+unfold self's capture layout; self remains observable through normalized Pattern
+algebra without public transparent structure. A callable reify P2 boundary uses the same E and ordinary input, dependency
+and current-name-position lifecycle facts. Actual reverse dependencies determine
+the materialized successor cone; unrelated compile type work remains ready.
+Its outward result classifier must be fixed without reverse-dependent input.

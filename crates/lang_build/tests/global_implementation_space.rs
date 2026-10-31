@@ -103,8 +103,8 @@ fn source_closure_frontier_precedes_binding_demand() {
 #[test]
 fn result_mode_preference_is_sealed_independently_of_callable_mode() {
     let mut world = support::AssociatedFamily::new(&[
-        "close let first = (const let self, const let t: type): const + compile -> let r: type => { t; };",
-        "close let second = (const let self, const let t: type): mut + compile -> let r: type => { t; };",
+        "close let first = (const let self, const let t: type::): const + compile -> const let r: type:: => { t; };",
+        "close let second = (const let self, const let t: type::): const + compile -> mut let r: type:: => { t; };",
     ]);
     let call = extract_single_call_site(&initializer_from_source("let x = uint8 choose;"))
         .expect("normalized call");
@@ -145,7 +145,7 @@ fn result_mode_preference_is_sealed_independently_of_callable_mode() {
 }
 
 #[test]
-fn named_transport_source_requires_tau_formation() {
+fn named_transport_source_requires_ordinary_object_path_wiring() {
     let mut manifest = BuildManifest::new("app", vec!["app".into()]);
     manifest
         .global_implementation_roots
@@ -154,18 +154,18 @@ fn named_transport_source_requires_tau_formation() {
     assert!(error
         .diagnostics
         .iter()
-        .any(|d| d.message.contains("closure-to-tau formation consumer")));
+        .any(|d| d.message.contains("ordinary Path consumer")));
 }
 
 #[test]
-fn literals_form_abstract_values_before_concrete_construction() {
+fn external_classifier_preserves_the_abstract_literal_result() {
     let manifest = BuildManifest::single_source_root(
         "app",
         vec!["app".to_string()],
         fixture_source_root("abstract_literal_pipeline", "app"),
     );
     let world = CompilationWorld::from_manifest(&manifest)
-        .expect("abstract literal, concrete construction, and migration remain separate");
+        .expect("abstract literal formation and matching classifier extraction");
 
     let integer_type = world
         .resolve_type_value("integer")
@@ -173,9 +173,6 @@ fn literals_form_abstract_values_before_concrete_construction() {
     let real_type = world
         .resolve_type_value("real")
         .expect("abstract real Type");
-    let uint16_type = world
-        .resolve_type_value("uint16")
-        .expect("concrete uint16 Type");
 
     let bound_value = |name: &str| {
         let symbol = world
@@ -203,30 +200,11 @@ fn literals_form_abstract_values_before_concrete_construction() {
     let exact_real = bound_value("exact_real");
     assert_eq!(exact_real.type_value, real_type);
 
-    let concrete = bound_value("concrete_value");
-    assert_eq!(concrete.type_value, uint16_type);
-    let SemanticValuePayload::ConstructedLiteral {
-        source_abstract,
-        target_complete_type,
-        ..
-    } = concrete.payload
-    else {
-        panic!("concrete annotation runs a later construction operation");
-    };
-    let original = world
-        .semantic_world()
-        .value(source_abstract)
-        .expect("construction retains its abstract source value");
-    assert_eq!(
-        original.type_value, integer_type,
-        "expected uint16 never rewrites the literal's initial integer Type"
-    );
-    assert_eq!(
-        world
-            .semantic_world()
-            .complete_type_by_whole_observation(target_complete_type)
-            .expect("the concrete result carries a registered complete Type")
-            .lookup_key(),
-        uint16_type
-    );
+    let constrained = bound_value("constrained_integer");
+    assert_eq!(constrained.type_value, integer_type);
+    assert!(matches!(
+        constrained.payload,
+        SemanticValuePayload::AbstractLiteral { .. }
+    ));
+    assert!(world.semantic_world().compile_instances().next().is_none());
 }

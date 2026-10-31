@@ -100,7 +100,7 @@ expression may still be changed by:
 argument passing normalization
 return normalization
 error propagation insertion
-meta reduction / residualization
+compile reduction / residualization
 cond / guarded expression lowering
 ```
 
@@ -111,7 +111,7 @@ AST, not raw surface syntax:
 surface AST
   -> syntactic normalization
   -> pattern / argument / return normalization
-  -> meta reduction / residualization
+  -> compile reduction / residualization
   -> first-order AST
   -> tail-position analysis
   -> automatic call-mode insertion
@@ -208,21 +208,21 @@ This document does not restate the full automatic argument-passing design; see
 the future mechanical argument passing document,
 `spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
-## 7. Relation to meta functions
+## 7. Relation to compile functions
 
-Meta functions also have no loop core. Repetition in meta computation is likewise
-expressed by recursive function calls. A future meta execution engine should
+Compile functions also have no loop core. Repetition in compile computation is likewise
+expressed by recursive function calls. A future compile execution engine should
 recognize `normal` / `tco` / `loop` rather than inventing a separate loop for
-meta functions.
+compile functions.
 
 ```text
-Meta functions and runtime functions share the same call-mode vocabulary.
+Compile functions and runtime functions share the same call-mode vocabulary.
 ```
 
-This is a future design statement; the current meta evaluator is not claimed to
-implement it. For strict meta execution, if a recursive meta function later uses
+This is a future design statement; the current compile evaluator is not claimed to
+implement it. For strict compile execution, if a recursive compile function later uses
 manual `loop` or `tco`, it is still subject to the same category of legality
-checks. If a check fails, that is a compile-time / meta-execution error.
+checks. If a check fails, that is a compile-time / compile-execution error.
 
 ## 8. Relation to IR and backend
 
@@ -298,7 +298,7 @@ specified here, and this document does not depend on them for its meaning.
 - `mechanical-return-normalization-and-error-policy.md` — the return-slot
   counterpart whose normalization must be resolved before a call is
   tail-position eligible.
-- `meta-object-invocation-and-policy-reduction.md` — the invocation engine that
+- `compile-instance-invocation-and-result-delivery.md` — the invocation engine that
   should share the same `normal` / `tco` / `loop` call-mode vocabulary.
 - `pattern-normalization-and-first-order-overload.md` — part of the normalization
   that produces the first-order AST on which tail-position analysis runs.

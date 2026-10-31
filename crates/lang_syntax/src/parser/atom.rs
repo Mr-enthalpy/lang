@@ -25,6 +25,10 @@ pub fn parse_atom(
         }
         if parser.cursor.at_symbol(Symbol::ColonColon) {
             parser.cursor.bump_non_trivia();
+            if stop(parser) {
+                atom = terminate_nav_path(parser, atom);
+                break;
+            }
             if let Some(component) = parse_nav_outer_component(parser) {
                 atom = extend_or_create_nav_path(parser, atom, component);
             } else if parser.is_nav_termination_boundary() {
@@ -290,6 +294,9 @@ pub fn parse_member_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
 }
 
 pub fn parse_nav_outer_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
+    if parser.pattern_context && parser.cursor.at_symbol(Symbol::Greater) {
+        return None;
+    }
     let token = parser.cursor.peek_non_trivia();
     match token.kind {
         TokenKind::Name => {

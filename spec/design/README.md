@@ -9,26 +9,28 @@ that the corresponding source semantics is implemented.
 
 | Topic | Owner |
 | --- | --- |
-| NameValue, two-level Read, Path projection/indexing and Pattern splice | [Path algebra](symbol-world/structured-path-algebra-and-pattern-splice.md) |
+| Static evaluation, compile instances, open/close, NameExpr result shape, interpretation polarity, structural type formation, file/name production, dot/ADL | [static, name, and structural semantics](unified-static-name-and-structural-semantics.md) |
+| NameValue, two-level Read, Path projection/indexing and opposite-context interpretation | [Path algebra](symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
 | General dependencies, semantic realization and one-time formation | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
+| Product repetition wrappers, contextual expansion, Val1 identity and Policy-indexed unpacking | [Product algebra](patterns-overload/product-repetition-and-unpacking.md) |
 | Callable tails and Pack boundaries | [callable material](patterns-overload/callable-tail-dot-name-and-pack-pattern.md) |
 | Names, named-type synthesis, structural let, type/group algebra | [names and groups](symbol-world/names-and-overload-groups.md) |
-| Complete pattern values, Core/whole equality, Places, borrows, literals | [pattern values and Places](symbol-world/type-values-places-and-borrow-views.md) |
-| Construction roots, struct, extend/inject, OpenHere | [construction](symbol-world/symbol-first-meta-construction-and-pattern-injection.md) |
+| Complete type values, Core/whole equality, Places, borrows, literals | [type values and Places](symbol-world/type-values-places-and-borrow-views.md) |
+| Structural formation, ordinary struct and * / *=, OpenHere | [construction](symbol-world/structural-type-formation-and-composition.md) |
 | Source composition and construction closure | [composition](symbol-world/symbol-construction-units-and-namespace-origin.md) |
-| Associated state A as a derived meta invocation | [associated state](symbol-world/associated-compile-state.md) |
+| Associated state A as a derived compile invocation | [associated state](symbol-world/associated-compile-state.md) |
 | Closure anchored replication | [replication](symbol-world/closure-anchored-replication.md) |
-| Single Stage, P1/P2/Pin/Pout, R_vis, demand and migration | [policy](symbol-world/symbol-policy-and-compile-flow-projection.md) |
+| Single Stage, P1/P2/Pin/Pout, R_vis, demand and migration | [policy](symbol-world/policy-and-static-flow-projection.md) |
 | Exact callee/self, ordinary C_sigma family and forwarding | [calling](symbol-world/function-object-call-model.md) |
-| Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-values-relational-semantics-and-extraction.md) |
+| Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-relations-observation-and-extraction.md) |
 | Restricted Split/D, internal chain completion and residual escape | [extraction chains](patterns-overload/static-pattern-spaces-and-extraction-chains.md) |
 | Pass action, move fixed point and directed with cleanup placement | [mechanical passing](mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
-| Meta declaration surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
+| Requested-name producer surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
-| Meta instance types, input identity, openness, completion/cache and Val2 extraction | [invocation](meta-invocation/meta-object-invocation-and-policy-reduction.md) |
-| Runtime main, active dominance, readiness, E projections and O1/O2 | [evaluation](meta-invocation/evaluation-residual-and-optimization.md) |
-| Host IO and target-machine Objects | [host capabilities](meta-invocation/host-capabilities-and-machine-objects.md) |
+| Compile instance identity, result delivery, opening sources and current storage | [invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md) |
+| Runtime main, active dominance, readiness, E projections and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
+| Host IO and target-machine Objects | [host capabilities](static-evaluation/host-capabilities-and-machine-objects.md) |
 | Instance Killable/MoveEffect/Movable, same-K @, Region and Color | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
 | Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
@@ -40,18 +42,17 @@ lifecycle rules remain in force alongside the named-type and associated-state
 algebras. If an unresolved contradiction is found, identify its exact premises;
 do not create another ontology to reconcile it.
 
-## Path nomenclature debt
+## Owner boundaries
 
-The `symbol-world/` directory and existing `symbol-*` filenames are retained
-link locations, not semantic categories. Renaming them is nomenclature debt;
-they confer no authority on the retired Symbol model. Use the topic-owner index
-and current definitions to interpret these paths. In implementation descriptions,
-remaining Rust symbol carriers are explicitly marked legacy; lexer `Symbol`
-tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
+The topic-owner index identifies semantic authority. Namespace graph records,
+lexer Symbol tokens and SymbolicReferenceEdge have their separate carrier,
+grammar and binder-reference roles. Rendered paths grant no semantic identity
+or authority.
 
 ## Reading order
 
-    Object / complete pattern value / Place
+    static / name / structural semantics
+      -> Object / complete type value / Place
       -> name existence and named-type / group algebra
       -> construction / OpenHere / anchored replication
       -> Pattern relation / policy / exact-self call / invocation-generated names
@@ -61,6 +62,28 @@ tokens and `SymbolicReferenceEdge` retain their distinct documented meanings.
 
 [Semantic spine](semantic-spine.md) supplies the compact dependency map.
 [Conformance scenarios](../planning/canonical-semantic-conformance.md) record
-64 retained PR105 cases, 132 PR106 cases and 30 pre-implementation alignment cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
+canonical acceptance and source-consumer cases. [Roadmap](../planning/roadmap.md) describes actual consumer coverage;
 [open questions](../planning/open-questions.md) contains only remaining choices.
 Historical files are non-authoritative and are not rewritten for current rules.
+
+## Joint extraction and runtime reification interfaces
+
+The [unified owner](unified-static-name-and-structural-semantics.md#13-adjacent-universe-joint-extraction)
+connects adjacent-universe extraction, polarity-indexed underscore, HoleOverride,
+actual opaque bare-branch values, full rooted Path suffixes, general open helper
+computation, opaque self/dependencies, callable tags and active frames, and
+runtime reification of E with current-name-position Region. Each topic above
+keeps its own canonical judgments; the [conformance matrix](../planning/canonical-semantic-conformance.md#joint-extraction-and-runtime-reification-acceptance-targets)
+records semantic acceptance targets separately from connected execution.
+
+Callable-head P2 reify has outward runtime horizon Policy and requires a return
+classifier explicit or input-inferable without reverse migration. Its active
+closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+and mixed-Policy outputs are legal; the need for reify follows the continuation's
+reverse dependencies. Legal Policy ranks have exactly the form
+absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary
+runtime let changes the first non-absent rank; unrefined compile let requires
+all non-absent ranks compile, preserving absence. Explicit Hole Policies can
+address individual ranks. Unknown higher observations remain unavailable.
+Type operations use the compile algebra. See the
+[unified owner](unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).

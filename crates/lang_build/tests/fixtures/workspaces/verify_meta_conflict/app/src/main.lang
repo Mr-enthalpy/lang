@@ -1,2 +1,0 @@
-let verify: type = uint8;
-let T: type = uint8;

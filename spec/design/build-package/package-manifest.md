@@ -4,7 +4,7 @@ Status: canonical input boundary. This path documents engineering configuration;
 it does not define a manifest language with program-meaning authority.
 
 The compiler selects one compilation level and finds main.lang as its explicit
-root anchor. Source meta evaluation determines Objects, dependencies, external
+root anchor. Source compile evaluation determines Objects, dependencies, external
 resources, policies, and the target machine. Configuration cannot add semantic
 facts through dependency mounts, package roots, target options, feature flags,
 defines, include paths or library paths.

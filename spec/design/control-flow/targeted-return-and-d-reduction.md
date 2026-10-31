@@ -20,7 +20,7 @@ completion constructors defined here and in
 `../patterns-overload/static-pattern-spaces-and-extraction-chains.md`; compile
 projection preserves them homomorphically. Projection and require slicing are
 canonical in
-`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+`../symbol-world/policy-and-static-flow-projection.md`.
 
 The return-target binding substrate adds one consumer after
 normalization:
@@ -52,7 +52,7 @@ E (T return);
   => targeted return to resolved T
 ```
 
-where Self₀ identifies the outermost enclosing function frame selected by
+where Self₀ is the callable-object tag whose current activation identifies the outermost enclosing function frame selected by
 implicit return, obtained from the active return-target context. It does not
 mean the most recently entered callable frame.
 
@@ -134,7 +134,7 @@ Done_Return(Self, pattern(E), value(E))
 
 where:
 
-- `Self` identifies the enclosing function-object receiving the return.
+- `Self` denotes the callable-object tag resolved to its actual active frame.
 - `pattern(E)` is the structural pattern of the returned value.
 - `value(E)` is the evaluated return value.
 
@@ -181,7 +181,7 @@ maxima. Delivery does not first complete an unconstrained temporary and then
 rematch it. An explicitly written user binding still creates its own boundary.
 Both established outer P1 and P2 constrain the immediate inner call's P1/P2;
 the selected inner call cannot be reopened by later use. See
-[Policy demand](../symbol-world/symbol-policy-and-compile-flow-projection.md#39-direct-result-delivery-and-two-sided-forwarding).
+[Policy demand](../symbol-world/policy-and-static-flow-projection.md#39-direct-result-delivery-and-two-sided-forwarding).
 
 
 For a callable declared with an extraction result:
@@ -305,3 +305,18 @@ UnsupportedReturnTargetForm
 Each diagnostic carries provenance. These diagnostics are target-binding
 diagnostics only; they do not imply return value type failure, lifetime
 failure, or lowering failure.
+
+## Callable tag to active frame
+
+```text
+ReturnTarget=current callable object tag
+ResolveReturn(K,tag,activation)=active frame F
+CallType(tau): CallTarget=tau, ActualSelf=c* in V_tau
+Type(tau_C)=type; Type(type)=(1 type)
+ReturnEvent(F,v) -> Deliver(ReturnPattern(F),Pout(F),v) -> Complete(F)
+```
+
+Resolution uses actual control-flow activation, independent of self parameter
+type or capture layout. Recursive invocations of one tag create distinct
+activations. Omitted target keeps the outermost function query; explicit tag
+selects its associated current activation. Tag supplies no candidate preference.

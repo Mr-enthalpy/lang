@@ -1,0 +1,7 @@
+let compare = (self, object1, object2):reify -> _:bool:: => {
+    let <runtime let o1, compile let t1> o1:t1 = object1;
+    let <runtime let o2, compile let t2> o2:t2 = object2;
+    o1 < o2;
+};
+let f = (self, runtime let args):reify -> _:R$ => { compile let v = args; v; };
+let reify = ordinary;

@@ -38,7 +38,8 @@ DirectPatternChild(P, x, selector)
 
 Likewise, an overload-visible ordinary member is not automatically a real
 structural field. Structural incidence is established explicitly when the
-Pattern value is formed and is observed through `DirectPatternChild` evidence.
+complete structural type is formed with actual Val2 witnesses. It is observed
+through `DirectPatternChild` evidence.
 Virtual or computed members remain available to ordinary member lookup without
 becoming structural children.
 
@@ -110,9 +111,11 @@ payload results. A nested chain unwraps at its boundary before the outer
 chain makes its independent completion; no user-visible Done(Done(v)) arises.
 
 Compile-known guards execute only the chosen branch; unchosen bodies produce
-no effects or require/lookup obligations. A runtime guard retains both
-possible branch continuations, sealed identities and their lawful effects
-until the choice is ready. A seal dependency defers the same guarded action.
+no effects or require/lookup obligations. A runtime guard retains its actual guarded continuation until the choice is
+ready. Selected calls retain their identity; a call first formed on the chosen
+path selects at that actual frontier. E does not evaluate unchosen bodies or
+require enumeration of future paths. An unavailable concrete dependency keeps
+the current action unfinished.
 
 Targeted return uses a distinct internal target completion with ordinary
 ReturnPattern delivery, as owned by
@@ -127,19 +130,19 @@ CanEscape_Sigma(R,B)
 
 This fixed consumer asks whether residual R may leave boundary B. It does not
 change D, branch matching, Done or require an empty residual universally.
-An if|else Pattern can legally flow through its matching chain and be rejected
+A true|false Pattern can legally flow through its matching chain and be rejected
 only where a forbidden residual would escape; other ordinary residuals may
 escape when admitted.
 
-F_residual is an ordinary meta query returning its instance type tau_M. Its
-allow/deny payload lives in ordinary Val2. Default instance formation,
+F_residual is an ordinary compile query with its declared result shape;
+allow/deny may be an ordinary direct result or a registered resident read. Default instance formation,
 OpenHere/Writable member customization, current committed reads, snapshot/Close
 discipline and cache/dominance checks follow
-[ordinary meta defaults](../meta-invocation/meta-object-invocation-and-policy-reduction.md#7-ordinary-meta-defaults-and-current-state-consumers).
+[ordinary compile defaults](../static-evaluation/compile-instance-invocation-and-result-delivery.md#7-requested-names-and-ordinary-associated-state).
 Writing an outer result copy does not customize the retained instance. The
 consumer reads at its own frontier; later changes have no retroactive effect.
-SealDom cannot invoke meta indirectly to answer the query; an independently
-available completed observation must suffice or the action is unavailable.
+Queries follow ordinary horizon, input, Ready and execution legality.
+Cache/instance identity supplies no substitute for required current evidence.
 
 ## 5.2 Result Pattern boundary
 

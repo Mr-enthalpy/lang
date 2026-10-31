@@ -1,1 +1,1 @@
-let T: type = (uint8) |> IdentityType
+let T: type:: = (uint8) |> IdentityType

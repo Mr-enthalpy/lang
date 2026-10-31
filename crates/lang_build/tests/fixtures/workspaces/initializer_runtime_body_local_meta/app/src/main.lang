@@ -1,6 +1,0 @@
-let runtime_body =
-  (self, _ uint8: type): runtime -> let result: uint8 =>
-{
-  let X: type = (uint8 inner) |> struct;
-  result;
-};

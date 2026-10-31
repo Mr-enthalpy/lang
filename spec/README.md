@@ -55,7 +55,7 @@ Object / complete tau / Place
 Current implementation coverage is recorded in
 [`planning/roadmap.md`](planning/roadmap.md). A missing consumer is an explicit
 frontier; it does not authorize an alternate semantic relation. The
-[226-case conformance matrix](planning/canonical-semantic-conformance.md)
+[canonical conformance matrix](planning/canonical-semantic-conformance.md)
 links canonical acceptance scenarios to owners and pending consumers.
 
 ## Contracts
@@ -65,7 +65,7 @@ links canonical acceptance scenarios to owners and pending consumers.
 - [`control-flow-end-events.md`](contracts/control-flow-end-events.md)
 - [`semantic-values-and-extraction-interfaces.md`](contracts/semantic-values-and-extraction-interfaces.md)
 - [`pattern-root-identity-and-explicit-navigation.md`](contracts/pattern-root-identity-and-explicit-navigation.md)
-- [`meta-construction-boundary.md`](contracts/meta-construction-boundary.md)
+- [`compile-construction-boundary.md`](contracts/compile-construction-boundary.md)
 - [`policy-migration.md`](contracts/policy-migration.md)
 
 ## Open questions
