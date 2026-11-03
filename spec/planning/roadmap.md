@@ -205,22 +205,28 @@ checks selected capability/lifecycle failure with a runner-up, proving no reopen
 for that substrate. `policy_rank_chain.rs` checks rank-prefix material only.
 Source Function Pattern matching/request and candidate-local self relation
 solving are not connected: current applicability solves explicit parameters;
-closure atoms in Pattern context remain unsupported. No new syntax or executable
-closure evaluator is supplied by the original closure topic revision.
+closure atoms in Pattern context remain unsupported. Function Pattern syntax
+must retain an explicit `->` boundary on either side; arrowless material is
+Bare Product and cannot acquire independent Pout from Pin. This is distinct
+from ordinary/in-place closure expressions with optional return clauses.
+Dedicated Function Pattern parsing/diagnostics remain pending; normative
+arrow-positive/negative cases do not claim generic-head implementation coverage.
+No executable closure evaluator is supplied by the original closure revision.
 
 The [call-sugar extension matrix](canonical-semantic-conformance.md#empty-invocation-and-default-formal-sugar-acceptance)
-adds DS01–DS20 as normative targets, not executed tests. Its
+adds DS01–DS23 as normative targets. Its
 [surface contract](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
-introduces canonical do/default-formal syntax; this revision supplies no parser
-or evaluator implementation. Current Norm turns empty parentheses into a Unit
-entry; canonical zero arity requires a targeted syntax-to-Norm alignment, not
-Unit erasure in selection. Param initializers are not parsed and no generated
-default-member family is formed. The implementation order is:
+separates the connected empty-Product slice from pending do/default parsing and
+execution. Empty parentheses normalize to zero entries across ordinary Product,
+continuation, double-dot and bracket paths; comma-hole Units and source spans
+remain intact. Norm goldens, syntax/argument-shape tests, canonical input
+identity and ordinary zero-versus-one fixed-arity selection cover this slice of
+DS02–DS03. No downstream Unit filter was introduced. Param defaults are still
+not parsed and no generated default-member family is formed. Remaining order:
 
-1. Preserve contextual do/default clauses, spans and syntax recovery. Align
-   empty Products while retaining comma Units, first-product continuation,
-   nesting/barriers and empty double-dot/bracket equivalence. Add token/AST/Norm/
-   diagnostic goldens and zero-versus-one explicit arity/identity tests.
+1. Preserve contextual do/default clauses, spans and syntax recovery. Add their
+   token/AST/Norm/diagnostic goldens without undoing the connected empty-Product,
+   first-product-only continuation, nesting/barrier and comma-hole laws.
 2. Produce unresolved fixed-arity expansion material with contextual self
    retained, never defaulted, and (self) matching unit explicit input. Preserve
    arity-growing ordinary forwarding targets without duplicating source body/

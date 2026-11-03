@@ -46,7 +46,7 @@ NormProgram origin=Source@1:1[0..144]
             source:
               Product origin=Source@3:3[23..25]
                 elements:
-                  Unit origin=Source@3:3[23..25]
+                  (empty)
             target:
               Name "g" origin=Source@3:6[26..27]
     Form Expr
@@ -155,7 +155,6 @@ NormProgram origin=Source@1:1[0..144]
                       elements:
                         ExprElem
                           Name "x" origin=Source@9:1[86..87]
-                        Unit origin=Source@9:8[93..95]
                   target:
                     Name "f" origin=Source@9:6[91..92]
         target:

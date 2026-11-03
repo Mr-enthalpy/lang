@@ -79,8 +79,10 @@ alternate relation or identity.
   direct let () entries call the original receiver, which remains their self.
   All target candidates compete normally; no private next-entry filter or new
   V_T registration follows from direct call-entry expansion.
-  Current do/default/empty-Product frontend alignment remains pending; preserve
-  comma-hole Units and report coverage separately from the canonical laws.
+  Empty parentheses normalize to zero Product entries; preserve comma-hole
+  Units and their spans, including nested/double-dot/bracket material. Never
+  strip Unit during selection. do/default parsing and family execution remain
+  pending; report their coverage separately.
 - `let binder === PathMaterial` preserves a lexical Path alias: form the RHS once
   in the old Path environment, store material, never cache terminal binding identity.
 - `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
@@ -276,7 +278,11 @@ alternate relation or identity.
   automatic order is fixed per formed closure. Self has CallAnchor, Param and
   Return projections; Param is CaptureProduct or the ordinary singleton receiver.
   Candidate-local implicit evidence is read-only before selection; selected input
-  moves once with no duplicate Kill. Function Pattern LHS extracts full input and
+  moves once with no duplicate Kill. Function Pattern syntax always has an
+  explicit -> boundary; arrowless material is Bare Product, not a function
+  interface. Pout is independent of Pin. Ordinary closure expressions may omit
+  return clauses; generic closure heads do not implement Function Pattern syntax.
+  Function Pattern LHS extracts full input and
   contract; RHS requests explicit args/output/Policy only, without captures or
   lifetime clauses. RHS root rank+1 type/Policy fully denotes; deeper holes and
   LHS deduction use ordinary R_Gamma. LHS omitted post is NoDelta, checked by

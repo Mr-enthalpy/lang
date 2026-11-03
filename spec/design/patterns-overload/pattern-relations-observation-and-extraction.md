@@ -880,6 +880,35 @@ families retain only their independently proved laws above. FnExtract and
 FnRequest below are judgments of R_Gamma and the ordinary call pipeline, not
 new source names, Object kinds or evaluators. Source consumers remain pending.
 
+**Mandatory arrow boundary (syntax invariant).** Function Pattern syntax has an
+explicit `->` boundary between its input/head material and its output/Pout
+position, on both LHS extraction and RHS request sides:
+
+```text
+FunctionPatternSyntax(F) => HasArrowBoundary(F)
+()                     : empty Bare Product B_K(), not a Function Pattern
+(A, B)                 : Bare Product material, not a Function Pattern
+() -> R                : Function Pattern with empty written input and output R
+(A, B) -> R            : Function Pattern with an explicit output boundary
+```
+
+A bare Product cannot become a Function Pattern because a consumer expects a
+callable, its entries have Policy annotations, or Pin is known. A nested arrow
+belongs to its own nested material and does not supply the enclosing layer's
+arrow. Inferring/deducing an output under ordinary rules never removes this
+written delimiter or derives Pout from Pin; Pout remains independently
+constrained at its own position. Where only Product material is expected, the
+arrowless form remains Product. Where Function Pattern syntax is explicitly
+required, a missing arrow must be diagnosed/recovered as such, not repaired by
+semantic lookup or normalization.
+
+This invariant does not require `->` on every closure expression: ordinary and
+in-place closure syntax may omit a return clause under their existing rules.
+Generic closure-head carriers are not Function Pattern syntax recognition.
+Dedicated Function Pattern syntax consumers and their source diagnostics remain
+pending; the examples above are normative grammar obligations, not a claim that
+current generic closure parsing implements them.
+
 For a concrete formed callable c, let ExplicitArgProduct(c) denote its explicit
 entry material as observed by the extraction relation, not invented sample
 arguments or a common overload signature:

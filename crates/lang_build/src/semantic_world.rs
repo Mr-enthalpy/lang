@@ -5765,7 +5765,7 @@ mod tests {
         world
             .admit_direct_type_member(pattern, pattern, "second", second)
             .unwrap();
-        let parsed = lang_syntax::parse("let r = () uint8;");
+        let parsed = lang_syntax::parse("let r = ((),) uint8;");
         let normalized = lang_syntax::normalize_program(&parsed.program);
         let NormForm::Let(NormDecl::Let { slot, .. }) = &normalized.forms[0] else {
             panic!("let");

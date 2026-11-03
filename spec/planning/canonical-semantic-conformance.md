@@ -707,7 +707,7 @@ whole-slot Mode. Output Hole solving and actual reverse E remain pending.
 
 ## Closure, self and directional Function Pattern acceptance
 
-T01–T22 retain the topic design's obligations; T23–T32 add canonical audit
+T01–T22 retain the topic design's obligations; T23–T35 add canonical audit
 boundaries. Complete closure/Function Pattern consumers remain pending. Return
 segment identity/reachability has a minimal executable binding slice (T23–T26),
 not capability execution or completion propagation. Existing syntax, rank-prefix, transaction and
@@ -756,8 +756,11 @@ Owners: [dependency](../design/symbol-world/dependency-observation-and-realizati
 | CSF-T30 | Prospective Path evidence unknown while another migration candidate is apparently viable | Applicability Unavailable, not false; no wildcard/runner-up selection by treating missing proof as rejection. Source-world Path success or equal Core is insufficient. | Policy / dependency |
 | CSF-T31 | Existing accepted view versus nonidentity migration; projected C:tau_C -> f:F versus complete tau transport | Reuse the existing view first with unchanged identity and established obligations; enumerate no migration. Function Pattern projection necessarily erases external source authority and is not same-Type migration; complete tau transport retains immutable V_tau. No erasure bypass of retained-Path A. | Policy / Function Pattern |
 | CSF-T32 | Projected Function Pattern value at compile/runtime frontier with internally retained source IDs | External consumers cannot re-navigate or reselect original structural candidates even if Val1 is compile-known. O specialization stays within exposed contract; opaque implementation provenance grants no authority. | Function Pattern |
+| CSF-T33 | Arrowless () or (A,B), even under callable expectation or Pin annotations | Remain Bare Product material, not Function Pattern syntax. A consumer explicitly requiring Function Pattern syntax must diagnose a missing ->, not infer the boundary by semantic lookup. An arrow nested in a child does not supply its parent's boundary. | Function Pattern / surface |
+| CSF-T34 | LHS and RHS Function Pattern syntax with () -> R or (A,B) -> R | Retain a written -> delimiting the independent output/Pout position; Pin cannot supply Pout. Ordinary output deduction does not remove the delimiter. Positive and missing-arrow grammar consumers remain pending. | Function Pattern / surface |
+| CSF-T35 | Ordinary/in-place closure expression with no written return clause | Existing legal closure syntax remains legal; do not apply FunctionPatternSyntax => HasArrowBoundary to every callable expression or treat its generic head as Function Pattern recognition. | Function Pattern / surface |
 
-T27–T32 are normative targets, not executed capture/Path/Function Pattern tests.
+T27–T35 are normative targets, not executed capture/Path/Function Pattern tests.
 
 Additional authority subcases keep ordinary determination and delivery ahead of
 their consumers:
@@ -783,13 +786,18 @@ specification judgments imply no executed source success.
 
 ## Empty invocation and default-formal sugar acceptance
 
-Status: DS01–DS23 are normative acceptance targets, not executable tests.
+Status: DS01–DS23 are normative acceptance targets. The empty-Product syntax,
+shape, canonical identity and ordinary arity-selection slices of DS02–DS03 have
+executable regressions; do/default parsing and family execution remain pending.
 Canonical ownership: [call family/forwarding](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members),
 [empty Product](../design/patterns-overload/product-repetition-and-unpacking.md#2-bare-product-and-context),
 [contribution formation](../design/symbol-world/names-and-overload-groups.md#61-common-snapshot-closure-contribution-formation),
 and [surface/Raw handoff](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending).
-Existing sealed-call tests cover substrate no-reopen, not execution of these
-sugars. The [roadmap](roadmap.md#8-acceptance-evidence) records the open consumers.
+The `31_empty_products` Norm golden, syntax `empty_products` tests and build
+`product_shape`/`canonical_integration` regressions cover empty delimiters versus
+comma Units, neutral continuation, nested exposure/barriers, zero-versus-one
+canonical input identity and ordinary fixed-arity selection. Existing sealed-call
+tests cover substrate no-reopen, not execution of do/default sugars. The [roadmap](roadmap.md#8-acceptance-evidence) records the open consumers.
 
 | Case | Setup / competing derivation | Required result / rejection boundary |
 |---|---|---|

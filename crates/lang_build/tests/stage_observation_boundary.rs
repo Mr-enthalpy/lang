@@ -184,7 +184,7 @@ fn explicit_absence_cannot_silently_drop_an_explicit_stage() {
 
 #[test]
 fn explicit_pin_stage_stops_selection_until_input_admissibility_is_connected() {
-    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let result = ((),) f;")).unwrap();
     for stage in ["compile", "runtime", "const + compile"] {
         let constrained =
             format!("let constrained = (self, {stage} let x):runtime -> let r => {{ x; }};");
@@ -309,7 +309,7 @@ fn compile_p2_forms_and_reuses_a_compile_instance_for_an_external_type() {
 fn hidden_body_observation_is_an_explicit_invocation_frontier() {
     // P1 is visible; the actual declared P2 observation is hidden.
     let mut family = AssociatedFamily::new(&["runtime let f = (receiver, x):compile => { (); };"]);
-    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let result = ((),) f;")).unwrap();
     let outcome = family.invoke_ordinary_call(
         family.package_root_node(),
         &call,
@@ -329,7 +329,7 @@ fn hidden_body_observation_is_an_explicit_invocation_frontier() {
 fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
     let visible = "let f = (receiver, x):runtime => (\"visible rejection\") delete;";
     let hidden = "runtime let f = (receiver, x):compile => { (); };";
-    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let result = ((),) f;")).unwrap();
     for sources in [
         vec![visible, hidden],
         vec![hidden, visible],
@@ -367,7 +367,7 @@ fn hidden_body_entries_do_not_override_visible_selection_or_failure() {
 fn hidden_body_does_not_override_a_reached_applicability_diagnostic() {
     let visible = "let f = (receiver, x:type::):runtime => { (); };";
     let hidden = "runtime let f = (receiver, x):compile => { (); };";
-    let call = extract_single_call_site(&initializer_from_source("let result = () f;")).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let result = ((),) f;")).unwrap();
     for sources in [[visible, hidden], [hidden, visible]] {
         let mut family = AssociatedFamily::new(&sources);
         let outcome = family.invoke_ordinary_call(
@@ -396,7 +396,7 @@ fn hidden_body_does_not_override_a_reached_applicability_diagnostic() {
 fn hidden_callee_in_a_type_union_does_not_override_visible_selected_failure() {
     let base = lang_build::CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
     let call =
-        extract_single_call_site(&initializer_from_source("let result = () uint8;")).unwrap();
+        extract_single_call_site(&initializer_from_source("let result = ((),) uint8;")).unwrap();
     for hidden_first in [false, true] {
         let mut family = AssociatedFamily::new(&[
             "let f = (receiver, x):compile => (\"visible rejection\") delete;",

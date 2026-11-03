@@ -1,0 +1,205 @@
+NormProgram origin=Source@1:1[0..202]
+  forms:
+    Form Expr
+      Product origin=Source@1:1[0..2]
+        elements:
+          (empty)
+    Form Expr
+      Product origin=Source@2:1[4..8]
+        elements:
+          ExprElem
+            Product origin=Source@2:2[5..7]
+              elements:
+                (empty)
+    Form Expr
+      Product origin=Source@3:1[10..15]
+        elements:
+          ExprElem
+            Product origin=Source@3:2[11..13]
+              elements:
+                (empty)
+          Unit origin=Source@3:4[13..14]
+    Form Expr
+      Product origin=Source@4:1[17..20]
+        elements:
+          Unit origin=Source@4:2[18..19]
+          Unit origin=Source@4:2[18..19]
+    Form Expr
+      Product origin=Source@5:1[22..26]
+        elements:
+          Unit origin=Source@5:2[23..24]
+          Unit origin=Source@5:3[24..25]
+          Unit origin=Source@5:3[24..25]
+    Form Expr
+      Product origin=Source@6:1[28..32]
+        elements:
+          ExprElem
+            Name "a" origin=Source@6:2[29..30]
+          Unit origin=Source@6:3[30..31]
+    Form Expr
+      Product origin=Source@7:1[34..38]
+        elements:
+          Unit origin=Source@7:2[35..36]
+          ExprElem
+            Name "a" origin=Source@7:3[36..37]
+    Form Expr
+      Product origin=Source@8:1[40..46]
+        elements:
+          ExprElem
+            Name "a" origin=Source@8:2[41..42]
+          Unit origin=Source@8:4[43..44]
+          ExprElem
+            Name "b" origin=Source@8:5[44..45]
+    Form Expr
+      Product origin=Source@9:1[48..64]
+        elements:
+          ExprElem
+            Product origin=Source@9:2[49..51]
+              elements:
+                (empty)
+          ExprElem
+            Name "a" origin=Source@9:6[53..54]
+          ExprElem
+            Product origin=Source@9:9[56..63]
+              elements:
+                ExprElem
+                  Name "b" origin=Source@9:10[57..58]
+                ExprElem
+                  Product origin=Source@9:13[60..62]
+                    elements:
+                      (empty)
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@10:7[72..73]
+        source:
+          Product origin=Source@10:1[66..68]
+            elements:
+              (empty)
+        target:
+          Name "f" origin=Source@10:7[72..73]
+    Form Expr
+      Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@11:1[75..78]
+        source:
+          Product origin=Source@11:1[75..77]
+            elements:
+              (empty)
+        target:
+          Name "f" origin=Source@11:3[77..78]
+    Form Expr
+      Call origin=Derived(ProductMerge; source-product continuation)@12:6[85..89]
+        source:
+          Product origin=Derived(ProductMerge; merged source product with continuation product)@12:6[85..89]
+            elements:
+              ExprElem
+                Name "x" origin=Source@12:1[80..81]
+        target:
+          Name "f" origin=Source@12:6[85..86]
+    Form Expr
+      Call origin=Derived(ProductMerge; source-product continuation)@13:7[97..102]
+        source:
+          Product origin=Derived(ProductMerge; merged source product with continuation product)@13:7[97..102]
+            elements:
+              ExprElem
+                Name "x" origin=Source@13:10[100..101]
+        target:
+          Name "f" origin=Source@13:7[97..98]
+    Form Expr
+      Call origin=Generated(PipelineDotLowering)@14:1[104..117]
+        source:
+          Product origin=Generated(PipelineDotLowering)@14:1[104..117]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@14:1[104..107]
+        target:
+          Nav origin=Generated(DotNameLowering)@14:1[104..117]
+            components:
+              Name "method" origin=Generated(DotNameLowering)@14:1[104..117]
+              Name "adl" origin=Generated(DotNameLowering)@14:1[104..117]
+    Form Expr
+      Call origin=Generated(PipelineDotLowering)@15:1[119..133]
+        source:
+          Product origin=Generated(PipelineDotLowering)@15:1[119..133]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@15:1[119..122]
+              Unit origin=Source@15:13[131..132]
+              Unit origin=Source@15:13[131..132]
+        target:
+          Nav origin=Generated(DotNameLowering)@15:1[119..133]
+            components:
+              Name "method" origin=Generated(DotNameLowering)@15:1[119..133]
+              Name "adl" origin=Generated(DotNameLowering)@15:1[119..133]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@16:1[135..140]
+        source:
+          Product origin=Generated(BracketCallLowering)@16:1[135..140]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@16:1[135..138]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=1 origin=Source@16:4[138..140]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@17:1[142..149]
+        source:
+          Product origin=Generated(BracketCallLowering)@17:1[142..149]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@17:1[142..145]
+              ExprElem
+                Product origin=Source@17:5[146..148]
+                  elements:
+                    (empty)
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@17:4[145..149]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@18:1[151..157]
+        source:
+          Product origin=Generated(BracketCallLowering)@18:1[151..157]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@18:1[151..154]
+              Unit origin=Source@18:5[155..156]
+              Unit origin=Source@18:5[155..156]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=3 origin=Source@18:4[154..157]
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@19:19[177..178]
+        source:
+          Product origin=Source@19:1[159..173]
+            elements:
+              ExprElem
+                Call origin=Derived(PipeFallback; no following source product)@19:9[167..168]
+                  source:
+                    Product origin=Source@19:3[161..163]
+                      elements:
+                        (empty)
+                  target:
+                    Name "f" origin=Source@19:9[167..168]
+              ExprElem
+                Name "a" origin=Source@19:13[171..172]
+        target:
+          Name "g" origin=Source@19:19[177..178]
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@20:20[199..200]
+        source:
+          Product origin=Source@20:1[180..195]
+            elements:
+              ExprElem
+                Product origin=Source@20:2[181..187]
+                  elements:
+                    ExprElem
+                      Product origin=Source@20:3[182..184]
+                        elements:
+                          (empty)
+                    ExprElem
+                      Name "a" origin=Source@20:6[185..186]
+              ExprElem
+                Product origin=Source@20:9[188..194]
+                  elements:
+                    ExprElem
+                      Product origin=Source@20:10[189..191]
+                        elements:
+                          (empty)
+                    ExprElem
+                      Name "b" origin=Source@20:13[192..193]
+        target:
+          Name "f" origin=Source@20:20[199..200]

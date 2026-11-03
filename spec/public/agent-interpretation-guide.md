@@ -257,7 +257,10 @@ uses its ordinary self-name and admitted dependencies.
 Self's contextual first formal is distinct from its CallAnchor, Param and
 Return projections. Param is a capture Bare Product or singleton user receiver;
 the selected call transfers actual input once without duplicate Kill. Function
-Pattern LHS extracts full input/output/Policy/lifetime contract, while RHS
+Pattern syntax on either side requires a written `->` boundary; arrowless
+Products are not Function Patterns. Pout stays independent of Pin. Ordinary
+closure expressions may still omit return clauses; their head carriers do not
+implement Function Pattern syntax. LHS extracts full input/output/Policy/lifetime contract, while RHS
 requests explicit arguments/output/Policy and supplies no self/captures,
 lifetime clauses or spread. Its root rank+1 type/Policy fully denotes; deeper
 holes and LHS deduction retain ordinary rules. Follow the existing call and
@@ -434,8 +437,9 @@ Type operations use the compile algebra. See the
 The [pending surface extension](normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
 defines do E as the ordinary `() |> E` skeleton, with E once and an actually
 empty explicit Bare Product. It adds no self, let/closure scope, stage, event or
-return target. Current empty-parenthesis Norm still inserts Unit; do not treat
-that implementation gap as canonical zero arity or erase all Unit arguments.
+return target. Empty-parenthesis Norm preserves zero entries; actual comma-hole
+Units remain entries with source provenance. Call-input exposure preserves zero
+versus present-Unit arity; do not erase Unit during overload preparation.
 
 Trailing defaults generate distinct fixed-arity callable members in one ordinary
 space. The original body is the full-arity member; each shorter member evaluates

@@ -71,8 +71,9 @@ default formals expand to real fixed-arity overload candidates with arity-growin
 ordinary forwarding. Every head retains nondefaulted contextual self; a self-only
 head matches unit explicit input. Direct associated call entries retain their
 invoked owner object as receiver. Their [syntax/consumer handoff](spec/public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
-is specified, not implemented: current empty-parenthesis Norm still inserts Unit,
-and the parser/default-family consumer remains pending.
+separates the connected empty-Product Norm/argument-shape behavior from pending
+do/default parsing and family execution. Empty delimiters normalize to zero
+entries; actual comma holes retain Unit, without a selection-stage filter.
 
 Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
@@ -148,6 +149,9 @@ The [call owner](spec/design/symbol-world/function-object-call-model.md#62-consu
 separates self's call anchor, implicit parameter Product and return frame.
 The [Pattern owner](spec/design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 defines LHS full-input contract extraction and RHS explicit-argument requests.
+Function Pattern syntax requires a written `->` boundary, independently of
+closure expressions with omitted return clauses; arrowless material remains
+Bare Product and Pin never supplies the independent Pout constraint.
 Projected Function Pattern values necessarily erase external structural-source
 authority, even with compile-known Val1. Same-Type compile-to-runtime migration
 instead retains its type and must prove internal Paths recoverable in the

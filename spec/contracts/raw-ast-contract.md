@@ -336,9 +336,10 @@ No pipe, Product or repair rule may use provenance to change ordinary binding.
 E..name(product) contracts to E |> .name(product), using the same ordinary
 ADL call shape without generating a closure or Self layer.
 Product receivers support these suffixes through the ordinary postfix path.
-An empty argument Product retains its unit slot in both current source carriers.
-The canonical empty-Product alignment below requires zero entries instead;
-comma-hole Unit slots are unaffected.
+An empty argument Product has zero entries in both carriers: Raw preserves an
+empty element list and Norm preserves that same absence. This applies to empty
+double-dot payloads too. Actual comma-hole Unit slots and their source spans are
+unaffected; downstream call preparation never strips present Units.
 
 Normalization produces syntax carriers only. Every legal semantic completion
 of a closure expression returns full tau_C through atomic complete structural formation; semantic
@@ -556,7 +557,12 @@ equal values; later layout may share storage only preserving all observations.
 The contextual first self formal remains a syntax position, not a universal
 single Object in full internal input. The [call owner](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
 defines its three projections. The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
-defines LHS full-input extraction versus RHS explicit-only requests with no
+requires a written `->` boundary for Function Pattern syntax on either side;
+arrowless Products do not become Function Patterns through expected type or
+Policy inference. Pout remains independent of Pin at its own boundary. This is
+not a requirement on ordinary closure expressions, whose return clause may be
+omitted. Dedicated Function Pattern carriers/diagnostics remain pending.
+The same owner defines LHS full-input extraction versus RHS explicit-only requests with no
 capture/self, lifetime clauses or spread. Existing generic closure-head carriers
 are not proof of these consumers. Projected Function Pattern values necessarily
 erase external structural-source authority; opaque internal provenance/known
@@ -731,7 +737,8 @@ Source role controls formation/installation; syntax expansion grants no authorit
 
 Current parameter slots do not parse default initializers; ordinary initializer
 fields used by lets/captures are not evidence of default-family support. The
-current parser does not lower do, and empty parentheses still normalize with a
-Unit entry. This handoff is a canonical acceptance obligation, not an implemented
-Raw/Norm node inventory. Every connected grammar/recovery rule needs token,
+current parser does not lower do. Empty parentheses now normalize to a zero-entry
+Product; comma holes retain Unit and available call-input exposure already
+preserves their distinct arities. The do/default handoff remains a canonical
+acceptance obligation, not an implemented Raw/Norm node inventory. Every connected grammar/recovery rule needs token,
 AST, Norm and diagnostic golden coverage before that frontier is claimed closed.

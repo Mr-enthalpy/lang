@@ -130,7 +130,6 @@ NormProgram origin=Source@1:1[0..148]
                       elements:
                         ExprElem
                           Name "P" origin=Source@6:1[90..91]
-                        Unit origin=Source@6:8[97..99]
                   target:
                     Name "f" origin=Source@6:6[95..96]
         target:

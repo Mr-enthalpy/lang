@@ -6,8 +6,9 @@
 > origin / generated / derived / unsupported visibility; §12–§13 define the
 > non-goals and the semantic-consumer boundary. Examples are cross-checked
 > against the normalized dumps in `tests/cases/norm/`. §15 records canonical
-> call-sugar extensions whose frontend consumers are not yet connected; its
-> examples are acceptance targets, not current golden output.
+> call-sugar extensions: empty-Product normalization/shape examples are connected
+> and golden-tested; do/default parsing and execution examples remain acceptance
+> targets, not current golden output.
 
 This document explains the current normalized surface behavior for both human
 readers and coding/documentation agents. Where a rule has an implementation
@@ -89,7 +90,7 @@ P |> e P   -> e
 (P, P)     -> P
 P          -> P
 e          -> e
-()         -> Product(Unit)   // current carrier; canonical empty alignment: §15
+()         -> Product[]       // zero entries; actual comma holes remain Unit
 
 (e)        -> G
 G          -> e   in ordinary expression position
@@ -244,14 +245,12 @@ Second repair never overrides source-product continuation.
 
 ## 6. Product, Group, and Unit Boundaries
 
-Unit and comma positions are preserved exactly; they are never silently dropped:
-
-This describes the implemented dumps. The canonical zero-entry `()` requirement
-in §15 supersedes only empty-parenthesis completion; actual comma-slot Units
-remain entries. The current frontend has not yet made that alignment.
+Empty delimiters have zero entries; actual comma-hole Unit positions are
+preserved exactly and are never silently dropped. This is implemented at
+source Product normalization, not by filtering arguments during selection:
 
 ```text
-()        => Product(Unit)
+()        => Product[]
 (a,)      => Product(a, Unit)
 (,a)      => Product(Unit, a)
 (a,,b)    => Product(a, Unit, b)
@@ -393,12 +392,10 @@ obj..method(args...)
 => (obj, args...) |> method::adl
 ```
 
-For empty `()`, the ordinary Product contribution is unit, so both spellings
-produce `(obj, ()) |> method::adl`. A Product receiver participates in the same
-ordinary suffix and pipeline rules.
-
-That is current dump behavior, not the canonical empty-input target: §15
-requires receiver-only input in both empty spellings once aligned.
+For empty `()`, the Product contributes zero entries, so both spellings produce
+receiver-only `(obj) |> method::adl`. A Product receiver participates in the
+same ordinary suffix and pipeline rules. Actual comma-hole Units remain inputs;
+no selection-stage Unit stripping is permitted.
 
 ### Bracket sugar
 
@@ -417,7 +414,12 @@ obj[]
 
 ```text
 Empty bracket payload contributes no implicit Unit.
-Explicit `()` inside brackets is a user-written Unit product: obj[()] => (obj, ()) |> [].
+Explicit `()` inside brackets remains nested empty Product syntax:
+obj[()] => Product[obj, Product[]] |> [].
+Ordinary available Product exposure yields receiver-only input, just as obj[].
+The unresolved OperatorTarget arity records written operand positions before
+Product exposure, not the final ArgProductShape.arity. Actual comma-hole Units
+in obj[,] remain explicit arguments.
 ```
 
 ### Shared boundary
@@ -1030,7 +1032,11 @@ persistence/escape refinement remains an explicit lifetime handoff.
 
 The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 defines LHS full-input contract extraction and RHS explicit-argument invocation
-requests. Projected Function Pattern values necessarily erase external structural-
+requests. Both require a written `->` boundary: arrowless `()` and `(A,B)` are
+Bare Product material, not Function Pattern syntax. Pout stays independently
+constrained at that boundary and cannot be inferred from Pin. This does not
+require an output arrow on ordinary/in-place closure expressions; dedicated
+Function Pattern syntax consumers remain pending. Projected Function Pattern values necessarily erase external structural-
 source authority; opaque implementation provenance and compile-known Val1 cannot
 restore navigation/reselection of source candidates. This is not same-Type Policy
 migration: retained internal Paths there must pass prospective destination-world
@@ -1410,7 +1416,8 @@ Type operations use the compile algebra. See the
 
 This section adds source/normalization obligations to the canonical call model.
 It does not claim that the current parser accepts defaults or recognizes do,
-or that the current empty-Product carrier already implements zero arity.
+or that generated default-family execution is connected. Empty-Product Norm
+and exposed argument-shape zero arity are implemented and tested separately.
 The [call owner](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
 owns family formation and execution; Norm remains syntax-directed and unresolved.
 

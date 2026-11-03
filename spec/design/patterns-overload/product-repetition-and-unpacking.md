@@ -73,9 +73,10 @@ contextual exposure are separate observations.
 An empty Bare Product has zero entries, not one Unit entry, and contributes no
 explicit argument or implicit self. A source comma hole is instead a present
 Unit entry. The [do/empty-input surface alignment](../../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
-requires this distinction at the syntax-to-Norm boundary; current empty-parenthesis
-normalization still inserts Unit and is not evidence of canonical zero arity.
-Do not implement the alignment by dropping present Unit arguments downstream.
+implements this distinction at the syntax-to-Norm boundary: empty delimiters
+normalize to zero entries, comma holes to present Units. Golden and call-shape
+tests cover neutral merging, nested exposure, double-dot/bracket input and
+expression barriers. No present Unit is dropped downstream.
 
 The standard `_ * ω` packaging is automatically exposed and merged where the
 documented Product context requires it and the actual material is available.
