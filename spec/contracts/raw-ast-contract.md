@@ -33,6 +33,7 @@ Names remain weak `Name` tokens. In particular:
 ```text
 default
 delete
+do
 strategy identifiers
 compile / runtime
 const / mut / compile / close / let
@@ -335,7 +336,9 @@ No pipe, Product or repair rule may use provenance to change ordinary binding.
 E..name(product) contracts to E |> .name(product), using the same ordinary
 ADL call shape without generating a closure or Self layer.
 Product receivers support these suffixes through the ordinary postfix path.
-An empty argument Product retains its unit slot in both source forms.
+An empty argument Product retains its unit slot in both current source carriers.
+The canonical empty-Product alignment below requires zero entries instead;
+comma-hole Unit slots are unaffected.
 
 Normalization produces syntax carriers only. Every legal semantic completion
 of a closure expression returns full tau_C through atomic complete structural formation; semantic
@@ -679,3 +682,53 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## Canonical do/default-formal extension handoff (pending)
+
+The [surface extension](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+requires a contextual do prefix lowering to the ordinary pipe skeleton with a
+zero-entry Bare Product, preserving its operand occurrence once. Raw must retain
+the prefix span, operand material and recovery; it must not synthesize a
+semantic declaration, extra self, closure layer or ReturnEvent. do remains a
+weak Name outside that syntax role. Empty parentheses have no entries;
+comma holes still preserve Unit entries. Do not repair zero arity by globally
+dropping Unit in call preparation.
+
+A direct explicit formal's `= E` must preserve a distinct delayed-default
+source role, initializer span and binder/extraction/Policy material. It is not
+an ordinary let initializer, capture initializer, assignment body or optional
+runtime argument. Contextual self remains the first formal. Parsing/validation
+must diagnose non-trailing defaults, defaulted self, nested/defaulted Pack or
+return positions, defaults mixed with Pack/remainder, and missing operands,
+without semantic lookup or backtracking. The self-default restriction is based
+on the first contextual position, not whether its binder is spelled self. Every
+generated head retains that position and its Pattern/binder/Policy unchanged.
+The head (self) has zero explicit positions and matches unit/empty explicit
+input after separating contextual self; no explicit self/Unit slot is inserted.
+A formal-level default on a whole destructuring Pattern remains distinct from a
+nested child's default.
+
+Syntax-directed expansion must represent n+1 down to n-k+1 written formal
+positions (contextual self plus n down to n-k explicit arguments) as separate
+material units, with exactly one source implementation body and unique source
+capture-initializer occurrences. Preserve forwarding-target provenance, source
+default scopes and generated explicitly targeted return material. It may not
+select candidates, allocate semantic identities/Places, duplicate initialization,
+or execute expressions. Semantic formation resolves those links and publishes
+the complete family under the call/name/construction owners.
+
+The expansion preserves ordinary closure, authorized contribution and direct
+current-owner `let ()` implementation roles. In the last role it yields distinct
+ordinary associated implementation entries with the same owner-object receiver,
+not standalone c_m Objects or V_T registrations. The generated call target is
+the original receiver there, versus the formed complete-type target for a
+closure/contribution family. These remain ordinary calls into the entire target
+candidate space, not private next-entry selection or direct implementation jumps.
+Source role controls formation/installation; syntax expansion grants no authority.
+
+Current parameter slots do not parse default initializers; ordinary initializer
+fields used by lets/captures are not evidence of default-family support. The
+current parser does not lower do, and empty parentheses still normalize with a
+Unit entry. This handoff is a canonical acceptance obligation, not an implemented
+Raw/Norm node inventory. Every connected grammar/recovery rule needs token,
+AST, Norm and diagnostic golden coverage before that frontier is claimed closed.

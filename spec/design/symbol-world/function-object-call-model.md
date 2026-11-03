@@ -81,6 +81,10 @@ tau_C -> V_tau_C -> c_C -> A_C -> Val2[()] -> Impl_C
 The first c_C is formed in that same construction, not by recursively creating
 another closure or later bootstrapping an arbitrary x:tau_C. TypeRole, named
 residency, callability and Pattern registration retain their distinct judgments.
+This diagram describes a closure without default formals. With trailing defaults,
+§8 expands its formation material to several ordinary callable members of the
+same complete tau_C; c_n retains the source implementation leaf. It does not
+turn one member into an optionally applicable callable.
 One selection fixes c_C together with its implementation and exact self; it
 does not replace all self types with type. User-defined x:T with direct () still receives x.
 
@@ -837,3 +841,235 @@ one active return frame. Recursive activations of the same tag remain distinct.
 Type(tau_C)=type and Type(type)=(1 type); classifier extraction observes this
 rank, independently of Type(c*). Self is Pattern-observable without transparent
 capture-layout unfolding. Neither tag nor its representation affects selection.
+
+## 8. Trailing default formals form ordinary overload members
+
+### 8.1 Expansion and identity
+
+A default is source formation material, not an optional position in a formed
+callable. The expansion preserves the source consumer role: ordinary closure
+expressions form callable members of tau_C; authorized same-name contributions
+form members at their established target; direct current-owner
+`let () = implementation` material forms ordinary implementation entries of
+that owner's associated call entrance (§5). None changes the receiver role.
+Let n count the explicit formals, excluding contextual self and capture
+positions. Let exactly the final k explicit formals have defaults d_j:
+
+```text
+0 <= k <= n
+required: a_1,...,a_(n-k)
+defaulted: a_(n-k+1)=d_(n-k+1),...,a_n=d_n
+ExpandDefaults(C) = {C_n,C_(n-1),...,C_(n-k)}
+G_C = {c_n,c_(n-1),...,c_(n-k)}
+V_tau_C = G_C                         // standalone closure formation
+Home(Type(c_m)) = TypeMemberScope(tau_C)
+```
+
+G_C here denotes the set of callable members, not an extra OverloadGroup
+Object around tau_C. The explicit contribution consumer may instead form
+these members directly at its common target (§6.1 of the
+[name owner](names-and-overload-groups.md#61-common-snapshot-closure-contribution-formation)).
+Each c_m has exactly m explicit positions, its own callable/implementation
+identity, and an ordinary associated Val2[()] entry. For k=0 this is the
+existing singleton closure formation. c_n retains the source head with the
+default clauses removed and the source implementation body exactly once.
+All c_m enter the same ordinary candidate space; no preliminary family winner,
+optional-argument applicability or preference for using fewer defaults exists.
+Distinct otherwise tied user/generated candidates remain ordinarily ambiguous.
+Removing a default clause preserves the formal's written Pattern/Policy.
+An omitted annotation remains ordinary formal Pattern deduction, not lexical
+let initializer inference: the default alone does not restrict every explicit
+argument of c_n to the default result's type. A written classifier constrains
+both supplied and default-produced material through ordinary extraction.
+
+Expansion never drops the contextual self position or copies it into the
+explicit source Product. In particular:
+
+```text
+source head:    (self, let i = 1uint8)
+full head H_1:  (self, let i)
+short head H_0: (self)
+ExplicitFormals(H_0) = []             // separate, do not erase contextual self
+ExplicitInputPattern(H_0) = () = BareProduct() = unit
+```
+
+Here `(self)` is a callable extraction head, not a value-side group and not a
+singleton explicit self/Unit argument. After separating contextual self, it
+matches the unit/empty explicit input. The full internal input may still include
+ordinary self/capture material through SelfProjection(Param); it need not be
+unit. The source self Pattern/binder/Policy is retained unchanged in every
+expanded head. It cannot be defaulted, omitted by expansion, or manufactured
+from a default expression. This restriction follows the first contextual
+position, not the spelling `self`; another binder name there has the same rule.
+
+Direct current-owner implementation material expands the same heads into
+Impl_n,...,Impl_(n-k) in the existing associated Val2[()] implementation family.
+For an invoked x:T, its ordinary candidates are (x,Impl_m), with ActualSelf=x
+for every m, including zero explicit arity. These are distinct real ordinary
+candidates, not optional arguments on one implementation. No anonymous c_m
+replaces x, and no member is added to V_T by this expansion. Installation uses
+only the original direct call-entry consumer's ordinary authority. Source body
+self remains x in this role, versus c_n for a standalone full-arity member.
+
+Defaults must be a contiguous trailing suffix of direct explicit formals.
+Contextual self, captures, ReturnPattern and Pack/remainder positions cannot be
+defaulted. A default applies to a whole direct formal, whose Pattern may itself
+destructure; it is not a default on a nested extraction child. Defaults combined
+with Pack/remainder in that head are outside this sugar. There is no named-argument
+skipping, interior omission or explicit omission token: a supplied Unit or empty
+Product is ordinary supplied material under the Product rules, not a request
+to insert a default. Arity is observed after the ordinary available call-input
+exposure, not by counting raw parentheses or including self.
+
+### 8.2 Arity-growing ordinary forwarding
+
+Each shorter entry computes just the next omitted formal, then makes a fresh
+ordinary call with one more explicit position into its established call space:
+
+```text
+ForwardTarget(C) = formed tau_C                 // standalone closure
+ForwardTarget(C) = formed target T_f            // authorized contribution
+ForwardTarget(C,x) = x                         // direct associated () entry
+
+for n-k <= m < n:
+  entry_m(self; a_1,...,a_m):
+    evaluate d_(m+1) once in its source parameter environment
+    deliver (a_1,...,a_m,result(d_(m+1))) through an ordinary call to ForwardTarget
+    explicitly return that call's result to this entry's actual activation
+
+with only these generated entries applicable:
+  entry_(n-k) -> entry_(n-k+1) -> ... -> entry_n
+```
+
+This is semantic pseudocode, not conventional source call syntax or a hidden
+temporary rewrite. A closure/contribution forwarder retains the ordinary formed
+complete-type target through an admitted dependency, not a public name to resolve
+again. Its own self=c_m is not that family target. A direct associated forwarder
+instead uses its existing receiver x as the ordinary callable target, preserving
+that receiver's identity and ordinary current generation/availability premises.
+It does not materialize an anonymous wrapper object or explicitly pass x in the
+source Product. Callable lookup supplies implicit self in the ordinary way.
+
+The target's entire ordinary candidate space participates at this new call.
+Generated and user entries compete by normal applicability/preference/ambiguity;
+there is no private filter selecting the nominal next generated entry and no
+implementation-leaf shortcut. With only the generated fixed-arity entries,
+adding one explicit position reaches the next entry; another ordinary winner
+or ambiguity remains possible when other candidates are present. This is not
+a second attempt at the outer call: the already selected entry stays sealed.
+Lookup, R_Gamma/Policy preparation, selection, input Move, lifecycle checks and
+InvocationResult delivery all occur at the new call's actual frontier. Missing
+receiver/target dependency or access evidence is unavailable, not permission
+to substitute another forwarding target or invoke an implementation directly.
+
+Only the selected entry executes. Selection never evaluates defaults, probes
+their effects or executes forwarding to decide applicability. Applicability
+may consume ordinary declared/inferred Pattern, Policy and contract evidence;
+missing required evidence is unavailable, not proof of a viable default.
+After a shorter entry is selected, a failing default, forwarding call, lifecycle check or
+return delivery fails that invocation. Neither the outer selection nor any
+already sealed inner selection can reopen. A full-arity call executes no
+default, including when it supplies a value equal to a default's result.
+
+Each wrapper exposes the prefix input contract and the source return demand,
+with ordinary mapped/deduced Policy and lifecycle obligations. It does not
+erase a required dependency or invent evidence about a later forwarding call.
+Its actual Pre/Post contract must account for both default evaluation and the
+forwarding call under the ordinary lifetime relations; copying the full entry's
+contract or assuming NoDelta is not proof of the wrapper's contract. Unresolved
+contract evidence stays unavailable and grants no SCC convergence assumption.
+Default expressions obey that call's actual horizon and readiness: a runtime
+default cannot supply a compile observation merely because its member was
+generated. Compile calls have their ordinary instances; reify still requires
+its independent closed-return and reverse-dependency premises.
+
+### 8.3 Default scope, dependency formation and passing
+
+A default expression is delayed until its selected wrapper is entered. It is
+not a capture initializer evaluated at declaration/formation. Along a completed
+generated-entry chain, defaults proceed left to right, once for each omitted
+formal. Only defaults of actually reached selected entries execute; an ordinary
+alternative winner may end that chain. Required and previously supplied/defaulted parameter bindings are
+available through their ordinary views; reading a current or later uninitialized
+parameter is invalid and cannot fall back to an outer same-spelled binding.
+Structural/classifier observations still require their independent ordinary
+evidence. The result undergoes the formal's ordinary constrained production,
+Pattern extraction and Policy checks, not an applicability-time conversion.
+
+Defaults retain the source lexical environment and resolved external binder
+identities. Their parameter occurrences are instantiated in the selected
+entry's ordinary input frame. In the closure/contribution role contextual self
+there is c_m, not the complete-type family target; in the direct associated role
+it is the original receiver x, which is also the ordinary forwarding target.
+Neither role defaults self or supplies it as a second explicit argument. The
+original full implementation keeps its original CallableOwner, Self/navigation
+layer and source return targets, with self=c_n or self=x as its role requires.
+Generated entries have their own owners and actual activations, even when
+several associated entries share the same receiver and callable tag x.
+
+External uses in every default participate in the source implementation's
+dependency requirements, under its established consumer role, as well as body
+uses. Explicit capture mode must cover them;
+Automatic mode discovers them at formation, not on each invocation. Source
+capture initializers execute once per source formation, not once per generated
+member or wrapper entry. Expansion does not clone captures, duplicate owned
+resources or grant an implicit shared environment, borrow or lifetime extension.
+Forwarding-target dependencies and each entry's access to the established source dependency
+material must have ordinary legal realizations. The dependency owner's
+uniqueness law fixes these from selected actions, not a backend storage choice.
+If required retention, access or transport cannot be proved, formation or the
+relevant selected use remains unavailable/illegal under that ordinary boundary.
+The sugar adds neither a blanket ban on local captures nor an escape exemption.
+
+Defaults may observe or consume earlier parameters only through ordinary
+operations. Forwarding then transfers each still-required explicit position
+through its own terminal Move at that edge. This is not a second transfer at
+the same frontier: each wrapper has a fresh activation and current generations.
+A default that kills a parameter still needed for forwarding makes that path
+illegal; the sugar supplies no implicit Copy, clone, restoration or double Kill.
+Default-created values and abandoned inputs follow normal cleanup on failure.
+
+### 8.4 Return and formation authority
+
+The wrapper forwards the source ReturnPattern/Pout demand into its immediate
+call before that call's root maxima seal. It propagates the ordinary result
+without an unconstrained intermediate lexical binding. Its generated terminal
+return explicitly targets that wrapper's tag plus actual activation, even for
+a unit result. Ordinary omitted-target inference would choose the outermost
+enclosing function layer and is not a substitute; unit tail fallthrough is not
+a forwarding return. User-written events inside defaults follow ordinary
+source target resolution against the actually active frames, including failure
+when no such target is active. They are not intercepted by the generated terminal
+return, and no nonexistent full-entry activation is fabricated before its call. An
+event that legally terminates the path prevents subsequent forwarding. No new
+kind of control event or omitted-target inference rule is introduced.
+
+Expansion is syntax-directed formation planning, not semantic execution in
+Norm. Complete standalone tau_C formation or authorized common-target
+contribution formation publishes all accepted members and registrations
+atomically against its one snapshot. Direct associated implementation expansion
+instead installs its complete ordinary entry family through the original Val2[()]
+consumer, with the owner receiver unchanged and no implied V_T/Pattern
+registration. Sharing callable tag x never merges distinct entry activations;
+each generated terminal return targets its own actual activation. No repeated
+lexical let aggregation,
+first-sibling resident, partial Object, standalone-tau bulk import, implicit
+registration from generated provenance, or new construction authority is
+permitted. Ordinary dependency formation effects retain their sequence and
+transaction rules; atomic publication does not promise rollback of earlier
+external effects. See the [surface contract](../../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+and [acceptance matrix](../../planning/canonical-semantic-conformance.md#empty-invocation-and-default-formal-sugar-acceptance)
+for syntax/implementation boundaries and counterexamples.
+
+## 9. Empty invocation sugar
+
+`do E` supplies exactly the empty explicit Bare Product to the existing pipe
+skeleton, as `() |> E`. It introduces no implicit self position. The target
+occurrence is interpreted and formed once per reached evaluation; no binding,
+closure, scope, stage, return target or control event is added by do. Lookup,
+candidate selection, terminal Move, lifecycle and return delivery remain the
+ordinary call relation.
+The [surface contract](../../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+owns binding/provenance; the [Product owner](../patterns-overload/product-repetition-and-unpacking.md#2-bare-product-and-context)
+owns empty material versus a present Unit entry. Neither sugar implements
+missing closure/call consumers by an alternate evaluator.

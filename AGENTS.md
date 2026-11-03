@@ -70,6 +70,17 @@ alternate relation or identity.
 - `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
 - `|> P { ... }` preserves the callable head (_, let _: (P)$).
 - Value-side expressions and Pattern-side material remain distinct.
+- Canonical do E is the ordinary () |> E skeleton, with E once and zero
+  explicit Bare Product entries, no extra self/scope/stage/control event.
+  Trailing defaults expand into real fixed-arity candidates with arity-growing
+  ordinary calls, not optional args or a new preference. Never default or remove
+  contextual self: the extraction head (self) matches unit/empty explicit input.
+  Closure/contribution forwarders call their formed complete-type target;
+  direct let () entries call the original receiver, which remains their self.
+  All target candidates compete normally; no private next-entry filter or new
+  V_T registration follows from direct call-entry expansion.
+  Current do/default/empty-Product frontend alignment remains pending; preserve
+  comma-hole Units and report coverage separately from the canonical laws.
 - `let binder === PathMaterial` preserves a lexical Path alias: form the RHS once
   in the old Path environment, store material, never cache terminal binding identity.
 - `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
@@ -93,8 +104,9 @@ alternate relation or identity.
   neither axis implies the other. TypeMember requires an ordinary callable with
   present Val1, its target classifier home and non-generative V_T registration.
   Ordinary let f=C binds/installs tau_C:type. Established same-name closure
-  buckets consume ClosureMaterial to form one c_C^T per declaration, against a
-  common snapshot, without a first sibling, tau_C insertion or bulk V_tau import.
+  buckets consume ClosureMaterial to form one c_C^T per expanded formation unit
+  (one per declaration without defaults), against a common snapshot, without a
+  first sibling, tau_C insertion or bulk V_tau import.
   Delta_v^value and Delta_C,T^call retain distinct consumer roles.
   Replication witnesses apply to already formed ordinary callable members;
   known-target initial formation directly creates c_C^T.

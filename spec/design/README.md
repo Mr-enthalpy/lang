@@ -22,7 +22,7 @@ that the corresponding source semantics is implemented.
 | Associated state A as a derived compile invocation | [associated state](symbol-world/associated-compile-state.md) |
 | Closure anchored replication | [replication](symbol-world/closure-anchored-replication.md) |
 | Single Stage, P1/P2/Pin/Pout, R_vis, demand and migration | [policy](symbol-world/policy-and-static-flow-projection.md) |
-| Exact callee/self, CallAnchor/Param/Return projections, coherent passing, ordinary C_sigma family and forwarding | [calling](symbol-world/function-object-call-model.md) |
+| Exact callee/self, CallAnchor/Param/Return projections, coherent passing, ordinary C_sigma family, do sugar and trailing-default overload forwarding | [calling](symbol-world/function-object-call-model.md) |
 | Proof-relevant Pattern relation, directional Function Pattern extraction/request and callable source forgetting | [Pattern relation](patterns-overload/pattern-relations-observation-and-extraction.md) |
 | Restricted Split/D, internal chain completion and residual escape | [extraction chains](patterns-overload/static-pattern-spaces-and-extraction-chains.md) |
 | Pass action, move fixed point and directed with cleanup placement | [mechanical passing](mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |

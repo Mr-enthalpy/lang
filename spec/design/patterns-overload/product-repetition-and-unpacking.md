@@ -47,6 +47,8 @@ G -> E                       in expression context
 G -> P                       when a source Product is required
 Expose_K(_ * ω material) -> B_K(xs)
 Merge_K(B_K(xs), B_K(ys)) = B_K(xs ++ ys)
+B_K() = BareProduct() = ()
+Merge_K(B_K(), B_K(xs)) = Merge_K(B_K(xs), B_K()) = B_K(xs)
 ```
 
 `Expose_K` and `Merge_K` describe contextual normalization of exposed material,
@@ -67,6 +69,13 @@ own admitted extraction; an unavailable runtime payload supplies no static shape
 Unit is an entry and is not erased. Source-product continuation still merges
 only its first following Product; that source binding rule and subsequent
 contextual exposure are separate observations.
+
+An empty Bare Product has zero entries, not one Unit entry, and contributes no
+explicit argument or implicit self. A source comma hole is instead a present
+Unit entry. The [do/empty-input surface alignment](../../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+requires this distinction at the syntax-to-Norm boundary; current empty-parenthesis
+normalization still inserts Unit and is not evidence of canonical zero arity.
+Do not implement the alignment by dropping present Unit arguments downstream.
 
 The standard `_ * ω` packaging is automatically exposed and merged where the
 documented Product context requires it and the actual material is available.

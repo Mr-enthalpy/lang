@@ -301,11 +301,23 @@ may receive that role; legal binding, shadowing, mutation and group actions
 are preserved. Failed execution never retries as contribution. Joined material
 uses common-snapshot one-shot formation and initialization, without choosing
 a first sibling RHS. Ordinary singleton closure installation binds tau_C:type;
-a contribution consumes Delta_C,T^call to form one ordinary member c_C^T,
+a contribution consumes each expanded Delta_C,T^call unit to form one ordinary
+member c_C^T (one unit per declaration without defaults),
 never inserting tau_C or bulk-importing its V_tau. Updates to an existing
 resident use ordinary * / *= / TypeAdd with complete /tau home and registration
 checks. Ordinary Delta_v^value follows Val2 installation instead. Rehosting
 an existing callable member requires its witness, never a blind V_tau copy.
+
+Trailing defaults expand ordinary closure/contribution material under the
+[call owner](../design/symbol-world/function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members),
+including direct current-owner `let ()` implementation material. That role
+expands to ordinary associated implementation candidates, all with the invoked
+owner object as self; its associated-call-entry authority remains unchanged.
+Every generated head retains contextual self with no default, so (self) matches
+unit explicit input. Forwarding uses the held complete-type family target for
+closure/contribution members and the original receiver for direct associated
+entries, always through ordinary lookup/selection. Generated provenance supplies
+no new registration or receiver identity.
 
 ```text
 named selector -> structural binding / Place

@@ -68,8 +68,13 @@ spelling and selects the current slot. Every legal completed closure expression
 produces tau_C through atomic complete structural formation; file implementation-layer let installs
 under the established package root, while true lexical let remains a binding.
 Ordinary singleton let installs tau_C:type. Established same-name contribution
-instead consumes ClosureMaterial to form one ordinary c_C^T per declaration
-against a common snapshot, never inserting tau_C or importing its V_tau.
+instead consumes ClosureMaterial to form ordinary c_C^T members against a
+common snapshot, never inserting tau_C or importing its V_tau. Without defaults
+there is one member per declaration; trailing defaults expand into the original
+and fixed-arity ordinary forwarding members under the call owner. Every
+expanded head retains nondefaulted contextual self; (self) matches unit explicit
+input. Direct associated entries keep their owner-object self and forward by
+ordinary receiver calls, not by adding anonymous receiver objects to V_T.
 Ordinary member formation at terminal () supplies Val2 callability; TypeAdd
 changes V_T only. Neither construction axis implies the other.
 

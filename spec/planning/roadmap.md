@@ -191,13 +191,49 @@ E saturates Ready work.
 The [closure/self/Function Pattern matrix](canonical-semantic-conformance.md#closure-self-and-directional-function-pattern-acceptance)
 records T01–T22 as normative targets, not executable success. Current
 `lang_syntax/tests/callable_tail_dot_pack.rs` covers capture binding syntax and
-contextual first-formal/Pack boundaries. `lang_build/tests/ordinary_invocation_spine.rs`
+contextual first-formal/Pack boundaries. Its regression
+`self_only_heads_keep_self_without_explicit_formals` checks existing ordinary,
+in-place and direct let () head carriers: self remains present and explicit
+formals are empty. It does not execute default expansion or prove runtime unit
+matching. `lang_build/tests/ordinary_invocation_spine.rs`
 checks selected capability/lifecycle failure with a runner-up, proving no reopen
 for that substrate. `policy_rank_chain.rs` checks rank-prefix material only.
 Source Function Pattern matching/request and candidate-local self relation
 solving are not connected: current applicability solves explicit parameters;
 closure atoms in Pattern context remain unsupported. No new syntax or executable
-closure evaluator is supplied by the topic specification revision.
+closure evaluator is supplied by the original closure topic revision.
+
+The [call-sugar extension matrix](canonical-semantic-conformance.md#empty-invocation-and-default-formal-sugar-acceptance)
+adds DS01–DS20 as normative targets, not executed tests. Its
+[surface contract](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+introduces canonical do/default-formal syntax; this revision supplies no parser
+or evaluator implementation. Current Norm turns empty parentheses into a Unit
+entry; canonical zero arity requires a targeted syntax-to-Norm alignment, not
+Unit erasure in selection. Param initializers are not parsed and no generated
+default-member family is formed. The implementation order is:
+
+1. Preserve contextual do/default clauses, spans and syntax recovery. Align
+   empty Products while retaining comma Units, first-product continuation,
+   nesting/barriers and empty double-dot/bracket equivalence. Add token/AST/Norm/
+   diagnostic goldens and zero-versus-one explicit arity/identity tests.
+2. Produce unresolved fixed-arity expansion material with contextual self
+   retained, never defaulted, and (self) matching unit explicit input. Preserve
+   arity-growing ordinary forwarding targets without duplicating source body/
+   capture initializer occurrences. Connect common-snapshot standalone/contribution
+   formation, target homes, ordinary dependencies and atomic family publication.
+   Direct let () material installs ordinary associated entries with the original
+   receiver unchanged, no anonymous receiver or implied V_T registration.
+3. Connect ordinary wrapper invocation/default scopes/Move/return delivery.
+   Verify effect counts, collisions, source self, unit return, Policy demands,
+   lifetime/authority failures and no reopen. Existing optional initializer
+   carriers or generic closure nodes cannot stand in for this consumer.
+
+Lifecycle SCC and machine materialization remain separate; the sugar grants
+neither recurrence convergence nor automatic tco/loop reuse.
+Direct current-owner `let ()` expansion requires the same ordinary call and
+role-preserving installation consumers, not a special evaluator. Its shorter
+entry calls the existing receiver with one more explicit position; ordinary
+competing entries/ambiguity and no-reopen remain observable at that new call.
 
 Two independent follow-up PRs consume the new laws:
 

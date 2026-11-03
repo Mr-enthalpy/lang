@@ -766,3 +766,56 @@ conservation in one transaction (T12,T14–15), self/return independence (T13,T1
 directional contract preservation (T08–11,T17–18,T21), and ABI uniqueness
 (T19–20). They use one R_Gamma/Policy/overload/Move/lifetime/E system; these
 specification judgments imply no executed source success.
+
+## Empty invocation and default-formal sugar acceptance
+
+Status: DS01–DS20 are normative acceptance targets, not executable tests.
+Canonical ownership: [call family/forwarding](../design/symbol-world/function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members),
+[empty Product](../design/patterns-overload/product-repetition-and-unpacking.md#2-bare-product-and-context),
+[contribution formation](../design/symbol-world/names-and-overload-groups.md#61-common-snapshot-closure-contribution-formation),
+and [surface/Raw handoff](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending).
+Existing sealed-call tests cover substrate no-reopen, not execution of these
+sugars. The [roadmap](roadmap.md#8-acceptance-evidence) records the open consumers.
+
+| Case | Setup / competing derivation | Required result / rejection boundary |
+|---|---|---|
+| DS01 | do E, where forming E records an effect and yields a callable | Form E once; use ordinary lookup/selection with zero explicit arguments. No second evaluation to obtain self or inspect candidates. Compare with exactly the ordinary () pipe skeleton. |
+| DS02 | Empty () versus a present Unit comma slot; zero- and one-argument candidates | Empty has arity 0 and no ordinal child; present Unit counts. Canonical input keys and observations follow actual empty versus present material. No downstream Unit-stripping or fabricated self. |
+| DS03 | x pipe f (), () pipe f (x), obj..method(), obj pipe .method(), obj[], obj[()] | Empty material merges neutrally; both method spellings and both exposed index inputs have receiver only. Keep first-product-only binding and source nesting. Actual comma-hole Units remain arguments. |
+| DS04 | do f (x) versus do (f (x)); nested Product/barrier or unavailable runtime material | Preserve the existing pipe skeleton and explicit grouping, not a new conventional-call grammar or target barrier. Only ordinary available exposure may change arity. |
+| DS05 | do around a compile/runtime/in-place target and inside a return/serial context | No extra stage, lexical owner, dependency scope, return target or control event. Retain ordinary unit discard/fallthrough, implicit event and explicit targeted return rules. |
+| DS06 | n explicit formals and k trailing defaults; k=0, k=n, and a self-only head | Form exactly k+1 distinct fixed-arity candidates n through n-k. Retain contextual self Pattern/binder/Policy in every head; self/captures do not count in n. (self, let i=d) produces (self, let i) and (self); separating self from the latter yields unit/empty explicit input, not one Unit argument. Complete internal capture/self input is a separate observation. |
+| DS07 | Required-after-default; default on first contextual formal named self, receiver or _; nested/Pack/return default; missing E | Spanned syntax/validation recovery. A contextual-self default is always rejected, never evaluated or used to synthesize/drop self. Apply this by position, not spelling: an ordinary later explicit binder named self is not the contextual position. No parser lookup/backtracking or capture-initializer repair. A whole direct destructuring formal may have a default. |
+| DS08 | Generated-family-only call with two omitted defaults and effects; full-arity call with explicit values | Selected shorter entry executes each omitted default once, left to right along fresh arity-growing ordinary calls. Full-arity entry executes none. Formation and preselection execute no default expression; each intermediate call still needs ordinary selection and legality. |
+| DS09 | Later default observes prior supplied/defaulted arg or contextual self; default reads current/later arg | Earlier readable bindings use ordinary views. Closure-entry default self is c_m and original body self is c_n; direct associated entries retain the same receiver x in defaults and body. Current/later uninitialized value reads fail without outer-name fallback; classifier access needs its independent evidence. |
+| DS10 | Default result mismatches Pattern/Policy or needs unavailable compile observation | Ordinary constrained production/extraction, horizon/readiness and migration rules apply. No default-time type coercion in applicability, runtime-to-compile permission, or execution to prove viability. |
+| DS11 | Public name shadowed after formation; target space includes user overloads; direct associated receiver forwarding | Closure/contribution entries call their held complete-type target, not a re-resolved public name or their own c_m. Direct associated entries call the original receiver x. All ordinary target candidates compete: the next generated entry is not privately filtered or preselected; user winners and ambiguity stand. This fresh call cannot reopen its selected outer entry. |
+| DS12 | User and generated fixed-arity candidates both applicable and otherwise tied | Ordinary ambiguity. No generated/original/default-count priority, fallback suppression from origin, or per-family preliminary winner. Distinct members do not collapse merely because outputs agree. |
+| DS13 | Selected shorter entry default fails, ordinary forwarding call fails, or return delivery fails; outer runner-up exists | No outer or already sealed inner selection reopens. Preserve reached effects and ordinary cleanup/failure transaction boundaries; publish no failed result. |
+| DS14 | Source captures have effectful initializers; defaults and body use those captures | Source initializers execute once per formation, not per member/call; defaults execute per selected invocation. Defaults participate in exclusive Explicit/Automatic dependency completeness. No invocation-time relookup or recapture. |
+| DS15 | Owned noncopy capture or local ref needed by several wrappers/escaped family | Prove ordinary realization, retention, capability, generation/lifetime and escape legality for every required use. No implicit shared environment, clone, Copy or global lifetime; no blanket ban based only on local provenance. Missing evidence remains unavailable. |
+| DS16 | Default consumes an earlier arg still needed for forwarding; ref/share or Preserve forwarding | Require actual frontier legality and one terminal Move per edge/input. Consumed prior generation is not restored; no duplicate same-frontier Kill. Ref/share retains targets; Preserve is not clone. Original associated receiver still needs its own legal call/transfer evidence. |
+| DS17 | Forwarded result is unit/non-unit; outer source frame active; direct associated entries share receiver tag x | Terminal return explicitly targets that entry's actual activation, including unit and nested activations with the same tag x. Propagate ReturnPattern/Pout before root maxima and preserve source-written return targets. No unit fallthrough, omitted-target substitution, hidden lexical temp or merging by receiver/tag identity. |
+| DS18 | Defaulted declarations in a common bucket, a local defaulted closure, and direct let () implementation material | Bucket/local formation retains complete-type homes, one snapshot and no first sibling/partial Object/repeated lexical aggregation/bulk import. Direct let () instead installs real associated entries Impl_n through Impl_(n-k), each with ActualSelf=x for invoked x:T. Its self-only entry matches unit explicit input and forwards by ordinary call to x. No anonymous receiver substitution, generated V_T registration or new authority. |
+| DS19 | Example do (self, let i = 1uint8) => { cond ? if { i } else { (i + 1) pipe self } } | The generated (self) head matches unit explicit input. Empty call may select c_0; default once, then ordinary family call with one explicit value. With only these generated entries, c_1 wins. Body self=c_1 recurses at full arity without rerunning the default. Unknown cond/type/Move/lifetime facts grant no success or tco guarantee. |
+| DS20 | Forwarders under compile/reify, output-demand competition and copying a completed family | Ordinary compile-instance keys, ClosedReturn, E-selected ABI, actual dependency identity, no recapture and immutable complete observations apply. Expansion grants no stage conversion, ABI choice, renewed construction window or SCC/slot-reuse proof. |
+
+Two explicit boundary subcases refine the matrix:
+
+- **DS06 self-only versus Unit argument:** Compare `(self, let i=1uint8)`'s
+  generated `(self)` head with `(receiver)` and a legal supplied Unit slot.
+  Both self-only heads have unit explicit input even if their full internal
+  inputs contain captures/receiver material. A present Unit argument is still
+  one explicit position and must not be stripped to make it match.
+- **DS18 direct call-entry forwarding:** For `let () = (receiver, let i=d) => body`
+  under owner T, calling an existing x:T with empty explicit input may select
+  Impl_0. It evaluates d, then ordinary `(result(d)) |> x` may select Impl_1
+  with self=x and a distinct activation. Do not default/create x, substitute
+  a generated c_0/c_1 receiver, privately force Impl_1, or register V_T members.
+  A written default on receiver is rejected, even if it could produce a T.
+
+For every executable connection, include positive and negative syntax goldens,
+empty-versus-present identity/arity, effect counters, generated/user ambiguity,
+selected failure with a runner-up, dependency/authority non-derivability and
+explicit wrapper-unit-return regressions. A passing existing test suite alone
+does not satisfy these unconnected normative rows.

@@ -422,3 +422,39 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## Canonical call sugars: do not implement optional arguments
+
+The [pending surface extension](normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+defines do E as the ordinary `() |> E` skeleton, with E once and an actually
+empty explicit Bare Product. It adds no self, let/closure scope, stage, event or
+return target. Current empty-parenthesis Norm still inserts Unit; do not treat
+that implementation gap as canonical zero arity or erase all Unit arguments.
+
+Trailing defaults generate distinct fixed-arity callable members in one ordinary
+space. The original body is the full-arity member; each shorter member evaluates
+one default and makes an arity-growing ordinary call into the established target
+candidate space. No public-name relookup, private next-entry filter, leaf bypass, preference
+for fewer defaults, speculative default evaluation or selected-failure retry is
+allowed. Captures initialize once per source formation, defaults once per omitted
+parameter per selected invocation; wrappers grant no borrow/Copy/lifetime right.
+Every generated head retains contextual self without a default; (self) matches
+unit/empty explicit input, not a singleton explicit self/Unit. The restriction
+is positional, not a check for the spelling self. In a closure family the source
+body's self is the selected full-arity member; in a direct associated entry it
+is the invoked owner object.
+Generated forwarding returns explicitly target their own actual activations,
+including unit, rather than using ordinary omitted-target inference.
+
+Direct current-owner `let ()` implementation material expands into ordinary
+associated implementation candidates, all with the same invoked owner object
+as self. Forwarding calls that object through ordinary lookup. Closure and
+contribution members instead call their held complete-type family target, not
+the wrapper c_m or a re-resolved public name. A competing user entry may win or
+make the new call ambiguous; no generated-origin privilege is introduced. No
+anonymous receiver substitution or V_T registration follows from this expansion.
+
+The [call owner](../design/symbol-world/function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members)
+owns the graph and obligations. Current parser/evaluator carriers do not implement
+this extension. Preserve the distinction between normative acceptance rows and
+executed golden/semantic tests; no standalone default evaluator may fill the gap.

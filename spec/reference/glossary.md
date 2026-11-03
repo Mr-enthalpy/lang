@@ -527,7 +527,13 @@ ClosureMaterial(C). tau_C, its callable c_C, A_C=Type(c_C) and the ()
 entry are distinct. Ordinary singleton/file installation and lexical binding
 install tau_C:type. An established same-name bucket consumes the separate
 CallabilityContribution(T,C)=c_C^T projection, with one target-anchored member
-per declaration. Siblings form jointly; no first RHS, tau_C insertion or bulk
+per expanded formation unit (one per declaration without defaults). Trailing
+defaults form distinct ordinary fixed-arity members with arity-growing ordinary
+family calls, not optional arguments on one callable. Contextual self is never
+defaulted or removed; a self-only head matches unit explicit input. Direct
+associated implementations expand ordinary entries with their original receiver
+self and no implied V_T registration. Siblings form jointly;
+no first RHS, tau_C insertion or bulk
 V_tau import is implied. ClosureMaterial is notation, not a new Object.
 In-place syntax uses automatic dependency formation and produces an ordinary
 first-class result. Binding, transfer and outer writes depend on actual

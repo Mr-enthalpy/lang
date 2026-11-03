@@ -64,7 +64,17 @@ have actual opaque values; bool has true/false structure. Callable-head P2 reify
 return classifier and its actual reverse-dependent cone; its execution consumer remains pending.
 
 Naked operators select
-operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
+operator[op], with spelling retained by the ordinary OG_s family.
+
+Canonical call sugars add do E = () |> E with genuinely empty explicit input, and trailing
+default formals expand to real fixed-arity overload candidates with arity-growing
+ordinary forwarding. Every head retains nondefaulted contextual self; a self-only
+head matches unit explicit input. Direct associated call entries retain their
+invoked owner object as receiver. Their [syntax/consumer handoff](spec/public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+is specified, not implemented: current empty-parenthesis Norm still inserts Unit,
+and the parser/default-family consumer remains pending.
+
+Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
 
 ## Workspace

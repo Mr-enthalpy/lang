@@ -5,7 +5,9 @@
 > value-side / pattern-side / annotation / alias boundaries; §11 defines
 > origin / generated / derived / unsupported visibility; §12–§13 define the
 > non-goals and the semantic-consumer boundary. Examples are cross-checked
-> against the normalized dumps in `tests/cases/norm/`.
+> against the normalized dumps in `tests/cases/norm/`. §15 records canonical
+> call-sugar extensions whose frontend consumers are not yet connected; its
+> examples are acceptance targets, not current golden output.
 
 This document explains the current normalized surface behavior for both human
 readers and coding/documentation agents. Where a rule has an implementation
@@ -87,7 +89,7 @@ P |> e P   -> e
 (P, P)     -> P
 P          -> P
 e          -> e
-()         -> Product(Unit)
+()         -> Product(Unit)   // current carrier; canonical empty alignment: §15
 
 (e)        -> G
 G          -> e   in ordinary expression position
@@ -244,6 +246,10 @@ Second repair never overrides source-product continuation.
 
 Unit and comma positions are preserved exactly; they are never silently dropped:
 
+This describes the implemented dumps. The canonical zero-entry `()` requirement
+in §15 supersedes only empty-parenthesis completion; actual comma-slot Units
+remain entries. The current frontend has not yet made that alignment.
+
 ```text
 ()        => Product(Unit)
 (a,)      => Product(a, Unit)
@@ -390,6 +396,9 @@ obj..method(args...)
 For empty `()`, the ordinary Product contribution is unit, so both spellings
 produce `(obj, ()) |> method::adl`. A Product receiver participates in the same
 ordinary suffix and pipeline rules.
+
+That is current dump behavior, not the canonical empty-input target: §15
+requires receiver-only input in both empty spellings once aligned.
 
 ### Bracket sugar
 
@@ -1389,3 +1398,140 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## 15. Canonical call sugars (consumer pending)
+
+This section adds source/normalization obligations to the canonical call model.
+It does not claim that the current parser accepts defaults or recognizes do,
+or that the current empty-Product carrier already implements zero arity.
+The [call owner](../design/symbol-world/function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members)
+owns family formation and execution; Norm remains syntax-directed and unresolved.
+
+### Empty Bare Product alignment
+
+```text
+()                   => Product[]
+(a,)                 => Product[a, Unit]
+(,a)                 => Product[Unit, a]
+(a,,b)               => Product[a, Unit, b]
+((),)                => Product[Product[], Unit] // one exposed Unit argument
+() |> f              => Call(source=Product[], target=f)
+x |> f ()            => (x) |> f
+() |> f (x)          => (x) |> f
+obj..method()        => obj |> .method() => (obj) |> method::adl
+```
+
+`Product[]` is a genuinely empty Bare Product with no ordinal child, as defined
+by the [type-value owner](../design/symbol-world/type-values-places-and-borrow-views.md).
+It is not a singleton Unit entry and contains no self. A call may still need
+implicit self/capture material through its separate ordinary frame. Empty
+material is neutral in ordinary available Product exposure/merge; this does
+not erase any present Unit, cross an expression barrier or inspect unavailable
+runtime shape. Source nesting and the first-product-only rule remain intact.
+The correction belongs at empty source Product normalization, not at overload
+selection by stripping Unit arguments. `obj[]` and exposed `obj[()]` therefore
+have receiver-only input, whereas an actual comma-hole Unit remains an argument.
+
+### do prefix
+
+```text
+do E                 => () |> E
+do f (x)             => () |> f (x) => (x) |> f
+do (f (x))           => () |> (f (x))
+```
+
+do is a contextual expression-prefix spelling, still a Name token. Recognition
+is syntax-directed, never a lookup decision; ordinary binder/path name uses
+remain names. It supplies the incoming empty source at that expression position
+and otherwise uses exactly the existing pipe/Product binding skeleton. It
+does not group the remaining text into a new target barrier or reinterpret a
+following Product as a conventional argument list. Explicit groups retain their
+ordinary role, as the last example shows. A missing operand is a spanned syntax
+error/recovery, not an implicit self call.
+
+The occurrence of E is preserved once with source provenance. There is no
+synthetic let, closure, owner, scope, stage, return target or control event.
+Ordinary target interpretation/formation happens once per reached evaluation,
+followed by ordinary callable lookup, candidate selection, input Move, lifecycle
+and return delivery.
+The sugar neither evaluates E speculatively nor duplicates it to find self.
+The outer expression still has the ordinary serial unit/tail/return behavior.
+
+### Default-formal syntax and unresolved expansion
+
+```text
+(self, let a:T, let b:U = d_b, let c:V = d_c) => body
+  => formation material for {C_3,C_2,C_1}
+
+C_3: original full explicit head, defaults removed, source body once
+C_2: retain self; accept a,b; evaluate d_c; ordinary family call with a,b,c; return
+C_1: retain self; accept a;   evaluate d_b; ordinary family call with a,b; return
+
+(self, let i = 1uint8) => body
+  => full head (self, let i) plus shorter extraction head (self)
+(self) minus contextual self => () = unit     // zero explicit arguments
+```
+
+`= E` on a direct explicit formal is its delayed default clause. Existing
+annotation, Policy and binding/extraction material are preserved. Every generated
+head retains its original contextual self position; expansion removes only a
+suffix of explicit formals. A self-only extraction head therefore matches the
+unit/empty explicit input, not a one-argument Unit Product. Its complete internal
+input may still contain ordinary implicit self/capture material.
+
+The first written formal remains contextual self and cannot have a default,
+regardless of its binder spelling. A self default is diagnosed, never evaluated,
+used to synthesize a receiver, or used to generate a head with self removed.
+Defaults do not turn an omitted annotation into ordinary let-initializer inference:
+the full member keeps its ordinary formal Pattern deduction. Written classifiers
+constrain supplied and default-produced values alike through ordinary extraction.
+Defaults form a trailing suffix, apply to whole direct formals (not nested extraction
+children), and cannot combine with Pack/remainder in that head. Required-after-
+default, a defaulted self/Pack/return slot, a nested default, and a missing
+default expression need dedicated spanned syntax/validation diagnostics and
+recovery. Name visibility, Pattern compatibility and lifetime legality are
+semantic checks, not parser backtracking or normalization-time evaluation.
+
+Norm may preserve an unresolved expansion plan with links between generated
+material units; it must denote exactly the original plus each shorter fixed
+arity, not optional slots on a single callable. The source body and source
+capture-initializer occurrences remain unique. Generated wrapper/return/link
+nodes retain source origin and generation provenance; target member identities,
+homes, dependencies and registration are supplied only by authorized semantic
+formation. A plan is not a completed type, candidate, NameBinding or new HIR.
+Default expressions retain their own spans/binder material and are not executed
+at formation or applicability. Arity-growing ordinary forwarding, per-invocation
+left-to-right defaults, receiver self, ordinary Move and explicitly targeted
+entry return are fixed by the call owner, not choices left to lowering.
+
+Direct current-owner `let () = implementation` uses the same head expansion,
+installing Impl_n,...,Impl_(n-k) at its existing associated Val2[()] entrance.
+For an invoked x:T, every candidate keeps ActualSelf=x. The shorter entry calls
+x through ordinary callable lookup with one additional explicit argument; it
+does not make an anonymous wrapper object the receiver or register members in
+V_T. In the closure/contribution role, the forwarding target is instead the
+formed complete-type family, not the selected c_m self or a re-resolved public
+name. All ordinary candidates at either target compete anew; the next generated
+entry is selected only when it is the ordinary winner. An inner ambiguity or
+failure cannot reopen the already selected outer entry. Generated associated
+returns target their own activation even when their callable tag is the same x.
+
+### Combined recursive example
+
+```text
+do (self, let i = 1uint8) => {
+    cond ? if { i } else { (i + 1) |> self }
+};
+```
+
+This supplies zero explicit arguments to the formed family {c_1,c_0}. If
+ordinary selection fixes c_0, whose head is (self), its explicit input matches
+unit. It produces the default once and calls the formed family with that value;
+with only these entries, ordinary selection reaches c_1. In the original
+implementation self is c_1; the explicit recursive input uses its full-arity
+ordinary call and does not rerun the default.
+This is a semantic reading, conditional on the ordinary classifier, cond,
+operator, capture, capability, lifecycle and return evidence. It promises no
+unconditional recursion legality, tail-call optimization, constant stack or
+new control primitive. Current frontend/evaluator support is separately tracked
+in the [roadmap](../planning/roadmap.md#8-acceptance-evidence).
