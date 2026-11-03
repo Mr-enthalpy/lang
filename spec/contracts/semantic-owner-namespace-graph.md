@@ -58,9 +58,13 @@ DefaultStandaloneReceiverType(C)
   = AnonymousType(CallableOwner(C))
 ```
 
-CallableOwner and the callee's type are distinct facts. Every invocation
-requires Type(callee) = Type(first self). A T ref callee uses its own matching
-entry; a named T entry does not coerce its callee to repair a receiver mismatch.
+CallableOwner and the actual receiver's type are distinct facts. Every invocation
+retains ActualSelf paired with its classifier's associated () entry and checks
+that entry's ordinary ReceiverPattern/classifier requirements against ActualSelf.
+This is not a constraint on the first expanded SelfProjection(Param) element:
+closure captures may be empty or have unrelated element types. A T ref receiver
+uses its own matching entry; a named T entry does not coerce its receiver to
+repair a mismatch.
 
 Nested callable-local `Self` owner paths follow the language's source-order
 navigation: innermost/current `Self` first and outermost `Self` last. The
@@ -94,10 +98,11 @@ read-only evidence needs no common capture layout; actual selected transfer is
 one lifetime-coherent transaction. CallableOwner and tag/activation identity
 are preserved independently of all parameter positions.
 
-A standalone function object is its own first self. An ordinary field
-function supplies its anonymous function object first and consumes the
-operated object as a subsequent argument. A directly callable instance is
-first self for the associated entry of that instance's exact complete type.
+A standalone ordinary callable is retained as ActualSelf; its Param may instead
+be its formed capture Product. An ordinary field function keeps its own callable
+receiver and consumes the operated object as an explicit argument. A directly
+callable user instance is ActualSelf for the associated entry of its exact
+complete type, with singleton receiver Param.
 Anchored replication may create an eligible new closure instance; it cannot
 modify the original callable's owner or capture lifetime.
 
@@ -309,7 +314,7 @@ checks. Ordinary Delta_v^value follows Val2 installation instead. Rehosting
 an existing callable member requires its witness, never a blind V_tau copy.
 
 Trailing defaults expand ordinary closure/contribution material under the
-[call owner](../design/symbol-world/function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members),
+[call owner](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members),
 including direct current-owner `let ()` implementation material. That role
 expands to ordinary associated implementation candidates, all with the invoked
 owner object as self; its associated-call-entry authority remains unchanged.
@@ -370,7 +375,7 @@ its first written formal receives that invoked object.
 
 Writing local `let ()` while constructing `T` contributes one candidate to the
 same associated `()` name binding. It does not also synthesize receiver candidates for
-`T ref` or `T share`; each distinct callee type requires its own matching first-self entry.
+`T ref` or `T share`; each distinct callee type requires its own matching actual-receiver entry.
 
 Accessor stage follows one structural rule:
 
@@ -459,8 +464,8 @@ Deferred:
 - full custom `?`, general Pattern execution, capture discovery, closure
   materialization, lifetime checking and ABI/layout/materialization;
 - end-to-end installation of associated Val2 contributions, external navigated
-  call-entry declarations, and ordinary type checking of the slot-0 receiver
-  against the first written formal;
+  call-entry declarations, and ordinary checking of ActualSelf against the
+  entry receiver contract, separately from expanded Param;
 - invocation-owned ordinary result bindings/Places, dependency-preserving input
   keys, opening-source meets and current-resident cache reuse; A is derived from
   those general facilities;

@@ -62,6 +62,8 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Policy | Explicit observation/demand/preference, migration and derived 2x2 capability views; argument/host carriers retain complete binding edges and reject non-unique required argument projections | General multi-edge joint projection, source deduction, operation-driven premises and full R_vis/C_sigma are separate obligations |
 | Migration delivery | Selected declaration/target Mode contradiction rejects without reopening; supplied completed entries must satisfy Pair and exact delivered/declared/target Mode before outer scratch publication | Source bodies and independent actual delivery observations require common E; supplied-material validator tests do not establish successful source migration or post-production failure execution |
 | Policy rank chain | Shape-validated arbitrary-depth prefixes of absent* runtime* compile*, two-rank windows including absent:absent; runtime first-present and full-chain compile demand material | Actual higher-rank classifier evidence, mixed output Hole solving and reverse-dependent E remain unconnected; a prefix/target supplies no producer witness |
+| Return target | Active activation identity plus Ordinary/InPlace reachable-segment guard; Unknown preserves unbound events | Ordinary capability execution, completion propagation and delivery remain pending and must reuse the guard |
+| Retained structural Paths | Canonical prospective-destination-world hard-A requirement for nonidentity compile-to-runtime same-Type migration | Candidate-specific Path recoverability evidence/consumer pending; do not replace with placement bans or selected failure |
 | Selection | Exact receiver/call-entry enumeration, total demand, sealed selection and diagnostics | Unknown applicability cannot become fallback evidence; source completion requires common E |
 | Instance identity | Parent/selected-partner/canonical-input interning; held complete tau inputs with Core projected from the same snapshot; independent ordinary self-name coordinate and exact selected frame; connected external-type delivery | Initialized self residency, accessible-result closure, dependency-sensitive current storage and general completion require common consumers |
 | Structural relations | Layer-local schema normalization and a DirectPatternChild observer requiring both registration and current actual Val2 membership | Source type formation, struct helpers and ordinary * / *= require common producer Pre/Post and real role/call entries |
@@ -177,7 +179,10 @@ Explicit/automatic occurrences retain identity; invocation does not recapture.
 Dependency lifetime and escape remain ordinary checked handoffs.
 
 Serial completion consumes path-sensitive UnitDiscard, unit fallthrough,
-ReturnEvent and target inference. AST-list position is not semantic tailness.
+ReturnEvent and target inference. The nearest Ordinary closure bounds the
+reachable return segment; InPlace adds no barrier. Explicit/capability targets
+cannot cross it and unknown boundary evidence stays unavailable. AST-list
+position is not semantic tailness.
 R_vis/C_sigma, pending continuation material, dependency readiness, source lifecycle,
 current instance state and E saturation share one continuation.
 

@@ -82,7 +82,7 @@ The first c_C is formed in that same construction, not by recursively creating
 another closure or later bootstrapping an arbitrary x:tau_C. TypeRole, named
 residency, callability and Pattern registration retain their distinct judgments.
 This diagram describes a closure without default formals. With trailing defaults,
-§8 expands its formation material to several ordinary callable members of the
+§12 expands its formation material to several ordinary callable members of the
 same complete tau_C; c_n retains the source implementation leaf. It does not
 turn one member into an optionally applicable callable.
 One selection fixes c_C together with its implementation and exact self; it
@@ -175,7 +175,7 @@ consumer demand
   -> obtain each candidate value's TypeValue
   -> resolve associated ()
   -> build InvocationFrame
-       slot 0 = selected function object
+       ActualSelf = selected function object (contextual receiver, not expanded Param[0])
        explicit input = source value view
   -> ordinary structural/Type/Pattern applicability
   -> if future fallback metadata is present, suppress it when any admissible
@@ -369,11 +369,11 @@ terminates this formation rather than recursively allocating another closure.
 ## 5. User-defined callable objects
 
 For an ordinary value x of type T, invocation selects the applicable () entry
-in AssociatedNamespace(T).Val2 and supplies x as first self. It does not
-project V_T. T may provide an applicable () even when V_T is empty. A ref/share
+in AssociatedNamespace(T).Val2, retains ActualSelf=x and checks its ordinary
+receiver contract. It does not project V_T. T may provide an applicable () even when V_T is empty. A ref/share
 decorated value has its own exact type and therefore
 its own matching () entry. There is no coercion of T into T ref/share to repair
-a first-self mismatch, and those distinct callee types are not one receiver
+an actual-receiver mismatch, and those distinct callee types are not one receiver
 exception under T's call entry.
 
 CallableOwner still owns local names, Pattern roots, nested callables and code
@@ -423,19 +423,20 @@ This does not create a special method kind. Invocation of `fun` has:
 
 ```text
 fun binds the completed tau_fun; ordinary selection reaches c_fun
-slot 0 = the actual selected c_fun callable, of A_fun = Type(c_fun)
-slot 1 = object
-slot 2.. = remaining explicit arguments
+ActualSelf = the selected c_fun callable, of A_fun = Type(c_fun)
+source formal 0 = contextual self_fun binder
+explicit Product = (object, ...args)
+InternalInput = merge(SelfProjection(I,Param), explicit Product)
 ```
 
 A virtual-field-like function is the same shape with only `object` after
 `self_fun`. Direct member-call sugar such as `object..fun(args...)` and the
 first-class `.fun` form ultimately call this ordinary associated value; they do
-not turn `object` into slot 0 of `fun`.
+not turn `object` into ActualSelf of `fun` or prepend a singleton to its captures.
 
 The special target `let () = implementation` is different. It installs the
 call entry of the current Pattern owner. Invoking an object of that owner type
-places the object itself in slot 0. No anonymous wrapper closure value becomes
+retains the object itself as ActualSelf and the ordinary singleton receiver Param. No anonymous wrapper closure value becomes
 the caller, and the implementation carrier is not prematurely materialized as
 a standalone value.
 
@@ -501,7 +502,7 @@ callable objects as well as the effective parameter pair seen after entry.
 
 Every callable, including an in-place closure, has a parent-linked
 `CallableOwner`. This is lexical/code identity. It does not universally
-determine the type of slot 0:
+determine the actual receiver type (not an expanded input index):
 
 ```text
 CallableOwner(C) != ReceiverType(C) in general
@@ -692,6 +693,14 @@ initializer used in-place syntax. Wrapping the result in Product, group or tau
 preserves actual dependencies and lifecycle obligations, not a hidden source
 restriction.
 
+Independently, nonidentity compile-to-runtime same-Type migration must prove
+retained internal structural Paths recoverable in its prospective destination
+world at hard A, as defined by the
+[Policy owner](policy-and-static-flow-projection.md#34-policy-migration-satisfaction-existing-first-unique-migration-second).
+Proved failure rejects that candidate; unknown stays unavailable. This uses
+actual type/dependency evidence, not placement, and is not Function Pattern
+source-erasing projection. Existing-view reuse preserves established obligations.
+
 For a result f retaining reference r, return checks Pre(Return,f),
 LifetimeLegal(Dependencies(f), destination), EscapeLegal(f,destination) and
 ValidRegion(r) as applicable. A dependency-free result is not unreturnable due
@@ -784,7 +793,7 @@ Current source carriers do not implement this full consumer.
 - Every function object has a type.
 - A directly defined function object has an anonymous function-object type.
 - The call entry `()` for a directly defined function object lives under that anonymous type.
-- Each value/ref/share callee type supplies an associated () with matching first self.
+- Each value/ref/share receiver type supplies its own associated () receiver contract.
 - `CallableOwner` and receiver type are independent semantic facts.
 - Contextual self retains the selected caller/context; CallAnchor, Param and
   Return are distinct consumer projections. Param is not universally one Object.
@@ -798,8 +807,9 @@ Current source carriers do not implement this full consumer.
 - `()` is a special type/namespace call entry and can only be a navigation leaf.
 - Struct-associated named lets contribute ordinary Val2 entries; the special
   empty target `let ()` contributes the current owner's call entry.
-- Each selected call entry obeys exact callee/first-self type equality under
-  ordinary invocation checking.
+- Each selected associated entry's ReceiverPattern/classifier requirements are
+  checked against ActualSelf, independently of the cardinality or element types
+  of expanded SelfProjection(Param). No universal first-capture equality holds.
 - Reusability requires instance MoveEffect=Preserve and frontier Movable; ZST alone proves neither.
 - Non-ZST function objects obey ordinary ownership and passing rules.
 - An unwritten function-object mode is no override; inherited/contextual
@@ -824,7 +834,7 @@ Current source carriers do not implement this full consumer.
 - Callable-tail named strategy metadata operates only on fully admissible
   candidates and cannot reopen ordinary overload enumeration.
 
-## Callable tag and activation observations
+## 11. Callable tag and activation observations
 
 ```text
 CallType(tau):
@@ -842,9 +852,9 @@ Type(tau_C)=type and Type(type)=(1 type); classifier extraction observes this
 rank, independently of Type(c*). Self is Pattern-observable without transparent
 capture-layout unfolding. Neither tag nor its representation affects selection.
 
-## 8. Trailing default formals form ordinary overload members
+## 12. Trailing default formals form ordinary overload members
 
-### 8.1 Expansion and identity
+### 12.1 Expansion and identity
 
 A default is source formation material, not an optional position in a formed
 callable. The expansion preserves the source consumer role: ordinary closure
@@ -921,7 +931,7 @@ Product is ordinary supplied material under the Product rules, not a request
 to insert a default. Arity is observed after the ordinary available call-input
 exposure, not by counting raw parentheses or including self.
 
-### 8.2 Arity-growing ordinary forwarding
+### 12.2 Arity-growing ordinary forwarding
 
 Each shorter entry computes just the next omitted formal, then makes a fresh
 ordinary call with one more explicit position into its established call space:
@@ -962,6 +972,22 @@ InvocationResult delivery all occur at the new call's actual frontier. Missing
 receiver/target dependency or access evidence is unavailable, not permission
 to substitute another forwarding target or invoke an implementation directly.
 
+For example, let the generated family be {c_2,c_1,c_0}, with defaults d_1,d_2,
+and suppose the empty-input outer call has selected c_0. It evaluates d_1 once
+and makes a one-explicit-argument ordinary call into the held target space:
+
+- If a user candidate h is applicable but strictly loses to c_1 under ordinary
+  preference, c_1 wins and evaluates d_2 once before its own forwarding call.
+- If h strictly wins over c_1, c_0 forwards to h; c_1 and c_2 are not forced and
+  d_2 does not execute. Any later work of h follows h's own ordinary semantics.
+- If h and c_1 are tied distinct maxima, the inner call is ambiguous. Neither
+  body nor d_2 executes; c_0's already selected outer invocation fails without
+  trying another outer candidate. The reached d_1 effect remains governed by
+  ordinary failure/cleanup rules.
+
+Thus generated-member-to-next-member forwarding is a guarantee only when the
+ordinary inner winner is that next member, not a private family chain law.
+
 Only the selected entry executes. Selection never evaluates defaults, probes
 their effects or executes forwarding to decide applicability. Applicability
 may consume ordinary declared/inferred Pattern, Policy and contract evidence;
@@ -983,7 +1009,7 @@ default cannot supply a compile observation merely because its member was
 generated. Compile calls have their ordinary instances; reify still requires
 its independent closed-return and reverse-dependency premises.
 
-### 8.3 Default scope, dependency formation and passing
+### 12.3 Default scope, dependency formation and passing
 
 A default expression is delayed until its selected wrapper is entered. It is
 not a capture initializer evaluated at declaration/formation. Along a completed
@@ -1029,7 +1055,7 @@ A default that kills a parameter still needed for forwarding makes that path
 illegal; the sugar supplies no implicit Copy, clone, restoration or double Kill.
 Default-created values and abandoned inputs follow normal cleanup on failure.
 
-### 8.4 Return and formation authority
+### 12.4 Return and formation authority
 
 The wrapper forwards the source ReturnPattern/Pout demand into its immediate
 call before that call's root maxima seal. It propagates the ordinary result
@@ -1061,7 +1087,7 @@ external effects. See the [surface contract](../../public/normalized-surface-sem
 and [acceptance matrix](../../planning/canonical-semantic-conformance.md#empty-invocation-and-default-formal-sugar-acceptance)
 for syntax/implementation boundaries and counterexamples.
 
-## 9. Empty invocation sugar
+## 13. Empty invocation sugar
 
 `do E` supplies exactly the empty explicit Bare Product to the existing pipe
 skeleton, as `() |> E`. It introduces no implicit self position. The target

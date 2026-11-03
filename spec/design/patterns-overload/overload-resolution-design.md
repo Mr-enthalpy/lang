@@ -33,7 +33,10 @@ The entire family participates in one applicability/preference/unique-selection;
 there is no preliminary c winner or per-c implementation winner. The selected
 candidate retains (c*, Impl*) with its projection and frame, including in residue.
 An ordinary x enters its type's associated Val2[()] directly with self=x,
-without projecting Type(x).V_tau. Both obey exact callee/first-self type equality. A source binding or Core registry index does
+without projecting Type(x).V_tau. Both retain ActualSelf and check the associated
+entry's ordinary ReceiverPattern/classifier requirements against it, not against
+the first expanded Param element. In a type call ActualSelf=c*, not tau.
+A source binding or Core registry index does
 not supply a later callspace snapshot. See
 [name/type algebra](../symbol-world/names-and-overload-groups.md).
 

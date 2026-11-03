@@ -97,8 +97,10 @@ selected origin are closed. Concrete witness/cache representation is open.
 
 Runtime continuation may not re-resolve a name, namespace path, candidate
 family, or sealed invocation. E saturation, projection synchronization and
-rewrite revalidation are fixed. Omitted ReturnTarget selects the outermost
-enclosing function layer after an event exists. Non-tail UnitDiscard, tail-unit
+rewrite revalidation are fixed. Omitted ReturnTarget selects the outermost function in the reachable segment
+bounded by the nearest Ordinary closure after an event exists. InPlace adds no
+barrier; explicit targets and capability calls cannot cross the segment, and
+missing boundary evidence is unavailable. Non-tail UnitDiscard, tail-unit
 fallthrough and tail-nonunit ReturnEvent synthesis are separate closed laws;
 continuation-path consumer alignment is roadmap work.
 

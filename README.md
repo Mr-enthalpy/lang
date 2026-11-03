@@ -119,6 +119,10 @@ use ordinary ADL. Construction/extraction commit complete identities; terminal
 argument transport is Move, while copying is an ordinary clone-derived path.
 Canonical owners separate unit fallthrough from return, and fix cleanup points
 and same-point reverse-declaration order before lifecycle observation.
+Return targets lie within the reachable segment bounded by the nearest Ordinary
+closure; InPlace adds no barrier. Explicit targets and captured return
+capabilities cannot cross it. The binding substrate preserves unknown boundary
+evidence as unbound; capability execution and completion remain pending.
 
 The lexer remains weak: contextual language words are ordinary `Name` tokens.
 The parser owns syntax shape, not semantic meaning. Closed canonical relations
@@ -144,6 +148,10 @@ The [call owner](spec/design/symbol-world/function-object-call-model.md#62-consu
 separates self's call anchor, implicit parameter Product and return frame.
 The [Pattern owner](spec/design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 defines LHS full-input contract extraction and RHS explicit-argument requests.
+Projected Function Pattern values necessarily erase external structural-source
+authority, even with compile-known Val1. Same-Type compile-to-runtime migration
+instead retains its type and must prove internal Paths recoverable in the
+prospective destination world at hard applicability, not after selection.
 E selects ABIKind from result delivery; machine materialization remains pending.
 Every compile call forms a CompileInstance from parent owner, selected partner
 and canonical inputs before body entry. Ordinary callable dependencies retain

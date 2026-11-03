@@ -558,7 +558,10 @@ single Object in full internal input. The [call owner](../design/symbol-world/fu
 defines its three projections. The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 defines LHS full-input extraction versus RHS explicit-only requests with no
 capture/self, lifetime clauses or spread. Existing generic closure-head carriers
-are not proof of these consumers. No parser syntax or diagnostic is changed here.
+are not proof of these consumers. Projected Function Pattern values necessarily
+erase external structural-source authority; opaque internal provenance/known
+Val1 cannot restore it. This is a semantic projection, not same-Type Policy
+migration or a parser action. No parser syntax or diagnostic is changed here.
 
 ## 10. Diagnostics
 

@@ -68,6 +68,15 @@ of a runtime Object is still a compile observation. A structural name or Path
 whose identity requires runtime work cannot be admitted as a value capture.
 Value observations at either horizon belong to the value-capture class below.
 
+A formed type's retained internal structural Paths also constrain nonidentity
+compile-to-runtime same-Type migration. The
+[Policy owner](policy-and-static-flow-projection.md#34-policy-migration-satisfaction-existing-first-unique-migration-second)
+checks their recoverability in each candidate's prospective destination world
+at hard A: false excludes, unknown is unavailable. Source-world success alone
+is insufficient. This reads actual retained requirements, not InPlace origin,
+and never authorizes invocation-site recapture or a placement-based Bind/Move/
+Store/Pass ban. An already accepted view retains its established obligations.
+
 ### 2.1 Realization is fixed by the selected ordinary action
 
 The source occurrence selects its ordinary semantic operation through the

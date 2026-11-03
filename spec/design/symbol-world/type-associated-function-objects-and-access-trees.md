@@ -254,10 +254,10 @@ mut(parent) does not imply mut(child)
 ```
 
 These signatures display only the explicit call-site Product. Every listed
-function object also receives itself in invocation slot 0. Thus an associated
-member-like function written directly as a closure has its function object as
-the first written formal, the `T` object as the second written formal, and any
-remaining arguments afterwards. There is no separate method-receiver calling
+function object retains its actual callable receiver independently of Param.
+An associated member-like closure writes its contextual self formal first, the
+explicit `T` object second, and remaining explicit arguments afterwards. These
+are source formal roles, not indices into the expanded capture Product. There is no separate method-receiver calling
 convention.
 
 The first-class surface constructor is:
@@ -292,7 +292,7 @@ let () = (object: T) => { ... };
 ```
 
 installs the current owner's call entry, so `object` is the implicitly supplied
-slot-0 caller by position. A mismatch between the invoked object type and this
+ActualSelf through its contextual source-formal position. A mismatch between the invoked object type and this
 first formal is an ordinary invocation type error, not a separate declaration
 rule.
 

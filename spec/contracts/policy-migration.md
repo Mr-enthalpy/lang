@@ -19,6 +19,22 @@ The target demand exists before candidate enumeration. Migration never searches
 a graph, chains intermediate views, changes the source Core type, or reopens
 selection after a selected failure.
 
+After existing-view reuse fails, a nonidentity compile-to-runtime same-Type
+candidate must prove its retained internal structural Paths recoverable in its
+prospective destination semantic world at hard A, under the
+[Policy owner](../design/symbol-world/policy-and-static-flow-projection.md#34-policy-migration-satisfaction-existing-first-unique-migration-second).
+Proved nonrecoverability excludes the candidate before preference; unknown is
+Unavailable and cannot be treated as false to choose a runner-up. Do not defer
+this check to DynamicLegality, machine materialization or reify. Candidate
+endpoints plus ordinary dependency/realization evidence supply the prospective
+world without executing the candidate or inventing destination residents.
+Already accepted views retain their established obligations and identity; this
+premise introduces no reconstruction before the existing-view branch.
+InPlace origin alone is neither rejection nor permission. Function Pattern
+source-erasing projection is not this same-Type migration. The general retained
+Path evidence consumer remains pending; current same-Type checks alone do not
+prove it.
+
 Stage={compile,runtime}. Endpoints observe linked adjacent ranks. A direct
 migration preserves Type and rank-chain coherence; compile:runtime is invalid.
 Policy ranks obey absent* runtime* compile*; PolicyPair is their common

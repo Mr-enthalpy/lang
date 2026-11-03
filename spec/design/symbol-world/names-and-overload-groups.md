@@ -475,7 +475,7 @@ transaction rules; Close cannot publish the uninitialized name.
 Each expanded formation-material unit contributes one target-formed ordinary
 callable member, not its standalone type result or that result's complete
 callspace. Without defaults this remains one member per declaration. With
-defaults the [call owner](function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members)
+defaults the [call owner](function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
 fixes the finite member expansion and ordinary forwarding-target dependencies
 before publication. Forwarding calls the held complete target's entire ordinary
 candidate space, without a private next-member filter or new public-name lookup.

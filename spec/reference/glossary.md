@@ -599,7 +599,9 @@ contextual source syntax, not a universal single internal Object slot.
 The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 defines FnExtract on full LHS input/contract and FnRequest on RHS explicit
 arguments/result/Policy. RHS supplies no captures, self, lifetime clauses or
-spread and cannot recover forgotten structural origin, even from compile Val1.
+spread. Projected Function Pattern values necessarily erase external structural-
+source authority and cannot recover it, even from compile Val1; opaque internal
+provenance is not permission to navigate/reselect source candidates.
 LHS lifetime omission preserves U_default and promises NoDelta on omitted Post;
 compatibility checks Pre_F implies Pre_A and Post_A implies Post_F immediately.
 

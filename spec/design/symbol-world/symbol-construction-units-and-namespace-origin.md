@@ -64,7 +64,7 @@ singleton file declarations install tau_C:type at the established root; local
 blocks bind it lexically. An established same-name contribution bucket instead
 consumes ClosureMaterial(C_i) to form target-anchored ordinary callable members:
 one per declaration without defaults, or one per expanded default-family unit
-under the [call owner](function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members).
+under the [call owner](function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members).
 Its joined materials jointly form T_f and V_T_f against
 a common snapshot, without choosing a first RHS or installing standalone
 tau_C_i in V_T_f. Different sibling files can contribute to that bucket.

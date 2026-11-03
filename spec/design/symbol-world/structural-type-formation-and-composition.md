@@ -191,7 +191,7 @@ implementation and admitted dependency material. Its first ordinary callable
 c_C, classifier A_C and terminal () entry have distinct identities; formation
 terminates at the implementation leaf. Ordinary let binds tau_C:type.
 
-For trailing defaults the [call owner](function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members)
+For trailing defaults the [call owner](function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
 expands formation material into the original full-arity member and fixed-arity
 ordinary forwarding members. They are formed together in tau_C (or at the
 authorized contribution target), not imported from a previously formed type.

@@ -971,7 +971,8 @@ Every legal completed closure expression yields full tau_C through ordinary
 complete structural formation material Material_C. Its contributed callable c_C, A_C=Type(c_C) and () entry
 remain distinct, with finite implementation leaves and same-formation initial
 callable material. An associated `()` implementation may instead bind the type
-facet of its local `Self` and invocation slot 0 to a named receiver type.
+facet of its local `Self` and contextual ActualSelf receiver to a named type,
+independently of the expanded Param representation.
 `CallableOwner` and receiver type are independent semantic facts.
 
 Source navigation remains inner-to-outer; a complete generated compile-call scope
@@ -1029,7 +1030,11 @@ persistence/escape refinement remains an explicit lifetime handoff.
 
 The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 defines LHS full-input contract extraction and RHS explicit-argument invocation
-requests. RHS supplies no self/captures, lifetime pre/post or Pack spread; its
+requests. Projected Function Pattern values necessarily erase external structural-
+source authority; opaque implementation provenance and compile-known Val1 cannot
+restore navigation/reselection of source candidates. This is not same-Type Policy
+migration: retained internal Paths there must pass prospective destination-world
+hard applicability. RHS supplies no self/captures, lifetime pre/post or Pack spread; its
 head root immediate rank+1 type/Policy fully denotes, while deeper legal holes
 and LHS deduction retain ordinary rules. These are pending semantic consumers,
 not new grammar or claims that existing closure heads implement requests.
@@ -1330,8 +1335,10 @@ semantics; [closure replication](../design/symbol-world/closure-anchored-replica
 removes any need to pass the LHS anchor backward into RHS normalization.
 
 The Omitted return tag records only missing target syntax on an explicit event.
-The build binder selects the outermost active function frame; neither parser
-nor normalizer resolves that target. Serial completion remains unconnected.
+The build binder selects the outermost function in the reachable segment bounded
+by the nearest Ordinary closure; InPlace adds no barrier. Explicit targets and
+return capabilities cannot cross the segment; unknown boundary evidence stays
+unbound. Neither parser nor normalizer resolves that target. Serial completion remains unconnected.
 
 ### Semantic consumer alignment
 
@@ -1404,7 +1411,7 @@ Type operations use the compile algebra. See the
 This section adds source/normalization obligations to the canonical call model.
 It does not claim that the current parser accepts defaults or recognizes do,
 or that the current empty-Product carrier already implements zero arity.
-The [call owner](../design/symbol-world/function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members)
+The [call owner](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
 owns family formation and execution; Norm remains syntax-directed and unresolved.
 
 ### Empty Bare Product alignment

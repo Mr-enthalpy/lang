@@ -204,6 +204,7 @@ pub enum ResolverCode {
     UnsupportedLexicalAlias,
     ReturnOutsideReturnableContext,
     ReturnTargetNotActive,
+    ReturnTargetOutsideReachableSegment,
     AmbiguousReturnTarget,
     UnsupportedReturnTargetForm,
 }

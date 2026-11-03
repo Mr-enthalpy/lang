@@ -197,8 +197,10 @@ alternate relation or identity.
   over P2; Pout.stage=P1.stage. Bare let writes no override;
   written const/mut are explicit, and a formal-local hole is ordinary Pattern deduction.
   Default completion is separate. Inner-call selection seals before outer use.
-  Omitted ReturnTarget selects the outermost enclosing function layer after an event
-  exists. Implicit ReturnEvent is separate: non-tail expressions require unit via
+  Omitted ReturnTarget selects the outermost function in the reachable segment,
+  bounded by the nearest Ordinary closure; InPlace is transparent. Explicit
+  targets and captured return capabilities cannot cross that barrier; missing
+  boundary evidence is unavailable. Target inference occurs after an event exists. Implicit ReturnEvent is separate: non-tail expressions require unit via
   UnitDiscard; continuation-path tail unit falls through, non-unit synthesizes return.
   Explicit unit return still returns; AST-list position is not semantic tailness.
 - Done is internal chain/target completion, never an Object or Pattern.
@@ -278,7 +280,12 @@ alternate relation or identity.
   contract; RHS requests explicit args/output/Policy only, without captures or
   lifetime clauses. RHS root rank+1 type/Policy fully denotes; deeper holes and
   LHS deduction use ordinary R_Gamma. LHS omitted post is NoDelta, checked by
-  contract implication at extraction. E selects FreshLet ABI1 or ExistingTarget
+  contract implication at extraction. Projected Function Pattern values necessarily
+  erase external structural-source authority; opaque provenance/known Val1 cannot
+  restore it. Nonidentity compile-to-runtime same-Type migration checks retained
+  internal Path recoverability in each prospective destination world at hard A:
+  false excludes, unknown stays unavailable; existing views retain obligations.
+  E selects FreshLet ABI1 or ExistingTarget
   ABI2; O materializes it, independently of RVO/NRVO. Placement and
   explicit/automatic origin supply no applicability, specificity or preference;
   otherwise tied distinct candidates follow ordinary ambiguity.

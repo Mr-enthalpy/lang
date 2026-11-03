@@ -316,7 +316,7 @@ every mode/stage combination or add an explicit P let merely to repair return
 demand.
 
 The actual field callable has its own self; object remains an explicit
-argument. Forwarding does not place object in slot 0, implicitly form ref/share,
+argument. Forwarding does not substitute object for ActualSelf, implicitly form ref/share,
 or add coercions when a candidate is absent.
 
 ### 6.5 Ordinary member calls do not redefine structural extraction

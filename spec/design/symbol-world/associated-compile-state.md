@@ -114,8 +114,8 @@ receiver invokes the explicit group value with its own construction reference:
     r_ref = initial_complete_target_type;
     r_ref |> state::instance
 
-Ordinary call projection selects one candidate. First self is the selected
-callable object; r is a later argument. The body may inspect the target, branch,
+Ordinary call projection selects one candidate. ActualSelf is the selected
+callable object; r is an explicit argument, independently of expanded Param. The body may inspect the target, branch,
 invoke compile functions or host Objects, create intermediate Objects, or perform ordinary *=
 updates. Source group mutation and target update have separate premises:
 

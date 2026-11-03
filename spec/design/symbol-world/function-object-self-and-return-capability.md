@@ -43,8 +43,8 @@ for this self-position. The source spelling may be `self`, `this`, `callable`,
 or any other legal Pattern; `self` is only the conventional spelling.
 
 The corresponding actual is never written in the call-site argument Product.
-It is injected by the invocation mechanism after the call entry `()` has been
-resolved.
+It is retained as ActualSelf by the invocation mechanism after the call entry
+`()` has been resolved; this does not prepend an Object to expanded Param.
 
 `self` is **not** part of `ProductSyntaxMaterial`, `ArgProductShape`, or
 `RawArgShape`. These represent only the explicit user-supplied argument
@@ -74,18 +74,20 @@ not an ordinary user parameter. Only written positions after the first consume
 the explicit call-site Product. A callable that writes no formal position still
 has an unbound contextual self-position and has no user argument slots.
 Declaration-context `()` call-entry definitions follow the same invocation
-model: `()` is the call entry and the invocation frame injects the object whose
-type supplied that entry into slot 0.
+model: `()` is the call entry and the invocation frame retains the invoked
+object as ActualSelf, checked against the entry receiver contract. For an ordinary
+user receiver Param=B_K(x); this is not a universal closure-capture prefix.
 
-For a direct callable instance, the actual callee and first self have the same
-type. T, T ref and T share therefore use matching entries of their respective
+For a direct user-defined receiver, the associated entry must match ActualSelf
+under its ordinary receiver requirement. T, T ref and T share use entries of their respective
 complete types. A candidate expecting T ref does not repair a T callee by
 coercion. The receiver spelling is ordinary; its self role is positional.
 
 Branch shorthand |> name {B} has the head (_, let _: (name)$).
-The anonymous slot zero receives x for a value call and c* for a type call.
+Its anonymous source self formal observes the contextual receiver: ActualSelf=x
+for a value call and c* for a type call, not a mandatory internal-input Object.
 The current return tag instead observes CallTarget: x for an ordinary value
-call, tau for CallType(tau). Its actual first self is an independent observation.
+call, tau for CallType(tau). Its ActualSelf and Param are independent observations.
 
 Self is observable through normalized Pattern algebra without a public capture
 layout. Norm_Name(n) does not unfold self's representation. The compile flow
@@ -190,7 +192,12 @@ the selected inner call cannot be reopened by later use. See
 
 
 An internal target-qualified completion carries the ordinary return payload
-to the resolved enclosing frame. Intermediate boundaries propagate it without
+to the resolved enclosing frame only within the reachable return segment bounded
+inclusively by the nearest Ordinary closure. InPlace adds no barrier. Explicit
+targets and return-capability calls obey the same segment guard at the requesting
+continuation; capturing an outer capability while its frame remains active does
+not grant permission to cross. Unknown boundary evidence is unavailable, never
+transparent. Intermediate reachable boundaries propagate it without
 matching its payload as a fresh ordinary chain input. The matching frame
 consumes it and performs ordinary ReturnPattern delivery. Internal completion
 is unavailable to source lookup, Pattern matching, Norm, @, ref/share and

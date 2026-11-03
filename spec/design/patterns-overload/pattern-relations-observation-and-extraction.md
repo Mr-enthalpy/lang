@@ -952,11 +952,24 @@ and FnRequest(extracted_value,F_R,args) succeeds
 
 ### 11.2 Callable value projection and stage
 
-LHS value formation may forget the original callable's structural navigation
-source while preserving its formed implementation, dependencies, invocation
-contract and actual identity observations. Full Type equality before and after
-this projection is not required. Further pure extraction of a formed Function
-Pattern value, without result conversion, uses ordinary normalized content
+Forming a projected Function Pattern value necessarily erases the original
+callable's **external structural-source authority**:
+
+```text
+FunctionPatternProjection(C,F)
+  => not ExternalAuthority(StructuralOrigin(C))
+```
+
+The projection preserves the formed implementation, actual dependency
+realizations and internal obligations, exposed invocation contract and ordinary
+identity observations. An opaque implementation may retain source Paths and
+implementation IDs internally, but no external Function Pattern consumer may
+navigate or reselect that original structural candidate space. There is no
+optional source-preserving version of this projection. Full Type equality
+before and after this projection is not required. C:tau_C -> f:F is not
+same-Type Policy migration retaining tau_C; it cannot stand in for the
+[retained-Path hard-A premise](../symbol-world/policy-and-static-flow-projection.md#34-policy-migration-satisfaction-existing-first-unique-migration-second).
+Further pure extraction of a formed Function Pattern value, without result conversion, uses ordinary normalized content
 equality; NameBinding and Place identity remain independent. This projection
 does not change the immutable callspace retained by ordinary complete-tau
 copy/extraction (§15).
@@ -966,8 +979,8 @@ forgetting element structural names. Both remain ordinary projections under
 Object = <Val1?,Pattern,Val2>; neither adds an environment or function Object kind.
 
 A structural callable can be compile-selected even when P2=runtime, and may
-admit compile input. After Function Pattern projection forgets that source,
-new calls have only the exposed interface and observations at their actual
+admit compile input. After Function Pattern projection necessarily erases
+external source authority, new calls have only the exposed interface and observations at their actual
 frontier. Runtime Val1 cannot reconstruct compile structural candidate access.
 Even compile-known Function Pattern Val1 cannot restore the forgotten freedoms;
 O may specialize it only within the same admissible interface. Newly formed

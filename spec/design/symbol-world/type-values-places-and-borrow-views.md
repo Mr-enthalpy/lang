@@ -674,7 +674,9 @@ PatternClosureConsistent(tau) iff
       F is registered for this type's own callability
       and OrdinaryCallableValue(F) and Val1?(F) != absent
       and F is a complete internally well-formed callable and Home(TypeOf(F)) = TypeMemberScope(tau)
-      and its () entry obeys Type(callee) = Type(first self)
+      and its associated () receiver contract is well-formed for F and TypeOf(F)
+      -- ordinary ReceiverPattern/classifier requirements concern ActualSelf=F,
+         not the first element of expanded SelfProjection(Param)
   and ∀K registered as a Pattern construction/extraction closure in Q:
       K is the actual ordinary Val2 resident referenced by that registration
       and K is a complete internally well-formed callable
@@ -700,6 +702,12 @@ WellFormedTau is history-free:
          (τ is not an Object; complete type normalization is
           Norm_type(tau) = bind alpha.⟨Norm(Q), Norm_V^alpha(V_τ)⟩)
 ```
+
+ReceiverPattern denotes the ordinary associated entry's receiver requirement,
+not a new registry. ActualSelf is paired with that entry through its classifier.
+Closure Param may be an empty or multi-capture Product; its first element need
+not exist or have the receiver's type. Ordinary user-defined receivers retain
+Param=B_K(x) and their actual receiver/classifier checks.
 
 **Same-entity boundary (normative).** A complete type value and its
 description material are one semantic entity observed through two equivalent

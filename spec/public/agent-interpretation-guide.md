@@ -261,7 +261,11 @@ Pattern LHS extracts full input/output/Policy/lifetime contract, while RHS
 requests explicit arguments/output/Policy and supplies no self/captures,
 lifetime clauses or spread. Its root rank+1 type/Policy fully denotes; deeper
 holes and LHS deduction retain ordinary rules. Follow the existing call and
-Pattern owners; none of these pending consumers belongs in normalization.
+Pattern owners. Projected Function Pattern values necessarily erase external
+structural-source authority, even with compile-known Val1; opaque internal
+provenance is not authority. Same-Type compile-to-runtime migration instead
+checks retained Paths in the prospective destination world at hard A: false
+excludes, unknown stays unavailable. None of these consumers belongs in Norm.
 
 ## 6. Common Misreadings
 
@@ -336,8 +340,10 @@ Home(TypeOf(v)) = TypeMemberScope(T). [Witnessed anchored replication](../design
 creates a new closure identity and preserves capture obligations; it never
 reparents the RHS. Pin elaborates P2 with explicit stage/mode constraints or holes; Pout inherits
 P1's stage and may refine mode. Bare let writes no override. Explicit
-const/mut are concrete constraints, distinct from contextual default completion. Implicit return targets the outermost enclosing
-function layer; the active-frame binder implements that target query.
+const/mut are concrete constraints, distinct from contextual default completion. Implicit return targets the outermost function in the reachable segment bounded
+by the nearest Ordinary closure; InPlace is transparent. Explicit targets and
+return-capability calls cannot cross that barrier. The binder checks activation
+identity plus boundary evidence; missing evidence stays unbound.
 
 Follow the [semantic spine](../design/semantic-spine.md) for A, lifecycle/unsafe,
 host capabilities, source normalization and E. Representation, cache, scheduler
@@ -454,7 +460,7 @@ the wrapper c_m or a re-resolved public name. A competing user entry may win or
 make the new call ambiguous; no generated-origin privilege is introduced. No
 anonymous receiver substitution or V_T registration follows from this expansion.
 
-The [call owner](../design/symbol-world/function-object-call-model.md#8-trailing-default-formals-form-ordinary-overload-members)
+The [call owner](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
 owns the graph and obligations. Current parser/evaluator carriers do not implement
 this extension. Preserve the distinction between normative acceptance rows and
 executed golden/semantic tests; no standalone default evaluator may fill the gap.

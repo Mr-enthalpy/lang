@@ -132,7 +132,9 @@ separate contextual self's CallAnchor, Param Product and tag/activation Return.
 Candidate-local implicit evidence is read-only; the selected input transfers
 once with coherent lifetime effects. The [Pattern owner](patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 extracts full-input contracts on LHS and requests explicit-argument calls on RHS,
-without an inverse theorem or source recovery from compile Val1. The
+with mandatory erasure of external structural-source authority on projected
+Function Pattern values, without an inverse theorem or recovery from compile
+Val1. Opaque implementation provenance is not external authority. The
 [lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
 checks contract implication, retaining U_default and omitted-post NoDelta.
 [E](static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
