@@ -712,6 +712,12 @@ call-entry may supply another receiver object. The spelling `self` is
 conventional and may be replaced. A head with no written position still has a
 semantic self-position but no source binder for it.
 
+These are contextual source formal positions. The later [call consumer](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+distinguishes CallAnchor, Param and Return projections; Param can be an ordered
+capture Product of zero, one or many entries. This source self-position is not
+a fixed real Object slot in full Function Pattern input. Norm assigns neither
+implicit capture layout nor selected semantic input material.
+
 Name-headed shorthand expands to (_, let _: (name)$). Slot zero and the
 argument binder are anonymous Patterns. The annotation preserves the complete
 grouped RHS operand and its polarity flip, exactly as in the explicit form.
@@ -909,11 +915,14 @@ layout, name resolution, or materialization.
 These source-written captures are explicit requirements. In particular,
 `[x]` means explicit `[let x = x]` with no written policy override; inherited
 constraints or separate default completion determine its mode. It is not an
-automatic const capture. A later resolved stage
-may add an implicit capture requirement for an otherwise uncaptured free outer
-value reference. That later operation requires symbol resolution and external
-namespace visibility plus later capability checking and therefore is not
-normalization.
+automatic const capture. Later resolved semantics chooses one closure-wide
+explicit or automatic value-capture mode. With a written capture list, an omitted
+external value dependency is diagnosed instead of automatically added. Automatic
+compile structural access remains independent; runtime structural access is
+inadmissible. These checks require resolved observations and therefore are not
+normalization. Explicit entries retain source order as bare positional Product
+entries, even with names and mixed compile/runtime Policies. Automatic capture
+order is fixed per completed formation, without a stable public ordinal mapping.
 
 In later resolved semantics, external explicit navigation searches the export
 view, while internal explicit navigation searches the complete namespace view.
@@ -938,12 +947,11 @@ domain—symbol identity, stable visibility, and post-selection legality
 requirements—but this does not prescribe pass ordering, data flow, or an
 implementation dependency.
 
-Explicit and automatic capture remain distinct even when they resolve to the
-same source symbol. Explicit capture may rename, project policy, use a complex
-initializer, request `mut`, and preserve distinct provenance. Parsing,
-normalization, and capture discovery neither reject nor erase it as redundant.
-A future layout pass may coalesce equivalent storage/link requirements only
-while preserving binder identity, policy, and provenance.
+Explicit capture may rename, project policy, use a complex initializer or
+request `mut`. Distinct admitted captures retain occurrence/binder identity,
+Policy and selected realization even when they resolve to equal source values.
+Layout sharing cannot change their semantic order or observations. The frontend
+preserves lists; it does not enforce resolved value-mode exclusivity.
 
 ### Semantic-owner and namespace-view handoff
 
@@ -974,9 +982,9 @@ General dependency requirements precede semantic realization and then layout.
 Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
 one source of dependencies; projections and invocation do not recapture.
 No mandatory public `self` field layout or hidden semantic side table follows.
-Ordinary closures may combine explicit capture occurrences and automatic free
-observations not replaced by resolved capture binders. In-place syntax excludes
-explicit clauses; automatic dependencies do not imply in-place placement.
+Ordinary closures use one explicit or automatic value-capture mode, alongside
+independent automatic compile structural dependencies. In-place syntax excludes
+explicit clauses; automatic value capture does not imply in-place placement.
 All occurrences feed ordinary dependency realization. Neither grants write
 authority by itself.
 An actual write-capable realization may permit outer writes under ordinary
@@ -1007,6 +1015,16 @@ an environment field. Before a callable is materialized, every resolved
 capture requirement must lower to a lifetime-checkable source/access/storage
 form. Existing lifetime and transfer checks continue to apply; closure dependency
 persistence/escape refinement remains an explicit lifetime handoff.
+
+### Directional Function Pattern handoff
+
+The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines LHS full-input contract extraction and RHS explicit-argument invocation
+requests. RHS supplies no self/captures, lifetime pre/post or Pack spread; its
+head root immediate rank+1 type/Policy fully denotes, while deeper legal holes
+and LHS deduction retain ordinary rules. These are pending semantic consumers,
+not new grammar or claims that existing closure heads implement requests.
+Normalization allocates no environment, selects no candidate and determines no ABI.
 
 ### Callable implementation tail
 

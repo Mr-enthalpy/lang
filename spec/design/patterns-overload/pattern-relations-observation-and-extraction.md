@@ -871,6 +871,119 @@ Construction, extraction, ordinary callability, and field observation are
 separate roles. One ordinary callable may implement more than one role without
 being copied into multiple semantic objects.
 
+### 11.1 Directional Function Pattern consumers
+
+This owner defines Function Pattern interpretation. LHS extracts an interface
+from an already determined concrete callable; RHS makes an invocation request.
+They have no general constructor/extractor inverse theorem. Ordinary structural
+families retain only their independently proved laws above. FnExtract and
+FnRequest below are judgments of R_Gamma and the ordinary call pipeline, not
+new source names, Object kinds or evaluators. Source consumers remain pending.
+
+For a concrete formed callable c, let ExplicitArgProduct(c) denote its explicit
+entry material as observed by the extraction relation, not invented sample
+arguments or a common overload signature:
+
+```text
+FunctionLHSInput(c) = CaptureProduct(c) op_plus ExplicitArgProduct(c)
+FnExtract_Gamma(F_L,c,rho)
+  iff R_Gamma(Head_L,FunctionLHSInput(c),rho)
+  and ReturnPolicyRelation(F_L,c,rho)
+  and LifetimeContractCompatibility(F_L,c,rho)
+```
+
+Here op_plus is ordinary contextual Product composition. For the ordinary
+user-value receiver case the [call owner's](../symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+implicit material is the singleton receiver instead of a closure CaptureProduct.
+Extraction covers the entire observed input, including all meaningful capture
+positions. Head_L may use ordinary explicit Pattern entries or one legal
+remainder such as ...captures. A Pack matches the contiguous remainder at an
+ordered layer; each normalized layer still admits at most one Pack. Anonymous
+`_`, root type/Policy deduction holes and deeper legal holes use their ordinary
+relations, ranks, exact Hole identities and availability rules. Extraction
+observes P2, Pin, Pout, return and full lifetime pre/post contract. The callable's
+require and implementation body are not ordinary extractable interface material.
+
+An overload collection supplies no concrete c without ordinary selection or
+other established concrete-value determination. LHS cannot assume shared
+capture layouts or select a member using a second lifetime resolver.
+
+RHS contains only caller-supplied explicit input and result/type/Policy demand:
+
+```text
+FnRequest_K(Target,F_R,explicit_args,result_demand)
+  -> ordinary candidate enumeration
+  -> candidate-local read-only implicit-self evidence + explicit applicability
+  -> ordinary require / Policy / specificity + unique sealed selection
+  -> Selected(c*,Impl*,sigma*,frame*)
+  -> selected SelfProjection(Param) + explicit args = InternalInput
+  -> terminal Move + selected-call Pre/commit/Post + ordinary result delivery
+```
+
+F_R contains no self/capture position or lifetime pre/post clause. Callers
+neither provide nor select a capture sequence through its request head.
+Different candidates may have zero, one or many captures. Their own formed
+implicit evidence can be checked read-only under ordinary applicability, without
+forming a common capture Pattern or capture-shape preference. Actual transfers
+and dynamic lifetime checks apply only to the selected member. Any selected
+failure is terminal; no runner-up or new lifecycle filter is permitted.
+
+At the root of the Function Pattern head used directly as an RHS call request,
+the immediate rank+1 type values and corresponding Policies must fully denote;
+a pending deduction hole there is not a completed request. Deeper legal holes
+remain admissible. This restriction does not apply to pure LHS extraction.
+Structural `_` is anonymous Pattern, distinct from `_$` universerank material.
+RHS ...args is neither construction nor call spread. Shared callable-looking
+source material does not make a closure declaration's contextual first formal
+or lifetime clauses legal request slots. No new source syntax is introduced.
+
+Function Pattern has no independent written P1 item. Necessary output
+constraints occur at the Pout position, with ordinary P2/Pin/Pout observation
+and elaboration. P1's omitted spelling erases no output-stage obligation and
+creates no P3, extra Policy plane or lifetime request channel.
+
+The replacement for inverse symmetry is contract preservation:
+
+```text
+FnExtract(F_L,concrete_c) succeeds
+and FnRequest(extracted_value,F_R,args) succeeds
+  => invocation respects F_L's exposed input/output/Policy/lifetime contract
+```
+
+### 11.2 Callable value projection and stage
+
+LHS value formation may forget the original callable's structural navigation
+source while preserving its formed implementation, dependencies, invocation
+contract and actual identity observations. Full Type equality before and after
+this projection is not required. Further pure extraction of a formed Function
+Pattern value, without result conversion, uses ordinary normalized content
+equality; NameBinding and Place identity remain independent. This projection
+does not change the immutable callspace retained by ordinary complete-tau
+copy/extraction (§15).
+
+This is distinct from T * omega relocating element material into Val1 and
+forgetting element structural names. Both remain ordinary projections under
+Object = <Val1?,Pattern,Val2>; neither adds an environment or function Object kind.
+
+A structural callable can be compile-selected even when P2=runtime, and may
+admit compile input. After Function Pattern projection forgets that source,
+new calls have only the exposed interface and observations at their actual
+frontier. Runtime Val1 cannot reconstruct compile structural candidate access.
+Even compile-known Function Pattern Val1 cannot restore the forgotten freedoms;
+O may specialize it only within the same admissible interface. Newly formed
+runtime calls first select ordinarily there; sealed predecessors never reselect.
+Function Patterns can inhabit any admitted rank and obey the full Policy chain,
+classifier, InputAdmissible, Ready and migration premises.
+
+A library may form an ordinary P2=reify forwarding closure, replacing an
+external input's lowest non-absent compile demand by runtime, then selecting
+same-Type runtime-to-compile migration inside an active ClosedReturn boundary
+before calling its target. An independent compile-to-runtime output migration
+may also be needed. This conditional adaptation requires closed classifiers,
+actual dependencies, lifetime legality and ordinary sealed choices. It is not
+a built-in Function Pattern constructor, a guaranteed conversion or restoration
+of structural origin; reify's outward horizon remains runtime.
+
 ## 12. Structural type formation and registered children
 
 For:

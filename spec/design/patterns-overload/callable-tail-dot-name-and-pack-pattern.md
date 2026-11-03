@@ -356,17 +356,27 @@ In particular `[x]` elaborates to the explicit empty-policy binding
 inheritance/completion applies, with no automatic const conversion.
 
 For an ordinary closure, a resolved free reference can impose a Needs
-requirement under its stable full/export namespace view. Eligible implicit
-realization and explicit [] remain distinct declarations even for the same
-source. Neither lookup nor requested Policy grants borrow/write authority.
-DependencyMaterial(C) is the union of explicit capture occurrences and eligible
-free observations not replaced by resolved explicit capture binders. An ordinary
-`=>` closure may have both; automatic dependencies do not imply in-place syntax.
-In-place syntax merely excludes an explicit clause. After formation, origin
+requirement under its stable full/export namespace view.
+Neither lookup nor requested Policy grants borrow/write authority.
+The [dependency owner](../symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation)
+requires one closure-wide ValueCaptureMode: Explicit for a written list,
+Automatic for in-place syntax and other admitted clause-free closure forms.
+An explicit list cannot acquire other external values automatically; omissions
+are diagnosed. Automatic compile StructuralAccess dependencies remain independent
+and legal in either mode; runtime StructuralAccess is inadmissible.
+After formation, origin
 does not add a call, transfer or overload dimension. Compile partners use the same admitted dependency relations.
 Outer writes require an actually write-capable dependency realization and
 ordinary access/capability/lifetime checks. Explicit versus automatic formation
 does not independently grant or veto write authority.
+
+Each explicit list entry occupies a bare positional CaptureProduct entry in
+source order, including interleaved compile/runtime entries. Binder names do
+not make the layer unordered. Initializers use the common pre-capture environment
+and execute once per formation in ordinary order. Automatic value-capture
+ordering is fixed for each formed closure without a public cross-implementation
+ordinal guarantee. Neither sequence may be stage-sorted, rediscovered at calls
+or changed by layout; full sequencing authority remains in the dependency owner.
 
 ### 2.4 Dependency realization precedes representation
 
@@ -512,6 +522,12 @@ not implicit self. `..name` retains its distinct direct-call surface.
 ## 4. `...` is a Pattern remainder matcher
 
 Ellipsis is structural only on the left/pattern side:
+
+For [Function Patterns](pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers),
+LHS may match the full capture-plus-explicit input with one legal remainder per
+layer. RHS requests explicit arguments only and cannot use ...args as spread,
+provide self/capture positions or declare lifetime pre/post. Shared head-looking
+syntax does not override the directional consumer boundary.
 
 ```text
 Pattern ::= ExistingPattern | "..." Pattern

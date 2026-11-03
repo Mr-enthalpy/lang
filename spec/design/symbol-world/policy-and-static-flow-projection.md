@@ -990,6 +990,19 @@ position Policy. It can affect candidate admissibility, preference, and
 outward view satisfaction only through the ordinary sealed invocation
 pipeline (`NoCrossCallPolicyPropagation`).
 
+#### 3.2.2 Directional Function Pattern Policy
+
+For [directional Function Patterns](../patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers),
+declaration P1/P2/Pin/Pout inheritance remains the same. Function Pattern has no
+independent written P1 item: output type/Policy demands occupy the Pout position.
+This creates neither P3 nor an unconstrained output stage. At the root head of
+a direct RHS request, immediate rank+1 type values and their corresponding
+Policies fully denote; deeper legal holes remain available. Pure LHS extraction
+may deduce root holes under ordinary R_Gamma/HoleOverride. RHS carries no self,
+capture or lifetime pre/post request slots. Its explicit inputs and output demand,
+with candidate-local read-only implicit evidence, enter the single §12 relation;
+the uniquely selected call still undergoes actual lifecycle Pre/commit/Post.
+
 ### 3.3 Namespace declaration attributes
 
 `public`, `private`, and `export` are accepted only by namespace-declaration

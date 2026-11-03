@@ -133,6 +133,14 @@ effect or clone instead. Kill closes the source and establishes the destination
 generation at one cut, retaining deeper origin and Color. Preserve retains the
 surviving subject and does not construct a copy.
 
+Pending selected-call consumers also preserve the [call owner's self/Param coherence](../design/symbol-world/function-object-call-model.md#63-one-coherent-passing-transaction):
+one terminal-Move transaction, no duplicate capture Kill. [Function Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+LHS contract extraction checks lifetime implication/defaults at assignment;
+RHS requests explicit input and still validates the uniquely selected actual
+contract. [E's ABIKind](../design/static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+is fixed by delivery before physical materialization. Existing transaction
+carriers/tests establish none of these complete source consumers.
+
 Cleanup points arrive already fixed by all ordinary constraints. The schedule
 retains declaration order and precedence. `freeze_cleanup_through(k)` fixes
 the complete prefix through k, including empty cuts, without shifting any point.

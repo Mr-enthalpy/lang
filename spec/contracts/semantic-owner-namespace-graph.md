@@ -77,14 +77,22 @@ ClosureMaterial to form ordinary callable members directly at its authorized
 target, not standalone tau_C results. Witnessed rehosting applies only to
 already formed ordinary callable members; it is distinct from that formation.
 
-Every invocation has frame slot 0 for its caller object. This is independent of
+Every invocation has a contextual source self-position. This is independent of
 ordinary/in-place placement. When a closure writes any formal position, its
-first written formal is the explicit Pattern for that slot under any legal
+first written formal is the explicit Pattern for that position under any legal
 spelling; the caller object is passed implicitly. Only later written formals
 consume explicit call-site Product positions. A headless or empty-parameter
-closure still has the semantic slot but no written binder for it.
+closure still has contextual self but no written binder for it.
 Compiler-generated receiver helpers write a generated self formal before their
 explicit `val` receiver.
+
+This source-formal carrier is not the complete internal-input representation.
+The [call owner](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+defines CallAnchor, Param and Return projections. Param is an ordered capture
+Product for closures or singleton x for an ordinary user receiver. Candidate-local
+read-only evidence needs no common capture layout; actual selected transfer is
+one lifetime-coherent transaction. CallableOwner and tag/activation identity
+are preserved independently of all parameter positions.
 
 A standalone function object is its own first self. An ordinary field
 function supplies its anonymous function object first and consumes the

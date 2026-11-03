@@ -239,9 +239,13 @@ fields, layout, or ABI.
 In-place syntax has no explicit capture clause; free external observations form
 automatic dependency requirements and ordinary realizations. Invocation does
 not recapture. Actual access/capability/lifetime checks decide outer writes.
-Ordinary => closures may also have automatic dependencies alongside explicit
-ones. Classify each occurrence, excluding outer observations replaced by a
-resolved capture binder. After formation neither source placement nor capture
+Ordinary => closures use one explicit or automatic value-capture mode. An
+explicit list excludes automatic value capture; missing external values are
+diagnosed. Automatic compile structural dependencies remain independent;
+runtime structural access is inadmissible. Explicit capture positions keep
+source order as bare Product entries across stages; automatic order is fixed
+per formed closure. Resolved capture binders replace outer observations.
+After formation neither source placement nor capture
 origin supplies overload applicability, specificity or preference evidence.
 CompilePartner dependencies follow ordinary formation. A selected receiver/
 call-entry pair and canonical inputs establish a CompileInstance before body
@@ -249,6 +253,15 @@ entry. The result may be any declared ordinary value. Its accessible structure
 decides NameExpr status and the single self-root escape condition. All closures
 keep lexical/Self/navigation/dependency layers; access to an enclosing instance
 uses its ordinary self-name and admitted dependencies.
+
+Self's contextual first formal is distinct from its CallAnchor, Param and
+Return projections. Param is a capture Bare Product or singleton user receiver;
+the selected call transfers actual input once without duplicate Kill. Function
+Pattern LHS extracts full input/output/Policy/lifetime contract, while RHS
+requests explicit arguments/output/Policy and supplies no self/captures,
+lifetime clauses or spread. Its root rank+1 type/Policy fully denotes; deeper
+holes and LHS deduction retain ordinary rules. Follow the existing call and
+Pattern owners; none of these pending consumers belongs in normalization.
 
 ## 6. Common Misreadings
 

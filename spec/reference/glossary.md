@@ -533,8 +533,9 @@ In-place syntax uses automatic dependency formation and produces an ordinary
 first-class result. Binding, transfer and outer writes depend on actual
 dependencies, access, capability and lifetime; invocation does not recapture.
 Placement supplies no applicability, specificity or preference evidence after
-formation. Ordinary => closures may combine explicit and automatic dependency
-occurrences; in-place forms have automatic occurrences only.
+formation. Each closure uses one explicit or automatic value-capture mode;
+automatic compile structural access is independent. In-place forms use
+automatic value capture; ordinary clause-free forms may also use it.
 
 ### CompilePartner dependencies
 
@@ -575,11 +576,33 @@ Distinct candidates use ordinary preference or ambiguity, never backend choice
 between snapshot and live reference. Representation selects layout afterward. Explicit [] is one
 dependency source. Initialization occurs once per formation, with common
 pre-capture name scope and ordinary effect order; projections do not recapture.
-ExplicitDeps and AutomaticDeps are classified by occurrence, not placement.
-Resolved explicit capture binders replace corresponding outer observations;
-other free observations may form automatic dependencies in ordinary closures.
+UseKind x DemandStage classifies the requested observation: StructuralAccess
+is compile-only; Value may be compile or runtime. Written lists choose Explicit
+value mode and diagnose uncaptured external values. Otherwise admitted forms
+may choose Automatic mode. Explicit CaptureProduct entries are bare positional
+in source order across stages; automatic order is fixed per formed closure.
 Selected CompilePartner dependencies obey these same ordinary formation rules.
 Persistence and escape use the lifetime owner's refinement handoff.
+
+### Self projections and directional Function Patterns
+
+The [call owner](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+separates CallAnchor, Param (CaptureProduct or singleton user receiver) and
+Return (CallTarget plus activation). The first written self formal remains
+contextual source syntax, not a universal single internal Object slot.
+The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines FnExtract on full LHS input/contract and FnRequest on RHS explicit
+arguments/result/Policy. RHS supplies no captures, self, lifetime clauses or
+spread and cannot recover forgotten structural origin, even from compile Val1.
+LHS lifetime omission preserves U_default and promises NoDelta on omitted Post;
+compatibility checks Pre_F implies Pre_A and Post_A implies Post_F immediately.
+
+### ABIKind
+
+[E's delivery convention](../design/static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention):
+FreshLet selects ABI1 input-frontier return overwrite/reinterpretation;
+ExistingTarget selects ABI2 designated-Place delivery, including uninitialized
+targets. Physical layout and RVO/NRVO do not select ABIKind.
 
 ### With Path relation
 

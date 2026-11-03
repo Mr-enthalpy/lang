@@ -313,10 +313,23 @@ ReturnTarget=current callable object tag
 ResolveReturn(K,tag,activation)=active frame F
 CallType(tau): CallTarget=tau, ActualSelf=c* in V_tau
 Type(tau_C)=type; Type(type)=(1 type)
-ReturnEvent(F,v) -> Deliver(ReturnPattern(F),Pout(F),v) -> Complete(F)
+Enter(call_anchor,new_args) -> ordinary new call, fresh activation
+ReturnEvent(F,v) -> Deliver(ReturnPattern(F),Pout(F),v)
+                -> Complete(CallTarget(F),Activation(F),result)
 ```
 
 Resolution uses actual control-flow activation, independent of self parameter
 type or capture layout. Recursive invocations of one tag create distinct
 activations. Omitted target keeps the outermost function query; explicit tag
 selects its associated current activation. Tag supplies no candidate preference.
+
+The [call owner's](../symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+CallAnchor supports `(args) |> self`; Param's capture/receiver transport uses
+the current Move/borrow/lifetime facts. Reentry creates a new activation even
+for the same callable tag. Continue-like paths enter the legal tagged callable;
+break-like paths complete the resolved active return frame through this same
+target-return/D-reduction relation. Neither creates a for primitive or reduces
+target return to an ordinary result. Existing return barriers, cleanup and
+tail-position legality remain. Expressible recursion proves no physical stack
+reuse; later tco/loop consumes independent evidence. Activation execution and
+completion propagation remain pending beyond the target-binding substrate.

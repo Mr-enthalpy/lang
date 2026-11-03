@@ -26,6 +26,11 @@ R_Gamma(lhs,rhs,rho). Generative P let H => B has the direction:
 
     H -> requested NameCoord -> B
 
+These declaration projections do not make a Function Pattern RHS a constructor
+or a generative head. The [Pattern owner](pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines LHS full-input contract extraction and RHS explicit-argument invocation
+requests as distinct consumers, with no general inverse theorem.
+
 Inside H, (self,args) is still an ordinary extraction head:
 
     R_Gamma((self,args), call_material, rho)

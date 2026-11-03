@@ -651,6 +651,36 @@ summary may compress that history, but contract bodies remain conjunctions of
 atomic facts; this rule introduces no contract-level disjunction, negation, or
 control flow.
 
+For a Function Pattern LHS interface F and actual callable contract A,
+omission and compatibility have these meanings:
+
+```text
+Entry(F) = U_default op_plus Delta_pre
+omitted pre  => Delta_pre = empty  // all U_default generators remain
+omitted post => Post_F = NoDelta(S_before,S_after)
+NoDelta = unchanged state on every lifecycle observation of the contract
+
+LifetimeContractCompatibility(F,A):
+  Pre_F implies Pre_A
+  Post_A implies Post_F
+```
+
+These implications use the ordinary symbols, Region/Color/name mapping and
+entry assumptions. Omitted Post is a strong guarantee: an actual postcondition
+that cannot imply NoDelta rejects the interface assignment/extraction immediately,
+before any invocation. Missing implication evidence remains unavailable.
+This does not inspect require/body or enumerate overloads by lifetime.
+The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines LHS extraction and RHS requests. RHS cannot add pre/post, but after
+unique selection it still checks the callable's actual Pre, commits once under
+the common transaction and publishes its Post. Dynamic failure never reopens.
+
+The [call owner's self projection](../symbol-world/function-object-call-model.md#63-one-coherent-passing-transaction)
+uses this same boundary: whole-self and projected capture input have compatible
+observable consumption in one transfer transaction, without duplicate Kill.
+Ref/share capture positions move handles, preserving their actual targets and
+generations; Preserve is neither Copy nor an implicit clone.
+
 #### 2.1.7 Region Color
 
 Color remains a future constraint dimension, but its inheritance law is
@@ -992,6 +1022,17 @@ or rejecting every closure with local references.
 
 Path, ADL, Policy and closure formation retain defined semantics through these
 interfaces without deciding every future lifetime refinement.
+
+### 8.5 Separate SCC convergence work
+
+A later lifecycle-algebra PR consumes selected calls, fixed capture sequences,
+Region/origin/generation edges and Pre/Post/MoveEffect on recursive dependency
+SCCs. It must justify its fixed-point direction, convergence/termination or
+explicit unsolvable/rejection result before supplying evidence to calls and
+tail-call consumers. No universal convergence theorem is established here.
+Failure cannot become runtime retry, a new overload preference or ABI choice.
+This work preserves the already closed cleanup-before-observation rule; it
+does not introduce a cleanup/lifetime solver loop.
 
 ## Current name position and delayed E
 

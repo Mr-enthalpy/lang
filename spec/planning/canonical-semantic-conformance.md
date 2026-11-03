@@ -347,8 +347,8 @@ executed success.
 | 106-DP08 | A pure Path name node or ordinary string | Do not treat it as a resolved capture before external Read. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 | 106-DP09 | A realization retains owned values or references | Validate ordinary structure/referent identity; do not hide state in an extra-semantic side table. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 | 106-DP10 | Copy or reanchor a formed callable | Preserve dependencies without rerunning surrounding code, lookup or lifetime extension. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
-| 106-DP11 | Ordinary => closure legally observes external x without an explicit clause for x | Form an AutomaticDeps occurrence for x using the selected ordinary action; automatic dependency does not imply InPlace. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
-| 106-DP12 | Ordinary closure has explicit capture x and another free external y | Combine explicit x and automatic y occurrences. A body read resolved to capture x does not also automatically capture outer x; other distinct occurrences/binders are not deduplicated by spelling or value. Formation origin adds no post-formation operation dimension. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
+| 106-DP11 | Ordinary => closure in Automatic value mode, without an explicit capture clause, legally observes external value x | Form the automatic value occurrence using the selected ordinary action; Automatic does not imply InPlace. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
+| 106-DP12 | Ordinary closure has explicit capture x and another free external value y | Diagnose the omitted value dependency; do not append automatic y. A read resolved to capture x uses that binder. Independent automatic compile structural access remains legal; occurrence identities and ordinary post-formation rules remain. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
 
 ### 106.10 Uniform closure formation and automatic dependencies
 
@@ -441,7 +441,7 @@ They add no executable tests or new semantic ontology.
 | ALIGN-08 | A complex name_express with ordinary compile calls and express$::express$ operands, followed by # | Complete ordinary computation once to NameValue, then project without resident read. No AST capture, skipped effect or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
 | ALIGN-09 | name_express$ versus (name_express \|> path_pattern)$ | Each $ flips interpretation polarity; the latter operand also performs ordinary Path projection. Missing projection applicability cannot be repaired by source quotation. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
 | ALIGN-10 | NameExpr and already bound NameValue Path round-trips | Path consumer preserves structural equality and anchors, not arbitrary Object identity or binder spelling. Resident authority is rechecked only by its own consumer. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
-| ALIGN-11 | Name-headed in-place callable in ordinary and type calls | Formal head retains (_, let _: (name)$). Selected ordinary x or projected c reaches slot zero; the explicit actual never supplies self. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
+| ALIGN-11 | Name-headed in-place callable in ordinary and type calls | Formal head retains (_, let _: (name)$). Contextual self observes selected x or c; full Param input follows the call projection, and the explicit actual never supplies self. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
 | ALIGN-12 | E return versus plain E at a path tail | The former already has ReturnEvent and infers only target; the latter first uses the serial consumer. Do not merge these operations in Omitted. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-13 | A non-tail serial expression yields non-unit | UnitDiscard rejects; it does not silently discard the result, synthesize a lexical temp or turn it into return. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-14 | Tail unit versus explicit unit_value return | Tail unit falls through; explicit unit produces ReturnEvent. Neither fabricates a local return contribution. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
@@ -544,7 +544,7 @@ recorded only after its actual consumer has positive and negative tests.
 | O02 | derived T ref forwarding | generated by ordinary struct open computation and actual registration | [Associated](../design/symbol-world/type-associated-function-objects-and-access-trees.md) | producer unavailable |
 | O03 | ref without helper registration | borrow/lifecycle only; no automatic structural forwarding | [Associated](../design/symbol-world/type-associated-function-objects-and-access-trees.md) | no forwarding producer |
 | O04 | derived state(T0), then Write(place,T1) | state stays on concrete T0; new call required for T1 members | [Construction](../design/symbol-world/structural-type-formation-and-composition.md) | general state consumer pending |
-| R01 | type call | CallTarget=tau, ActualSelf=c*, actual slot zero unchanged | [Call](../design/symbol-world/function-object-call-model.md#callable-tag-and-activation-observations) | selection connected; tag consumer pending |
+| R01 | type call | CallTarget=tau, ActualSelf=c*, contextual first formal retained; Param/Return projections independent | [Call](../design/symbol-world/function-object-call-model.md#callable-tag-and-activation-observations) | selection connected; full projection/tag consumer pending |
 | R02 | ordinary value call | actual implicit self=x; tag=x | [Call](../design/symbol-world/function-object-call-model.md) | ordinary selection connected |
 | R03 | recursive and nested tags | tag plus actual activation selects distinct frames | [Return](../design/control-flow/targeted-return-and-d-reduction.md#callable-tag-to-active-frame) | routing consumer pending |
 | R04 | compile implicit dependencies | ordinary formation allowed; unavailable concrete runtime read waits | [Dependency](../design/symbol-world/dependency-observation-and-realization.md) | general realization pending |
@@ -704,3 +704,65 @@ whole-slot Mode. Output Hole solving and actual reverse E remain pending.
 | RK13 | Equal first pair, different higher-rank observations | Prefixes remain distinct; no whole-chain equality or hidden-tail success from the pair. | Prefix material equality connected; source full-rank transport pending |
 | RK14 | An actually observed first compile rank and legal chain | Compile tail follows the chain law without infinite enumeration; target material itself is no observation witness. | Shape relation connected; source evidence consumer pending |
 | RK15 | Compile Policy on one scoped Hole versus unrefined compile let | The Hole constrains its rank; ordinary compile let constrains every non-absent rank. | Syntax scopes connected; general Hole solver pending |
+
+## Closure, self and directional Function Pattern acceptance
+
+These judgments correspond to the topic design's T01–T22. All complete
+consumers below are pending. Existing syntax, rank-prefix, transaction and
+no-reopen tests prove only their slices; they do not execute capture-mode
+analysis, FnExtract/FnRequest, full self projection or machine ABI realization.
+B_K, F_L/F_R and ABIKind are metanotation, not additional source syntax.
+
+Owners: [dependency](../design/symbol-world/dependency-observation-and-realization.md),
+[call](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections),
+[Function Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers),
+[lifetime](../design/lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries),
+[return](../design/control-flow/targeted-return-and-d-reduction.md#callable-tag-to-active-frame),
+[E delivery](../design/static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention).
+
+| ID | Scenario | Required judgment and negative boundary | Owner |
+|---|---|---|---|
+| CSF-T01 | Explicit [a,b] versus [b,a] | Keep source sequence as bare positional material. Different ordered contents normalize differently; equal values alone cannot merge distinct occurrence/binder identities. No name sorting or unordered conversion. | dependency |
+| CSF-T02 | Explicit compile,runtime,compile captures | Keep B_K(c0,c1,c2) and each coherent rank Policy, even without physical static slots. Initializers share pre-capture scope, cannot see prior new capture binders, and execute once in ordinary order. | dependency |
+| CSF-T03 | Explicit x, additional free external value y | Diagnose omitted y; no automatic addition, even for a distinct binder. Reading captured x uses its resolved binder. | dependency |
+| CSF-T04 | Explicit mode plus compile structural access; runtime Object's compile classifier; runtime-only structural Path | Admit the first two as independent compile StructuralAccess. Reject runtime StructuralAccess; source runtime Val1 cannot misclassify the requested observation or disguise runtime name selection as value capture. | dependency |
+| CSF-T05 | Form InPlace, then invoke/copy/return/reify | Fix resolved automatic sequence/realizations per completed closure, with no rediscovery/reordering or public portable ordinal guarantee. Admitted clause-free ordinary closures may also use Automatic mode. | dependency |
+| CSF-T06 | User-defined x:T associated () call | Param=B_K(x), a singleton case. Closure Param may have 0/1/n positions; contextual first formal adds no universal environment Object. | call |
+| CSF-T07 | Candidates capture 0/1/3 values, ordinary type/Policy/result demand distinguishes one | Ordinary selection may use candidate-local read-only implicit requirements; no common capture Pattern or shape preference. Tied ordinary maxima stay ambiguous. Transfer only selected input. | call / Function Pattern |
+| CSF-T08 | RHS requests self, captures, ...captures or lifetime pre/post | Reject those request positions. RHS has explicit input/output/type/Policy only, with no alternate capture/lifecycle selector, constructor or spread. | Function Pattern |
+| CSF-T09 | RHS root immediate rank+1 type/Policy holes versus LHS roots or deep holes | RHS is not a complete request. LHS may deduce ordinarily; deep legal holes retain identity/availability. Preserve arbitrary-rank coherence and structural _ versus external _$. | Function Pattern |
+| CSF-T10 | LHS full input with one ...rest; two same-layer Packs; RHS ...args | Match all meaningful capture/argument positions, allowing one contiguous ordered remainder. Reject uncovered captures, two same-layer Packs and RHS spread. Nested layers keep independent rules. | Function Pattern |
+| CSF-T11 | LHS omits pre/post, actual A changes observed state | Keep U_default, exclusive distinct/shared common roots and default origins. Expected Post=NoDelta. At extraction require Pre_F implies Pre_A and Post_A implies Post_F; insufficient actual Post rejects immediately. A with no stronger Pre and a sufficient Post is compatible under mapped entry assumptions. | lifetime |
+| CSF-T12 | RHS has no lifetime clause; uniquely selected A fails actual Pre/commit/Post | Fail without publication or runner-up selection. Clause omission skips no actual check and supplies no new lifetime demand. | lifetime / call |
+| CSF-T13 | CallType(tau) versus CallValue(x) | Keep CallTarget=tau, ActualSelf=c* versus both x. CallableOwner, ReceiverType, Param and tag/activation ReturnFrame remain independent with one selected identity. | call |
+| CSF-T14 | Pass self observed through capture Param | One coherent transaction, all affected Pre before existing atomic commit, joint Post. No duplicate whole-self/capture Kill, implicit Copy or reuse of killed generation. Preserve invokes no clone. | call / lifetime |
+| CSF-T15 | Param contains ref/share handles | Move handles with existing target/generation/origin. No direct referent ownership transfer, promotion or region extension. | call / lifetime |
+| CSF-T16 | Recursive (args) |> self, same tag with nested activations | Enter fresh activation through CallAnchor with actual Movable/borrow facts. Complete resolves tag plus active activation, respecting barriers/cleanup; no old sealed call reopens. Continue/break-like paths need no new primitive. | call / return |
+| CSF-T17 | Source-forgetting Function Pattern projection, later compile-known Val1 | Keep formed implementation/dependencies/contract; recover no structural candidate privilege. O specialization stays within interface. Before/after full Type equality is not required; ordinary complete-tau transport still retains V_tau. | Function Pattern |
+| CSF-T18 | Library reify forwarder changes lowest present external compile demand to runtime | Require ordinary same-Type migration, active ClosedReturn, readiness/dependency/lifetime evidence, and independent output migration if needed. No built-in Function Pattern conversion or restored source. | Function Pattern / Policy |
+| CSF-T19 | Same callable/result in let v=expr versus v=expr, including uninitialized designated target | E selects ABI1 versus ABI2. Alias/initialization/replacement authority remains checked. RVO/NRVO, result-type equality and direct versus temporary construction cannot switch ABIKind. | E delivery |
+| CSF-T20 | Tail call under ABI1 versus recursion lacking cleanup/lifetime/slot proof | Consume proved frontier reuse, preserving delivery even for different input/output sizes. Missing evidence grants no unconditional tco/loop or constant stack; physical realization remains deferred. | E delivery / mechanical |
+| CSF-T21 | Copy/further pure extraction of formed Function Pattern value | Keep actual captured realizations without initialization/relookup. Without conversion, normalized full contents determine equality; changed owned content differs. NameBinding/Place identity remains separate; no fourth coordinate or hidden state. | dependency / Function Pattern |
+| CSF-T22 | Needed classifier, implicit material, rank or contract implication unknown | Keep Unavailable and pending obligations, not Mismatch, fallback suppression, unique maximum or permission. Independently proved hard rejection may still terminate its candidate. | Pattern / call |
+
+Additional authority subcases keep ordinary determination and delivery ahead of
+their consumers:
+
+- **CSF-T11 concrete-callable boundary:** Present an undetermined overload
+  collection with two members, only one of whose lifetime contracts satisfies
+  F_L. LHS extraction cannot select that member by contract compatibility;
+  ordinary concrete-value determination or its ambiguity/unavailable result
+  must stand first. Once ordinary determination fixes a member, check only that
+  member's contract. Failure cannot reopen the collection for the compatible one.
+- **CSF-T19 delivery-target boundary:** For a plain expression or nested return
+  whose ordinary E delivery target is unavailable, keep delivery unavailable
+  before publishing a result through that consumer. O cannot supply the missing
+  target through a hidden lexical temporary, RVO/NRVO or a third ABI selection
+  rule. Once E establishes a delivery target, apply only its defined convention.
+
+Cross-owner proof obligations are source/realization preservation (T01–05,T21),
+selection-to-projection direction and uniqueness (T06–09,T13,T22), lifecycle
+conservation in one transaction (T12,T14–15), self/return independence (T13,T16),
+directional contract preservation (T08–11,T17–18,T21), and ABI uniqueness
+(T19–20). They use one R_Gamma/Policy/overload/Move/lifetime/E system; these
+specification judgments imply no executed source success.

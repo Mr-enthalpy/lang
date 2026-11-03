@@ -3,8 +3,10 @@
 **Status: Canonical semantic boundary with typed frontend/build substrate.
 End-to-end invocation and lifetime behavior remain future work.**
 
-**Canonical definition.** This document is the authoritative definition of
-`self`, the return capability, and its lifetime contract. Other documents
+**Canonical boundary.** The [call owner](function-object-call-model.md#62-consumer-directed-self-projections)
+defines self's CallAnchor, Param and Return projections. This document owns
+the return capability and consumes the [lifetime owner's](../lifetime/lifetime-policy-and-overload-boundary.md)
+contract judgments. Other documents
 that mention `self..return(d)` reference this document rather than redefining
 the semantics:
 
@@ -27,8 +29,9 @@ respect these design invariants.
 
 ## 2. `self` as implicit caller parameter
 
-Every callable, ordinary or in-place, has an invocation-frame slot 0 containing
-the caller object selected by the call-entry lookup.
+Every callable, ordinary or in-place, has a contextual source self-position
+retaining the caller/context selected by the call-entry lookup. That formal
+role does not prescribe one real self Object slot in full internal input.
 
 ```text
 self-position
@@ -56,20 +59,20 @@ call-site explicit product:
   contains only user-supplied explicit arguments
   does not contain self
 
-callable formal frame:
-  slot 0 = caller self-position
-  slot 1..n = user parameter positions
+source formal frame:
+  position 0 = contextual self-position
+  position 1..n = user parameter positions
 
 invocation frame:
-  resolves the callable / call entry
-  injects the invoked caller object into slot 0
-  passes the explicit user product into slots 1..n
+  retains selected callable / entry / contextual self
+  forms SelfProjection(I,Param) merged with the explicit user Product
+  routes return through SelfProjection(I,Return)
 ```
 
 The first written formal position denotes the caller self-position,
 not an ordinary user parameter. Only written positions after the first consume
 the explicit call-site Product. A callable that writes no formal position still
-has slot 0 as an unbound self-position and has no user argument slots.
+has an unbound contextual self-position and has no user argument slots.
 Declaration-context `()` call-entry definitions follow the same invocation
 model: `()` is the call entry and the invocation frame injects the object whose
 type supplied that entry into slot 0.
@@ -98,10 +101,18 @@ Closure contribution obeys Home(TypeOf(v)) = TypeMemberScope(T). Where supported
 anchored replication creates a new matching instance and leaves the old owner
 unchanged; see [closure replication](closure-anchored-replication.md).
 
-`self` is not an invisible ambient environment and not an ordinary
-user-supplied argument. It belongs to the invocation / callable frame boundary,
-not product arity, product flattening, canonical argument products, or compile
-instance keys.
+The contextual self binder is not user-supplied call material. Its Param
+projection is an ordered CaptureProduct for a formed capture closure and
+B_K(x) for an ordinary user receiver x:T. CallAnchor supports `(args) |> self`;
+Return independently identifies tag plus activation. No extra universal
+environment field or public capture layout follows. Actual dependency identities
+remain in ordinary canonical invocation inputs where required.
+
+Movement uses the call owner's one coherent passing transaction: form exact
+implicit/explicit material, normalize terminal Move, check all affected Pre,
+then commit at existing boundaries and publish joint Post. Whole-self and
+capture projection cannot cause duplicate Kill. Ref/share moves their handles;
+reentry needs actual Movable/borrow/lifetime evidence at its new activation.
 
 ## 3. Implicit self borrow
 
@@ -188,9 +199,9 @@ storage; a user name Done has no special meaning.
 ### 5.3 Lifetime postcondition
 
 `self..return(d)` **declares** that the return-relevant mutable capability of
-`self` is consumed / closed after the call. The lifetime checker operates on
-the principle of trust: it checks the call precondition before the call, then
-trusts the declared postcondition after the call. It does **not** inspect
+`self` is consumed / closed on committed success. The lifetime checker checks
+the selected call's precondition before mutation, then consumes its declared
+postcondition through the common committed-action boundary. It does **not** inspect
 implementation bodies to rediscover control-flow facts. This is a
 name-and-contract lifecycle system — the capability's availability is stated,
 not inferred from body analysis.

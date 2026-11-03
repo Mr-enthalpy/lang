@@ -247,6 +247,14 @@ the caller writing arguments into the callee frame, or the callee rewriting its
 return into argument slots, this document does not define those machine-ABI
 details.
 
+The canonical [E delivery convention](../static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+already selects ABIKind from FreshLet/ExistingTarget. This future mechanical
+consumer must preserve it, including ABI1's input-frontier return contract.
+Tail position, normalized Move, borrow/lifetime, cleanup and slot/result evidence
+determine reuse legality. RVO/NRVO success, optimizer opportunity and recursion
+alone are not substitutes for those facts. This note adds no new source
+annotation; any manual call-mode surface described above remains future design.
+
 ## 9. Tail position
 
 Tail position must be judged on the first-order AST.

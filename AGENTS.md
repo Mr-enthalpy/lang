@@ -254,10 +254,20 @@ alternate relation or identity.
   In-place syntax forms dependencies automatically and produces an ordinary
   first-class result. Invocation does not recapture; binding, transfer and outer
   writes use actual access/capability/lifetime, with no placement-based veto.
-  Closure DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
-  per occurrence; resolved explicit capture binders replace corresponding outer
-  observations. Ordinary => closures may have both. InPlace excludes explicit
-  clauses, but automatic dependencies do not imply InPlace. Placement and
+  Dependencies classify requested UseKind x DemandStage; StructuralAccess is
+  compile-only and independent of Value capture mode. Each closure has exclusive
+  Explicit or Automatic value capture; an explicit clause's omitted external
+  value is diagnosed. InPlace uses Automatic, which is not exclusive to InPlace.
+  Explicit captures form a bare positional Product in source order across stages;
+  automatic order is fixed per formed closure. Self has CallAnchor, Param and
+  Return projections; Param is CaptureProduct or the ordinary singleton receiver.
+  Candidate-local implicit evidence is read-only before selection; selected input
+  moves once with no duplicate Kill. Function Pattern LHS extracts full input and
+  contract; RHS requests explicit args/output/Policy only, without captures or
+  lifetime clauses. RHS root rank+1 type/Policy fully denotes; deeper holes and
+  LHS deduction use ordinary R_Gamma. LHS omitted post is NoDelta, checked by
+  contract implication at extraction. E selects FreshLet ABI1 or ExistingTarget
+  ABI2; O materializes it, independently of RVO/NRVO. Placement and
   explicit/automatic origin supply no applicability, specificity or preference;
   otherwise tied distinct candidates follow ordinary ambiguity.
   Lifetime persistence/escape refinement retains all ordinary checks; tau status

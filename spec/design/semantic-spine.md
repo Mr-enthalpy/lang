@@ -115,11 +115,24 @@ SelfConstructible alone consumes the registered self-construction witness.
 AssociatedNamespace(T) is MemberScope(Core(T)), distinct from /tau(T).
 Dependency realization is fixed by the source occurrence's selected ordinary
 action, uniquely up to observational equivalence, before layout is chosen.
-Ordinary closure dependencies combine explicit and automatic occurrences;
-in-place syntax excludes explicit clauses. Source placement and dependency
+Closure value-capture modes are exclusive, with automatic compile structural
+dependencies independent. CaptureProduct is bare positional material; explicit
+order follows source, automatic order is fixed per formation. Source placement and dependency
 formation origin supply no post-formation overload evidence. Selected callable
 dependencies retain their ordinary identity; instance keys contain parent,
 selected partner and canonical inputs without hidden caller capture.
+
+The [call owner's projections](symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+separate contextual self's CallAnchor, Param Product and tag/activation Return.
+Candidate-local implicit evidence is read-only; the selected input transfers
+once with coherent lifetime effects. The [Pattern owner](patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+extracts full-input contracts on LHS and requests explicit-argument calls on RHS,
+without an inverse theorem or source recovery from compile Val1. The
+[lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
+checks contract implication, retaining U_default and omitted-post NoDelta.
+[E](static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+chooses ABIKind from delivery; O materializes it. SCC convergence and physical
+ABI realization remain separate deferred work.
 
 ## Current extraction and continuation interfaces
 

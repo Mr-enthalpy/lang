@@ -47,6 +47,27 @@ and ordinary actions.
 A requirement grants no access, write, borrow or lifetime permission. Each
 operation still needs its ordinary candidate and legality evidence.
 
+### 2.0 Requested observation kind and horizon
+
+Classify the requested observation and its actual demand horizon, rather than
+the surface stage of the source Object:
+
+```text
+DepKind(d) = (UseKind(d), DemandStage(d))
+UseKind = StructuralAccess | Value
+DemandStage = compile | runtime
+AdmittedDependencyKind(d) iff DepKind(d) != (StructuralAccess, runtime)
+
+D(C) = D_struct_compile(C) union D_value_compile(C) union D_value_runtime(C)
+```
+
+StructuralAccess uses the ordinary compile structure, Path, name and type
+relations and forms automatic structural dependencies. It is independent of
+closure value-capture mode and ordering. A compile classifier/Pattern observation
+of a runtime Object is still a compile observation. A structural name or Path
+whose identity requires runtime work cannot be admitted as a value capture.
+Value observations at either horizon belong to the value-capture class below.
+
 ### 2.1 Realization is fixed by the selected ordinary action
 
 The source occurrence selects its ordinary semantic operation through the
@@ -104,30 +125,32 @@ does not expand automatic borrowing, copying or writing.
 
 ## 4. Explicit and automatic dependency formation
 
-For every closure, classify dependency occurrences, not the closure's
-placement. A single ordinary closure may contain both kinds:
+Each closure has one value-capture mode. Automatic compile structural access
+remains independent of that mode:
 
 ```text
-DependencyMaterial(C) = ExplicitDeps(C) union AutomaticDeps(C)
-ExplicitCaptureOccurrence(C, d)
-    => d in ExplicitDeps(C)
-FreeExternalObservation(C, d) and not ReplacedByExplicitCapture(C, d)
-    => d in AutomaticDeps(C)
-    => Needs(Form(C), Source(d), observation, Gamma, Sigma)
+ValueCaptureMode(C) in {Explicit, Automatic}
+Mode(C)=Explicit  => D_value_automatic(C)=empty
+Mode(C)=Automatic => D_value_explicit(C)=empty
+DependencyMaterial(C) = D_struct_compile(C) union D_value_Mode(C)(C)
 DependencyRequirement -> DependencyRealization
 ClosureFormation(C) = FormCompleteType(Head_C, Body_C, DependencyMaterial(C))
 
-InPlace(C) => ExplicitDeps(C) = empty
-AutomaticDeps(C) != empty does not imply InPlace(C)
+WrittenCaptureClause(C) => Mode(C)=Explicit
+InPlace(C) => Mode(C)=Automatic
+Mode(C)=Automatic does not imply InPlace(C)
 ```
 
-The union preserves occurrence and binder identities; it is not value-based
-deduplication. ReplacedByExplicitCapture follows resolved binding, not a match
-of source spellings: a body occurrence resolved to an explicit capture binder
-does not also capture its outer source automatically. Other eligible free
-observations form automatic dependencies even in an ordinary `=>` closure
-with an explicit clause for different occurrences. Capture initializers retain
-their pre-capture environment and ordinary once-per-formation effects.
+An explicit clause determines all value dependencies of that closure. A body
+observation resolved to its capture binder uses that binder, not the outer
+source. Any additional uncaptured external value requirement is diagnosed;
+it cannot be appended automatically, even for a different binder. Ordinary
+automatic compile structural dependencies remain legal in Explicit mode.
+Other legal closure forms without a clause use their established formation
+rule to determine Automatic mode; it is not exclusive to InPlace syntax.
+Capture initializers retain their pre-capture environment and ordinary
+once-per-formation effects. Occurrence and binder identities are preserved,
+never deduplicated by spelling or value equality.
 
 Each occurrence establishes ordinary requirements and realizations while
 forming the closure. The source occurrence's selected ordinary action fixes
@@ -151,7 +174,33 @@ After formation, explicit/automatic origin supplies no additional call,
 overload, move, return or other operation dimension. Actual dependency material,
 binder identities and ordinary evidence remain observable under their own rules.
 
-### 4.1 Compile partner dependencies
+### 4.1 Ordered value-capture material
+
+Let B_K denote the existing bare positional Product at continuation K:
+
+```text
+ExplicitCaptureSeq(C) = <d1,...,dn>  // source list order, across both stages
+CaptureProduct(C) = B_K(Realize(d1),...,Realize(dn))
+
+AutomaticCaptureSeq_Sigma(C) = <d1,...,dn>
+CaptureProduct_Sigma(C) = B_K(Realize(d1),...,Realize(dn))
+```
+
+Every capture occupies a bare positional entry, even if it has a binder name.
+The layer is ordered by the ordinary Product rule. Thus interleaved compile,
+runtime, compile entries keep all three positions in that order; stage sorting
+and layout sorting cannot change semantic indices. A static entry may need no
+runtime storage slot without losing its semantic position.
+
+Automatic sequencing is encoded from resolved source-use relations and is
+determinate and fixed for each completed closure. The definition of a use and
+the cross-implementation ordinal mapping are not a stable public guarantee.
+Invocation, copy, return and reify never rediscover, rerun or reorder captures.
+Distinct occurrence/binder identities and selected realizations cannot be
+collapsed because their values are equal. These are semantic Product positions,
+not public fields, an environment Object or a fixed machine layout.
+
+### 4.2 Compile partner dependencies
 
 A selected CompilePartner retains the dependencies established by ordinary
 callable formation. Its CompileInstance key observes the parent owner, selected

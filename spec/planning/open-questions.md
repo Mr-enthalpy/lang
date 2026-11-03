@@ -87,6 +87,10 @@ and deduced modes; unknown required OpenHere is unavailable, not false.
 - What concrete representation carries `Done`, targeted return, and result
   Pattern delivery?
 
+The [E owner](../design/static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+fixes ABIKind by FreshLet/ExistingTarget delivery. Machine frontier, slot and
+FFI encodings remain open representation work; RVO/NRVO cannot choose the law.
+
 Runtime main and actual stack-relative evaluation horizons, two-round R_vis then
 ordinary C_sigma selection, no speculative candidate execution and retained
 selected origin are closed. Concrete witness/cache representation is open.
@@ -223,6 +227,14 @@ complete-type formation. File implementation-layer let installs under the establ
 root, while true lexical local let remains binding. Conservative contribution roles preserve
 legal ordinary actions and never retry failed execution. These are closed laws,
 not a pending choice based on RHS type or declaration count.
+
+Dependency observation classification, exclusive value-capture modes and fixed
+capture sequences, consumer-directed self projections, directional Function
+Pattern LHS/RHS, and omitted-contract defaults/implication are closed by the
+existing dependency/call/Pattern/lifetime owners. Their carriers and source
+consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-separate-scc-convergence-work)
+leaves convergence direction, algorithm and proof/rejection strategy to a
+separate lifecycle PR; no total convergence theorem or second resolver is assumed.
 
 ## Generic navigation and Product surface
 

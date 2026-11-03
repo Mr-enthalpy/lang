@@ -11,7 +11,7 @@ that the corresponding source semantics is implemented.
 | --- | --- |
 | Static evaluation, compile instances, open/close, NameExpr result shape, interpretation polarity, structural type formation, file/name production, dot/ADL | [static, name, and structural semantics](unified-static-name-and-structural-semantics.md) |
 | NameValue, two-level Read, Path projection/indexing and opposite-context interpretation | [Path algebra](symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
-| General dependencies, semantic realization and one-time formation | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
+| General dependencies, observation kind/horizon, exclusive value-capture modes, ordered CaptureProduct and one-time realization | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
 | Product repetition wrappers, contextual expansion, Val1 identity and Policy-indexed unpacking | [Product algebra](patterns-overload/product-repetition-and-unpacking.md) |
 | Callable tails and Pack boundaries | [callable material](patterns-overload/callable-tail-dot-name-and-pack-pattern.md) |
@@ -22,16 +22,16 @@ that the corresponding source semantics is implemented.
 | Associated state A as a derived compile invocation | [associated state](symbol-world/associated-compile-state.md) |
 | Closure anchored replication | [replication](symbol-world/closure-anchored-replication.md) |
 | Single Stage, P1/P2/Pin/Pout, R_vis, demand and migration | [policy](symbol-world/policy-and-static-flow-projection.md) |
-| Exact callee/self, ordinary C_sigma family and forwarding | [calling](symbol-world/function-object-call-model.md) |
-| Proof-relevant Pattern relation and extraction | [Pattern relation](patterns-overload/pattern-relations-observation-and-extraction.md) |
+| Exact callee/self, CallAnchor/Param/Return projections, coherent passing, ordinary C_sigma family and forwarding | [calling](symbol-world/function-object-call-model.md) |
+| Proof-relevant Pattern relation, directional Function Pattern extraction/request and callable source forgetting | [Pattern relation](patterns-overload/pattern-relations-observation-and-extraction.md) |
 | Restricted Split/D, internal chain completion and residual escape | [extraction chains](patterns-overload/static-pattern-spaces-and-extraction-chains.md) |
 | Pass action, move fixed point and directed with cleanup placement | [mechanical passing](mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
 | Requested-name producer surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
 | Compile instance identity, result delivery, opening sources and current storage | [invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md) |
-| Runtime main, active dominance, readiness, E projections and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
+| Runtime main, active dominance, readiness, E projections, delivery-selected ABIKind and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
 | Host IO and target-machine Objects | [host capabilities](static-evaluation/host-capabilities-and-machine-objects.md) |
-| Instance Killable/MoveEffect/Movable, same-K @, Region and Color | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
+| Instance Killable/MoveEffect/Movable, same-K @, Region/Color and Function Pattern contract implication/defaults | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
 | Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
 | Level/main.lang anchor and PhysicalTree normalization | [physical source](build-package/build-system-design.md) |

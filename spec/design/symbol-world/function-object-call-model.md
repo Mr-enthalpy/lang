@@ -438,40 +438,43 @@ a standalone value.
 ## 6. Implicit `self`
 
 Every callable, including ordinary, in-place, and compiler-generated
-closures, has an implicit first parameter position for the caller object.
+closures, has a contextual implicit self-position in its source formal frame.
 When the source writes any formal position, the first written formal explicitly
 declares the Pattern/binder for that position. Its spelling is unrestricted;
 `self` is conventional rather than reserved.
 
-The selected call entry `()` always receives the value being invoked as
-implicit `self`. For a standalone function this value is the function object;
+The selected call entry `()` retains the value being invoked as ActualSelf.
+For a standalone function this value is the function object;
 for an associated call entry it may be a `T`, `T ref`, `T share`, or another
 ordinary callable object. The user cannot manually pass this slot.
 
 The source product contains only the explicit user arguments. `ProductSyntaxMaterial`, `ArgProductShape`, and `RawArgShape` represent only the explicit product supplied by the user. They do not contain the implicit `self`.
 
-The implicit `self` belongs to the callable-entry invocation frame, not to the source product.
+The contextual `self` belongs to the callable-entry invocation frame, not to
+the source product. This source formal position does not assert one Object
+slot in the complete internal input or in Function Pattern extraction.
 
 Declared receiver/parameter policy-pair compatibility applies uniformly to
 that complete frame:
 
 ```text
-InvocationFrame:
-  slot 0 = selected caller-object self view
-  slot 1..n = explicit argument value views
+SourceFormalFrame:
+  position 0 = contextual self Pattern/binder
+  position 1..n = explicit argument Patterns
 
-every slot must satisfy its selected associated () entry policy pattern
+InternalInput = Merge_K(SelfProjection(I,Param), B_K(explicit_args))
+every actual position satisfies its selected entry's ordinary requirements
 ```
 
 The formal/call-site alignment is:
 
 ```text
-written formal 0       <- implicitly injected callable object
+written formal 0       <- selected callable's contextual self binding
 written formal 1..n    <- explicit call-site Product positions 0..n-1
 ```
 
-A head with no written formal still has invocation-frame slot 0, but it does
-not bind that object to a source Pattern.
+A head with no written formal still has contextual self, without a written
+binder. Its implicit input Product may have zero, one or many value positions.
 
 No separate self-policy plane is required. P1/P2 are independent. For
 omitted ordinary P1 stage, runtime P2 defaults to runtime, and
@@ -530,6 +533,68 @@ Every ordinary and in-place closure keeps its own lexical/Self/navigation layer.
 Selected semantic call entries supply implementation, Policy and privilege;
 graph declarations remain rendering projections.
 
+### 6.2 Consumer-directed self projections
+
+This owner defines the projections of one selected invocation:
+
+```text
+I = <SelectedCallable c*, SelectedImpl Impl*, sigma*, frame*, K>
+CallValue(x): ActualSelf(I)=x;  CallTarget(I)=x
+CallType(tau): ActualSelf(I)=c*; CallTarget(I)=tau, c* in V_tau
+
+SelfProjection(I,CallAnchor) = selected callable anchor
+SelfProjection(I,Param) = implicit dependency Bare Product of this entry
+SelfProjection(I,Return) = (CallTarget(I),Activation(I))
+ReturnFrame(I) = SelfProjection(I,Return)
+
+ordinary user-defined x:T associated () call: SelfProjection(I,Param)=B_K(x)
+formed value-capture closure C: SelfProjection(I,Param)=CaptureProduct(C)
+InternalInput(I,explicit_args)
+  = Merge_K(SelfProjection(I,Param),B_K(explicit_args))
+```
+
+CaptureProduct is defined only by the [dependency owner](dependency-observation-and-realization.md#41-ordered-value-capture-material).
+Compile structural dependencies do not become value parameter positions.
+The ordinary user receiver is the cardinality-one case; closure captures can
+have cardinality zero, one or many. The contextual first formal can observe
+the caller/context without requiring an extra universal environment Object
+among these positions. CallableOwner, ReceiverType, ActualSelf, CallTarget
+and ReturnFrame remain distinct; binder spelling and self type select no
+return activation.
+
+Before selection, a candidate's already formed implicit material is local,
+read-only evidence for ordinary applicability and its implementation's input
+requirements. It executes no transfer, initializer or candidate body. Candidates
+need no common capture prefix, shape or count, and capture shape adds no
+preference. Required missing evidence remains Unavailable. Only unique sealed
+selection supplies I and authorizes actual implicit/explicit input formation
+and movement for c*. This is the ordinary pipeline, not another selector.
+
+The callable retains its entry/source anchor, so `(args) |> self` enters an
+ordinary new call through CallAnchor. It creates a new activation and selects
+at that call's actual frontier; no old sealed invocation is reopened. Reentry,
+state transfer and borrows require the current Movable and Pre/Post facts.
+
+### 6.3 One coherent passing transaction
+
+```text
+Pass(CalleeSelf(I)) ~life Pass(SelfProjection(I,Param))
+SelectedCall -> exact implicit + explicit input material
+  -> ordinary pass normalization, all terminal Move
+  -> all affected Move/borrow/access/lifetime Pre
+  -> atomic commit at existing action boundaries -> joint declared Post
+```
+
+Here ~life requires compatible observable consumption effects on actual
+dependency/parameter positions, not equal Object identities or two transfers.
+The implementation cannot Kill whole-self and then Kill each projected capture
+again. Ref/share positions transport their handles with existing target,
+generation and origin; they do not transfer ownership of the referent.
+Kill/Preserve is fixed independently of Movable. Preserve creates no copy or
+clone; a killed old generation cannot be reused. These obligations consume
+the existing mechanical and lifetime judgments and introduce no new transaction
+or lifecycle evaluator.
+
 ## 7. ZST function objects
 
 A function object with no stored environment is normally zero-sized.
@@ -572,9 +637,10 @@ semantic realization before layout. Actual owned state participates in ordinary
 structure and identity; refs retain targets/generations. Neither hidden
 semantic side tables nor mandatory public self.Val2 fields are allowed.
 
-Explicit and implicit declarations remain distinct even for the same source.
-A layout optimization may coalesce equivalent storage only preserving semantic
-binder, view and source obligations. Copy/replication preserves formed
+Value-capture modes are mutually exclusive for one closure; automatic compile
+structural dependencies remain separate. Distinct admitted occurrences preserve
+binder, view and source obligations even when layout shares storage.
+Copy/replication preserves formed
 dependencies without rerunning initializers, relookup or extending lifetimes.
 Runtime formation residue is retained when not ready.
 
@@ -587,23 +653,17 @@ blocks and headed bodies without => use this form; => selects ordinary syntax.
 The parser does not infer placement from head presence.
 
 ```text
-DependencyMaterial(C) = ExplicitDeps(C) union AutomaticDeps(C)
-ExplicitCaptureOccurrence(C, d) => d in ExplicitDeps(C)
-FreeExternalObservation(C, d) and not ReplacedByExplicitCapture(C, d)
-    => d in AutomaticDeps(C)
-    => Needs(Form(C), Source(d), observation, Gamma, Sigma)
-DependencyRequirement -> DependencyRealization
+DependencyMaterial(C) = D_struct_compile(C) union D_value_Mode(C)(C)
+InPlace(C) => ValueCaptureMode(C)=Automatic
 ClosureFormation(C) = FormCompleteType(Head_C, Body_C, DependencyMaterial(C))
-
-InPlace(C) => ExplicitDeps(C) = empty
-AutomaticDeps(C) != empty does not imply InPlace(C)
-
 Eval(InPlaceClosure_C) = tau_C
 ```
 
-These occurrence rules apply to all closures. An ordinary => closure may
-combine explicit and automatic dependencies for distinct occurrences. Resolved
-capture binders replace the corresponding outer observations. CompilePartner
+The [dependency owner](dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation)
+defines the closure-wide exclusive value modes and independent automatic compile
+structural dependencies. An explicit clause cannot acquire an omitted external
+value automatically; an ordinary => closure without that clause may use
+Automatic mode. Resolved capture binders replace outer observations. CompilePartner
 selection preserves these established dependencies and their ordinary identity.
 Invocation preserves the actual lexical owner and admitted dependency coordinates.
 
@@ -656,7 +716,7 @@ break the tie. Raw/Norm placement remains only formation syntax information.
 ## 8. Call lookup pipeline
 
 ```text
-shape explicit Product; retain implicit self in invocation frame
+shape explicit Product; retain contextual self and candidate-local implicit evidence
 resolve target once -> ordinary Val2[()] entrance / type V_tau projection / group
 expand all actual callable/implementation pairs -> one candidate family
 apply pre-C0 family filter -> enumerate C0
@@ -667,6 +727,7 @@ fallback suppression D
 Policy product maxima (including migration endpoints when applicable)
 Pattern specificity / first-order / named filters
 unique Selected=(candidate*,sigma*,frame), candidate* retains (c*,Impl*)
+form selected SelfProjection(Param) + explicit input; normalize terminal Move
 DynamicLegality -> Ready execution or retained continuation
 ```
 
@@ -721,8 +782,8 @@ Current source carriers do not implement this full consumer.
 - The call entry `()` for a directly defined function object lives under that anonymous type.
 - Each value/ref/share callee type supplies an associated () with matching first self.
 - `CallableOwner` and receiver type are independent semantic facts.
-- Implicit `self` is always the invoked caller object and is passed by the call
-  mechanism.
+- Contextual self retains the selected caller/context; CallAnchor, Param and
+  Return are distinct consumer projections. Param is not universally one Object.
 - The self role is positional; the first written formal exposes it under an
   ordinary user-chosen binder/Pattern, and `self` is only a conventional
   spelling.

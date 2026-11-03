@@ -149,6 +149,14 @@ separate outer destination follows producer delivery; its failure does not undo
 an already committed producer Close except through an established enclosing
 transaction. Failure before commit publishes no partial Object or Close.
 
+The [E owner](evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+classifies an established outward FreshLet delivery as ABI1 and an already
+designated ExistingTarget, including an uninitialized Place, as ABI2. This
+does not turn every producer ReturnEvent into a target-Place assignment or
+erase the distinct producer/outer transaction boundaries above. Other return
+positions first resolve their ordinary E delivery consumer. Physical addresses,
+temporary-elision success and cache storage never choose that convention.
+
 ## 5. Lifetime, references and retained state
 
 OpenHere governs mutation qualification, not lifetime. Stable instance identity

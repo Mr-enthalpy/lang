@@ -518,10 +518,16 @@ explicit shorthand for `[let x = x]` with no written mode override; it is not
 automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not
-`self` fields or layout decisions. Ordinary closures may combine
-explicit capture occurrences with automatic free observations not replaced by
-resolved explicit capture binders. In-place syntax excludes explicit clauses;
-it is not the exclusive source of automatic dependencies. Invocation consumes
+`self` fields or layout decisions. Each closure has one explicit or automatic
+value-capture mode: a written clause excludes automatic value capture, so an
+omitted external value dependency is diagnosed by the resolved consumer.
+Automatic compile structural dependencies remain independent; runtime structural
+access is inadmissible. In-place syntax excludes explicit clauses and uses
+Automatic mode, also available to other admitted clause-free closure forms.
+Explicit list entries retain source order as bare positional CaptureProduct
+entries across stages; automatic sequence is fixed at completed formation.
+Raw/Norm list preservation proves neither resolved exclusivity nor realization.
+Invocation consumes
 the established realizations without recapture; outer writes use ordinary
 access/capability/lifetime judgments.
 After formation, placement and capture origin supply no overload applicability,
@@ -540,10 +546,16 @@ navigation searches the complete namespace view. A later consumer's capability
 and Policy checks do not filter that namespace view or rewrite `PolicyMode`;
 ordinary external call references inhabit the same external-symbol problem
 domain. This does
-not imply an implementation dependency on call resolution. Explicit and
-automatic capture remain distinct dependency declarations even when they
-resolve to the same source symbol; only later layout may coalesce equivalent
-storage while preserving binder, policy, and provenance.
+not imply an implementation dependency on call resolution. Distinct admitted
+capture occurrences preserve binder, policy, order and provenance even for
+equal values; later layout may share storage only preserving all observations.
+
+The contextual first self formal remains a syntax position, not a universal
+single Object in full internal input. The [call owner](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+defines its three projections. The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines LHS full-input extraction versus RHS explicit-only requests with no
+capture/self, lifetime clauses or spread. Existing generic closure-head carriers
+are not proof of these consumers. No parser syntax or diagnostic is changed here.
 
 ## 10. Diagnostics
 

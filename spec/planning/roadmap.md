@@ -69,6 +69,8 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Lifecycle | SemanticContinuation, LifeName, Region, supplied Pre, Kill/Preserve, fixed cleanup and Color; common transactions gate every action on earlier cleanup observations | Source producer facts, NLL/with, ReifyLife and destructors need ordinary control-flow facts; source actions must enter the common transaction |
 | Physical source | Discovery/decoding/provenance and normalized fragments retaining inherited navigation; empty fragments form no semantic names or owners | Declarations under inherited navigation require the qualified ordinary name/Path consumer; EntryContinuation, sibling overlays and dependency projection need E composition |
 | InvocationResult | Semantic result, residual and diagnostic transport | Residual requires a real remaining continuation; serial completion and residual ABI remain separate |
+| Closure / self / Function Pattern | Capture syntax/Pattern roots, contextual formal-frame carriers, ordinary sealed selection and transaction substrate | Requested UseKind/DemandStage classification, exclusive value-capture modes, fixed CaptureProduct, candidate-local implicit relation evidence, actual Param transfer and directional FnExtract/FnRequest are pending; generic closure heads do not implement RHS requests |
+| Delivery ABIKind | Canonical E law: FreshLet ABI1, ExistingTarget ABI2 | Delivery target consumer wiring and physical input-frontier/target-Place materialization remain pending; RVO/NRVO supplies no selection evidence |
 
 A missing canonical consumer reports unavailable or preserves an established
 remaining continuation. Representation supplies no substitute evaluator,
@@ -185,6 +187,27 @@ no private facts. Equivalent rewrites revalidate affected projections before
 E saturates Ready work.
 
 ## 8. Acceptance evidence
+
+The [closure/self/Function Pattern matrix](canonical-semantic-conformance.md#closure-self-and-directional-function-pattern-acceptance)
+records T01–T22 as normative targets, not executable success. Current
+`lang_syntax/tests/callable_tail_dot_pack.rs` covers capture binding syntax and
+contextual first-formal/Pack boundaries. `lang_build/tests/ordinary_invocation_spine.rs`
+checks selected capability/lifecycle failure with a runner-up, proving no reopen
+for that substrate. `policy_rank_chain.rs` checks rank-prefix material only.
+Source Function Pattern matching/request and candidate-local self relation
+solving are not connected: current applicability solves explicit parameters;
+closure atoms in Pattern context remain unsupported. No new syntax or executable
+closure evaluator is supplied by the topic specification revision.
+
+Two independent follow-up PRs consume the new laws:
+
+- Lifecycle SCC convergence: fixed calls/captures, Region/origin/generation and
+  Pre/Post/MoveEffect enter a justified fixed-point procedure yielding evidence
+  or explicit rejection. Neither convergence nor a retry/preference is assumed.
+- Machine materialization: SelectedCall, normalized PassMoves, delivery target,
+  E-selected ABIKind, lifetime evidence and machine facts yield checked input
+  frontier/ABI1 overwrite or ABI2 target delivery and proved tco/loop slot reuse.
+  Physical stack/FFI encoding cannot alter E's convention or choose lifecycle facts.
 
 Each phase runs cargo fmt --all, cargo check --all-targets, targeted tests and
 git diff --check. Final integration runs cargo test and an active-tree

@@ -127,8 +127,14 @@ Invocation does not recapture or resolve external names again by spelling.
 Pure Core material has TypeRole independently of self-construction; every
 well-formed complete tau is a type. Dependency realization follows the selected
 ordinary source action, uniquely up to observational equivalence.
-Ordinary closures may combine explicit and automatic dependency occurrences;
-in-place syntax excludes explicit clauses and supplies no overload preference.
+Each closure has one explicit or automatic value-capture mode; automatic compile
+structural dependencies remain independent. Captures form an ordered bare
+Product, fixed at formation; in-place syntax uses automatic value capture.
+The [call owner](spec/design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+separates self's call anchor, implicit parameter Product and return frame.
+The [Pattern owner](spec/design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines LHS full-input contract extraction and RHS explicit-argument requests.
+E selects ABIKind from result delivery; machine materialization remains pending.
 Every compile call forms a CompileInstance from parent owner, selected partner
 and canonical inputs before body entry. Ordinary callable dependencies retain
 their actual identity, with no hidden caller-environment coordinate.
