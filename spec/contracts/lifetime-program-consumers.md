@@ -66,7 +66,9 @@ Already committed history/Color and earlier external effects are not erased.
 
 - **Input material:** Established K, selected actions/MoveEffect and origins,
   guarded control, dependencies, actual activations, result delivery and fixed
-  cleanup; projection-completion provenance for lifecycle-side programs.
+  cleanup; projection-completion provenance for lifecycle-side programs. The
+  walkthrough's source_frame and selected entries must come from this actual
+  correspondence; a user-created Frame-shaped value supplies no action authority.
 - **Existing action that determines it:** Ordinary E and the name/call/Policy/
   control consumers, not a textual scan or later machine schedule.
 - **Kind of ordinary lang program consumed:** Selected lifecycle partners and
@@ -86,6 +88,9 @@ Already committed history/Color and earlier external effects are not erased.
 - **Fidelity/composition obligations:** Stage erasure retains selection,
   activation, control and effects; no re-selection, future-value path pruning,
   double projection, or global-lifetime inference from compile knowledge.
+  The [expanded transcription](../design/lifetime/lifetime-algebra-walkthroughs.md#lifetime-transcription)
+  must retain real Ordinary/InPlace scopes, recursive calls and exits. Its own
+  ordinary lifecycle premises still terminate in the bootstrap basis.
 
 ## LC3. Internal actions and public transaction
 
@@ -119,7 +124,9 @@ Already committed history/Color and earlier external effects are not erased.
   observation/update authority. Result positions are not premature Objects.
 - **Existing action that determines it:** Ordinary selected invocation and
   compile instance/self-root result formation, associated state/name/Place
-  operations and actual successful body/result boundary.
+  operations and actual successful body/result boundary. Initial self residency
+  requires the [current-instance formation handoff](../design/symbol-world/structural-type-formation-and-composition.md#current-instance-initial-formation-handoff),
+  not a read/copy of uninitialized self or a reparented helper result.
 - **Kind of ordinary lang program consumed:** Complete compile expressions
   with local declarations, branches, recursion and calls; ordinary associated
   check/admit formed through actual OpenHere and member authority.
@@ -130,6 +137,8 @@ Already committed history/Color and earlier external effects are not erased.
   check -> caller Post admit. Entry assumptions and summary import do not
   replay the internal history. Type construction authority and admit's world
   authority are separate. Joint successful publication remains mandatory.
+  Component adoption uses the original boundary's scoped projection storage
+  and publishes no partial delta if a later component fails.
 - **Failure or unavailable result:** Failed Pre prevents action, failed required
   Post prevents successful outward delivery, and unavailable contract behavior
   stops there. A failure cannot retroactively undo earlier unrelated commits.
@@ -138,7 +147,12 @@ Already committed history/Color and earlier external effects are not erased.
   delivery. Current lifetime head-clause carriers supply syntax only.
 - **Fidelity/composition obligations:** Four-way mapping, self-root reachability,
   world authority uniqueness, history preservation, and no duplicate execution.
-  External new facts require LC7 rather than ordinary derivation alone.
+  A true user check grants no additional update authority: each safe operation
+  independently requires its derivable mapped source/region/Color/access/effect
+  premises. External new facts require LC7 rather than ordinary derivation alone.
+  Formation and updates cannot be justified by the still-unformed contract's
+  own check/admit/automatic Post. See the owner's [terminating basis](../design/lifetime/lifetime-policy-and-overload-boundary.md#91-bootstrap-dependencies-must-terminate)
+  and [ordinary contract/counterexample](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program).
 
 ## LC5. Exit compression and automatic Post
 
@@ -166,6 +180,8 @@ Already committed history/Color and earlier external effects are not erased.
   correlated effects and unknown identity; cropping/compaction never amplifies
   validity. Prove nested-boundary observational composition and each adopted
   choice/recursive combination separately; no universal join/commute theorem.
+  Compression traverses every outward dependency/effect row, not just the result
+  origin, at each real boundary as in the expanded W1 program.
 
 ## LC6. Function Pattern and recursive interface consumption
 
@@ -259,3 +275,9 @@ algorithm or recursive contract consumer is connected by this documentation
 revision. These gaps require ordinary language consumers and a small justified
 bootstrap basis, not a parallel Rust interpreter, string-matching semantic
 tests, default success or a general external theorem prover.
+
+In particular the initial current-instance root source facility, its complete
+resident publication, component-scoped safe world operations and the expanded
+walkthrough programs are pending. Existing host callbacks/snapshots prove only
+their supplied-material slice; they cannot validate a source function merely
+because it is named check/admit or returns true.

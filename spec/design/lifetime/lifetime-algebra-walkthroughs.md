@@ -61,26 +61,177 @@ Split/D completion; a branch mismatch is not a failed selected extractor.
 
 ### Lifetime transcription
 
-Here is the ordinary-program skeleton of the transcription. `companions`
-denotes the actual paired entries retained from selected actions, and `m`
-is ordinary structured action/control material. These are illustrative API
-roles, not a runnable library or a second interpreter.
+The following is an expanded **design program**, not accepted/executed compiler
+output. The callable entries in `selected` are the counterparts of the original
+sealed share, observation, predecessor, input Move and return actions. The
+namespace name is schematic; it is supplied by that correspondence, not found
+by resolving the business expression again. Frame/Boundary/Exit/Rows below are
+ordinary complete material types with real registered extraction/field members.
+Their encodings and these API names are not frozen.
+
+First, spell out the ordinary recursive local-elimination operation. The
+registered origin view has three ordinary disjoint branches: a known link, an
+actual unknown root, or explicit termination. A missing observation produces a
+diagnostic, not a fourth branch that can silently succeed. This example admits
+finite known prefixes; a cyclic regular family needs the separate §14 evidence.
 
 ```lang
-let r_l = r@;
-let fuel_l = fuel@;
-let shared_l = fuel_l |> share_partner::companions;
-let guard_l = shared_l |> is_zero_partner::companions;
-let m = (guard_l, r_l, fuel_l) |> guarded_material::companions;
-let post_type = m |> boundary_post::lifetime;
+let compress_origin =
+    (self, cursor:LifeName::, acc:OriginAccum::):compile -> _:RootMaterial:: => {
+        cursor |> observe_origin::lifetime
+            |> (_, let edge:KnownOrigin::) {
+                let (parent, order, colors, paths, choices, effects) =
+                    edge |> split_link::lifetime;
+                let next = (acc, order, colors, paths, choices, effects)
+                    |> compose_link::lifetime;
+                (parent, next) |> self return;
+            }
+            |> (_, let u:UnknownOrigin::) {
+                (u, acc) |> retain_unknown::lifetime return;
+            }
+            |> (_, let end:TerminatedOrigin::) {
+                (end, acc) |> retain_termination::lifetime return;
+            };
+    };
+
+let compress_rows =
+    (self, rows:Rows::, boundary:Boundary::):compile -> _:Rows:: => {
+        rows
+            |> (_, let empty:EmptyRows::) {
+                empty return;
+            }
+            |> (_, let cell:NonemptyRows::) {
+                let (row, rest) = cell |> split_row::lifetime;
+                let (cursor, order, colors, paths, choices, effects) =
+                    row |> split_outward_row::lifetime;
+                let acc = (order, colors, paths, choices, effects)
+                    |> origin_accum::lifetime;
+                let root = (cursor, acc) |> compress_origin;
+                let head = (root, boundary share) |> map_outward_row::lifetime;
+                let tail = (rest, boundary) |> self;
+                (head, tail) |> prepend_row::lifetime return;
+            };
+    };
+
+let compress_exit =
+    (self, exit:Exit::, boundary:Boundary::):compile -> _:Exit:: => {
+        let (target, delivery, rows, control) = exit |> split_exit::lifetime;
+        let mapped = (delivery, boundary share) |> map_delivery::lifetime;
+        let outward = (rows, boundary) |> compress_rows;
+        (target, mapped, outward, control) |> exit_material::lifetime return;
+    };
 ```
 
-`is_zero_partner` records the observation/use and its ordinary delivery. It
-cannot compute an unknown Nat value from fuel_l. `guarded_material` assembles
-the retained true/false Pattern arms with the actions below. It executes no
-unchosen branch effects. For a known choice only the reached actions commit;
-otherwise the actual guarded continuation remains. The rows describe what
-ordinary pattern extraction, Product assembly and calls operate on:
+`compose_link` combines exactly one observed edge's region order, inherited
+Color, permitted paths and correlated effects; it cannot manufacture a root
+or lengthen validity. `map_outward_row` uses the boundary's actual local/external
+partition, removes reads of exiting local carriers and retains those composed
+constraints. `map_delivery` uses the already selected result consumer; it does
+not select or create a result Place. Rows cover **all** outward result,
+dependency and effect components, not only the return origin. Each split and
+constructor is ordinary Pattern extraction/complete formation. Those finite
+operations are smaller inputs to the stated composition obligations, not a
+hidden whole-program `boundary_post` operation.
+
+Now transcribe the source function. `frame` is the actual source invocation's
+established name/selection/activation/cut/delivery material. Scope queries below
+return owned boundary descriptors for the source function, branch and two
+nested InPlace scopes, including their formed dependencies and fixed cleanup.
+They neither invent activations nor execute that cleanup a second time.
+
+```lang
+let descend_life =
+    (self, frame:Frame::, r_n:LifeName::, fuel_n:LifeName::):compile
+        -> _:Exit:: => {
+        let function_exit = frame share |> function_boundary::lifetime;
+        let (h_n, share_history) =
+            (frame share, fuel_n share) |> share_fuel::selected;
+        let (guard, guard_history) =
+            (frame share, h_n) |> is_zero::selected;
+        let is_leaf = (frame share, guard share) |> available_guard::lifetime;
+
+        is_leaf
+            |> if {
+                let branch_exit = frame share |> true_boundary::lifetime;
+                () |> {
+                    let middle_exit = frame share |> middle_boundary::lifetime;
+                    () |> {
+                        let inner_exit = frame share |> inner_boundary::lifetime;
+                        let (out_n, move_history) =
+                            (frame share, r_n) |> move_leaf_result::selected;
+                        let raw = (frame share, out_n, share_history,
+                                   guard_history, move_history)
+                            |> return_exit::selected;
+                        let e1 = (raw, inner_exit) |> compress_exit;
+                        let e2 = (e1, middle_exit) |> compress_exit;
+                        let e3 = (e2, branch_exit) |> compress_exit;
+                        let e4 = (e3, function_exit) |> compress_exit;
+                        e4 return;
+                    };
+                };
+            }
+            |> else {
+                let branch_exit = frame share |> false_boundary::lifetime;
+                let (n_n, predecessor_history) =
+                    (frame share, fuel_n) |> predecessor::selected;
+                let (child_frame, child_r, child_fuel, input_history) =
+                    (frame share, r_n, n_n) |> recursive_input::selected;
+                let child_exit = (child_frame, child_r, child_fuel) |> self;
+                let raw = (frame share, child_exit, share_history, guard_history,
+                           predecessor_history, input_history)
+                    |> returned_call_exit::selected;
+                let e1 = (raw, branch_exit) |> compress_exit;
+                let e2 = (e1, function_exit) |> compress_exit;
+                e2 return;
+            };
+    };
+
+let r_l = r@;
+let fuel_l = fuel@;
+let outward = (source_frame, r_l, fuel_l) |> descend_life;
+let post_type = outward |> form_post::lifetime;
+```
+
+The last four lines are the projection entry at the source boundary, with
+`source_frame` supplied by that invocation's ordinary E correspondence. `@`
+projects the already established names, not their unknown business contents.
+Each `selected` call preserves the original action, input/output generations
+and MoveEffect. For example recursive_input supplies the **new** child input
+names after the actual call's single input transfer; child entry does not Move
+the parent's old generation again. return_exit records the existing target
+tag/activation and actual ReturnPattern delivery. returned_call_exit records
+child completion followed by the parent's real return, with no hidden result
+binding. No selected action is replaced or retried.
+
+`available_guard` observes only an actually available control decision already
+established by the source call. It does not recover a Nat value from fuel@.
+For the complete finite witness, those successive observations and finite fuel
+are legally available. If a business guard or recursive child frontier is
+unknown, E leaves the actual guarded continuation unfinished, or reports the
+unavailable observation when its transport consumer is missing. It does not
+run both branches. An ahead-of-execution **summary** of both arms must instead
+use their already formed guarded Pattern material and the justified modular
+family; the traversal above does not create that evidence by executing future
+actions. This is the same ordinary frontier rule as in the source function.
+
+descend_life is an Ordinary closure with its own self/activation. The `|> self`
+call sites use its CallAnchor projection for recursion, independently of the
+compile-instance name observation used by the type-forming program in W2.
+Its anonymous
+branch heads do not bind over the outer self used for recursion. The two `()`
+calls invoke actual InPlace lifecycle closures with zero explicit entries.
+The innermost `e4 return` crosses them and the branch to that Ordinary frame;
+it produces no intermediate normal unit/result. Its **Exit payload** separately
+retains the corresponding source F_i return target. The four explicit
+compression calls transform the material for the four actual source exits
+while local observations are available; they do not move cleanup cuts.
+Formation/dependency/cleanup effects in each boundary and every selected action
+remain in the rows. `form_post` is expanded as ordinary code in W2 below.
+
+These projection-complete lifecycle programs use ordinary values, calls and
+their own required lifecycle premises. They are not transcribed into another
+`@` program; their foundational operations obey §9.1 of the lifetime owner.
+The following table relates the spelled-out program to its source material:
 
 | Position | Input and computed material | Commit / exit |
 |---|---|---|
@@ -111,7 +262,92 @@ finite but supplies no proof that an arbitrary recursive contract program
 terminates. Neither argument proves TCO, bounded stack or reusable machine
 slots. These are separate [proof obligations](lifetime-policy-and-overload-boundary.md#14-proof-obligations-and-engineering-freedom).
 
+### One finite end-to-end trace
+
+Take the admitted witness with fuel=1, then fuel=0 in the recursive call, with
+both guard observations legally available at the respective current frontier.
+Let the external handle target be Q and its retained unknown origin root U.
+All positions below are the source actions' already fixed cuts, not cuts chosen
+by the lifecycle program to satisfy a constraint.
+
+1. Entry supplies r@/fuel@ and frame F0. The selected share/is_zero counterparts
+   form the shared handle/observation material and record the false guard.
+   The share interval ends at its fixed cut before predecessor consumes fuel.
+2. predecessor's actual counterpart forms the complete next fuel name. The
+   value 0 comes from that ordinary producer, never from arithmetic on a
+   LifeName. recursive_input maps the selected single input transfer to F1's
+   new r/fuel generations and records its history once.
+3. The ordinary call to descend_life on F1 reaches its true branch. Its nested
+   lifecycle InPlace calls mirror the source exits. move_leaf_result retains
+   Q/U and forms the delivered handle generation under the selected MoveEffect.
+   compress_origin walks available links to the same U; compress_rows does
+   this for every outward result/dependency/effect row.
+4. e1–e4 eliminate the inner, middle, branch and F1 local-name reads in order.
+   They retain the F1 target completion, Q validity, colors, paths and effects.
+   `e4 return` is the lifecycle function's actual return across its InPlace
+   scopes; the Exit value still describes the original F1 return.
+5. In F0, returned_call_exit consumes F1's actual completion/delivery material
+   and records F0's real return event. The last two compression calls process
+   F0's branch/function exits. No extra source result binding, old-generation
+   Drop, reborrow or second input Move appears.
+6. The ordinary form_post program below consumes that complete outward Exit,
+   initializes its own authorized root I and installs check/admit. Body Post
+   checking uses the actual mapped result/history. Caller Post adoption uses
+   the corresponding success-scoped world view and the independent component
+   update premises, then participates in public E's joint Post publication.
+   It imports the summary; it does not replay steps 1–5.
+
+The useful return-source component is from(r@) only under the stated outward
+effect condition. All other rows remain in the complete summary. If any
+observation, formation, recursive-family or boundary consumer in this trace is
+missing, that point is unavailable; the trace is not executed test coverage.
+
 ## 2. select_one and boundary origin compression
+
+### Concrete ref source selection
+
+Keep the original ref case explicit. Let Payload be an ordinary complete
+payload type. Its ordinary type-forming ref operation gives the external
+classifier below; `$` in the formal/return Pattern uses that ready type value.
+It is not a reborrow. This is again a design target, not parser/runtime coverage.
+
+```lang
+let PayloadRef = Payload:: |> ref;
+let select_one_ref =
+    (self, r1:PayloadRef$, r2:PayloadRef$, choose:bool::):runtime -> o:PayloadRef$
+        lifetime pre o@..live_with(r1@ || r2@)
+        => {
+            choose
+                |> if {
+                    () |> { let a = r1; a return; };
+                }
+                |> else {
+                    () |> { let b = r2; b return; };
+                };
+        };
+```
+
+r1/r2 are actual exclusive ref **handles** to valid external targets Q1/Q2.
+The signature result position o has no resident before delivery. Normal input
+Move, dependency formation, cleanup of the unselected handle, target validity
+and all other Pre must hold. The true arm transports the selected r1 handle
+through a and into o; the false arm does the corresponding r2 transport. A
+killing handle Move creates sibling handle generations with the same target
+and inherited origin, not a borrow of the local handle Place. Ending a handle
+does not imply destroying its external referent.
+
+| Reached arm | Internal material | Compressed outward source component |
+|---|---|---|
+| true | Actual transferred handle a, target Q1, origin prefix p1/U1, its region/path/Color and other effects | o is from the r1 choice and remains constrained by Q1's validity |
+| false | Actual transferred handle b, target Q2, origin prefix p2/U2, its region/path/Color and other effects | o is from the r2 choice and remains constrained by Q2's validity |
+
+For this legal source-choice family the return component is
+`lifetime post o@..from(r1@ || r2@)`. Other outward effects stay guarded with
+their chosen source. It is one exclusive ref with one actual target, not two
+exclusive capabilities. If Q1 is a dying owned local instead of an admitted
+external target, the true exit still fails; compressing a does not repair it.
+The following generic T example is an additional admitted family, not a
+replacement for this concrete ref case.
 
 ### Source, entry and internal material
 
@@ -191,63 +427,167 @@ Any additional observable H_true/H_false remains guarded in the full Post.
 admissibility; that alone does not establish the selected source and transfer
 delta needed by admit. The operations have different consumer roles.
 
-A possible ordinary implementation organization is:
+The guarded arm descriptors can be assembled by an ordinary registered choice
+constructor **after** the per-arm compression spelled out in W1. The resulting
+Exit retains source/effect correlation and every outward row. There is no
+required intermediate contract Object or formula string. The next program
+consumes that ordinary material directly.
+
+### Ordinary self-root contract program
+
+Here is a complete design example of the construction path. `form_post` has
+an Ordinary compile invocation I. Its actual fresh formation action supplies
+I's opening window and one-shot root initialization authority independently
+of the contract it will return. The first call is the
+[initial formation handoff](../symbol-world/structural-type-formation-and-composition.md#current-instance-initial-formation-handoff),
+with a schematic source API name. It initializes **I itself** with a complete
+empty structural type. `self#` uses the compile self projection and reads its
+NameValue only. Passing that value is not sufficient to obtain the authority;
+the callee must check the actual target/window/initialization premises.
+The qualified `check::self`/`admit::self` roots and final type-valued self read
+use that same current I. Recursive callable invocation would instead use the
+CallAnchor consumer. These projections do not add another source self formal.
+
+The material family below has ordinary legal share/clone for its immutable
+descriptors. Cloning descriptive names/constraints copies no world permission.
+Each associated closure captures one owned descriptor once. It does not borrow
+the local relation whose lifetime ends when form_post returns. All library
+Paths name registered ordinary operations; structural dependencies retain their
+actual identity. An explicit capture list leaves no omitted external local value.
 
 ```lang
-let arms = (true_exit_material, false_exit_material);
-let compact = arms |> compress_guarded_origins::lifetime;
-let relation = compact |> source_choice::lifetime;
-open let contract_type = relation |> form_post::lifetime;
+let form_post = (self, exit:Exit::):compile -> _:type:: => {
+    self# |> initialize_empty_root::construction;
+
+    let relation = exit |> contract_rows::lifetime;
+    let for_check = relation share |> clone::lifetime;
+
+    mut let check_ref = (let check::self:type) ref;
+    check_ref = [let rel = for_check]
+        (check_self, w:world::lifetime::):compile -> _:bool:: => {
+            let source_ok = (w share, rel share) |> source_matches::lifetime;
+            let region_ok = (w share, rel share) |> region_fits::lifetime;
+            let color_ok = (w share, rel share) |> color_compatible::lifetime;
+            let access_ok = (w share, rel share) |> access_is_subset::lifetime;
+            let effects_ok = (w, rel share) |> effects_match::lifetime;
+            (source_ok, region_ok, color_ok, access_ok, effects_ok)
+                |> all_true::lifetime return;
+        };
+
+    mut let admit_ref = (let admit::self:type) ref;
+    admit_ref = [let rel = relation]
+        (admit_self, w:(world::lifetime::) ref):compile -> _:unit:: => {
+            let w1 = (w, rel share) |> adopt_origin::lifetime;
+            let w2 = (w1, rel share) |> adopt_region::lifetime;
+            let w3 = (w2, rel share) |> adopt_color::lifetime;
+            let w4 = (w3, rel share) |> adopt_access::lifetime;
+            let w5 = (w4, rel) |> adopt_effects::lifetime;
+            w5 |> end_boundary_view::lifetime;
+            () return;
+        };
+
+    self return;
+};
+
+let arms = (compressed_true_exit, compressed_false_exit);
+let outward = arms |> correlated_choice::lifetime;
+let contract_type = outward |> form_post;
 ```
 
-Here arms/compact/relation are Products or other ordinary intermediate values,
-not necessarily NameExpr. The functions must actually extract the origin,
-cut, path, Color and effect data just described. `form_post` uses its existing
-CompileInstance self projection, actual OpenHere and ordinary structural
-formation/associated member installation to deliver a single self-root type
-with check/admit. A Product containing an instance-open type cannot escape.
-Writing a copy of contract_type does not inject into the retained instance.
+contract_rows extracts the already compressed guarded rows; it does not redo
+the body or infer an arbitrary contract. all_true is ordinary finite Boolean
+folding, not a contract evaluator. Its inputs have these concrete responsibilities:
 
-The function bodies above owe the following ordinary data flow, rather than
-merely recognizing those function names:
+| Ordinary computation | Material examined / required result |
+|---|---|
+| source_matches | Actual entry/exit mapping, selected origin/target/generation and guard-correlated source; equality of integers or lifetime descriptor copies is insufficient |
+| region_fits | The actual cuts and interval/dependency constraints of every row; no extension of an expiring target |
+| color_compatible | Established directed rows, inheritance and intervals, retaining committed history |
+| access_is_subset | Actual operable endpoint ranges and modes; routing prefixes add no ancestor permission |
+| effects_match | Remaining mapped guarded use/move/drop/cleanup/other effects, not just o's origin |
+| adopt_origin/region/color/access/effects | The corresponding derivable mapped boundary component, under that operation's independent ordinary Pre on the supplied authority-scoped view |
 
-1. Extract the exit sum/Pattern and its local/external name partition. For each
-   origin observation, distinguish a known parent link, an actual Unknown(root)
-   boundary and explicit termination using ordinary registered Patterns. These
-   displayed constructor names are material descriptions, not fixed syntax.
-2. On a known link, retain the source identity and compose its region order,
-   permitted path and inherited Color with the accumulated descriptor. Continue
-   on the parent using an ordinary recursive call. Delete a local carrier only
-   from outward reads; keep its required validity relation in the descriptor.
-3. At Unknown(root) retain that same root and accumulated constraints; at
-   explicit termination retain termination. Missing field/combination evidence
-   stops unavailable. Finite acyclic prefixes have decreasing remaining length;
-   regular cycles require an independently justified regular-family operation,
-   not a new recursion cutoff or guessed unknown.
-4. Assemble the two complete descriptors as a correlated sum retaining each
-   guard and H. Extract the required source-choice view only after preserving
-   every other observable component. This is the material captured by the
-   formed associated behavior, not a text string encoding a formula.
-5. In form_post's already established instance I, ordinary structural formation
-   first supplies the complete construction subject needed for member access.
-   Under the actual OpenHere/Writable/initialization premises, qualified ordinary
-   formation installs check and admit at the corresponding members of that I.
-   Their ordinary closure dependencies retain the compact relation once; they
-   do not retain local a_l/b_l or recapture on a later boundary invocation.
-6. check reads the mapped world, extracts the appropriate guarded relation and
-   tests its region/path/Color/source requirements through the admitted ordinary
-   operations, returning bool. admit consumes the authorized boundary world
-   view and applies only the mapped successful relation/effect delta. Neither
-   recomputes business branch values, executes private H again, or invents an
-   external fact. Both retain their own real self/Param and ordinary Pre/Post.
-7. Deliver the complete I-root type directly, not nested in an intermediate
-   Product. Ordinary completion/Close follows delivery. The returned members'
-   actual dependencies must survive that delivery; instance identity alone
-   grants them no lifetime.
+The w1–w5 bindings are successive ordinary transfers of the **same target view**,
+not separately granted worlds. Component operations return the transferred view
+and use the existing boundary transaction's projection storage. All components
+retain the original action/cut/activation/mapping. A failed later component
+publishes no partial boundary delta; earlier independent commits are not undone.
+end_boundary_view consumes the temporary view, not the world or the referent.
+The explicit unit return is the admit function's real declared result, not a
+unit invented for an intermediate target-return scope.
 
-This gives a well-founded ordinary recursion for finite known prefixes and a
-specified input/output for the separate regular case. It does not prescribe
-the record encoding, cache or final function decomposition.
+This witness forms the contract for one actual boundary mapping and uses each
+owned member dependency under its real receiver/Param transfer premises. It
+does not assume unlimited reuse of a consumed callable. A reusable library
+version must choose and establish its ordinary permitted receiver/capture
+strategy, such as actual selected clone-derived descriptor transport or a
+proved preserving action; invocation never recaptures or silently copies it.
+
+At member formation, check::self and admit::self navigate the **outer** compile
+self's initialized current type. OpenHere, freshness, ordinary access/type/path
+checks and each child Place's one-shot authority apply. Parent Writable is not
+a child-name-formation premise. Explicit ref obtains the child's initial view;
+ordinary assignment installs the complete closure type and consumes that
+initialization authority. It supplies neither a persistent replacement ref nor
+TypeAdd/V_tau registration. Invoking either named member later uses its full
+ordinary callable type and its own check_self/admit_self; the operated world
+is an explicit argument. There is no extra contextual self or registry.
+
+Finally, `self return` reads the complete current tau_I and delivers it directly.
+The single-self-root reachability test, ReturnEvent, ordinary result assignment,
+Complete and Close are all real. The descriptor dependencies must survive;
+I's identity grants them no extra lifetime. Returning `(self, something)` or a
+wrapper containing this open type fails, and `let root=self` would only copy
+a resident rather than provide the retained instance Place.
+
+For example caller-side successful Post adoption invokes `w |> admit::contract_type`
+using its already established mapping and scoped world view. It computes the
+ordinary component updates just described, checks their premises and joins the
+other projection Posts at public E publication. It does not replay the selected
+callee's body. Caller Pre.check/body Pre.admit/body Post.check use the same
+associated behavior at their corresponding existing boundaries. These code
+paths, root initialization and world views remain **unconnected design targets**.
+
+### Always-true check cannot forge a world
+
+An ordinary user can form the same type with a check body that returns true.
+That is a bool computation, not a source of lifecycle facts. Consider replacing
+only the associated bodies in the program above with this malicious variant:
+
+```lang
+check_ref = (check_self, w:world::lifetime::):compile -> _:bool:: => {
+    true::bool return;
+};
+admit_ref = [let claim = forged_relation]
+    (admit_self, w:(world::lifetime::) ref):compile -> _:unit:: => {
+        let w1 = (w, claim) |> adopt_origin::lifetime;
+        w1 |> end_boundary_view::lifetime;
+        () return;
+    };
+```
+
+These are **alternative first initializers**, not second writes through consumed
+check_ref/admit_ref. Let the actual committed selected arm deliver Q2 from r2,
+while forged_relation says Q1 from r1. The true check does not satisfy
+adopt_origin's independent source/mapping Pre. That operation rejects before
+publication. Constructing a root, choosing these function names or returning a
+bool has created none of its missing premises. If a needed observation/consumer is
+unconnected, the result is unavailable, never a successful import.
+
+| Other attempted replacement | Why the ordinary safe update is unavailable/rejected |
+|---|---|
+| Change the origin to an unrelated name, fabricate None/unknown, or retarget the delivered ref | Not derivable from the actual mapped entry/success source; mutable observation copies do not write that source |
+| Extend the result Region beyond Q2's validity or change its generation's birth/cut | The supplied boundary cannot change actual lifecycle events or grant survival |
+| Remove an inherited shared Color or recolor the earlier interval as exclusive | History and fixed Color relations remain premises; legal interval end is not deletion |
+| Restore cropped ancestor access or turn a share path into a ref path | The actual operation domain and non-expansive access Pre forbid amplification |
+| Reuse the same world view at another activation/cut/output | The boundary correspondence is different; saving a ref or descriptor grants no later authority |
+
+A harmless always-true contract whose admit derives only permitted consequences
+may be useful as an empty/weak check, subject to all ordinary contract checks.
+Its own name cannot give it a stronger guarantee. A library that must add a
+genuinely new external success fact instead uses compatible unsafe Post after
+ordinary Pre and actual success; it takes responsibility for that fact's truth.
+The safe counterfeit above cannot opt into those rights merely by returning true.
 
 The boundary supplies the mapping of r1/r2/o and activation plus the authorized
 world update view. Constructing the type never gives its code arbitrary world

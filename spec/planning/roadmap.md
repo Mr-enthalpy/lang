@@ -310,6 +310,25 @@ automata/cache algorithms and machine cost models may evolve within these
 contracts. Every adopted recursive family must state its domain and evidence;
 finite regularity supplies neither termination of arbitrary programs nor TCO.
 
+The expanded [source transcription](../design/lifetime/lifetime-algebra-walkthroughs.md#lifetime-transcription)
+and [contract construction program](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+add these concrete LC2/LC4/LC5 obligations without new Rust coverage:
+
+- Retain actual selected counterpart entries, source function/InPlace boundary
+  descriptors and ordinary recursive/return structure. Available source control
+  may drive the program; unknown control remains in the real continuation.
+- Wire initial complete structural formation at InvokeName(I) under its actual
+  fresh window and one-shot authority before resident self/member reads. The
+  schematic initialize_empty_root source call is not currently implemented.
+- Install check/admit through ordinary qualified name/ref/first-write actions,
+  retaining owned compacted dependencies and direct self-root result delivery.
+- Give safe component adoption its actual activation/cut/generation/output
+  authority and derivability Pre independently of any user check bool. An
+  unrestricted semantic-world setter is not an admissible implementation.
+- Terminate the justification dependencies of each adopted program in the fixed
+  bootstrap basis. A cycle through its own not-yet-formed contract or automatic
+  Post supplies no evidence; missing consumers remain unavailable.
+
 Future executable acceptance must use real source producers and actions. Do
 not substitute a standalone checker, source-string recognition, supplied-fact
 fixtures, invented residual or default permission. Until connected, report a

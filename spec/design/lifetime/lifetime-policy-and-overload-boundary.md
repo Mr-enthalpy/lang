@@ -1198,6 +1198,104 @@ materializer implements promised external behavior on its target. It cannot
 decide lifecycle meaning from representation or layout. Missing seeds/consumers
 are explicit unavailable boundaries, not successful empty summaries.
 
+### 9.1 Bootstrap dependencies must terminate
+
+The dependency here is justification of an action, not merely evaluation order.
+Its leaves are the already fixed language semantics A0: ordinary Object/Pattern/
+Policy and name/Place operations, selected call/activation/delivery, complete
+formation, fixed cleanup, the defined Move/origin/Region/Color/access relations,
+and their common Pre/commit/Post. Those laws do not obtain their validity from
+a contract that a derived program is currently trying to form.
+
+| Dependency | Required predecessor | Cannot serve as its own predecessor |
+|---|---|---|
+| Bootstrap observation/action | A0's actual name, target, cut, operation and ordinary authority | A newly constructed contract saying that the observation/action is valid |
+| Current-instance type initialization | Actual fresh formation window and one-shot initialization authority at InvokeName(I) | Reading an uninitialized self resident, or returning an unrelated type and declaring it rooted at I |
+| Derived ordinary lifecycle program | Available inputs and selected operations whose premises already have a foundation | Its own still-unformed check/admit, automatic Post or generated companion |
+| Boundary adoption | Actual mapped entry/committed-success facts and permitted ordinary update operations | The Boolean returned by a user check, or a copy of a proposed world |
+| Future source consumer | The same established relation and corresponding ordinary program | A fixture import, missing wiring, a speculative execution or successful empty summary |
+
+A bootstrap implementation may initially realize a justified observation or
+formation operation in the host; a later source definition may replace it when
+its dependencies already terminate in this basis and it preserves the same
+relation. This does not freeze an intrinsic count or representation. It also
+does not permit an unrestricted host fact setter under a source function name.
+The [host boundary](../static-evaluation/host-capabilities-and-machine-objects.md)
+still requires justification for a permanent non-source primitive.
+
+Derived programs' own ordinary computation has lifecycle premises too.
+Projection-complete provenance stops another transcription/companion layer; it
+does not waive those premises. Finite structural operations and the basis above
+anchor that computation. An adopted recursive family must separately establish
+its domain and termination/composition condition (§14). Recursive **execution**
+under an established contract is different from circularly granting that
+contract correctness. A strongly connected justification with no such foundation
+is unavailable, even if every node promises to admit the next one's assumption.
+
+In particular, forming C cannot use C.check, C.admit, AutoPost(C) or a companion
+whose sole justification is C to establish that very formation's Pre. Omission
+does not supply true, NoDelta or a default root at this gap. Ordinary scoped
+recursion and E remain the only program evaluation; no proof Object, external
+prover, privileged success flag or extra evaluator is introduced.
+
+### 9.2 Safe adoption is narrower than mutable observation data
+
+The world-ref interface of §9 denotes an actual authority-scoped boundary view,
+not unrestricted setters for every rank-0 field in semantic history. The actual
+invocation supplies its activation, input/result mapping, generation, cut and
+entry/success scope. Ordinary safe operations on that view must independently
+obey their own Pre, even when the surrounding contract's check returns true.
+They can transport assumptions already justified at caller Pre, import an
+established callee guarantee after successful completion, or derive consequences
+through admitted operations. They cannot turn arbitrary computed data into a
+new premise. Acquiring or copying a NameValue or a bool supplies no authority.
+
+For example, an ordinary origin-adoption operation must check the proposed
+source against the permitted mapped entry/success relation. Region adoption
+must retain actual generation cuts and target validity; Color adoption cannot
+retract inherited/history facts; access adoption must preserve the admitted
+operation ranges and non-expansive cropping. These are the ordinary operations'
+semantic premises, not another call to the possibly dishonest C.check. The
+boundary checks the full correspondence and all affected Pre before joint
+publication. A stored view reused for a foreign activation, cut, generation or
+output has no authority there.
+
+Implementations may express this restricted surface through ordinary access
+views, operation families and capabilities. The carrier and function spelling
+are open; an API exposing an unrestricted safe semantic-world record write is
+incompatible with this rule. A function named admit and a well-formed self-root
+type do not supply missing write permissions. A successful check establishes
+its bool result only; a legitimate contract's useful guarantees come from its
+actual sound computations and mapped operations, not from that name or bool.
+
+The [worked contract and malicious variant](lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+make the non-derivability concrete. A safe always-true check can accompany an
+admit with no unauthorized delta. Pairing it with a forged origin/region/Color/
+access update fails the corresponding operation Pre or requiring consumer;
+missing validation is unavailable. No successful permission is published.
+Unsafe Post remains the separate route for compatible **new external success
+facts**, after ordinary Pre; its truth is an external facility obligation.
+
+### 9.3 Source construction and common publication handoff
+
+The [ordinary contract program](lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+starts by requesting complete initial formation at its own existing invocation
+root, then uses normal qualified member formation and first writes, then returns
+compile self directly. The [construction owner](../symbol-world/structural-type-formation-and-composition.md#current-instance-initial-formation-handoff)
+owns that initial formation; no local copy is substituted for the target.
+OpenHere governs later member formation, each child has its own initialization
+authority, and a helper has its own self/activation. Construction authority is
+never stored as a general world-writing privilege in the resulting contract.
+
+check/admit evaluation participates in the same E. Safe admission computes the
+mapped update on the existing transaction's scoped projection storage; internal
+component calls do not publish a partial outer boundary. All required checks
+and component premises must succeed before its joint public publication, with
+the original action/cut/mapping retained. An invalid later component publishes
+no part of that boundary delta. This storage discipline is not rollback of
+earlier independent actions or external effects. A common transaction callback
+alone proves neither source authority nor correctness of supplied material.
+
 ## 10. Internal actions, origin compression and automatic Post
 
 Internal programs distinguish sibling transfer from child formation, real

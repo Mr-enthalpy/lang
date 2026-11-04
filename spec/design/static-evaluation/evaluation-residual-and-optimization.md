@@ -67,6 +67,14 @@ calls, but do not project them again or create second `@`/partner layers. The
 and [LC2 handoff](../../contracts/lifetime-program-consumers.md#lc2-whole-continuation-projection-and-projection-complete-clauses)
 define the projection-complete boundary and its fidelity obligations.
 
+Projection-complete programs still have their own ordinary action premises.
+Their [bootstrap justification](../lifetime/lifetime-policy-and-overload-boundary.md#91-bootstrap-dependencies-must-terminate)
+must reach fixed language laws and available observations, not their own
+still-unformed contract or companion. Boolean check success creates no world
+authority. Safe admit components use the existing boundary's mapped projection
+storage and all required premises before joint publication; transaction storage
+alone cannot establish source correctness or authorize a supplied fact.
+
     R_machine = pi_machine(R)
     R_lifetime = pi_lifetime(R)
 

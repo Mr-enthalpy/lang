@@ -905,6 +905,37 @@ effect conditions in W2, not a universal join/exchange law. LA19/LA21/LA26 need
 true trusted-facility facts and actual runtime behavior. These remain explicit
 [proof obligations](../design/lifetime/lifetime-policy-and-overload-boundary.md#14-proof-obligations-and-engineering-freedom).
 
+The following audit subcases refine these same LA01–LA30 targets; they add no
+executed coverage or independent case taxonomy:
+
+- **LA02/LA09/LA10/LA13:** Trace the [expanded W1 program](../design/lifetime/lifetime-algebra-walkthroughs.md#lifetime-transcription)
+  from r@/fuel@ and actual selected entries through available guarded control,
+  recursive input transfer, two nested InPlace calls and every real exit. The
+  ordinary origin/row recursion preserves unknown roots and all effects. An
+  unknown guard cannot run both branches or acquire future-value evidence.
+- **LA07:** Trace the [ordinary contract program](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+  through name-only compile self observation, independently authorized initial
+  complete formation at I, OpenHere-qualified member creation, explicit child
+  ref/first write, owned dependencies and direct self return. A local copy or a
+  helper-rooted external type does not stand in for the target; no read of an
+  uninitialized self resident is allowed.
+- **LA08/LA19/LA29:** In the [always-true variant](../design/lifetime/lifetime-algebra-walkthroughs.md#always-true-check-cannot-forge-a-world),
+  keep check=true while proposing a wrong actual source, extended Region,
+  deleted Color, amplified access or stale boundary view. Formation/Boolean
+  success grants none of those permissions. The independent operation Pre
+  rejects, or missing validation is unavailable, with no partial delta. Compare
+  a permitted safe import and genuine compatible unsafe success Post.
+- **LA07/LA30:** Attempt to establish C's formation/update Pre using only the
+  still-unformed C.check/C.admit/AutoPost(C), or a companion justified only by C.
+  The [bootstrap dependency rule](../design/lifetime/lifetime-policy-and-overload-boundary.md#91-bootstrap-dependencies-must-terminate)
+  rejects that unfounded cycle. Projection completeness is no waiver of ordinary
+  action premises; a founded finite recursive program remains a distinct case.
+- **LA05/LA06/LA11/LA12:** Retain the [concrete ref select_one](../design/lifetime/lifetime-algebra-walkthroughs.md#concrete-ref-source-selection)
+  in addition to generic T. Each branch returns one actual external-target ref
+  through sibling handle transfers. Unknown roots, other effects and target
+  validity survive compression; choosing two simultaneous exclusive targets or
+  returning a true borrow of a dying local is rejected.
+
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any
 row's full source chain. Future connections must add meaningful action-based

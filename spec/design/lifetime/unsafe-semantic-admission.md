@@ -58,6 +58,16 @@ Failure publishes no successful credential. Ordinary contract derivation and
 trusted external admission remain distinct fact sources even when both are
 consumed through the same four-way check/admit boundary protocol.
 
+An ordinary user check returning true creates no permission to fabricate origin,
+extend Region, erase Color or amplify access. Each safe adoption operation must
+independently satisfy the actual mapped boundary's update premises; the world
+view is narrower than an unrestricted mutable record. See the
+[safe-world rule](lifetime-policy-and-overload-boundary.md#92-safe-adoption-is-narrower-than-mutable-observation-data)
+and [counterexamples](lifetime-algebra-walkthroughs.md#always-true-check-cannot-forge-a-world).
+Neither installing associated functions under OpenHere nor passing a mutable
+copy of observation data opens the external-admission route. Unsafe Post still
+requires real compatible external success, with its ordinary Pre already met.
+
 Callers may consume established callee Post summaries without expanding the
 callee's body. That modular summary rule does not let an external assertion
 bypass the admission boundary or validate the preceding action's Pre.
