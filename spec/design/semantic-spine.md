@@ -136,10 +136,20 @@ with mandatory erasure of external structural-source authority on projected
 Function Pattern values, without an inverse theorem or recovery from compile
 Val1. Opaque implementation provenance is not external authority. The
 [lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
-checks contract implication, retaining U_default and omitted-post NoDelta.
+consumes ordinary contract programs and implication, retaining U_default and
+handwritten Function Pattern omitted-post NoDelta. Implemented bodies instead
+form automatic Post from projected material at actual exits. The complete
+continuation projects to rank-0 lifecycle values with business Stage forgotten;
+pre/post programs are projection-complete, and ordinary boundaries use caller
+Pre.check/body Pre.admit/body Post.check/caller Post.admit. Compression preserves
+source choices, regions, colors, access and effects while eliminating outward
+local-name reads. [Walkthroughs](lifetime/lifetime-algebra-walkthroughs.md) and
+[LC1–LC8](../contracts/lifetime-program-consumers.md) describe the pending wiring.
 [E](static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
-chooses ABIKind from delivery; O materializes it. SCC convergence and physical
-ABI realization remain separate deferred work.
+chooses ABIKind from delivery; O materializes it. Finite regular-access SCCs,
+ordinary lifecycle-program recursion and physical tail-call/slot reuse have
+separate proof obligations. A finite descriptor proves neither arbitrary
+program termination nor machine reuse.
 
 ## Current extraction and continuation interfaces
 

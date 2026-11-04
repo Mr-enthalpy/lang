@@ -1028,6 +1028,15 @@ of structural origin; reify's outward horizon remains runtime.
 
 ## 12. Structural type formation and registered children
 
+Actual Pattern/structure formation also establishes sufficient lifecycle
+companion material for the already selected legal field operations to commute
+with lifecycle projection. The [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#212-nameview-origin-and-finite-observation)
+defines that correspondence; [LC1](../../contracts/lifetime-program-consumers.md#lc1-pattern-and-structure-companion-formation)
+records its inputs and atomic boundary. This obligation belongs to the actual
+formation action. General `$` is still an interpretation-polarity flip, not an
+extra lifecycle action at every written occurrence. Neither a field signature
+nor a generated name substitutes for registered structural evidence.
+
 For:
 
 ```lang

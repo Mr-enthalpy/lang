@@ -166,8 +166,14 @@ Persistent dependency/source encoding remains open, not the propagation law.
   generations, and cleanup placement?
 - What source/storage syntax names an open Color vocabulary?
 - What algorithm constructs the access tree and performs escape validation?
-- Which summary compression, diagnostics, and extended temporal logic are
-  useful without changing the closed lifecycle relations?
+- Which ordinary API names (including depends_on/live_with), argument packaging,
+  namespaces, regular-material encodings, caches and boundary-transform
+  algorithms implement the closed lifecycle relations?
+- Which compositional recursion domains and evidence/rejection methods should
+  each adopted ordinary lifecycle program use? Finite regular-access SCCs,
+  arbitrary program recursion and machine slot reuse are distinct obligations.
+- Which dynamic validation representations, alias-window facilities and
+  partbox library layouts realize the fixed trusted-facility protocols?
 - How should compile caches represent call-site Open-sensitive applicability:
   an uncached judgment or an explicit requirement summary?
 
@@ -182,6 +188,15 @@ Terminal Pass=Move, copy-derived share/rebind -> clone -> Move, and Preserve
 Move != copy are closed. No automatic move-versus-copy choice remains to design.
 Atomic construction/decomposition admits no partial Object or destruction state;
 Color relations are explicit directed rows and Color inheritance is monotone.
+
+The [lifetime value algebra](../design/lifetime/lifetime-policy-and-overload-boundary.md#14-proof-obligations-and-engineering-freedom)
+fixes whole-continuation Stage forgetting, projection-complete clauses, ordinary
+contract formation and four-way consumption, exit compression/automatic Post,
+access cropping and ref/share/alias boundaries, and post-directed external
+admission. Omitted handwritten Function Pattern Post remains NoDelta. API and
+representation choices above cannot change failure publication, source/choice
+identity, double-consumption, interval/history rules or no-reopen. This design
+does not close the unresolved representations or prove arbitrary recursion.
 
 ## Owner, namespace, and infrastructure persistence
 
@@ -235,8 +250,10 @@ capture sequences, consumer-directed self projections, directional Function
 Pattern LHS/RHS, and omitted-contract defaults/implication are closed by the
 existing dependency/call/Pattern/lifetime owners. Their carriers and source
 consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-separate-scc-convergence-work)
-leaves convergence direction, algorithm and proof/rejection strategy to a
-separate lifecycle PR; no total convergence theorem or second resolver is assumed.
+separates finite regular structure from ordinary lifecycle-program recursion
+and machine reuse. Each chosen recursive combination still needs a justified
+domain, evidence and failure/unavailable boundary; no total convergence theorem
+or second resolver is assumed. Concrete algorithms remain open.
 
 ## Generic navigation and Product surface
 

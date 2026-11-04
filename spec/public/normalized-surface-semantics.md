@@ -1549,3 +1549,32 @@ operator, capture, capability, lifecycle and return evidence. It promises no
 unconditional recursion legality, tail-call optimization, constant stack or
 new control primitive. Current frontend/evaluator support is separately tracked
 in the [roadmap](../planning/roadmap.md#8-acceptance-evidence).
+
+## 16. Lifetime programs and contract surface (consumer pending)
+
+`lifetime pre E` and `lifetime post E` retain ordinary expression material, not
+an AST for a separate predicate logic. Existing generic head-clause carriers
+preserve their expression and source provenance. They do not implement the
+lifecycle expression consumer or every design illustration's syntax. This
+revision adds no lexer keyword, grammar rule, operator or diagnostic behavior.
+`unsafe post` denotes the pending trusted-success contract facility under the
+[unsafe owner](../design/lifetime/unsafe-semantic-admission.md); no new accepted
+parser production is claimed by that notation.
+
+The [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
+defines E as a complete ordinary compile computation whose final delivery is a
+self-rooted complete type with associated check/admit behavior. Local values,
+branches, recursive calls and structural injection use the ordinary language;
+the final-result condition does not restrict every intermediate to a NameExpr.
+These clauses are already lifecycle-side programs and must not be projected
+again. `@`, `==`, `||`, `~`, field calls and namespace Paths retain their ordinary
+operator/Pattern/ADL interpretations and real registrations; a diagram's `*`
+marks an operation already selected, not new source syntax.
+
+Implemented functions with omitted explicit Post use automatic formation from
+their projected actions and actual exits. Handwritten Function Patterns with
+omitted Post still promise NoDelta. The four
+[walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) show the
+design data flow, including ordinary option extraction by `?` rather than new
+error propagation. Their schematic APIs do not assert executed source coverage.
+See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.

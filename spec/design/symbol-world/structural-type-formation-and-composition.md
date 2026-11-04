@@ -69,6 +69,19 @@ Registered callable classifiers satisfy the complete type's /tau home
 independently of whether they also enter V_tau. The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md)
 owns applicability, role consistency and protected extraction.
 
+The same actual formation establishes lifecycle companion structure sufficient
+for selected legal field operations, as required by
+[LC1](../../contracts/lifetime-program-consumers.md#lc1-pattern-and-structure-companion-formation).
+This does not add a structural role from a signature or make `$` a lifecycle
+side effect. Missing companion producers leave that consumer unavailable.
+
+Contract programs use this ordinary formation mechanism inside their actual
+CompileInstance/OpenHere window to form a self-rooted complete type and its
+associated check/admit behavior. Intermediate ordinary values need not be
+NameExprs; the final delivery must satisfy the existing self-rooted result rule.
+Construction authority over those members does not grant authority to mutate
+the lifecycle world. See the [bootstrap responsibilities](../lifetime/lifetime-policy-and-overload-boundary.md#9-ordinary-contract-formation-and-bootstrap-responsibilities).
+
 ## 3. Ordinary struct helpers
 
 ```text

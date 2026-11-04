@@ -265,6 +265,16 @@ outside the segment is diagnosed; unknown boundary evidence preserves the event
 unbound. It does not execute capability calls, propagate completions or perform
 D-reduction. Those consumers must reuse the same reachability guard.
 
+Each genuinely crossed delivery/exit boundary also processes its actual outward
+lifecycle material: compress local-name dependencies while preserving origin
+choices, regions, colors, effects and validity. This includes a target return
+crossing nested InPlace boundaries. It introduces neither a local unit nor an
+already completed result binding at an intermediate boundary, and it changes
+neither target reachability nor fixed cleanup order. A borrow of a dying local
+cannot be made valid by compression. See the
+[boundary algorithm obligations](../lifetime/lifetime-policy-and-overload-boundary.md#10-internal-actions-origin-compression-and-automatic-post)
+and the [nested-return walkthrough](../lifetime/lifetime-algebra-walkthroughs.md#1-branches-recursion-and-nested-inplace-exits).
+
 ## 7. Consumer coverage
 
 | Concept | Connected consumer | Canonical relation |

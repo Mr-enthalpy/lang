@@ -742,3 +742,16 @@ Product; comma holes retain Unit and available call-input exposure already
 preserves their distinct arities. The do/default handoff remains a canonical
 acceptance obligation, not an implemented Raw/Norm node inventory. Every connected grammar/recovery rule needs token,
 AST, Norm and diagnostic golden coverage before that frontier is claimed closed.
+
+## Lifecycle expression handoff
+
+`HeadClauseAst::LifetimePre/LifetimePost` and their Norm counterparts preserve
+ordinary expression children and source provenance. They must not become a
+closed atomic-fact/conjunction AST or execute `check/admit` during normalization.
+The [lifetime-program handoff](lifetime-program-consumers.md) owns the pending
+semantic consumers. Projection-complete provenance prevents double projection
+of these clauses; semantic selected-partner, activation and world authority
+belong after Norm, never in parser decisions. Complex design programs and
+`unsafe post` notation in the [surface note](../public/normalized-surface-semantics.md#16-lifetime-programs-and-contract-surface-consumer-pending)
+are not a claim of additional parser coverage. This documentation revision
+changes no parser shape, diagnostics or golden contract.

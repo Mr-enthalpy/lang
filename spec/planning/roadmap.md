@@ -255,11 +255,13 @@ selection with or without Warning, ordinary explicit-constraint failures and
 sealed-selection preservation. Do not add an implicit filter, default-specific
 Error or speculative evaluation. No warning implementation is claimed here.
 
-Two independent follow-up PRs consume the new laws:
+Two independent implementation areas consume the laws:
 
-- Lifecycle SCC convergence: fixed calls/captures, Region/origin/generation and
-  Pre/Post/MoveEffect enter a justified fixed-point procedure yielding evidence
-  or explicit rejection. Neither convergence nor a retry/preference is assumed.
+- Lifecycle programs: actual calls/captures, Region/origin/generation and
+  Pre/Post/MoveEffect feed ordinary value computations and boundary transforms.
+  Finite regular-access SCC representation and recursion of those programs
+  need their own justified domains/evidence or explicit rejection/unavailability.
+  No universal fixed-point solver, convergence theorem or retry is assumed.
 - Machine materialization: SelectedCall, normalized PassMoves, delivery target,
   E-selected ABIKind, lifetime evidence and machine facts yield checked input
   frontier/ABI1 overwrite or ABI2 target delivery and proved tco/loop slot reuse.
@@ -271,3 +273,46 @@ terminology/authority scan excluding history. Coverage includes positive/negativ
 behavior, identity/equality, non-derivability, authority uniqueness, no reopen,
 effects and failure without publication. Executed coverage and remaining source
 frontiers are reported separately from canonical laws.
+
+## 9. Lifetime value-program wiring
+
+The [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
+now specifies ordinary lifecycle computation, bootstrap responsibilities and
+library protocols. Its [four walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md)
+and [LA acceptance scenarios](canonical-semantic-conformance.md#lifetime-value-computation-and-library-design-acceptance)
+close design responsibilities; they supply neither source execution nor a
+general recursion proof. [LC1–LC8](../contracts/lifetime-program-consumers.md)
+give every future consumer the same eight-field handoff template.
+
+Current implementation evidence remains limited: name discovery is not formation
+or origin authority; lifecycle ref/share/rebind and structured field producers
+are pending; `reify_value` reports `LifecycleContinuationPending` after its
+earlier gates. Common transaction tests establish supplied Pre/cleanup checking
+and joint Post publication. Generic LifetimePre/Post syntax and Rust lifetime
+values do not execute contract expressions, automatic Post or the library.
+
+| Consumer | Missing source responsibility | Dependency / acceptance boundary |
+|---|---|---|
+| LC1 | Atomic Pattern/structure companions and actual registered field pairing | Ordinary formation, structural roles and selected ADL; field commutation |
+| LC2 | Whole-K projection, business Stage forgetting and complete-zone provenance | Common E, selected actions/control/activation/delivery; no future execution or reselect |
+| LC3 | Source action facts, name/generation/origin, regions/colors and real internal APIs | Ordinary producers, fixed cleanup and common transaction; no double consumption |
+| LC4 | Ordinary compile contract evaluation, self-root check/admit formation and mapped four-way calls | Existing CompileInstance/OpenHere/result delivery and actual world authority; failed Pre publishes no success |
+| LC5 | Exit-local compression and automatic Post transformation | Actual exit/control/dependency material, LC1–LC4; retain choice/effects/validity at every boundary |
+| LC6 | Exposed Function Pattern defaults/implication and justified recursive interfaces | FnExtract erasure and ordinary contract computation; no implementation authority recovery |
+| LC7 | Safeid, batch partition, alias windows and partbox ordinary programs plus trusted runtime facilities | True external-success facts, actual source authority, intervals and materializer protocol; no default success |
+| LC8 | Finite regular access and cropping, with proven adopted recursive combinations | LC1/LC3 material and defined Pattern relations; no restored terminal permission |
+
+This is a consumer dependency graph, not a pipeline of independent executors.
+Connect existing language consumers first, then actual bootstrap observations
+and action publication, ordinary contracts/boundary programs and regular/library
+composition as their dependencies become available. API spelling, encoding,
+automata/cache algorithms and machine cost models may evolve within these
+contracts. Every adopted recursive family must state its domain and evidence;
+finite regularity supplies neither termination of arbitrary programs nor TCO.
+
+Future executable acceptance must use real source producers and actions. Do
+not substitute a standalone checker, source-string recognition, supplied-fact
+fixtures, invented residual or default permission. Until connected, report a
+spanned unavailable diagnostic, or transport only an actually established
+remaining continuation. Keep executed coverage, design scenarios and unproved
+obligations separately visible in each implementation PR.

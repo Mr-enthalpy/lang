@@ -1874,6 +1874,15 @@ introduce a competing specificity order.
 This is a restriction on lifetime *rules*, not a denial that `@` has overloads.
 `@` is resolved by the ordinary selection trunk of §12 like any other operation.
 
+The lifecycle projection forgets business Stage over the whole common
+continuation, after retaining each selected operation and its correspondence.
+It preserves control, names, dependencies, MoveEffect, activation and delivery.
+It cannot rerun selection after erasure or read unknown future business values.
+Its ordinary compile-hosted programs operate on rank-0 lifecycle values; that
+hosting supplies no higher-rank lifetime constraint layer. Pre/post programs are
+projection-complete and are not projected again. See the
+[lifecycle projection contract](../../contracts/lifetime-program-consumers.md#lc2-whole-continuation-projection-and-projection-complete-clauses).
+
 ## 14. Migration comparator boundary
 
 Policy migration compares ordinary Bp coordinates and input/output endpoint
@@ -1904,8 +1913,8 @@ execution use the same ordinary invocation boundary as source calls.
 This document does not freeze:
 
 - the final source token for `AbsentValuePattern`;
-- concrete LifeName/Region/Color IR, lifetime-checker integration, summary
-  compression, access-tree integration, and extended Horae logic;
+- concrete LifeName/Region/Color representations, ordinary lifecycle-program
+  consumers, boundary compression algorithms and regular-access encodings;
 - arbitrary clause-level Boolean policy logic;
 - a complete runtime reflection API;
 - export reopening syntax;

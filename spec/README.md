@@ -64,6 +64,7 @@ links canonical acceptance scenarios to owners and pending consumers.
 - [`semantic-owner-namespace-graph.md`](contracts/semantic-owner-namespace-graph.md)
 - [`control-flow-end-events.md`](contracts/control-flow-end-events.md)
 - [`semantic-values-and-extraction-interfaces.md`](contracts/semantic-values-and-extraction-interfaces.md)
+- [`lifetime-program-consumers.md`](contracts/lifetime-program-consumers.md)
 - [`pattern-root-identity-and-explicit-navigation.md`](contracts/pattern-root-identity-and-explicit-navigation.md)
 - [`compile-construction-boundary.md`](contracts/compile-construction-boundary.md)
 - [`policy-migration.md`](contracts/policy-migration.md)

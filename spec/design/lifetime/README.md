@@ -1,7 +1,18 @@
 # Lifecycle and Semantic Admission
 
-- [Continuation, Region, Color and access](lifetime-policy-and-overload-boundary.md)
+- [Lifetime values, bootstrap and library facilities](lifetime-policy-and-overload-boundary.md)
 - [SafetyPolicy and external semantic admission](unsafe-semantic-admission.md)
+- [Four design walkthroughs](lifetime-algebra-walkthroughs.md), subordinate to the owners
+- [Source consumer handoff LC1–LC8](../../contracts/lifetime-program-consumers.md)
+
+Lifetime mechanisms are ordinary value programs over the whole common
+continuation with business Stage forgotten. The owner fixes projection,
+ordinary self-root contract formation, four-way check/admit boundaries,
+compression/automatic Post, regular access and trusted library responsibilities.
+It does not supply a separate checker or claim those source consumers execute.
+Implemented bodies may form automatic Post; omitted handwritten Function
+Pattern Post remains NoDelta. Concrete APIs, representations and justified
+recursion domains remain engineering/proof work under the stated obligations.
 
 Cleanup is fixed before observation. Pre precedes commit; Post records only
 success. N@ is a name iff N is a name; value and borrowed fields remain

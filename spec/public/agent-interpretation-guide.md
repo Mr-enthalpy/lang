@@ -468,3 +468,28 @@ The [call owner](../design/symbol-world/function-object-call-model.md#12-trailin
 owns the graph and obligations. Current parser/evaluator carriers do not implement
 this extension. Preserve the distinction between normative acceptance rows and
 executed golden/semantic tests; no standalone default evaluator may fill the gap.
+
+## Lifecycle programs: preserve the ordinary-language boundary
+
+Read the [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md),
+[walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) and
+[consumer handoff](../contracts/lifetime-program-consumers.md) together.
+Lifecycle names, origins, regions and colors are ordinary rank-0 value material.
+Project the whole common continuation with business Stage forgotten, retaining
+selection, MoveEffect, dependencies, guarded control, activations and delivery.
+Do not execute unknown future branches or project pre/post programs twice.
+
+Contract clauses contain complete ordinary compile computations, with the
+existing single self-rooted type result and associated check/admit behavior.
+Construction OpenHere does not grant lifecycle-world write authority. Preserve
+caller Pre.check/body Pre.admit/body Post.check/caller Post.admit; unsafe adds
+compatible external success facts and cannot repair failed Pre. Body omission
+forms automatic Post; handwritten Function Pattern omission remains NoDelta.
+
+Internal actions and boundary compression are distinct. Preserve actual
+sibling/child origins, source choices, unknown roots, validity, colors and other
+effects while eliminating outward reads of exiting locals. Do not introduce
+reborrow, copy fallback, hidden result/unit, restored access or a second solver.
+Regular access, ordinary program recursion and machine slot reuse require
+separate evidence. Existing lifecycle carriers/transaction tests are substrate,
+not proof that `@`, automatic Post or the trusted library source protocols run.
