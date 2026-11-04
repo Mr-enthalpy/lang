@@ -1009,6 +1009,47 @@ default cannot supply a compile observation merely because its member was
 generated. Compile calls have their ordinary instances; reify still requires
 its independent closed-return and reverse-dependency premises.
 
+### 12.2.1 Non-semantic forwarding warning
+
+Whole-target forwarding is intentional, including a winner that skips the
+nominal next generated member. If ordinary evidence proves all of the following,
+the diagnostic layer may report that outcome:
+
+```text
+Selected(c_m)
+Select(EstablishedTarget, forwarded_args, output_demand) = h
+h != c_(m+1)
+
+warning: default-argument forwarding selects a different overload member
+```
+
+Here c_(m+1) denotes the nominal next generated candidate entry, not a forced
+callee. Compare ordinary candidate-entry identities, not result equality or
+structural similarity; direct associated entries retain their original receiver
+and implementation identity. The diagnostic observes an ordinarily proved
+selection. It must not evaluate defaults or candidate bodies, re-resolve a target,
+or force a future selection merely to determine whether to warn.
+
+This Warning belongs to diagnostics, not E's evaluation semantics. Emitting or
+omitting it changes no candidate set, applicability, specificity/preference,
+selected entry, effects, Move/lifecycle behavior or return delivery. It never
+makes a legal call illegal or upgrades the different winner into a default-specific
+Error. Unknown winner/identity evidence proves no deviation and must not produce
+this warning. Ordinary ambiguity, unavailable required evidence and other failures
+retain their own rules; no warning substitutes for a missing winner or evidence.
+Forwarding failure never reopens the sealed outer or inner selection.
+
+Explicit declaration-side candidate controls and call-site family constraints
+remain independent under the [ordinary overload pipeline](../patterns-overload/overload-resolution-design.md#3-pipeline).
+Default expansion injects none of them. A user-written constraint is handled at
+its ordinary stage; its violation is an ordinary failure, not a default-parameter
+Error. This rule introduces no new control syntax or filter and does not settle
+the remaining source-control spelling questions.
+
+Warning emission and its executable regressions are pending, non-blocking
+diagnostic work. Their absence does not invalidate the whole-target law or the
+different-winner acceptance case DS22.
+
 ### 12.3 Default scope, dependency formation and passing
 
 A default expression is delayed until its selected wrapper is entered. It is

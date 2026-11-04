@@ -214,7 +214,7 @@ arrow-positive/negative cases do not claim generic-head implementation coverage.
 No executable closure evaluator is supplied by the original closure revision.
 
 The [call-sugar extension matrix](canonical-semantic-conformance.md#empty-invocation-and-default-formal-sugar-acceptance)
-adds DS01–DS23 as normative targets. Its
+adds DS01–DS28 as normative targets. Its
 [surface contract](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
 separates the connected empty-Product slice from pending do/default parsing and
 execution. Empty parentheses normalize to zero entries across ordinary Product,
@@ -245,6 +245,15 @@ Direct current-owner `let ()` expansion requires the same ordinary call and
 role-preserving installation consumers, not a special evaluator. Its shorter
 entry calls the existing receiver with one more explicit position; ordinary
 competing entries/ambiguity and no-reopen remain observable at that new call.
+
+The [forwarding Warning](../design/symbol-world/function-object-call-model.md#1221-non-semantic-forwarding-warning)
+is a non-blocking diagnostic follow-up, not a change to whole-target forwarding
+or DS22's legal different-winner outcome. After ordinary selected-entry evidence
+is available, add proof-gated reporting and DS24–DS28 regressions: no false
+deviation on unknown evidence, candidate-identity comparison, identical execution/
+selection with or without Warning, ordinary explicit-constraint failures and
+sealed-selection preservation. Do not add an implicit filter, default-specific
+Error or speculative evaluation. No warning implementation is claimed here.
 
 Two independent follow-up PRs consume the new laws:
 

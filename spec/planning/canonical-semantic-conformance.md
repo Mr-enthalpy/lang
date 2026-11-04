@@ -786,7 +786,7 @@ specification judgments imply no executed source success.
 
 ## Empty invocation and default-formal sugar acceptance
 
-Status: DS01–DS23 are normative acceptance targets. The empty-Product syntax,
+Status: DS01–DS28 are normative acceptance targets. The empty-Product syntax,
 shape, canonical identity and ordinary arity-selection slices of DS02–DS03 have
 executable regressions; do/default parsing and family execution remain pending.
 Canonical ownership: [call family/forwarding](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members),
@@ -798,6 +798,9 @@ The `31_empty_products` Norm golden, syntax `empty_products` tests and build
 comma Units, neutral continuation, nested exposure/barriers, zero-versus-one
 canonical input identity and ordinary fixed-arity selection. Existing sealed-call
 tests cover substrate no-reopen, not execution of do/default sugars. The [roadmap](roadmap.md#8-acceptance-evidence) records the open consumers.
+DS24–DS28 specify the [non-semantic forwarding warning](../design/symbol-world/function-object-call-model.md#1221-non-semantic-forwarding-warning)
+and its invariance tests, not implemented diagnostic coverage. Warning emission
+is a non-blocking follow-up; DS22 remains an intentional legal outcome.
 
 | Case | Setup / competing derivation | Required result / rejection boundary |
 |---|---|---|
@@ -824,6 +827,11 @@ tests cover substrate no-reopen, not execution of do/default sugars. The [roadma
 | DS21 | G={c_2,c_1,c_0}, defaults d_1,d_2; selected c_0 forwards one argument, applicable h strictly loses to c_1 | Normal inner selection chooses c_1, then d_2 executes once. No generated-member preference; the next-member outcome follows only from ordinary preference. |
 | DS22 | Same selected c_0 and input, but h strictly wins over c_1 | c_0 forwards to h. Do not force c_1/c_2 or evaluate d_2. Outer selection stays sealed; whole-target competition is intentional. |
 | DS23 | Same selected c_0 and input, h and c_1 tied distinct inner maxima | Ordinary inner ambiguity before either body/d_2 executes. Reached d_1 follows ordinary effect/failure/cleanup rules; no retry of outer candidates or private next-member filter. |
+| DS24 | DS22 with proof of the selected outer c_0, inner winner h and h != c_1 | May emit Warning: default-argument forwarding selects a different overload member. Preserve the legal h winner, skipped d_2 and sealed outer selection; no default-specific Error. |
+| DS25 | Inner winner or its comparison with the nominal next entry is not provable at the diagnostic frontier | No deviation warning from unknown evidence. Do not execute defaults/bodies or force selection for diagnosis. A permitted later ordinary selection remains later; missing evidence required by the ordinary call still yields its ordinary unavailable/failure result, never assumed success. |
+| DS26 | Same ordinary forwarding with the warning enabled/omitted; compare a next-entry winner with a proved distinct h whose output is equal | Same candidate set, applicability/preference, winner, result, effect counts, Move/lifecycle and delivery. No deviation warning for the nominal next identity; equal output does not erase a proved distinct candidate identity. Diagnostic emission grants no execution or selection authority. |
+| DS27 | Forwarding ambiguity, missing required evidence or failure after an inner seal; outer runner-up exists | Preserve ordinary failure and reached effects/cleanup, never reopen an outer/inner seal. No deviation warning claims a winner where none is proved; a proved selected h may be diagnosed without recovering from its later failure. |
+| DS28 | Explicit user candidate controls or call-site constraints on a forwarding call | Apply only the written constraints under ordinary rules. Expansion injects no filter; constraint failure is ordinary failure, not a default-specific Error. Neither warning emission nor its absence bypasses the constraint or retries selection. |
 
 Two explicit boundary subcases refine the matrix:
 
