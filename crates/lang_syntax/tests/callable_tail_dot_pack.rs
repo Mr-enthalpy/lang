@@ -1168,6 +1168,35 @@ fn first_written_formal_is_self_for_ordinary_and_in_place_closures() {
 }
 
 #[test]
+fn self_only_heads_keep_self_without_explicit_formals() {
+    for (source, expected_self) in [
+        ("let f = (self) => { self };", "self"),
+        ("let f = (receiver) => { receiver };", "receiver"),
+        ("let f = (receiver) { receiver };", "receiver"),
+        ("let () = (receiver) => { receiver };", "receiver"),
+    ] {
+        let closure = normalized_closure(source);
+        let head = closure.head.as_ref().expect("self-only extraction head");
+        assert_eq!(
+            head.params.len(),
+            1,
+            "self must remain in the head: {source}"
+        );
+        let frame = head.formal_frame();
+        assert!(matches!(
+            frame.self_formal,
+            Some(NormPatternElem::BindingSlot(slot))
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. }
+                    if name.as_deref() == Some(expected_self))
+        ));
+        assert!(
+            frame.explicit_parameters.is_empty(),
+            "a contextual self is not an explicit self/Unit argument: {source}"
+        );
+    }
+}
+
+#[test]
 fn binding_slot_policy_precedes_its_local_deduce_scope() {
     let output = parsed("Inner let <Inner> x = value;");
     let normalized = normalize_program(&output.program);

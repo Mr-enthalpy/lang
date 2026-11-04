@@ -278,7 +278,7 @@ fn unit_argument_mode_completes_const_under_close() {
         "let second = (self, mut let x): compile -> let r => { x; };",
     ]);
     let no_fabricated_modes = [];
-    let call = extract_single_call_site(&initializer_from_source("let r = () probe;")).unwrap();
+    let call = extract_single_call_site(&initializer_from_source("let r = ((),) probe;")).unwrap();
     let result = world.invoke_ordinary_call(
         world.package_root_node(),
         &call,
@@ -307,6 +307,39 @@ fn unit_argument_mode_completes_const_under_close() {
         formal.policy.is_some(),
         "close completes omitted occurrence mode to const before maxima"
     );
+}
+
+#[test]
+fn empty_and_single_unit_inputs_select_distinct_fixed_arity_candidates() {
+    let mut world = support::AssociatedFamily::new(&[
+        "let zero = (receiver):compile => (\"zero explicit arguments\") delete;",
+        "let one = (receiver, x):compile => (\"one actual Unit\") delete;",
+    ]);
+    let mut selected = Vec::new();
+    for (source, message) in [
+        ("let r = () probe;", "zero explicit arguments"),
+        ("let r = ((),) probe;", "one actual Unit"),
+    ] {
+        let call = extract_single_call_site(&initializer_from_source(source)).unwrap();
+        let failure = world
+            .invoke_ordinary_call(
+                world.package_root_node(),
+                &call,
+                OrdinaryInvocationContext::open_static(&[]),
+                Provenance::new("zero versus present Unit"),
+            )
+            .unwrap_err();
+        let OrdinaryInvocationFailure::SelectedDelete {
+            diagnostic, trace, ..
+        } = failure
+        else {
+            panic!("ordinary arity selection must reach its selected body: {failure:?}")
+        };
+        assert!(diagnostic.message.contains(message), "{diagnostic:?}");
+        assert_eq!(trace.a_fully_admissible.len(), 1);
+        selected.push(trace.selected.unwrap());
+    }
+    assert_ne!(selected[0], selected[1]);
 }
 
 #[test]
@@ -452,7 +485,8 @@ fn receiver_binding_mode_survives_shared_value_identity() {
         )
         .unwrap();
     let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
-    let call = extract_single_call_site(&initializer_from_source("let r = () observed;")).unwrap();
+    let call =
+        extract_single_call_site(&initializer_from_source("let r = ((),) observed;")).unwrap();
     let before = format!("{:?}", world.semantic_world());
     let failure = lang_build::invoke_resolved_binding_ordinary(
         world.semantic_world_mut(),

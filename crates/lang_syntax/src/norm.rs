@@ -1904,7 +1904,7 @@ fn normalize_expr(expr: &ExprAst) -> NormExpr {
                 span: expr.span,
             };
             make_call(
-                normalize_product_expr(&product, false),
+                normalize_product_expr(&product),
                 NormExpr::Name {
                     text: "slice".to_string(),
                     origin: NormOrigin::Source(expr.span),
@@ -1916,7 +1916,7 @@ fn normalize_expr(expr: &ExprAst) -> NormExpr {
             )
         }
         ExprKind::Pipe(pipe) => normalize_pipe(pipe),
-        ExprKind::Product(product) => NormExpr::Product(normalize_product_expr(product, true)),
+        ExprKind::Product(product) => NormExpr::Product(normalize_product_expr(product)),
         ExprKind::Error(error) => NormExpr::Error(normalize_error(error)),
     }
 }
@@ -2018,7 +2018,7 @@ fn normalize_segment_items(segment: &SegmentAst) -> Vec<SegmentItem> {
         .map(|element| match element {
             SegmentElementAst::OperatorExpr(expr) => normalize_operator_expr_item(expr),
             SegmentElementAst::Product(product) => {
-                SegmentItem::Product(normalize_product_expr(product, true))
+                SegmentItem::Product(normalize_product_expr(product))
             }
         })
         .collect()
@@ -2026,9 +2026,7 @@ fn normalize_segment_items(segment: &SegmentAst) -> Vec<SegmentItem> {
 
 fn normalize_operator_expr_item(expr: &OperatorExprAst) -> SegmentItem {
     match &expr.kind {
-        OperatorExprKind::Product(product) => {
-            SegmentItem::Product(normalize_product_expr(product, true))
-        }
+        OperatorExprKind::Product(product) => SegmentItem::Product(normalize_product_expr(product)),
         OperatorExprKind::Atom(atom) => match &atom.kind {
             AtomKind::Group(inner) => {
                 let lowered = normalize_expr(inner);
@@ -2199,9 +2197,7 @@ fn lower_item_chain(
 fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
     match &expr.kind {
         OperatorExprKind::Atom(atom) => normalize_atom(atom),
-        OperatorExprKind::Product(product) => {
-            NormExpr::Product(normalize_product_expr(product, true))
-        }
+        OperatorExprKind::Product(product) => NormExpr::Product(normalize_product_expr(product)),
         OperatorExprKind::OperatorSugar {
             operator,
             args,
@@ -2419,7 +2415,7 @@ fn normalize_double_dot_sugar(
     span: Span,
 ) -> NormExpr {
     let mut elements = source_product_from_expr(object, span).elements;
-    elements.extend(normalize_product_elements(args, true));
+    elements.extend(normalize_product_elements(args));
     make_call(
         NormProduct {
             elements,
@@ -2443,7 +2439,7 @@ fn normalize_bracket_call_sugar(
     span: Span,
 ) -> NormExpr {
     let mut elements = vec![NormProductElem::Expr(object)];
-    elements.extend(normalize_product_elements(args, false));
+    elements.extend(normalize_product_elements(args));
     let source = NormProduct {
         elements,
         origin: NormOrigin::Generated {
@@ -2466,23 +2462,16 @@ fn normalize_bracket_call_sugar(
     )
 }
 
-fn normalize_product_expr(product: &ProductExprAst, empty_is_unit: bool) -> NormProduct {
+fn normalize_product_expr(product: &ProductExprAst) -> NormProduct {
     NormProduct {
-        elements: normalize_product_elements(product, empty_is_unit),
+        elements: normalize_product_elements(product),
         origin: NormOrigin::Source(product.span),
     }
 }
 
-fn normalize_product_elements(
-    product: &ProductExprAst,
-    empty_is_unit: bool,
-) -> Vec<NormProductElem> {
-    if product.elements.is_empty() && empty_is_unit {
-        return vec![NormProductElem::Unit {
-            origin: NormOrigin::Source(product.span),
-        }];
-    }
-
+fn normalize_product_elements(product: &ProductExprAst) -> Vec<NormProductElem> {
+    // Empty delimiters contain no entries. Only actual source comma holes
+    // produce Unit elements; preserve those with their source provenance.
     product
         .elements
         .iter()

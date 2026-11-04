@@ -87,14 +87,20 @@ and deduced modes; unknown required OpenHere is unavailable, not false.
 - What concrete representation carries `Done`, targeted return, and result
   Pattern delivery?
 
+The [E owner](../design/static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+fixes ABIKind by FreshLet/ExistingTarget delivery. Machine frontier, slot and
+FFI encodings remain open representation work; RVO/NRVO cannot choose the law.
+
 Runtime main and actual stack-relative evaluation horizons, two-round R_vis then
 ordinary C_sigma selection, no speculative candidate execution and retained
 selected origin are closed. Concrete witness/cache representation is open.
 
 Runtime continuation may not re-resolve a name, namespace path, candidate
 family, or sealed invocation. E saturation, projection synchronization and
-rewrite revalidation are fixed. Omitted ReturnTarget selects the outermost
-enclosing function layer after an event exists. Non-tail UnitDiscard, tail-unit
+rewrite revalidation are fixed. Omitted ReturnTarget selects the outermost function in the reachable segment
+bounded by the nearest Ordinary closure after an event exists. InPlace adds no
+barrier; explicit targets and capability calls cannot cross the segment, and
+missing boundary evidence is unavailable. Non-tail UnitDiscard, tail-unit
 fallthrough and tail-nonunit ReturnEvent synthesis are separate closed laws;
 continuation-path consumer alignment is roadmap work.
 
@@ -223,6 +229,14 @@ complete-type formation. File implementation-layer let installs under the establ
 root, while true lexical local let remains binding. Conservative contribution roles preserve
 legal ordinary actions and never retry failed execution. These are closed laws,
 not a pending choice based on RHS type or declaration count.
+
+Dependency observation classification, exclusive value-capture modes and fixed
+capture sequences, consumer-directed self projections, directional Function
+Pattern LHS/RHS, and omitted-contract defaults/implication are closed by the
+existing dependency/call/Pattern/lifetime owners. Their carriers and source
+consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-separate-scc-convergence-work)
+leaves convergence direction, algorithm and proof/rejection strategy to a
+separate lifecycle PR; no total convergence theorem or second resolver is assumed.
 
 ## Generic navigation and Product surface
 

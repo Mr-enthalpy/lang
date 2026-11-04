@@ -990,6 +990,19 @@ position Policy. It can affect candidate admissibility, preference, and
 outward view satisfaction only through the ordinary sealed invocation
 pipeline (`NoCrossCallPolicyPropagation`).
 
+#### 3.2.2 Directional Function Pattern Policy
+
+For [directional Function Patterns](../patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers),
+declaration P1/P2/Pin/Pout inheritance remains the same. Function Pattern has no
+independent written P1 item: output type/Policy demands occupy the Pout position.
+This creates neither P3 nor an unconstrained output stage. At the root head of
+a direct RHS request, immediate rank+1 type values and their corresponding
+Policies fully denote; deeper legal holes remain available. Pure LHS extraction
+may deduce root holes under ordinary R_Gamma/HoleOverride. RHS carries no self,
+capture or lifetime pre/post request slots. Its explicit inputs and output demand,
+with candidate-local read-only implicit evidence, enter the single §12 relation;
+the uniquely selected call still undergoes actual lifecycle Pre/commit/Post.
+
 ### 3.3 Namespace declaration attributes
 
 `public`, `private`, and `export` are accepted only by namespace-declaration
@@ -1075,6 +1088,41 @@ SatisfyPolicyDemand(demand, result):
   require CoherentPolicyMigrationResult(m, rho, v)
   return CompletePolicyMigrationResult(m, rho, v)
 ```
+
+For nonidentity compile-to-runtime same-Type migration, FullyAdmissible includes
+**destination structural recoverability at hard A**. For each candidate m,
+K_m is its prospective runtime semantic world as determined by its declared
+target endpoints and ordinary realization/dependency evidence. Check every
+retained internal structural Path requirement of tau there, not merely in the
+source compile world:
+
+```text
+InternalOnlyPath(tau) and proved not RuntimeRecoverable_K_m(tau)
+  => Inapplicable(Migration_compile_to_runtime(tau), m) at A
+RuntimeRecoverable_K_m(tau) unknown
+  => applicability Unavailable, not false or accepted
+RuntimeRecoverable_K_m(tau) proved
+  => continue ordinary A / Policy preference / selection / legality
+```
+
+RuntimeRecoverable reads the existing Path/name/dependency relations in that
+prospective world; it creates no alternative identity or authority relation.
+Candidate evidence must establish retained coordinates, structural observations
+and access without creating the destination Object/Place first, executing the
+body, re-resolving source spellings or recapturing dependencies. A compile
+classifier observation of a runtime Object can remain legal. InPlace provenance
+alone proves neither recoverability nor failure; equivalent Ordinary material
+has the same obligations. Proved failure excludes m before fallback suppression
+and maxima. Unknown evidence cannot select a wildcard/runner-up by pretending
+m failed. This is not a selected DynamicLegality check, backend restriction or
+failure postponed to reify.
+
+This premise applies only after the existing-view branch has failed. Identity
+reuse keeps an already accepted view and all its established obligations; it
+neither reconstructs a destination world nor bypasses structural validity.
+Function Pattern source-erasing projection C:tau_C -> f:F is a different ordinary
+projection, not same-Type Policy migration. It cannot erase a retained Path
+requirement while claiming to preserve tau_C.
 
 When `Q` contains a whole-slot ModeAtom, an existing outward view is accepted
 only when its concrete mode equals that point. The

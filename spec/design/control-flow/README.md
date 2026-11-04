@@ -21,4 +21,7 @@ Return target binding is partially implemented after normalized AST.
 Completion consumers remain unconnected. The canonical laws are settled:
 non-tail expressions require unit, tail unit falls through, tail non-unit
 synthesizes return and then infers its target. Raw/Norm preserves plain Expr separately from explicit ReturnEvent. The
-binder queries the outermost active function; serial completion remains pending.
+binder queries the outermost function in the reachable segment bounded by the
+nearest Ordinary closure (InPlace is transparent). Explicit/capability targets
+cannot cross it; unknown boundary evidence stays unbound. Serial completion
+remains pending.

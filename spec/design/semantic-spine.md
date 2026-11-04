@@ -68,8 +68,13 @@ spelling and selects the current slot. Every legal completed closure expression
 produces tau_C through atomic complete structural formation; file implementation-layer let installs
 under the established package root, while true lexical let remains a binding.
 Ordinary singleton let installs tau_C:type. Established same-name contribution
-instead consumes ClosureMaterial to form one ordinary c_C^T per declaration
-against a common snapshot, never inserting tau_C or importing its V_tau.
+instead consumes ClosureMaterial to form ordinary c_C^T members against a
+common snapshot, never inserting tau_C or importing its V_tau. Without defaults
+there is one member per declaration; trailing defaults expand into the original
+and fixed-arity ordinary forwarding members under the call owner. Every
+expanded head retains nondefaulted contextual self; (self) matches unit explicit
+input. Direct associated entries keep their owner-object self and forward by
+ordinary receiver calls, not by adding anonymous receiver objects to V_T.
 Ordinary member formation at terminal () supplies Val2 callability; TypeAdd
 changes V_T only. Neither construction axis implies the other.
 
@@ -115,11 +120,26 @@ SelfConstructible alone consumes the registered self-construction witness.
 AssociatedNamespace(T) is MemberScope(Core(T)), distinct from /tau(T).
 Dependency realization is fixed by the source occurrence's selected ordinary
 action, uniquely up to observational equivalence, before layout is chosen.
-Ordinary closure dependencies combine explicit and automatic occurrences;
-in-place syntax excludes explicit clauses. Source placement and dependency
+Closure value-capture modes are exclusive, with automatic compile structural
+dependencies independent. CaptureProduct is bare positional material; explicit
+order follows source, automatic order is fixed per formation. Source placement and dependency
 formation origin supply no post-formation overload evidence. Selected callable
 dependencies retain their ordinary identity; instance keys contain parent,
 selected partner and canonical inputs without hidden caller capture.
+
+The [call owner's projections](symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+separate contextual self's CallAnchor, Param Product and tag/activation Return.
+Candidate-local implicit evidence is read-only; the selected input transfers
+once with coherent lifetime effects. The [Pattern owner](patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+extracts full-input contracts on LHS and requests explicit-argument calls on RHS,
+with mandatory erasure of external structural-source authority on projected
+Function Pattern values, without an inverse theorem or recovery from compile
+Val1. Opaque implementation provenance is not external authority. The
+[lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
+checks contract implication, retaining U_default and omitted-post NoDelta.
+[E](static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+chooses ABIKind from delivery; O materializes it. SCC convergence and physical
+ABI realization remain separate deferred work.
 
 ## Current extraction and continuation interfaces
 

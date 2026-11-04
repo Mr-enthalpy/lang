@@ -423,7 +423,7 @@ NormProgram origin=Source@1:1[0..895]
                     Form Expr
                       Product origin=Source@25:35[391..393]
                         elements:
-                          Unit origin=Source@25:35[391..393]
+                          (empty)
     Form Alias
       Decl Alias origin=Generated(AliasPreserve)@26:1[398..413]
         binder:
@@ -607,7 +607,7 @@ NormProgram origin=Source@1:1[0..895]
                     Form Expr
                       Product origin=Source@34:47[665..667]
                         elements:
-                          Unit origin=Source@34:47[665..667]
+                          (empty)
     Form Alias
       Decl Alias origin=Generated(AliasPreserve)@35:1[672..705]
         binder:
@@ -754,7 +754,7 @@ NormProgram origin=Source@1:1[0..895]
                     Form Expr
                       Product origin=Source@39:34[816..818]
                         elements:
-                          Unit origin=Source@39:34[816..818]
+                          (empty)
     Form Alias
       Decl Alias origin=Generated(AliasPreserve)@40:1[823..862]
         binder:

@@ -252,6 +252,13 @@ to invent a borrowed actual. Ordinary applicability, preference, unique
 selection and no-reopen still apply. No second pass-kind ranking exists.
 Callable-frame self remains separate from explicit argument adaptation.
 
+The [call owner](../symbol-world/function-object-call-model.md#63-one-coherent-passing-transaction)
+defines how selected self's Param Product joins explicit input. This lowering
+preserves its one transfer transaction and compatible lifecycle effects; it
+cannot Kill whole-self and projected captures twice. All implicit and explicit
+positions end in ordinary Move, including ref/share handles, with all affected
+Pre before commit and Post only on success.
+
 ## 10. Relation to type values and rank
 
 Pass mode is not part of `TypeValueId`. Type matching and pass matching are
@@ -326,7 +333,7 @@ No full trait solver.
 No full type checker.
 No borrow checker implementation.
 No access-tree construction implementation.
-No ABI design.
+No physical machine ABI design; semantic ABIKind belongs to E's delivery consumer.
 No LLVM lowering.
 No runtime overload implementation.
 No final IR instruction format.
@@ -435,3 +442,7 @@ applicable. Neither complete-type status nor ZST layout grants global survival.
 The [lifetime refinement handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
 retains the unresolved persistence/escape scope; this pass does not infer
 universal escape permission or a universal ban on local dependencies.
+
+The [E-selected ABIKind](../static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+is consumed after ordinary pass decisions. Machine layout realizes that fixed
+delivery convention; RVO/NRVO and tail-call opportunities cannot choose it.

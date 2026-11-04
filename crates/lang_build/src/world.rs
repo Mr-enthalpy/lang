@@ -3571,9 +3571,10 @@ mod initializer_consumer_boundary_tests {
 
     #[test]
     fn invocation_reports_hidden_observation_before_both_initializer_boundaries() {
-        for source in ["let result = () f;", "let result = close let () f;"] {
+        for source in ["let result = ((),) f;", "let result = close let ((),) f;"] {
             let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
-            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let call =
+                crate::extract_single_call_site(&initializer("let result = ((),) f;")).unwrap();
             assert!(world
                 .resolve_semantic_source_target(world.package_root_node(), &call.target)
                 .is_some());
@@ -3678,7 +3679,7 @@ mod initializer_consumer_boundary_tests {
     #[test]
     fn fully_observed_result_policy_mismatch_is_not_a_continuation() {
         let mut world = world_with_member("let f = (receiver, x):compile => { (); };");
-        let expression = initializer("let result = () f;");
+        let expression = initializer("let result = ((),) f;");
         let demand = ResultPolicyDemand {
             pair_query: crate::P1Projection::Leading {
                 stage: Some(Stage::Runtime),
@@ -3708,7 +3709,7 @@ mod initializer_consumer_boundary_tests {
                 demand,
                 Provenance::new("ordinary boundary"),
             ),
-            evaluate(&mut world, "let result = runtime let () f;"),
+            evaluate(&mut world, "let result = runtime let ((),) f;"),
         ] {
             assert!(
                 matches!(outcome, ConnectedInitializerOutcome::Diagnostic(diagnostic)
@@ -3719,9 +3720,10 @@ mod initializer_consumer_boundary_tests {
 
     #[test]
     fn reached_candidate_error_is_not_residual_completion() {
-        for source in ["let result = () f;", "let result = close let () f;"] {
+        for source in ["let result = ((),) f;", "let result = close let ((),) f;"] {
             let mut world = world_with_member("let f = (receiver, x:type::):compile => { (); };");
-            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let call =
+                crate::extract_single_call_site(&initializer("let result = ((),) f;")).unwrap();
             let failure = world
                 .invoke_ordinary_call(
                     world.package_root_node(),
@@ -3788,11 +3790,12 @@ mod initializer_consumer_boundary_tests {
 
     #[test]
     fn selected_delete_remains_a_terminal_diagnostic_at_both_initializer_boundaries() {
-        for source in ["let result = () f;", "let result = close let () f;"] {
+        for source in ["let result = ((),) f;", "let result = close let ((),) f;"] {
             let mut world = world_with_member(
                 "let f = (receiver, x):compile => (\"selected rejection\") delete;",
             );
-            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let call =
+                crate::extract_single_call_site(&initializer("let result = ((),) f;")).unwrap();
             assert!(matches!(
                 world.invoke_ordinary_call(
                     world.package_root_node(),
@@ -3861,14 +3864,15 @@ mod initializer_consumer_boundary_tests {
     #[test]
     fn pending_runtime_cannot_install_runtime_binding_or_change_existing_facts() {
         for source in [
-            "let result = () f;",
-            "runtime let result = () f;",
-            "let result = close let () f;",
-            "let result:type:: = () f;",
+            "let result = ((),) f;",
+            "runtime let result = ((),) f;",
+            "let result = close let ((),) f;",
+            "let result:type:: = ((),) f;",
         ] {
             let mut world = world_with_member("let f = (receiver, x):runtime => { (); };");
             let namespace = world.package_root_node();
-            let call = crate::extract_single_call_site(&initializer("let result = () f;")).unwrap();
+            let call =
+                crate::extract_single_call_site(&initializer("let result = ((),) f;")).unwrap();
             let target = world
                 .resolve_semantic_source_target(namespace, &call.target)
                 .unwrap();

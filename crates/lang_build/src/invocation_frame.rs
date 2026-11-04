@@ -6,8 +6,10 @@
 //! `ProductSyntaxMaterial` / `ArgProductShape` describe only the explicit
 //! user-supplied call product. They do not contain caller `self`.
 //!
-//! `self` is injected by the invocation frame and occupies callable formal slot
-//! 0. Zero-user-argument callables still have a self slot.
+//! The contextual source self-position occupies formal slot 0 in this carrier.
+//! This is not index 0 of expanded SelfProjection(Param): closure capture input
+//! may be empty or have many elements. Actual receiver checks remain separate.
+//! Zero-user-argument callables still retain that contextual self-position.
 //! When a closure has formals, slot zero is the written or generated
 //! Pattern for self regardless of optional binder spelling. Only later
 //! formals consume the explicit user product.

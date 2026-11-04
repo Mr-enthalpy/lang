@@ -64,7 +64,18 @@ have actual opaque values; bool has true/false structure. Callable-head P2 reify
 return classifier and its actual reverse-dependent cone; its execution consumer remains pending.
 
 Naked operators select
-operator[op], with spelling retained by the ordinary OG_s family. Current Rust carriers do not yet implement every
+operator[op], with spelling retained by the ordinary OG_s family.
+
+Canonical call sugars add do E = () |> E with genuinely empty explicit input, and trailing
+default formals expand to real fixed-arity overload candidates with arity-growing
+ordinary forwarding. Every head retains nondefaulted contextual self; a self-only
+head matches unit explicit input. Direct associated call entries retain their
+invoked owner object as receiver. Their [syntax/consumer handoff](spec/public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+separates the connected empty-Product Norm/argument-shape behavior from pending
+do/default parsing and family execution. Empty delimiters normalize to zero
+entries; actual comma holes retain Unit, without a selection-stage filter.
+
+Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
 
 ## Workspace
@@ -109,6 +120,10 @@ use ordinary ADL. Construction/extraction commit complete identities; terminal
 argument transport is Move, while copying is an ordinary clone-derived path.
 Canonical owners separate unit fallthrough from return, and fix cleanup points
 and same-point reverse-declaration order before lifecycle observation.
+Return targets lie within the reachable segment bounded by the nearest Ordinary
+closure; InPlace adds no barrier. Explicit targets and captured return
+capabilities cannot cross it. The binding substrate preserves unknown boundary
+evidence as unbound; capability execution and completion remain pending.
 
 The lexer remains weak: contextual language words are ordinary `Name` tokens.
 The parser owns syntax shape, not semantic meaning. Closed canonical relations
@@ -127,8 +142,21 @@ Invocation does not recapture or resolve external names again by spelling.
 Pure Core material has TypeRole independently of self-construction; every
 well-formed complete tau is a type. Dependency realization follows the selected
 ordinary source action, uniquely up to observational equivalence.
-Ordinary closures may combine explicit and automatic dependency occurrences;
-in-place syntax excludes explicit clauses and supplies no overload preference.
+Each closure has one explicit or automatic value-capture mode; automatic compile
+structural dependencies remain independent. Captures form an ordered bare
+Product, fixed at formation; in-place syntax uses automatic value capture.
+The [call owner](spec/design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+separates self's call anchor, implicit parameter Product and return frame.
+The [Pattern owner](spec/design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines LHS full-input contract extraction and RHS explicit-argument requests.
+Function Pattern syntax requires a written `->` boundary, independently of
+closure expressions with omitted return clauses; arrowless material remains
+Bare Product and Pin never supplies the independent Pout constraint.
+Projected Function Pattern values necessarily erase external structural-source
+authority, even with compile-known Val1. Same-Type compile-to-runtime migration
+instead retains its type and must prove internal Paths recoverable in the
+prospective destination world at hard applicability, not after selection.
+E selects ABIKind from result delivery; machine materialization remains pending.
 Every compile call forms a CompileInstance from parent owner, selected partner
 and canonical inputs before body entry. Ordinary callable dependencies retain
 their actual identity, with no hidden caller-environment coordinate.

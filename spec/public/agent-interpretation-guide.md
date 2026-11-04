@@ -239,9 +239,13 @@ fields, layout, or ABI.
 In-place syntax has no explicit capture clause; free external observations form
 automatic dependency requirements and ordinary realizations. Invocation does
 not recapture. Actual access/capability/lifetime checks decide outer writes.
-Ordinary => closures may also have automatic dependencies alongside explicit
-ones. Classify each occurrence, excluding outer observations replaced by a
-resolved capture binder. After formation neither source placement nor capture
+Ordinary => closures use one explicit or automatic value-capture mode. An
+explicit list excludes automatic value capture; missing external values are
+diagnosed. Automatic compile structural dependencies remain independent;
+runtime structural access is inadmissible. Explicit capture positions keep
+source order as bare Product entries across stages; automatic order is fixed
+per formed closure. Resolved capture binders replace outer observations.
+After formation neither source placement nor capture
 origin supplies overload applicability, specificity or preference evidence.
 CompilePartner dependencies follow ordinary formation. A selected receiver/
 call-entry pair and canonical inputs establish a CompileInstance before body
@@ -249,6 +253,22 @@ entry. The result may be any declared ordinary value. Its accessible structure
 decides NameExpr status and the single self-root escape condition. All closures
 keep lexical/Self/navigation/dependency layers; access to an enclosing instance
 uses its ordinary self-name and admitted dependencies.
+
+Self's contextual first formal is distinct from its CallAnchor, Param and
+Return projections. Param is a capture Bare Product or singleton user receiver;
+the selected call transfers actual input once without duplicate Kill. Function
+Pattern syntax on either side requires a written `->` boundary; arrowless
+Products are not Function Patterns. Pout stays independent of Pin. Ordinary
+closure expressions may still omit return clauses; their head carriers do not
+implement Function Pattern syntax. LHS extracts full input/output/Policy/lifetime contract, while RHS
+requests explicit arguments/output/Policy and supplies no self/captures,
+lifetime clauses or spread. Its root rank+1 type/Policy fully denotes; deeper
+holes and LHS deduction retain ordinary rules. Follow the existing call and
+Pattern owners. Projected Function Pattern values necessarily erase external
+structural-source authority, even with compile-known Val1; opaque internal
+provenance is not authority. Same-Type compile-to-runtime migration instead
+checks retained Paths in the prospective destination world at hard A: false
+excludes, unknown stays unavailable. None of these consumers belongs in Norm.
 
 ## 6. Common Misreadings
 
@@ -323,8 +343,10 @@ Home(TypeOf(v)) = TypeMemberScope(T). [Witnessed anchored replication](../design
 creates a new closure identity and preserves capture obligations; it never
 reparents the RHS. Pin elaborates P2 with explicit stage/mode constraints or holes; Pout inherits
 P1's stage and may refine mode. Bare let writes no override. Explicit
-const/mut are concrete constraints, distinct from contextual default completion. Implicit return targets the outermost enclosing
-function layer; the active-frame binder implements that target query.
+const/mut are concrete constraints, distinct from contextual default completion. Implicit return targets the outermost function in the reachable segment bounded
+by the nearest Ordinary closure; InPlace is transparent. Explicit targets and
+return-capability calls cannot cross that barrier. The binder checks activation
+identity plus boundary evidence; missing evidence stays unbound.
 
 Follow the [semantic spine](../design/semantic-spine.md) for A, lifecycle/unsafe,
 host capabilities, source normalization and E. Representation, cache, scheduler
@@ -409,3 +431,40 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## Canonical call sugars: do not implement optional arguments
+
+The [pending surface extension](normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+defines do E as the ordinary `() |> E` skeleton, with E once and an actually
+empty explicit Bare Product. It adds no self, let/closure scope, stage, event or
+return target. Empty-parenthesis Norm preserves zero entries; actual comma-hole
+Units remain entries with source provenance. Call-input exposure preserves zero
+versus present-Unit arity; do not erase Unit during overload preparation.
+
+Trailing defaults generate distinct fixed-arity callable members in one ordinary
+space. The original body is the full-arity member; each shorter member evaluates
+one default and makes an arity-growing ordinary call into the established target
+candidate space. No public-name relookup, private next-entry filter, leaf bypass, preference
+for fewer defaults, speculative default evaluation or selected-failure retry is
+allowed. Captures initialize once per source formation, defaults once per omitted
+parameter per selected invocation; wrappers grant no borrow/Copy/lifetime right.
+Every generated head retains contextual self without a default; (self) matches
+unit/empty explicit input, not a singleton explicit self/Unit. The restriction
+is positional, not a check for the spelling self. In a closure family the source
+body's self is the selected full-arity member; in a direct associated entry it
+is the invoked owner object.
+Generated forwarding returns explicitly target their own actual activations,
+including unit, rather than using ordinary omitted-target inference.
+
+Direct current-owner `let ()` implementation material expands into ordinary
+associated implementation candidates, all with the same invoked owner object
+as self. Forwarding calls that object through ordinary lookup. Closure and
+contribution members instead call their held complete-type family target, not
+the wrapper c_m or a re-resolved public name. A competing user entry may win or
+make the new call ambiguous; no generated-origin privilege is introduced. No
+anonymous receiver substitution or V_T registration follows from this expansion.
+
+The [call owner](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
+owns the graph and obligations. Current parser/evaluator carriers do not implement
+this extension. Preserve the distinction between normative acceptance rows and
+executed golden/semantic tests; no standalone default evaluator may fill the gap.

@@ -4,7 +4,7 @@ This contract records syntax preservation and active return-target binding.
 Canonical completion belongs to the
 [targeted-return owner](../design/control-flow/targeted-return-and-d-reduction.md).
 
-**Status:** Raw/Norm return syntax and outermost omitted-target binding are
+**Status:** Raw/Norm return syntax and boundary-aware omitted-target binding are
 implemented. Serial UnitDiscard, path-tail completion, full lexical capability
 resolution, whole-Pattern result delivery and completion propagation remain
 unconnected.
@@ -63,14 +63,20 @@ Allowing their syntax does not establish their semantic legality.
 ## 3. Target binding
 
 `ReturnTargetStack` records active function frames and their stable identities.
-Its `outermost_enclosing_function_target()` query selects the first active
-function frame. An Omitted target on an existing event uses this query.
+Its `outermost_enclosing_function_target()` query selects the outermost function
+in the reachable segment bounded inclusively by the nearest Ordinary closure.
+InPlace adds no barrier. Frames record `ReturnBoundary::{Ordinary, InPlace,
+Unknown}`; `push_frame` without evidence records Unknown, not InPlace. Missing
+required boundary evidence preserves omitted and explicit events unbound.
 Without an active frame it reports ReturnOutsideReturnableContext.
 
 Explicit target resolution consumes a callable-self identity from the semantic
 resolver, matches active frames by identity, and diagnoses inactive or ambiguous
 targets. It never resolves by spelling or falls back to another target.
 An unresolved target requiring the unconnected semantic resolver is preserved.
+An active target outside the segment reports ReturnTargetOutsideReachableSegment.
+The shared `target_reachability` guard also constrains future return-capability
+calls; possession/capture of an outer capability does not authorize crossing.
 
 Nested unmaterialized closure literals preserve their returns for later
 elaboration rather than binding them to the surrounding frame.

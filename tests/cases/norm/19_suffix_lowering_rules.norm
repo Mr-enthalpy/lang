@@ -19,7 +19,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Product origin=Source@2:5[11..13]
                   elements:
-                    Unit origin=Source@2:5[11..13]
+                    (empty)
         target:
           OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@2:4[10..14]
     Form Expr
@@ -98,7 +98,6 @@ NormProgram origin=Source@1:1[0..162]
             elements:
               ExprElem
                 Name "obj" origin=Source@8:1[79..82]
-              Unit origin=Source@8:12[90..92]
         target:
           Nav origin=Generated(DotNameLowering)@8:1[79..92]
             components:
@@ -114,7 +113,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Product origin=Source@9:13[106..108]
                   elements:
-                    Unit origin=Source@9:13[106..108]
+                    (empty)
         target:
           Nav origin=Generated(DotNameLowering)@9:1[94..109]
             components:

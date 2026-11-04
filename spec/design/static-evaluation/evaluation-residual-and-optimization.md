@@ -230,3 +230,57 @@ name environment. Projecting type/call/Pattern or residualizing completed
 material does not recapture. Missing readiness cannot be justified by speculative
 execution of the body that consumes it. Closure dependency persistence passes
 through the [lifetime handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff).
+
+## 10. E-selected return delivery convention
+
+This owner defines the semantic ABIKind from an established result consumer:
+
+```text
+ABIKind(Deliver) = ABI1 if Deliver=FreshLet        // let v = express
+ABIKind(Deliver) = ABI2 if Deliver=ExistingTarget // v = express
+```
+
+ExistingTarget includes an already designated uninitialized hole/Place.
+The distinction is the existing let/assignment consumer, not new syntax or
+an opportunity discovered by optimization. Plain expressions, nested return
+delivery and other positions first obtain their target through existing E
+consumer rules, then map to the defined convention. Missing target wiring
+is unavailable; O cannot invent a third selection rule or a hidden lexical temp.
+
+ABI1 transports all actual implicit and explicit input through ordinary
+Pass=Move to the normalized call growth frontier. Return overwrites/reinterprets
+that input frame as the complete output. The output may differ in size: the
+growth frontier is interpreted by the complete output type after completion.
+ABI2 uses the same input Move semantics and delivers return to the previously
+designated target Place. Initialization/replacement authority, aliasing,
+Pre/commit/Post, complete-Object atomicity and cleanup remain independent checks.
+
+E fixes ABIKind, the result-target relation and observable lifecycle obligations.
+It does not fabricate physical addresses or slot widths. O and the materializer
+may choose equivalent direct construction, local temporaries, transport and
+machine layouts while satisfying that convention. RVO/NRVO success or failure
+cannot select or switch ABIKind. No layout observation adds an Object coordinate
+or changes type equality. Equivalent implementations revalidate affected E
+projections as in §5.
+
+ABI1 supplies an input/return-frontier contract for legal tail-call reuse.
+Actual tco/loop also requires tail position, Move/borrow/lifetime, fixed cleanup
+and compatible frame/slot/result evidence. Recursion alone proves no constant
+stack bound.
+
+### 10.1 Separate machine materialization work
+
+A later machine PR consumes at least:
+
+```text
+<SelectedCall, NormalizedPassMoves, ReturnDeliveryTarget,
+ ABIKind, LifetimeEvidence, MachineTargetFacts>
+```
+
+It must realize input-frontier transport, ABI1 overwrite/reinterpretation even
+with changed output size, ABI2 designated-target delivery, stack-frontier
+adjustment and proved tco/loop slot reuse. Cross-target and FFI constraints
+need explicit machine boundaries preserving E's guarantees. Physical frame
+allocation, calling encodings and FFI ABI are not implemented by this specification
+revision. SCC lifecycle evidence is supplied by the independent lifetime work,
+never chosen by machine layout or optimization success.

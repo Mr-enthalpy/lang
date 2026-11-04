@@ -191,6 +191,18 @@ implementation and admitted dependency material. Its first ordinary callable
 c_C, classifier A_C and terminal () entry have distinct identities; formation
 terminates at the implementation leaf. Ordinary let binds tau_C:type.
 
+For trailing defaults the [call owner](function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
+expands formation material into the original full-arity member and fixed-arity
+ordinary forwarding members. They are formed together in tau_C (or at the
+authorized contribution target), not imported from a previously formed type.
+Their distinct classifiers have that target's /tau home. Source dependencies
+are realized once; every wrapper link/transport still requires ordinary
+dependency and lifetime evidence. Every generated head retains contextual self
+without a default; a self-only head matches unit explicit input. No intermediate
+partial type is published. Direct current-owner let () material instead expands
+ordinary associated implementation entries through that existing Val2 consumer,
+all retaining the invoked owner object as self; this registers no V_T members.
+
 An established same-name contribution bucket instead jointly consumes sibling
 closure materials against one snapshot, forms target-anchored c_C^T members
 and initializes once. The [name owner](names-and-overload-groups.md) owns that

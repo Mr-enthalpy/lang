@@ -400,7 +400,7 @@ fn unsupported_body(
 fn return_event_execution_gap_message(event: &lang_syntax::NormReturnEvent) -> &'static str {
     match event.target {
         lang_syntax::NormReturnTargetSyntax::Omitted => {
-            "return to the outermost enclosing function layer is not yet executable"
+            "return to the outermost function layer in the reachable return segment is not yet executable"
         }
         lang_syntax::NormReturnTargetSyntax::Explicit(_) => {
             "return to the explicitly selected active frame is not yet executable"
@@ -454,5 +454,24 @@ fn expr_refs_selected_or_local_binding(
                 })
         }
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn omitted_return_execution_gap_names_the_reachable_segment() {
+        let parsed = lang_syntax::parse("() return;");
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let program = lang_syntax::normalize_program(&parsed.program);
+        let [NormForm::ReturnEvent(event)] = program.forms.as_slice() else {
+            panic!("one return event expected")
+        };
+        assert_eq!(
+            return_event_execution_gap_message(event),
+            "return to the outermost function layer in the reachable return segment is not yet executable"
+        );
     }
 }

@@ -347,8 +347,8 @@ executed success.
 | 106-DP08 | A pure Path name node or ordinary string | Do not treat it as a resolved capture before external Read. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 | 106-DP09 | A realization retains owned values or references | Validate ordinary structure/referent identity; do not hide state in an extra-semantic side table. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
 | 106-DP10 | Copy or reanchor a formed callable | Preserve dependencies without rerunning surrounding code, lookup or lifetime extension. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md) | Defined semantics; source/evaluator consumer pending |
-| 106-DP11 | Ordinary => closure legally observes external x without an explicit clause for x | Form an AutomaticDeps occurrence for x using the selected ordinary action; automatic dependency does not imply InPlace. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
-| 106-DP12 | Ordinary closure has explicit capture x and another free external y | Combine explicit x and automatic y occurrences. A body read resolved to capture x does not also automatically capture outer x; other distinct occurrences/binders are not deduplicated by spelling or value. Formation origin adds no post-formation operation dimension. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
+| 106-DP11 | Ordinary => closure in Automatic value mode, without an explicit capture clause, legally observes external value x | Form the automatic value occurrence using the selected ordinary action; Automatic does not imply InPlace. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
+| 106-DP12 | Ordinary closure has explicit capture x and another free external value y | Diagnose the omitted value dependency; do not append automatic y. A read resolved to capture x uses that binder. Independent automatic compile structural access remains legal; occurrence identities and ordinary post-formation rules remain. | [DP owner](../design/symbol-world/dependency-observation-and-realization.md#4-explicit-and-automatic-dependency-formation) | Defined semantics; source/evaluator consumer pending |
 
 ### 106.10 Uniform closure formation and automatic dependencies
 
@@ -441,11 +441,11 @@ They add no executable tests or new semantic ontology.
 | ALIGN-08 | A complex name_express with ordinary compile calls and express$::express$ operands, followed by # | Complete ordinary computation once to NameValue, then project without resident read. No AST capture, skipped effect or repeated evaluation. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
 | ALIGN-09 | name_express$ versus (name_express \|> path_pattern)$ | Each $ flips interpretation polarity; the latter operand also performs ordinary Path projection. Missing projection applicability cannot be repaired by source quotation. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
 | ALIGN-10 | NameExpr and already bound NameValue Path round-trips | Path consumer preserves structural equality and anchors, not arbitrary Object identity or binder spelling. Resident authority is rechecked only by its own consumer. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
-| ALIGN-11 | Name-headed in-place callable in ordinary and type calls | Formal head retains (_, let _: (name)$). Selected ordinary x or projected c reaches slot zero; the explicit actual never supplies self. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
+| ALIGN-11 | Name-headed in-place callable in ordinary and type calls | Formal head retains (_, let _: (name)$). Contextual self observes selected x or c; full Param input follows the call projection, and the explicit actual never supplies self. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
 | ALIGN-12 | E return versus plain E at a path tail | The former already has ReturnEvent and infers only target; the latter first uses the serial consumer. Do not merge these operations in Omitted. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-13 | A non-tail serial expression yields non-unit | UnitDiscard rejects; it does not silently discard the result, synthesize a lexical temp or turn it into return. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-14 | Tail unit versus explicit unit_value return | Tail unit falls through; explicit unit produces ReturnEvent. Neither fabricates a local return contribution. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
-| ALIGN-15 | Each branch has a true non-unit tail, or a following continuation | Determine tailness per control-flow path, not AST list position. Synthesize return only at the true tail, then infer the outermost function target. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
+| ALIGN-15 | Each branch has a true non-unit tail, or a following continuation | Determine tailness per control-flow path, not AST list position. Synthesize return only at the true tail, then infer the outermost function target in the reachable segment bounded by the nearest Ordinary closure. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-16 | A non-unit tail's root overload and established ReturnPattern/Pout | Apply immediate demand before sealed maxima, retain both outer P1/P2 constraints; no speculative body, hidden temp, second evaluation or reopen. | [Owner](../design/control-flow/targeted-return-and-d-reduction.md) |
 | ALIGN-17 | Construction material is incomplete, or construction Pre fails | No partial Object identity exists. Successful atomic ConstructCommit establishes one complete result; failure publishes none. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
 | ALIGN-18 | A selected consuming parent decomposition | Atomic ExtractCommit ends parent identity and establishes complete children. No observable partly extracted parent or field-death bitmap. | [Owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md) |
@@ -544,7 +544,7 @@ recorded only after its actual consumer has positive and negative tests.
 | O02 | derived T ref forwarding | generated by ordinary struct open computation and actual registration | [Associated](../design/symbol-world/type-associated-function-objects-and-access-trees.md) | producer unavailable |
 | O03 | ref without helper registration | borrow/lifecycle only; no automatic structural forwarding | [Associated](../design/symbol-world/type-associated-function-objects-and-access-trees.md) | no forwarding producer |
 | O04 | derived state(T0), then Write(place,T1) | state stays on concrete T0; new call required for T1 members | [Construction](../design/symbol-world/structural-type-formation-and-composition.md) | general state consumer pending |
-| R01 | type call | CallTarget=tau, ActualSelf=c*, actual slot zero unchanged | [Call](../design/symbol-world/function-object-call-model.md#callable-tag-and-activation-observations) | selection connected; tag consumer pending |
+| R01 | type call | CallTarget=tau, ActualSelf=c*, contextual first formal retained; Param/Return projections independent | [Call](../design/symbol-world/function-object-call-model.md#11-callable-tag-and-activation-observations) | selection connected; full projection/tag consumer pending |
 | R02 | ordinary value call | actual implicit self=x; tag=x | [Call](../design/symbol-world/function-object-call-model.md) | ordinary selection connected |
 | R03 | recursive and nested tags | tag plus actual activation selects distinct frames | [Return](../design/control-flow/targeted-return-and-d-reduction.md#callable-tag-to-active-frame) | routing consumer pending |
 | R04 | compile implicit dependencies | ordinary formation allowed; unavailable concrete runtime read waits | [Dependency](../design/symbol-world/dependency-observation-and-realization.md) | general realization pending |
@@ -704,3 +704,151 @@ whole-slot Mode. Output Hole solving and actual reverse E remain pending.
 | RK13 | Equal first pair, different higher-rank observations | Prefixes remain distinct; no whole-chain equality or hidden-tail success from the pair. | Prefix material equality connected; source full-rank transport pending |
 | RK14 | An actually observed first compile rank and legal chain | Compile tail follows the chain law without infinite enumeration; target material itself is no observation witness. | Shape relation connected; source evidence consumer pending |
 | RK15 | Compile Policy on one scoped Hole versus unrefined compile let | The Hole constrains its rank; ordinary compile let constrains every non-absent rank. | Syntax scopes connected; general Hole solver pending |
+
+## Closure, self and directional Function Pattern acceptance
+
+T01–T22 retain the topic design's obligations; T23–T35 add canonical audit
+boundaries. Complete closure/Function Pattern consumers remain pending. Return
+segment identity/reachability has a minimal executable binding slice (T23–T26),
+not capability execution or completion propagation. Existing syntax, rank-prefix, transaction and
+no-reopen tests prove only their slices; they do not execute capture-mode
+analysis, FnExtract/FnRequest, full self projection or machine ABI realization.
+B_K, F_L/F_R and ABIKind are metanotation, not additional source syntax.
+
+Owners: [dependency](../design/symbol-world/dependency-observation-and-realization.md),
+[call](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections),
+[Function Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers),
+[lifetime](../design/lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries),
+[return](../design/control-flow/targeted-return-and-d-reduction.md#callable-tag-to-active-frame),
+[E delivery](../design/static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention).
+
+| ID | Scenario | Required judgment and negative boundary | Owner |
+|---|---|---|---|
+| CSF-T01 | Explicit [a,b] versus [b,a] | Keep source sequence as bare positional material. Different ordered contents normalize differently; equal values alone cannot merge distinct occurrence/binder identities. No name sorting or unordered conversion. | dependency |
+| CSF-T02 | Explicit compile,runtime,compile captures | Keep B_K(c0,c1,c2) and each coherent rank Policy, even without physical static slots. Initializers share pre-capture scope, cannot see prior new capture binders, and execute once in ordinary order. | dependency |
+| CSF-T03 | Explicit x, additional free external value y | Diagnose omitted y; no automatic addition, even for a distinct binder. Reading captured x uses its resolved binder. | dependency |
+| CSF-T04 | Explicit mode plus compile structural access; runtime Object's compile classifier; runtime-only structural Path | Admit the first two as independent compile StructuralAccess. Reject runtime StructuralAccess; source runtime Val1 cannot misclassify the requested observation or disguise runtime name selection as value capture. | dependency |
+| CSF-T05 | Form InPlace, then invoke/copy/return/reify | Fix resolved automatic sequence/realizations per completed closure, with no rediscovery/reordering or public portable ordinal guarantee. Admitted clause-free ordinary closures may also use Automatic mode. | dependency |
+| CSF-T06 | User-defined x:T associated () call | Param=B_K(x), a singleton case. Closure Param may have 0/1/n positions; contextual first formal adds no universal environment Object. | call |
+| CSF-T07 | Candidates capture 0/1/3 values, ordinary type/Policy/result demand distinguishes one | Ordinary selection may use candidate-local read-only implicit requirements; no common capture Pattern or shape preference. Tied ordinary maxima stay ambiguous. Transfer only selected input. | call / Function Pattern |
+| CSF-T08 | RHS requests self, captures, ...captures or lifetime pre/post | Reject those request positions. RHS has explicit input/output/type/Policy only, with no alternate capture/lifecycle selector, constructor or spread. | Function Pattern |
+| CSF-T09 | RHS root immediate rank+1 type/Policy holes versus LHS roots or deep holes | RHS is not a complete request. LHS may deduce ordinarily; deep legal holes retain identity/availability. Preserve arbitrary-rank coherence and structural _ versus external _$. | Function Pattern |
+| CSF-T10 | LHS full input with one ...rest; two same-layer Packs; RHS ...args | Match all meaningful capture/argument positions, allowing one contiguous ordered remainder. Reject uncovered captures, two same-layer Packs and RHS spread. Nested layers keep independent rules. | Function Pattern |
+| CSF-T11 | LHS omits pre/post, actual A changes observed state | Keep U_default, exclusive distinct/shared common roots and default origins. Expected Post=NoDelta. At extraction require Pre_F implies Pre_A and Post_A implies Post_F; insufficient actual Post rejects immediately. A with no stronger Pre and a sufficient Post is compatible under mapped entry assumptions. | lifetime |
+| CSF-T12 | RHS has no lifetime clause; uniquely selected A fails actual Pre/commit/Post | Fail without publication or runner-up selection. Clause omission skips no actual check and supplies no new lifetime demand. | lifetime / call |
+| CSF-T13 | CallType(tau) versus CallValue(x) | Keep CallTarget=tau, ActualSelf=c* versus both x. CallableOwner, ReceiverType, Param and tag/activation ReturnFrame remain independent with one selected identity. | call |
+| CSF-T14 | Pass self observed through capture Param | One coherent transaction, all affected Pre before existing atomic commit, joint Post. No duplicate whole-self/capture Kill, implicit Copy or reuse of killed generation. Preserve invokes no clone. | call / lifetime |
+| CSF-T15 | Param contains ref/share handles | Move handles with existing target/generation/origin. No direct referent ownership transfer, promotion or region extension. | call / lifetime |
+| CSF-T16 | Recursive (args) |> self, same tag with nested activations | Enter fresh activation through CallAnchor with actual Movable/borrow facts. Complete resolves tag plus active activation, respecting barriers/cleanup; no old sealed call reopens. Continue/break-like paths need no new primitive. | call / return |
+| CSF-T17 | Mandatory source-authority-erasing Function Pattern projection, later compile-known Val1 | Keep formed implementation/dependencies/contract and opaque internal provenance; necessarily remove external structural navigation/reselection authority, with no opt-out or recovery from known Val1. O specialization stays within interface. Before/after full Type equality is not required; ordinary complete-tau transport still retains V_tau. | Function Pattern |
+| CSF-T18 | Library reify forwarder changes lowest present external compile demand to runtime | Require ordinary same-Type migration, active ClosedReturn, readiness/dependency/lifetime evidence, and independent output migration if needed. No built-in Function Pattern conversion or restored source. | Function Pattern / Policy |
+| CSF-T19 | Same callable/result in let v=expr versus v=expr, including uninitialized designated target | E selects ABI1 versus ABI2. Alias/initialization/replacement authority remains checked. RVO/NRVO, result-type equality and direct versus temporary construction cannot switch ABIKind. | E delivery |
+| CSF-T20 | Tail call under ABI1 versus recursion lacking cleanup/lifetime/slot proof | Consume proved frontier reuse, preserving delivery even for different input/output sizes. Missing evidence grants no unconditional tco/loop or constant stack; physical realization remains deferred. | E delivery / mechanical |
+| CSF-T21 | Copy/further pure extraction of formed Function Pattern value | Keep actual captured realizations without initialization/relookup. Without conversion, normalized full contents determine equality; changed owned content differs. NameBinding/Place identity remains separate; no fourth coordinate or hidden state. | dependency / Function Pattern |
+| CSF-T22 | Needed classifier, implicit material, rank or contract implication unknown | Keep Unavailable and pending obligations, not Mismatch, fallback suppression, unique maximum or permission. Independently proved hard rejection may still terminate its candidate. | Pattern / call |
+| CSF-T23 | Active Ordinary F, then active Ordinary G formed within F | Omitted return in G selects G, not F. F remains active but lies outside G's reachable return segment. Binding slice covered by return_target unit tests; execution pending. | return |
+| CSF-T24 | Active Ordinary F, nested InPlace I/J | InPlace adds no barrier: omitted return reaches F; explicit target I/J or F is allowed only with actual activation and ordinary legality evidence. Binding slice covered; completion pending. | return |
+| CSF-T25 | G captures F's target/capability, then G executes while F remains active | Explicit syntax and ordinary capability invocation both reject return to F across G's Ordinary barrier. Active identity/possession is insufficient; helper entry cannot reset the requesting segment. Binder resolver/shared guard covered; actual capability execution pending. | return |
+| CSF-T26 | Unknown boundary before the prospective outer target, or nearer proved Ordinary barrier | Missing required evidence preserves omitted/explicit targets unbound, not a transparent boundary. A nearer proved Ordinary barrier closes its own segment regardless of unknown outer boundaries. Popping/reentering uses distinct activation identities. Binding guard covered. | return |
+| CSF-T27 | Formed closure with no captures, or two captures of types unrelated to ActualSelf | Param is respectively B_K() or B_K(a,b); neither needs a first capture of callee type. ActualSelf still meets the associated entry receiver contract. A real T receiver cannot use a T ref entry by coercion. | call / type |
+| CSF-T28 | InternalOnlyPath(tau), nonidentity compile-to-runtime candidate m, prospective world proves nonrecoverability | Reject m at hard A, before preference; do not defer to DynamicLegality/backend/reify. Equivalent Ordinary/InPlace material has the same outcome; no blanket value-operation ban. | Policy / dependency |
+| CSF-T29 | Prospective runtime world proves all retained structural Paths recoverable | Continue ordinary hard A and selection; proof alone grants no readiness, lifetime or final delivery success. Compile classifier observations of runtime Objects may be legal. Candidate-specific evidence requires no speculative destination construction or body execution. | Policy / dependency |
+| CSF-T30 | Prospective Path evidence unknown while another migration candidate is apparently viable | Applicability Unavailable, not false; no wildcard/runner-up selection by treating missing proof as rejection. Source-world Path success or equal Core is insufficient. | Policy / dependency |
+| CSF-T31 | Existing accepted view versus nonidentity migration; projected C:tau_C -> f:F versus complete tau transport | Reuse the existing view first with unchanged identity and established obligations; enumerate no migration. Function Pattern projection necessarily erases external source authority and is not same-Type migration; complete tau transport retains immutable V_tau. No erasure bypass of retained-Path A. | Policy / Function Pattern |
+| CSF-T32 | Projected Function Pattern value at compile/runtime frontier with internally retained source IDs | External consumers cannot re-navigate or reselect original structural candidates even if Val1 is compile-known. O specialization stays within exposed contract; opaque implementation provenance grants no authority. | Function Pattern |
+| CSF-T33 | Arrowless () or (A,B), even under callable expectation or Pin annotations | Remain Bare Product material, not Function Pattern syntax. A consumer explicitly requiring Function Pattern syntax must diagnose a missing ->, not infer the boundary by semantic lookup. An arrow nested in a child does not supply its parent's boundary. | Function Pattern / surface |
+| CSF-T34 | LHS and RHS Function Pattern syntax with () -> R or (A,B) -> R | Retain a written -> delimiting the independent output/Pout position; Pin cannot supply Pout. Ordinary output deduction does not remove the delimiter. Positive and missing-arrow grammar consumers remain pending. | Function Pattern / surface |
+| CSF-T35 | Ordinary/in-place closure expression with no written return clause | Existing legal closure syntax remains legal; do not apply FunctionPatternSyntax => HasArrowBoundary to every callable expression or treat its generic head as Function Pattern recognition. | Function Pattern / surface |
+
+T27–T35 are normative targets, not executed capture/Path/Function Pattern tests.
+
+Additional authority subcases keep ordinary determination and delivery ahead of
+their consumers:
+
+- **CSF-T11 concrete-callable boundary:** Present an undetermined overload
+  collection with two members, only one of whose lifetime contracts satisfies
+  F_L. LHS extraction cannot select that member by contract compatibility;
+  ordinary concrete-value determination or its ambiguity/unavailable result
+  must stand first. Once ordinary determination fixes a member, check only that
+  member's contract. Failure cannot reopen the collection for the compatible one.
+- **CSF-T19 delivery-target boundary:** For a plain expression or nested return
+  whose ordinary E delivery target is unavailable, keep delivery unavailable
+  before publishing a result through that consumer. O cannot supply the missing
+  target through a hidden lexical temporary, RVO/NRVO or a third ABI selection
+  rule. Once E establishes a delivery target, apply only its defined convention.
+
+Cross-owner proof obligations are source/realization preservation (T01–05,T21),
+selection-to-projection direction and uniqueness (T06–09,T13,T22), lifecycle
+conservation in one transaction (T12,T14–15), self/return independence (T13,T16),
+directional contract preservation (T08–11,T17–18,T21), and ABI uniqueness
+(T19–20). They use one R_Gamma/Policy/overload/Move/lifetime/E system; these
+specification judgments imply no executed source success.
+
+## Empty invocation and default-formal sugar acceptance
+
+Status: DS01–DS28 are normative acceptance targets. The empty-Product syntax,
+shape, canonical identity and ordinary arity-selection slices of DS02–DS03 have
+executable regressions; do/default parsing and family execution remain pending.
+Canonical ownership: [call family/forwarding](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members),
+[empty Product](../design/patterns-overload/product-repetition-and-unpacking.md#2-bare-product-and-context),
+[contribution formation](../design/symbol-world/names-and-overload-groups.md#61-common-snapshot-closure-contribution-formation),
+and [surface/Raw handoff](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending).
+The `31_empty_products` Norm golden, syntax `empty_products` tests and build
+`product_shape`/`canonical_integration` regressions cover empty delimiters versus
+comma Units, neutral continuation, nested exposure/barriers, zero-versus-one
+canonical input identity and ordinary fixed-arity selection. Existing sealed-call
+tests cover substrate no-reopen, not execution of do/default sugars. The [roadmap](roadmap.md#8-acceptance-evidence) records the open consumers.
+DS24–DS28 specify the [non-semantic forwarding warning](../design/symbol-world/function-object-call-model.md#1221-non-semantic-forwarding-warning)
+and its invariance tests, not implemented diagnostic coverage. Warning emission
+is a non-blocking follow-up; DS22 remains an intentional legal outcome.
+
+| Case | Setup / competing derivation | Required result / rejection boundary |
+|---|---|---|
+| DS01 | do E, where forming E records an effect and yields a callable | Form E once; use ordinary lookup/selection with zero explicit arguments. No second evaluation to obtain self or inspect candidates. Compare with exactly the ordinary () pipe skeleton. |
+| DS02 | Empty () versus a present Unit comma slot; zero- and one-argument candidates | Empty has arity 0 and no ordinal child; present Unit counts. Canonical input keys and observations follow actual empty versus present material. No downstream Unit-stripping or fabricated self. |
+| DS03 | x pipe f (), () pipe f (x), obj..method(), obj pipe .method(), obj[], obj[()] | Empty material merges neutrally; both method spellings and both exposed index inputs have receiver only. Keep first-product-only binding and source nesting. Actual comma-hole Units remain arguments. |
+| DS04 | do f (x) versus do (f (x)); nested Product/barrier or unavailable runtime material | Preserve the existing pipe skeleton and explicit grouping, not a new conventional-call grammar or target barrier. Only ordinary available exposure may change arity. |
+| DS05 | do around a compile/runtime/in-place target and inside a return/serial context | No extra stage, lexical owner, dependency scope, return target or control event. Retain ordinary unit discard/fallthrough, implicit event and explicit targeted return rules. |
+| DS06 | n explicit formals and k trailing defaults; k=0, k=n, and a self-only head | Form exactly k+1 distinct fixed-arity candidates n through n-k. Retain contextual self Pattern/binder/Policy in every head; self/captures do not count in n. (self, let i=d) produces (self, let i) and (self); separating self from the latter yields unit/empty explicit input, not one Unit argument. Complete internal capture/self input is a separate observation. |
+| DS07 | Required-after-default; default on first contextual formal named self, receiver or _; nested/Pack/return default; missing E | Spanned syntax/validation recovery. A contextual-self default is always rejected, never evaluated or used to synthesize/drop self. Apply this by position, not spelling: an ordinary later explicit binder named self is not the contextual position. No parser lookup/backtracking or capture-initializer repair. A whole direct destructuring formal may have a default. |
+| DS08 | Generated-family-only call with two omitted defaults and effects; full-arity call with explicit values | Selected shorter entry executes each omitted default once, left to right along fresh arity-growing ordinary calls. Full-arity entry executes none. Formation and preselection execute no default expression; each intermediate call still needs ordinary selection and legality. |
+| DS09 | Later default observes prior supplied/defaulted arg or contextual self; default reads current/later arg | Earlier readable bindings use ordinary views. Closure-entry default self is c_m and original body self is c_n; direct associated entries retain the same receiver x in defaults and body. Current/later uninitialized value reads fail without outer-name fallback; classifier access needs its independent evidence. |
+| DS10 | Default result mismatches Pattern/Policy or needs unavailable compile observation | Ordinary constrained production/extraction, horizon/readiness and migration rules apply. No default-time type coercion in applicability, runtime-to-compile permission, or execution to prove viability. |
+| DS11 | Public name shadowed after formation; target space includes user overloads; direct associated receiver forwarding | Closure/contribution entries call their held complete-type target, not a re-resolved public name or their own c_m. Direct associated entries call the original receiver x. All ordinary target candidates compete: the next generated entry is not privately filtered or preselected; user winners and ambiguity stand. This fresh call cannot reopen its selected outer entry. |
+| DS12 | User and generated fixed-arity candidates both applicable and otherwise tied | Ordinary ambiguity. No generated/original/default-count priority, fallback suppression from origin, or per-family preliminary winner. Distinct members do not collapse merely because outputs agree. |
+| DS13 | Selected shorter entry default fails, ordinary forwarding call fails, or return delivery fails; outer runner-up exists | No outer or already sealed inner selection reopens. Preserve reached effects and ordinary cleanup/failure transaction boundaries; publish no failed result. |
+| DS14 | Source captures have effectful initializers; defaults and body use those captures | Source initializers execute once per formation, not per member/call; defaults execute per selected invocation. Defaults participate in exclusive Explicit/Automatic dependency completeness. No invocation-time relookup or recapture. |
+| DS15 | Owned noncopy capture or local ref needed by several wrappers/escaped family | Prove ordinary realization, retention, capability, generation/lifetime and escape legality for every required use. No implicit shared environment, clone, Copy or global lifetime; no blanket ban based only on local provenance. Missing evidence remains unavailable. |
+| DS16 | Default consumes an earlier arg still needed for forwarding; ref/share or Preserve forwarding | Require actual frontier legality and one terminal Move per edge/input. Consumed prior generation is not restored; no duplicate same-frontier Kill. Ref/share retains targets; Preserve is not clone. Original associated receiver still needs its own legal call/transfer evidence. |
+| DS17 | Forwarded result is unit/non-unit; outer source frame active; direct associated entries share receiver tag x | Terminal return explicitly targets that entry's actual activation, including unit and nested activations with the same tag x. Propagate ReturnPattern/Pout before root maxima and preserve source-written return targets. No unit fallthrough, omitted-target substitution, hidden lexical temp or merging by receiver/tag identity. |
+| DS18 | Defaulted declarations in a common bucket, a local defaulted closure, and direct let () implementation material | Bucket/local formation retains complete-type homes, one snapshot and no first sibling/partial Object/repeated lexical aggregation/bulk import. Direct let () instead installs real associated entries Impl_n through Impl_(n-k), each with ActualSelf=x for invoked x:T. Its self-only entry matches unit explicit input and forwards by ordinary call to x. No anonymous receiver substitution, generated V_T registration or new authority. |
+| DS19 | Example do (self, let i = 1uint8) => { cond ? if { i } else { (i + 1) pipe self } } | The generated (self) head matches unit explicit input. Empty call may select c_0; default once, then ordinary family call with one explicit value. With only these generated entries, c_1 wins. Body self=c_1 recurses at full arity without rerunning the default. Unknown cond/type/Move/lifetime facts grant no success or tco guarantee. |
+| DS20 | Forwarders under compile/reify, output-demand competition and copying a completed family | Ordinary compile-instance keys, ClosedReturn, E-selected ABI, actual dependency identity, no recapture and immutable complete observations apply. Expansion grants no stage conversion, ABI choice, renewed construction window or SCC/slot-reuse proof. |
+| DS21 | G={c_2,c_1,c_0}, defaults d_1,d_2; selected c_0 forwards one argument, applicable h strictly loses to c_1 | Normal inner selection chooses c_1, then d_2 executes once. No generated-member preference; the next-member outcome follows only from ordinary preference. |
+| DS22 | Same selected c_0 and input, but h strictly wins over c_1 | c_0 forwards to h. Do not force c_1/c_2 or evaluate d_2. Outer selection stays sealed; whole-target competition is intentional. |
+| DS23 | Same selected c_0 and input, h and c_1 tied distinct inner maxima | Ordinary inner ambiguity before either body/d_2 executes. Reached d_1 follows ordinary effect/failure/cleanup rules; no retry of outer candidates or private next-member filter. |
+| DS24 | DS22 with proof of the selected outer c_0, inner winner h and h != c_1 | May emit Warning: default-argument forwarding selects a different overload member. Preserve the legal h winner, skipped d_2 and sealed outer selection; no default-specific Error. |
+| DS25 | Inner winner or its comparison with the nominal next entry is not provable at the diagnostic frontier | No deviation warning from unknown evidence. Do not execute defaults/bodies or force selection for diagnosis. A permitted later ordinary selection remains later; missing evidence required by the ordinary call still yields its ordinary unavailable/failure result, never assumed success. |
+| DS26 | Same ordinary forwarding with the warning enabled/omitted; compare a next-entry winner with a proved distinct h whose output is equal | Same candidate set, applicability/preference, winner, result, effect counts, Move/lifecycle and delivery. No deviation warning for the nominal next identity; equal output does not erase a proved distinct candidate identity. Diagnostic emission grants no execution or selection authority. |
+| DS27 | Forwarding ambiguity, missing required evidence or failure after an inner seal; outer runner-up exists | Preserve ordinary failure and reached effects/cleanup, never reopen an outer/inner seal. No deviation warning claims a winner where none is proved; a proved selected h may be diagnosed without recovering from its later failure. |
+| DS28 | Explicit user candidate controls or call-site constraints on a forwarding call | Apply only the written constraints under ordinary rules. Expansion injects no filter; constraint failure is ordinary failure, not a default-specific Error. Neither warning emission nor its absence bypasses the constraint or retries selection. |
+
+Two explicit boundary subcases refine the matrix:
+
+- **DS06 self-only versus Unit argument:** Compare `(self, let i=1uint8)`'s
+  generated `(self)` head with `(receiver)` and a legal supplied Unit slot.
+  Both self-only heads have unit explicit input even if their full internal
+  inputs contain captures/receiver material. A present Unit argument is still
+  one explicit position and must not be stripped to make it match.
+- **DS18 direct call-entry forwarding:** For `let () = (receiver, let i=d) => body`
+  under owner T, calling an existing x:T with empty explicit input may select
+  Impl_0. It evaluates d, then ordinary `(result(d)) |> x` may select Impl_1
+  with self=x and a distinct activation. Do not default/create x, substitute
+  a generated c_0/c_1 receiver, privately force Impl_1, or register V_T members.
+  A written default on receiver is rejected, even if it could produce a T.
+
+For every executable connection, include positive and negative syntax goldens,
+empty-versus-present identity/arity, effect counters, generated/user ambiguity,
+selected failure with a runner-up, dependency/authority non-derivability and
+explicit wrapper-unit-return regressions. A passing existing test suite alone
+does not satisfy these unconnected normative rows.

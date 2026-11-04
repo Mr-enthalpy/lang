@@ -447,13 +447,14 @@ role is established by the source-to-actions handoff before formation:
       Bind/Install(f, tau_C:type)
 
     ContributionRole(root,f), established multiple-closure bucket:
-      Delta_i^call = CallabilityContributionMaterial(C_i)
-      T_f = OneShotFormation_f(join_i Delta_i^call)
-      c_i^f = CallabilityContribution(T_f,C_i)
-      OrdinaryCallableValue(c_i^f)
-      Val1?(c_i^f) != absent
-      Home(Type(c_i^f)) = TypeMemberScope(T_f)
-      V_T_f = {c_1^f, ..., c_n^f}
+      M_i = ExpandDefaults(C_i)   // singleton when there are no defaults
+      Delta_i,m^call = CallabilityContributionMaterial(C_i,m), C_i,m in M_i
+      T_f = OneShotFormation_f(join_i,m Delta_i,m^call)
+      c_i,m^f = CallabilityContribution(T_f,C_i,m)
+      OrdinaryCallableValue(c_i,m^f)
+      Val1?(c_i,m^f) != absent
+      Home(Type(c_i,m^f)) = TypeMemberScope(T_f)
+      V_T_f = {c_i,m^f | C_i,m in M_i, for every accepted declaration i}
 
 The whole accepted bucket determines one common-snapshot formation. No sibling
 is designated the first RHS resident; no filename or discovery order chooses
@@ -471,8 +472,15 @@ registrations. It creates neither an empty resident nor an initial update.
 Failure before commit leaves no readable resident, subject to ordinary
 transaction rules; Close cannot publish the uninitialized name.
 
-Each declaration contributes its one target-formed ordinary callable member,
-not its standalone type result or that result's complete callspace:
+Each expanded formation-material unit contributes one target-formed ordinary
+callable member, not its standalone type result or that result's complete
+callspace. Without defaults this remains one member per declaration. With
+defaults the [call owner](function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
+fixes the finite member expansion and ordinary forwarding-target dependencies
+before publication. Forwarding calls the held complete target's entire ordinary
+candidate space, without a private next-member filter or new public-name lookup.
+All siblings and expanded units share the same formation snapshot; expansion
+does not grant a new contribution role or replay source capture initializers:
 
     TypeAdd(T_f, tau_C_i)                       -- invalid type member
     V_T_f += V_tau_C_i                         -- no implicit bulk import

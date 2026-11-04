@@ -5,7 +5,10 @@
 > value-side / pattern-side / annotation / alias boundaries; §11 defines
 > origin / generated / derived / unsupported visibility; §12–§13 define the
 > non-goals and the semantic-consumer boundary. Examples are cross-checked
-> against the normalized dumps in `tests/cases/norm/`.
+> against the normalized dumps in `tests/cases/norm/`. §15 records canonical
+> call-sugar extensions: empty-Product normalization/shape examples are connected
+> and golden-tested; do/default parsing and execution examples remain acceptance
+> targets, not current golden output.
 
 This document explains the current normalized surface behavior for both human
 readers and coding/documentation agents. Where a rule has an implementation
@@ -87,7 +90,7 @@ P |> e P   -> e
 (P, P)     -> P
 P          -> P
 e          -> e
-()         -> Product(Unit)
+()         -> Product[]       // zero entries; actual comma holes remain Unit
 
 (e)        -> G
 G          -> e   in ordinary expression position
@@ -242,10 +245,12 @@ Second repair never overrides source-product continuation.
 
 ## 6. Product, Group, and Unit Boundaries
 
-Unit and comma positions are preserved exactly; they are never silently dropped:
+Empty delimiters have zero entries; actual comma-hole Unit positions are
+preserved exactly and are never silently dropped. This is implemented at
+source Product normalization, not by filtering arguments during selection:
 
 ```text
-()        => Product(Unit)
+()        => Product[]
 (a,)      => Product(a, Unit)
 (,a)      => Product(Unit, a)
 (a,,b)    => Product(a, Unit, b)
@@ -387,9 +392,10 @@ obj..method(args...)
 => (obj, args...) |> method::adl
 ```
 
-For empty `()`, the ordinary Product contribution is unit, so both spellings
-produce `(obj, ()) |> method::adl`. A Product receiver participates in the same
-ordinary suffix and pipeline rules.
+For empty `()`, the Product contributes zero entries, so both spellings produce
+receiver-only `(obj) |> method::adl`. A Product receiver participates in the
+same ordinary suffix and pipeline rules. Actual comma-hole Units remain inputs;
+no selection-stage Unit stripping is permitted.
 
 ### Bracket sugar
 
@@ -408,7 +414,12 @@ obj[]
 
 ```text
 Empty bracket payload contributes no implicit Unit.
-Explicit `()` inside brackets is a user-written Unit product: obj[()] => (obj, ()) |> [].
+Explicit `()` inside brackets remains nested empty Product syntax:
+obj[()] => Product[obj, Product[]] |> [].
+Ordinary available Product exposure yields receiver-only input, just as obj[].
+The unresolved OperatorTarget arity records written operand positions before
+Product exposure, not the final ArgProductShape.arity. Actual comma-hole Units
+in obj[,] remain explicit arguments.
 ```
 
 ### Shared boundary
@@ -712,6 +723,12 @@ call-entry may supply another receiver object. The spelling `self` is
 conventional and may be replaced. A head with no written position still has a
 semantic self-position but no source binder for it.
 
+These are contextual source formal positions. The later [call consumer](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+distinguishes CallAnchor, Param and Return projections; Param can be an ordered
+capture Product of zero, one or many entries. This source self-position is not
+a fixed real Object slot in full Function Pattern input. Norm assigns neither
+implicit capture layout nor selected semantic input material.
+
 Name-headed shorthand expands to (_, let _: (name)$). Slot zero and the
 argument binder are anonymous Patterns. The annotation preserves the complete
 grouped RHS operand and its polarity flip, exactly as in the explicit form.
@@ -909,11 +926,14 @@ layout, name resolution, or materialization.
 These source-written captures are explicit requirements. In particular,
 `[x]` means explicit `[let x = x]` with no written policy override; inherited
 constraints or separate default completion determine its mode. It is not an
-automatic const capture. A later resolved stage
-may add an implicit capture requirement for an otherwise uncaptured free outer
-value reference. That later operation requires symbol resolution and external
-namespace visibility plus later capability checking and therefore is not
-normalization.
+automatic const capture. Later resolved semantics chooses one closure-wide
+explicit or automatic value-capture mode. With a written capture list, an omitted
+external value dependency is diagnosed instead of automatically added. Automatic
+compile structural access remains independent; runtime structural access is
+inadmissible. These checks require resolved observations and therefore are not
+normalization. Explicit entries retain source order as bare positional Product
+entries, even with names and mixed compile/runtime Policies. Automatic capture
+order is fixed per completed formation, without a stable public ordinal mapping.
 
 In later resolved semantics, external explicit navigation searches the export
 view, while internal explicit navigation searches the complete namespace view.
@@ -938,12 +958,11 @@ domain—symbol identity, stable visibility, and post-selection legality
 requirements—but this does not prescribe pass ordering, data flow, or an
 implementation dependency.
 
-Explicit and automatic capture remain distinct even when they resolve to the
-same source symbol. Explicit capture may rename, project policy, use a complex
-initializer, request `mut`, and preserve distinct provenance. Parsing,
-normalization, and capture discovery neither reject nor erase it as redundant.
-A future layout pass may coalesce equivalent storage/link requirements only
-while preserving binder identity, policy, and provenance.
+Explicit capture may rename, project policy, use a complex initializer or
+request `mut`. Distinct admitted captures retain occurrence/binder identity,
+Policy and selected realization even when they resolve to equal source values.
+Layout sharing cannot change their semantic order or observations. The frontend
+preserves lists; it does not enforce resolved value-mode exclusivity.
 
 ### Semantic-owner and namespace-view handoff
 
@@ -954,7 +973,8 @@ Every legal completed closure expression yields full tau_C through ordinary
 complete structural formation material Material_C. Its contributed callable c_C, A_C=Type(c_C) and () entry
 remain distinct, with finite implementation leaves and same-formation initial
 callable material. An associated `()` implementation may instead bind the type
-facet of its local `Self` and invocation slot 0 to a named receiver type.
+facet of its local `Self` and contextual ActualSelf receiver to a named type,
+independently of the expanded Param representation.
 `CallableOwner` and receiver type are independent semantic facts.
 
 Source navigation remains inner-to-outer; a complete generated compile-call scope
@@ -974,9 +994,9 @@ General dependency requirements precede semantic realization and then layout.
 Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
 one source of dependencies; projections and invocation do not recapture.
 No mandatory public `self` field layout or hidden semantic side table follows.
-Ordinary closures may combine explicit capture occurrences and automatic free
-observations not replaced by resolved capture binders. In-place syntax excludes
-explicit clauses; automatic dependencies do not imply in-place placement.
+Ordinary closures use one explicit or automatic value-capture mode, alongside
+independent automatic compile structural dependencies. In-place syntax excludes
+explicit clauses; automatic value capture does not imply in-place placement.
 All occurrences feed ordinary dependency realization. Neither grants write
 authority by itself.
 An actual write-capable realization may permit outer writes under ordinary
@@ -1007,6 +1027,24 @@ an environment field. Before a callable is materialized, every resolved
 capture requirement must lower to a lifetime-checkable source/access/storage
 form. Existing lifetime and transfer checks continue to apply; closure dependency
 persistence/escape refinement remains an explicit lifetime handoff.
+
+### Directional Function Pattern handoff
+
+The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+defines LHS full-input contract extraction and RHS explicit-argument invocation
+requests. Both require a written `->` boundary: arrowless `()` and `(A,B)` are
+Bare Product material, not Function Pattern syntax. Pout stays independently
+constrained at that boundary and cannot be inferred from Pin. This does not
+require an output arrow on ordinary/in-place closure expressions; dedicated
+Function Pattern syntax consumers remain pending. Projected Function Pattern values necessarily erase external structural-
+source authority; opaque implementation provenance and compile-known Val1 cannot
+restore navigation/reselection of source candidates. This is not same-Type Policy
+migration: retained internal Paths there must pass prospective destination-world
+hard applicability. RHS supplies no self/captures, lifetime pre/post or Pack spread; its
+head root immediate rank+1 type/Policy fully denotes, while deeper legal holes
+and LHS deduction retain ordinary rules. These are pending semantic consumers,
+not new grammar or claims that existing closure heads implement requests.
+Normalization allocates no environment, selects no candidate and determines no ABI.
 
 ### Callable implementation tail
 
@@ -1303,8 +1341,10 @@ semantics; [closure replication](../design/symbol-world/closure-anchored-replica
 removes any need to pass the LHS anchor backward into RHS normalization.
 
 The Omitted return tag records only missing target syntax on an explicit event.
-The build binder selects the outermost active function frame; neither parser
-nor normalizer resolves that target. Serial completion remains unconnected.
+The build binder selects the outermost function in the reachable segment bounded
+by the nearest Ordinary closure; InPlace adds no barrier. Explicit targets and
+return capabilities cannot cross the segment; unknown boundary evidence stays
+unbound. Neither parser nor normalizer resolves that target. Serial completion remains unconnected.
 
 ### Semantic consumer alignment
 
@@ -1371,3 +1411,141 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](../design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## 15. Canonical call sugars (consumer pending)
+
+This section adds source/normalization obligations to the canonical call model.
+It does not claim that the current parser accepts defaults or recognizes do,
+or that generated default-family execution is connected. Empty-Product Norm
+and exposed argument-shape zero arity are implemented and tested separately.
+The [call owner](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members)
+owns family formation and execution; Norm remains syntax-directed and unresolved.
+
+### Empty Bare Product alignment
+
+```text
+()                   => Product[]
+(a,)                 => Product[a, Unit]
+(,a)                 => Product[Unit, a]
+(a,,b)               => Product[a, Unit, b]
+((),)                => Product[Product[], Unit] // one exposed Unit argument
+() |> f              => Call(source=Product[], target=f)
+x |> f ()            => (x) |> f
+() |> f (x)          => (x) |> f
+obj..method()        => obj |> .method() => (obj) |> method::adl
+```
+
+`Product[]` is a genuinely empty Bare Product with no ordinal child, as defined
+by the [type-value owner](../design/symbol-world/type-values-places-and-borrow-views.md).
+It is not a singleton Unit entry and contains no self. A call may still need
+implicit self/capture material through its separate ordinary frame. Empty
+material is neutral in ordinary available Product exposure/merge; this does
+not erase any present Unit, cross an expression barrier or inspect unavailable
+runtime shape. Source nesting and the first-product-only rule remain intact.
+The correction belongs at empty source Product normalization, not at overload
+selection by stripping Unit arguments. `obj[]` and exposed `obj[()]` therefore
+have receiver-only input, whereas an actual comma-hole Unit remains an argument.
+
+### do prefix
+
+```text
+do E                 => () |> E
+do f (x)             => () |> f (x) => (x) |> f
+do (f (x))           => () |> (f (x))
+```
+
+do is a contextual expression-prefix spelling, still a Name token. Recognition
+is syntax-directed, never a lookup decision; ordinary binder/path name uses
+remain names. It supplies the incoming empty source at that expression position
+and otherwise uses exactly the existing pipe/Product binding skeleton. It
+does not group the remaining text into a new target barrier or reinterpret a
+following Product as a conventional argument list. Explicit groups retain their
+ordinary role, as the last example shows. A missing operand is a spanned syntax
+error/recovery, not an implicit self call.
+
+The occurrence of E is preserved once with source provenance. There is no
+synthetic let, closure, owner, scope, stage, return target or control event.
+Ordinary target interpretation/formation happens once per reached evaluation,
+followed by ordinary callable lookup, candidate selection, input Move, lifecycle
+and return delivery.
+The sugar neither evaluates E speculatively nor duplicates it to find self.
+The outer expression still has the ordinary serial unit/tail/return behavior.
+
+### Default-formal syntax and unresolved expansion
+
+```text
+(self, let a:T, let b:U = d_b, let c:V = d_c) => body
+  => formation material for {C_3,C_2,C_1}
+
+C_3: original full explicit head, defaults removed, source body once
+C_2: retain self; accept a,b; evaluate d_c; ordinary family call with a,b,c; return
+C_1: retain self; accept a;   evaluate d_b; ordinary family call with a,b; return
+
+(self, let i = 1uint8) => body
+  => full head (self, let i) plus shorter extraction head (self)
+(self) minus contextual self => () = unit     // zero explicit arguments
+```
+
+`= E` on a direct explicit formal is its delayed default clause. Existing
+annotation, Policy and binding/extraction material are preserved. Every generated
+head retains its original contextual self position; expansion removes only a
+suffix of explicit formals. A self-only extraction head therefore matches the
+unit/empty explicit input, not a one-argument Unit Product. Its complete internal
+input may still contain ordinary implicit self/capture material.
+
+The first written formal remains contextual self and cannot have a default,
+regardless of its binder spelling. A self default is diagnosed, never evaluated,
+used to synthesize a receiver, or used to generate a head with self removed.
+Defaults do not turn an omitted annotation into ordinary let-initializer inference:
+the full member keeps its ordinary formal Pattern deduction. Written classifiers
+constrain supplied and default-produced values alike through ordinary extraction.
+Defaults form a trailing suffix, apply to whole direct formals (not nested extraction
+children), and cannot combine with Pack/remainder in that head. Required-after-
+default, a defaulted self/Pack/return slot, a nested default, and a missing
+default expression need dedicated spanned syntax/validation diagnostics and
+recovery. Name visibility, Pattern compatibility and lifetime legality are
+semantic checks, not parser backtracking or normalization-time evaluation.
+
+Norm may preserve an unresolved expansion plan with links between generated
+material units; it must denote exactly the original plus each shorter fixed
+arity, not optional slots on a single callable. The source body and source
+capture-initializer occurrences remain unique. Generated wrapper/return/link
+nodes retain source origin and generation provenance; target member identities,
+homes, dependencies and registration are supplied only by authorized semantic
+formation. A plan is not a completed type, candidate, NameBinding or new HIR.
+Default expressions retain their own spans/binder material and are not executed
+at formation or applicability. Arity-growing ordinary forwarding, per-invocation
+left-to-right defaults, receiver self, ordinary Move and explicitly targeted
+entry return are fixed by the call owner, not choices left to lowering.
+
+Direct current-owner `let () = implementation` uses the same head expansion,
+installing Impl_n,...,Impl_(n-k) at its existing associated Val2[()] entrance.
+For an invoked x:T, every candidate keeps ActualSelf=x. The shorter entry calls
+x through ordinary callable lookup with one additional explicit argument; it
+does not make an anonymous wrapper object the receiver or register members in
+V_T. In the closure/contribution role, the forwarding target is instead the
+formed complete-type family, not the selected c_m self or a re-resolved public
+name. All ordinary candidates at either target compete anew; the next generated
+entry is selected only when it is the ordinary winner. An inner ambiguity or
+failure cannot reopen the already selected outer entry. Generated associated
+returns target their own activation even when their callable tag is the same x.
+
+### Combined recursive example
+
+```text
+do (self, let i = 1uint8) => {
+    cond ? if { i } else { (i + 1) |> self }
+};
+```
+
+This supplies zero explicit arguments to the formed family {c_1,c_0}. If
+ordinary selection fixes c_0, whose head is (self), its explicit input matches
+unit. It produces the default once and calls the formed family with that value;
+with only these entries, ordinary selection reaches c_1. In the original
+implementation self is c_1; the explicit recursive input uses its full-arity
+ordinary call and does not rerun the default.
+This is a semantic reading, conditional on the ordinary classifier, cond,
+operator, capture, capability, lifecycle and return evidence. It promises no
+unconditional recursion legality, tail-call optimization, constant stack or
+new control primitive. Current frontend/evaluator support is separately tracked
+in the [roadmap](../planning/roadmap.md#8-acceptance-evidence).

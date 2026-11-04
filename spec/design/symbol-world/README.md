@@ -26,4 +26,6 @@ This block separates structural name existence from ordinary value algebra.
 Ordinary Core equality/keying and whole-snapshot observations remain distinct.
 OpenHere depends on the existing value anchor/window/stack rules, not a
 carrier's identity. Pin/Pout inherit P2/P1; bare let writes no override, while explicit const/mut
-constrains the concrete mode. OpenPolicy is a separate open/close coordinate. Implicit return selects the outermost function layer.
+constrains the concrete mode. OpenPolicy is a separate open/close coordinate. Implicit return selects the outermost function in the reachable segment bounded
+by the nearest Ordinary closure; InPlace is transparent, and explicit targets or
+captured return capabilities cannot cross that barrier.

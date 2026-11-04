@@ -62,6 +62,8 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Policy | Explicit observation/demand/preference, migration and derived 2x2 capability views; argument/host carriers retain complete binding edges and reject non-unique required argument projections | General multi-edge joint projection, source deduction, operation-driven premises and full R_vis/C_sigma are separate obligations |
 | Migration delivery | Selected declaration/target Mode contradiction rejects without reopening; supplied completed entries must satisfy Pair and exact delivered/declared/target Mode before outer scratch publication | Source bodies and independent actual delivery observations require common E; supplied-material validator tests do not establish successful source migration or post-production failure execution |
 | Policy rank chain | Shape-validated arbitrary-depth prefixes of absent* runtime* compile*, two-rank windows including absent:absent; runtime first-present and full-chain compile demand material | Actual higher-rank classifier evidence, mixed output Hole solving and reverse-dependent E remain unconnected; a prefix/target supplies no producer witness |
+| Return target | Active activation identity plus Ordinary/InPlace reachable-segment guard; Unknown preserves unbound events | Ordinary capability execution, completion propagation and delivery remain pending and must reuse the guard |
+| Retained structural Paths | Canonical prospective-destination-world hard-A requirement for nonidentity compile-to-runtime same-Type migration | Candidate-specific Path recoverability evidence/consumer pending; do not replace with placement bans or selected failure |
 | Selection | Exact receiver/call-entry enumeration, total demand, sealed selection and diagnostics | Unknown applicability cannot become fallback evidence; source completion requires common E |
 | Instance identity | Parent/selected-partner/canonical-input interning; held complete tau inputs with Core projected from the same snapshot; independent ordinary self-name coordinate and exact selected frame; connected external-type delivery | Initialized self residency, accessible-result closure, dependency-sensitive current storage and general completion require common consumers |
 | Structural relations | Layer-local schema normalization and a DirectPatternChild observer requiring both registration and current actual Val2 membership | Source type formation, struct helpers and ordinary * / *= require common producer Pre/Post and real role/call entries |
@@ -69,6 +71,8 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Lifecycle | SemanticContinuation, LifeName, Region, supplied Pre, Kill/Preserve, fixed cleanup and Color; common transactions gate every action on earlier cleanup observations | Source producer facts, NLL/with, ReifyLife and destructors need ordinary control-flow facts; source actions must enter the common transaction |
 | Physical source | Discovery/decoding/provenance and normalized fragments retaining inherited navigation; empty fragments form no semantic names or owners | Declarations under inherited navigation require the qualified ordinary name/Path consumer; EntryContinuation, sibling overlays and dependency projection need E composition |
 | InvocationResult | Semantic result, residual and diagnostic transport | Residual requires a real remaining continuation; serial completion and residual ABI remain separate |
+| Closure / self / Function Pattern | Capture syntax/Pattern roots, contextual formal-frame carriers, ordinary sealed selection and transaction substrate | Requested UseKind/DemandStage classification, exclusive value-capture modes, fixed CaptureProduct, candidate-local implicit relation evidence, actual Param transfer and directional FnExtract/FnRequest are pending; generic closure heads do not implement RHS requests |
+| Delivery ABIKind | Canonical E law: FreshLet ABI1, ExistingTarget ABI2 | Delivery target consumer wiring and physical input-frontier/target-Place materialization remain pending; RVO/NRVO supplies no selection evidence |
 
 A missing canonical consumer reports unavailable or preserves an established
 remaining continuation. Representation supplies no substitute evaluator,
@@ -175,7 +179,10 @@ Explicit/automatic occurrences retain identity; invocation does not recapture.
 Dependency lifetime and escape remain ordinary checked handoffs.
 
 Serial completion consumes path-sensitive UnitDiscard, unit fallthrough,
-ReturnEvent and target inference. AST-list position is not semantic tailness.
+ReturnEvent and target inference. The nearest Ordinary closure bounds the
+reachable return segment; InPlace adds no barrier. Explicit/capability targets
+cannot cross it and unknown boundary evidence stays unavailable. AST-list
+position is not semantic tailness.
 R_vis/C_sigma, pending continuation material, dependency readiness, source lifecycle,
 current instance state and E saturation share one continuation.
 
@@ -185,6 +192,78 @@ no private facts. Equivalent rewrites revalidate affected projections before
 E saturates Ready work.
 
 ## 8. Acceptance evidence
+
+The [closure/self/Function Pattern matrix](canonical-semantic-conformance.md#closure-self-and-directional-function-pattern-acceptance)
+records T01–T22 as normative targets, not executable success. Current
+`lang_syntax/tests/callable_tail_dot_pack.rs` covers capture binding syntax and
+contextual first-formal/Pack boundaries. Its regression
+`self_only_heads_keep_self_without_explicit_formals` checks existing ordinary,
+in-place and direct let () head carriers: self remains present and explicit
+formals are empty. It does not execute default expansion or prove runtime unit
+matching. `lang_build/tests/ordinary_invocation_spine.rs`
+checks selected capability/lifecycle failure with a runner-up, proving no reopen
+for that substrate. `policy_rank_chain.rs` checks rank-prefix material only.
+Source Function Pattern matching/request and candidate-local self relation
+solving are not connected: current applicability solves explicit parameters;
+closure atoms in Pattern context remain unsupported. Function Pattern syntax
+must retain an explicit `->` boundary on either side; arrowless material is
+Bare Product and cannot acquire independent Pout from Pin. This is distinct
+from ordinary/in-place closure expressions with optional return clauses.
+Dedicated Function Pattern parsing/diagnostics remain pending; normative
+arrow-positive/negative cases do not claim generic-head implementation coverage.
+No executable closure evaluator is supplied by the original closure revision.
+
+The [call-sugar extension matrix](canonical-semantic-conformance.md#empty-invocation-and-default-formal-sugar-acceptance)
+adds DS01–DS28 as normative targets. Its
+[surface contract](../public/normalized-surface-semantics.md#15-canonical-call-sugars-consumer-pending)
+separates the connected empty-Product slice from pending do/default parsing and
+execution. Empty parentheses normalize to zero entries across ordinary Product,
+continuation, double-dot and bracket paths; comma-hole Units and source spans
+remain intact. Norm goldens, syntax/argument-shape tests, canonical input
+identity and ordinary zero-versus-one fixed-arity selection cover this slice of
+DS02–DS03. No downstream Unit filter was introduced. Param defaults are still
+not parsed and no generated default-member family is formed. Remaining order:
+
+1. Preserve contextual do/default clauses, spans and syntax recovery. Add their
+   token/AST/Norm/diagnostic goldens without undoing the connected empty-Product,
+   first-product-only continuation, nesting/barrier and comma-hole laws.
+2. Produce unresolved fixed-arity expansion material with contextual self
+   retained, never defaulted, and (self) matching unit explicit input. Preserve
+   arity-growing ordinary forwarding targets without duplicating source body/
+   capture initializer occurrences. Connect common-snapshot standalone/contribution
+   formation, target homes, ordinary dependencies and atomic family publication.
+   Direct let () material installs ordinary associated entries with the original
+   receiver unchanged, no anonymous receiver or implied V_T registration.
+3. Connect ordinary wrapper invocation/default scopes/Move/return delivery.
+   Verify effect counts, collisions, source self, unit return, Policy demands,
+   lifetime/authority failures and no reopen. Existing optional initializer
+   carriers or generic closure nodes cannot stand in for this consumer.
+
+Lifecycle SCC and machine materialization remain separate; the sugar grants
+neither recurrence convergence nor automatic tco/loop reuse.
+Direct current-owner `let ()` expansion requires the same ordinary call and
+role-preserving installation consumers, not a special evaluator. Its shorter
+entry calls the existing receiver with one more explicit position; ordinary
+competing entries/ambiguity and no-reopen remain observable at that new call.
+
+The [forwarding Warning](../design/symbol-world/function-object-call-model.md#1221-non-semantic-forwarding-warning)
+is a non-blocking diagnostic follow-up, not a change to whole-target forwarding
+or DS22's legal different-winner outcome. After ordinary selected-entry evidence
+is available, add proof-gated reporting and DS24–DS28 regressions: no false
+deviation on unknown evidence, candidate-identity comparison, identical execution/
+selection with or without Warning, ordinary explicit-constraint failures and
+sealed-selection preservation. Do not add an implicit filter, default-specific
+Error or speculative evaluation. No warning implementation is claimed here.
+
+Two independent follow-up PRs consume the new laws:
+
+- Lifecycle SCC convergence: fixed calls/captures, Region/origin/generation and
+  Pre/Post/MoveEffect enter a justified fixed-point procedure yielding evidence
+  or explicit rejection. Neither convergence nor a retry/preference is assumed.
+- Machine materialization: SelectedCall, normalized PassMoves, delivery target,
+  E-selected ABIKind, lifetime evidence and machine facts yield checked input
+  frontier/ABI1 overwrite or ABI2 target delivery and proved tco/loop slot reuse.
+  Physical stack/FFI encoding cannot alter E's convention or choose lifecycle facts.
 
 Each phase runs cargo fmt --all, cargo check --all-targets, targeted tests and
 git diff --check. Final integration runs cargo test and an active-tree

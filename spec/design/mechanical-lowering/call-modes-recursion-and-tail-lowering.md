@@ -2,10 +2,10 @@
 
 **Status: Non-normative future design. Not implemented as current parser, normalizer, IR, ABI, optimizer, or runtime behavior.**
 
-This document specifies the future *call-mode lowering* design: the three
-language-level call modes `normal`, `tco`, and `loop`, how they replace
-language-level loop syntax, and how they are mechanically inserted as explicit
-call actions before IR lowering.
+This document explores internal mechanical call realizations labelled `normal`,
+`tco` and `loop`. They are not language-level call modes or proposed source
+syntax. They may materialize only already proved semantic delivery, transport,
+lifetime and cleanup facts before machine lowering.
 
 It is a future design note. It is not current public language behavior, not an
 implemented pass, not a parser or normalizer rule, and not an LLVM / machine ABI
@@ -37,12 +37,12 @@ repetition is recursion
 memory reuse is call semantics
 ```
 
-The user writes recursion; the language decides — through a call mode — whether
+The user writes recursion; a later mechanical consumer determines from semantic evidence whether
 the call is an ordinary call, a new-frame call, a tail call with argument
 transport, or an in-place reuse of parameter slots.
 
 This is not "rely on the optimizer to perform tail-call optimization". It is not
-an optimization wish. Call modes are language-level lowering semantics.
+an optimization wish. Internal call realizations must preserve the semantic guarantees fixed by E.
 
 ## 3. The three call modes
 
@@ -134,49 +134,25 @@ otherwise:
     normal
 ```
 
-If the design wants the "last call defaults to `tco`", that rewrite happens on
-the tail-position-confirmed first-order AST, never as a blind rewrite of surface
-syntax.
+Any later tail-transfer realization consumes tail-position and legality evidence
+on the semantic first-order representation, never a blind surface rewrite or
+an AST-list-position heuristic.
 
-## 5. Manual call-mode annotation
+## 5. Internal lowering evidence, not source call modes
 
-A user may manually specify a call mode, but a manual mode is not a free hint.
+`normal`, `tco` and `loop` are internal mechanical research labels only. This
+note introduces no source annotation, reserved word or promise of future manual
+mode syntax. Source recursion retains ordinary callable selection, parameter
+transport, return-segment barriers and lifetime/cleanup obligations.
 
-Manual specification dominates the automatic strategy:
-
-```text
-explicit call mode > automatic call-mode insertion
-```
-
-But manual specification introduces compile-time checks. This document does not
-design every check; it lists check categories so that later work does not assume
-manual `loop` / `tco` is accepted unconditionally.
-
-Manual `loop` requires, at least, the following future checks:
-
-```text
-call site is tail position
-callee/entry is a legal loop target
-existing parameter slots need no rearrangement
-parameter slot layout is compatible
-argument pass actions are already determined
-borrow/lifetime state permits the back edge
-required cleanup/drop actions do not block the loop edge
-```
-
-Manual `tco` requires, at least, the following future checks:
-
-```text
-call site is tail position
-current continuation can be replaced
-argument transport order is well-defined
-ordinary producer actions and terminal Move are already determined
-cleanup/drop actions can run before the tail transfer
-callee entry permits tco
-```
-
-If a manual check fails, the compiler should report a compile-time error. It must
-not silently fall back to `normal`.
+E fixes the applicable FreshLet/ExistingTarget delivery law and its ABI guarantee;
+O materializes it. Neither a source mode nor an optimizer chooses ABI1/ABI2.
+A possible later tail/back-edge realization must prove tail position, legal
+callee/entry, compatible slots, already selected producer/Move actions, legal
+borrow/frontier state and completion/cleanup order. Missing evidence leaves
+that realization unavailable; it cannot change semantic call selection or
+weaken return barriers. No physical stack-reuse guarantee follows merely from
+expressible recursion.
 
 ## 6. Relation to mechanical argument passing
 
@@ -219,10 +195,10 @@ compile functions.
 Compile functions and runtime functions share the same call-mode vocabulary.
 ```
 
-This is a future design statement; the current compile evaluator is not claimed to
-implement it. For strict compile execution, if a recursive compile function later uses
-manual `loop` or `tco`, it is still subject to the same category of legality
-checks. If a check fails, that is a compile-time / compile-execution error.
+This is internal future research; the current compile evaluator is not claimed
+to implement it. Any compile tail/back-edge realization requires the same
+semantic legality evidence; source code selects no manual mode. Missing proof
+grants no tail-transfer or stack-reuse guarantee.
 
 ## 8. Relation to IR and backend
 
@@ -246,6 +222,14 @@ Non-goal note: although future work may study caller/callee stack-slot layout,
 the caller writing arguments into the callee frame, or the callee rewriting its
 return into argument slots, this document does not define those machine-ABI
 details.
+
+The canonical [E delivery convention](../static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+already selects ABIKind from FreshLet/ExistingTarget. This future mechanical
+consumer must preserve it, including ABI1's input-frontier return contract.
+Tail position, normalized Move, borrow/lifetime, cleanup and slot/result evidence
+determine reuse legality. RVO/NRVO success, optimizer opportunity and recursion
+alone are not substitutes for those facts. This note adds no new source
+annotation or promise of a future manual call-mode surface.
 
 ## 9. Tail position
 

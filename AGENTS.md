@@ -70,6 +70,19 @@ alternate relation or identity.
 - `let <> P` is binderless Pattern material; `let _ P` contains a wildcard.
 - `|> P { ... }` preserves the callable head (_, let _: (P)$).
 - Value-side expressions and Pattern-side material remain distinct.
+- Canonical do E is the ordinary () |> E skeleton, with E once and zero
+  explicit Bare Product entries, no extra self/scope/stage/control event.
+  Trailing defaults expand into real fixed-arity candidates with arity-growing
+  ordinary calls, not optional args or a new preference. Never default or remove
+  contextual self: the extraction head (self) matches unit/empty explicit input.
+  Closure/contribution forwarders call their formed complete-type target;
+  direct let () entries call the original receiver, which remains their self.
+  All target candidates compete normally; no private next-entry filter or new
+  V_T registration follows from direct call-entry expansion.
+  Empty parentheses normalize to zero Product entries; preserve comma-hole
+  Units and their spans, including nested/double-dot/bracket material. Never
+  strip Unit during selection. do/default parsing and family execution remain
+  pending; report their coverage separately.
 - `let binder === PathMaterial` preserves a lexical Path alias: form the RHS once
   in the old Path environment, store material, never cache terminal binding identity.
 - `return`, `else`, `match`, `if`, `drop`, `move`, `sync`, `effect`, `fn`,
@@ -93,8 +106,9 @@ alternate relation or identity.
   neither axis implies the other. TypeMember requires an ordinary callable with
   present Val1, its target classifier home and non-generative V_T registration.
   Ordinary let f=C binds/installs tau_C:type. Established same-name closure
-  buckets consume ClosureMaterial to form one c_C^T per declaration, against a
-  common snapshot, without a first sibling, tau_C insertion or bulk V_tau import.
+  buckets consume ClosureMaterial to form one c_C^T per expanded formation unit
+  (one per declaration without defaults), against a common snapshot, without a
+  first sibling, tau_C insertion or bulk V_tau import.
   Delta_v^value and Delta_C,T^call retain distinct consumer roles.
   Replication witnesses apply to already formed ordinary callable members;
   known-target initial formation directly creates c_C^T.
@@ -185,8 +199,10 @@ alternate relation or identity.
   over P2; Pout.stage=P1.stage. Bare let writes no override;
   written const/mut are explicit, and a formal-local hole is ordinary Pattern deduction.
   Default completion is separate. Inner-call selection seals before outer use.
-  Omitted ReturnTarget selects the outermost enclosing function layer after an event
-  exists. Implicit ReturnEvent is separate: non-tail expressions require unit via
+  Omitted ReturnTarget selects the outermost function in the reachable segment,
+  bounded by the nearest Ordinary closure; InPlace is transparent. Explicit
+  targets and captured return capabilities cannot cross that barrier; missing
+  boundary evidence is unavailable. Target inference occurs after an event exists. Implicit ReturnEvent is separate: non-tail expressions require unit via
   UnitDiscard; continuation-path tail unit falls through, non-unit synthesizes return.
   Explicit unit return still returns; AST-list position is not semantic tailness.
 - Done is internal chain/target completion, never an Object or Pattern.
@@ -254,10 +270,29 @@ alternate relation or identity.
   In-place syntax forms dependencies automatically and produces an ordinary
   first-class result. Invocation does not recapture; binding, transfer and outer
   writes use actual access/capability/lifetime, with no placement-based veto.
-  Closure DependencyMaterial is ExplicitDeps union AutomaticDeps, classified
-  per occurrence; resolved explicit capture binders replace corresponding outer
-  observations. Ordinary => closures may have both. InPlace excludes explicit
-  clauses, but automatic dependencies do not imply InPlace. Placement and
+  Dependencies classify requested UseKind x DemandStage; StructuralAccess is
+  compile-only and independent of Value capture mode. Each closure has exclusive
+  Explicit or Automatic value capture; an explicit clause's omitted external
+  value is diagnosed. InPlace uses Automatic, which is not exclusive to InPlace.
+  Explicit captures form a bare positional Product in source order across stages;
+  automatic order is fixed per formed closure. Self has CallAnchor, Param and
+  Return projections; Param is CaptureProduct or the ordinary singleton receiver.
+  Candidate-local implicit evidence is read-only before selection; selected input
+  moves once with no duplicate Kill. Function Pattern syntax always has an
+  explicit -> boundary; arrowless material is Bare Product, not a function
+  interface. Pout is independent of Pin. Ordinary closure expressions may omit
+  return clauses; generic closure heads do not implement Function Pattern syntax.
+  Function Pattern LHS extracts full input and
+  contract; RHS requests explicit args/output/Policy only, without captures or
+  lifetime clauses. RHS root rank+1 type/Policy fully denotes; deeper holes and
+  LHS deduction use ordinary R_Gamma. LHS omitted post is NoDelta, checked by
+  contract implication at extraction. Projected Function Pattern values necessarily
+  erase external structural-source authority; opaque provenance/known Val1 cannot
+  restore it. Nonidentity compile-to-runtime same-Type migration checks retained
+  internal Path recoverability in each prospective destination world at hard A:
+  false excludes, unknown stays unavailable; existing views retain obligations.
+  E selects FreshLet ABI1 or ExistingTarget
+  ABI2; O materializes it, independently of RVO/NRVO. Placement and
   explicit/automatic origin supply no applicability, specificity or preference;
   otherwise tied distinct candidates follow ordinary ambiguity.
   Lifetime persistence/escape refinement retains all ordinary checks; tau status

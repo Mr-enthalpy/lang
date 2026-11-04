@@ -173,10 +173,10 @@ pub use return_target::{
     elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
     elaborate_return_targets_in_returnable_closure_with_resolver, BoundReturnEvent,
     ExplicitReturnTargetResolution, ExplicitReturnTargetResolver, PreservedReturnReason,
-    PreservedUnboundReturnEvent, ResolvedReturnTarget, ReturnFrameId, ReturnFrameOwner,
-    ReturnSelfIdentity, ReturnSlotIdentity, ReturnSlotRef, ReturnTargetBinder,
-    ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetStack, UnboundReturnEvent,
-    UnresolvedReturnTargetForm,
+    PreservedUnboundReturnEvent, ResolvedReturnTarget, ReturnBoundary, ReturnFrameId,
+    ReturnFrameOwner, ReturnSelfIdentity, ReturnSlotIdentity, ReturnSlotRef, ReturnTargetBinder,
+    ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetReachability, ReturnTargetStack,
+    UnboundReturnEvent, UnresolvedReturnTargetForm,
 };
 pub use semantic_continuation::{
     CleanupGateFailure, CleanupObligation, CleanupObligations, CleanupPlacement,

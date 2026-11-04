@@ -5,8 +5,8 @@
 //! typing, propagation, lowering, lifetime checks, or resource scheduling.
 
 use lang_syntax::{
-    NormBindingSlot, NormClosure, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem,
-    NormProgram, NormReturnEvent, NormReturnTargetSyntax,
+    NormBindingSlot, NormClosure, NormClosurePlacement, NormExpr, NormForm, NormOrigin,
+    NormPattern, NormPatternElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax,
 };
 
 use crate::model::{Diagnostic, Provenance, ResolverCode, SymbolId};
@@ -70,7 +70,23 @@ pub struct ReturnTargetFrame {
     /// closures, independently of any written self binder. It
     /// does not encode the callable's invocation receiver type.
     pub callable_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
+    pub boundary: ReturnBoundary,
     pub origin: NormOrigin,
+}
+
+/// Evidence supplied at actual callable entry, not inferred from target spelling.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReturnBoundary {
+    Ordinary,
+    InPlace,
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReturnTargetReachability {
+    Reachable,
+    Blocked,
+    Unavailable,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -84,6 +100,7 @@ impl ReturnTargetStack {
         Self::default()
     }
 
+    /// Push without boundary evidence. Such a frame is Unknown, never transparent.
     pub fn push_frame(
         &mut self,
         owner: ReturnFrameOwner,
@@ -92,12 +109,32 @@ impl ReturnTargetStack {
         callable_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
         origin: NormOrigin,
     ) -> ReturnTargetFrame {
+        self.push_frame_with_boundary(
+            owner,
+            return_slot,
+            self_identity,
+            callable_self_owner,
+            origin,
+            ReturnBoundary::Unknown,
+        )
+    }
+
+    pub fn push_frame_with_boundary(
+        &mut self,
+        owner: ReturnFrameOwner,
+        return_slot: ReturnSlotRef,
+        self_identity: Option<ReturnSelfIdentity>,
+        callable_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
+        origin: NormOrigin,
+        boundary: ReturnBoundary,
+    ) -> ReturnTargetFrame {
         let frame = ReturnTargetFrame {
             frame_id: ReturnFrameId(self.next_id),
             return_slot,
             owner,
             self_identity,
             callable_self_owner,
+            boundary,
             origin,
         };
         self.next_id += 1;
@@ -113,8 +150,39 @@ impl ReturnTargetStack {
         self.frames.pop()
     }
 
+    /// Outermost frame of the reachable segment, not the globally first frame.
+    /// None means either no active frame or unavailable boundary evidence.
     pub fn outermost_enclosing_function_target(&self) -> Option<&ReturnTargetFrame> {
-        self.frames.first()
+        self.reachable_segment_start()
+            .and_then(|index| self.frames.get(index))
+    }
+
+    fn reachable_segment_start(&self) -> Option<usize> {
+        for (index, frame) in self.frames.iter().enumerate().rev() {
+            match frame.boundary {
+                ReturnBoundary::Ordinary => return Some(index),
+                ReturnBoundary::InPlace => {}
+                ReturnBoundary::Unknown => return None,
+            }
+        }
+        Some(0)
+    }
+
+    /// Shared reachability guard for explicit targets and future return-capability calls.
+    /// Active identity alone never authorizes crossing an ordinary closure barrier.
+    pub fn target_reachability(&self, target: ReturnFrameId) -> ReturnTargetReachability {
+        let Some(index) = self
+            .frames
+            .iter()
+            .position(|frame| frame.frame_id == target)
+        else {
+            return ReturnTargetReachability::Blocked;
+        };
+        match self.reachable_segment_start() {
+            Some(start) if index >= start => ReturnTargetReachability::Reachable,
+            Some(_) => ReturnTargetReachability::Blocked,
+            None => ReturnTargetReachability::Unavailable,
+        }
     }
 }
 
@@ -173,8 +241,8 @@ pub struct BoundReturnEvent {
 pub enum PreservedReturnReason {
     UnmaterializedClosureLiteral,
     /// The normalized expression has not yet been resolved to a callable
-    /// object tag and active frame. Preserving it is required; spelling equality is not a
-    /// legal fallback.
+    /// object tag and reachable active frame, or required boundary evidence is
+    /// unavailable. Spelling equality and assumed transparency are not fallbacks.
     SemanticTargetResolutionRequired,
 }
 
@@ -250,12 +318,16 @@ impl<'resolver> ReturnTargetBinder<'resolver> {
         let return_slot = return_slot_ref(closure);
         let self_identity = self_identity_from_closure(closure);
         let callable_self_owner = closure.semantic_owner.map(|owner| owner.id);
-        let frame = self.stack.push_frame(
+        let frame = self.stack.push_frame_with_boundary(
             owner,
             return_slot,
             self_identity,
             callable_self_owner,
             closure.origin.clone(),
+            match closure.placement {
+                NormClosurePlacement::Ordinary => ReturnBoundary::Ordinary,
+                NormClosurePlacement::InPlace => ReturnBoundary::InPlace,
+            },
         );
         self.report.frames.push(frame);
 
@@ -376,6 +448,12 @@ fn resolve_return_target(
     explicit_resolver: Option<&dyn ExplicitReturnTargetResolver>,
 ) -> Result<Option<ResolvedReturnTarget>, Diagnostic> {
     match &return_event.target {
+        NormReturnTargetSyntax::Omitted
+            if !stack.frames.is_empty()
+                && stack.outermost_enclosing_function_target().is_none() =>
+        {
+            Ok(None)
+        }
         NormReturnTargetSyntax::Omitted => stack
             .outermost_enclosing_function_target()
             .map(|frame| Some(ResolvedReturnTarget::ActiveFrame(frame.frame_id)))
@@ -403,7 +481,15 @@ fn resolve_explicit_return_target(
     match resolver.resolve_explicit_return_target(target) {
         ExplicitReturnTargetResolution::ActiveFrame(frame_id) => {
             if stack.active_frame(frame_id).is_some() {
-                Ok(Some(ResolvedReturnTarget::ActiveFrame(frame_id)))
+                match stack.target_reachability(frame_id) {
+                    ReturnTargetReachability::Reachable => Ok(Some(ResolvedReturnTarget::ActiveFrame(frame_id))),
+                    ReturnTargetReachability::Unavailable => Ok(None),
+                    ReturnTargetReachability::Blocked => Err(return_diagnostic(
+                        ResolverCode::ReturnTargetOutsideReachableSegment,
+                        "explicit return target crosses an ordinary closure barrier",
+                        expr_origin(target),
+                    )),
+                }
             } else {
                 Err(return_diagnostic(ResolverCode::ReturnTargetNotActive,
                     "resolved callable activation is not active", expr_origin(target)))
@@ -597,48 +683,134 @@ fn collect_return_events_in_expr(expr: &NormExpr, events: &mut Vec<UnboundReturn
 mod tests {
     use super::*;
 
-    #[test]
-    fn omitted_target_uses_outermost_active_function_and_tracks_pops() {
+    fn event(explicit: bool) -> NormReturnEvent {
         let parsed = lang_syntax::parse("value return;");
         assert!(parsed.diagnostics.is_empty());
         let program = lang_syntax::normalize_program(&parsed.program);
-        let NormForm::ReturnEvent(event) = &program.forms[0] else {
+        let NormForm::ReturnEvent(mut event) = program.forms[0].clone() else {
             panic!("return event")
         };
+        if explicit {
+            event.target = NormReturnTargetSyntax::Explicit(event.value.clone());
+        }
+        event
+    }
+
+    fn push(stack: &mut ReturnTargetStack, boundary: ReturnBoundary) -> ReturnTargetFrame {
+        let origin = event(false).origin;
+        stack.push_frame_with_boundary(
+            ReturnFrameOwner::AnonymousClosure,
+            ReturnSlotRef {
+                identity: None,
+                binding_slot: None,
+                name: None,
+                origin: origin.clone(),
+            },
+            None,
+            None,
+            origin,
+            boundary,
+        )
+    }
+
+    #[test]
+    fn ordinary_barrier_limits_implicit_target_and_tracks_pops() {
         let mut stack = ReturnTargetStack::new();
-        let mut push = |name: &str| {
-            stack.push_frame(
-                ReturnFrameOwner::SourceCallable {
-                    symbol_id: None,
-                    name: Some(name.to_string()),
-                },
-                ReturnSlotRef {
-                    identity: None,
-                    binding_slot: None,
-                    name: None,
-                    origin: event.origin.clone(),
-                },
-                None,
-                None,
-                event.origin.clone(),
-            )
-        };
-        let outer = push("outer");
-        let inner = push("inner");
+        let outer = push(&mut stack, ReturnBoundary::Ordinary);
+        let inner = push(&mut stack, ReturnBoundary::Ordinary);
         assert_ne!(outer.frame_id, inner.frame_id);
         assert_eq!(
-            resolve_return_target(&stack, event, None).unwrap(),
-            Some(ResolvedReturnTarget::ActiveFrame(outer.frame_id))
+            resolve_return_target(&stack, &event(false), None).unwrap(),
+            Some(ResolvedReturnTarget::ActiveFrame(inner.frame_id))
         );
         assert_eq!(stack.pop_frame().unwrap().frame_id, inner.frame_id);
         assert_eq!(
-            resolve_return_target(&stack, event, None).unwrap(),
+            resolve_return_target(&stack, &event(false), None).unwrap(),
             Some(ResolvedReturnTarget::ActiveFrame(outer.frame_id))
         );
         stack.pop_frame();
         assert_eq!(
-            resolve_return_target(&stack, event, None).unwrap_err().code,
+            resolve_return_target(&stack, &event(false), None)
+                .unwrap_err()
+                .code,
             Some(ResolverCode::ReturnOutsideReturnableContext)
+        );
+    }
+
+    #[test]
+    fn inplace_is_transparent_to_implicit_and_explicit_return() {
+        let mut stack = ReturnTargetStack::new();
+        let outer = push(&mut stack, ReturnBoundary::Ordinary);
+        let inner = push(&mut stack, ReturnBoundary::InPlace);
+        assert_eq!(
+            resolve_return_target(&stack, &event(false), None).unwrap(),
+            Some(ResolvedReturnTarget::ActiveFrame(outer.frame_id))
+        );
+        for frame in [outer, inner] {
+            let resolver =
+                |_: &NormExpr| ExplicitReturnTargetResolution::ActiveFrame(frame.frame_id);
+            assert_eq!(
+                resolve_return_target(&stack, &event(true), Some(&resolver)).unwrap(),
+                Some(ResolvedReturnTarget::ActiveFrame(frame.frame_id))
+            );
+        }
+    }
+
+    #[test]
+    fn active_outer_target_and_captured_capability_cannot_bypass_barrier() {
+        let mut stack = ReturnTargetStack::new();
+        let outer = push(&mut stack, ReturnBoundary::Ordinary);
+        let inner = push(&mut stack, ReturnBoundary::Ordinary);
+        push(&mut stack, ReturnBoundary::InPlace);
+        assert!(stack.active_frame(outer.frame_id).is_some());
+        assert_eq!(
+            stack.target_reachability(outer.frame_id),
+            ReturnTargetReachability::Blocked
+        );
+        assert_eq!(
+            stack.target_reachability(inner.frame_id),
+            ReturnTargetReachability::Reachable
+        );
+        let captured_capability =
+            |_: &NormExpr| ExplicitReturnTargetResolution::ActiveFrame(outer.frame_id);
+        assert_eq!(
+            resolve_return_target(&stack, &event(true), Some(&captured_capability))
+                .unwrap_err()
+                .code,
+            Some(ResolverCode::ReturnTargetOutsideReachableSegment)
+        );
+    }
+
+    #[test]
+    fn missing_boundary_evidence_preserves_both_targets_unbound() {
+        let mut stack = ReturnTargetStack::new();
+        let outer = push(&mut stack, ReturnBoundary::Ordinary);
+        let unknown = stack.push_frame(
+            outer.owner.clone(),
+            outer.return_slot.clone(),
+            outer.self_identity.clone(),
+            outer.callable_self_owner,
+            outer.origin.clone(),
+        );
+        assert_eq!(unknown.boundary, ReturnBoundary::Unknown);
+        assert_eq!(
+            stack.target_reachability(outer.frame_id),
+            ReturnTargetReachability::Unavailable
+        );
+        let resolver = |_: &NormExpr| ExplicitReturnTargetResolution::ActiveFrame(outer.frame_id);
+        assert_eq!(
+            resolve_return_target(&stack, &event(false), None).unwrap(),
+            None
+        );
+        assert_eq!(
+            resolve_return_target(&stack, &event(true), Some(&resolver)).unwrap(),
+            None
+        );
+        // A proved nearer barrier closes a segment independently of unknown outer boundaries.
+        let inner = push(&mut stack, ReturnBoundary::Ordinary);
+        assert_eq!(
+            resolve_return_target(&stack, &event(false), None).unwrap(),
+            Some(ResolvedReturnTarget::ActiveFrame(inner.frame_id))
         );
     }
 }

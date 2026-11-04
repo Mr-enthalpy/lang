@@ -58,9 +58,13 @@ DefaultStandaloneReceiverType(C)
   = AnonymousType(CallableOwner(C))
 ```
 
-CallableOwner and the callee's type are distinct facts. Every invocation
-requires Type(callee) = Type(first self). A T ref callee uses its own matching
-entry; a named T entry does not coerce its callee to repair a receiver mismatch.
+CallableOwner and the actual receiver's type are distinct facts. Every invocation
+retains ActualSelf paired with its classifier's associated () entry and checks
+that entry's ordinary ReceiverPattern/classifier requirements against ActualSelf.
+This is not a constraint on the first expanded SelfProjection(Param) element:
+closure captures may be empty or have unrelated element types. A T ref receiver
+uses its own matching entry; a named T entry does not coerce its receiver to
+repair a mismatch.
 
 Nested callable-local `Self` owner paths follow the language's source-order
 navigation: innermost/current `Self` first and outermost `Self` last. The
@@ -77,19 +81,28 @@ ClosureMaterial to form ordinary callable members directly at its authorized
 target, not standalone tau_C results. Witnessed rehosting applies only to
 already formed ordinary callable members; it is distinct from that formation.
 
-Every invocation has frame slot 0 for its caller object. This is independent of
+Every invocation has a contextual source self-position. This is independent of
 ordinary/in-place placement. When a closure writes any formal position, its
-first written formal is the explicit Pattern for that slot under any legal
+first written formal is the explicit Pattern for that position under any legal
 spelling; the caller object is passed implicitly. Only later written formals
 consume explicit call-site Product positions. A headless or empty-parameter
-closure still has the semantic slot but no written binder for it.
+closure still has contextual self but no written binder for it.
 Compiler-generated receiver helpers write a generated self formal before their
 explicit `val` receiver.
 
-A standalone function object is its own first self. An ordinary field
-function supplies its anonymous function object first and consumes the
-operated object as a subsequent argument. A directly callable instance is
-first self for the associated entry of that instance's exact complete type.
+This source-formal carrier is not the complete internal-input representation.
+The [call owner](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+defines CallAnchor, Param and Return projections. Param is an ordered capture
+Product for closures or singleton x for an ordinary user receiver. Candidate-local
+read-only evidence needs no common capture layout; actual selected transfer is
+one lifetime-coherent transaction. CallableOwner and tag/activation identity
+are preserved independently of all parameter positions.
+
+A standalone ordinary callable is retained as ActualSelf; its Param may instead
+be its formed capture Product. An ordinary field function keeps its own callable
+receiver and consumes the operated object as an explicit argument. A directly
+callable user instance is ActualSelf for the associated entry of its exact
+complete type, with singleton receiver Param.
 Anchored replication may create an eligible new closure instance; it cannot
 modify the original callable's owner or capture lifetime.
 
@@ -293,11 +306,23 @@ may receive that role; legal binding, shadowing, mutation and group actions
 are preserved. Failed execution never retries as contribution. Joined material
 uses common-snapshot one-shot formation and initialization, without choosing
 a first sibling RHS. Ordinary singleton closure installation binds tau_C:type;
-a contribution consumes Delta_C,T^call to form one ordinary member c_C^T,
+a contribution consumes each expanded Delta_C,T^call unit to form one ordinary
+member c_C^T (one unit per declaration without defaults),
 never inserting tau_C or bulk-importing its V_tau. Updates to an existing
 resident use ordinary * / *= / TypeAdd with complete /tau home and registration
 checks. Ordinary Delta_v^value follows Val2 installation instead. Rehosting
 an existing callable member requires its witness, never a blind V_tau copy.
+
+Trailing defaults expand ordinary closure/contribution material under the
+[call owner](../design/symbol-world/function-object-call-model.md#12-trailing-default-formals-form-ordinary-overload-members),
+including direct current-owner `let ()` implementation material. That role
+expands to ordinary associated implementation candidates, all with the invoked
+owner object as self; its associated-call-entry authority remains unchanged.
+Every generated head retains contextual self with no default, so (self) matches
+unit explicit input. Forwarding uses the held complete-type family target for
+closure/contribution members and the original receiver for direct associated
+entries, always through ordinary lookup/selection. Generated provenance supplies
+no new registration or receiver identity.
 
 ```text
 named selector -> structural binding / Place
@@ -350,7 +375,7 @@ its first written formal receives that invoked object.
 
 Writing local `let ()` while constructing `T` contributes one candidate to the
 same associated `()` name binding. It does not also synthesize receiver candidates for
-`T ref` or `T share`; each distinct callee type requires its own matching first-self entry.
+`T ref` or `T share`; each distinct callee type requires its own matching actual-receiver entry.
 
 Accessor stage follows one structural rule:
 
@@ -439,8 +464,8 @@ Deferred:
 - full custom `?`, general Pattern execution, capture discovery, closure
   materialization, lifetime checking and ABI/layout/materialization;
 - end-to-end installation of associated Val2 contributions, external navigated
-  call-entry declarations, and ordinary type checking of the slot-0 receiver
-  against the first written formal;
+  call-entry declarations, and ordinary checking of ActualSelf against the
+  entry receiver contract, separately from expanded Param;
 - invocation-owned ordinary result bindings/Places, dependency-preserving input
   keys, opening-source meets and current-resident cache reuse; A is derived from
   those general facilities;

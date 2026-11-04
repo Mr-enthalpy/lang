@@ -33,7 +33,10 @@ The entire family participates in one applicability/preference/unique-selection;
 there is no preliminary c winner or per-c implementation winner. The selected
 candidate retains (c*, Impl*) with its projection and frame, including in residue.
 An ordinary x enters its type's associated Val2[()] directly with self=x,
-without projecting Type(x).V_tau. Both obey exact callee/first-self type equality. A source binding or Core registry index does
+without projecting Type(x).V_tau. Both retain ActualSelf and check the associated
+entry's ordinary ReceiverPattern/classifier requirements against it, not against
+the first expanded Param element. In a type call ActualSelf=c*, not tau.
+A source binding or Core registry index does
 not supply a later callspace snapshot. See
 [name/type algebra](../symbol-world/names-and-overload-groups.md).
 
@@ -112,6 +115,16 @@ an otherwise matching binder/wildcard candidate. No preference, fallback,
 maxima, selected frame or body entry is established from such incomplete
 first-round constraints. An independently known arity/kind rejection remains
 a decided rejection rather than an unavailable Pattern query.
+
+An [RHS Function Pattern request](pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
+uses this same trunk with explicit arguments, output and Policy demands. Each
+candidate's formed implicit-self material may supply read-only applicability
+evidence for that implementation's requirements. No common capture layout is
+needed, and capture shape/origin adds no preference. RHS cannot provide captures
+or lifetime clauses. After the unique seal, form only the selected implicit
+Param projection plus explicit input and perform ordinary Move/DynamicLegality.
+Selected lifecycle failure is terminal. LHS contract extraction first requires
+a determined concrete callable; it is not a lifetime-based overload selector.
 
 Policy holes participate in this same joint relation:
 

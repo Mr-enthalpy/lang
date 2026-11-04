@@ -338,6 +338,11 @@ fn products_and_unit() {
 }
 
 #[test]
+fn empty_products_preserve_zero_entries_and_comma_holes() {
+    assert_norm_case("31_empty_products", false);
+}
+
+#[test]
 fn operator_lowering() {
     assert_norm_case("08_operator_lowering", false);
 }
@@ -674,19 +679,16 @@ fn obj_empty_bracket_has_no_unit_argument() {
 }
 
 #[test]
-fn bracket_call_preserves_explicit_unit_and_nested_products() {
+fn bracket_call_preserves_empty_and_nested_products_without_inventing_unit() {
     let expr = single_expr_from_source("obj[()]");
     let (source, target, _) = expect_call(&expr);
     assert_eq!(source.elements.len(), 2);
     expect_product_elem_name(source, 0, "obj");
     match expect_product_elem_expr(source, 1) {
         NormExpr::Product(product) => {
-            assert!(matches!(
-                product.elements.as_slice(),
-                [NormProductElem::Unit { .. }]
-            ));
+            assert!(product.elements.is_empty());
         }
-        other => panic!("expected explicit unit product argument, got {other:#?}"),
+        other => panic!("expected explicit empty product material, got {other:#?}"),
     }
     assert!(matches!(
         target,

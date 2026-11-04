@@ -87,6 +87,10 @@ let f = (self, x: int): runtime -> r: int => {
 
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
     assert_eq!(report.frames.len(), 1);
+    assert_eq!(
+        report.frames[0].boundary,
+        lang_build::ReturnBoundary::Ordinary
+    );
     assert_eq!(report.frames[0].return_slot.name.as_deref(), Some("r"));
     assert!(
         report.frames[0].callable_self_owner.is_some(),
@@ -124,6 +128,10 @@ fn anonymous_self_retains_owner_identity_without_a_display_name() {
     let report =
         elaborate_return_targets_in_returnable_closure(closure, ReturnFrameOwner::AnonymousClosure);
     assert!(report.diagnostics.is_empty());
+    assert_eq!(
+        report.frames[0].boundary,
+        lang_build::ReturnBoundary::InPlace
+    );
     let identity = report.frames[0]
         .self_identity
         .as_ref()

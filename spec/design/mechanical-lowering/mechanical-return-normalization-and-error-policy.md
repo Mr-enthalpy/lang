@@ -180,9 +180,9 @@ capability position, but its semantic effect is special:
 
 3. **Lifetime postcondition**: the return capability declares that the
    return-relevant mutable capability of the enclosing callable object is
-   consumed / closed after the call. The lifetime checker trusts the declared
-   contract: it checks the call precondition before the call, then trusts the
-   declared postcondition after the call. It does **not** inspect implementation
+   consumed / closed on committed success. The lifetime checker checks the
+   selected call's Pre before mutation and publishes its declared Post through
+   the common commit boundary. It does **not** inspect implementation
    bodies to rediscover control-flow facts. This is a name-and-contract system —
    checking happens at the call boundary, not through body-level control-flow
    analysis.

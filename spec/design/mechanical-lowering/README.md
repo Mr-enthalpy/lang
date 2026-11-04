@@ -4,8 +4,12 @@
 `mechanical-argument-passing-and-move-fixed-point.md` is canonical target
 semantics, along with instance move effects and cleanup/with placement.
 Consumer algorithms, return/call-mode design, normalizer/checker/IR
-integration, ABI, optimizer, and runtime behavior remain non-normative and
+integration, physical ABI, optimizer, and runtime behavior remain non-normative and
 unimplemented. This block is not a machine-ABI design.**
+
+[E](../static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
+owns the canonical FreshLet/ExistingTarget ABIKind selection. Mechanical work
+consumes its fixed delivery and lifecycle obligations; machine realization is deferred.
 
 ## Scope
 

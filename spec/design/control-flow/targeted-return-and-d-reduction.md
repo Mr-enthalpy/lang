@@ -52,13 +52,26 @@ E (T return);
   => targeted return to resolved T
 ```
 
-where Self₀ is the callable-object tag whose current activation identifies the outermost enclosing function frame selected by
-implicit return, obtained from the active return-target context. It does not
-mean the most recently entered callable frame.
+where Self₀ is the callable-object tag plus actual activation of the implicit
+target in the current **reachable return segment**. For continuation K, scan
+active enclosing callable frames outward from the current position. The nearest
+Ordinary closure frame is included and ends this segment; no frame outside it
+is reachable. InPlace adds no barrier. If all encountered boundaries are known
+InPlace, the segment extends to the outermost enclosing function frame.
 
-The implicit return spelling `E return;` selects the outermost enclosing
-function layer. The active-frame binder implements this query without inferring
-whether a plain expression produces an event.
+```text
+ImplicitReturnTarget(K) = outermost function frame in ReachableReturnSegment(K)
+ExplicitReturnTarget(K) must belong to ReachableReturnSegment(K)
+ExplicitReturnTarget(K) cannot be more outer than ImplicitReturnTarget(K)
+```
+
+The implicit return spelling `E return;` uses this segment query, not a global
+first-frame or always-nearest-frame rule. The active-frame binder implements
+the query without inferring whether a plain expression produces an event.
+Missing boundary evidence makes the query unavailable (preserved unbound,
+Diagnostic or Residual at the requiring boundary), never implicitly transparent.
+A proved nearer Ordinary barrier seals its segment independently of unknown
+boundaries farther outward. Frame existence alone proves no reachability.
 
 ### 1.1 Two distinct implicit operations
 
@@ -114,6 +127,14 @@ as an ordinary callable capability value, as described in
 Return is not a parser keyword escape hatch, an operator, or a
 compiler-intrinsic control action. The target-binding pass identifies the
 active frame; return-capability execution belongs to the completion consumer.
+
+The same segment restriction applies to ordinary return-capability invocation,
+checked at its requesting continuation K, not reset by a helper call frame.
+Capturing an outer target/capability grants no authority to cross an Ordinary
+barrier: a transmissible Ordinary G invoked while its enclosing F remains active
+still cannot return to F. Target syntax, stored capability and direct capability
+invocation cannot bypass this guard. InPlace transparency grants no exemption
+from ordinary lifetime, dependency or activation checks.
 
 The current target-binding pass records a `BoundReturnEvent` containing the
 return value expression, the unresolved target form, the resolved frame id,
@@ -208,8 +229,8 @@ expr return
 expr (Self return)
 ```
 
-The first selects the outermost enclosing function layer; the second selects the explicitly
-named active Self frame. Their result matching rule is identical. Only the
+The first selects the outermost function in the reachable return segment; the
+second selects the explicitly named active Self frame within that same segment. Their result matching rule is identical. Only the
 return-target layer differs. A nested explicit target therefore does not
 introduce a second tuple-assignment, decomposition, or return-value algebra.
 
@@ -221,11 +242,12 @@ the normal Pattern matcher.
 
 ## 6. Non-Local Target Propagation
 
-A return targeted at `Selfᵢ` propagates through intermediate
-boundaries until `Selfᵢ` is reached:
+After target identity and segment reachability are proved, a return targeted at
+`Selfᵢ` propagates only through intermediate boundaries of that same segment
+until `Selfᵢ` is reached. It never crosses an Ordinary frame to an outer target:
 
 ```text
-Each intermediate boundary:
+Each reachable intermediate boundary:
   - propagates the internal target completion upward
   - contributes no normal local result
 
@@ -237,9 +259,11 @@ When Selfᵢ is reached:
 If no matching active target exists at any reachable boundary,
 a semantic diagnostic is emitted.
 
-The current implementation checks only whether the requested target is
-active in the current `ReturnTargetStack`. It does not propagate
-completions or perform D-reduction.
+The current `ReturnTargetStack` checks active activation identity and segment
+reachability from explicit Ordinary/InPlace boundary evidence. An active target
+outside the segment is diagnosed; unknown boundary evidence preserves the event
+unbound. It does not execute capability calls, propagate completions or perform
+D-reduction. Those consumers must reuse the same reachability guard.
 
 ## 7. Consumer coverage
 
@@ -247,7 +271,7 @@ completions or perform D-reduction.
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
 | Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full callable-frame self capability |
-| Omitted ReturnTarget | Outermost active function frame query | Outermost enclosing function layer, after a ReturnEvent exists |
+| Omitted ReturnTarget | Boundary-aware reachable-segment query; unknown stays unbound | Outermost function in the reachable segment, after a ReturnEvent exists |
 | Implicit ReturnEvent / serial consumer | Path-tail and UnitDiscard consumer pending | Non-tail requires unit; tail unit falls through; tail non-unit synthesizes ReturnEvent |
 | Explicit self target | Attempts active self-frame match; does not silently fall back to nearest | Full self capability object |
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |
@@ -257,7 +281,7 @@ completions or perform D-reduction.
 | D-reduction | Not implemented | Consume target completion and perform ordinary whole-Pattern delivery |
 | Local return contribution | Not implemented | No normal value contribution; no fabricated unit |
 | Target propagation | Not implemented | Propagate internal completion to its matching target |
-| Target validity check | Minimal active-frame diagnostics | Full target reachability diagnostics |
+| Target validity check | Active identity plus Ordinary/InPlace segment guard | Same guard for explicit targets and capability calls; execution pending |
 
 ## 8. Current Return Target Binding Substrate
 
@@ -272,15 +296,21 @@ ResolvedReturnTarget
 ```
 
 Entering a body that the pass is explicitly elaborating pushes a
-`ReturnTargetFrame`; leaving that body pops it. A nested closure literal is
-preserved as value material unless that closure is explicitly elaborated as
+`ReturnTargetFrame` with known Ordinary/InPlace boundary evidence; leaving that
+body pops it. Low-level `push_frame` without evidence records Unknown and never
+assumes a transparent boundary. `push_frame_with_boundary` supplies explicit
+evidence, and `target_reachability` is the common explicit/capability guard.
+A nested closure literal is preserved as value material unless that closure is
+explicitly elaborated as
 its own returnable body. Therefore a return inside an unmaterialized nested
 closure is not bound to the outer frame.
 
 `ReturnSelfIdentity` uses the callable's normalized semantic owner. Written
 binder spelling is diagnostic material only and never participates in target
-identity. Explicit self-target resolution must supply that stable owner
-identity; without it the event remains unbound.
+identity. Explicit target resolution supplies the callable tag plus actual
+active activation; lexical owner identity or spelling alone is insufficient.
+Without that semantic resolution or required boundary evidence the event stays
+unbound.
 
 `ReturnSlotRef.binding_slot` deliberately retains the complete
 `NormBindingSlot`. `ReturnSlotRef.name` is only a convenience for the current
@@ -298,6 +328,7 @@ Diagnostics are structured:
 ```text
 ReturnOutsideReturnableContext
 ReturnTargetNotActive
+ReturnTargetOutsideReachableSegment
 AmbiguousReturnTarget
 UnsupportedReturnTargetForm
 ```
@@ -313,10 +344,25 @@ ReturnTarget=current callable object tag
 ResolveReturn(K,tag,activation)=active frame F
 CallType(tau): CallTarget=tau, ActualSelf=c* in V_tau
 Type(tau_C)=type; Type(type)=(1 type)
-ReturnEvent(F,v) -> Deliver(ReturnPattern(F),Pout(F),v) -> Complete(F)
+Enter(call_anchor,new_args) -> ordinary new call, fresh activation
+ReturnEvent(F,v) -> Deliver(ReturnPattern(F),Pout(F),v)
+                -> Complete(CallTarget(F),Activation(F),result)
 ```
 
 Resolution uses actual control-flow activation, independent of self parameter
 type or capture layout. Recursive invocations of one tag create distinct
-activations. Omitted target keeps the outermost function query; explicit tag
-selects its associated current activation. Tag supplies no candidate preference.
+activations. Omitted target selects the outermost function in the reachable
+segment; explicit tag selects its associated current activation only inside that
+segment. Neither tag nor captured capability supplies reachability or candidate
+preference.
+
+The [call owner's](../symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
+CallAnchor supports `(args) |> self`; Param's capture/receiver transport uses
+the current Move/borrow/lifetime facts. Reentry creates a new activation even
+for the same callable tag. Continue-like paths enter the legal tagged callable;
+break-like paths complete the resolved active return frame through this same
+target-return/D-reduction relation. Neither creates a for primitive or reduces
+target return to an ordinary result. Existing return barriers, cleanup and
+tail-position legality remain. Expressible recursion proves no physical stack
+reuse; later tco/loop consumes independent evidence. Activation execution and
+completion propagation remain pending beyond the target-binding substrate.
