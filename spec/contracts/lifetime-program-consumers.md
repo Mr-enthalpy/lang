@@ -190,6 +190,10 @@ Already committed history/Color and earlier external effects are not erased.
   Actual compression occurs at each real exit while its observations are
   available, and successful mapped Post adopts through common joint publication.
   Target return through InPlace creates no local unit or fabricated result.
+  Each SCC name item collapses to its original formed regular companion
+  at an Ordinary closure boundary or a participating InPlace closure's
+  real exit. Unrelated InPlace exits retain fine-grained tracking while
+  still compressing their dying local-name dependencies.
 - **Failure or unavailable result:** Missing selected descriptions, sufficient
   modular guarantees, lawful structural transforms or founded recursive-summary
   results makes summary formation Unavailable; no future-path speculation or
@@ -206,7 +210,9 @@ Already committed history/Color and earlier external effects are not erased.
   on every legal successful path. Preserve external/unknown-root identity, all
   region/Color/path/guarded-effect rows and real delivery; no validity expansion
   or history erasure. Prove adopted nested/choice/recursive combinations, not a
-  universal join/implication theorem. See the [select_one witness](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness).
+  universal join/implication theorem.
+  Collapse preserves current cropping, Color, origin, source/effect and
+  name/generation/target identity; no type-derived substitute descriptor. See the [select_one witness](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness).
 
 ## LC6. Function Pattern and recursive interface consumption
 
@@ -273,6 +279,8 @@ Already committed history/Color and earlier external effects are not erased.
 
 - **Input material:** LC1's finite regular structure, actual identity parameters,
   operable endpoints/permissions, route prefixes, ranges and current Color.
+  For SCC reduction, use each name item's original paired regular descriptor
+  and its actual participating closure boundary, never just its type shape.
 - **Existing action that determines it:** Actual formed/selected field and
   ref/share operations, not every navigable Val2 member or `$` occurrence.
 - **Kind of ordinary lang program consumed:** Choice, field advance/composition,

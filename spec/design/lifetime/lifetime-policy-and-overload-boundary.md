@@ -1121,7 +1121,46 @@ or rejecting every closure with local references.
 Path, ADL, Policy and closure formation retain defined semantics through these
 interfaces without deciding every future lifetime refinement.
 
-### 8.5 Separate SCC convergence work
+### 8.5 Per-name SCC collapse at continuation boundaries
+
+A business type does not determine a lifecycle value. Structural
+interpretation involving `$` provides the *formed* type/Pattern's paired
+lifecycle structural material; actual formation establishes the **original
+regular companion descriptor for each name item** (§2.1.2/LC1).
+`$` itself adds no lifetime action. A name-item SCC is collapsed at its
+continuation boundary **directly into that original regular representation**
+under the name's current access, region, Color and source/effect constraints.
+It must not be unfolded indefinitely and reconstructed as a new SCC grammar,
+nor inferred solely from the business type.
+
+**The collapse schedule is fixed by closure semantics:**
+
+- At an **Ordinary (non-InPlace) closure** boundary, collapse outgoing SCC
+  material per name item. At formed-body summary time, transform *bound
+  descriptions*, not future concrete actions; at an actual exit, transform
+  reached names/history.
+- An **InPlace** closure preserves fine-grained tracking by default. Only
+  when it **participates in the particular SCC** do its participating
+  name items collapse at that InPlace closure's real exit (including a
+  legitimately crossing targeted return). Other InPlace closures do not
+  collapse unrelated SCCs. Every real exit still performs its usual
+  local-name compression.
+
+A targeted return crosses only InPlace boundaries in the reachable return
+segment and cannot cross its nearest Ordinary closure barrier. SCCs induced
+by these synchronous return interactions are thus segment-local. This does
+not prohibit ordinary captured/returned name dependencies across a callable
+interface; their outward contract and escape checks remain mandatory.
+
+Collapse does not merge actual names/generations/targets, turn unknown into
+None, remove earlier Color/effects, lengthen region, or restore cropped
+operation endpoints. The original descriptor is a *structural basis* with
+current restrictions, not renewed permission. Missing original companions
+or unsupported regular operations yield Unavailable, not type-based guesses.
+This rule does not prove termination of arbitrary recursive lifecycle
+programs or machine tail-call/slot reuse; those remain separate obligations.
+
+
 
 Three subjects have separate obligations: regular access/source SCCs (§11),
 recursive ordinary lifecycle programs, and physical tail-call/slot reuse.
@@ -1448,6 +1487,9 @@ carrier cannot lengthen an expiring referent, restore cropped access, revive
 a dead generation or cancel Color. A true borrow of a dying local still fails
 escape. Nested boundaries perform this work at their real exits rather than
 waiting for the outermost function.
+For SCC material, the placement rule of §8.5 applies. Nonparticipating
+InPlace exits still compress dying locals, but do not collapse unrelated SCC
+name items.
 
 The actual-exit program produces Post_actual for the reached path and checks
 its correspondence to the already formed Post_summary. A more precise actual
@@ -1512,7 +1554,10 @@ formation/transform consumer has this duty, not every occurrence of `$`.
 ADL and registered ordinary forwarding/Pattern extraction remain the only
 field routes; Val2 presence alone grants no access edge or structural role.
 
-Access/source structure retains regular form from formation. Ordinary
+Access/source structure retains regular form from formation.
+Each actual name item retains its formed original paired regular descriptor
+as the target of boundary-local SCC collapse; the type value alone cannot
+supply this lifecycle value, and earlier cropping is not undone. Ordinary
 overloaded `||`, field advance/appropriate composition and `~` can represent
 choice, concatenation and repetition. This is not a new regular-expression
 DSL. A finite state descriptor denotes regular walks paired with actual
@@ -1656,6 +1701,7 @@ Before an adopted family supplies evidence, its implementation must establish:
 | Nested composition | Inner-then-outer compression preserves outer observations for the specified family; no unconditional fact deletion or commute with arbitrary joins |
 | Contract behavior | check/admit represent the exposed guarantees under the four-way mapping, limited update authority and compatibility direction; unknown implication cannot accept |
 | Regular composition | For adopted finite descriptors with identity parameters, choice/advance/repetition stay in the defined regular domain and cropping is non-expansive |
+| Name-item SCC collapse | At Ordinary closure boundaries and participating InPlace exits, collapse to the original paired regular structure with current constraints; missing partners/operations remain Unavailable |
 | Recursive calculation | State the ordinary program's semantic domain, combination operations, closure and termination argument, or explicit Unavailable/rejection. A well-founded finite traversal or a proved finite family can qualify; arbitrary recursion has no default result |
 | Trusted facilities | Validator success matches external reality; credentials, partitions, windows and accounting cover all invalidating operations and surviving conflicts |
 | Rewrite/materialization | O revalidates affected projections; physical realization preserves promises, fixed cleanup and E's ABIKind |
@@ -1689,7 +1735,7 @@ boundaries. This table records migration decisions, not alternative current laws
 | One omitted-Post convention could be read across all callable forms | Body omission forms automatic Post; handwritten Function Pattern omission remains NoDelta. select_one cannot be stored under an insufficient NoDelta interface | Body boundary, FnExtract/contract compatibility |
 | Finite NameView observations did not specify outward local elimination | Boundary traversal/compression, preserving unknown and explicit termination. Returning a borrow of a dying local still fails | Result/block/target exits |
 | Excluding Color/origin from Object could be read as excluding lifecycle content | No new business-Object coordinate; lifecycle fields have ordinary content/identity. Equal integers with different credentials stay distinct names | Value representation, names and trusted Post |
-| SCC handoff requested convergence without a computation domain | Separate regular material, ordinary recursive E programs and machine reuse; each adopted family owes its actual proof/stop condition | Recursive contracts, access operations, machine consumers |
+| SCC handoff requested convergence without a computation domain | Per-name SCC collapse has fixed Ordinary/participating-InPlace boundaries and original regular companions; arbitrary program recursion and machine reuse remain separate | Companion formation, return boundaries, recursive/access consumers |
 
 U_default, omitted interface Pre, interface NoDelta, Pre_F => Pre_A and
 Post_A => Post_F, atomic complete identities, Pass/MoveEffect, self/Param,

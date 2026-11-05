@@ -148,9 +148,11 @@ source choices, regions, colors, access and effects while eliminating outward
 local-name reads. [Walkthroughs](lifetime/lifetime-algebra-walkthroughs.md) and
 [LC1–LC8](../contracts/lifetime-program-consumers.md) describe the pending wiring.
 [E](static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
-chooses ABIKind from delivery; O materializes it. Finite regular-access SCCs,
-ordinary lifecycle-program recursion and physical tail-call/slot reuse have
-separate proof obligations. A finite descriptor proves neither arbitrary
+chooses ABIKind from delivery; O materializes it. Regular access SCCs
+collapse per name item to their original formed companions at Ordinary
+closure boundaries or participating InPlace exits, with current constraints.
+Ordinary lifecycle-program recursion and physical tail-call/slot reuse
+have separate proof obligations. A finite descriptor proves neither arbitrary
 program termination nor machine reuse.
 
 ## Current extraction and continuation interfaces

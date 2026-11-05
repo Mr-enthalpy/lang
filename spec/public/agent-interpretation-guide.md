@@ -490,6 +490,11 @@ Internal actions and boundary compression are distinct. Preserve actual
 sibling/child origins, source choices, unknown roots, validity, colors and other
 effects while eliminating outward reads of exiting locals. Do not introduce
 reborrow, copy fallback, hidden result/unit, restored access or a second solver.
+Name-item access SCCs collapse to the original paired regular structure
+from actual formation, not type alone: at Ordinary closure boundaries,
+and at an InPlace exit only if that closure participates in the SCC.
+Other InPlace exits still compress locals; target return cannot cross
+Ordinary barriers. Keep cropping, Color, origin and name/target identity.
 Regular access, ordinary program recursion and machine slot reuse require
 separate evidence. Existing lifecycle carriers/transaction tests are substrate,
 not proof that `@`, automatic Post or the trusted library source protocols run.

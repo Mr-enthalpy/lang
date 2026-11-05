@@ -880,7 +880,7 @@ decider assumed by this matrix.
 | LA11 | Export a result truly borrowing an object that dies at the crossed boundary | Reject under ordinary escape/validity rules. Compression of its local carrier cannot lengthen referent lifetime or make the return safe | LC5; W2 |
 | LA12 | Compare sibling handle transfer, real child borrow and ordinary logical dependency | Preserve their actual distinct origin/target/region material; no automatic reborrow or uniform internal from call arranges a preferred tree | LC3/LC5; W2/W3 |
 | LA13 | Kill Move, narrow proved Preserve and whole-self/Param transfer | Kill ends its old generation with no duplicate destructor; Preserve does not clone. One coherent implicit-input transfer, no whole-self plus captures double Kill or failed-Move copy retry | LC3; W1 |
-| LA14 | Represent a recursive field-access family with finite regular choice/advance/repetition states | Finite descriptors retain concrete target/name/generation parameters. State reuse cannot merge identities; finiteness proves neither arbitrary program termination nor TCO | LC8/LC6; W1 and owner §11/§14 |
+| LA14 | SCC in a regular access structure crossing Ordinary/InPlace closure boundaries | Collapse each item to its original formed regular companion at Ordinary exits; collapse locally at participating InPlace exits but not unrelated InPlace exits. Keep cropping/Color/region/source/effects and distinct names. Finite descriptors do not imply arbitrary program termination or TCO | LC5/LC8/LC6; W1 and owner §8.5/§11/§14 |
 | LA15 | Crop access to leaf q using a shared routing prefix p | Output operation ranges are a subset. Keep p as route without granting whole-p terminal access; cropping grants no new permission and removes no historical color | LC8; W3 |
 | LA16 | Compare ref-only tree path, a path reaching share, and an alias path | Registered ref-only access can proceed under Pre; ref cannot cross share to recover exclusivity. Share through ref remains share without alias write/internal mutability. Alias has no normal propagation | LC1/LC8; W3/W4 |
 | LA17 | Successful try_trust returns ordinary integer safeid; compare equal integer at another name | Post establishes source/generation/interval credential without changing type or requiring ref/share. Equal numeric content alone has no credential; `?` performs only ordinary extraction/control | LC7; W3 |
@@ -945,6 +945,13 @@ executed coverage or independent case taxonomy:
   effect rows. Missing descriptions/transforms or an invalid actual relation
   cannot be repaired by executing future arms, selecting the other row after
   failure, inventing a residual or substituting one late Exit for the summary.
+- **LA09/LA14/LA15:** An inner InPlace participating in SCC C
+  collapses its own name items when exited by target return. An unrelated
+  crossed InPlace still compresses locals but not C. At the enclosing
+  Ordinary closure boundary, outward SCC items collapse again to their
+  original paired regular descriptors, keeping current access, region,
+  Color, source/effect and name identity. Target return never crosses that
+  Ordinary closure; type equality or state reuse cannot mint permissions.
 - **LA14/LA15/LA30:** A completed Pre correction has finite description material;
   a finite regular descriptor may still denote infinitely many potential walks.
   Each actual access retains its tree/region/Color premises. Counting the

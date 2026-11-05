@@ -271,7 +271,12 @@ choices, regions, colors, effects and validity. This includes a target return
 crossing nested InPlace boundaries. It introduces neither a local unit nor an
 already completed result binding at an intermediate boundary, and it changes
 neither target reachability nor fixed cleanup order. A borrow of a dying local
-cannot be made valid by compression. See the
+cannot be made valid by compression.
+A source/access SCC participating in a crossed InPlace closure collapses
+its own names to the original formed regular companions at that real
+exit, not at unrelated InPlace exits. The Ordinary closure boundary
+collapses outward SCC material per item without permitting a target
+return to cross it. Current cropping and Color history remain. See the
 [boundary algorithm obligations](../lifetime/lifetime-policy-and-overload-boundary.md#10-internal-actions-origin-compression-and-automatic-post)
 and the [nested-return walkthrough](../lifetime/lifetime-algebra-walkthroughs.md#1-branches-recursion-and-nested-inplace-exits).
 

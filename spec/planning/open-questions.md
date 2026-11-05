@@ -169,9 +169,12 @@ Persistent dependency/source encoding remains open, not the propagation law.
 - Which ordinary API names (including depends_on/live_with), argument packaging,
   namespaces, regular-material encodings, caches and boundary-transform
   algorithms implement the closed lifecycle relations?
-- Which compositional recursion domains and evidence/rejection methods should
-  each adopted ordinary lifecycle program use? Finite regular-access SCCs,
-  arbitrary program recursion and machine slot reuse are distinct obligations.
+- Which representations/algorithms realize the fixed name-item SCC collapse
+  to original paired regular forms at Ordinary boundaries and participating
+  InPlace exits? The placement and non-restoration laws are not choices.
+- Which ordinary recursive lifecycle-program domains and evidence/rejection
+  methods should be used? Program recursion and machine slot reuse remain
+  separate from regular SCC collapse.
 - Which dynamic validation representations, alias-window facilities and
   partbox library layouts realize the fixed trusted-facility protocols?
 - How should compile caches represent call-site Open-sensitive applicability:
@@ -249,9 +252,9 @@ Dependency observation classification, exclusive value-capture modes and fixed
 capture sequences, consumer-directed self projections, directional Function
 Pattern LHS/RHS, and omitted-contract defaults/implication are closed by the
 existing dependency/call/Pattern/lifetime owners. Their carriers and source
-consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-separate-scc-convergence-work)
-separates finite regular structure from ordinary lifecycle-program recursion
-and machine reuse. Each chosen recursive combination still needs a justified
+consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-per-name-scc-collapse-at-continuation-boundaries)
+fixes regular name-item collapse points while separating ordinary lifecycle
+program recursion and machine reuse. Each chosen recursive combination still needs a justified
 domain, evidence and failure/unavailable boundary; no total convergence theorem
 or second resolver is assumed. Concrete algorithms remain open.
 

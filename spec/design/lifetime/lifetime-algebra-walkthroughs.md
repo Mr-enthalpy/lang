@@ -270,6 +270,26 @@ finite but supplies no proof that an arbitrary recursive contract program
 terminates. Neither argument proves TCO, bounded stack or reusable machine
 slots. These are separate [proof obligations](lifetime-policy-and-overload-boundary.md#14-proof-obligations-and-engineering-freedom).
 
+### SCC collapse at participating closure boundaries
+
+As an additional schematic case, suppose actual structural formation
+provides an original regular companion `Reg0(n)` for each name item.
+An access SCC C involves the innermost InPlace closure of W1, but not the
+middle InPlace closure crossed by the same targeted return. This does
+not imply W1's ordinary `r` itself forms an SCC.
+
+At the participating inner exit, reduce each involved item directly to
+its own `Reg0(n)` under the **current** cropped access, region/Color,
+origin and effect constraints. The middle InPlace still compresses dying
+locals but does not collapse unrelated SCC items. At the enclosing
+Ordinary closure boundary, collapse outward SCC material per name item.
+The target return cannot cross a different Ordinary closure. Reusing
+the same regular-state descriptor never unifies distinct names/targets.
+
+The advance summary uses already formed *bound* descriptors, not future
+executed paths. Missing original companions/regular operations are
+Unavailable. This proves no general recursion termination or machine TCO.
+
 ### One finite end-to-end trace
 
 Take the admitted witness with fuel=1, then fuel=0 in the recursive call, with
