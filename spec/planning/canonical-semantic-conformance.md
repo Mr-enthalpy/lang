@@ -1002,6 +1002,41 @@ executed coverage or independent case taxonomy:
   missing evidence), even if type checking succeeds; no success publication,
   initial permission from unsafe Pre or runner-up is allowed.
 
+- **LA07/LA17/LA19/LA20:** Trace the
+  [try_trust contract/body](../design/lifetime/lifetime-algebra-walkthroughs.md#writing-the-trusted-apis-contracts-and-body):
+  ordinary Pre limits the successful result role's interval before action;
+  explicit typed contract rows go through the same self-root check/admit
+  constructor. Actual fresh successful name formation establishes the authorized
+  from/shared dependency; terminal Move alone cannot rewrite num's origin.
+  Unsafe Post contributes only real compatible validation for Q/generation/id/I.
+  Failure returns its declared complete ownership without a credential. A forged
+  success branch, validation row or equal integer supplies neither external
+  truth nor formation/update authority.
+- **LA19/LA27/LA28:** Trace the
+  [five production functions](../design/lifetime/lifetime-algebra-walkthroughs.md#a-minimal-production-chain-inside-the-library):
+  the real box enters State once; split removes one actual allocation and
+  computes q-wanted; merge consumes two distinct actual entries and computes
+  qa+qb; full conversion consumes its singleton allocation and returns the
+  extracted held box. Fresh data/cells and copied rows cannot install rights
+  without the actual lawful State/input sources. Compare the same allocation
+  presented twice, an equal fresh cell, surviving allocations/windows and false
+  validity Pre. External validation supplies none of that missing authority.
+- **LA14/LA15/LA16:** In the
+  [regular access program](../design/lifetime/lifetime-algebra-walkthroughs.md#a-regular-access-program-with-endpoint-only-cropping),
+  combine ordinary choice, legal field advance, postfix repetition and crop.
+  Preserve the recursive descriptor and actual identity parameters while
+  retaining only admitted payload endpoints; the zero-step arm admits the
+  root's payload, never a whole-root operation. Route prefixes do not restore
+  ancestor operations, a second crop cannot enlarge the view, and crossing share
+  cannot meet the exclusive demand. No descriptor-state reuse merges names or
+  executes future runtime paths.
+- **LA30:** Read each key walkthrough code segment's local Origin/Basis/Frontier
+  note before connecting it. User/library source, illustrative generated
+  projection and schematic expansion have distinct producers; B/L/W/X does
+  not make a helper name an installed API. Missing actual source producers and
+  the displayed unsafe post syntax remain pending even when generic syntax
+  carriers parse nearby ordinary constructs.
+
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any
 row's full source chain. Future connections must add meaningful action-based

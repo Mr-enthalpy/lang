@@ -35,6 +35,14 @@ over a limited update interface. None is a current implicit compiler builtin.
 The helper names are illustrative, not required standard-library names. Their
 semantic obligations and failure/authority boundaries are what must be realized.
 
+Each core excerpt below has a local **Origin / Basis / Frontier** note. Origin
+distinguishes user/library source, a generated projection and a schematic
+expansion. Basis uses the classes above; Frontier identifies the missing semantic
+handoff, not just whether its tokens can be parsed. No excerpt currently runs
+end-to-end through source E. Recognizing its ordinary syntax is not execution of
+its lifecycle operations; in particular the names in selected, construction and
+partbox below are not an installed standard-library API.
+
 ## 1. Branches, recursion and nested InPlace exits
 
 ### Source and selected actions
@@ -44,6 +52,11 @@ family. `is_zero` observes an explicit share; that handle's interval ends before
 `predecessor` consumes fuel. Consider the admitted family where `r` is an
 already formed movable handle of deduced type T. No arbitrary T movement,
 implicit borrow or implicit clone is asserted.
+
+**Origin:** user source, design illustration. **Basis:** L control/calls over B
+selected Move, capture and return rules; W ordinary execution and LC1–LC3.
+**Frontier:** the source carriers do not yet supply this function's lifecycle
+projection or an executable recursive call chain.
 
 ```lang
 let descend = <T>(self, r:T, fuel:Nat::):runtime -> o:T => {
@@ -98,6 +111,12 @@ registered origin view has three ordinary disjoint branches: a known link, an
 actual unknown root, or explicit termination. A missing observation produces a
 diagnostic, not a fourth branch that can silently succeed. This example admits
 finite known prefixes; a cyclic regular family needs the separate §14 evidence.
+
+**Origin:** library-source expansion of compression, not generated host code.
+**Basis:** L recursion/extraction/composition; B actual origin, region, Color,
+access and delivery observations; W LC3/LC5/LC8. **Frontier:** the required
+source observations and boundary consumers are unconnected; these bodies specify
+their intended ordinary composition, not a working compress_exit intrinsic.
 
 ```lang
 let compress_origin =
@@ -162,6 +181,12 @@ established name/selection/activation/cut/delivery material. Scope queries below
 return owned boundary descriptors for the source function, branch and two
 nested InPlace scopes, including their formed dependencies and fixed cleanup.
 They neither invent activations nor execute that cleanup a second time.
+
+**Origin:** illustrative generated lifecycle projection, including its entry
+fragment below. **Basis:** L composition of B sealed selected actions and actual
+scope/control material; W LC1–LC3/LC5/LC6. **Frontier:** selected, source_frame and
+available_guard have no connected source producer here. User-created lookalike
+values cannot stand in for those producers, and no projected call is executed.
 
 ```lang
 let descend_life =
@@ -396,6 +421,11 @@ payload type. Its ordinary type-forming ref operation gives the external
 classifier below; `$` in the formal/return Pattern uses that ready type value.
 It is not a reborrow. This is again a design target, not parser/runtime coverage.
 
+**Origin:** user source, including the exposed Post component below.
+**Basis:** L contract expression/control; B real ref-handle Move, result mapping
+and target validity; W LC2–LC5. **Frontier:** the lifecycle clauses and boundary
+transform are design targets, with no connected select_one_ref source execution.
+
 ```lang
 let PayloadRef = Payload:: |> ref;
 let select_one_ref =
@@ -435,6 +465,10 @@ The following generic T example is an additional admitted family, not a
 replacement for this concrete ref case.
 
 ### Source, entry and internal material
+
+**Origin:** additional generic user-source design family. **Basis:** L as above,
+conditional on B's selected T actions; W LC2–LC5/LC6. **Frontier:** no generic
+movement, recursive summary or lifecycle execution is supplied by this example.
 
 ```lang
 let select_one = <T>(self, r1:T, r2:T, choose:bool::):runtime -> o:T
@@ -506,6 +540,11 @@ exclusive targets. It is not an arbitrary join of unrelated results. Subject
 to the family's stated outward-effect condition, its return-source component
 forms:
 
+**Origin:** exposed source contract component, not the entire generated Post.
+**Basis:** L ordinary expression over B selected source-choice relations;
+W LC4/LC5. **Frontier:** automatic formation/adoption is pending; the display
+does not discard the other guarded effect rows.
+
 ```lang
 lifetime post o@..from(r1@ || r2@)
 ```
@@ -544,6 +583,12 @@ External unknown-root parameters retain their identities through actual mapping.
 The callable form_post is assumed already formed; its definition is expanded
 below. These explanatory excerpts do not request forward lexical lookup. One
 possible ordinary program arrangement is:
+
+**Origin:** library-authored expansion over generated semantic body material.
+**Basis:** L structural transformation and form_post; B formed selected
+relations, roles and guards; W LC1/LC2/LC4–LC6. **Frontier:** the semantic body
+producer and advance-summary consumer are unconnected, not available from
+Raw/Norm AST inspection or a user-constructed lookalike.
 
 ```lang
 let (roles, guard, left_body, right_body) =
@@ -630,6 +675,13 @@ the local relation whose lifetime ends when form_post returns. All library
 Paths name registered ordinary operations; structural dependencies retain their
 actual identity. An explicit capture list leaves no omitted external local value.
 
+**Origin:** library-authored contract constructor, schematic source expansion.
+**Basis:** L ordinary extraction/closure construction; B current-instance
+initialization, OpenHere, Place first-write, self-root delivery and scoped world
+authority; W LC3/LC4 and ordinary formation. **Frontier:** in particular
+initialize_empty_root and the component adoption interfaces are pending
+handoffs. Parsing qualified let/ref/assignment does not execute this bootstrap.
+
 ```lang
 let form_post = <M>(self, material:M):compile -> _:type:: => {
     self# |> initialize_empty_root::construction;
@@ -666,14 +718,15 @@ let form_post = <M>(self, material:M):compile -> _:type:: => {
 
 ```
 
-The admitted M families here are the actual Exit and formed GuardedExitPattern,
-with their ordinary typed contract_rows extraction providers. They remain
-distinct: one carries reached-path observations, the other a conditional
-description over bound positions. contract_rows extracts the corresponding
-lawfully transformed rows; it does not turn one actual path into an advance
-summary, redo the body or infer an arbitrary contract. all_true is ordinary
-finite Boolean
-folding, not a contract evaluator. Its inputs have these concrete responsibilities:
+The admitted M families here are actual Exit, formed GuardedExitPattern and
+the explicit ContractPattern used in W3, each with an ordinary typed
+contract_rows extraction provider. They remain distinct: Exit carries
+reached-path observations, the others descriptions over established bound roles
+and guards (including an unconditional requirement). contract_rows extracts the
+corresponding lawfully transformed rows; it does not turn one actual path into
+an advance summary, redo the body or infer an arbitrary contract. all_true is
+ordinary finite Boolean folding, not a contract evaluator. Its inputs have
+these concrete responsibilities:
 
 | Ordinary computation | Material examined / required result |
 |---|---|
@@ -731,6 +784,11 @@ paths, root initialization and world views remain **unconnected design targets**
 An ordinary user can form the same type with a check body that returns true.
 That is a bool computation, not a source of lifecycle facts. Consider replacing
 only the associated bodies in the program above with this malicious variant:
+
+**Origin:** negative user-source variant of those first initializers.
+**Basis:** L Boolean/closure construction, B each adopt operation's independent
+Pre; W LC3/LC4. **Frontier:** a design rejection target, not an executable exploit
+or an implemented diagnostic test.
 
 ```lang
 check_ref = (check_self, w:world::lifetime::):compile -> _:bool:: => {
@@ -808,6 +866,11 @@ an assumed unconditional commute with choice combination.
 
 The compact design seed is:
 
+**Origin:** user-source uses, both fragments below. **Basis:** L ordinary ADL
+call and registered result extraction; B actual input/result names; W LC2–LC4/LC7.
+**Frontier:** neither try_trust nor its credential-producing source consumer is
+connected. The compact spelling does not demonstrate executable safeid support.
+
 ```lang
 let safeid = (vector ref ..try_trust(num))?;
 ```
@@ -829,6 +892,168 @@ payload extraction follows R_Gamma, not a special meaning of `try` or `?`.
 If that one-layer result view is unavailable, the use is unavailable. On
 failure the bare binding in the compact seed does not magically denote a
 trusted integer. Branch code must explicitly bind the id from the ok payload.
+
+### Writing the trusted API's contracts and body
+
+Here is a minimal **design expansion** of that API. VectorRef, TrustResult,
+ProbeOk and ProbeErr denote ordinary registered library types/Patterns. The
+success branch of TrustResult contains one ordinary Index; its type need not
+change. The declaration fixes that result role before execution. success_id_role
+extracts this bound role from the formed return interface; it neither reads a
+future out value nor creates a future runtime name. At actual delivery the
+ordinary result mapping instantiates it with s and s's current generation.
+
+The three compile expressions construct descriptive rows, then call W2's
+expanded form_post to form self-root types with ordinary associated check/admit.
+Despite that helper's name, it also constructs the types consumed as Pre.
+The row constructors are ordinary library functions over available material.
+from_rows is the data-level expansion of the exposed from relation, and
+shared_dependency_rows records its actual protected endpoints, region and
+shared Color. Neither writes a world. Their normal check/admit operations have
+the independent authority premises described in W2.
+required_contract_pattern wraps the concatenated Pre rows in a complete typed
+ContractPattern; guarded_rows forms that same family with explicit alternatives.
+Their contract_rows providers expose those formed descriptions, not inferred
+future observations.
+
+**Origin:** library-authored source with schematic contract/interface expansion.
+**Basis:** L contract construction, guards and control; B authorized observations,
+source/result mapping and legal dependency coloring; X only the successful
+validation fact identified below; W LC2–LC5/LC7/LC8. **Frontier:** all three
+contract bodies and the runtime body are design targets. In particular
+`unsafe post` is pending source notation
+([surface status](../../public/normalized-surface-semantics.md#16-lifetime-programs-and-contract-surface-consumer-pending));
+this excerpt does not claim an accepted parser production or a working facility.
+
+```lang
+let try_trust =
+    (self, v:VectorRef$, num:Index::):runtime -> out:TrustResult$
+        lifetime pre {
+            let s = out@ |> success_id_role::trust;
+            let read = v@ |> authorized_validation_read_rows::trust;
+            let input = num@ |> legal_input_move_rows::trust;
+            let interval = (s, v@) |> within_source_interval_rows::trust;
+            (read, input, interval) |> concatenate_rows::lifetime
+                |> required_contract_pattern::trust |> form_post return;
+        }
+        lifetime post {
+            let (ok_role, err_role) = out@ |> outcome_roles::trust;
+            let s = ok_role share |> success_id_role::trust;
+            let source = (s share, v@) |> from_rows::lifetime;
+            let shared = (s, v@) |> shared_dependency_rows::trust;
+            let success = (source, shared) |> concatenate_rows::lifetime;
+            let failure = err_role share |> failure_delivery_rows::trust;
+            ((ok_role, success), (err_role, failure))
+                |> guarded_rows::lifetime |> form_post return;
+        }
+        unsafe post {
+            let (ok_role, err_role) = out@ |> outcome_roles::trust;
+            let s = ok_role share |> success_id_role::trust;
+            let validated = (v@, num@, s) |> validated_index_rows::trust;
+            let no_fact = () |> empty_rows::lifetime;
+            ((ok_role, validated), (err_role, no_fact))
+                |> guarded_rows::lifetime |> form_post return;
+        }
+        => {
+            let probe = (v share, num share) |> probe_index::facility;
+            probe?
+                |> (_, let why:ProbeErr::) {
+                    (num, why) |> err::trust return;
+                }
+                |> (_, let observed:ProbeOk::) {
+                    let s = observed |> finish_probe::facility;
+                    num |> drop;
+                    s |> ok::trust return;
+                };
+        };
+```
+
+The Pre's rows require the actual legal validation-read route, current resource
+and input generations, legal input transfers and the proposed successful
+result's interval contained in the admitted source interval. The s role can
+occur in an entry requirement without executing a future validation. Missing
+source/window evidence stops at caller Pre; body admit cannot repair it.
+The validator's temporary shared observations end before num is dropped.
+ok/err are real complete constructors, and target returns cross only the shown
+InPlace branch scopes. Each branch's result is delivered once.
+
+probe_index's successful producer forms a **fresh complete Index**, with the
+same numeric content as num, under its selected ordinary construction. It does
+not merely return num by Move and rename its origin. Its selected lifecycle
+partner establishes the logical borrow while that new name is being formed.
+That admitted producer observes num through the explicit shared input and uses
+its selected ordinary Index constructor; it is not an implicit copy or a clone
+chosen after a failed Move. Its complete-construction Pre remains required.
+ProbeOk owns that id plus the temporary probe material; finish_probe consumes
+the complete branch, ends only that temporary material and delivers the id once.
+The normal failure branch produces no such id. Thus the outer success Post
+transports an already established source/shared dependency through actual
+handle/value delivery; it does not create it retrospectively.
+
+For clarity, expand the successful producer's lifecycle fragment too. source
+is the actual v projection; fresh is the actual one-shot name-formation view
+from this selected Index producer; checked is its real successful validation,
+not a user-made ProbeOk or a Boolean. The fresh interval is already bounded by
+entry Pre. The leaf operations below expose the generic origin/region/Color
+responsibilities of real shared dependency formation; their spelling and
+grouping are not additional intrinsic requirements.
+
+**Origin:** illustrative generated partner fragment for the selected producer.
+**Basis:** L ordered composition; B actual fresh-name formation and authorized
+shared borrowing/interval laws; X checked validation only; W LC2/LC3/LC7.
+**Frontier:** this formation view and its source operations are pending.
+
+```lang
+let probe_success_life =
+    (self, source:LifeName::, fresh:FreshNameView::, checked:ValidationFact::):compile
+        -> _:FormedNameMaterial:: => {
+        let initialized = (fresh, source share) |> initialize_borrow_origin::lifetime;
+        let bounded = (initialized, source share) |> initialize_bounded_region::lifetime;
+        let colored = (bounded, source) |> begin_shared_dependency::lifetime;
+        (colored, checked) |> finish_validated_name_material::trust return;
+    };
+```
+
+Each initializer checks its own actual formation/source/interval authority,
+and begin_shared_dependency requires the ordinary compatible shared Color and
+protected-access premises. These are not setters on arbitrary existing names:
+there is no rewrite of num's origin, extension of a cut, deletion of Color or
+enlargement of access. finish_validated_name_material packages only those
+established components and the real compatible validation; copying its inputs'
+data cannot reproduce the scoped authority. This is the same B-level action
+responsibility as actual shared dependency formation, including logical borrowing
+for a non-ref business value, not a trusted safeid constructor for the whole API.
+The selected borrow source is v's authorized resource target/protected ranges,
+not the local ref-handle Place. Its formed source material retains that distinction;
+boundary compression removes the local carrier without extending Q's validity.
+
+The unsafe part is precisely the otherwise underivable fact
+`ValidatedIndex(Q, generation_Q, s, generation_s, protected_ranges, I)`:
+the selected probe actually validated this index against this live resource
+generation, and the facility/protocol maintains that condition in I. It does
+not assert origin, access or arbitrary world writes. The ordinary success Post
+computes the from relation and shared coloring from the authorized source,
+actual successful producer and mapped result under their own operation Pre.
+Those relations carry the external validation's dependency; no Boolean or
+ProbeOk constructor can invent it. Pure numeric comparisons, when available,
+remain ordinary lang computation, not unsafe axioms.
+
+probe_index is the narrow actual external action, not an implementation of the
+whole try_trust function. Its observation and fresh construction must already
+be legal. finish_probe cannot end the protected credential
+interval. That interval's invalidators must remain blocked as specified below.
+The unsafe description is justified by the real selected probe and its maintained
+guarantee, never by observing that this body returned an ok tag. A source-defined
+validation with sufficient internal facts can instead use a separately selected
+ordinary realization; an unavailable/failed external probe does not retry it.
+
+On ProbeErr, failure_delivery_rows accounts for the actual returned num/error
+ownership and other reached effects. It contains no from/shared credential for a
+successful id, and the unsafe failure arm is empty. Earlier committed observation
+history is retained. At the successful public E action, ordinary Pre, the selected
+producer's real result and the compatible guarded ordinary/unsafe Post meet at
+the existing joint publication gate. Caller admit consumes the mapped guarantee;
+it neither reruns the probe nor manufactures a success payload.
 
 | Step | Material consumed / computed | Result and stop boundary |
 |---|---|---|
@@ -902,6 +1127,83 @@ a whole-ancestor operation merely because both ranges use that route. A later
 meeting, overlapping ancestor endpoint or unavailable separation invalidates
 the argument. Finite regular-state reuse alone is not actual tree separation.
 
+### A regular access program, with endpoint-only cropping
+
+Take an already formed recursive Node family with selected legal owned-child
+fields left/right and a payload field. Its actual ref-access structure is a
+strict tree. An optional observer field watch contains a share and is outside
+that exclusive propagation tree. This is an assumption about real formation
+and selected access, not an inference from the spelling or recursive type.
+
+For this example, register ordinary operations on a regular descriptor family:
+at_root pairs the actual name/target parameters with its original formed
+companion; .left/.right advance one admitted Node edge; binary || selects
+between those transitions; postfix ~ forms their finite zero-or-more repetition
+descriptor; .payload advances to the payload endpoints at those nodes.
+These are ordinary operator/ADL registrations, including field::adl, over
+descriptive values. They are not strings naming routes or an access interpreter.
+The postfix spelling uses the ordinary grammar; the chosen descriptor encoding,
+selector packaging and helper signatures remain schematic.
+
+**Origin:** library-authored design source over an actual projected name.
+**Basis:** L choice/repetition/field composition and subset cropping; B the
+original formed companion, selected field correspondence, actual identities and
+ref/share boundary; W LC1–LC3/LC8. **Frontier:** the descriptor registrations,
+projected source values and access consumer are unconnected. This is not an
+executed traversal of all runtime Nodes or an existing access library.
+
+```lang
+let payload_access =
+    (self, r_n:LifeName::):compile -> _:LifeAccessView:: => {
+        let root = r_n share |> at_root::regular;
+        let down = ((root share).left || root.right);
+        let descendants = down~;
+        let payload_ends = descendants.payload;
+        r_n..access(payload_ends) return;
+    };
+
+let payload_view = r@ |> payload_access;
+```
+
+The finite descriptor denotes zero or more selected left/right steps, followed
+by payload. The zero-step case permits the root's payload, not the whole root.
+Each walk remains parameterized by its actual Node target/name/generation;
+revisiting a descriptor state merges none of those identities. Ordinary
+formation supplies that regular structure once; ~ does not execute future
+field actions, create new runtime Nodes or prove an arbitrary recursive
+lifecycle program terminating.
+
+access intersects the requested payload endpoints/operations with r_n's
+currently admitted view. If an earlier crop removed some payload endpoints,
+this program retains only the remaining ones; its use of the original
+descriptor grants none back. Routing Node/left/right prefixes remain so that
+the retained payloads can be reached. No whole-Node read, write, move, destruction
+or exclusive ref to an ancestor follows from keeping such a prefix. Historical
+Color and the region/source constraints remain. A later actual payload action
+must still satisfy its own ordinary Pre at E's frontier.
+
+**Origin:** negative user-source design attempts, both fragments below.
+**Basis:** B existing permissions and ref/share propagation, L non-expansive
+intersection; W LC3/LC8. **Frontier:** these are rejection targets for future
+connected consumers, not present compiler diagnostics.
+
+```lang
+let restored = payload_view..access(r@);
+restored |> require_whole_root::example;
+
+let beyond_share = r@.watch.payload;
+let bad_ref = r@..access(beyond_share);
+bad_ref |> require_exclusive_payload_ref::example;
+```
+
+The first crop cannot restore whole-root terminal permission; the subsequent
+whole-root request fails its own Pre (or the unsupported crop request is
+rejected earlier). The second cannot obtain an exclusive endpoint through
+watch's share. A legal shared continuation, if registered and independently
+authorized, remains shared; it cannot satisfy the shown exclusive demand.
+Likewise alias is not a traversable normal edge. Missing field/descriptor
+registrations stop unavailable rather than reconstructing them from Node's type.
+
 ## 4. Alias, partbox and option
 
 ### Root-only alias and a bounded window
@@ -914,6 +1216,11 @@ implementation. Registered ordinary field extraction may obtain an ordinary
 value, but cannot cross ref/share nodes or smuggle a normal borrow path.
 
 An illustrative window call uses an explicitly formed callback:
+
+**Origin:** user-source design use. **Basis:** L callback/call; B normal ref
+formation/escape; X maintained validity/exclusion, not anonymous-name freshness;
+W LC3/LC7. **Frontier:** with_ref_window and its escape/window consumers remain
+unconnected; the callback's Ordinary return barrier alone does not implement them.
 
 ```lang
 let body = (window_self, r:PayloadRef::) => {
@@ -949,6 +1256,11 @@ Before split/merge, the library must obtain a legitimate first part. The
 requires actual complete unallocated full-use authority for Q/current
 generation, not just its identifier and a quantity. One ordinary design use is:
 
+**Origin:** user-source use, expanded by the production chain below.
+**Basis:** L library conversion over B actual full ownership; X only for a real
+external acquisition when needed; W LC3/LC7. **Frontier:** issuance is not a
+connected source operation.
+
 ```lang
 let first_part = owned_resource |> issue_full_part::partbox;
 ```
@@ -977,6 +1289,10 @@ carrier remain library choices; actual allocation is not a builtin type test.
 
 For a negative design case, suppose ordinary user construction is admitted to
 produce the same classifier and apparent fields as a real full part:
+
+**Origin:** negative user-source construction. **Basis:** B actual source/owned
+capability, L data construction; W LC3/LC7. **Frontier:** this is an independent
+authority-rejection target even if the ordinary type/constructor is admitted.
 
 ```lang
 let fake:Part:: = (resource_id, full_amount) |> user_part_constructor;
@@ -1048,6 +1364,179 @@ protocol with explicit evidence and failure boundaries.
 
 ### Ordinary partbox composition program
 
+#### A minimal production chain inside the library
+
+Before the higher-level composition, expand its producers. This **one possible
+serialized library representation** keeps the actual owned box in an owned
+private State, alongside a finite allocation table. A Part owns a unique ordinary
+allocation cell and its amount; the table records that cell's actual identity
+and current allocation. The cell is an ordinary complete owned Object, not a
+proof Object, fractional intrinsic or integer key. Its identity/target and lawful
+Move mapping distinguish it from an equal-valued fresh cell. A table row is
+descriptive data, not a second owner of the cell or resource.
+
+State, Part, Row and their field/constructor interfaces are illustrative closed
+library structures. Their actual registered access rules protect the held box
+and table; the word private in a path grants no privilege. The functions below
+are admitted internal calls with the actual owned State and Parts. In particular
+their independent entry Pre establishes:
+
+- the State's lawful held box/current resource and allocation invariant;
+- each supplied Part's actual owned cell, source chain, matching live entry and
+  admitted current generation/Move mapping, with no outstanding conflicting use;
+- distinct entries for merge; valid split amounts; and every ordinary validity,
+  window, Color, cleanup and complete-construction requirement.
+
+These premises are checked from the real inputs and established library state,
+not from these functions' not-yet-executed Post. Cells/rows observed through
+temporary shares are released before their owners are consumed. A saved share,
+equal Part-shaped value or copied row cannot supply the owned cell. A fresh cell
+made by a user cannot match the already installed actual allocation. Updating
+the table additionally requires the actual private State; metadata access alone
+does not expose that authority.
+
+**Origin:** library-authored schematic expansion, all five functions below.
+**Basis:** L finite-table operations, exact amount computation and consuming
+Pattern/constructor calls; B actual owned inputs, fresh complete cell formation,
+ordinary identity/access/Move and publication; W LC1/LC3–LC5/LC7. **Frontier:**
+these source library definitions and their consumers are unconnected. Fresh cell
+formation is ordinary complete Object formation, not a proposed partbox builtin.
+The external-resource validity variation after the code is the only X input here.
+
+```lang
+let fresh_allocation_data =
+    (self, amount:Amount::):runtime -> _:AllocationData:: => {
+        let cell = () |> unit_box::private;
+        let row = (cell share, amount share) |> allocation_row::private;
+        let part = (cell, amount) |> part::private;
+        (part, row) |> allocation_data::private return;
+    };
+
+let issue_full_part_core =
+    (self, owned:ResourceBox::):runtime -> _:Issued:: => {
+        let full = () |> one::amount;
+        let (part, row) = full |> fresh_allocation_data;
+        let rows = row |> singleton_table::private;
+        let state = (owned, rows) |> state::private;
+        (state, part) |> issued::private return;
+    };
+
+let split_core =
+    (self, state:State::, p:Part::, wanted:Amount::):runtime
+        -> _:SplitResult:: => {
+        let q = p share |> quantity::private;
+        let rest = (q, wanted share) |> subtract::amount;
+        let (held, rows) = state |> state_fields::private;
+        let (old_cell, old_amount) = p |> part_fields::private;
+        let remaining = (rows, old_cell share) |> remove_exact_entry::private;
+        old_cell |> drop;
+        old_amount |> drop;
+        let (left, left_row) = wanted |> fresh_allocation_data;
+        let (right, right_row) = rest |> fresh_allocation_data;
+        let next_rows = (remaining, left_row, right_row) |> insert_two::private;
+        let next_state = (held, next_rows) |> state::private;
+        (next_state, left, right) |> split_result::private return;
+    };
+
+let merge_core =
+    (self, state:State::, a:Part::, b:Part::):runtime
+        -> _:MergeResult:: => {
+        let qa = a share |> quantity::private;
+        let qb = b share |> quantity::private;
+        let total = (qa, qb) |> add::amount;
+        let (held, rows) = state |> state_fields::private;
+        let (cell_a, amount_a) = a |> part_fields::private;
+        let (cell_b, amount_b) = b |> part_fields::private;
+        let rest = (rows, cell_a share) |> remove_exact_entry::private;
+        let rest2 = (rest, cell_b share) |> remove_exact_entry::private;
+        cell_a |> drop;
+        cell_b |> drop;
+        amount_a |> drop;
+        amount_b |> drop;
+        let (merged, row) = total |> fresh_allocation_data;
+        let next_rows = (rest2, row) |> insert_one::private;
+        let next_state = (held, next_rows) |> state::private;
+        (next_state, merged) |> merge_result::private return;
+    };
+
+let into_box_core =
+    (self, state:State::, full:Part::):runtime -> _:ResourceBox:: => {
+        let (held, rows) = state |> state_fields::private;
+        let (cell, amount) = full |> part_fields::private;
+        let empty = (rows, cell share) |> remove_exact_entry::private;
+        empty |> drop;
+        cell |> drop;
+        amount |> drop;
+        held return;
+    };
+```
+
+Here the registered result extractors expose AllocationData/Issued/SplitResult/
+MergeResult as the shown complete Products; state_fields and part_fields are
+**consuming** extraction. They end each old complete parent and yield complete
+children. There is no read of an already extracted State, partial resident,
+copy of held, or later recovery of an old Part. unit_box forms only a fresh
+owned unit cell. allocation_row observes its real identity and amount, and
+part packages that actual cell. fresh_allocation_data on its own creates no
+resource right: only lawful insertion into the actual State assigns a portion
+of its held resource. It must not be exported as an issuer bypass.
+
+The private table functions are ordinary finite collection programs: removal
+matches and removes one exact admitted live entry; insert_one/insert_two add
+the supplied complete rows after checking freshness. They do not assign
+fractions, manufacture owner facts or certify a sum. This example restricts
+their domain to prechecked finite tables/amounts with total selected operations.
+Implementations must expose those ordinary operations and their failure/overflow
+contracts, not turn the entire State rewrite into a host allocation oracle.
+
+The invariant and conservation calculation can be followed without an opaque
+merge/split operation:
+
+| Actual transition | Rows removed / inserted by the lang body | Resource authority |
+|---|---|---|
+| issue | Empty allocation disposition to one actual cell with amount 1 | Consumes the real unallocated box into State; no old independent owner remains |
+| split | Remove p's one actual entry q; insert two fresh cells with wanted and q-wanted | q = wanted + (q-wanted); the same held box moves once into the next State |
+| merge | Remove a/b's two distinct actual entries qa/qb; insert one fresh cell with qa+qb | Total is unchanged; two views of one cell fail entry Pre before this body |
+| into_box | Its entry Pre requires exactly the one live full entry, not merely a numeric sum of 1; remove it | Consumes State/full and returns the actual extracted held box, not a box built from Q or an amount |
+
+The stronger singleton condition belongs to this small representation; it also
+prevents silently discarding other live zero-amount allocations. Other designs
+may handle those explicitly. Every full conversion still checks outstanding
+windows/dependencies and all normal resource/Color/access Pre. None of these
+functions forms a ref; the caller's later box ref needs its actual bound Place.
+The private State is passed explicitly to expose dataflow. A public facade may
+instead retain it through an admitted ordinary dependency, but must preserve its
+single real ownership and the same entry/source checks. This serialized witness
+does not establish arbitrary distributed storage, graph collection or concurrency.
+
+When the lawful held box already establishes the needed validity, this entire
+chain needs no unsafe fact. For an external-resource realization, a separately
+selected legal validator may establish only that actual Q/current generation g
+remains live throughout the finite transition interval I. Its real success Post
+is X; source-defined control branches on its ordinary success/failure result
+**before** calling the prechecked core. It grants no State/Part ownership,
+conservation, distinctness, exclusion or ref access. If exclusion is external
+too, it needs its own actual maintained guarantee; a ValidationOk tag proves
+neither. No unsafe Post repairs the validator's own observation Pre.
+
+Initial ownership thus comes from the actual owned_resource producer (or the
+separately declared real external acquisition), not from fresh_allocation_data
+or an issuer's self-justifying contract. Automatic Post uses each function's
+formed operations: actual entry removal/consumption, fresh cell allocation,
+same held-resource delivery and preserved amount/dependency rows. LC5 maps
+those rows across local exits; W2 constructs their associated check/admit; LC4
+checks/adopts the mapped summary at public E's joint success gate. No extra
+issuer, permission publication or evaluator runs between these steps. A forged
+(Q,1), cell, row or ValidationOk has no such actual chain.
+
+Precheck/planning failure retains or explicitly returns the currently owned
+inputs. This core is only the admitted success family; a later selected failure
+cannot restore already consumed generations or pretend earlier commits did not
+occur. A different failure-capable implementation must deliver its actual
+intermediate complete ownership and cleanup without publishing a success Post.
+
+#### Composing the production chain
+
 This **design illustration** is a small library composition, not a builtin
 resource type or executable coverage. Part, snapshots, plans and result variants
 are ordinary library Objects with registered Pattern/constructor interfaces.
@@ -1061,6 +1550,14 @@ resource identity, generation and quantities observed from the two input parts;
 it does not create rights from those fields. same_resource compares actual
 identity, not equal content or a path string. Both Boolean tests and arithmetic
 are library lang code, with no unsafe admission:
+
+**Origin:** library-authored planner and public composition, both functions below.
+**Basis:** L planning/control and the expanded production chain; B actual
+Part/State access, consuming formation and result delivery; X only the declared
+external validity input if needed; W LC3–LC5/LC7. **Frontier:** these APIs and
+their source consumers are pending. The public facade's omitted State must be a
+real admitted dependency of the actual selected call, threaded as above, not
+an implicit authority recovered from Part's type, amount or identifier.
 
 ```lang
 let plan_repartition =

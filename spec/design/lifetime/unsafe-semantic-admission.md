@@ -124,3 +124,18 @@ adds resource-specific conserved parts (accounting fractions, not `T share`
 borrow instances) and ordinary consuming operations, not
 a universal graph-safety theorem. The common consumer contract records these
 [trusted inputs and failure boundaries](../../contracts/lifetime-program-consumers.md#lc7-unsafe-post-and-trusted-dynamic-facilities).
+
+The [try_trust contract/body expansion](lifetime-algebra-walkthroughs.md#writing-the-trusted-apis-contracts-and-body)
+separates the ordinary source/shared-dependency formation from the unsafe fact
+that the actual selected probe validated this delivered id against Q/generation
+and maintains it for the declared interval. Its failure arm admits no credential.
+The ordinary row constructors return descriptive material for the same self-root
+contract constructor; they grant no world authority. The displayed unsafe post
+clause remains pending source notation, not an implemented parser/API.
+
+Likewise the [partbox production chain](lifetime-algebra-walkthroughs.md#a-minimal-production-chain-inside-the-library)
+can be wholly ordinary when the actual held box supplies sufficient validity.
+An external variant may require real Q/generation validity throughout its finite
+transition interval. Such a fact cannot supply missing initial ownership,
+allocation distinctness/conservation, exclusion or normal ref authority. Returning
+the extracted owned box needs no trusted reconstruction from resource metadata.

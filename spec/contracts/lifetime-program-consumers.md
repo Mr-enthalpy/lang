@@ -271,11 +271,18 @@ Already committed history/Color and earlier external effects are not erased.
   range observation, control, consuming accounting and complete result programs,
   with post-directed trusted descriptions only for otherwise underivable actual
   facility facts. The [partbox composition](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-partbox-composition-program)
-  separates these calls; the whole library is not one trusted intrinsic. No
+  and its [production bodies](../design/lifetime/lifetime-algebra-walkthroughs.md#a-minimal-production-chain-inside-the-library)
+  separate these calls; the whole library is not one trusted intrinsic. The
+  [try_trust contract/body](../design/lifetime/lifetime-algebra-walkthroughs.md#writing-the-trusted-apis-contracts-and-body)
+  constructs explicit typed ordinary/unsafe contract descriptions and shows
+  the actual fresh successful producer's dependency formation. No
   unsafe pre and no admission before the missing Pre check.
-- **Output lifecycle material:** Successful compatible external facts:
-  credential source/interval/Color, actual disjoint ranges and new refs from
-  original R, or valid excluded windows with fresh anonymous non-alias origins.
+- **Output lifecycle material:** Ordinary source/interval/Color and delivery
+  material composed with only the needed compatible external success facts:
+  actual index validation, disjoint ranges, or maintained window validity/
+  exclusion. Fresh successful credential formation uses real scoped
+  source/formation authority, not a terminal Move that rewrites input origin.
+  New refs come from original R; alias-window origins are fresh and non-alias.
 - **Commit/delivery boundary:** Successful common action and joint Post, then
   ordinary caller summary admit. Validation failure returns its ordinary
   declared failure Pattern without success permissions; input disposition
@@ -311,6 +318,10 @@ Already committed history/Color and earlier external effects are not erased.
 - **Kind of ordinary lang program consumed:** Choice, field advance/composition,
   repetition and access cropping over ordinary values; trusted range facts
   enter through LC7 where necessary.
+  The [recursive access program](../design/lifetime/lifetime-algebra-walkthroughs.md#a-regular-access-program-with-endpoint-only-cropping)
+  combines ordinary binary ||, selected .left/.right/.payload, postfix ~ and
+  access. Its required operator/ADL registrations remain pending source
+  consumers, not a separate path language.
 - **Output lifecycle material:** Composed or cropped regular descriptors with
   actual targets and subset operation permission, preserving historical Color.
 - **Commit/delivery boundary:** The selected access/refinement's ordinary
@@ -324,6 +335,9 @@ Already committed history/Color and earlier external effects are not erased.
 - **Fidelity/composition obligations:** Closed supported regular domain,
   terminating adopted finite-descriptor operations, non-expansive cropping,
   preserved name/generation/target distinction and ref/share/alias boundaries.
+  Keep leaf-routing prefixes without whole-ancestor terminal permission.
+  A second crop cannot restore that permission, and an exclusive demand through
+  a share fails even if a separately admitted shared route exists.
 
 ## Current implementation evidence
 

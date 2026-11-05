@@ -1431,10 +1431,15 @@ host operation. The final column points to the existing pending handoff.
 | source_matches, region_fits, color_compatible, access_is_subset, effects_match, all_true/both | L: mapped observation, supported finite relation queries and Boolean folding. B is the actual source/history/region/Color/access evidence; a true answer creates none of it | W: LC4/LC8 |
 | adopt_origin, adopt_region, adopt_color, adopt_access, adopt_effects, end_boundary_view | L: map/extract the relevant rows, check their independent operation premises and thread/end the same scoped view. The B leaf is the narrow existing authority-checked projection update and joint-publication boundary, not an unrestricted fact setter or the whole adopt function. New external facts additionally require X | W: LC3/LC4; X enters only through LC7 |
 | try_trust, partition_refs | L: ordinary observation, control, range planning and ownership/result assembly; B supplies actual input/source authority and ref formation. X is only the otherwise underivable successful validation/disjointness fact and its maintained interval, not the entire function | W: LC3/LC7/LC8 and materialization |
+| success_id_role/outcome_roles, validation input/interval/from/shared dependency rows, required_contract_pattern, guarded_rows and failure_delivery_rows in W3 | L extracts formed interface roles and builds typed guarded descriptions for the ordinary contract constructor. B supplies the legal input read/Move, source, interval and actual delivery mapping; a result role is not an observed future payload | W: LC2–LC5/LC7 |
+| probe_index, finish_probe and validated_index_rows in W3 | L organizes the ordinary probe result and ends its temporary view. X is the real successful validation tied to actual Q/generation/index/result and maintained interval; the row describes that fact rather than producing it. A tag or the outer contract's own check cannot justify the external guarantee | W: LC7 and the selected actual facility; unsafe post source notation is pending |
+| probe_success_life, initialize_borrow_origin, initialize_bounded_region, begin_shared_dependency and finish_validated_name_material in W3 | L composes the selected fresh producer's companion. B supplies its actual one-shot name/source authority, bounded region and compatible shared dependency formation, including logical borrowing by ordinary non-ref values. It cannot rewrite an earlier name or grant access. X supplies only the actual validation packaged with those components | W: LC2/LC3/LC7; these are scoped formation responsibilities, not unrestricted world-field setters or a safeid builtin |
+| at_root, registered .left/.right/.payload, descriptor choice/repetition operators, payload_access and access in W3 | L composes/crops the supported regular descriptor family. B supplies the original formed companion, selected legal field correspondence, actual target/name parameters and existing capability limits. A finite descriptor or retained route grants no new terminal permission | W: LC1–LC3/LC8 and ordinary operator/ADL registrations |
 | with_ref_window, trusted alias-to-value conversion | L organizes callbacks, ordinary operations and cleanup; B supplies real normal ref/value formation under Pre. X maintains actual validity/exclusion/ownership that alias names or fresh anonymous origins cannot prove | W: LC7 and normal escape/borrow/delivery |
 | owned_parts, part_snapshots, pair_fields, plan_repartition, same_resource/same_generation, amount queries/arithmetic, is_full, split_ready, merge_parts and result constructors in W4 | L: ordinary contract/field observations, arithmetic, consuming extraction, resource accounting and complete result formation. B supplies actual operand capabilities and ordinary lifecycle/construction laws. Quantity or an equal id alone mints no part | W: LC3/LC7 and ordinary library/type consumers |
 | validate_for_plan and into_box in W4 | L checks available library state and organizes conversion; X is needed only for otherwise underivable actual resource-generation/validity/exclusion/ownership facts. B still requires every normal consuming/construction Pre; full quantity is insufficient | W: LC7 and actual trusted facility/normal Object formation |
 | issue_full_part and initial resource acquisition in W4 | L transfers actual unallocated full-use authority into a complete part under B's normal action/ownership laws. Only a real external acquisition needs X for otherwise underivable ownership/validity facts. The amount 1, a Part constructor or a success tag is not an authority source | W: LC7 and ordinary resource acquisition/consuming formation |
+| fresh_allocation_data, issue_full_part_core, split_core, merge_core, into_box_core and their private State/table/cell operations in W4 | L constructs fresh ordinary owned cells/data, computes amounts, consumes actual inputs, removes/inserts finite rows and rebuilds complete results around the same held box. B supplies actual ownership, cell/entry identity, legal access, normal construction/extraction/Move and common publication. Only lawful insertion in actual State assigns a portion; fresh data alone grants none. No alias-to-box reconstruction is needed when returning the extracted held box | W: LC3–LC5/LC7 and ordinary library/collection consumers; X only for genuinely missing resource validity in an external realization |
 
 An implementation must expose this decomposition even if a temporary bootstrap
 realization uses host code. In particular compress_exit, form_post, adopt_origin
@@ -1676,6 +1681,13 @@ field and retracts no historical Color. It cannot reconstruct forgotten
 structure or restore a previously removed permission. Concrete selector
 packaging and normal forms remain engineering work.
 
+The [regular access program](lifetime-algebra-walkthroughs.md#a-regular-access-program-with-endpoint-only-cropping)
+combines ordinary binary choice, selected field advance, postfix repetition and
+access in a recursive family, then attempts ancestor restoration and exclusive
+access through share. Its finite descriptor computation retains actual identity
+parameters; it performs no future runtime traversal. The source registrations
+and LC8 consumer remain pending.
+
 | Capability | Admitted propagation | Excluded propagation |
 |---|---|---|
 | ref | Its actual exclusive strict tree of legal operations | No traversal through share or alias nodes |
@@ -1699,9 +1711,14 @@ let safeid = (vector ref ..try_trust(num))?;
 The [walkthrough](lifetime-algebra-walkthroughs.md#3-dynamic-safeid-and-batch-share-partitioning)
 expands success/failure through ordinary registered Patterns. `?` remains
 one-layer extraction, with no implicit success unwrap or error propagation.
-The successful external action's unsafe Post binds the delivered id's actual
+The successful action's complete Post binds the delivered id's actual
 name/generation to resource origin, protected range/region and shared Color;
-Pre limits its valid interval. Numeric equality transfers no credential.
+Pre limits its valid interval. In the
+[expanded contract/body example](lifetime-algebra-walkthroughs.md#writing-the-trusted-apis-contracts-and-body),
+ordinary Post computes the authorized from/shared dependency and unsafe Post
+supplies only the otherwise underivable actual validation with its maintained
+interval. Neither a result tag nor copied rows supply that external fact or
+ordinary world-update authority. Numeric equality transfers no credential.
 Move, clone, arithmetic and view delivery need their own actual selected Post.
 Runtime-unknown values may have established names. T * omega need not preserve
 all element structural names or numeric relations in the ordinary type for
@@ -1830,8 +1847,15 @@ unconsumed; failures after an earlier committed acquisition/transfer retain
 that action's explicit ownership/cleanup contract, not synthetic rollback.
 
 The [W4 issuance witness](lifetime-algebra-walkthroughs.md#legal-start-of-the-partbox-protocol)
-connects this source to the existing split/merge program. Private interfaces,
-accounting/locking representation and API names remain library choices; the
+connects this source to the existing split/merge program. Its
+[minimal production chain](lifetime-algebra-walkthroughs.md#a-minimal-production-chain-inside-the-library)
+shows one ordinary serialized representation: consume the real box into private
+State, track actual owned allocation cells, calculate and replace consumed
+allocations, then extract that same box at lawful full conversion. Neither
+fresh cells nor metadata alone assign a portion; lawful State updates and actual
+input rights remain necessary. This layout is illustrative, not a builtin
+resource type or a proof of arbitrary distributed/concurrent protocols.
+Private interfaces, accounting/locking representation and API names remain library choices; the
 source, single-allocation and no-forgery laws above do not.
 
 Option and a specific topology protocol may move parts into/out of actual
