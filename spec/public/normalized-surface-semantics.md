@@ -995,8 +995,9 @@ Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
 one source of dependencies; projections and invocation do not recapture.
 No mandatory public `self` field layout or hidden semantic side table follows.
 Ordinary closures use one explicit or automatic value-capture mode, alongside
-independent automatic compile structural dependencies. In-place syntax excludes
-explicit clauses; automatic value capture does not imply in-place placement.
+independent automatic compile structural dependencies. In-place closures prohibit
+explicit capture lists, not ordinary lifetime head clauses. Automatic value
+capture does not imply in-place placement.
 All occurrences feed ordinary dependency realization. Neither grants write
 authority by itself.
 An actual write-capable realization may permit outer writes under ordinary

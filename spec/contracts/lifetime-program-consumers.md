@@ -172,6 +172,10 @@ Already committed history/Color and earlier external effects are not erased.
   plus the [ordinary contract/counterexample](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program).
   Safe origin adoption must match the established ordinary mapped row and
   transfer the same scoped view. An arbitrary row or true check grants none.
+  A [headed InPlace](../design/lifetime/lifetime-algebra-walkthroughs.md#a-headed-inplace-with-explicit-pre-and-post)
+  may have ordinary lifetime Pre/Post while retaining Automatic value capture.
+  Its own result-dependent Post uses actual delivery at the matching target;
+  merely crossed InPlace frames contribute no normal result to check or bind.
 
 ## LC5. Exit compression and automatic Post
 

@@ -526,8 +526,9 @@ required access capability. Such requirements are abstract dependencies, not
 value-capture mode: a written clause excludes automatic value capture, so an
 omitted external value dependency is diagnosed by the resolved consumer.
 Automatic compile structural dependencies remain independent; runtime structural
-access is inadmissible. In-place syntax excludes explicit clauses and uses
-Automatic mode, also available to other admitted clause-free closure forms.
+access is inadmissible. In-place closures prohibit explicit capture lists,
+not ordinary lifetime head clauses, and use Automatic value-capture mode.
+Automatic mode is also available to other admitted capture-list-free forms.
 Explicit list entries retain source order as bare positional CaptureProduct
 entries across stages; automatic sequence is fixed at completed formation.
 Raw/Norm list preservation proves neither resolved exclusivity nor realization.

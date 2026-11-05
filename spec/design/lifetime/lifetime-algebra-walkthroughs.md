@@ -20,6 +20,11 @@ Use the following entry guide before implementing an excerpt. The classes
 describe responsibilities, not four execution layers; W is an orthogonal
 missing-wiring marker, and a facade can combine L with a B/X input and W handoff.
 
+Treat the lang blocks as target source shapes: if a required B/W operation is
+unconnected, implement its canonical consumer first; merely supplying a
+same-named host function cannot substitute for that consumer or establish
+that the example runs.
+
 | What the agent encounters | Correct next action |
 |---|---|
 | Ordinary lang composition (L) | Once its required operations are connected, write ordinary lang source with normal Pattern/call/Pre/ownership rules; do not replace the whole function with host semantics |
@@ -95,6 +100,71 @@ path explicitly returns the new call's result to F_i; its terminal demand is
 the established ReturnPattern/Pout before inner maxima. It inserts no hidden
 temporary and does not change ABIKind. Guards retain ordinary restricted
 Split/D completion; a branch mismatch is not a failed selected extractor.
+
+### A headed InPlace with explicit Pre and Post
+
+Headed InPlace syntax permits ordinary lifetime clauses and uses automatic
+dependencies; it prohibits an explicit capture list. In the following admitted
+handle-source family, T has the actual legal Move/cleanup/return operations
+and no other outward effect beyond the stated source transfer. As elsewhere,
+any additional outward effects must appear in the full explicit Post.
+
+**Origin:** user-source design illustration. **Basis:** L ordinary head
+contracts/control; B actual input/capture Moves, activation-specific return,
+result delivery and local compression; W LC2–LC5 and completion propagation.
+**Frontier:** head/return syntax carriers exist, but clause evaluation, complete
+source execution and lifecycle exit consumers are pending. The helper's
+InPlace placement grants no extra capture, lifetime or return permission.
+
+```lang
+let headed_step = <T>(self, r:T):runtime -> o:T => {
+    let step =
+        (inner_self, x:T):runtime -> q:T
+            lifetime pre q@..live_with(x@)
+            lifetime post q@..from(x@)
+            {
+                () |> {
+                    let local = x;
+                    local |> (inner_self return);
+                };
+            };
+    let delivered = r |> step;
+    delivered return;
+};
+```
+
+The outer Ordinary activation is F. step forms a complete InPlace type and
+its real callable; invoking it establishes I. Its contextual inner_self
+denotes that call's self, and the explicit return consumes its **Return**
+projection with actual activation I. It is not the enclosing F's self or an
+extra explicit argument. The nested bare InPlace J has its own lexical/Self
+boundary, automatically realizes the needed x/inner_self dependencies once,
+and is invoked with zero explicit Product entries by (). There is no capture
+list or invocation-site recapture.
+
+| Boundary | Actual contract/control/material flow |
+|---|---|
+| Before I begins | F checks I's mapped Pre, including proposed q's admissible interval relative to x's real target. Actual input/capture Moves occur once; I admits that established Pre |
+| J exits toward I | local is the actual transferred handle. Compress J-local name dependencies in its real exiting payload/effect material, retaining source, target validity, region, Color and fixed cleanup. J delivers no normal local result or unit |
+| Matching target I | Consume the targeted completion against I's q ReturnPattern delivery relation. Compress I-local outward material and check I's explicit Post on the actual mapped result/effects before successful outward delivery/admission; F imports the guarantee without replaying I |
+| F continues | This completed I call really supplies delivered. Its later return to F performs F's own exit compression, Post validation and result delivery |
+
+For a killing handle Move, local is a new sibling generation with the inherited
+target/origin, not a borrow of the local x Place. Boundary compression retains
+the first actual unknown source and required constraints; it neither rereads
+dead locals nor extends target validity. This example requires no SCC collapse
+merely because the return crosses J: participation still follows §8.5.
+
+Writing local return instead would infer F, the outermost function in this
+reachable segment. That different path would cross both J and I without
+delivering q or executing the delivered binding/continuation. One cannot
+validate the displayed q-dependent Post by fabricating a normal I result on
+such a path; any adopted contract for that path must account for its actual
+exit/effects under the existing owners, or remain unavailable. The explicit
+target above makes I's own normal result/Post protocol visible while retaining
+the intermediate no-result exit. A false/unavailable Pre stops before I's
+action, and failed required Post prevents successful delivery/admission at its
+gate. Neither failure retries an operation or repairs invalid escape.
 
 ### Lifetime transcription
 

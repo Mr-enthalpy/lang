@@ -1088,6 +1088,17 @@ executed coverage or independent case taxonomy:
   once, form both fresh refs from R, and retain historical Color and every
   unconsumed dependency. One input omits only the pairwise validation.
 
+- **LA02/LA08/LA09/LA30:** Form/invoke the
+  [headed InPlace with explicit Pre/Post](../design/lifetime/lifetime-algebra-walkthroughs.md#a-headed-inplace-with-explicit-pre-and-post).
+  It has Automatic dependencies and no explicit capture list; lifetime head
+  clauses are retained ordinary expression material. Check/admit its real Pre,
+  target inner_self's actual activation through the nested InPlace, compress
+  each actual exit and deliver the result only at the matching target.
+  Its result-dependent Post and the caller's completed binding then apply.
+  An omitted target instead selects the enclosing Ordinary activation, with
+  no intermediate result/unit or proof of that local-result Post. Reject
+  missing clause/exit evidence without a same-named host substitute.
+
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any
 row's full source chain. Future connections must add meaningful action-based
