@@ -16,6 +16,25 @@ classifies the example names as basis observations/actions, ordinary lang
 composition, pending consumers and necessary external facts. It is a dependency
 map, not a list of required host intrinsics.
 
+Use the following entry guide before implementing an excerpt. The classes
+describe responsibilities, not four execution layers; W is an orthogonal
+missing-wiring marker, and a facade can combine L with a B/X input and W handoff.
+
+| What the agent encounters | Correct next action |
+|---|---|
+| Ordinary lang composition (L) | Once its required operations are connected, write ordinary lang source with normal Pattern/call/Pre/ownership rules; do not replace the whole function with host semantics |
+| Fixed basis semantics (B) | Find its canonical owner and implement the smallest missing observation/action consumer of that existing relation; introduce no new ontology or authority |
+| Unconnected entry (W) | Follow its LC input/output/boundary/failure contract, connect the actual source producer/consumer and test that slice; missing wiring remains unavailable |
+| Real external fact (X) | Keep unsafe Post narrow, after ordinary Pre and actual success, and verify the materializer/facility's real guarantee and maintained interval |
+
+Thus `::selected`, source_frame and available_guard require the existing
+selection/control correspondence to be exposed; an agent cannot manufacture
+it by writing matching data. initialize_empty_root is a pending general
+construction handoff, and adopt_origin composes ordinary mapped operations
+over a limited update interface. None is a current implicit compiler builtin.
+The helper names are illustrative, not required standard-library names. Their
+semantic obligations and failure/authority boundaries are what must be realized.
+
 ## 1. Branches, recursion and nested InPlace exits
 
 ### Source and selected actions
@@ -272,23 +291,59 @@ slots. These are separate [proof obligations](lifetime-policy-and-overload-bound
 
 ### SCC collapse at participating closure boundaries
 
-As an additional schematic case, suppose actual structural formation
-provides an original regular companion `Reg0(n)` for each name item.
-An access SCC C involves the innermost InPlace closure of W1, but not the
-middle InPlace closure crossed by the same targeted return. This does
-not imply W1's ordinary `r` itself forms an SCC.
+Use the [participation definition](lifetime-policy-and-overload-boundary.md#participation-relation),
+not a preassigned "participating" flag. This is a separate admitted structural
+case, not a claim that W1's ordinary r itself creates a cycle. Let the actual
+reachable segment be:
 
-At the participating inner exit, reduce each involved item directly to
-its own `Reg0(n)` under the **current** cropped access, region/Color,
-origin and effect constraints. The middle InPlace still compresses dying
-locals but does not collapse unrelated SCC items. At the enclosing
-Ordinary closure boundary, collapse outward SCC material per name item.
-The target return cannot cross a different Ordinary closure. Reusing
-the same regular-state descriptor never unifies distinct names/targets.
+```text
+F (Ordinary target)
+  I_A (InPlace)
+    I_T (InPlace transit)
+      I_B (InPlace, reached targeted return to F)
+```
 
-The advance summary uses already formed *bound* descriptors, not future
-executed paths. Missing original companions/regular operations are
-Unavailable. This proves no general recursion termination or machine TCO.
+Actual formation supplies n_A in I_A and n_B in I_B, each with its own original
+Reg0. The already established structural/source and selected interface material
+supplies directed dependencies e_AB: n_A -> n_B and e_BA: n_B -> n_A in one
+compatible guarded case, with the ordinary scope/access/control witnesses.
+Their establishing actions are in I_B; e_BA is a genuine fine-material
+dependency, not a reverse origin edge invented for a Move or a wire added just
+because the return crosses a frame. These are edges of the tracking graph,
+not a physical owned-object cycle or a new grammar inferred from a recursive
+type. If those actual witnesses are missing this case is unavailable.
+
+C={n_A,n_B} is therefore a cyclic SCC: each reaches the other through admitted
+edges. Participates(I_A,C,K) follows from n_A's actual formation contribution;
+Participates(I_B,C,K) follows from n_B and its established cyclic relations.
+I_T forms none of these items and establishes no internal C edge: its own
+unrelated captures/names are outside C, and it only propagates the unchanged
+completion. Thus Participates(I_T,C,K) is false despite its location on the
+same return route. A one-way feeder t_T -> n_A from an I_T-formed item outside
+C, without a path back to t_T, would not change that answer. These conclusions refer to these actual activations,
+not every future invocation of their source closure types.
+
+| Actual cut | Required transform | Fine material/correspondence still retained |
+|---|---|---|
+| Return exits I_B | Collapse I_B's outgoing cyclic item/relation contributions into their own original Reg0 bases under current restrictions; compress dying locals | I_A's n_A remains fine in its surviving context, updated by the committed effects. Export the mapped n_B summary and enough guarded C incidence/contribution provenance for the remaining exits; do not collapse all of C globally |
+| Same return exits I_T | Ordinary local-name compression; no unrelated SCC collapse | Keep n_A's current fine tracking and the transported n_B summary/correspondence. Transit does not re-own C or reconstruct closed I_B locals |
+| Same return exits I_A | Collapse I_A's remaining local cyclic contributions using Reg0(n_A) with current access/region/Color/source/effect constraints | Reuse the valid n_B summary without unfolding it again. The outgoing C view retains actual identity/generation/delivery mappings and all effects; unrelated still-live outer material stays fine |
+| Return reaches F | The Ordinary boundary collapses outward SCC material per item and performs its real target delivery | No intermediate unit/result is invented and no target crosses the Ordinary barrier. Already summarized items remain restricted; any F-local fine contribution is handled at this cut |
+
+These are views of the same component under actual transport, not a claim that
+an SCC id is immutable across real graph changes. Representation contraction
+must retain the correspondence needed to derive I_A's participation after I_B
+has collapsed; it cannot erase that evidence, decide I_A is now unrelated or
+read dead I_B locals. A transform unable to preserve it stops unavailable at
+the mandatory cut. It cannot move or defer that cut to make the algorithm work.
+
+If e_AB instead has guard g=true and e_BA has guard g=false for the **same**
+guard occurrence, neither compatible case has that cycle. Combining them into
+C would be false participation. Recursive type syntax, repeated regular states
+and a merely crossed InPlace independently supply no graph witness either.
+At advance summary time these rules transform formed bound roles conditionally;
+they do not assert future actual names/activations. No general program
+termination or machine TCO proof follows.
 
 ### One finite end-to-end trace
 
@@ -886,6 +941,60 @@ temporary ref route. Neither introduces unsafe pre, extends a window through
 unknown evidence, or identifies fresh anonymous roots with disjoint physical
 targets. A facility failing to maintain its asserted exclusion violates its
 trusted external description.
+
+### Legal start of the partbox protocol
+
+Before split/merge, the library must obtain a legitimate first part. The
+[issuance law](lifetime-policy-and-overload-boundary.md#131-legitimate-initial-issuance-and-source-preservation)
+requires actual complete unallocated full-use authority for Q/current
+generation, not just its identifier and a quantity. One ordinary design use is:
+
+```lang
+let first_part = owned_resource |> issue_full_part::partbox;
+```
+
+owned_resource here is the actual result of a lawful full-owner producer or
+earlier legitimate full-part-to-box conversion. issue_full_part is ordinary
+library code over that real source: its Pre checks current ownership,
+unallocated disposition, validity, access and conflicting dependencies; its
+successful consuming/construction action transfers that authority into the
+complete part with amount 1. It leaves no independently usable old full owner.
+Calling it again through an old alias/view does not issue a second part.
+
+Alternatively an explicit trusted acquisition facility may really acquire the
+resource and return its full authority, or perform declared acquisition and
+initial issuance together. Only its actual successful compatible unsafe Post
+supplies otherwise underivable external ownership/validity facts. A failure or
+a constructed success tag supplies none. The safe conversion from established
+ownership needs no new external axiom merely because its output is a Part.
+The issuer's own contract cannot justify its missing source circularly.
+
+Every later part must retain this actual source chain through legitimate
+consumed split/merge inputs and ordinary transport. Arithmetic fields are not
+the chain: merge cannot count the same portion twice through equal copies or
+Preserve views. The normal Part data type/layout and any private accounting
+carrier remain library choices; actual allocation is not a builtin type test.
+
+For a negative design case, suppose ordinary user construction is admitted to
+produce the same classifier and apparent fields as a real full part:
+
+```lang
+let fake:Part:: = (resource_id, full_amount) |> user_part_constructor;
+fake |> into_box::partbox;
+```
+
+Take full_amount=1 and resource_id=Q. Even if fake has equal Core/content to a
+legitimate part, it has no actual issuance/consumed-input authority. into_box
+fails that independent Pre, or the requiring observation is unavailable. It
+does not become valid because Type(fake)=Part, the numbers add up, or a user
+also constructs ValidationOk. A real registered clone's Post must justify its
+result; no copy silently creates another independently consumable allocation.
+This tests authority separately from a possible earlier type/access rejection.
+
+The two inputs of the composition program below are actual legitimate parts
+derived from such an issue, not fake data records. Its early rejection and
+later-failure ownership rules continue to apply. All issuance consumers and
+these negative cases remain unconnected design targets.
 
 ### Ordinary parts of a resource right
 

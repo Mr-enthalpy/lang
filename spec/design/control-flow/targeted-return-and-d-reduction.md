@@ -277,6 +277,11 @@ its own names to the original formed regular companions at that real
 exit, not at unrelated InPlace exits. The Ordinary closure boundary
 collapses outward SCC material per item without permitting a target
 return to cross it. Current cropping and Color history remain. See the
+[participation judgment](../lifetime/lifetime-policy-and-overload-boundary.md#participation-relation):
+merely propagating this return does not make an InPlace participate. Local
+collapse retains the outer fine material and component correspondence needed
+at later cuts, without creating an intermediate result or changing the target.
+See also the
 [boundary algorithm obligations](../lifetime/lifetime-policy-and-overload-boundary.md#10-internal-actions-origin-compression-and-automatic-post)
 and the [nested-return walkthrough](../lifetime/lifetime-algebra-walkthroughs.md#1-branches-recursion-and-nested-inplace-exits).
 

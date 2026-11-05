@@ -171,7 +171,9 @@ Persistent dependency/source encoding remains open, not the propagation law.
   algorithms implement the closed lifecycle relations?
 - Which representations/algorithms realize the fixed name-item SCC collapse
   to original paired regular forms at Ordinary boundaries and participating
-  InPlace exits? The placement and non-restoration laws are not choices.
+  InPlace exits, including preserved contribution/incidence mappings after an
+  inner reduction? The [Participates relation](../design/lifetime/lifetime-policy-and-overload-boundary.md#participation-relation),
+  placement and non-restoration laws are not algorithm choices.
 - Which ordinary recursive lifecycle-program domains and evidence/rejection
   methods should be used? Program recursion and machine slot reuse remain
   separate from regular SCC collapse.

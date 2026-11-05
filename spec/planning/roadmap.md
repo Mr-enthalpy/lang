@@ -298,11 +298,17 @@ values do not execute contract expressions, automatic Post or the library.
 | LC3 | Source action facts, name/generation/origin, regions/colors and real internal APIs | Ordinary producers, fixed cleanup and common transaction; no double consumption |
 | LC4 | Ordinary compile contract evaluation, self-root check/admit formation and mapped four-way calls | Existing CompileInstance/OpenHere/result delivery and actual world authority; failed Pre publishes no success |
 | LC5 | Formed guarded-body structural summary and actual-exit compression/validation | LC1–LC4 supply selected descriptions/formal roles separately from reached history; each legal actual Post implies its mapped advance summary without future execution |
-  The regular SCC collapse placement is fixed at Ordinary/participating-
-  InPlace boundaries; it is not an optimizer-selected algorithm.
 | LC6 | Exposed Function Pattern defaults/implication and justified recursive interfaces | FnExtract erasure and ordinary contract computation; no implementation authority recovery |
 | LC7 | Safeid, batch partition, alias windows and partbox ordinary programs plus trusted runtime facilities | True external-success facts, actual source authority, intervals and materializer protocol; no default success |
 | LC8 | Finite regular access and cropping, with proven adopted recursive combinations | LC1/LC3 material and defined Pattern relations; no restored terminal permission |
+
+The regular SCC collapse placement is fixed at Ordinary/participating-InPlace
+boundaries; it is not an optimizer-selected algorithm. The owner's
+[participation relation](../design/lifetime/lifetime-policy-and-overload-boundary.md#participation-relation)
+uses actual cyclic name-item/edge contributions and preserves remaining outer
+fine material across successive exits. Initial part issuance likewise needs
+an [actual unallocated full-use source](../design/lifetime/lifetime-policy-and-overload-boundary.md#131-legitimate-initial-issuance-and-source-preservation),
+or a real trusted acquisition, before the accounting programs can consume it.
 
 This is a consumer dependency graph, not a pipeline of independent executors.
 Connect existing language consumers first, then actual bootstrap observations

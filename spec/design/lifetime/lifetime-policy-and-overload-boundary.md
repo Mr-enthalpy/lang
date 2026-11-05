@@ -1133,6 +1133,79 @@ under the name's current access, region, Color and source/effect constraints.
 It must not be unfolded indefinitely and reconstructed as a new SCC grammar,
 nor inferred solely from the business type.
 
+#### Participation relation
+
+For this judgment I denotes an actual closure activation/boundary in K, not
+just a source closure expression, lexical owner, callable tag or cached
+CompileInstance. Define the **name-item tracking graph** G_K from the established
+semantic material needed by this lifecycle computation:
+
+- A vertex is an already formed name item, retaining its LifeName, generation,
+  actual structural item/selector coordinate and original paired regular
+  descriptor. A lawfully transported summary can retain that same provenance
+  and the ordinary mapping to a new carrier/generation. This records no new
+  LifeName and does not assert that a recorded old generation is still alive.
+  Any genuinely newly formed item/generation has its own original companion
+  from that real producer; transport never replaces it with another item's
+  basis. Only actual ordinary transport/delivery supplies such mappings, never
+  a result name invented at an intermediate return boundary.
+  Potential coordinates, type nodes and regular automaton states are not
+  vertices merely because they can be written or visited.
+- A directed edge is exactly a fine-tracking dependency supplied by actual
+  formed structural/source material or an established selected operation/
+  interface relation: its source item's material requires the destination
+  item's material under that witnessed relation. Retain the legal direction,
+  registered name-level structural/access witness, actual target/mapping and
+  scope/control conditions. Mere Val2 membership, a type signature or a
+  dependency requirement without its selected realization adds no edge.
+  A Move contributes only dependencies actually supplied by its selected
+  counterpart/contract. It does not automatically connect the old/new name
+  generations, add an old-name origin link or reverse an edge.
+- Each vertex records the activation of its actual formation action; each
+  edge records the activation whose formation/selected action or instantiated
+  interface first establishes that dependency. These are contribution
+  provenance, not reparenting of names or Objects. Reading/copying an existing
+  row or propagating an unchanged target completion retains its provenance;
+  it does not make every transit frame the edge's establishing activation.
+- Ordinary scope/access/capture and return-segment judgments must admit those
+  edges. In particular no control-propagation edge crosses the nearest
+  Ordinary return barrier or an unknown boundary by assumption. Only legally
+  exposed material counts; hidden implementation provenance cannot restore
+  erased external structural-source authority.
+
+Preserve guards when constructing this graph. A component C carries one
+compatible guarded case; mutually exclusive arm edges cannot be unioned into
+a synthetic cycle. At an actual exit use its reached mapping. At formation,
+the same rule transforms already formed bound descriptions conditionally; it
+does not create future concrete vertices, activations or cuts, inspect a future
+guard, or enumerate future paths.
+
+For each such case, C is a maximal strongly connected component of G_K with
+a witnessed positive-length directed cycle. A singleton without an admitted
+self-edge supplies no additional InPlace collapse obligation. Let Edges(C)
+contain only edges whose endpoints are in C. The participation rule is:
+
+```text
+LocalContribution_K(I,C) =
+    {v in C        | formation_activation(v) = I}
+  + {e in Edges(C) | establishing_activation(e) = I}
+
+Participates(I,C,K) iff
+    I is an InPlace boundary with established applicable scope/control evidence
+    and C is the cyclic SCC in the compatible case just described
+    and LocalContribution_K(I,C) is nonempty
+```
+
+The two sets are tagged vertex/edge contributions; `+` is metanotation here,
+not a new source operator. In a cyclic SCC every contributing vertex/internal
+edge lies on a cycle. A noncyclic feeder edge, merely containing/reaching C,
+forwarding C's material or lying on a target-return route does not suffice.
+Neither recursive business-type syntax nor repeated regular-state visits nor
+reuse of the same closure tag in another activation establishes participation.
+Graph storage, SCC algorithms and caches are open; this relation is not.
+Missing required graph, contribution, guard or scope evidence is Unavailable,
+not an assumption of nonparticipation or a type-based collapse.
+
 **The collapse schedule is fixed by closure semantics:**
 
 - At an **Ordinary (non-InPlace) closure** boundary, collapse outgoing SCC
@@ -1151,6 +1224,34 @@ segment and cannot cross its nearest Ordinary closure barrier. SCCs induced
 by these synchronous return interactions are thus segment-local. This does
 not prohibit ordinary captured/returned name dependencies across a callable
 interface; their outward contract and escape checks remain mandatory.
+
+#### One component at successive exits
+
+Participation is not permission to replace all of C at its first crossed cut.
+At I's exit collapse **I's boundary-local cyclic contributions** per name item:
+the items formed there and the local relation material established there that
+must be exported. If such a row concerns an outer name, transform that local
+projection, not every fine representation of the name in surviving contexts.
+The fine material of an outer participating activation remains available,
+updated with the actual committed effects, until that activation's own required
+cut. Nonparticipating InPlace exits still compress their dying locals.
+
+The outward transform must retain the original descriptor association, actual
+name/generation/delivery mapping, guards, current restrictions and sufficient
+component incidence/contribution provenance to process later exits. An earlier
+local collapse cannot erase an outer contribution and make the outer activation
+falsely nonparticipating. An implementation may contract graph representations;
+it must preserve this semantic correspondence, without reading dead locals or
+reconstructing their fine state from a regular type/state. A component identity
+need not remain fixed across genuine semantic graph changes; a representation
+change alone cannot discard its required lineage.
+
+If mandatory local collapse cannot retain the information needed at the next
+boundary, the transform is unavailable at that cut. It cannot delay collapse,
+collapse the entire component early, or guess at the next boundary. The
+[multi-InPlace example](lifetime-algebra-walkthroughs.md#scc-collapse-at-participating-closure-boundaries)
+derives the participation and successive-cut behavior from concrete graph
+provenance, rather than assuming a participating/nonparticipating label.
 
 Collapse does not merge actual names/generations/targets, turn unknown into
 None, remove earlier Color/effects, lengthen region, or restore cropped
@@ -1333,6 +1434,7 @@ host operation. The final column points to the existing pending handoff.
 | with_ref_window, trusted alias-to-value conversion | L organizes callbacks, ordinary operations and cleanup; B supplies real normal ref/value formation under Pre. X maintains actual validity/exclusion/ownership that alias names or fresh anonymous origins cannot prove | W: LC7 and normal escape/borrow/delivery |
 | owned_parts, part_snapshots, pair_fields, plan_repartition, same_resource/same_generation, amount queries/arithmetic, is_full, split_ready, merge_parts and result constructors in W4 | L: ordinary contract/field observations, arithmetic, consuming extraction, resource accounting and complete result formation. B supplies actual operand capabilities and ordinary lifecycle/construction laws. Quantity or an equal id alone mints no part | W: LC3/LC7 and ordinary library/type consumers |
 | validate_for_plan and into_box in W4 | L checks available library state and organizes conversion; X is needed only for otherwise underivable actual resource-generation/validity/exclusion/ownership facts. B still requires every normal consuming/construction Pre; full quantity is insufficient | W: LC7 and actual trusted facility/normal Object formation |
+| issue_full_part and initial resource acquisition in W4 | L transfers actual unallocated full-use authority into a complete part under B's normal action/ownership laws. Only a real external acquisition needs X for otherwise underivable ownership/validity facts. The amount 1, a Part constructor or a success tag is not an authority source | W: LC7 and ordinary resource acquisition/consuming formation |
 
 An implementation must expose this decomposition even if a temporary bootstrap
 realization uses host code. In particular compress_exit, form_post, adopt_origin
@@ -1675,6 +1777,62 @@ for distinct resources cannot merge. Ordinary copying cannot multiply rights.
 Full amount can be consumed to box only with every other ordinary Pre satisfied,
 including outstanding windows, Color and object validity. Non-full amount
 provides at most its restricted alias, not normal ref access.
+
+### 13.1 Legitimate initial issuance and source preservation
+
+Conservation starts with a real authority source, not the equation q=1.
+Initial formation of a legitimate full part for resource Q/current generation
+is permitted only from one of these sources:
+
+1. An actual complete **currently unallocated full-use authority** for that
+   resource, such as an admitted owned resource/box. Successful issuance consumes
+   or transfers that authority into Part(Q,1) at the ordinary commit boundary;
+   it leaves no second independently usable full owner or issuance power through
+   an alias or saved view. All normal access/validity/window/formation Pre apply.
+2. An explicit trusted resource-acquisition action that really obtains that
+   full-use authority. Its compatible successful unsafe Post may establish the
+   otherwise underivable external ownership/validity facts and issue the part
+   at its declared boundary, after ordinary Pre. A failure or a fabricated
+   success value issues nothing. It cannot describe an already allocated right
+   as another independent acquisition merely by changing its carrier name.
+
+"Unallocated" describes the **current authority disposition**, not a ban on
+ever using Q again. A later legitimate full-part-to-box conversion can return
+a complete full-use authority, which may be consumed in a new issuance under
+its current generation/Pre. Cache reuse, type/value equality or an old initial
+reference cannot reset a spent authority or erase its allocation history.
+
+The library's legitimate-part relation is ordinary contract/state material
+over actual actions and capabilities, not a new builtin resource kind or a
+user-created proof Object. Every usable part must have a source chain:
+
+| Producer | Required real source and successful result |
+|---|---|
+| Initial issue | One of the full-use sources above, transferred once to the actual new complete part |
+| split | An actual legitimate consumed part; complete outputs retain Q/generation and divide that input's amount/right under the protocol |
+| merge | Actual legitimate independently consumable input portions, each consumed once; preserve Q/generation and their summed amount/right |
+| Ordinary transport | The selected Move/borrow/clone contract and its real source; copies or multiple views are not independent allocations. Preserve Move still creates no second consumable portion |
+| Full-part conversion | An actual legitimate full part consumed under all other Pre, producing the complete normal resource/box with its own selected Post |
+
+Arithmetic conservation and matching resource fields are necessary but cannot
+replace these source premises. In particular ordinary Part-shaped construction,
+equal-value copying, ValidationOk, a resource identifier and the number 1 cannot
+mint a legitimate part. A clone is usable only with its actual permitted producer
+Post; there is no ordinary clone that duplicates allocatable rights.
+
+Even if a user can construct an ordinary value with the same apparent fields,
+classifier or Core content as (Q,1), into_box must reject its missing actual
+use authority, or report an unavailable required observation. Type mismatch
+need not be the reason: equality is insufficient even when the classifier
+matches. It cannot issue first and validate later, use unsafe Pre, or choose
+another consumer after failure. A failed issuance Pre leaves the source
+unconsumed; failures after an earlier committed acquisition/transfer retain
+that action's explicit ownership/cleanup contract, not synthetic rollback.
+
+The [W4 issuance witness](lifetime-algebra-walkthroughs.md#legal-start-of-the-partbox-protocol)
+connects this source to the existing split/merge program. Private interfaces,
+accounting/locking representation and API names remain library choices; the
+source, single-allocation and no-forgery laws above do not.
 
 Option and a specific topology protocol may move parts into/out of actual
 link slots while keeping topology mutation separate from payload use. Consuming

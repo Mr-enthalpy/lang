@@ -976,6 +976,32 @@ executed coverage or independent case taxonomy:
   to trace every facade to its basis/composition/consumer/external-fact source,
   rather than supplying opaque host implementations of the whole example.
 
+- **LA09/LA14/LA30:** Derive [SCC participation](../design/lifetime/lifetime-policy-and-overload-boundary.md#participation-relation)
+  from actual cyclic item/edge contributions of the particular activation in
+  one compatible guarded case. A noncyclic feeder, a transit-only frame, a new
+  activation with the same callable tag, recursive type syntax or a repeated
+  automaton state supplies no membership. Opposite guards cannot supply the two
+  halves of a synthetic cycle. Missing needed scope/provenance is unavailable.
+- **LA09/LA14/LA15:** Trace the [same-component multi-InPlace example](../design/lifetime/lifetime-algebra-walkthroughs.md#scc-collapse-at-participating-closure-boundaries)
+  through I_B, transit I_T, I_A and the Ordinary target. The inner cut collapses
+  only its local cyclic contributions; I_A's current fine material and guarded
+  correspondence remain until its own cut. Earlier reduction cannot erase
+  participation, require dead-local reads, reconstruct by type/state, collapse
+  all of C early or postpone a mandatory cut.
+- **LA19/LA27/LA28/LA30:** Start the [partbox protocol](../design/lifetime/lifetime-algebra-walkthroughs.md#legal-start-of-the-partbox-protocol)
+  from an actual unallocated full-use source, or real trusted acquisition,
+  transferred once into a full part. Reject a second issue from an alias while
+  the first allocation remains usable. Permit a later reissue only when an
+  actual lawful conversion has returned currently unallocated authority and
+  all current Pre hold. Every split/merge output traces its real consumed input
+  portions; amount conservation alone cannot justify fabricated ones.
+- **LA04/LA08/LA27/LA28:** Construct a value whose classifier and apparent
+  (Q,1) fields match a legitimate full part. Ordinary construction, Core equality,
+  copied resource ids, ValidationOk or Preserve views provide no actual use
+  authority. into_box rejects its missing independent Pre (or reports unavailable
+  missing evidence), even if type checking succeeds; no success publication,
+  initial permission from unsafe Pre or runner-up is allowed.
+
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any
 row's full source chain. Future connections must add meaningful action-based

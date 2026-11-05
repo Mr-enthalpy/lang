@@ -170,6 +170,9 @@ Already committed history/Color and earlier external effects are not erased.
   generations/cuts, committed history, available origin/None/unknown observations
   and full region/Color/path/source/effect/delivery mapping. These inputs differ;
   a future Exit is not a formation-time observation.
+  SCC inputs retain actual/bound name-item and directed-edge contribution
+  provenance, compatible guards and legal scope/control witnesses for the
+  owner's [Participates relation](../design/lifetime/lifetime-policy-and-overload-boundary.md#participation-relation).
 - **Existing action that determines it:** Ordinary semantic body/closure/Pattern
   formation supplies the guarded descriptions through LC1/LC2, independently of
   future execution. Actual block/call delivery, fallthrough or target completion
@@ -194,6 +197,9 @@ Already committed history/Color and earlier external effects are not erased.
   at an Ordinary closure boundary or a participating InPlace closure's
   real exit. Unrelated InPlace exits retain fine-grained tracking while
   still compressing their dying local-name dependencies.
+  A participating exit transforms only its boundary-local cyclic contributions,
+  not all of C. Still-needed outer fine material and transported component
+  correspondence survive until their own prescribed cuts.
 - **Failure or unavailable result:** Missing selected descriptions, sufficient
   modular guarantees, lawful structural transforms or founded recursive-summary
   results makes summary formation Unavailable; no future-path speculation or
@@ -201,6 +207,9 @@ Already committed history/Color and earlier external effects are not erased.
   is Unavailable; expiring-target escape or summary mismatch rejects without
   reopening. Failure/unfinished exits publish no success Post; missing origin
   establishes neither None nor a new unknown root.
+  Missing participation/provenance evidence is unavailable, not false; inability
+  to preserve required correspondence stops at the mandatory cut, not after
+  postponing it or collapsing the whole component.
 - **Unconnected consumer dependencies:** LC1–LC4, semantic guarded-body material
   production, structural summary and recursive/modular family programs, actual
   return/completion/result/escape and corresponding exit programs. Both consumer
@@ -212,7 +221,11 @@ Already committed history/Color and earlier external effects are not erased.
   or history erasure. Prove adopted nested/choice/recursive combinations, not a
   universal join/implication theorem.
   Collapse preserves current cropping, Color, origin, source/effect and
-  name/generation/target identity; no type-derived substitute descriptor. See the [select_one witness](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness).
+  name/generation/target identity; no type-derived substitute descriptor. Preserve
+  contribution/incidence mappings across earlier reductions so later InPlace
+  participation remains correctly derivable without dead-local reads or
+  reconstruction. Mutually exclusive edge cases cannot create a false cycle.
+  See the [select_one witness](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness).
 
 ## LC6. Function Pattern and recursive interface consumption
 
@@ -245,9 +258,15 @@ Already committed history/Color and earlier external effects are not erased.
 - **Input material:** Selected external operation, ordinary Pre, real resource/
   name/generation/range/window identities, actual validation success or failure,
   existing compatible history and mapped result names.
+  Initial part issuance additionally requires actual currently unallocated
+  full-use authority or a real declared resource-acquisition success; split/
+  merge require actual legitimate input portions and their source histories.
 - **Existing action that determines it:** Real external validation, batch
   partition, alias window or ownership/accounting operation under its ordinary
   call; the materializer provides the promised external behavior.
+  Source-defined issuance can consume already established full ownership; no
+  external axiom is required merely because it constructs a Part. External
+  acquisition is separately subject to the actual compatible unsafe Post.
 - **Kind of ordinary lang program consumed:** Ordinary planning, identity/amount/
   range observation, control, consuming accounting and complete result programs,
   with post-directed trusted descriptions only for otherwise underivable actual
@@ -274,6 +293,10 @@ Already committed history/Color and earlier external effects are not erased.
   no reconvergence suffices without a known numerical divergence depth. Neither
   path-string inequality nor unknown separation proves it. Result tags/plans
   and full quantities independently grant no part, box or ref authority.
+  Every newly usable part traces to legitimate issuance, actual consumed
+  split/merge inputs or lawful transport of that authority. Equal Part-shaped
+  data, copied ids, success tags and saved views cannot double-issue/count it.
+  See the [initial-source law](../design/lifetime/lifetime-policy-and-overload-boundary.md#131-legitimate-initial-issuance-and-source-preservation).
 
 ## LC8. Regular access and cropping programs
 
@@ -281,6 +304,8 @@ Already committed history/Color and earlier external effects are not erased.
   operable endpoints/permissions, route prefixes, ranges and current Color.
   For SCC reduction, use each name item's original paired regular descriptor
   and its actual participating closure boundary, never just its type shape.
+  Include the owner's guarded tracking graph/contribution relation and the
+  retained incidence mappings of any already summarized inner contributions.
 - **Existing action that determines it:** Actual formed/selected field and
   ref/share operations, not every navigable Val2 member or `$` occurrence.
 - **Kind of ordinary lang program consumed:** Choice, field advance/composition,
