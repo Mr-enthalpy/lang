@@ -1088,6 +1088,87 @@ the same runtime numeric validation. They retain their other ordinary Pre and
 machine costs. After legitimate interval end the required exclusive operation
 may proceed in a new region; the old validation and shared Color history remain.
 
+### Consuming safeid at range access
+
+Take a Vector of an admitted Word family with a real selected clone that forms
+an independent complete Word. VectorShare is its ordinary shared read view.
+safeid is the actual ordinary Index delivered by try_trust's successful branch.
+Its numeric value may still be unknown to lifecycle computation; its established
+name, generation and validation/dependency material are available.
+
+**Origin:** user/library design source, both fragments below. **Basis:** L typed
+requirement construction and ordinary projection/clone/call; B actual name/input
+mapping, source/generation/Color/interval/access and complete result laws; the
+validation was already established by X in try_trust, and this consumer adds no
+external fact; W LC2–LC4/LC7/LC8. **Frontier:** requirement providers, the indexed
+projection and source execution are pending registrations/consumers. API names
+are illustrative; none denotes a compiler shortcut.
+
+```lang
+let range_access =
+    (self, v:VectorShare$, index:Index::):runtime -> _:Word::
+        lifetime pre {
+            let source = (v@, index@) |> require_validation_source::trust;
+            let generations = (v@, index@) |> require_validation_generations::trust;
+            let shared = (v@, index@) |> require_active_shared_dependency::trust;
+            let interval = (v@, index@) |> require_access_interval::trust;
+            let operations = (v@, index@) |> require_range_read_and_moves::trust;
+            (source, generations, shared, interval, operations)
+                |> concatenate_rows::lifetime
+                |> required_contract_pattern::trust |> form_post return;
+        }
+        => {
+            let element = (v, index) |> element_share_at::vector;
+            element |> clone::word return;
+        };
+
+let value = (vector share, safeid) |> range_access;
+```
+
+The runtime Index enters the compile contract through **index@**, not by
+evaluating its integer in the lifecycle world. These are ordinary typed
+requirement rows consumed by the same W2 self-root constructor and its
+associated check/admit. Their registered ordinary component checks must test:
+
+| Requirement / W2 check component | Actual material which must match |
+|---|---|
+| Validation source / source_matches | An already established ValidatedIndex for this index name, mapped source choice, actual Q and protected ranges; v's actual read target must be that Q, not an equal container or copied descriptor |
+| Generations / source_matches | Current index and resource generations, including the permitted actual input-Move mapping; an old index/resource generation supplies no current credential |
+| Shared dependency / color_compatible | Presence of the required live shared dependency on every protocol-protected endpoint, plus its inherited/directed compatibility facts. Historical Color alone or absence of conflict is insufficient |
+| Interval / region_fits | This access and its temporary element observation lie in the credential's maintained interval and actual target validity; no invalidating resource/index action has intervened |
+| Range/read/transfers / access_is_subset and effects_match | The selected element endpoint is in both the validated range and v's permitted read structure; actual input Moves, temporary borrowing, clone and cleanup satisfy their own Pre |
+
+The row constructors create descriptions, not validation facts. Missing evidence
+makes the required check false or unavailable at its actual consumer; a true
+user check cannot substitute for any operation's independent Pre.
+
+| Call position | Name/credential mapping |
+|---|---|
+| Before input transfer | Caller has safeid s/g_s and its existing credential. The formed formal index@ is a bound role. Caller Pre.check uses the ordinary call mapping and the selected input action's guarantees, without manufacturing a future formal generation |
+| Actual input Move | The fixed MoveEffect produces the real formal index/g_index once. Only its genuine Post transports the permitted source/validation/dependency relation from s/g_s; equal integer content or a rename grants none |
+| Body Pre.admit and indexed call | Admit uses that established mapping. The inner projection's input transfer also needs its own permitted mapping and Pre. Neither boundary reruns try_trust |
+
+element_share_at is the real registered read/projection producer over the
+admitted indexed structure. It uses the runtime integer to identify the actual
+element and forms its ordinary temporary share under normal access/Color Pre.
+It does not compare the integer with length again. clone::word is the selected
+ordinary share-to-clone producer, followed by fresh complete Word formation and
+terminal Move; it is not a fallback copy. The temporary share ends under fixed
+cleanup, and no view of the local index escapes. The omitted automatic Post
+retains all reached input/borrow/clone/drop effects and the ordinary owned Word
+delivery; it invents no new validation.
+
+Consuming the credential here means using its established relation at Pre;
+the actual argument Moves/cleanup determine the names' disposition. This
+single-use example returns only Word, so it promises no reusable index output.
+The protocol must block every index/resource mutation that could invalidate
+the saved fact; const spelling or equality of numbers is no such protection.
+Within that maintained interval the prior successful validation justifies the
+selected access, so the body has no second numeric bounds test. Other Pre,
+addressing and machine costs remain. Foreign/equal integers, stale generations,
+expired intervals, cropped-out endpoints or missing shared dependencies stop
+before access, without a hidden numeric check or another overload.
+
 ### Batch consumption of share, acquisition from original ref
 
 Suppose share handles h1/h2 retain paths/ranges A1/A2 from the same original
@@ -1130,6 +1211,194 @@ which they diverged. That suffices under the remaining Pre. It does not permit
 a whole-ancestor operation merely because both ranges use that route. A later
 meeting, overlapping ancestor endpoint or unavailable separation invalidates
 the argument. Finite regular-state reuse alone is not actual tree separation.
+
+### A two-share partition contract and ordinary program
+
+Expose the original ref as r in this design example so its authority is visible.
+A real facade may retain it through a legal ordinary dependency instead.
+RootRef, ShareHandle, RangePlan and the result branches are ordinary library
+types/interfaces. Observing/moving the existing root **handle** must be legal
+while its shares live; that observation grants no exclusive use of the root's
+target. The admitted family has two share ranges inside its strict ref tree,
+ordinary input/observation/cleanup legality, prospective output validity and
+no conflicting surviving dependencies after exactly these shares end. Their
+mutual separation is deliberately **not** an entry assumption.
+
+Use three selected actions: prepare descriptive ranges, actually validate
+separation, then form the child refs. The validator's compatible unsafe Post
+must already be established before the child producer checks its own Pre.
+Putting that fact only in partition_refs' outward unsafe Post could not
+authorize an earlier internal formation. A normal SeparationOk carries its
+range plan as data; the tag is no authority or proof Object.
+
+**Origin:** library-authored contract/control skeleton, all three functions below.
+**Basis:** L ordinary row/type formation, range observation, branches and result
+construction; B real original-ref/source/input/formation authority, strict access,
+regions/Color and common commits; X only actual maintained range separation;
+W LC2–LC5/LC7/LC8. **Frontier:** these facades, registrations and consumers are
+pending; unsafe post remains design notation without an implemented source
+production. No entire partition function is justified as a host intrinsic.
+
+```lang
+let validate_separation =
+    (self, plan:RangePlan::):runtime -> out:SeparationResult::
+        lifetime pre plan@..legal_range_observation()
+        unsafe post {
+            let (ok_role, err_role) = out@ |> outcome_roles::partition;
+            let separated = (plan@, ok_role share)
+                |> separated_strict_range_rows::partition;
+            let no_fact = () |> empty_rows::lifetime;
+            ((ok_role, separated), (err_role, no_fact))
+                |> guarded_rows::lifetime |> form_post return;
+        }
+        => {
+            let separated = plan share |> actual_range_test::facility;
+            separated
+                |> if { plan |> separation_ok::partition return; }
+                |> else { plan |> separation_err::partition return; };
+        };
+
+let acquire_children =
+    (self, r:RootRef$, h1:ShareHandle$, h2:ShareHandle$, checked:SeparationOk::):runtime
+        -> _:ChildPair::
+        lifetime pre {
+            let source = (r@, h1@, h2@) |> require_common_ref_source::partition;
+            let authority = r@ |> require_current_root_authority::partition;
+            let separated = (r@, h1@, h2@, checked@)
+                |> require_established_separation::partition;
+            let transition = (r@, h1@, h2@)
+                |> require_legal_share_end_and_child_regions::partition;
+            let conflicts = (r@, h1@, h2@)
+                |> require_no_surviving_conflict::partition;
+            (source, authority, separated, transition, conflicts)
+                |> concatenate_rows::lifetime
+                |> required_contract_pattern::partition |> form_post return;
+        }
+        => {
+            let ranges = checked |> checked_ranges::partition;
+            (r, h1, h2, ranges) |> form_child_pair::partition return;
+        };
+
+let partition_refs =
+    (self, r:RootRef$, h1:ShareHandle$, h2:ShareHandle$):runtime
+        -> out:PartitionResult::
+        lifetime pre {
+            let source = (r@, h1@, h2@) |> require_common_ref_source::partition;
+            let authority = r@ |> require_current_root_authority::partition;
+            let inputs = (r@, h1@, h2@)
+                |> require_observation_moves_and_strict_ranges::partition;
+            let transition = (r@, h1@, h2@, out@)
+                |> require_prospective_regions_and_other_dependencies::partition;
+            (source, authority, inputs, transition)
+                |> concatenate_rows::lifetime
+                |> required_contract_pattern::partition |> form_post return;
+        }
+        lifetime post {
+            let (ok_role, err_role) = out@ |> outcome_roles::partition;
+            let children = (r@, h1@, h2@, ok_role share)
+                |> new_child_delivery_rows::partition;
+            let returned = (r@, h1@, h2@, err_role share)
+                |> returned_share_rows::partition;
+            ((ok_role, children), (err_role, returned))
+                |> guarded_rows::lifetime |> form_post return;
+        }
+        => {
+            let (r, plan) = (r, h1 share, h2 share) |> prepare_ranges::partition;
+            let tested = plan |> validate_separation;
+            tested?
+                |> (_, let why:SeparationErr::) {
+                    (r, h1, h2, why) |> partition_err::partition return;
+                }
+                |> (_, let checked:SeparationOk::) {
+                    (r, h1, h2, checked) |> acquire_children
+                        |> partition_ok::partition return;
+                };
+        };
+```
+
+required_contract_pattern forms the same typed descriptive family as W2/W3.
+The registered row providers and ordinary check/admit must establish each
+requirement from real mapped facts. prepare_ranges threads r and observes the
+two handles through actual registered interfaces; it returns their real source,
+generation, endpoint/operation and region correspondence. Temporary share views
+end before later input consumption. It acquires no new ref or root permission.
+
+actual_range_test is the narrow selected facility action on legally observed
+actual ranges. Its success guarantee is only
+`SeparatedStrictRanges(source_ref(R), Q/g_Q, A1, A2, I)`, with the actual
+input-name/generation/target mapping retained in A1/A2 and maintained through I.
+It proves separation of permitted **operations**, including non-reconvergence
+in R's strict tree; strings, addresses-as-integers or descriptor states do not
+prove it. Neither that fact nor checked_ranges creates R's current authority,
+ends any share, removes another dependency or forms a child ref.
+
+The outer ordinary Post transports the actual producer's guarantee. Its ok
+rows describe new children sourced from R over their respective actual ranges,
+the exact share consumptions/interval ends, new exclusive regions/Color and all
+other effects. Its err rows describe current returned r/h1/h2 ownership and
+reached observation history, with no child or separation permission. There is
+no outer unsafe clause that retrospectively repairs acquire_children.
+
+form_child_pair is the real selected complete result producer, with ordinary
+construction/borrow/Move Pre. Its companion can be expanded as follows. frame is
+supplied by that actual producer, including its selected source, exact input/
+implicit Param mapping, fixed cut, the two current share-interval scopes and
+fresh child formation scopes. A user-shaped frame supplies none of these.
+All component operations below check their own scope/authority premises.
+
+**Origin:** illustrative generated partner fragment for that selected producer.
+**Basis:** L composition; B actual share-ending and new-ref formation scopes,
+source, bounded regions and compatible exclusive Color; X separation is already
+available; W LC2/LC3/LC7. **Frontier:** this frame and these scoped source
+operations are pending. They are responsibilities of normal formation, not
+unrestricted lifetime setters.
+
+```lang
+let child_pair_life =
+    (self, frame:ChildFormationFrame::):compile -> _:ChildPairMaterial:: => {
+        let (step, source, old1, old2, left, right) =
+            frame |> child_formation_parts::partition;
+        let step = (step, old1, old2) |> end_selected_share_intervals::lifetime;
+        let left = (left, source share) |> initialize_borrow_origin::lifetime;
+        let left = (left, source share) |> initialize_bounded_region::lifetime;
+        let right = (right, source share) |> initialize_borrow_origin::lifetime;
+        let right = (right, source share) |> initialize_bounded_region::lifetime;
+        let (step, left, right) = (step, source, left, right)
+            |> begin_exclusive_children::lifetime;
+        (step, left, right) |> finish_child_pair_material::partition return;
+    };
+```
+
+The source in **both** initializers is R's real authorized referent/range
+material, never h1 or h2. The fresh scopes belong to new ref names, not renamed
+share handles. begin_exclusive_children checks the already established actual
+separation, range subset, fixed regions, all surviving dependencies and normal
+ref compatibility under its own Pre. The source/region initializers are scoped
+to the selected ref-formation action; W3's shared formation rule does not
+itself authorize this exclusive case.
+
+These calls stage the prescribed components in **one actual producer's**
+unpublished projection storage. At its existing complete-result/joint Post
+gate, the admitted old share intervals end and the complete new child pair is
+published. No separate partial child publication or historical Color deletion
+occurs. Input handle generations follow the ordinary selected Moves and mapping;
+the later terminal consumption ends exactly the currently admitted borrow
+intervals once. It does not consume an earlier caller generation again.
+Result delivery/compression must preserve external referent validity, not
+borrow a dying local root-handle Place or extend any lifetime.
+
+| Outcome | Ownership, facts and stopping point |
+|---|---|
+| Outer caller Pre false/unavailable | No call input transfer or child action; no success delta |
+| Real validator returns SeparationErr | The body already received its inputs. partition_err returns their current mapped handles through actual Moves, without terminally consuming their protected share intervals. It publishes no separation fact or child permission; prior observation history remains |
+| Validator succeeds, child producer Pre false/unavailable | The established separation fact grants none of the missing root/region/Color/access authority. Stop at that selected producer with no child delta; no retry, hidden reborrow, alternate source or fabricated err/remaining continuation |
+| Child producer commits | Consume the listed shares once and publish the complete new refs from R at the prescribed gate, then deliver the actual mapped ok result |
+
+For one input, the pairwise separation requirement and its dynamic test disappear;
+the ordinary source/authority/interval/access/Color/conflict/consumption Pre
+remain. A statically established separation can use a separately selected
+ordinary realization, never a fallback after this validator fails. Exact API,
+representation, normalization and caching choices remain engineering work.
 
 ### A regular access program, with endpoint-only cropping
 

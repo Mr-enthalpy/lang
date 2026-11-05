@@ -58,6 +58,9 @@ Already committed history/Color and earlier external effects are not erased.
 - **Output lifecycle material:** Paired name/field/operation material, origin
   and regular access descriptors with actual target parameters; enough for
   `(x.field*)@ = x@.field_lifetime*` for the selected admitted operation.
+  The owner's [NameView notation](../design/lifetime/lifetime-policy-and-overload-boundary.md#212-nameview-origin-and-finite-observation)
+  describes ordinary rank-0 companion Objects, not an extra Object category,
+  type axis or required source type constructor.
 - **Commit/delivery boundary:** Formation's complete atomic publication includes
   companion facts and actual registrations. No partial Object or private map
   substitutes for a witness. Ordinary helper additions preserve structural roles.
@@ -286,16 +289,30 @@ Already committed history/Color and earlier external effects are not erased.
   constructs explicit typed ordinary/unsafe contract descriptions and shows
   the actual fresh successful producer's dependency formation. No
   unsafe pre and no admission before the missing Pre check.
+  The [range-access consumer](../design/lifetime/lifetime-algebra-walkthroughs.md#consuming-safeid-at-range-access)
+  uses runtime index-name material in ordinary Pre and the real input Move's
+  permitted generation mapping; it consumes existing validation without a
+  second numeric bounds check. The
+  [partition program](../design/lifetime/lifetime-algebra-walkthroughs.md#a-two-share-partition-contract-and-ordinary-program)
+  establishes dynamic separation at the validator's earlier successful gate,
+  then checks child formation's own original-ref/region/Color/access Pre.
 - **Output lifecycle material:** Ordinary source/interval/Color and delivery
   material composed with only the needed compatible external success facts:
   actual index validation, disjoint ranges, or maintained window validity/
   exclusion. Fresh successful credential formation uses real scoped
   source/formation authority, not a terminal Move that rewrites input origin.
   New refs come from original R; alias-window origins are fresh and non-alias.
+  A valid shared Color requirement includes its live dependency/interval,
+  not just a historical row or absence of a conflict. Partition components
+  end exactly their admitted current share intervals and stage new child
+  formation for the same complete producer; no other dependency is consumed.
 - **Commit/delivery boundary:** Successful common action and joint Post, then
   ordinary caller summary admit. Validation failure returns its ordinary
   declared failure Pattern without success permissions; input disposition
   follows the explicit failure contract.
+  Dynamic validation failure returns the current mapped input handles if
+  that is the declared ordinary error branch. Semantic Pre failure instead
+  stops at its own action; it does not manufacture such a branch.
 - **Failure or unavailable result:** False ordinary Pre prevents action.
   Failure/unknown validation cannot publish trust, erase conflicts or cause a
   hidden check/retry. A lying external success violates its trusted description.

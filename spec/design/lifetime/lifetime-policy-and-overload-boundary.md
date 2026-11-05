@@ -389,6 +389,13 @@ composition; it is not inferred by matching names or traversing source text.
 
 #### 2.1.2 NameView, origin, and finite observation
 
+`NameView<T>` below is mathematical notation for the structured companion of
+T carried by **ordinary rank-0 lifecycle Objects**. It does not prescribe a
+source type constructor, introduce another Object category or type axis, or
+define a lifecycle-specific object ontology. Origin, region and operation
+material use the same unified Object/Pattern/Policy mechanism as §2; an
+implementation may choose ordinary representations and API names.
+
 For every semantic value operation `f_V : T -> U` that is name-projectable,
 there exists a unique semantic name-level companion:
 
@@ -1431,6 +1438,9 @@ host operation. The final column points to the existing pending handoff.
 | source_matches, region_fits, color_compatible, access_is_subset, effects_match, all_true/both | L: mapped observation, supported finite relation queries and Boolean folding. B is the actual source/history/region/Color/access evidence; a true answer creates none of it | W: LC4/LC8 |
 | adopt_origin, adopt_region, adopt_color, adopt_access, adopt_effects, end_boundary_view | L: map/extract the relevant rows, check their independent operation premises and thread/end the same scoped view. The B leaf is the narrow existing authority-checked projection update and joint-publication boundary, not an unrestricted fact setter or the whole adopt function. New external facts additionally require X | W: LC3/LC4; X enters only through LC7 |
 | try_trust, partition_refs | L: ordinary observation, control, range planning and ownership/result assembly; B supplies actual input/source authority and ref formation. X is only the otherwise underivable successful validation/disjointness fact and its maintained interval, not the entire function | W: LC3/LC7/LC8 and materialization |
+| range_access, validation/source/generation/shared/interval/read requirement rows, element_share_at and clone::word in W3 | L forms typed ordinary requirements, queries established evidence and composes a real indexed shared projection with an already selected independent Word clone. B supplies actual call/Move mapping, current names/generations, read/access/Color/interval and complete formation; the consumer creates no new validation fact. A runtime integer supplies targeting, not lifecycle proof by numeric equality | W: LC2–LC4/LC7/LC8 and actual indexed projection/clone producers |
+| prepare_ranges, validate_separation, acquire_children, partition result/requirement rows and checked_ranges in W3 | L observes actual handles, preserves ranges/source mapping, forms contracts and branches on the real validator result. B supplies current original-ref authority and normal consumption/formation legality. X is only the validator's earlier compatible strict-range-separation success; neither a plan nor SeparationOk supplies root authority | W: LC2–LC5/LC7/LC8 and actual range validation |
+| form_child_pair, child_pair_life, child_formation_parts, end_selected_share_intervals, begin_exclusive_children and finish_child_pair_material in W3 | L composes the actual selected complete producer's scoped companion. B supplies exact input/share-ending/fresh-child scopes, source/region/exclusive-Color laws and one complete publication gate. X separation is already available before this producer's Pre. Components may stage only the prescribed ends/new formations; they cannot erase other dependencies, rewrite history or strengthen the share handles | W: LC2/LC3/LC7 and ordinary complete ref/result formation |
 | success_id_role/outcome_roles, validation input/interval/from/shared dependency rows, required_contract_pattern, guarded_rows and failure_delivery_rows in W3 | L extracts formed interface roles and builds typed guarded descriptions for the ordinary contract constructor. B supplies the legal input read/Move, source, interval and actual delivery mapping; a result role is not an observed future payload | W: LC2–LC5/LC7 |
 | probe_index, finish_probe and validated_index_rows in W3 | L organizes the ordinary probe result and ends its temporary view. X is the real successful validation tied to actual Q/generation/index/result and maintained interval; the row describes that fact rather than producing it. A tag or the outer contract's own check cannot justify the external guarantee | W: LC7 and the selected actual facility; unsafe post source notation is pending |
 | probe_success_life, initialize_borrow_origin, initialize_bounded_region, begin_shared_dependency and finish_validated_name_material in W3 | L composes the selected fresh producer's companion. B supplies its actual one-shot name/source authority, bounded region and compatible shared dependency formation, including logical borrowing by ordinary non-ref values. It cannot rewrite an earlier name or grant access. X supplies only the actual validation packaged with those components | W: LC2/LC3/LC7; these are scoped formation responsibilities, not unrestricted world-field setters or a safeid builtin |
@@ -1837,6 +1847,14 @@ Without it access is unavailable/rejected, never an implicit dynamic-check
 fallback or runner-up overload. Other Pre and machine costs remain. View
 transport preserves actual dependencies and intervals, not a global credential.
 
+The [safeid consumer](lifetime-algebra-walkthroughs.md#consuming-safeid-at-range-access)
+exposes runtime index@ in range_access's ordinary compile Pre. Its typed rows
+check the existing validation/source, actual input-generation mapping, required
+live shared Color, maintained interval and endpoint permissions. Runtime
+targeting then uses the numeric index without another bounds comparison; the
+illustrated selected Word clone returns an independent complete result.
+There is no new external admission or permission from an equal integer.
+
 A batch operation may consume shares with common provenance/current authority
 in original ref R and acquire new exclusive **child refs from R** if their
 actual operable ranges are disjoint in R's strict tree and all other Pre hold.
@@ -1869,6 +1887,17 @@ disappear. Language semantics does not identify addresses with integers. The
 materializer must faithfully and lightly realize the facility's actual abstract
 range test; its representation/cost model belongs to machine work. See the
 [unsafe owner](unsafe-semantic-admission.md#6-library-and-materializer-handoff).
+
+The [two-share contract skeleton](lifetime-algebra-walkthroughs.md#a-two-share-partition-contract-and-ordinary-program)
+separates preparation, trusted validation and actual child formation. The
+validator's unsafe success fact is available before the child producer's
+ordinary Pre; an outward Post cannot authorize an earlier missing Pre.
+Current original-ref authority, legal share-ending and fresh formation scopes,
+bounded exclusive regions/Color and absence of surviving conflicts remain
+independent premises. Its scoped companion stages the prescribed interval ends
+and new children for one existing complete result gate. Dynamic failure returns
+current input ownership without child permissions; a selected semantic failure
+does not invent that normal error branch or reopen the call.
 
 ## 13. Alias windows and partbox library protocols
 

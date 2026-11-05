@@ -1061,6 +1061,33 @@ executed coverage or independent case taxonomy:
   retains earlier commits/current ownership and never manufactures a repair
   value, rollback, residual or successful topology claim.
 
+- **LA01/LA04/LA30:** Read
+  [NameView notation](../design/lifetime/lifetime-policy-and-overload-boundary.md#212-nameview-origin-and-finite-observation)
+  as mathematical structured-companion notation over ordinary rank-0 Objects.
+  Do not introduce an additional Object category, type axis or mandatory source
+  generic solely to represent it; actual companion formation/commutation still
+  needs its real source consumer.
+- **LA17/LA18/LA19/LA20:** Trace the
+  [range_access consumer](../design/lifetime/lifetime-algebra-walkthroughs.md#consuming-safeid-at-range-access)
+  with a runtime-unknown index but established name/credential. Caller Pre uses
+  current safeid evidence and the selected transfer guarantee; actual input
+  Move then establishes the formal generation and its permitted mapping.
+  Require source/resource identity, current generations, live shared dependency,
+  interval and endpoint permission. Reject equal foreign integers, stale
+  generations, ended intervals, cropped endpoints and historical-only Color.
+  Successful ordinary projection/clone uses the saved validation without a
+  repeated numeric bounds comparison; no failure retries a check or overload.
+- **LA19/LA21/LA22/LA23/LA24:** Trace the
+  [two-share partition](../design/lifetime/lifetime-algebra-walkthroughs.md#a-two-share-partition-contract-and-ordinary-program)
+  through source/authority Pre, preparation, real validation success and the
+  subsequent child producer's independent Pre. An outward unsafe clause,
+  constructed SeparationOk or copied plan cannot justify earlier formation.
+  On dynamic rejection return current handles with no child permissions; on
+  missing child authority stop without inventing a normal err result. At
+  successful complete publication, end the listed current share intervals
+  once, form both fresh refs from R, and retain historical Color and every
+  unconsumed dependency. One input omits only the pairwise validation.
+
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any
 row's full source chain. Future connections must add meaningful action-based
