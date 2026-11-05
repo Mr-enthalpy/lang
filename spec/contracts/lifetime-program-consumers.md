@@ -104,6 +104,8 @@ Already committed history/Color and earlier external effects are not erased.
 - **Input material:** Selected ordinary action, exact implicit Param plus
   explicit input, generations/targets, origin/region/access, fixed MoveEffect,
   supplied operation Pre and fixed cleanup sequence.
+  Fresh-name formation additionally supplies its actual one-shot pending
+  component authority and selected source realization, not a lookalike view.
 - **Existing action that determines it:** Ordinary Move/ref/share/rebind/clone,
   complete construction or consuming extraction, non-consuming observation,
   call input and destructor continuation. Mechanical Pass=Move is already fixed.
@@ -113,11 +115,15 @@ Already committed history/Color and earlier external effects are not erased.
 - **Output lifecycle material:** Real sibling/child relationships, complete
   new generations and region boundaries, inherited Color and structured action
   history. Ordinary observation is not destructive extraction.
+  The [minimal authorization interface/rules](../design/lifetime/lifetime-policy-and-overload-boundary.md#94-minimal-authorization-interface-and-operation-rules)
+  fix the only permitted increment for the actual source/formation scope.
 - **Commit/delivery boundary:** Common cleanup gate, all Pre, one existing
   action commit and joint Post. Whole-self/Param are one coherent transfer;
   Kill contributes no duplicate old-generation Drop.
 - **Failure or unavailable result:** Before commit no state change; after a
   selected failure no fallback, reborrow, changed MoveEffect or implicit copy.
+  Failed/unavailable components publish no delta at that action's gate;
+  pending projection material is not a partially formed ordinary Object.
 - **Unconnected consumer dependencies:** Source pass normalization, producer
   formation/origin/Color, ref/share/clone, NLL/with and destructor execution.
 - **Fidelity/composition obligations:** Single consumption, target/generation
@@ -159,7 +165,10 @@ Already committed history/Color and earlier external effects are not erased.
   premises. External new facts require LC7 rather than ordinary derivation alone.
   Formation and updates cannot be justified by the still-unformed contract's
   own check/admit/automatic Post. See the owner's [terminating basis](../design/lifetime/lifetime-policy-and-overload-boundary.md#91-bootstrap-dependencies-must-terminate)
-  and [ordinary contract/counterexample](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program).
+  and [authorization rules](../design/lifetime/lifetime-policy-and-overload-boundary.md#94-minimal-authorization-interface-and-operation-rules),
+  plus the [ordinary contract/counterexample](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program).
+  Safe origin adoption must match the established ordinary mapped row and
+  transfer the same scoped view. An arbitrary row or true check grants none.
 
 ## LC5. Exit compression and automatic Post
 
@@ -304,6 +313,15 @@ Already committed history/Color and earlier external effects are not erased.
   split/merge inputs or lawful transport of that authority. Equal Part-shaped
   data, copied ids, success tags and saved views cannot double-issue/count it.
   See the [initial-source law](../design/lifetime/lifetime-policy-and-overload-boundary.md#131-legitimate-initial-issuance-and-source-preservation).
+  The [finite relink program](../design/lifetime/lifetime-algebra-walkthroughs.md#relinking-topology-without-accessing-payload)
+  additionally requires real root/resident-transfer authority and maintained
+  edit validity/exclusion. Registered alias root replacement delivers the old
+  complete Option while installing a complete replacement. Actual Parts of
+  neighboring resources are moved to the new links; only the moved node's
+  own resource is repartitioned. Paused results own current detached Parts,
+  roots and session within its finite interval, without payload authority.
+  A semantic failure publishes no delta at its gate, while earlier root
+  commits and normal paused-result effects remain in the actual guarded Post.
 
 ## LC8. Regular access and cropping programs
 

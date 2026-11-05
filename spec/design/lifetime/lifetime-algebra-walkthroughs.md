@@ -681,6 +681,8 @@ initialization, OpenHere, Place first-write, self-root delivery and scoped world
 authority; W LC3/LC4 and ordinary formation. **Frontier:** in particular
 initialize_empty_root and the component adoption interfaces are pending
 handoffs. Parsing qualified let/ref/assignment does not execute this bootstrap.
+Their authority inputs, permitted increments and distinct publication gates
+are specified in the [minimal authorization interface](lifetime-policy-and-overload-boundary.md#94-minimal-authorization-interface-and-operation-rules).
 
 ```lang
 let form_post = <M>(self, material:M):compile -> _:type:: => {
@@ -1026,6 +1028,8 @@ for a non-ref business value, not a trusted safeid constructor for the whole API
 The selected borrow source is v's authorized resource target/protected ranges,
 not the local ref-handle Place. Its formed source material retains that distinction;
 boundary compression removes the local carrier without extending Q's validity.
+The [formation/adoption rules](lifetime-policy-and-overload-boundary.md#94-minimal-authorization-interface-and-operation-rules)
+fix the exact permitted components and failure-without-publication behavior.
 
 The unsafe part is precisely the otherwise underivable fact
 `ValidatedIndex(Q, generation_Q, s, generation_s, protected_ranges, I)`:
@@ -1670,3 +1674,200 @@ single consumption and dependency/Color history; box formation has its own
 selected producer Post. The complete sequence remains ordinary lang composition
 plus narrow justified facilities. None of the source programs or consumers in
 this illustration is connected by this documentation revision.
+
+### Relinking topology without accessing payload
+
+This finite serialized example moves N from L--N--R into an existing C--D edge.
+Use five distinct actual nodes and six distinct admitted link-slot roots.
+The library convention is that an incoming link to a node carries a legitimate
+Part of **that target node's resource**. Initially N's local ledger and the
+links L.next/R.prev each own one third of Q_N. N.left/N.right own actual Parts
+of Q_L/Q_R; C.next/D.prev own actual Parts of Q_D/Q_C. No quantity or node id
+can substitute for one of those actual Parts.
+
+| Actual slot root | Initial complete Option | Final complete Option |
+|---|---|---|
+| L.next | Some(N, Part of Q_N) | Some(R, the Part of Q_R taken from N.right) |
+| R.prev | Some(N, Part of Q_N) | Some(L, the Part of Q_L taken from N.left) |
+| N.left | Some(L, Part of Q_L) | Some(C, the Part of Q_C taken from D.prev) |
+| N.right | Some(R, Part of Q_R) | Some(D, the Part of Q_D taken from C.next) |
+| C.next | Some(D, Part of Q_D) | Some(N, a new third of Q_N) |
+| D.prev | Some(C, Part of Q_C) | Some(N, the other new third of Q_N) |
+
+The caller supplies the actual State_N, N's local Part, and a RootSet containing
+restricted aliases **directly to those slot roots**. They were obtained through
+the library's real registered topology interface. Writing node_alias.next would
+require its own registration and authority; the type's fields or a path string
+do not obtain these aliases. The links' target ids are ordinary immutable routing
+data; observing/cloning one gives no node payload capability.
+
+The Edit session is ordinary facility state for a bounded serialized topology
+edit. Entry Pre requires actual root-write capabilities, real distinct slot
+identities, valid generations, lawful Part sources and the admitted complete
+replacement/cleanup operations. The protocol keeps the observed topology and
+resource validity stable and excludes competing root edits and observations
+requiring a completed topology throughout the session. Where this relies on
+external behavior, only the necessary real maintained facts are X. The session
+forms no normal ref.
+
+The selected registered alias-root operation exchange_link_root has an explicit
+contract: under its own ordinary Pre it consumes the supplied complete replacement,
+replaces the **root Option resident**, and returns the complete old Option plus
+the transferred root/session handles. Old-result delivery, same-Type replacement,
+resident compatibility, cleanup and lifetime must all be legal. Failed Pre
+changes nothing at that action; no generic swap is inferred from alias or Option
+shape. This is an illustrative library registration to implement, not an installed
+operation. Its prechecked take/fill realizations additionally require the actual
+Some/None resident, respectively, before mutation.
+In particular, transferring the old Option and its Parts requires the actual
+protocol authority over that resident. Root-write capability and registration
+alone are insufficient. A source-defined realization can use the established
+ownership of Parts previously installed through this same closed protocol.
+If an opaque external realization needs a trusted resident-transfer guarantee,
+it must establish exactly that lawful transfer under real validity/exclusion;
+it cannot manufacture another Part or infer ownership from equal slot contents.
+
+**Origin:** library-authored schematic root helpers and relink program below.
+**Basis:** L ordinary Option/Link extraction/construction, planning, control and
+the expanded merge_core/split_core; B actual root access, complete replacement,
+owned Part/State/resident-transfer sources, fixed cleanup and delivery; X only
+necessary maintained session/transfer facts if otherwise underivable;
+W LC3–LC5/LC7. **Frontier:** the
+root registrations, edit protocol and all source consumers are pending. These
+definitions neither install a new alias primitive nor execute a graph algorithm.
+
+```lang
+let take_link =
+    (self, edit:Edit::, root:LinkRootAlias::):runtime -> _:TakenLink:: => {
+        let empty = () |> none_link::topology;
+        let (edit, root, old) =
+            (edit, root, empty) |> exchange_link_root::topology;
+        let branch:SomeLink:: = old?;
+        let (target, part) = branch |> some_link_fields::topology;
+        (edit, root, target, part) |> taken_link::topology return;
+    };
+
+let put_link =
+    (self, edit:Edit::, root:LinkRootAlias::, target:NodeId::, part:Part::):runtime
+        -> _:FilledLink:: => {
+        let replacement = (target, part) |> some_link::topology;
+        let (edit, root, old) =
+            (edit, root, replacement) |> exchange_link_root::topology;
+        let _:NoLink:: = old?;
+        (edit, root) |> filled_link::topology return;
+    };
+
+let relink =
+    (self, state:State::, local:Part::, edit:Edit::, roots:RootSet::,
+     finish:bool::):runtime -> out:RelinkResult::
+        lifetime pre (state@, local@, edit@, roots@, out@)..relink_inputs()
+        => {
+            let (edit, roots, plan) =
+                (edit, roots, state share, local share) |> inspect_relink::topology;
+            plan?
+                |> (_, let why:NotRelinkable::) {
+                    (state, local, edit, roots, why) |> unchanged_relink::topology return;
+                }
+                |> (_, let ready:RelinkPlan::) {
+                    let (ln, rp, nl, nr, cn, dp) = roots |> root_set_fields::topology;
+                    let (edit, ln, _, from_l) = (edit, ln) |> take_link;
+                    let (edit, rp, _, from_r) = (edit, rp) |> take_link;
+                    let (edit, nl, _, to_l) = (edit, nl) |> take_link;
+                    let (edit, nr, _, to_r) = (edit, nr) |> take_link;
+                    let (edit, cn, _, to_d) = (edit, cn) |> take_link;
+                    let (edit, dp, _, to_c) = (edit, dp) |> take_link;
+                    finish
+                        |> if {
+                            let (left, right, node, c, d, q_local, q_c) =
+                                ready |> relink_plan_fields::topology;
+                            let (edit, ln) = (edit, ln, right, to_r) |> put_link;
+                            let (edit, rp) = (edit, rp, left, to_l) |> put_link;
+                            let (state, two_parts) = (state, local, from_l) |> merge_core;
+                            let (state, full) = (state, two_parts, from_r) |> merge_core;
+                            let (state, new_local, rest) = (state, full, q_local) |> split_core;
+                            let (state, for_c, for_d) = (state, rest, q_c) |> split_core;
+                            let node2 = node share |> clone::topology_id;
+                            let (edit, cn) = (edit, cn, node, for_c) |> put_link;
+                            let (edit, dp) = (edit, dp, node2, for_d) |> put_link;
+                            let (edit, nl) = (edit, nl, c, to_c) |> put_link;
+                            let (edit, nr) = (edit, nr, d, to_d) |> put_link;
+                            let roots = (ln, rp, nl, nr, cn, dp) |> root_set::topology;
+                            let roots = (edit, roots) |> finish_topology_edit::topology;
+                            (state, new_local, roots) |> relinked::topology return;
+                        }
+                        |> else {
+                            let roots = (ln, rp, nl, nr, cn, dp) |> root_set::topology;
+                            (state, local, edit, roots, ready,
+                             from_l, from_r, to_l, to_r, to_d, to_c)
+                                |> paused_relink::topology return;
+                        };
+                };
+        };
+```
+
+TakenLink/FilledLink and the core results have registered consuming Product
+views as shown. SomeLink/NoLink are the ordinary declared one-layer Option
+branches: old? consumes the complete old Option; some_link_fields consumes
+the complete Some branch and delivers its real target data and owned Part.
+The normal NoLink branch is also consumed. No partial aggregate or empty
+resident is left: each take has already installed a complete None. put_link
+constructs a complete Some, then separately commits its admitted root replacement.
+The helpers' entry Pre guarantees Some/None; a mismatch is a selected failure,
+never a retry or implicit error propagation through ?.
+
+inspect_relink threads the actual aliases/session through registered **root**
+observations, checks the reciprocal identities in the table and the actual
+local allocation assumptions, and computes the two one-third split requests.
+Its plan is ordinary data; it grants no access. The session and independent
+operation Pre maintain those observations while editing. The admitted family
+has total finite amount/constructor/table/root operations after those checks,
+with temporary snapshot shares ended before consumption. A wider fallible or
+concurrent realization needs its own explicit current-ownership protocol.
+
+The first two takes acquire the actual Q_N Parts from N's two old neighbors.
+The other takes recover the independently sourced Q_L/Q_R/Q_C/Q_D Parts.
+put_link moves those existing neighbor Parts to their new slots. Only Q_N's
+allocations are merged/split through State_N; the other resources' ledgers
+undergo no allocation change, and their actual Move/source obligations remain.
+The full Q_N Part is immediately repartitioned; no into_box, payload ref,
+payload read or alias-to-ref window occurs. Topology-root permission alone
+therefore supplies no payload access. finish_topology_edit checks the completed
+local protocol, ends its actual edit exclusion and transfers the root handles;
+future edits still need their own Pre.
+
+finish is an ordinary bool decision reached after detachment. Its false arm
+demonstrates a normal paused result with **current** ownership, rather than
+claiming restoration. The returned PausedRelink owns the active edit/session,
+all six now-None roots, the local Part, all six taken Parts, current State and
+the plan. Caller Pre/result delivery must admit carrying that session within
+its existing finite interval. The caller must resume/repair or use the library's
+explicit cleanup before that interval ends; the protocol cannot release
+exclusion while leaving an externally usable incomplete topology.
+
+| Exit or stopped frontier | Actual slots and ownership |
+|---|---|
+| Planning rejects before a take | No slot changed; result returns the current State/local Part/session/root handles. The Option residents still own their Parts |
+| Normal paused return after the six takes | All six slots contain complete None; PausedRelink owns the seven Parts (six taken plus local) and active edit/session. It asserts no completed relink |
+| Completed relink | The six Some residents own exactly the table's final Parts; result owns current State_N/new local Part/root handles. The edit session has ended |
+| Selected rejection/unavailable operation after an earlier commit | That action adds no delta; earlier None/Some writes remain. Detached Parts stay with actual current locals or the established remaining continuation, according to fixed cleanup. After a merge/split, the current merged/split Parts replace the old inputs. No fabricated paused value, restored generation or rollback is allowed |
+
+The last row is not an additional normal failure branch in this prechecked
+family. Supporting such recoverable mid-edit failures requires a real complete
+repair/result carrier for the current roots, Parts and session, with maintained
+exclusion and actual cleanup; missing wiring does not invent that carrier or
+a residual. At each real stop, the ownership above is what the consumer must
+preserve, rather than returning stale caller inputs.
+
+The omitted implemented-body Post is formed before use from the selected
+root-operation, extraction, accounting, branch and delivery descriptions.
+It retains three correlated outcomes: unchanged planning rejection, paused
+None roots with all detached ownership/session obligations, or the completed
+table and redistributed allocations. All include reached generation, root-write,
+dependency and Color history; none has a payload capability effect. Actual
+exits compress local carriers and check their corresponding summary arm; W2's
+ordinary constructor forms check/admit, and LC4/public E consumes the mapped
+Post at the existing joint gates. A normal paused return describes its real
+earlier effects, while a rejected semantic action publishes no delta at its
+own gate. The whole relink is several ordinary commits, not a new multi-slot
+atomic transaction. This proves only the stated finite protocol obligation,
+not arbitrary graph safety, collection or reclamation.

@@ -1440,6 +1440,7 @@ host operation. The final column points to the existing pending handoff.
 | validate_for_plan and into_box in W4 | L checks available library state and organizes conversion; X is needed only for otherwise underivable actual resource-generation/validity/exclusion/ownership facts. B still requires every normal consuming/construction Pre; full quantity is insufficient | W: LC7 and actual trusted facility/normal Object formation |
 | issue_full_part and initial resource acquisition in W4 | L transfers actual unallocated full-use authority into a complete part under B's normal action/ownership laws. Only a real external acquisition needs X for otherwise underivable ownership/validity facts. The amount 1, a Part constructor or a success tag is not an authority source | W: LC7 and ordinary resource acquisition/consuming formation |
 | fresh_allocation_data, issue_full_part_core, split_core, merge_core, into_box_core and their private State/table/cell operations in W4 | L constructs fresh ordinary owned cells/data, computes amounts, consumes actual inputs, removes/inserts finite rows and rebuilds complete results around the same held box. B supplies actual ownership, cell/entry identity, legal access, normal construction/extraction/Move and common publication. Only lawful insertion in actual State assigns a portion; fresh data alone grants none. No alias-to-box reconstruction is needed when returning the extracted held box | W: LC3–LC5/LC7 and ordinary library/collection consumers; X only for genuinely missing resource validity in an external realization |
+| inspect_relink, take_link, put_link, relink and Option/Link/root/session operations in W4 | L observes through registered root interfaces, computes the finite plan, consumes complete Options/Parts, constructs replacements, moves actual neighbor portions and composes the expanded accounting bodies. B requires actual distinct slot roots, resident-transfer and Part/State authority, ordinary access/cleanup/complete commits and mapped delivery. Neither root-write capability nor a plan supplies resident ownership or payload access. X is limited to genuinely external maintained session/transfer facts | W: LC3–LC5/LC7 and actual alias-root registrations/edit protocol; no whole-relink intrinsic |
 
 An implementation must expose this decomposition even if a temporary bootstrap
 realization uses host code. In particular compress_exit, form_post, adopt_origin
@@ -1507,6 +1508,109 @@ the original action/cut/mapping retained. An invalid later component publishes
 no part of that boundary delta. This storage discipline is not rollback of
 earlier independent actions or external effects. A common transaction callback
 alone proves neither source authority nor correctness of supplied material.
+
+### 9.4 Minimal authorization interface and operation rules
+
+The provenance map identifies where justification terminates. The following
+interface also fixes **what each authorized use may change**. Its rows are
+semantic responsibilities of existing ordinary actions, not a permanent
+intrinsic inventory. A source-defined facade may compose smaller operations;
+host bootstrap code and later source code must obey the same premises.
+
+| Illustrative facade | Actual authority and independent Pre | Only permitted result / lifecycle increment | Publication boundary |
+|---|---|---|---|
+| initialize_empty_root | Current InvokeName(I), independently authorized fresh formation window, declared complete-type target, live one-shot initialization authority and ordinary formation/lifecycle Pre | A complete empty structural type at that actual I, with its real roles/callspace; consume that target's initialization authority. No foreign root, read of an absent resident or world-writing privilege | Its own ordinary complete-formation commit, under the construction owner |
+| initialize_borrow_origin | Selected fresh producer/name/generation, its still-pending source-formation responsibility, actual authorized source target/generation and ranges, and legal dependency-formation Pre | Exactly the origin relation prescribed for that new name by the selected source action. No rewriting an older name or inventing termination/unknown material | Stage in that producer's scoped companion storage; publish only with its complete action and joint Post |
+| initialize_bounded_region | Same actual fresh producer/name and source; fixed generation cuts and admitted interval containment | The actual bounded region constraint, without extending the target or changing a cut | Same producer boundary |
+| begin_shared_dependency | Same producer/name/source, actual bounded interval and protected endpoints, compatible directed shared Color and existing access/validity premises | Shared dependency/Color constraints for those endpoints and that interval, retaining inheritance/history. No new access and no recoloring the past | Same producer boundary |
+| adopt_origin | Live entry/success-scoped boundary view with actual K/action/activation/cut/generation/result mapping; established permitted source relation and the origin operation's own Pre | Only its corresponding mapped origin consequence; transfer of the same scoped view, not another view with broader authority | Stage in that boundary's storage; all components publish jointly |
+
+These authorities are actual semantic relations established by their ordinary
+producers, not Objects which a user must construct as proofs. A NameValue,
+FreshNameView-shaped value, declared mode, OpenHere, bool or transaction callback
+does not establish them. The first row is owned by
+[current-instance construction](../symbol-world/structural-type-formation-and-composition.md#current-instance-initial-formation-handoff);
+the remaining rows refine the lifecycle responsibilities above. Type/member
+construction authority never becomes lifecycle-world update authority.
+
+The rules below are mathematical descriptions of ordinary E actions, not a
+contract language or another evaluator. Fix K and an already selected ordinary
+action A. n/g_n and s/g_s denote actual names with their generations; P denotes
+actual protected endpoints, and I their fixed admitted interval. F abbreviates
+the actual fresh producer's live, one-shot formation responsibility for n/g_n.
+scratch_A is that action's **unpublished projection material**, not a partial
+ordinary Object. The source origin o is fixed by the selected legal dependency
+realization, up to observational equivalence; it is not an arbitrary parameter
+chosen by a descriptor constructor.
+
+```text
+ActualFreshProducer_K(A, n/g_n), FormationScope(F) = (K,A,n/g_n)
+F covers this pending origin component and has not been used for it
+SelectedSource_K(A) = (s/g_s, P, o)
+ActualSourceAccess_K(A,s/g_s,P), OrdinaryFormationPre_K(A)
+I is the actual bounded result interval, I within source-target validity
+SharedCompatible_K(history, s/g_s, P, I), required access/Color premises
+-----------------------------------------------------------------------
+initialize_borrow_origin(F,s/g_s)
+  stages exactly delta_origin = { origin(n/g_n) = o } in scratch_A
+```
+
+The selected borrow source is the actual referent/range, not a local handle
+Place merely carrying it. The bounded-region and shared-dependency components
+can stage only their table rows for the **same** A/n/source/I; together they
+must satisfy the producer's ordinary joint gate. Origin initialization grants
+neither those components nor a second use of F. Successful complete publication
+discharges this formation responsibility. A previously published origin cannot
+be reset through an old view; a descriptor-state match or equal numeric value
+does not provide a fresh formation.
+
+For adoption, b abbreviates the actual entry or successful-result boundary,
+including K, selected action, activation, cut, names/generations, mapping theta
+and the permitted component domain. w must denote its live scoped view. r is an
+already justified entry relation or committed-success guarantee available at b.
+The ordinary mapped computation may use supported extraction/composition and
+lawful boundary compression, retaining actual unknown/termination and guarded
+source correlation; no general implication oracle is assumed.
+
+```text
+ActualView_K(w) = b, b authorizes the origin component at this phase
+r is established entry/success material at b, independently of C.check
+OrdinaryMap_K(r,theta) = permitted_origin_row
+proposed_origin_row = permitted_origin_row
+all independent origin/source/generation/scope and joint-boundary Pre hold
+-----------------------------------------------------------------------
+adopt_origin(w,proposed_origin_row)
+  stages exactly delta_origin = { permitted_origin_row } in scratch_b
+  transfers the same scoped view w with the same boundary and domain
+```
+
+OrdinaryMap names the result of the actual supported ordinary computation,
+not a new callable primitive. The operation cannot retarget a result, change
+its generation/cut, delete Color or restore access. It can transport an external
+fact already lawfully established by a previous trusted success, but cannot
+introduce a new external axiom. Such a fact still needs LC7's actual unsafe Post
+producer; ValidatedIndex or check=true supplies no formation/adoption authority.
+For fixed actual inputs, selected action, mapping and requested row, the
+permitted increment is unique up to observable equivalence. This does not fix
+storage normalization or require different legitimate weak contracts to expose
+identical summaries.
+
+```text
+any required premise false        => reject; published delta at this gate = empty
+any required evidence unavailable => unavailable; published delta at this gate = empty
+all required components/gates hold => one existing action/boundary publication,
+                                     with its ordinary joint Post
+```
+
+If origin was staged but a later region/Color/access component fails, none of
+that boundary delta is published. The failure rule is local to that gate:
+W2's earlier complete root initialization and child first writes, or earlier
+independent actions/external effects, are not rolled back. A normal returned
+error/paused variant is also distinct from semantic action rejection: its
+earlier real effects and current ownership need their own guarded Post, without
+an invented successful credential or completion claim. Neither case permits a
+selected failure to reopen overloads or retry with another authority source.
+LC3/LC4 source consumers for these interfaces remain pending.
 
 ## 10. Internal actions, origin compression and automatic Post
 
@@ -1868,6 +1972,15 @@ nor that conservation proves all safety, concurrency or reclamation properties.
 The [fourth walkthrough](lifetime-algebra-walkthroughs.md#4-alias-partbox-and-option)
 gives explicit transfer and failure boundaries. Container implementation,
 accounting representation, locking and reclamation remain library work.
+Its [finite relink program](lifetime-algebra-walkthroughs.md#relinking-topology-without-accessing-payload)
+makes the distinction concrete: incoming links carry Parts of their actual
+target resources; moving N between two neighbor pairs transfers those existing
+neighbor Parts and repartitions only Q_N. Registered root operations replace
+complete Options without acquiring payload refs. Its normal paused result
+owns the actual detached Parts/current roots and retains the edit protocol
+within its valid interval; it promises no rollback or completed topology.
+Every semantic action still has its own gate, including the
+[minimal authorization rules](#94-minimal-authorization-interface-and-operation-rules).
 
 ## 14. Proof obligations and engineering freedom
 

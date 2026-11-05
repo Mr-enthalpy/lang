@@ -1037,6 +1037,30 @@ executed coverage or independent case taxonomy:
   the displayed unsafe post syntax remain pending even when generic syntax
   carriers parse nearby ordinary constructs.
 
+- **LA07/LA08/LA19/LA29/LA30:** Apply the
+  [minimal authorization rules](../design/lifetime/lifetime-policy-and-overload-boundary.md#94-minimal-authorization-interface-and-operation-rules)
+  with the real fresh producer/source and mapped boundary. Compare a copied
+  view, reused initialization responsibility, different source generation,
+  invented unknown/termination, foreign activation/cut and proposed origin
+  unequal to the established mapped row. None authorizes a delta. If origin
+  staged but a later component fails, publish no part of that boundary delta;
+  do not undo earlier independent complete-type initialization or source actions.
+  The same permitted semantic increment follows from fixed actual inputs and
+  mapping regardless of its source/host realization or storage normalization.
+- **LA19/LA25/LA27/LA28/LA29:** Trace the
+  [finite relink](../design/lifetime/lifetime-algebra-walkthroughs.md#relinking-topology-without-accessing-payload)
+  from L--N--R/C--D to L--R/C--N--D. Takes install complete None and consume the
+  actual returned Option branches. Transfer the existing Q_L/Q_R/Q_C/Q_D Parts
+  to their final links; merging/splitting Q_N cannot create those other rights.
+  Reject a same-spelling/foreign root, missing default, absent resident-transfer
+  authority or stale/overlapping session. Root writes and routing ids give no
+  payload ref/access. Verify unchanged rejection, paused ownership of seven
+  actual Parts/current State/six None roots/active session, and completed
+  redistribution. A paused session cannot escape its admitted interval or be
+  released while exposing incomplete topology. Later semantic rejection
+  retains earlier commits/current ownership and never manufactures a repair
+  value, rollback, residual or successful topology claim.
+
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any
 row's full source chain. Future connections must add meaningful action-based
