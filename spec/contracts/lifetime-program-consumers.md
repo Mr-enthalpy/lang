@@ -23,6 +23,13 @@ Unconnected consumer dependencies:
 Fidelity/composition obligations:
 ```
 
+The [operation provenance map](../design/lifetime/lifetime-policy-and-overload-boundary.md#operation-provenance-map)
+also identifies the example facades' final justification sources: fixed basis
+observations/actions, ordinary lang composition, pending existing consumers and
+narrow external facts. A missing source consumer is not a new semantic primitive;
+an entire library/transform/adopt function cannot become a permanent opaque host
+operation merely because its inputs/outputs fit this template.
+
 Inputs retain K/action/cut, actual names and generations, selected
 candidate/projection/frame, dependency identities and semantic result consumer
 where required. Display paths, equal values, bare identity numbers, generic
@@ -235,9 +242,12 @@ Already committed history/Color and earlier external effects are not erased.
 - **Existing action that determines it:** Real external validation, batch
   partition, alias window or ownership/accounting operation under its ordinary
   call; the materializer provides the promised external behavior.
-- **Kind of ordinary lang program consumed:** Trusted library encapsulation
-  using ordinary lifecycle programs and post-directed external descriptions.
-  No unsafe pre and no admission before the missing Pre check.
+- **Kind of ordinary lang program consumed:** Ordinary planning, identity/amount/
+  range observation, control, consuming accounting and complete result programs,
+  with post-directed trusted descriptions only for otherwise underivable actual
+  facility facts. The [partbox composition](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-partbox-composition-program)
+  separates these calls; the whole library is not one trusted intrinsic. No
+  unsafe pre and no admission before the missing Pre check.
 - **Output lifecycle material:** Successful compatible external facts:
   credential source/interval/Color, actual disjoint ranges and new refs from
   original R, or valid excluded windows with fresh anonymous non-alias origins.
@@ -254,6 +264,10 @@ Already committed history/Color and earlier external effects are not erased.
   disjointness (not path inequality), surviving dependency checks, history and
   interval monotonicity, alias exclusion/escape, same-resource conservation and
   exact consumption. One-element partition omits only the pairwise test.
+  A proven separation of actual operation ranges in the strict ref tree with
+  no reconvergence suffices without a known numerical divergence depth. Neither
+  path-string inequality nor unknown separation proves it. Result tags/plans
+  and full quantities independently grant no part, box or ref authority.
 
 ## LC8. Regular access and cropping programs
 

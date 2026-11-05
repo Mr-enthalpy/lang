@@ -11,6 +11,11 @@ the stated Pre. Tables and `text` blocks describe material, not extra syntax.
 The suffix `*` in equations marks an already selected operation. A companion
 uses that selection's correspondence; erasing Stage never selects it again.
 
+The [operation provenance map](lifetime-policy-and-overload-boundary.md#operation-provenance-map)
+classifies the example names as basis observations/actions, ordinary lang
+composition, pending consumers and necessary external facts. It is a dependency
+map, not a list of required host intrinsics.
+
 ## 1. Branches, recursion and nested InPlace exits
 
 ### Source and selected actions
@@ -814,6 +819,14 @@ must implement a sound, lightweight test for this facility's abstract ranges.
 Address-as-integer comparison is no language axiom. Representation and exact
 cost belong to machine/library work, not the access algebra.
 
+The separating depth need not be known numerically. For example, a maintained
+tree/range relation can show that A1/A2 are confined to distinct descendant
+branches of R and cannot meet again, without exposing the prefix length at
+which they diverged. That suffices under the remaining Pre. It does not permit
+a whole-ancestor operation merely because both ranges use that route. A later
+meeting, overlapping ancestor endpoint or unavailable separation invalidates
+the argument. Finite regular-state reuse alone is not actual tree separation.
+
 ## 4. Alias, partbox and option
 
 ### Root-only alias and a bounded window
@@ -903,3 +916,131 @@ or cycles. Conservation alone proves neither collection of all rights, memory
 safety, concurrency correctness nor automatic reclamation. Those remain
 specific library proof obligations; this example asserts only a possible
 protocol with explicit evidence and failure boundaries.
+
+### Ordinary partbox composition program
+
+This **design illustration** is a small library composition, not a builtin
+resource type or executable coverage. Part, snapshots, plans and result variants
+are ordinary library Objects with registered Pattern/constructor interfaces.
+The admitted Amount family has exact nonnegative addition and subtraction on
+ordered operands; a bounded representation must supply its ordinary overflow/
+failure contract. Sharing/cloning an amount or identity snapshot copies no part
+or resource authority. Interface names below are schematic.
+
+The first ordinary function calculates data only. part_snapshots supplies actual
+resource identity, generation and quantities observed from the two input parts;
+it does not create rights from those fields. same_resource compares actual
+identity, not equal content or a path string. Both Boolean tests and arithmetic
+are library lang code, with no unsafe admission:
+
+```lang
+let plan_repartition =
+    (self, view:PartPairView::, wanted:Amount::):runtime -> _:PlanResult:: => {
+        let (qa, ga, na, qb, gb, nb) = view |> pair_fields::partbox;
+        let same = ((qa share, qb) |> same_resource::partbox,
+                    (ga share, gb) |> same_generation::partbox)
+            |> both::bool;
+        same
+            |> if {
+                let total = (na, nb) |> add::amount;
+                let fits = (wanted share, total share) |> not_greater::amount;
+                fits
+                    |> if {
+                        let rest = (total share, wanted share) |> subtract::amount;
+                        (qa, ga, total, wanted, rest) |> ready_plan::partbox return;
+                    }
+                    |> else { () |> bad_amount::partbox return; };
+            }
+            |> else { () |> different_resource::partbox return; };
+    };
+
+let repartition_or_box =
+    (self, a:Part::, b:Part::, wanted:Amount::):runtime -> _:PartResult::
+        lifetime pre (a@, b@)..owned_parts()
+        => {
+            let view = (a share, b share) |> part_snapshots::partbox;
+            let plan = (view, wanted) |> plan_repartition;
+            plan?
+                |> (_, let why:RejectedPlan::) {
+                    (a, b, why) |> rejected::partbox return;
+                }
+                |> (_, let ready:ReadyPlan::) {
+                    let status = ready share |> validate_for_plan::partbox;
+                    status?
+                        |> (_, let why:ValidationFailure::) {
+                            (a, b, why) |> rejected::partbox return;
+                        }
+                        |> (_, let _:ValidationOk::) {
+                            let merged = (a, b) |> merge_parts::partbox;
+                            let full = merged share |> is_full::partbox;
+                            full
+                                |> if {
+                                    let owned = merged |> into_box::partbox;
+                                    owned |> boxed::partbox return;
+                                }
+                                |> else {
+                                    let (left, right) =
+                                        (merged, ready) |> split_ready::partbox;
+                                    (left, right) |> repartitioned::partbox return;
+                                };
+                        };
+                };
+        };
+```
+
+The sum branches and `?` are ordinary registered extraction, with normal target
+return through InPlace scopes to the corresponding Ordinary function. Neither
+`?` nor a rejected branch supplies implicit error propagation. owned_parts is
+an ordinary lifecycle contract expression over established input capabilities,
+not a type-name-based ownership assertion or an unsafe Pre. Its entry check,
+normal Param/input Move and all inner operation Pre precede their mutations.
+
+| Step | Library lang work | Basis/consumer or trusted boundary |
+|---|---|---|
+| Entry and snapshots | Check the mapped owned-input contract; observe the real Q/generation/amount fields through legal share views; end those temporary views before consuming the parts | Ordinary call, access/borrow and lifecycle observations; no rights from copied metadata |
+| Plan | Compare Q/generations; calculate total=na+nb, wanted<=total and rest=total-wanted; construct ReadyPlan or a rejected ordinary value | Ordinary identity/amount/Pattern operations. The plan describes an allocation, not permission to execute it |
+| Resource validation | Invoke the selected validate_for_plan realization on Q/generation and its plan; branch on its ordinary result | Already available owned-state facts may suffice in a source-defined realization. The illustrated external-resource realization uses a narrow trusted check and compatible unsafe success Post for otherwise underivable validity/interval facts, never for the arithmetic or whole partbox function |
+| Merge | merge_parts checks the two actual capabilities, same-resource/current-generation and conservation; consumes a/b once and forms a complete merged part | Ordinary library consuming extraction/accounting/construction over its privately admitted resource interface; common Pre/commit/Post. These internals must be decomposed under the provenance map, not installed as an opaque partbox intrinsic |
+| Partial split | split_ready consumes merged under its own Pre, uses the already computed wanted/rest allocation and forms two complete parts of Q | Ordinary library operations preserve total quantity and actual rights; no duplicate part, partial Object or new ref/share capability |
+| Full conversion | is_full observes the amount only. into_box additionally checks actual ownership, validity, no conflicting windows/dependencies and every other normal Pre, then consumes the full part and forms the complete ordinary box | This is the first normal-world owned box in the function. If the chosen representation needs trusted alias-to-value/ownership facts, only that narrow facility supplies them; full amount or ValidationOk alone cannot |
+| Return and Post | Construct rejected/boxed/repartitioned, transfer actual results once, compress actual local names and validate the corresponding conditional summary | Ordinary result formation, LC5 advance summary/actual-exit relation, LC4 check/admit and public E's joint Post |
+
+For the external-resource realization, the validator's declared successful Post
+binds the fact to the actual Q/generation and finite composition interval. Its
+facility must maintain the condition until the consuming operations finish,
+including constraints on invalidating concurrent/window actions. The check
+itself needs an ordinary legal observation route; unsafe Post cannot authorize
+an invalid dereference retroactively. An alternative source-defined validator
+with sufficient existing facts is a separate ordinary realization, not a retry
+after this one's failure or unavailable observation.
+
+ValidationOk is an ordinary result branch, not a user-supplied proof Object or
+a right minted by its constructor. Forging the same data yields no established
+Post. merge_parts, split_ready and into_box independently require actual input
+and mapped-world authority. The boolean full likewise cannot authorize box
+formation. If its selected conversion fails, execution does not fall back to
+the partial branch or another overload.
+
+Rejected planning/validation returns the currently owned input parts through
+ordinary result Moves; it does not undo or resurrect their caller-side input
+generations. No merge/split rights have been consumed on those branches. The
+demonstrated success path assumes each selected operation's actual Pre holds.
+If a later operation fails after merge committed, any normal failure protocol
+must describe the **current** merged/intermediate ownership and cleanup; it
+cannot pretend a/b were restored. Missing consumers/facts are unavailable and
+no success Post is published.
+
+On the partial branch the caller receives parts and at most their separately
+admitted restricted alias interfaces. On the full branch it receives the owned
+box as an ordinary result. A subsequent `box ref` requires the caller's actual
+bound Place and normal borrow Pre; this function does not return a ref to its
+own local owned variable. No normal ref arises from an amount calculation.
+
+The omitted explicit Post uses the already formed structural descriptions and
+exposed contracts of these library calls to form a guarded summary before use,
+as in W2. Runtime execution validates its reached branch. The failed-validation
+summary carries no success fact; successful accounting rows preserve Q, quantity,
+single consumption and dependency/Color history; box formation has its own
+selected producer Post. The complete sequence remains ordinary lang composition
+plus narrow justified facilities. None of the source programs or consumers in
+this illustration is connected by this documentation revision.

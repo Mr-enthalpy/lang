@@ -1255,6 +1255,55 @@ does not supply true, NoDelta or a default root at this gap. Ordinary scoped
 recursion and E remain the only program evaluation; no proof Object, external
 prover, privileged success flag or extra evaluator is introduced.
 
+#### Operation provenance map
+
+The following map classifies the walkthrough names by their **semantic source**,
+not by which Rust function might initially implement them. B/L/X are justification
+sources; W records a missing consumer and is orthogonal to them. One spelling may
+therefore be ordinary composition over a basis observation with source wiring
+still pending. None of these rows freezes an API or an intrinsic count.
+
+| Class | Meaning / endpoint of justification |
+|---|---|
+| B: basis responsibility | The already fixed A0 observation/action laws and actual authority: names, source-established origin, actual cuts/regions, directed Color/access facts, complete formation, borrowing/Move and common publication. A basis fact is not produced merely by copying its carrier |
+| L: ordinary lang composition | Pattern extraction/construction, calls, arithmetic/Boolean computation and supported relation transforms over those available facts. Its dependencies must terminate in B or actual compatible X facts |
+| W: unconnected consumer | The source-to-semantic handoff for an existing relation/program is missing. W grants no fact and cannot be implemented by substituting another semantics |
+| X: trusted external fact | A real facility supplies otherwise underivable resource/validation/exclusion facts by compatible unsafe Post after its ordinary Pre and actual success; failure supplies no success fact |
+
+Namespaces below are the schematic ones used in the walkthroughs. Grouping
+operations means they share a source, not that their bodies may be one opaque
+host operation. The final column points to the existing pending handoff.
+
+| Example operation(s) | Source / ordinary expansion and final dependency | Pending handoff |
+|---|---|---|
+| @, observe_origin | B supplies actual name/generation/origin observations; ordinary field/Pattern reads expose their existing link/unknown/termination material. observe_origin is not permission to invent that material | W: LC2/LC3 and ordinary name/reification/field consumers |
+| split_link, split_row, split_outward_row, split_exit, select_one_parts, contract_rows | L: registered ordinary extraction of complete descriptive values. B is their actual formation/role/identity and extraction law, not source spelling or fixture import | W: LC1/LC4/LC5 |
+| origin_accum, prepend_row, exit_material, guarded_exit_pattern | L: ordinary complete Products/registered constructors retaining bound roles, guards and all effect rows; B is complete construction and the input material's origin | W: LC1/LC5 |
+| compose_link, retain_unknown, retain_termination | L: compose one available relation edge or retain its actual endpoint, using B's region order, inherited Color, access and source facts. Each adopted relation/algorithm needs its stated domain; no general solver is assumed | W: LC5/LC8 |
+| map_outward_row, map_delivery | L: eliminate local reads and apply the established actual/bound delivery mapping. B is ordinary scope/return/result identity; no new target, validity or authority is synthesized | W: LC5 and ordinary delivery |
+| compress_origin, compress_rows, compress_exit | L: the explicit recursive W1 programs over the preceding operations and justified finite/regular families. They are not irreducible lifecycle primitives | W: LC5/LC8 |
+| source_frame, selected entries, function_boundary, true_boundary, false_boundary, middle_boundary, inner_boundary, available_guard | W exposes existing semantic body/control/call correspondence. B is the actual formation/activation/cut/selection and legally available control observation; Frame-shaped user data or unknown future control supplies none | W: LC2/LC3 and control/completion |
+| share_fuel, is_zero, predecessor, move_leaf_result, recursive_input, return_exit, returned_call_exit in selected | The original selected ordinary operation and its established counterpart/contract determine these projections. L composes them; B supplies actual borrow/Move/formation/return laws and single transfer. Numerical helper meaning stays with its original ordinary callee, not a new lifetime builtin | W: LC2/LC3 and ordinary callee execution |
+| transform_formed_arm and the advance summary | L: compose established operation descriptions, eliminate bound locals and retain guarded effects. B is actual semantic material formation and counterpart fidelity; an exposed modular contract can replace unavailable private structure | W: LC1/LC2/LC5/LC6, including adopted recursive-family evidence |
+| initialize_empty_root::construction | B is general complete type formation at the already authorized current target and one-shot initialization, not a special lifecycle type factory. The example source facade exposes that existing action; its NameValue argument creates no permission | W: LC4 and current-instance initial formation |
+| qualified let, explicit child ref, first write, captures, self return; form_post | L: the expanded W2 construction/call program. B is ordinary OpenHere/name/Place/initialization, closure dependency, self-root and return rules; it cannot justify its own initial Pre | W: LC4 and ordinary source construction/delivery |
+| clone::lifetime | An actually selected ordinary share/clone/Move path over immutable descriptor data. B is its real producer Post and complete result formation; cloning data copies no semantic-world authority | W: LC3 and ordinary clone producers |
+| source_matches, region_fits, color_compatible, access_is_subset, effects_match, all_true/both | L: mapped observation, supported finite relation queries and Boolean folding. B is the actual source/history/region/Color/access evidence; a true answer creates none of it | W: LC4/LC8 |
+| adopt_origin, adopt_region, adopt_color, adopt_access, adopt_effects, end_boundary_view | L: map/extract the relevant rows, check their independent operation premises and thread/end the same scoped view. The B leaf is the narrow existing authority-checked projection update and joint-publication boundary, not an unrestricted fact setter or the whole adopt function. New external facts additionally require X | W: LC3/LC4; X enters only through LC7 |
+| try_trust, partition_refs | L: ordinary observation, control, range planning and ownership/result assembly; B supplies actual input/source authority and ref formation. X is only the otherwise underivable successful validation/disjointness fact and its maintained interval, not the entire function | W: LC3/LC7/LC8 and materialization |
+| with_ref_window, trusted alias-to-value conversion | L organizes callbacks, ordinary operations and cleanup; B supplies real normal ref/value formation under Pre. X maintains actual validity/exclusion/ownership that alias names or fresh anonymous origins cannot prove | W: LC7 and normal escape/borrow/delivery |
+| owned_parts, part_snapshots, pair_fields, plan_repartition, same_resource/same_generation, amount queries/arithmetic, is_full, split_ready, merge_parts and result constructors in W4 | L: ordinary contract/field observations, arithmetic, consuming extraction, resource accounting and complete result formation. B supplies actual operand capabilities and ordinary lifecycle/construction laws. Quantity or an equal id alone mints no part | W: LC3/LC7 and ordinary library/type consumers |
+| validate_for_plan and into_box in W4 | L checks available library state and organizes conversion; X is needed only for otherwise underivable actual resource-generation/validity/exclusion/ownership facts. B still requires every normal consuming/construction Pre; full quantity is insufficient | W: LC7 and actual trusted facility/normal Object formation |
+
+An implementation must expose this decomposition even if a temporary bootstrap
+realization uses host code. In particular compress_exit, form_post, adopt_origin
+and partbox are not justified as permanent indivisible host black boxes. The
+ordinary programs should consume the smallest justified observations/operations;
+unconnected consumers stop unavailable. No row authorizes deriving a pending
+contract from itself, publishing a supplied callback as proof, or replacing
+ordinary bodies with source-string recognition. The [library composition example](lifetime-algebra-walkthroughs.md#ordinary-partbox-composition-program)
+shows where L, B/W and X meet on a concrete path.
+
 ### 9.2 Safe adoption is narrower than mutable observation data
 
 The world-ref interface of §9 denotes an actual authority-scoped boundary view,
@@ -1534,6 +1583,16 @@ retained. Shares are not strengthened/recolored into refs. It must preserve:
   retracting their historical Color;
 - single consumption and complete atomic publication at the existing action
   boundary, with no success permissions on failure.
+
+No particular divergence depth or explicit path prefix length is required.
+For each pair, sufficient evidence can establish that their **actual operation
+ranges** lie in separated branches of the original strict ref tree and never
+reconverge. Shared routing ancestors grant no whole-ancestor operation. In that
+case disjointness follows even when the numerical depth of separation is
+unknown. This is an actual tree/range fact, not an inference from unequal path
+strings or reused regular descriptor states; an ancestor-whole range, later
+meeting or unknown separation supplies no such evidence. Dynamic facilities
+must establish the same relation, not replace it with address arithmetic.
 
 Disjointness may be available statically or supplied by a small trusted dynamic
 validator's successful Post. For one input no pairwise partition comparison

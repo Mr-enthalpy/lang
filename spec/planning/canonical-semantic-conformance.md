@@ -952,6 +952,23 @@ executed coverage or independent case taxonomy:
   representation, or deciding arbitrary infinite fact sets from finiteness is
   not permitted. Missing adopted relation evidence remains unavailable.
 
+- **LA21/LA22/LA30:** Retain a strict-ref-tree relation proving that actual
+  operation ranges separate and cannot reconverge, while the numerical depth
+  is unavailable. With other Pre satisfied, no concrete prefix enumeration or
+  extra depth test is needed. Compare an ancestor-whole operation, later meeting
+  or missing actual separation: unequal strings or regular-state reuse cannot
+  legalize them.
+- **LA19/LA27/LA28:** Trace the [ordinary partbox program](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-partbox-composition-program)
+  through mapped Pre, actual identity/quantity observation, ordinary planning,
+  narrowly scoped validation, real consumption/complete formation and guarded
+  Post. Plans, ValidationOk and full amount grant no new authority. Early
+  rejection returns currently owned inputs through normal Moves; a later failure
+  cannot resurrect consumed inputs. Only the selected lawful into_box producer
+  forms a normal box; subsequent ref acquisition is separate. Use the
+  [provenance map](../design/lifetime/lifetime-policy-and-overload-boundary.md#operation-provenance-map)
+  to trace every facade to its basis/composition/consumer/external-fact source,
+  rather than supplying opaque host implementations of the whole example.
+
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any
 row's full source chain. Future connections must add meaningful action-based
