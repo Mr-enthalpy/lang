@@ -1571,8 +1571,12 @@ again. `@`, `==`, `||`, `~`, field calls and namespace Paths retain their ordina
 operator/Pattern/ADL interpretations and real registrations; a diagram's `*`
 marks an operation already selected, not new source syntax.
 
-Implemented functions with omitted explicit Post use automatic formation from
-their projected actions and actual exits. Handwritten Function Patterns with
+Implemented functions with omitted explicit Post form a conditional summary
+from already formed semantic body/operation descriptions before contract use.
+Actual exits separately compress reached material and validate it against that
+summary; no future branch execution supplies the advance contract. Both source
+consumers are pending under [LC5](../contracts/lifetime-program-consumers.md#lc5-exit-compression-and-automatic-post).
+Handwritten Function Patterns with
 omitted Post still promise NoDelta. The four
 [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) show the
 design data flow, including ordinary option extraction by `?` rather than new

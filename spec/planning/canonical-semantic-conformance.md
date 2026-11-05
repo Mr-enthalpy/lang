@@ -893,7 +893,7 @@ decider assumed by this matrix.
 | LA24 | Batch has one input, with ordinary source/validity/exclusion Pre satisfied or failed | No pairwise partition runtime validation is needed. All other Pre still apply; degenerate arity is no blanket success | LC7; W3 |
 | LA25 | Alias root replacement/extraction has actual defaults; compare missing defaults and traversal | Registered root operation may proceed under its Pre. Shape alone supplies no default; alias cannot cross into ref/share or inherit their tree. Lexical Path aliases are unrelated | LC7/LC8; W4 |
 | LA26 | Open a valid alias-to-ref callback window versus an overlapping/invalid or escaping one | Facility maintains actual validity/exclusion and blocks conflicting alias actions for the entire window. Fresh pairwise distinct anonymous roots are not alias origins and prove no window legality/disjointness | LC7; W4 |
-| LA27 | Consume partbox shares of the same resource with quantities compile-known or runtime-known | split/merge consume inputs and conserve quantity on actual successful transfers. Equal quantities of different resources cannot merge; copying a number does not duplicate a right | LC3/LC7; W4 |
+| LA27 | Consume partbox parts of the same resource with quantities compile-known or runtime-known | Parts are accounting fractions, not T share borrows. split/merge consume inputs and conserve quantity on actual successful transfers. Equal quantities of different resources cannot merge; amount alone grants no ref/share access and copying a number duplicates no right | LC3/LC7; W4 |
 | LA28 | Convert nonfull/full partbox and update option topology links while using payload | Nonfull yields only restricted alias; full still requires every other Pre before consuming to box. Option extraction/replacement is ordinary complete-object action; topology/payload authority are distinct, not a general graph/reclamation theorem | LC3/LC7; W4 |
 | LA29 | Crop/compress/admit external facts or rewrite continuation with O | No operation retracts committed history/color. Old intervals may end legally; new exclusive intervals do not recolor the past. O revalidates affected projections at rewritten names/cuts | LC2/LC3/LC5/LC7/LC8; all |
 | LA30 | Any needed source producer, recursive evidence or materializer facility is unconnected | Report its unavailable diagnostic, or transport only an actual established remaining continuation. No default permission, invented residual, runner-up, ABI switch or independent checker/string test | LC1–LC8; all |
@@ -935,6 +935,22 @@ executed coverage or independent case taxonomy:
   through sibling handle transfers. Unknown roots, other effects and target
   validity survive compression; choosing two simultaneous exclusive targets or
   returning a true borrow of a dying local is rejected.
+
+- **LA02/LA05/LA08/LA30:** With runtime choose still unknown, the
+  [formed-body transform](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness)
+  obtains both guarded ref-arm descriptions from semantic formation and fixed
+  counterparts, exposes the conditional summary before call execution, and
+  publishes neither arm's effects. At a real successful exit the mapped actual
+  Post implies the summary's corresponding guarded alternative, including all
+  effect rows. Missing descriptions/transforms or an invalid actual relation
+  cannot be repaired by executing future arms, selecting the other row after
+  failure, inventing a residual or substituting one late Exit for the summary.
+- **LA14/LA15/LA30:** A completed Pre correction has finite description material;
+  a finite regular descriptor may still denote infinitely many potential walks.
+  Each actual access retains its tree/region/Color premises. Counting the
+  descriptor's denotation as necessarily finite, granting all paths from its
+  representation, or deciding arbitrary infinite fact sets from finiteness is
+  not permitted. Missing adopted relation evidence remains unavailable.
 
 Current tests cover syntax carriers, supplied-fact lifecycle relations and the
 common transaction's cleanup/Pre/joint-publication slices. They do not close any

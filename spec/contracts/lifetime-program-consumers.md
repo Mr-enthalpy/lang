@@ -156,32 +156,50 @@ Already committed history/Color and earlier external effects are not erased.
 
 ## LC5. Exit compression and automatic Post
 
-- **Input material:** Actual exit kind and target activation, selected actions
-  and full guarded effects, locals/external names, available origin links,
-  explicit None/unknown boundaries, region/Color/path/source relations and
-  mapped result positions that really exist.
-- **Existing action that determines it:** Ordinary block/call delivery,
-  fallthrough or reachable target completion, with cleanup fixed beforehand.
-- **Kind of ordinary lang program consumed:** Ordinary field extraction,
-  relation/regular-material composition, local elimination and supported
-  correlated Pattern transforms, followed by LC4 self-root Post formation.
-- **Output lifecycle material:** Outward material independent of local-name
-  reads but retaining all required external/unknown-root, source-choice,
-  region/Color/path/effect information; automatic Post for a body with omission.
-- **Commit/delivery boundary:** Each real boundary while locals are available.
-  Target return through InPlace exports its actual exiting material, never a
-  local unit or fabricated result; only the target delivers ReturnPattern/Pout.
-- **Failure or unavailable result:** Expiring-target escape rejects; missing
-  traversal/combination evidence is Unavailable. Failure/unfinished exits
-  deliver no success Post. Missing origin does not terminate as None.
-- **Unconnected consumer dependencies:** LC1–LC4, actual return/completion,
-  result/escape consumers and boundary program definitions.
-- **Fidelity/composition obligations:** Retain historical events and Color,
-  correlated effects and unknown identity; cropping/compaction never amplifies
-  validity. Prove nested-boundary observational composition and each adopted
-  choice/recursive combination separately; no universal join/commute theorem.
-  Compression traverses every outward dependency/effect row, not just the result
-  origin, at each real boundary as in the expanded W1 program.
+- **Input material:** At contract formation, the semantically formed body
+  Pattern/structure as complete ordinary material, bound roles/scopes/guarded
+  alternatives and established selected-operation structural descriptions or exposed sufficient
+  modular contracts. At actual exit, the reached path/activation, actual names/
+  generations/cuts, committed history, available origin/None/unknown observations
+  and full region/Color/path/source/effect/delivery mapping. These inputs differ;
+  a future Exit is not a formation-time observation.
+- **Existing action that determines it:** Ordinary semantic body/closure/Pattern
+  formation supplies the guarded descriptions through LC1/LC2, independently of
+  future execution. Actual block/call delivery, fallthrough or target completion
+  supplies reached material, with cleanup fixed beforehand. Raw/Norm shape and
+  source spelling alone supply neither semantic input.
+- **Kind of ordinary lang program consumed:** At formation, supported structural
+  relation composition, bound-local elimination and guarded Pattern construction
+  without invoking the described actions. At exit, ordinary observation/traversal
+  and actual local-name compression. Both retain every outward row and use LC4's
+  ordinary self-root contract construction on their distinct typed material.
+- **Output lifecycle material:** A conditional Post_summary available before
+  exposing the automatically summarized callable contract for use; separately,
+  Post_actual for each actual legal successful exit. The summary retains guard/
+  source/effect correlation without future world updates; actual outward material
+  eliminates local-name reads and is validated against the instantiated summary.
+- **Commit/delivery boundary:** Summary formation is a real ordinary computation
+  at the formed-body/contract boundary; it publishes no described branch effects.
+  Actual compression occurs at each real exit while its observations are
+  available, and successful mapped Post adopts through common joint publication.
+  Target return through InPlace creates no local unit or fabricated result.
+- **Failure or unavailable result:** Missing selected descriptions, sufficient
+  modular guarantees, lawful structural transforms or founded recursive-summary
+  results makes summary formation Unavailable; no future-path speculation or
+  delayed single-path substitute completes it. Missing actual traversal/mapping
+  is Unavailable; expiring-target escape or summary mismatch rejects without
+  reopening. Failure/unfinished exits publish no success Post; missing origin
+  establishes neither None nor a new unknown root.
+- **Unconnected consumer dependencies:** LC1–LC4, semantic guarded-body material
+  production, structural summary and recursive/modular family programs, actual
+  return/completion/result/escape and corresponding exit programs. Both consumer
+  boundaries remain pending, not independent executors or Policy stages.
+- **Fidelity/composition obligations:** For each supported family and actual
+  ordinary mapping theta_p, Post_actual(p,theta_p) implies Post_summary(theta_p)
+  on every legal successful path. Preserve external/unknown-root identity, all
+  region/Color/path/guarded-effect rows and real delivery; no validity expansion
+  or history erasure. Prove adopted nested/choice/recursive combinations, not a
+  universal join/implication theorem. See the [select_one witness](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness).
 
 ## LC6. Function Pattern and recursive interface consumption
 

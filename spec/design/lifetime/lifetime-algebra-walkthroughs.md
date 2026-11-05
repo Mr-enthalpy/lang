@@ -189,7 +189,7 @@ let descend_life =
 let r_l = r@;
 let fuel_l = fuel@;
 let outward = (source_frame, r_l, fuel_l) |> descend_life;
-let post_type = outward |> form_post::lifetime;
+let actual_post_type = outward |> form_post::lifetime;
 ```
 
 The last four lines are the projection entry at the source boundary, with
@@ -211,8 +211,11 @@ unknown, E leaves the actual guarded continuation unfinished, or reports the
 unavailable observation when its transport consumer is missing. It does not
 run both branches. An ahead-of-execution **summary** of both arms must instead
 use their already formed guarded Pattern material and the justified modular
-family; the traversal above does not create that evidence by executing future
-actions. This is the same ordinary frontier rule as in the source function.
+family. Its source and formation-time transformation are spelled out in the
+[select_one summary witness](#advance-summary-and-actual-exit-witness). The
+program above is the **actual-exit** consumer: actual_post_type is a precise
+realized-path result, not the way to obtain the callable's advance summary.
+The traversal does not create that evidence by executing future actions.
 
 descend_life is an Ordinary closure with its own self/activation. The `|> self`
 call sites use its CallAnchor projection for recursion, independently of the
@@ -241,7 +244,7 @@ The following table relates the spelled-out program to its source material:
 | Leaf, return | Actual transferred handle name d; origin(d)=origin(r) for Kill Move; region(d) begins at the transfer cut | Crossing each real exit compresses local dependencies; no intermediate normal result |
 | More | predecessor consumes current fuel under its own Post; n has fresh complete identity and selected origin, not guessed from numeric equality | No pre-move followed by fallback clone |
 | Recursive call | Current r and n transferred once to F_(i+1), selected self/Param and actual returned material | Instantiate recursive exposed contract, not its private history; then deliver to F_i |
-| Outer boundary | Guarded origins plus every branch's use/move/drop/Color effects and actual exits | Compress, form self-root Post type; body checks Post; caller admits it |
+| Outer boundary | Reached origins and all mapped use/move/drop/Color effects at actual exits | Compress actual Post and check it against the already formed summary; caller adopts only successful mapped Post |
 
 For the restricted family whose only outward delta is handle-source delivery,
 both arms retain the same external unknown root U from r and the result has
@@ -290,9 +293,11 @@ by the lifecycle program to satisfy a constraint.
    and records F0's real return event. The last two compression calls process
    F0's branch/function exits. No extra source result binding, old-generation
    Drop, reborrow or second input Move appears.
-6. The ordinary form_post program below consumes that complete outward Exit,
-   initializes its own authorized root I and installs check/admit. Body Post
-   checking uses the actual mapped result/history. Caller Post adoption uses
+6. The ordinary form_post program below can consume that complete outward Exit
+   to form a precise actual contract. The callable's automatic summary is
+   already available from formed body structure, through the distinct W2
+   transformation below. Body Post checking requires the mapped actual result/
+   history to satisfy that summary. Caller Post adoption uses
    the corresponding success-scoped world view and the independent component
    update premises, then participates in public E's joint Post publication.
    It imports the summary; it does not replay steps 1–5.
@@ -402,10 +407,13 @@ Unknown roots retain identity and dependency obligations.
 
 ### Choice, Post and its ordinary construction
 
-Use **compress each guarded arm, then combine** for this example. The input
-arms have a common mapped boundary vocabulary, legal independent exits, the
-same exposed output interface and a defined choice-material constructor.
-Retain each arm's source and effects together:
+Use **transform each formed guarded arm description, then combine** for the
+advance summary. Those descriptions come from semantic body formation as
+specified below; they are not two actual Exit values obtained by running both
+arms. Actual-exit compression separately processes the one reached arm. The
+arms have a common mapped boundary vocabulary, legal exit relations, the same
+exposed output interface and a defined choice-material constructor. Retain
+each arm's source and effects together:
 
 ```text
 (true,  source=r1/p1/U1, region R_true, paths A_true, effects H_true)
@@ -427,11 +435,98 @@ Any additional observable H_true/H_false remains guarded in the full Post.
 admissibility; that alone does not establish the selected source and transfer
 delta needed by admit. The operations have different consumer roles.
 
-The guarded arm descriptors can be assembled by an ordinary registered choice
-constructor **after** the per-arm compression spelled out in W1. The resulting
-Exit retains source/effect correlation and every outward row. There is no
-required intermediate contract Object or formula string. The next program
-consumes that ordinary material directly.
+The resulting guarded Pattern retains source/effect correlation and every
+outward row. It is distinct from W1's actual Exit material. Both are ordinary
+inputs to the contract construction below; neither requires a wrapper contract
+Object or formula string.
+
+### Advance summary and actual-exit witness
+
+For select_one_ref, semantic formation of the body supplies these available
+materials without observing choose or performing either return arm:
+
+| Formed body component | Origin of its meaning / retained description |
+|---|---|
+| Input/output roles | Ordinary head/call formation supplies bound r1/r2 and o positions; actual names and activation are supplied by later ordinary call mapping |
+| Guarded alternatives | The formed ordinary bool/branch structure supplies a guard position g with true/false alternatives; the runtime value of g is not observed |
+| Per-arm operations | The established selected handle-transfer and return counterparts supply their structural relations, including target/origin inheritance, permitted region constraints and all effect rows |
+| Scopes and locals | Actual formed closure/dependency/return structure supplies the local binder positions a/b and crossed InPlace/function boundaries; it does not create their future generations or cuts |
+
+The selected Move relation in the first arm describes target(a)=target(r1) and
+origin(a)=origin(r1) for its killing transfer; the analogous second-arm relation
+uses r2/b. These are descriptions of the already determined operations. The
+structural transformer substitutes/composes those bound relations to eliminate
+a/b from the outward Pattern, retaining target validity, inherited colors,
+access and every effect. It does **not** ask observe_origin for a nonexistent
+future a@, execute move_leaf_result, or manufacture an actual unknown root.
+External unknown-root parameters retain their identities through actual mapping.
+
+The callable form_post is assumed already formed; its definition is expanded
+below. These explanatory excerpts do not request forward lexical lookup. One
+possible ordinary program arrangement is:
+
+```lang
+let (roles, guard, left_body, right_body) =
+    formed_select_one_body |> select_one_parts::lifetime;
+let left_rows = (left_body, roles share) |> transform_formed_arm::lifetime;
+let right_rows = (right_body, roles) |> transform_formed_arm::lifetime;
+let conditional = (guard, left_rows, right_rows)
+    |> guarded_exit_pattern::lifetime;
+let post_summary_type = conditional |> form_post;
+```
+
+formed_select_one_body is supplied by the ordinary **semantic** body/Pattern
+consumer with those established descriptions. It is not Raw/Norm syntax, source
+text, an arbitrary user-shaped record or a list of guessed future actions.
+transform_formed_arm operates on the bound relation rows just enumerated:
+compose the selected transfer/return relation, eliminate local positions at each
+described boundary, and preserve the guard-correlated rows. Unlike W1's
+compress_exit, it requires no executed-path history or available runtime guard.
+Both transformations have the same outward observation obligations. The final
+constructor packages ordinary guarded Pattern material; it commits no described
+world effects. Its own ordinary computation/formation still obeys E and the
+bootstrap basis.
+
+For the complete supported family, the summary type is available **before a
+consumer needs the callable's complete contract**, including before execution
+of the selected call. The ordinary invocation instantiates formal roles/guards/
+scope positions at the actual mapping theta. It does not decide the guard.
+Here the summary's return component is from(r1@ || r2@), with the complete
+correlated alternatives:
+
+```text
+(g=true,  source=r1, target=Q1, unknown_root=U1, regions=R1, colors=C1, access=A1, effects=H1)
+||
+(g=false, source=r2, target=Q2, unknown_root=U2, regions=R2, colors=C2, access=A2, effects=H2)
+```
+
+Q/U/R/C/A/H are mapped parameters and relational constraints in the summary,
+not already committed future Objects/events. H includes unselected-handle
+cleanup and every other exposed effect. U is the retained first unknown origin
+boundary, not a replacement for the actual direct origin link. W1's actual-exit
+compression helpers, applied to select_one_ref, later deliver this witness for
+each legal successful path:
+
+| Actual path p | Actual compressed material | Why it satisfies the instantiated summary |
+|---|---|---|
+| choose=true | The selected sibling handle transfers and real return preserve Q1/U1; actual regions/colors/access/effects satisfy the first arm's composed constraints | theta_p fixes g=true and maps the actual generations/cuts to R1/C1/A1/H1, so the first guarded alternative holds |
+| choose=false | The corresponding actual r2/b transfer and return preserve Q2/U2 and the second arm's constraints | theta_p fixes g=false and maps those actual observations to R2/C2/A2/H2, so the second guarded alternative holds |
+
+Thus, on this admitted bool family, `Post_actual(p, theta_p) implies
+Post_summary(theta_p)` for every legal successful p. This finite structural
+case argument observes no future guard and executes no future path. It uses the
+established counterpart/closure/delivery relations, not a theorem about arbitrary
+programs. An actual wrong source, invalid region or unrepresented outward
+effect does not acquire permission by choosing the other summary arm after
+failure. Body Post validation rejects without reopening; failure publishes no
+successful Post. Caller Post.admit imports only the successful mapped guarantee.
+
+Missing selected structural descriptions, lawful transforms or a needed founded
+recursive summary makes summary formation unavailable. An opaque Function
+Pattern can contribute only its already exposed sufficient contract, never its
+erased private structure. No actual Exit, fabricated residual, speculative
+branch execution, candidate enumeration or source-string recognition fills this
+gap. This remains an unconnected design consumer, not executed source coverage.
 
 ### Ordinary self-root contract program
 
@@ -456,10 +551,10 @@ Paths name registered ordinary operations; structural dependencies retain their
 actual identity. An explicit capture list leaves no omitted external local value.
 
 ```lang
-let form_post = (self, exit:Exit::):compile -> _:type:: => {
+let form_post = <M>(self, material:M):compile -> _:type:: => {
     self# |> initialize_empty_root::construction;
 
-    let relation = exit |> contract_rows::lifetime;
+    let relation = material |> contract_rows::lifetime;
     let for_check = relation share |> clone::lifetime;
 
     mut let check_ref = (let check::self:type) ref;
@@ -489,13 +584,15 @@ let form_post = (self, exit:Exit::):compile -> _:type:: => {
     self return;
 };
 
-let arms = (compressed_true_exit, compressed_false_exit);
-let outward = arms |> correlated_choice::lifetime;
-let contract_type = outward |> form_post;
 ```
 
-contract_rows extracts the already compressed guarded rows; it does not redo
-the body or infer an arbitrary contract. all_true is ordinary finite Boolean
+The admitted M families here are the actual Exit and formed GuardedExitPattern,
+with their ordinary typed contract_rows extraction providers. They remain
+distinct: one carries reached-path observations, the other a conditional
+description over bound positions. contract_rows extracts the corresponding
+lawfully transformed rows; it does not turn one actual path into an advance
+summary, redo the body or infer an arbitrary contract. all_true is ordinary
+finite Boolean
 folding, not a contract evaluator. Its inputs have these concrete responsibilities:
 
 | Ordinary computation | Material examined / required result |
@@ -516,8 +613,9 @@ end_boundary_view consumes the temporary view, not the world or the referent.
 The explicit unit return is the admit function's real declared result, not a
 unit invented for an intermediate target-return scope.
 
-This witness forms the contract for one actual boundary mapping and uses each
-owned member dependency under its real receiver/Param transfer premises. It
+The summary family is formed over bound signature/body roles and instantiated
+by an actual boundary mapping; an actual Exit instead supplies a precise reached
+mapping. Each uses its owned member dependency under real receiver/Param premises. It
 does not assume unlimited reuse of a consumed callable. A reusable library
 version must choose and establish its ordinary permitted receiver/capture
 strategy, such as actual selected clone-derived descriptor transport or a
@@ -756,12 +854,15 @@ unknown evidence, or identifies fresh anonymous roots with disjoint physical
 targets. A facility failing to maintain its asserted exclusion violates its
 trusted external description.
 
-### Ordinary shares of a resource right
+### Ordinary parts of a resource right
 
 Let resource identity Q have full accounting amount 1. A partbox value carries
 Q's identity, current validity and amount q as ordinary material; q can be
 compile or runtime, without being a business-type parameter. Numbers below
-are a design example, not a required machine representation.
+are a design example, not a required machine representation. A **part** is this
+resource-right accounting value, not a `T share` borrow instance. Its fraction
+amount confers no ref/share access by itself. Consumption and conservation are
+the library protocol's laws, independently of the normal share-borrow algebra.
 
 ```text
 split: consume (Q,1) -> complete (Q,1/3), (Q,2/3)
@@ -771,7 +872,7 @@ box:   consume (Q,1) -> complete owned box of Q, when all other Pre hold
 
 Each action checks actual resource identity and conservation before commit;
 same numeric amounts for Q and Q' cannot merge. There is no ordinary clone
-that multiplies rights. Moves transport an existing share under its selected
+that multiplies rights. Moves transport an existing part under its selected
 Post, and failed Pre leaves inputs unconsumed. A normal failure return has
 its own explicit input/result contract. A non-full amount offers only its
 restricted alias capability, not a normal ref. Full amount still cannot
@@ -779,17 +880,17 @@ consume to box with an outstanding window, conflicting Color, invalid object
 or other unmet ordinary Pre.
 
 One possible option-based topology protocol keeps an optional partbox in each
-admitted link slot. Forming a link consumes a share from its current owner and
+admitted link slot. Forming a link consumes a part from its current owner and
 constructs the complete some branch by its registered ordinary constructor.
-Removing a link uses actual option extraction: none has no share; some yields a complete
-share through consuming extraction, ends that option identity and leaves any
+Removing a link uses actual option extraction: none has no part; some yields a
+complete part through consuming extraction, ends that option identity and leaves any
 replacement None through its separate authorized complete write. No partly
 extracted parent or implicit copying is permitted.
 
 For example a node's local ledger plus two neighbors' admitted link slots may
 hold `(Q,1/3)` each. The topology operation must obtain the slots' actual write
 authority, consume their some payloads, install complete none replacements and
-merge the three shares of Q. Only after full amount and all other Pre does it
+merge the three parts of Q. Only after full amount and all other Pre does it
 obtain box, then explicit ref/share for payload use. A facility may instead
 use several ordinary commits; it must describe intermediate ownership and
 failure cleanup, and cannot promise rollback of earlier external effects.

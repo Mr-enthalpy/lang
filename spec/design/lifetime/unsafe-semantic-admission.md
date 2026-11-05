@@ -120,6 +120,7 @@ The ordinary library composes those facts with Pre, consumption, boundary
 compression, color intervals and option/control behavior. The materializer
 must implement the actual validation and runtime protocol soundly and lightly;
 it cannot replace access semantics with an address-as-integer axiom. Partbox
-adds resource-specific conserved shares and ordinary consuming operations, not
+adds resource-specific conserved parts (accounting fractions, not `T share`
+borrow instances) and ordinary consuming operations, not
 a universal graph-safety theorem. The common consumer contract records these
 [trusted inputs and failure boundaries](../../contracts/lifetime-program-consumers.md#lc7-unsafe-post-and-trusted-dynamic-facilities).

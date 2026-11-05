@@ -297,7 +297,7 @@ values do not execute contract expressions, automatic Post or the library.
 | LC2 | Whole-K projection, business Stage forgetting and complete-zone provenance | Common E, selected actions/control/activation/delivery; no future execution or reselect |
 | LC3 | Source action facts, name/generation/origin, regions/colors and real internal APIs | Ordinary producers, fixed cleanup and common transaction; no double consumption |
 | LC4 | Ordinary compile contract evaluation, self-root check/admit formation and mapped four-way calls | Existing CompileInstance/OpenHere/result delivery and actual world authority; failed Pre publishes no success |
-| LC5 | Exit-local compression and automatic Post transformation | Actual exit/control/dependency material, LC1–LC4; retain choice/effects/validity at every boundary |
+| LC5 | Formed guarded-body structural summary and actual-exit compression/validation | LC1–LC4 supply selected descriptions/formal roles separately from reached history; each legal actual Post implies its mapped advance summary without future execution |
 | LC6 | Exposed Function Pattern defaults/implication and justified recursive interfaces | FnExtract erasure and ordinary contract computation; no implementation authority recovery |
 | LC7 | Safeid, batch partition, alias windows and partbox ordinary programs plus trusted runtime facilities | True external-success facts, actual source authority, intervals and materializer protocol; no default success |
 | LC8 | Finite regular access and cropping, with proven adopted recursive combinations | LC1/LC3 material and defined Pattern relations; no restored terminal permission |
@@ -317,6 +317,11 @@ add these concrete LC2/LC4/LC5 obligations without new Rust coverage:
 - Retain actual selected counterpart entries, source function/InPlace boundary
   descriptors and ordinary recursive/return structure. Available source control
   may drive the program; unknown control remains in the real continuation.
+- Supply the formed semantic guarded-body material and selected structural
+  descriptions for advance summary transformation independently of actual Exit.
+  Connect the separate actual-exit consumer and its mapped summary validation;
+  neither speculative branch execution nor one late path completes a missing
+  advance summary. See LC5's two existing boundary contracts.
 - Wire initial complete structural formation at InvokeName(I) under its actual
   fresh window and one-shot authority before resident self/member reads. The
   schematic initialize_empty_root source call is not currently implemented.

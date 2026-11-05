@@ -138,7 +138,9 @@ Val1. Opaque implementation provenance is not external authority. The
 [lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
 consumes ordinary contract programs and implication, retaining U_default and
 handwritten Function Pattern omitted-post NoDelta. Implemented bodies instead
-form automatic Post from projected material at actual exits. The complete
+form automatic Post from formed guarded body/operation descriptions before
+contract use; actual exits separately validate that their mapped Post implies
+the summary, without future-path execution. The complete
 continuation projects to rank-0 lifecycle values with business Stage forgotten;
 pre/post programs are projection-complete, and ordinary boundaries use caller
 Pre.check/body Pre.admit/body Post.check/caller Post.admit. Compression preserves

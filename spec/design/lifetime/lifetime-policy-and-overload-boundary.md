@@ -453,7 +453,7 @@ therefore does not classify an ordinary non-borrow value as origin-free merely
 because no borrow-root rule applies to it.
 
 Function entry begins from a default universe and applies the written lifetime
-precondition as a finite correction:
+precondition as a finitely described correction:
 
 ```text
 U_entry = U_default ⊕ Delta_pre
@@ -500,6 +500,22 @@ PreDoesNotConstructUniverseFromZero:
 Here `⊕` applies the finite declared corrections while retaining every
 unmentioned default rule. Thus a missing Pre fact cannot silently truncate an
 origin chain to `None`.
+
+`|Delta_pre|` measures the finite **description material** delivered by one
+completed formation/observation: its ordinary bound names, relation rows and
+finite regular descriptor graph. It is not the cardinality of the descriptor's
+path denotation. A finite descriptor using repetition may describe infinitely
+many potential finite walks. It does not enumerate or grant simultaneous
+operations on all of them. Each actual requested operation still requires its
+real access-tree route, target/generation, Region and Color premises; descriptor
+state reuse merges none of those identities.
+
+Only the admitted regular relations and their justified algorithms may be used.
+Finite representation proves neither decidability of an arbitrary infinite fact
+set nor termination of an arbitrary Pre program or numeric-range query. A
+nonterminating/unavailable computation supplies no completed Delta_pre. This
+description-versus-denotation distinction also applies to §11's regular access
+material and leaves the implementation/proof obligations of §14 intact.
 
 Neither origin nor NameView is automatically added to a business Object's
 Norm. Lifecycle Objects themselves have ordinary content normalization of
@@ -716,8 +732,9 @@ repair its failure. Internal Post check establishes the delivered guarantee;
 caller Post admit neither replays internal actions nor duplicates consumption.
 Explicit Post constrains actual results/history; it cannot replace history.
 
-An implementation body omitting Post enters automatic formation from its
-lifecycle projection and boundary transformation (§10). A handwritten Function
+An implementation body omitting Post enters the formation-time structural
+summary transformation of §10; reached actual exits separately validate that
+summary. It need not execute future branches to expose the contract. A handwritten Function
 Pattern/function-pointer interface has already forgotten external structural
 source authority; it cannot recover hidden implementation structure to fill in
 a contract. The following defaults apply to that interface, not to body-based
@@ -1189,7 +1206,7 @@ failure-without-publication boundary before it can support library composition.
 | Pattern formation | Real structural formation establishes paired field/operation material and registrations for the commutation law |
 | Regular access | Finite choice/advance/repetition/crop material retaining targets and operation permissions |
 | External success | Compatible trusted facts tied to the successful external action and its mapped outputs |
-| Boundary transform | Actual exit kind, local/external identities, origins, regions, paths, effects and authorized world observation |
+| Boundary transform | Formed guarded relations/bound local positions for advance summary; actual exit/identity/origin/region/path/effect/world material for reached compression; fidelity between them |
 
 Ordinary lang programs compose these materials into internal APIs, contracts,
 access refinements, compression, automatic Post and library protocols. Source
@@ -1305,6 +1322,56 @@ ordinary values may carry logical dependencies. Internal Move does not simply
 call a precompressed public from. There is no automatic reborrow to arrange a
 desired origin tree. Pass=Move and selected clone-derived paths stay unchanged.
 
+Automatic Post has two connected consumers at existing semantic boundaries.
+These are ordinary computations in E, not additional evaluators, Policy ranks
+or a requirement to execute the whole program before analyzing it:
+
+| Boundary | Available input | Result / effect |
+|---|---|---|
+| Contract formation from a formed body | Semantic body Pattern/structure, bound input/result/local positions, guarded alternatives, fixed scope/return relations, and established selected-operation descriptions or exposed modular guarantees | A conditional outward Post summary; no future action executes or publishes facts |
+| Actual continuation exit | The reached path, actual activation/names/generations/cuts, committed history and available lifecycle observations | Local compression and actual Post material, checked against the instantiated summary before successful outward adoption |
+
+### 10.1 Contract-formation structural transformation
+
+Ordinary semantic function-body formation supplies the first input. It preserves
+the body's guarded structure and attaches the lifecycle structural descriptions
+of operations already determined by the ordinary call/Pattern rules. Those
+descriptions express the operation's admitted transfer relation; obtaining them
+does not invoke the described action or its state-changing companion. A future
+call can instead use an already exposed sufficient Function Pattern contract.
+Neither route restores erased external structural-source authority or chooses
+a future candidate. Raw/Normalized AST shape or a matching function name alone
+supplies none of this semantic material.
+
+These body/operation descriptions are complete ordinary material values formed
+by their own actual actions; they are not readable partial callable Objects.
+The final callable contract can still await their transformation. Their
+formation premises must terminate in §9.1's basis independently of that pending
+summary; a cycle through the summary itself remains unavailable.
+
+Before the automatically summarized callable contract is exposed for use, an
+ordinary lang program transforms that **formed guarded material**: compose the
+admitted operation relations, remove outward dependence on bound local positions,
+retain source/guard/effect correlations, and form the self-root summary type
+with its ordinary check/admit behavior. Bound local/return positions and
+parameterized region constraints are descriptions, not freshly committed future
+LifeNames, generations or cuts. Ordinary call mapping later instantiates them.
+The program may transform both alternative **descriptions** without performing
+either alternative's moves, borrows, cleanup or external effects. An unknown
+business guard remains a guard in the resulting conditional material.
+
+This fixes the source of the summary input and its availability boundary; APIs,
+representations and supported transformation algorithms remain open. It does
+not promise that every body has a computable summary. If a required selected
+description, modular guarantee, legal structural transformation or founded
+recursive-family result is missing, summary formation is Unavailable. The
+consumer cannot expose a supposedly complete automatic contract by guessing,
+using NoDelta, waiting for one future path as its only justification, executing
+future branches, or reopening selection. Only an actually established remaining
+formation continuation may be transported as such.
+
+### 10.2 Actual-exit transformation
+
 Every actual block/call/other delivery boundary that exports lifecycle material
 must remove its local-name dependencies while the internal material is still
 available. The ordinary boundary program takes:
@@ -1333,12 +1400,14 @@ a dead generation or cancel Color. A true borrow of a dying local still fails
 escape. Nested boundaries perform this work at their real exits rather than
 waiting for the outermost function.
 
-Automatic Post is this ordinary **Pattern/material transformation**, not inference
-of arbitrary weakest preconditions from scattered predicates. It consumes
-projection-produced structured material, including guarded exits and effects.
-It uses only defined Pattern/choice/result combination relations; there is no
-universal join. For select_one's admitted family, compress each legal return
-arm then form correlated source choice:
+The actual-exit program produces Post_actual for the reached path and checks
+its correspondence to the already formed Post_summary. A more precise actual
+contract may be formed from that material, but it is not the missing source of
+an advance automatic summary. Both transformations use ordinary Pattern/material
+operations, not inference of arbitrary weakest preconditions from predicates.
+Only defined choice/result combination relations apply; there is no universal
+join. For select_one's admitted family, transform the formed descriptions of
+each legal arm, then form correlated source choice:
 
 ```lang
 lifetime pre  o@..live_with(r1@ || r2@)
@@ -1361,6 +1430,30 @@ binding there; the matching target alone performs ReturnPattern delivery.
 An unfinished or failed action cannot produce a successful Post. Existing
 InvocationResult transports the actual result, Diagnostic or established
 remaining continuation. No missing implementation is called a residual.
+
+### 10.3 Summary and actual-exit fidelity
+
+Every supported summary family must preserve, under the ordinary actual call
+mapping theta_p, all exposed observations on every legal successful path p:
+
+```text
+Post_actual(p, theta_p) implies Post_summary(theta_p)
+```
+
+This is the obligation on the ordinary transformations and exposed behaviors,
+not a separate contract language, user-supplied proof Object or universal
+implication decider. It includes origin/unknown-root identity, regions, Color,
+access, all guarded effects and real target/delivery correspondence. Actual
+exit validation uses the same mapping and selected actions; failure admits no
+successful Post and never reopens. A summary formed from an unexecuted arm's
+description does not license publishing that arm's history.
+
+The [select_one witness](lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness)
+derives this relation for its two admitted ref-return arms without observing
+the runtime choose value. The actual W1 program is the second consumer, not an
+implementation of the first through available_guard. Recursive summary families
+need their own founded structural/modular result (§9.1/§14), never a future-path
+enumeration or evidence manufactured by executing recursion in advance.
 
 ## 11. Regular access material and capability boundaries
 
@@ -1466,19 +1559,23 @@ the facility maintains real exclusion, referent validity and restrictions on
 conflicting alias operations throughout the window. Escape checks reject
 return/store beyond it. Unsafe Post cannot fix a failed window Pre.
 
-Partbox is a possible safe library over these facilities. Amounts are ordinary
-compile/runtime values, not required business-type parameters. Split consumes
-one share and conservatively distributes shares of the same actual resource;
-merge consumes same-resource shares and preserves total amount. Equal amounts
+Partbox is a possible safe library over these facilities. Its resource-right
+fractions are ordinary accounting material, not `T share` borrow instances.
+Here a **part** is the library value carrying resource identity and an amount;
+conservation and consumption are library protocol laws. Numerical amount alone
+confers no ref/share access. Amounts are ordinary compile/runtime values, not
+required business-type parameters. Split consumes one part and conserves its
+amount across parts of the same actual resource; merge consumes same-resource
+parts and preserves total amount. Equal amounts
 for distinct resources cannot merge. Ordinary copying cannot multiply rights.
 Full amount can be consumed to box only with every other ordinary Pre satisfied,
 including outstanding windows, Color and object validity. Non-full amount
 provides at most its restricted alias, not normal ref access.
 
-Option and a specific topology protocol may move shares into/out of actual
+Option and a specific topology protocol may move parts into/out of actual
 link slots while keeping topology mutation separate from payload use. Consuming
 option extraction and complete replacement use existing atomic Object rules;
-there is no partial parent or implicit share duplication. Actual collection
+there is no partial parent or implicit part duplication. Actual collection
 must recover all necessary rights with legitimate slot access before box/payload
 access. This asserts neither that two neighbors suffice for arbitrary graphs
 nor that conservation proves all safety, concurrency or reclamation properties.
@@ -1496,6 +1593,7 @@ Before an adopted family supplies evidence, its implementation must establish:
 | Projection fidelity | Preserve selected actions, Stage-erased name/control/dependency/activation/delivery correspondence and no double projection; missing partner is Unavailable |
 | Field symmetry | Actual formed registered operations commute with their paired lifecycle observations; no fresh ADL selection to repair a missing partner |
 | Boundary soundness | Compression retains external observations, unknown roots, region/Color/path/source/effect correlations and rejects expiring-target escape |
+| Advance-summary fidelity | Formed semantic body/selected descriptions yield a conditional summary without future execution; each legal actual Post implies its mapped summary, including every effect row |
 | Nested composition | Inner-then-outer compression preserves outer observations for the specified family; no unconditional fact deletion or commute with arbitrary joins |
 | Contract behavior | check/admit represent the exposed guarantees under the four-way mapping, limited update authority and compatibility direction; unknown implication cannot accept |
 | Regular composition | For adopted finite descriptors with identity parameters, choice/advance/repetition stay in the defined regular domain and cropping is non-expansive |
