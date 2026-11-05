@@ -55,6 +55,26 @@ The product synchronizes the projections of the same continuation action.
 Machine, type, policy, and lifetime observations share action identity and
 continuation position. They are not independent semantic IRs reconciled later.
 
+The lifecycle projection receives this complete continuation and forgets the
+business Policy Stage coordinate. It retains selected operations, MoveEffect,
+names, dependencies, guarded control, activations and result delivery; erasure
+does not select another operation or execute both arms of unknown control.
+Established names and structure can participate before machine execution reaches
+them, while unknown business values remain unknown. `lifetime pre/post` programs
+are already lifecycle material: execute their ordinary computations and boundary
+calls, but do not project them again or create second `@`/partner layers. The
+[lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#211-one-semantic-continuation)
+and [LC2 handoff](../../contracts/lifetime-program-consumers.md#lc2-whole-continuation-projection-and-projection-complete-clauses)
+define the projection-complete boundary and its fidelity obligations.
+
+Projection-complete programs still have their own ordinary action premises.
+Their [bootstrap justification](../lifetime/lifetime-policy-and-overload-boundary.md#91-bootstrap-dependencies-must-terminate)
+must reach fixed language laws and available observations, not their own
+still-unformed contract or companion. Boolean check success creates no world
+authority. Safe admit components use the existing boundary's mapped projection
+storage and all required premises before joint publication; transaction storage
+alone cannot establish source correctness or authorize a supplied fact.
+
     R_machine = pi_machine(R)
     R_lifetime = pi_lifetime(R)
 
@@ -214,7 +234,9 @@ selects at its actual frontier. E does not enumerate future branches or the
 Cartesian product of multi-dispatch. An interpreter carrying restricted E,
 AOT, JIT, caches and precomputed tables are equivalent O representations.
 
-The lifecycle projection remains compile name/Color algebra over the current K.
+The lifecycle projection remains ordinary compile-hosted value computation over
+the complete current K, with business Stage forgotten as in §3. It is not split
+into compile/runtime lifecycle worlds or elevated to a higher type rank.
 Region_K(n)=R(NamePosition_K(n)); physical availability and future branch values
 do not redefine those names or Regions. O's path elimination still requires E O E
 revalidation, and adds no E admission proof obligation.

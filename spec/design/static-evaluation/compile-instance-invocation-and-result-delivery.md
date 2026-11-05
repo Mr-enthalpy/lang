@@ -51,7 +51,7 @@ OpenEvalReentry_K(I)
 ```
 
 Read_name, Read_resident, Pattern observation and Policy observation are
-ordinary observations. They do not enter or rerun the body. A self-name read
+ordinary observations. They do not enter or rerun the body. A resident self-read
 requires an initialized complete resident; incremental material is not an
 Object. Each ordinary or in-place closure has its own lexical, Self,
 navigation and dependency layer. Access to an enclosing instance uses its
@@ -62,6 +62,13 @@ move or invalidation observes that storage; it does not replay initialization,
 restore the first resident or resurrect consumed material. Complete snapshots
 copied earlier remain immutable. Cache retention extends no dependency region
 and supplies no cached permission to read, write or enter an active body.
+
+Before resident initialization, a compile-flow `self#` can name this established
+I without a resident read. The [initial formation handoff](../symbol-world/structural-type-formation-and-composition.md#current-instance-initial-formation-handoff)
+may initialize that actual root only with its independently authorized window
+and one-shot initial authority. This is not an ordinary read of an uninitialized
+self or an authority conferred by the NameValue. The source notation is a design
+target, not evidence that initialized compile-self residency is connected.
 
 ## 3. Result classes and accessible result closure
 

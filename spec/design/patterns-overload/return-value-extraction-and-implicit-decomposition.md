@@ -446,6 +446,14 @@ completion or observable LifeName is inserted. A user-written temp remains
 an actual ordinary binding boundary. See the [Policy owner](../symbol-world/policy-and-static-flow-projection.md)
 for two-sided forwarding and call-local no-reopen.
 
+Lifecycle exit compression consumes the actual whole-result delivery and its
+selected ReturnPattern/Pout correspondence, before removing dependencies on
+locals that really exit. It does not insert a hidden result Object, rerun
+extraction or extend a dying referent. Implemented-body automatic Post includes
+other outward effects as well as the result's origin choices; omission on a
+handwritten Function Pattern remains NoDelta. See
+[LC5 and LC6](../../contracts/lifetime-program-consumers.md#lc5-exit-compression-and-automatic-post).
+
 ## 4. Equality Examples
 
 Equality never inserts `?`, but product normal form participates directly in

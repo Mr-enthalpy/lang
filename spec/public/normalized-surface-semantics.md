@@ -995,8 +995,9 @@ Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
 one source of dependencies; projections and invocation do not recapture.
 No mandatory public `self` field layout or hidden semantic side table follows.
 Ordinary closures use one explicit or automatic value-capture mode, alongside
-independent automatic compile structural dependencies. In-place syntax excludes
-explicit clauses; automatic value capture does not imply in-place placement.
+independent automatic compile structural dependencies. In-place closures prohibit
+explicit capture lists, not ordinary lifetime head clauses. Automatic value
+capture does not imply in-place placement.
 All occurrences feed ordinary dependency realization. Neither grants write
 authority by itself.
 An actual write-capable realization may permit outer writes under ordinary
@@ -1549,3 +1550,36 @@ operator, capture, capability, lifecycle and return evidence. It promises no
 unconditional recursion legality, tail-call optimization, constant stack or
 new control primitive. Current frontend/evaluator support is separately tracked
 in the [roadmap](../planning/roadmap.md#8-acceptance-evidence).
+
+## 16. Lifetime programs and contract surface (consumer pending)
+
+`lifetime pre E` and `lifetime post E` retain ordinary expression material, not
+an AST for a separate predicate logic. Existing generic head-clause carriers
+preserve their expression and source provenance. They do not implement the
+lifecycle expression consumer or every design illustration's syntax. This
+revision adds no lexer keyword, grammar rule, operator or diagnostic behavior.
+`unsafe post` denotes the pending trusted-success contract facility under the
+[unsafe owner](../design/lifetime/unsafe-semantic-admission.md); no new accepted
+parser production is claimed by that notation.
+
+The [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
+defines E as a complete ordinary compile computation whose final delivery is a
+self-rooted complete type with associated check/admit behavior. Local values,
+branches, recursive calls and structural injection use the ordinary language;
+the final-result condition does not restrict every intermediate to a NameExpr.
+These clauses are already lifecycle-side programs and must not be projected
+again. `@`, `==`, `||`, `~`, field calls and namespace Paths retain their ordinary
+operator/Pattern/ADL interpretations and real registrations; a diagram's `*`
+marks an operation already selected, not new source syntax.
+
+Implemented functions with omitted explicit Post form a conditional summary
+from already formed semantic body/operation descriptions before contract use.
+Actual exits separately compress reached material and validate it against that
+summary; no future branch execution supplies the advance contract. Both source
+consumers are pending under [LC5](../contracts/lifetime-program-consumers.md#lc5-exit-compression-and-automatic-post).
+Handwritten Function Patterns with
+omitted Post still promise NoDelta. The four
+[walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) show the
+design data flow, including ordinary option extraction by `?` rather than new
+error propagation. Their schematic APIs do not assert executed source coverage.
+See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.

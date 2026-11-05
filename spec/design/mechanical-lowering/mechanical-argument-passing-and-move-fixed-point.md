@@ -227,6 +227,14 @@ rank, and does not change the type value.
 
 ## 9. Relation to overload and argument adaptation
 
+The [ordinary lifecycle programs](../lifetime/lifetime-policy-and-overload-boundary.md#10-internal-actions-origin-compression-and-automatic-post)
+consume these actual selected producer/transfer actions. An internal sibling
+Move, child borrow, observation and consuming extraction remain distinct; they
+are not all calls to a public boundary `from`. Boundary origin compression
+removes outward reads of locals while retaining source choice, regions, colors
+and other effects. It cannot insert a reborrow or clone, authorize a second
+consumption of self/Param, change Kill/Preserve, or lengthen the actual referent.
+
 Argument adaptation consumes ordinary source observations and selected
 parameter requirements, not a blind pass-insertion stage.
 

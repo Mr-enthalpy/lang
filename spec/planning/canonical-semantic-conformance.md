@@ -15,6 +15,7 @@ Each row is an acceptance obligation, independently of executable coverage.
 | S01–S12 | [Policy](../design/symbol-world/policy-and-static-flow-projection.md), [calls](../design/symbol-world/function-object-call-model.md), [selection](../design/patterns-overload/overload-resolution-design.md) | Single-stage positions; two rounds and sealed origin |
 | E01–E09 | [Evaluation](../design/static-evaluation/evaluation-residual-and-optimization.md), [compile invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md), [build](../design/build-package/build-system-design.md) | Runtime entry, dominance and readiness |
 | L01–L08, W01–W08 | [Lifecycle](../design/lifetime/lifetime-policy-and-overload-boundary.md), [mechanical placement](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) | Instance effects and cleanup |
+| LA01–LA30 | [Lifecycle value algebra](../design/lifetime/lifetime-policy-and-overload-boundary.md), [unsafe admission](../design/lifetime/unsafe-semantic-admission.md), [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) | [LC1–LC8](../contracts/lifetime-program-consumers.md): ordinary programs, projection, boundary transforms, regular access and trusted facilities; source wiring pending |
 | P01–P12 | [Residual/completion](../design/patterns-overload/static-pattern-spaces-and-extraction-chains.md), [target return](../design/control-flow/targeted-return-and-d-reduction.md), [compile state](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md) | Restricted Split, escape and current compile facts |
 | O01–O07 | [Operator families](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Operator roles and OG_s |
 | N01–N08 | [Names](../design/symbol-world/names-and-overload-groups.md), [construction](../design/symbol-world/structural-type-formation-and-composition.md), [source composition](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Expression formation and conservative contributions |
@@ -852,3 +853,256 @@ empty-versus-present identity/arity, effect counters, generated/user ambiguity,
 selected failure with a runner-up, dependency/authority non-derivability and
 explicit wrapper-unit-return regressions. A passing existing test suite alone
 does not satisfy these unconnected normative rows.
+
+## Lifetime value computation and library design acceptance
+
+Status: normative design scenarios, **not executed source tests or completed
+proofs**. All rows use the [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
+and [consumer interfaces](../contracts/lifetime-program-consumers.md).
+W1–W4 below refer to the four [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md),
+not test fixtures. Each row gives an admitted case and the forbidden inference
+or negative case. Ordinary missing premises remain unavailable; a known false
+premise rejects. There is no general program-termination/contract-implication
+decider assumed by this matrix.
+
+| Case | Input / action | Required result and counterexample | Handoff / witness |
+|---|---|---|---|
+| LA01 | Project the same selected action/candidate/frame with only business Stage labels varied | Same lifecycle definition/correspondence. Actually different selected overloads may have different Post; erasure never selects again | LC2; W1 |
+| LA02 | A directly written pre/post program uses an established runtime name whose business value is unknown | Evaluate ordinary lifecycle computation once, without @@ or a second partner. Do not read the unknown value, prune future paths or commit both branches | LC2/LC4; W1 |
+| LA03 | Form structure with actual registered selected field operations | Paired lifecycle fields satisfy `(x.field*)@ = x@.field_lifetime*`. Missing partner/registration is unavailable, not a special resolver; `$` itself adds no action | LC1/LC8; W1 |
+| LA04 | Observe equal literals/temporaries and two bindings/Places with equal residents | Temporaries can have LifeNames without Places; NameBinding, Place, target and generation remain distinct. Equal content or type does not merge identities/credentials | LC1/LC3; W1/W3 |
+| LA05 | Implement select_one with two legitimate guarded source returns and omitted explicit Post | Compress real material into the source-choice Post plus all other outward effects. `r1 || r2` is one correlated source choice, never simultaneous exclusive permission | LC4/LC5; W2 |
+| LA06 | Extract into a handwritten Function Pattern with omitted Post | A genuinely NoDelta implementation can match; select_one's non-NoDelta implementation cannot. A sufficient explicit compatible contract can match. Known Val1/provenance cannot restore erased structure | LC6; W2 |
+| LA07 | Evaluate a contract helper containing local Products, branching, calls and justified recursion | Intermediates need not be NameExprs; final direct self-root complete type and associated behavior obey real instance/OpenHere/result rules. OpenHere alone grants no world-write authority | LC4/LC6; W2 and owner §9 |
+| LA08 | Caller Pre fails, while the body could admit an assumption; compare successful four-way use | Fail before the action/body. Successful path uses caller check/body admit/body check/caller admit with actual Param/output/activation mapping, without body replay or double transfer | LC3/LC4; W1/W3 |
+| LA09 | Nested block exits and target return cross two actual InPlace boundaries | Compress at each real exit and preserve target/cleanup. No local unit, phantom result binding, extra self argument or hidden result Policy completion | LC3/LC5; W1/W2 |
+| LA10 | Traverse origin links through locals to U=unknown; compare explicit None and missing evidence | Retain U as unknown, stop at genuine None, and report unavailable missing material. Caller can continue without reading dead locals; no manufactured endpoint | LC5; W2 |
+| LA11 | Export a result truly borrowing an object that dies at the crossed boundary | Reject under ordinary escape/validity rules. Compression of its local carrier cannot lengthen referent lifetime or make the return safe | LC5; W2 |
+| LA12 | Compare sibling handle transfer, real child borrow and ordinary logical dependency | Preserve their actual distinct origin/target/region material; no automatic reborrow or uniform internal from call arranges a preferred tree | LC3/LC5; W2/W3 |
+| LA13 | Kill Move, narrow proved Preserve and whole-self/Param transfer | Kill ends its old generation with no duplicate destructor; Preserve does not clone. One coherent implicit-input transfer, no whole-self plus captures double Kill or failed-Move copy retry | LC3; W1 |
+| LA14 | SCC in a regular access structure crossing Ordinary/InPlace closure boundaries | Collapse each item to its original formed regular companion at Ordinary exits; collapse locally at participating InPlace exits but not unrelated InPlace exits. Keep cropping/Color/region/source/effects and distinct names. Finite descriptors do not imply arbitrary program termination or TCO | LC5/LC8/LC6; W1 and owner §8.5/§11/§14 |
+| LA15 | Crop access to leaf q using a shared routing prefix p | Output operation ranges are a subset. Keep p as route without granting whole-p terminal access; cropping grants no new permission and removes no historical color | LC8; W3 |
+| LA16 | Compare ref-only tree path, a path reaching share, and an alias path | Registered ref-only access can proceed under Pre; ref cannot cross share to recover exclusivity. Share through ref remains share without alias write/internal mutability. Alias has no normal propagation | LC1/LC8; W3/W4 |
+| LA17 | Successful try_trust returns ordinary integer safeid; compare equal integer at another name | Post establishes source/generation/interval credential without changing type or requiring ref/share. Equal numeric content alone has no credential; `?` performs only ordinary extraction/control | LC7; W3 |
+| LA18 | Attempt an access after length/layout/capacity/resource generation or index-name change invalidates validation | Library protocol covers every invalidator. Old credential is unusable, regardless of field spelling. No failed permission followed by a hidden numeric check or runner-up | LC7; W3 |
+| LA19 | Validation succeeds versus fails; ordinary action has a missing/false Pre | Only actual success admits compatible unsafe Post facts. Failure has no success token; Post cannot repair prior Pre, and there is no unsafe pre escape | LC4/LC7; W3 |
+| LA20 | Maintain credential interval, transfer an admitted view, then end the interval | Conflicting operations are blocked while it is valid; an actually authorized view preserves mapped credential obligations. After interval end and all remaining Pre, required exclusivity may resume; history is retained | LC3/LC7; W3 |
+| LA21 | Batch consume shares with genuine pairwise disjoint operation ranges and a common authorized original ref R | End the consumed share intervals and form complete exclusive children from R once. R may be recovered through real source authority without a mandated explicit argument; share itself is not strengthened | LC3/LC7; W3 |
+| LA22 | Batch inputs have equal ranges, ancestor-whole/descendant overlap, or unequal path strings | Reject actual overlap even when strings differ. A shared routing prefix alone need not overlap terminal operation ranges. Dynamic validator targets access semantics, not pointer integers | LC7/LC8; W3 |
+| LA23 | Batch consumes listed shares while another conflicting dependency remains alive | The other dependency still blocks exclusivity; consumption cannot erase it or old coloring. Failed Pre/validation publishes no refs and cannot double-consume inputs | LC3/LC7; W3 |
+| LA24 | Batch has one input, with ordinary source/validity/exclusion Pre satisfied or failed | No pairwise partition runtime validation is needed. All other Pre still apply; degenerate arity is no blanket success | LC7; W3 |
+| LA25 | Alias root replacement/extraction has actual defaults; compare missing defaults and traversal | Registered root operation may proceed under its Pre. Shape alone supplies no default; alias cannot cross into ref/share or inherit their tree. Lexical Path aliases are unrelated | LC7/LC8; W4 |
+| LA26 | Open a valid alias-to-ref callback window versus an overlapping/invalid or escaping one | Facility maintains actual validity/exclusion and blocks conflicting alias actions for the entire window. Fresh pairwise distinct anonymous roots are not alias origins and prove no window legality/disjointness | LC7; W4 |
+| LA27 | Consume partbox parts of the same resource with quantities compile-known or runtime-known | Parts are accounting fractions, not T share borrows. split/merge consume inputs and conserve quantity on actual successful transfers. Equal quantities of different resources cannot merge; amount alone grants no ref/share access and copying a number duplicates no right | LC3/LC7; W4 |
+| LA28 | Convert nonfull/full partbox and update option topology links while using payload | Nonfull yields only restricted alias; full still requires every other Pre before consuming to box. Option extraction/replacement is ordinary complete-object action; topology/payload authority are distinct, not a general graph/reclamation theorem | LC3/LC7; W4 |
+| LA29 | Crop/compress/admit external facts or rewrite continuation with O | No operation retracts committed history/color. Old intervals may end legally; new exclusive intervals do not recolor the past. O revalidates affected projections at rewritten names/cuts | LC2/LC3/LC5/LC7/LC8; all |
+| LA30 | Any needed source producer, recursive evidence or materializer facility is unconnected | Report its unavailable diagnostic, or transport only an actual established remaining continuation. No default permission, invented residual, runner-up, ABI switch or independent checker/string test | LC1–LC8; all |
+
+For LA07, the contract helper's recursion needs its own justified semantic
+domain; a finite regular path is insufficient. For LA05/LA09, compressing arms
+before combining is valid only under the guarded family/interface and retained
+effect conditions in W2, not a universal join/exchange law. LA19/LA21/LA26 need
+true trusted-facility facts and actual runtime behavior. These remain explicit
+[proof obligations](../design/lifetime/lifetime-policy-and-overload-boundary.md#14-proof-obligations-and-engineering-freedom).
+
+The following audit subcases refine these same LA01–LA30 targets; they add no
+executed coverage or independent case taxonomy:
+
+- **LA02/LA09/LA10/LA13:** Trace the [expanded W1 program](../design/lifetime/lifetime-algebra-walkthroughs.md#lifetime-transcription)
+  from r@/fuel@ and actual selected entries through available guarded control,
+  recursive input transfer, two nested InPlace calls and every real exit. The
+  ordinary origin/row recursion preserves unknown roots and all effects. An
+  unknown guard cannot run both branches or acquire future-value evidence.
+- **LA07:** Trace the [ordinary contract program](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+  through name-only compile self observation, independently authorized initial
+  complete formation at I, OpenHere-qualified member creation, explicit child
+  ref/first write, owned dependencies and direct self return. A local copy or a
+  helper-rooted external type does not stand in for the target; no read of an
+  uninitialized self resident is allowed.
+- **LA08/LA19/LA29:** In the [always-true variant](../design/lifetime/lifetime-algebra-walkthroughs.md#always-true-check-cannot-forge-a-world),
+  keep check=true while proposing a wrong actual source, extended Region,
+  deleted Color, amplified access or stale boundary view. Formation/Boolean
+  success grants none of those permissions. The independent operation Pre
+  rejects, or missing validation is unavailable, with no partial delta. Compare
+  a permitted safe import and genuine compatible unsafe success Post.
+- **LA07/LA30:** Attempt to establish C's formation/update Pre using only the
+  still-unformed C.check/C.admit/AutoPost(C), or a companion justified only by C.
+  The [bootstrap dependency rule](../design/lifetime/lifetime-policy-and-overload-boundary.md#91-bootstrap-dependencies-must-terminate)
+  rejects that unfounded cycle. Projection completeness is no waiver of ordinary
+  action premises; a founded finite recursive program remains a distinct case.
+- **LA05/LA06/LA11/LA12:** Retain the [concrete ref select_one](../design/lifetime/lifetime-algebra-walkthroughs.md#concrete-ref-source-selection)
+  in addition to generic T. Each branch returns one actual external-target ref
+  through sibling handle transfers. Unknown roots, other effects and target
+  validity survive compression; choosing two simultaneous exclusive targets or
+  returning a true borrow of a dying local is rejected.
+
+- **LA02/LA05/LA08/LA30:** With runtime choose still unknown, the
+  [formed-body transform](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness)
+  obtains both guarded ref-arm descriptions from semantic formation and fixed
+  counterparts, exposes the conditional summary before call execution, and
+  publishes neither arm's effects. At a real successful exit the mapped actual
+  Post implies the summary's corresponding guarded alternative, including all
+  effect rows. Missing descriptions/transforms or an invalid actual relation
+  cannot be repaired by executing future arms, selecting the other row after
+  failure, inventing a residual or substituting one late Exit for the summary.
+- **LA09/LA14/LA15:** An inner InPlace participating in SCC C
+  collapses its own name items when exited by target return. An unrelated
+  crossed InPlace still compresses locals but not C. At the enclosing
+  Ordinary closure boundary, outward SCC items collapse again to their
+  original paired regular descriptors, keeping current access, region,
+  Color, source/effect and name identity. Target return never crosses that
+  Ordinary closure; type equality or state reuse cannot mint permissions.
+- **LA14/LA15/LA30:** A completed Pre correction has finite description material;
+  a finite regular descriptor may still denote infinitely many potential walks.
+  Each actual access retains its tree/region/Color premises. Counting the
+  descriptor's denotation as necessarily finite, granting all paths from its
+  representation, or deciding arbitrary infinite fact sets from finiteness is
+  not permitted. Missing adopted relation evidence remains unavailable.
+
+- **LA21/LA22/LA30:** Retain a strict-ref-tree relation proving that actual
+  operation ranges separate and cannot reconverge, while the numerical depth
+  is unavailable. With other Pre satisfied, no concrete prefix enumeration or
+  extra depth test is needed. Compare an ancestor-whole operation, later meeting
+  or missing actual separation: unequal strings or regular-state reuse cannot
+  legalize them.
+- **LA19/LA27/LA28:** Trace the [ordinary partbox program](../design/lifetime/lifetime-algebra-walkthroughs.md#ordinary-partbox-composition-program)
+  through mapped Pre, actual identity/quantity observation, ordinary planning,
+  narrowly scoped validation, real consumption/complete formation and guarded
+  Post. Plans, ValidationOk and full amount grant no new authority. Early
+  rejection returns currently owned inputs through normal Moves; a later failure
+  cannot resurrect consumed inputs. Only the selected lawful into_box producer
+  forms a normal box; subsequent ref acquisition is separate. Use the
+  [provenance map](../design/lifetime/lifetime-policy-and-overload-boundary.md#operation-provenance-map)
+  to trace every facade to its basis/composition/consumer/external-fact source,
+  rather than supplying opaque host implementations of the whole example.
+
+- **LA09/LA14/LA30:** Derive [SCC participation](../design/lifetime/lifetime-policy-and-overload-boundary.md#participation-relation)
+  from actual cyclic item/edge contributions of the particular activation in
+  one compatible guarded case. A noncyclic feeder, a transit-only frame, a new
+  activation with the same callable tag, recursive type syntax or a repeated
+  automaton state supplies no membership. Opposite guards cannot supply the two
+  halves of a synthetic cycle. Missing needed scope/provenance is unavailable.
+- **LA09/LA14/LA15:** Trace the [same-component multi-InPlace example](../design/lifetime/lifetime-algebra-walkthroughs.md#scc-collapse-at-participating-closure-boundaries)
+  through I_B, transit I_T, I_A and the Ordinary target. The inner cut collapses
+  only its local cyclic contributions; I_A's current fine material and guarded
+  correspondence remain until its own cut. Earlier reduction cannot erase
+  participation, require dead-local reads, reconstruct by type/state, collapse
+  all of C early or postpone a mandatory cut.
+- **LA19/LA27/LA28/LA30:** Start the [partbox protocol](../design/lifetime/lifetime-algebra-walkthroughs.md#legal-start-of-the-partbox-protocol)
+  from an actual unallocated full-use source, or real trusted acquisition,
+  transferred once into a full part. Reject a second issue from an alias while
+  the first allocation remains usable. Permit a later reissue only when an
+  actual lawful conversion has returned currently unallocated authority and
+  all current Pre hold. Every split/merge output traces its real consumed input
+  portions; amount conservation alone cannot justify fabricated ones.
+- **LA04/LA08/LA27/LA28:** Construct a value whose classifier and apparent
+  (Q,1) fields match a legitimate full part. Ordinary construction, Core equality,
+  copied resource ids, ValidationOk or Preserve views provide no actual use
+  authority. into_box rejects its missing independent Pre (or reports unavailable
+  missing evidence), even if type checking succeeds; no success publication,
+  initial permission from unsafe Pre or runner-up is allowed.
+
+- **LA07/LA17/LA19/LA20:** Trace the
+  [try_trust contract/body](../design/lifetime/lifetime-algebra-walkthroughs.md#writing-the-trusted-apis-contracts-and-body):
+  ordinary Pre limits the successful result role's interval before action;
+  explicit typed contract rows go through the same self-root check/admit
+  constructor. Actual fresh successful name formation establishes the authorized
+  from/shared dependency; terminal Move alone cannot rewrite num's origin.
+  Unsafe Post contributes only real compatible validation for Q/generation/id/I.
+  Failure returns its declared complete ownership without a credential. A forged
+  success branch, validation row or equal integer supplies neither external
+  truth nor formation/update authority.
+- **LA19/LA27/LA28:** Trace the
+  [five production functions](../design/lifetime/lifetime-algebra-walkthroughs.md#a-minimal-production-chain-inside-the-library):
+  the real box enters State once; split removes one actual allocation and
+  computes q-wanted; merge consumes two distinct actual entries and computes
+  qa+qb; full conversion consumes its singleton allocation and returns the
+  extracted held box. Fresh data/cells and copied rows cannot install rights
+  without the actual lawful State/input sources. Compare the same allocation
+  presented twice, an equal fresh cell, surviving allocations/windows and false
+  validity Pre. External validation supplies none of that missing authority.
+- **LA14/LA15/LA16:** In the
+  [regular access program](../design/lifetime/lifetime-algebra-walkthroughs.md#a-regular-access-program-with-endpoint-only-cropping),
+  combine ordinary choice, legal field advance, postfix repetition and crop.
+  Preserve the recursive descriptor and actual identity parameters while
+  retaining only admitted payload endpoints; the zero-step arm admits the
+  root's payload, never a whole-root operation. Route prefixes do not restore
+  ancestor operations, a second crop cannot enlarge the view, and crossing share
+  cannot meet the exclusive demand. No descriptor-state reuse merges names or
+  executes future runtime paths.
+- **LA30:** Read each key walkthrough code segment's local Origin/Basis/Frontier
+  note before connecting it. User/library source, illustrative generated
+  projection and schematic expansion have distinct producers; B/L/W/X does
+  not make a helper name an installed API. Missing actual source producers and
+  the displayed unsafe post syntax remain pending even when generic syntax
+  carriers parse nearby ordinary constructs.
+
+- **LA07/LA08/LA19/LA29/LA30:** Apply the
+  [minimal authorization rules](../design/lifetime/lifetime-policy-and-overload-boundary.md#94-minimal-authorization-interface-and-operation-rules)
+  with the real fresh producer/source and mapped boundary. Compare a copied
+  view, reused initialization responsibility, different source generation,
+  invented unknown/termination, foreign activation/cut and proposed origin
+  unequal to the established mapped row. None authorizes a delta. If origin
+  staged but a later component fails, publish no part of that boundary delta;
+  do not undo earlier independent complete-type initialization or source actions.
+  The same permitted semantic increment follows from fixed actual inputs and
+  mapping regardless of its source/host realization or storage normalization.
+- **LA19/LA25/LA27/LA28/LA29:** Trace the
+  [finite relink](../design/lifetime/lifetime-algebra-walkthroughs.md#relinking-topology-without-accessing-payload)
+  from L--N--R/C--D to L--R/C--N--D. Takes install complete None and consume the
+  actual returned Option branches. Transfer the existing Q_L/Q_R/Q_C/Q_D Parts
+  to their final links; merging/splitting Q_N cannot create those other rights.
+  Reject a same-spelling/foreign root, missing default, absent resident-transfer
+  authority or stale/overlapping session. Root writes and routing ids give no
+  payload ref/access. Verify unchanged rejection, paused ownership of seven
+  actual Parts/current State/six None roots/active session, and completed
+  redistribution. A paused session cannot escape its admitted interval or be
+  released while exposing incomplete topology. Later semantic rejection
+  retains earlier commits/current ownership and never manufactures a repair
+  value, rollback, residual or successful topology claim.
+
+- **LA01/LA04/LA30:** Read
+  [NameView notation](../design/lifetime/lifetime-policy-and-overload-boundary.md#212-nameview-origin-and-finite-observation)
+  as mathematical structured-companion notation over ordinary rank-0 Objects.
+  Do not introduce an additional Object category, type axis or mandatory source
+  generic solely to represent it; actual companion formation/commutation still
+  needs its real source consumer.
+- **LA17/LA18/LA19/LA20:** Trace the
+  [range_access consumer](../design/lifetime/lifetime-algebra-walkthroughs.md#consuming-safeid-at-range-access)
+  with a runtime-unknown index but established name/credential. Caller Pre uses
+  current safeid evidence and the selected transfer guarantee; actual input
+  Move then establishes the formal generation and its permitted mapping.
+  Require source/resource identity, current generations, live shared dependency,
+  interval and endpoint permission. Reject equal foreign integers, stale
+  generations, ended intervals, cropped endpoints and historical-only Color.
+  Successful ordinary projection/clone uses the saved validation without a
+  repeated numeric bounds comparison; no failure retries a check or overload.
+- **LA19/LA21/LA22/LA23/LA24:** Trace the
+  [two-share partition](../design/lifetime/lifetime-algebra-walkthroughs.md#a-two-share-partition-contract-and-ordinary-program)
+  through source/authority Pre, preparation, real validation success and the
+  subsequent child producer's independent Pre. An outward unsafe clause,
+  constructed SeparationOk or copied plan cannot justify earlier formation.
+  On dynamic rejection return current handles with no child permissions; on
+  missing child authority stop without inventing a normal err result. At
+  successful complete publication, end the listed current share intervals
+  once, form both fresh refs from R, and retain historical Color and every
+  unconsumed dependency. One input omits only the pairwise validation.
+
+- **LA02/LA08/LA09/LA30:** Form/invoke the
+  [headed InPlace with explicit Pre/Post](../design/lifetime/lifetime-algebra-walkthroughs.md#a-headed-inplace-with-explicit-pre-and-post).
+  It has Automatic dependencies and no explicit capture list; lifetime head
+  clauses are retained ordinary expression material. Check/admit its real Pre,
+  target inner_self's actual activation through the nested InPlace, compress
+  each actual exit and deliver the result only at the matching target.
+  Its result-dependent Post and the caller's completed binding then apply.
+  An omitted target instead selects the enclosing Ordinary activation, with
+  no intermediate result/unit or proof of that local-result Post. Reject
+  missing clause/exit evidence without a same-named host substitute.
+
+Current tests cover syntax carriers, supplied-fact lifecycle relations and the
+common transaction's cleanup/Pre/joint-publication slices. They do not close any
+row's full source chain. Future connections must add meaningful action-based
+positive/negative, identity/equality, non-derivability, authority-uniqueness and
+no-reopen tests at their connected boundary, with syntax goldens only for actual
+grammar changes. Passing repository tests or matching document strings is not
+execution coverage of these design scenarios.

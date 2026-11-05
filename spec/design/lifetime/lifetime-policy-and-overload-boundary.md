@@ -1,7 +1,11 @@
-# Lifetime Policy, `@`, and the Overload Boundary
+# Lifetime Values, Bootstrap and Library Facilities
 
 Status: canonical semantics for `@`, the lifetime value algebra, and the
-lifetime/ordinary-overload boundary. `LifecycleState` stores LifeName, Region,
+lifetime/ordinary-overload boundary, ordinary contract programs, boundary
+transforms and library protocol effects. [Walkthroughs](lifetime-algebra-walkthroughs.md)
+apply these rules; [consumer contracts](../../contracts/lifetime-program-consumers.md)
+record wiring, and [acceptance targets](../../planning/canonical-semantic-conformance.md#lifetime-value-computation-and-library-design-acceptance)
+are specifications rather than executed coverage. `LifecycleState` stores LifeName, Region,
 Color and lifecycle observations; it checks Pre and consumes the shared
 `SemanticContinuation` transaction's committed-action witness for Post.
 Linearization and Pre boundaries of already fixed cleanup points are implemented.
@@ -23,13 +27,22 @@ construction authority (`OpenHere_Σ(value)`) is owned by
 
 ## 1. `@` is continuation-relative name observation
 
-N@ is a name iff N is a name. Reification preserves name interpretation;
-value observations and borrowed lifecycle fields remain distinct. Safe code
-may observe origin/region/color. Acquiring a mutable reference that writes
-back into lifecycle knowledge requires unsafe and the ordinary borrowing,
-Writable and applicable construction premises. This does not make @ a borrow
-constructor. [Unsafe admission](unsafe-semantic-admission.md) defines the
-compatible post-commit fact flow; unsafe cannot supply a missing Pre.
+N@ is a name iff N is a name. N@ is rank-0 ordinary lifecycle material with
+its own type, fields and associated operations, independently of N's rank.
+Origin and region are ordinary fields of lifecycle Objects; Color belongs to
+region. They use Object = <Val1?, Pattern, Val2>, not a fourth business-Object
+coordinate or a higher-rank constraint layer. Lifecycle computation knows
+names and these relations, not special integer/container/business-type meaning.
+Type punning's legality remains with the actual conversion's other consumers.
+
+Reification preserves name interpretation; value observations and borrowed
+lifecycle fields remain distinct. Safe code may observe origin/region/Color.
+Ordinary boundary admit uses the checked boundary's limited world-update
+authority (§9); constructing a contract grants no such authority. Raw writeback
+of otherwise underivable external knowledge additionally requires
+[unsafe admission](unsafe-semantic-admission.md), ordinary borrowing, Writable
+and applicable construction premises. Neither route permits arbitrary history
+replacement or a missing Pre. This does not make @ a borrow constructor.
 
 `@` is a normal overloaded operation. It is not a syntax-only marker, not a
 reserved lexical territory without semantics, and not exempt from overload
@@ -353,7 +366,35 @@ Compile-known and runtime-known values do not inhabit different lifetime
 species. Stage says when a fact is known; it does not change the lifecycle
 calculus or numeric/value identity.
 
+K as a whole projects to lifecycle computation, forgetting the **business
+Policy's Stage dimension**. It does not create compile and runtime lifecycle
+timelines. The projection retains already selected operations and MoveEffect,
+names, dependencies, activation, control, cleanup and delivery correspondence.
+It never selects again after forgetting Stage. Compile evaluation is the
+ordinary hosting of this value program, not another stage axis inside its world.
+Reify resumes the same E/K and creates no separate lifecycle world.
+
+Current established names and structural material can be computed before their
+machine action runs; unknown business values remain unknown. E uses the actual
+legal frontier and guarded continuation, without future-path enumeration.
+Constructing guarded branch material does not commit both branches' effects
+or permit lifecycle code to prune paths using unknown business values. A legal
+O path rewrite revalidates affected projections at their new positions.
+
+`lifetime pre/post` programs are projection-complete regions. Their ordinary
+evaluation and check/admit boundaries remain, but transcription adds neither
+another @ nor another companion layer to their lifecycle-side operations.
+Established projected material must retain that completion provenance through
+composition; it is not inferred by matching names or traversing source text.
+
 #### 2.1.2 NameView, origin, and finite observation
+
+`NameView<T>` below is mathematical notation for the structured companion of
+T carried by **ordinary rank-0 lifecycle Objects**. It does not prescribe a
+source type constructor, introduce another Object category or type axis, or
+define a lifecycle-specific object ontology. Origin, region and operation
+material use the same unified Object/Pattern/Policy mechanism as §2; an
+implementation may choose ordinary representations and API names.
 
 For every semantic value operation `f_V : T -> U` that is name-projectable,
 there exists a unique semantic name-level companion:
@@ -372,24 +413,36 @@ NameProjectable_T(f)
 Value and name projection must commute:
 
 ```text
-@(f_V(x))     = f_N(x@)
-@(field_V(x)) = field_N(x@)
-(x.field)@    = x@.field
+@(f_V*(x))     = f_N*(x@)
+@(field_V*(x)) = field_N*(x@)
+(x.field*)@   = x@.field_lifetime*
 ```
 
+The stars mark the original selected operation and its corresponding partner;
+they are metanotation, not a source operator or second overload selection.
 The name-level companion does not re-execute the runtime field operation.
 Companion existence, uniqueness, and commutation are closed semantic
 requirements. How companions are generated, stored, or represented in an IR or
-registry remains implementation-open; absence of a particular registry entry
-cannot make a semantically name-projectable operation fail this law.
+registry remains implementation-open. Actual Pattern/structure formation must
+synchronously establish sufficient companion material for this law. A missing
+consumer is Unavailable, never permission to fabricate the partner or silently
+waive the law. Dot still enters field::adl, and any forwarding is real ordinary
+registration or Pattern extraction, not a private field resolver.
 
-`origin : LifeName -> LifeName | None` records semantic provenance rather than
+`origin` observes a LifeName link, explicit None, or an actual unknown boundary.
+It records semantic provenance rather than
 source text or an address. Origin ancestry is generated coinductively by the
 default generator of the semantic construction that produced the name;
 omission is not `None`. `None` is an explicit termination proposition. Each
 `ReifyLife(n, k)` is nevertheless a finite structural observation. A later
 `.origin` projection issues a new request; `@` never eagerly unfolds the whole
 chain.
+
+Unknown marks the information boundary of established material. A missing
+producer/observation is instead Unavailable; it establishes neither a fresh
+unknown root nor None. Boundary programs perform the necessary available
+origin.origin traversal (§10); callers need not manually spell an arbitrary
+number of links in from/live_with.
 
 ```text
 OriginDefaultPrinciple:
@@ -407,7 +460,7 @@ therefore does not classify an ordinary non-borrow value as origin-free merely
 because no borrow-root rule applies to it.
 
 Function entry begins from a default universe and applies the written lifetime
-precondition as a finite correction:
+precondition as a finitely described correction:
 
 ```text
 U_entry = U_default ⊕ Delta_pre
@@ -455,8 +508,26 @@ Here `⊕` applies the finite declared corrections while retaining every
 unmentioned default rule. Thus a missing Pre fact cannot silently truncate an
 origin chain to `None`.
 
-Neither origin nor a complete NameView enters `Norm(Object)` or adds a fourth
-Object axis.
+`|Delta_pre|` measures the finite **description material** delivered by one
+completed formation/observation: its ordinary bound names, relation rows and
+finite regular descriptor graph. It is not the cardinality of the descriptor's
+path denotation. A finite descriptor using repetition may describe infinitely
+many potential finite walks. It does not enumerate or grant simultaneous
+operations on all of them. Each actual requested operation still requires its
+real access-tree route, target/generation, Region and Color premises; descriptor
+state reuse merges none of those identities.
+
+Only the admitted regular relations and their justified algorithms may be used.
+Finite representation proves neither decidability of an arbitrary infinite fact
+set nor termination of an arbitrary Pre program or numeric-range query. A
+nonterminating/unavailable computation supplies no completed Delta_pre. This
+description-versus-denotation distinction also applies to §11's regular access
+material and leaves the implementation/proof obligations of §14 intact.
+
+Neither origin nor NameView is automatically added to a business Object's
+Norm. Lifecycle Objects themselves have ordinary content normalization of
+their fields and retained identities; equal business values do not merge names,
+Places, lifecycle generations or credentials.
 
 #### 2.1.3 Region and lifecycle events
 
@@ -634,22 +705,47 @@ Pre(action, state)
   -> Post(action, committed_state)
 ```
 
-The checker does not tentatively mutate all facts and discover the violation at
-function end. A failed precondition leaves the prior lifecycle state unchanged.
+The corresponding ordinary lifecycle program must reduce legally and deliver
+the required result. This is the meaning of checking, rather than another
+checker ontology. It does not tentatively publish facts and discover a failure
+at function end. A failed precondition leaves prior state unchanged. Scratch
+computation is not committed history, and earlier committed external effects
+are not generally rolled back by a later failure.
 
 #### 2.1.6 Call-boundary summaries
 
-A caller instantiates the callee's declared conjunction of atomic contracts:
+A contract clause hosts a complete ordinary compile expression:
 
 ```text
-lifetime pre
-lifetime post
+lifetime post a@ == b@ ref::lifetime::
 ```
 
-The caller need not expand the callee's internal origin history. The post
-summary may compress that history, but contract bodies remain conjunctions of
-atomic facts; this rule introduces no contract-level disjunction, negation, or
-control flow.
+@, == and ref::lifetime:: use ordinary interpretation and selected calls. Local
+declarations, branches, recursion, calls and associated injection are permitted.
+Intermediate values need not be NameExpr. The final delivery is a complete
+single self-root type with the boundary's associated check/admit behavior (§9).
+No special formula AST, separate logic evaluator, arbitrary implication solver
+or user-written proof Object is required. The caller consumes that behavior
+without expanding private internal history.
+
+| Clause | Caller | Inside implementation |
+|---|---|---|
+| Pre | check | admit |
+| Post | admit | check |
+
+Ordinary calls map actual parameters, formed captures, result positions and
+activation. Caller Pre check precedes the action; internal Pre admit cannot
+repair its failure. Internal Post check establishes the delivered guarantee;
+caller Post admit neither replays internal actions nor duplicates consumption.
+Explicit Post constrains actual results/history; it cannot replace history.
+
+An implementation body omitting Post enters the formation-time structural
+summary transformation of §10; reached actual exits separately validate that
+summary. It need not execute future branches to expose the contract. A handwritten Function
+Pattern/function-pointer interface has already forgotten external structural
+source authority; it cannot recover hidden implementation structure to fill in
+a contract. The following defaults apply to that interface, not to body-based
+automatic Post. An empty clause placeholder proves neither true nor NoDelta.
 
 For a Function Pattern LHS interface F and actual callable contract A,
 omission and compatibility have these meanings:
@@ -681,6 +777,13 @@ observable consumption in one transfer transaction, without duplicate Kill.
 Ref/share capture positions move handles, preserving their actual targets and
 generations; Preserve is neither Copy nor an implicit clone.
 
+Contract implication retains the displayed direction, over the exposed
+observations and mapped entry assumptions. It is an obligation on the actual
+ordinary programs and supported family, not a decidable algorithm for arbitrary
+program equivalence. Missing evidence cannot count as success. In particular
+non-NoDelta effects cannot be hidden in an omitted-Post Function Pattern, even
+with compile-known Val1 of the projected callable.
+
 #### 2.1.7 Region Color
 
 Color remains a future constraint dimension, but its inheritance law is
@@ -710,14 +813,16 @@ ColorExtensionInterface(new_color):
   freeze those finite relation rows when Sigma is committed
 ```
 
-Color does not enter Object core or `Norm(Object)`. Its concrete carrier and
+Color is not automatically added to business Object core or Norm. Its values
+and region fields are ordinary lifecycle Object content. Its concrete carrier and
 source syntax remain implementation/surface questions. The global vocabulary
 is not a closed language-wide enumeration: later definitions may contribute
 colors and their finite relation rows. Once a compilation semantic universe is
 committed, however, its ColorSet and relation tables are finite and fixed for
 that compilation. Extension may express broader memory-access models and
-computation-reordering constraints, but it may not smuggle an unbounded theorem
-language into one lifetime check.
+computation-reordering constraints. Finite Color relations remain a bounded
+mechanical foundation; this does not restrict full contract programs to
+conjunctions of Color atoms or make Color an arbitrary proposition black box.
 
 ### 2.2 No implicit borrow formation
 
@@ -1023,16 +1128,159 @@ or rejecting every closure with local references.
 Path, ADL, Policy and closure formation retain defined semantics through these
 interfaces without deciding every future lifetime refinement.
 
-### 8.5 Separate SCC convergence work
+### 8.5 Per-name SCC collapse at continuation boundaries
 
-A later lifecycle-algebra PR consumes selected calls, fixed capture sequences,
-Region/origin/generation edges and Pre/Post/MoveEffect on recursive dependency
-SCCs. It must justify its fixed-point direction, convergence/termination or
-explicit unsolvable/rejection result before supplying evidence to calls and
-tail-call consumers. No universal convergence theorem is established here.
-Failure cannot become runtime retry, a new overload preference or ABI choice.
-This work preserves the already closed cleanup-before-observation rule; it
-does not introduce a cleanup/lifetime solver loop.
+A business type does not determine a lifecycle value. Structural
+interpretation involving `$` provides the *formed* type/Pattern's paired
+lifecycle structural material; actual formation establishes the **original
+regular companion descriptor for each name item** (§2.1.2/LC1).
+`$` itself adds no lifetime action. A name-item SCC is collapsed at its
+continuation boundary **directly into that original regular representation**
+under the name's current access, region, Color and source/effect constraints.
+It must not be unfolded indefinitely and reconstructed as a new SCC grammar,
+nor inferred solely from the business type.
+
+#### Participation relation
+
+For this judgment I denotes an actual closure activation/boundary in K, not
+just a source closure expression, lexical owner, callable tag or cached
+CompileInstance. Define the **name-item tracking graph** G_K from the established
+semantic material needed by this lifecycle computation:
+
+- A vertex is an already formed name item, retaining its LifeName, generation,
+  actual structural item/selector coordinate and original paired regular
+  descriptor. A lawfully transported summary can retain that same provenance
+  and the ordinary mapping to a new carrier/generation. This records no new
+  LifeName and does not assert that a recorded old generation is still alive.
+  Any genuinely newly formed item/generation has its own original companion
+  from that real producer; transport never replaces it with another item's
+  basis. Only actual ordinary transport/delivery supplies such mappings, never
+  a result name invented at an intermediate return boundary.
+  Potential coordinates, type nodes and regular automaton states are not
+  vertices merely because they can be written or visited.
+- A directed edge is exactly a fine-tracking dependency supplied by actual
+  formed structural/source material or an established selected operation/
+  interface relation: its source item's material requires the destination
+  item's material under that witnessed relation. Retain the legal direction,
+  registered name-level structural/access witness, actual target/mapping and
+  scope/control conditions. Mere Val2 membership, a type signature or a
+  dependency requirement without its selected realization adds no edge.
+  A Move contributes only dependencies actually supplied by its selected
+  counterpart/contract. It does not automatically connect the old/new name
+  generations, add an old-name origin link or reverse an edge.
+- Each vertex records the activation of its actual formation action; each
+  edge records the activation whose formation/selected action or instantiated
+  interface first establishes that dependency. These are contribution
+  provenance, not reparenting of names or Objects. Reading/copying an existing
+  row or propagating an unchanged target completion retains its provenance;
+  it does not make every transit frame the edge's establishing activation.
+- Ordinary scope/access/capture and return-segment judgments must admit those
+  edges. In particular no control-propagation edge crosses the nearest
+  Ordinary return barrier or an unknown boundary by assumption. Only legally
+  exposed material counts; hidden implementation provenance cannot restore
+  erased external structural-source authority.
+
+Preserve guards when constructing this graph. A component C carries one
+compatible guarded case; mutually exclusive arm edges cannot be unioned into
+a synthetic cycle. At an actual exit use its reached mapping. At formation,
+the same rule transforms already formed bound descriptions conditionally; it
+does not create future concrete vertices, activations or cuts, inspect a future
+guard, or enumerate future paths.
+
+For each such case, C is a maximal strongly connected component of G_K with
+a witnessed positive-length directed cycle. A singleton without an admitted
+self-edge supplies no additional InPlace collapse obligation. Let Edges(C)
+contain only edges whose endpoints are in C. The participation rule is:
+
+```text
+LocalContribution_K(I,C) =
+    {v in C        | formation_activation(v) = I}
+  + {e in Edges(C) | establishing_activation(e) = I}
+
+Participates(I,C,K) iff
+    I is an InPlace boundary with established applicable scope/control evidence
+    and C is the cyclic SCC in the compatible case just described
+    and LocalContribution_K(I,C) is nonempty
+```
+
+The two sets are tagged vertex/edge contributions; `+` is metanotation here,
+not a new source operator. In a cyclic SCC every contributing vertex/internal
+edge lies on a cycle. A noncyclic feeder edge, merely containing/reaching C,
+forwarding C's material or lying on a target-return route does not suffice.
+Neither recursive business-type syntax nor repeated regular-state visits nor
+reuse of the same closure tag in another activation establishes participation.
+Graph storage, SCC algorithms and caches are open; this relation is not.
+Missing required graph, contribution, guard or scope evidence is Unavailable,
+not an assumption of nonparticipation or a type-based collapse.
+
+**The collapse schedule is fixed by closure semantics:**
+
+- At an **Ordinary (non-InPlace) closure** boundary, collapse outgoing SCC
+  material per name item. At formed-body summary time, transform *bound
+  descriptions*, not future concrete actions; at an actual exit, transform
+  reached names/history.
+- An **InPlace** closure preserves fine-grained tracking by default. Only
+  when it **participates in the particular SCC** do its participating
+  name items collapse at that InPlace closure's real exit (including a
+  legitimately crossing targeted return). Other InPlace closures do not
+  collapse unrelated SCCs. Every real exit still performs its usual
+  local-name compression.
+
+A targeted return crosses only InPlace boundaries in the reachable return
+segment and cannot cross its nearest Ordinary closure barrier. SCCs induced
+by these synchronous return interactions are thus segment-local. This does
+not prohibit ordinary captured/returned name dependencies across a callable
+interface; their outward contract and escape checks remain mandatory.
+
+#### One component at successive exits
+
+Participation is not permission to replace all of C at its first crossed cut.
+At I's exit collapse **I's boundary-local cyclic contributions** per name item:
+the items formed there and the local relation material established there that
+must be exported. If such a row concerns an outer name, transform that local
+projection, not every fine representation of the name in surviving contexts.
+The fine material of an outer participating activation remains available,
+updated with the actual committed effects, until that activation's own required
+cut. Nonparticipating InPlace exits still compress their dying locals.
+
+The outward transform must retain the original descriptor association, actual
+name/generation/delivery mapping, guards, current restrictions and sufficient
+component incidence/contribution provenance to process later exits. An earlier
+local collapse cannot erase an outer contribution and make the outer activation
+falsely nonparticipating. An implementation may contract graph representations;
+it must preserve this semantic correspondence, without reading dead locals or
+reconstructing their fine state from a regular type/state. A component identity
+need not remain fixed across genuine semantic graph changes; a representation
+change alone cannot discard its required lineage.
+
+If mandatory local collapse cannot retain the information needed at the next
+boundary, the transform is unavailable at that cut. It cannot delay collapse,
+collapse the entire component early, or guess at the next boundary. The
+[multi-InPlace example](lifetime-algebra-walkthroughs.md#scc-collapse-at-participating-closure-boundaries)
+derives the participation and successive-cut behavior from concrete graph
+provenance, rather than assuming a participating/nonparticipating label.
+
+Collapse does not merge actual names/generations/targets, turn unknown into
+None, remove earlier Color/effects, lengthen region, or restore cropped
+operation endpoints. The original descriptor is a *structural basis* with
+current restrictions, not renewed permission. Missing original companions
+or unsupported regular operations yield Unavailable, not type-based guesses.
+This rule does not prove termination of arbitrary recursive lifecycle
+programs or machine tail-call/slot reuse; those remain separate obligations.
+
+
+
+Three subjects have separate obligations: regular access/source SCCs (§11),
+recursive ordinary lifecycle programs, and physical tail-call/slot reuse.
+Regular descriptors preserve finite structure from formation. Their state
+reuse does not merge actual names, generations or targets and proves no
+arbitrary program termination. Ordinary recursion uses E and exposed contracts;
+each supported family must justify its domain, operations, closure and
+termination or explicit rejection/unavailability (§14). No external general
+solver, universal fixed point or total convergence theorem is assumed.
+Machine consumers use already established evidence; they cannot choose an
+answer, retry an overload or switch ABI. Cleanup remains fixed before
+observation with no cleanup/lifecycle repair loop.
 
 ## Current name position and delayed E
 
@@ -1051,3 +1299,771 @@ The lifecycle projection is compile name/Color algebra for both compile and
 runtime callables. Future value facts such as a constant-false branch are not
 visible to name/Color reasoning by themselves; an optimizing path removal uses
 E O E with the affected projections revalidated.
+
+## 9. Ordinary contract formation and bootstrap responsibilities
+
+The ordinary expression in §2.1.6 runs with the existing compile invocation
+rules. Its selected partner and canonical inputs establish a CompileInstance
+I before body entry. It uses the ordinary compile self-name/projection and
+actual OpenHere window to form complete structural material and install
+associated check/admit behavior. A legal instance-open result is the single
+direct self-root complete type tau_I, with ordinary NameExpr exposure. An open
+type hidden inside a Product/reference/capture cannot escape. No explicit
+user-created contract wrapper or two manually duplicated functions is required.
+
+The behavioral interfaces are schematic full Function Patterns:
+
+```text
+check: world::lifetime:: -> bool::                 at compile horizon
+admit: (world::lifetime::) ref -> unit::            at compile horizon
+```
+
+Each associated callable has its own contextual self. Any contract subject or
+mapping is ordinary explicit input/dependency material, not an extra implicit
+self slot. Source definitions may use ordinary open qualified member formation
+and initialized associated entries; check/admit need neither a new registry
+nor a special contract interpreter. Their concrete arity, packaging and
+member spellings are engineering choices. The boundary requires the stated
+observation and authorized update behaviors, with every ordinary Type, Pattern,
+Policy, capability and lifecycle premise.
+
+There are two independent authorities. Contract formation may modify associated
+members only in its real construction window and at actual retained Places;
+updating an outer value copy does not update instance storage. Calling admit
+may update only the corresponding mapped lifecycle world at a checked
+entry/success boundary. Open + OpenHere completes an omitted mode to mut but
+supplies neither Writable nor that world-update authority. Ordinary admit
+derives boundary consequences from established assumptions/results; underivable
+external facts additionally use the unsafe owner's post-directed admission.
+Neither can retract history or make a failed caller Pre legal retroactively.
+
+The minimum bootstrap responsibilities are below. They are inputs/observations
+of existing actions, not a requirement for ten VM instructions or new Objects.
+Every seed needs its action's Pre, actual cut, common commit, joint Post and
+failure-without-publication boundary before it can support library composition.
+
+| Responsibility | Established input / output and consumer |
+|---|---|
+| Name and generation | Actual formation/observation supplies LifeName, generation and current K position, including temporaries without a Place |
+| Origin | Selected formation/transfer supplies links, explicit termination or established unknown boundaries, plus legal field observations |
+| Region and Color | Fixed cuts and interval relations, finite directed compatibility/exclusion/exchange rows and inherited historical constraints |
+| Move and borrowing | Predetermined Kill/Preserve, frontier Movable, actual ref/share/weakening/rebind targets; no implicit borrow or copy fallback |
+| Complete identity | Construction, consuming extraction and non-consuming Pattern observation produce their distinct companion material atomically where applicable |
+| Invocation and exit | Selected Param/captures, explicit input, actual activation, delivery, target return and fixed cleanup correspondence |
+| Pattern formation | Real structural formation establishes paired field/operation material and registrations for the commutation law |
+| Regular access | Finite choice/advance/repetition/crop material retaining targets and operation permissions |
+| External success | Compatible trusted facts tied to the successful external action and its mapped outputs |
+| Boundary transform | Formed guarded relations/bound local positions for advance summary; actual exit/identity/origin/region/path/effect/world material for reached compression; fidelity between them |
+
+Ordinary lang programs compose these materials into internal APIs, contracts,
+access refinements, compression, automatic Post and library protocols. Source
+consumers establish the correspondence and enter common transactions. The
+materializer implements promised external behavior on its target. It cannot
+decide lifecycle meaning from representation or layout. Missing seeds/consumers
+are explicit unavailable boundaries, not successful empty summaries.
+
+### 9.1 Bootstrap dependencies must terminate
+
+The dependency here is justification of an action, not merely evaluation order.
+Its leaves are the already fixed language semantics A0: ordinary Object/Pattern/
+Policy and name/Place operations, selected call/activation/delivery, complete
+formation, fixed cleanup, the defined Move/origin/Region/Color/access relations,
+and their common Pre/commit/Post. Those laws do not obtain their validity from
+a contract that a derived program is currently trying to form.
+
+| Dependency | Required predecessor | Cannot serve as its own predecessor |
+|---|---|---|
+| Bootstrap observation/action | A0's actual name, target, cut, operation and ordinary authority | A newly constructed contract saying that the observation/action is valid |
+| Current-instance type initialization | Actual fresh formation window and one-shot initialization authority at InvokeName(I) | Reading an uninitialized self resident, or returning an unrelated type and declaring it rooted at I |
+| Derived ordinary lifecycle program | Available inputs and selected operations whose premises already have a foundation | Its own still-unformed check/admit, automatic Post or generated companion |
+| Boundary adoption | Actual mapped entry/committed-success facts and permitted ordinary update operations | The Boolean returned by a user check, or a copy of a proposed world |
+| Future source consumer | The same established relation and corresponding ordinary program | A fixture import, missing wiring, a speculative execution or successful empty summary |
+
+A bootstrap implementation may initially realize a justified observation or
+formation operation in the host; a later source definition may replace it when
+its dependencies already terminate in this basis and it preserves the same
+relation. This does not freeze an intrinsic count or representation. It also
+does not permit an unrestricted host fact setter under a source function name.
+The [host boundary](../static-evaluation/host-capabilities-and-machine-objects.md)
+still requires justification for a permanent non-source primitive.
+
+Derived programs' own ordinary computation has lifecycle premises too.
+Projection-complete provenance stops another transcription/companion layer; it
+does not waive those premises. Finite structural operations and the basis above
+anchor that computation. An adopted recursive family must separately establish
+its domain and termination/composition condition (§14). Recursive **execution**
+under an established contract is different from circularly granting that
+contract correctness. A strongly connected justification with no such foundation
+is unavailable, even if every node promises to admit the next one's assumption.
+
+In particular, forming C cannot use C.check, C.admit, AutoPost(C) or a companion
+whose sole justification is C to establish that very formation's Pre. Omission
+does not supply true, NoDelta or a default root at this gap. Ordinary scoped
+recursion and E remain the only program evaluation; no proof Object, external
+prover, privileged success flag or extra evaluator is introduced.
+
+#### Operation provenance map
+
+The following map classifies the walkthrough names by their **semantic source**,
+not by which Rust function might initially implement them. B/L/X are justification
+sources; W records a missing consumer and is orthogonal to them. One spelling may
+therefore be ordinary composition over a basis observation with source wiring
+still pending. None of these rows freezes an API or an intrinsic count.
+
+| Class | Meaning / endpoint of justification |
+|---|---|
+| B: basis responsibility | The already fixed A0 observation/action laws and actual authority: names, source-established origin, actual cuts/regions, directed Color/access facts, complete formation, borrowing/Move and common publication. A basis fact is not produced merely by copying its carrier |
+| L: ordinary lang composition | Pattern extraction/construction, calls, arithmetic/Boolean computation and supported relation transforms over those available facts. Its dependencies must terminate in B or actual compatible X facts |
+| W: unconnected consumer | The source-to-semantic handoff for an existing relation/program is missing. W grants no fact and cannot be implemented by substituting another semantics |
+| X: trusted external fact | A real facility supplies otherwise underivable resource/validation/exclusion facts by compatible unsafe Post after its ordinary Pre and actual success; failure supplies no success fact |
+
+Namespaces below are the schematic ones used in the walkthroughs. Grouping
+operations means they share a source, not that their bodies may be one opaque
+host operation. The final column points to the existing pending handoff.
+
+| Example operation(s) | Source / ordinary expansion and final dependency | Pending handoff |
+|---|---|---|
+| @, observe_origin | B supplies actual name/generation/origin observations; ordinary field/Pattern reads expose their existing link/unknown/termination material. observe_origin is not permission to invent that material | W: LC2/LC3 and ordinary name/reification/field consumers |
+| split_link, split_row, split_outward_row, split_exit, select_one_parts, contract_rows | L: registered ordinary extraction of complete descriptive values. B is their actual formation/role/identity and extraction law, not source spelling or fixture import | W: LC1/LC4/LC5 |
+| origin_accum, prepend_row, exit_material, guarded_exit_pattern | L: ordinary complete Products/registered constructors retaining bound roles, guards and all effect rows; B is complete construction and the input material's origin | W: LC1/LC5 |
+| compose_link, retain_unknown, retain_termination | L: compose one available relation edge or retain its actual endpoint, using B's region order, inherited Color, access and source facts. Each adopted relation/algorithm needs its stated domain; no general solver is assumed | W: LC5/LC8 |
+| map_outward_row, map_delivery | L: eliminate local reads and apply the established actual/bound delivery mapping. B is ordinary scope/return/result identity; no new target, validity or authority is synthesized | W: LC5 and ordinary delivery |
+| compress_origin, compress_rows, compress_exit | L: the explicit recursive W1 programs over the preceding operations and justified finite/regular families. They are not irreducible lifecycle primitives | W: LC5/LC8 |
+| source_frame, selected entries, function_boundary, true_boundary, false_boundary, middle_boundary, inner_boundary, available_guard | W exposes existing semantic body/control/call correspondence. B is the actual formation/activation/cut/selection and legally available control observation; Frame-shaped user data or unknown future control supplies none | W: LC2/LC3 and control/completion |
+| share_fuel, is_zero, predecessor, move_leaf_result, recursive_input, return_exit, returned_call_exit in selected | The original selected ordinary operation and its established counterpart/contract determine these projections. L composes them; B supplies actual borrow/Move/formation/return laws and single transfer. Numerical helper meaning stays with its original ordinary callee, not a new lifetime builtin | W: LC2/LC3 and ordinary callee execution |
+| transform_formed_arm and the advance summary | L: compose established operation descriptions, eliminate bound locals and retain guarded effects. B is actual semantic material formation and counterpart fidelity; an exposed modular contract can replace unavailable private structure | W: LC1/LC2/LC5/LC6, including adopted recursive-family evidence |
+| initialize_empty_root::construction | B is general complete type formation at the already authorized current target and one-shot initialization, not a special lifecycle type factory. The example source facade exposes that existing action; its NameValue argument creates no permission | W: LC4 and current-instance initial formation |
+| qualified let, explicit child ref, first write, captures, self return; form_post | L: the expanded W2 construction/call program. B is ordinary OpenHere/name/Place/initialization, closure dependency, self-root and return rules; it cannot justify its own initial Pre | W: LC4 and ordinary source construction/delivery |
+| clone::lifetime | An actually selected ordinary share/clone/Move path over immutable descriptor data. B is its real producer Post and complete result formation; cloning data copies no semantic-world authority | W: LC3 and ordinary clone producers |
+| source_matches, region_fits, color_compatible, access_is_subset, effects_match, all_true/both | L: mapped observation, supported finite relation queries and Boolean folding. B is the actual source/history/region/Color/access evidence; a true answer creates none of it | W: LC4/LC8 |
+| adopt_origin, adopt_region, adopt_color, adopt_access, adopt_effects, end_boundary_view | L: map/extract the relevant rows, check their independent operation premises and thread/end the same scoped view. The B leaf is the narrow existing authority-checked projection update and joint-publication boundary, not an unrestricted fact setter or the whole adopt function. New external facts additionally require X | W: LC3/LC4; X enters only through LC7 |
+| try_trust, partition_refs | L: ordinary observation, control, range planning and ownership/result assembly; B supplies actual input/source authority and ref formation. X is only the otherwise underivable successful validation/disjointness fact and its maintained interval, not the entire function | W: LC3/LC7/LC8 and materialization |
+| range_access, validation/source/generation/shared/interval/read requirement rows, element_share_at and clone::word in W3 | L forms typed ordinary requirements, queries established evidence and composes a real indexed shared projection with an already selected independent Word clone. B supplies actual call/Move mapping, current names/generations, read/access/Color/interval and complete formation; the consumer creates no new validation fact. A runtime integer supplies targeting, not lifecycle proof by numeric equality | W: LC2–LC4/LC7/LC8 and actual indexed projection/clone producers |
+| prepare_ranges, validate_separation, acquire_children, partition result/requirement rows and checked_ranges in W3 | L observes actual handles, preserves ranges/source mapping, forms contracts and branches on the real validator result. B supplies current original-ref authority and normal consumption/formation legality. X is only the validator's earlier compatible strict-range-separation success; neither a plan nor SeparationOk supplies root authority | W: LC2–LC5/LC7/LC8 and actual range validation |
+| form_child_pair, child_pair_life, child_formation_parts, end_selected_share_intervals, begin_exclusive_children and finish_child_pair_material in W3 | L composes the actual selected complete producer's scoped companion. B supplies exact input/share-ending/fresh-child scopes, source/region/exclusive-Color laws and one complete publication gate. X separation is already available before this producer's Pre. Components may stage only the prescribed ends/new formations; they cannot erase other dependencies, rewrite history or strengthen the share handles | W: LC2/LC3/LC7 and ordinary complete ref/result formation |
+| success_id_role/outcome_roles, validation input/interval/from/shared dependency rows, required_contract_pattern, guarded_rows and failure_delivery_rows in W3 | L extracts formed interface roles and builds typed guarded descriptions for the ordinary contract constructor. B supplies the legal input read/Move, source, interval and actual delivery mapping; a result role is not an observed future payload | W: LC2–LC5/LC7 |
+| probe_index, finish_probe and validated_index_rows in W3 | L organizes the ordinary probe result and ends its temporary view. X is the real successful validation tied to actual Q/generation/index/result and maintained interval; the row describes that fact rather than producing it. A tag or the outer contract's own check cannot justify the external guarantee | W: LC7 and the selected actual facility; unsafe post source notation is pending |
+| probe_success_life, initialize_borrow_origin, initialize_bounded_region, begin_shared_dependency and finish_validated_name_material in W3 | L composes the selected fresh producer's companion. B supplies its actual one-shot name/source authority, bounded region and compatible shared dependency formation, including logical borrowing by ordinary non-ref values. It cannot rewrite an earlier name or grant access. X supplies only the actual validation packaged with those components | W: LC2/LC3/LC7; these are scoped formation responsibilities, not unrestricted world-field setters or a safeid builtin |
+| at_root, registered .left/.right/.payload, descriptor choice/repetition operators, payload_access and access in W3 | L composes/crops the supported regular descriptor family. B supplies the original formed companion, selected legal field correspondence, actual target/name parameters and existing capability limits. A finite descriptor or retained route grants no new terminal permission | W: LC1–LC3/LC8 and ordinary operator/ADL registrations |
+| with_ref_window, trusted alias-to-value conversion | L organizes callbacks, ordinary operations and cleanup; B supplies real normal ref/value formation under Pre. X maintains actual validity/exclusion/ownership that alias names or fresh anonymous origins cannot prove | W: LC7 and normal escape/borrow/delivery |
+| owned_parts, part_snapshots, pair_fields, plan_repartition, same_resource/same_generation, amount queries/arithmetic, is_full, split_ready, merge_parts and result constructors in W4 | L: ordinary contract/field observations, arithmetic, consuming extraction, resource accounting and complete result formation. B supplies actual operand capabilities and ordinary lifecycle/construction laws. Quantity or an equal id alone mints no part | W: LC3/LC7 and ordinary library/type consumers |
+| validate_for_plan and into_box in W4 | L checks available library state and organizes conversion; X is needed only for otherwise underivable actual resource-generation/validity/exclusion/ownership facts. B still requires every normal consuming/construction Pre; full quantity is insufficient | W: LC7 and actual trusted facility/normal Object formation |
+| issue_full_part and initial resource acquisition in W4 | L transfers actual unallocated full-use authority into a complete part under B's normal action/ownership laws. Only a real external acquisition needs X for otherwise underivable ownership/validity facts. The amount 1, a Part constructor or a success tag is not an authority source | W: LC7 and ordinary resource acquisition/consuming formation |
+| fresh_allocation_data, issue_full_part_core, split_core, merge_core, into_box_core and their private State/table/cell operations in W4 | L constructs fresh ordinary owned cells/data, computes amounts, consumes actual inputs, removes/inserts finite rows and rebuilds complete results around the same held box. B supplies actual ownership, cell/entry identity, legal access, normal construction/extraction/Move and common publication. Only lawful insertion in actual State assigns a portion; fresh data alone grants none. No alias-to-box reconstruction is needed when returning the extracted held box | W: LC3–LC5/LC7 and ordinary library/collection consumers; X only for genuinely missing resource validity in an external realization |
+| inspect_relink, take_link, put_link, relink and Option/Link/root/session operations in W4 | L observes through registered root interfaces, computes the finite plan, consumes complete Options/Parts, constructs replacements, moves actual neighbor portions and composes the expanded accounting bodies. B requires actual distinct slot roots, resident-transfer and Part/State authority, ordinary access/cleanup/complete commits and mapped delivery. Neither root-write capability nor a plan supplies resident ownership or payload access. X is limited to genuinely external maintained session/transfer facts | W: LC3–LC5/LC7 and actual alias-root registrations/edit protocol; no whole-relink intrinsic |
+
+An implementation must expose this decomposition even if a temporary bootstrap
+realization uses host code. In particular compress_exit, form_post, adopt_origin
+and partbox are not justified as permanent indivisible host black boxes. The
+ordinary programs should consume the smallest justified observations/operations;
+unconnected consumers stop unavailable. No row authorizes deriving a pending
+contract from itself, publishing a supplied callback as proof, or replacing
+ordinary bodies with source-string recognition. The [library composition example](lifetime-algebra-walkthroughs.md#ordinary-partbox-composition-program)
+shows where L, B/W and X meet on a concrete path.
+
+### 9.2 Safe adoption is narrower than mutable observation data
+
+The world-ref interface of §9 denotes an actual authority-scoped boundary view,
+not unrestricted setters for every rank-0 field in semantic history. The actual
+invocation supplies its activation, input/result mapping, generation, cut and
+entry/success scope. Ordinary safe operations on that view must independently
+obey their own Pre, even when the surrounding contract's check returns true.
+They can transport assumptions already justified at caller Pre, import an
+established callee guarantee after successful completion, or derive consequences
+through admitted operations. They cannot turn arbitrary computed data into a
+new premise. Acquiring or copying a NameValue or a bool supplies no authority.
+
+For example, an ordinary origin-adoption operation must check the proposed
+source against the permitted mapped entry/success relation. Region adoption
+must retain actual generation cuts and target validity; Color adoption cannot
+retract inherited/history facts; access adoption must preserve the admitted
+operation ranges and non-expansive cropping. These are the ordinary operations'
+semantic premises, not another call to the possibly dishonest C.check. The
+boundary checks the full correspondence and all affected Pre before joint
+publication. A stored view reused for a foreign activation, cut, generation or
+output has no authority there.
+
+Implementations may express this restricted surface through ordinary access
+views, operation families and capabilities. The carrier and function spelling
+are open; an API exposing an unrestricted safe semantic-world record write is
+incompatible with this rule. A function named admit and a well-formed self-root
+type do not supply missing write permissions. A successful check establishes
+its bool result only; a legitimate contract's useful guarantees come from its
+actual sound computations and mapped operations, not from that name or bool.
+
+The [worked contract and malicious variant](lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+make the non-derivability concrete. A safe always-true check can accompany an
+admit with no unauthorized delta. Pairing it with a forged origin/region/Color/
+access update fails the corresponding operation Pre or requiring consumer;
+missing validation is unavailable. No successful permission is published.
+Unsafe Post remains the separate route for compatible **new external success
+facts**, after ordinary Pre; its truth is an external facility obligation.
+
+### 9.3 Source construction and common publication handoff
+
+The [ordinary contract program](lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+starts by requesting complete initial formation at its own existing invocation
+root, then uses normal qualified member formation and first writes, then returns
+compile self directly. The [construction owner](../symbol-world/structural-type-formation-and-composition.md#current-instance-initial-formation-handoff)
+owns that initial formation; no local copy is substituted for the target.
+OpenHere governs later member formation, each child has its own initialization
+authority, and a helper has its own self/activation. Construction authority is
+never stored as a general world-writing privilege in the resulting contract.
+
+check/admit evaluation participates in the same E. Safe admission computes the
+mapped update on the existing transaction's scoped projection storage; internal
+component calls do not publish a partial outer boundary. All required checks
+and component premises must succeed before its joint public publication, with
+the original action/cut/mapping retained. An invalid later component publishes
+no part of that boundary delta. This storage discipline is not rollback of
+earlier independent actions or external effects. A common transaction callback
+alone proves neither source authority nor correctness of supplied material.
+
+### 9.4 Minimal authorization interface and operation rules
+
+The provenance map identifies where justification terminates. The following
+interface also fixes **what each authorized use may change**. Its rows are
+semantic responsibilities of existing ordinary actions, not a permanent
+intrinsic inventory. A source-defined facade may compose smaller operations;
+host bootstrap code and later source code must obey the same premises.
+
+| Illustrative facade | Actual authority and independent Pre | Only permitted result / lifecycle increment | Publication boundary |
+|---|---|---|---|
+| initialize_empty_root | Current InvokeName(I), independently authorized fresh formation window, declared complete-type target, live one-shot initialization authority and ordinary formation/lifecycle Pre | A complete empty structural type at that actual I, with its real roles/callspace; consume that target's initialization authority. No foreign root, read of an absent resident or world-writing privilege | Its own ordinary complete-formation commit, under the construction owner |
+| initialize_borrow_origin | Selected fresh producer/name/generation, its still-pending source-formation responsibility, actual authorized source target/generation and ranges, and legal dependency-formation Pre | Exactly the origin relation prescribed for that new name by the selected source action. No rewriting an older name or inventing termination/unknown material | Stage in that producer's scoped companion storage; publish only with its complete action and joint Post |
+| initialize_bounded_region | Same actual fresh producer/name and source; fixed generation cuts and admitted interval containment | The actual bounded region constraint, without extending the target or changing a cut | Same producer boundary |
+| begin_shared_dependency | Same producer/name/source, actual bounded interval and protected endpoints, compatible directed shared Color and existing access/validity premises | Shared dependency/Color constraints for those endpoints and that interval, retaining inheritance/history. No new access and no recoloring the past | Same producer boundary |
+| adopt_origin | Live entry/success-scoped boundary view with actual K/action/activation/cut/generation/result mapping; established permitted source relation and the origin operation's own Pre | Only its corresponding mapped origin consequence; transfer of the same scoped view, not another view with broader authority | Stage in that boundary's storage; all components publish jointly |
+
+These authorities are actual semantic relations established by their ordinary
+producers, not Objects which a user must construct as proofs. A NameValue,
+FreshNameView-shaped value, declared mode, OpenHere, bool or transaction callback
+does not establish them. The first row is owned by
+[current-instance construction](../symbol-world/structural-type-formation-and-composition.md#current-instance-initial-formation-handoff);
+the remaining rows refine the lifecycle responsibilities above. Type/member
+construction authority never becomes lifecycle-world update authority.
+
+The rules below are mathematical descriptions of ordinary E actions, not a
+contract language or another evaluator. Fix K and an already selected ordinary
+action A. n/g_n and s/g_s denote actual names with their generations; P denotes
+actual protected endpoints, and I their fixed admitted interval. F abbreviates
+the actual fresh producer's live, one-shot formation responsibility for n/g_n.
+scratch_A is that action's **unpublished projection material**, not a partial
+ordinary Object. The source origin o is fixed by the selected legal dependency
+realization, up to observational equivalence; it is not an arbitrary parameter
+chosen by a descriptor constructor.
+
+```text
+ActualFreshProducer_K(A, n/g_n), FormationScope(F) = (K,A,n/g_n)
+F covers this pending origin component and has not been used for it
+SelectedSource_K(A) = (s/g_s, P, o)
+ActualSourceAccess_K(A,s/g_s,P), OrdinaryFormationPre_K(A)
+I is the actual bounded result interval, I within source-target validity
+SharedCompatible_K(history, s/g_s, P, I), required access/Color premises
+-----------------------------------------------------------------------
+initialize_borrow_origin(F,s/g_s)
+  stages exactly delta_origin = { origin(n/g_n) = o } in scratch_A
+```
+
+The selected borrow source is the actual referent/range, not a local handle
+Place merely carrying it. The bounded-region and shared-dependency components
+can stage only their table rows for the **same** A/n/source/I; together they
+must satisfy the producer's ordinary joint gate. Origin initialization grants
+neither those components nor a second use of F. Successful complete publication
+discharges this formation responsibility. A previously published origin cannot
+be reset through an old view; a descriptor-state match or equal numeric value
+does not provide a fresh formation.
+
+For adoption, b abbreviates the actual entry or successful-result boundary,
+including K, selected action, activation, cut, names/generations, mapping theta
+and the permitted component domain. w must denote its live scoped view. r is an
+already justified entry relation or committed-success guarantee available at b.
+The ordinary mapped computation may use supported extraction/composition and
+lawful boundary compression, retaining actual unknown/termination and guarded
+source correlation; no general implication oracle is assumed.
+
+```text
+ActualView_K(w) = b, b authorizes the origin component at this phase
+r is established entry/success material at b, independently of C.check
+OrdinaryMap_K(r,theta) = permitted_origin_row
+proposed_origin_row = permitted_origin_row
+all independent origin/source/generation/scope and joint-boundary Pre hold
+-----------------------------------------------------------------------
+adopt_origin(w,proposed_origin_row)
+  stages exactly delta_origin = { permitted_origin_row } in scratch_b
+  transfers the same scoped view w with the same boundary and domain
+```
+
+OrdinaryMap names the result of the actual supported ordinary computation,
+not a new callable primitive. The operation cannot retarget a result, change
+its generation/cut, delete Color or restore access. It can transport an external
+fact already lawfully established by a previous trusted success, but cannot
+introduce a new external axiom. Such a fact still needs LC7's actual unsafe Post
+producer; ValidatedIndex or check=true supplies no formation/adoption authority.
+For fixed actual inputs, selected action, mapping and requested row, the
+permitted increment is unique up to observable equivalence. This does not fix
+storage normalization or require different legitimate weak contracts to expose
+identical summaries.
+
+```text
+any required premise false        => reject; published delta at this gate = empty
+any required evidence unavailable => unavailable; published delta at this gate = empty
+all required components/gates hold => one existing action/boundary publication,
+                                     with its ordinary joint Post
+```
+
+If origin was staged but a later region/Color/access component fails, none of
+that boundary delta is published. The failure rule is local to that gate:
+W2's earlier complete root initialization and child first writes, or earlier
+independent actions/external effects, are not rolled back. A normal returned
+error/paused variant is also distinct from semantic action rejection: its
+earlier real effects and current ownership need their own guarded Post, without
+an invented successful credential or completion claim. Neither case permits a
+selected failure to reopen overloads or retry with another authority source.
+LC3/LC4 source consumers for these interfaces remain pending.
+
+## 10. Internal actions, origin compression and automatic Post
+
+Internal programs distinguish sibling transfer from child formation, real
+borrowing from ordinary value formation, handles from targets, consuming from
+observing, and Kill from Preserve. Origin alone grants no borrow capability;
+ordinary values may carry logical dependencies. Internal Move does not simply
+call a precompressed public from. There is no automatic reborrow to arrange a
+desired origin tree. Pass=Move and selected clone-derived paths stay unchanged.
+
+Automatic Post has two connected consumers at existing semantic boundaries.
+These are ordinary computations in E, not additional evaluators, Policy ranks
+or a requirement to execute the whole program before analyzing it:
+
+| Boundary | Available input | Result / effect |
+|---|---|---|
+| Contract formation from a formed body | Semantic body Pattern/structure, bound input/result/local positions, guarded alternatives, fixed scope/return relations, and established selected-operation descriptions or exposed modular guarantees | A conditional outward Post summary; no future action executes or publishes facts |
+| Actual continuation exit | The reached path, actual activation/names/generations/cuts, committed history and available lifecycle observations | Local compression and actual Post material, checked against the instantiated summary before successful outward adoption |
+
+### 10.1 Contract-formation structural transformation
+
+Ordinary semantic function-body formation supplies the first input. It preserves
+the body's guarded structure and attaches the lifecycle structural descriptions
+of operations already determined by the ordinary call/Pattern rules. Those
+descriptions express the operation's admitted transfer relation; obtaining them
+does not invoke the described action or its state-changing companion. A future
+call can instead use an already exposed sufficient Function Pattern contract.
+Neither route restores erased external structural-source authority or chooses
+a future candidate. Raw/Normalized AST shape or a matching function name alone
+supplies none of this semantic material.
+
+These body/operation descriptions are complete ordinary material values formed
+by their own actual actions; they are not readable partial callable Objects.
+The final callable contract can still await their transformation. Their
+formation premises must terminate in §9.1's basis independently of that pending
+summary; a cycle through the summary itself remains unavailable.
+
+Before the automatically summarized callable contract is exposed for use, an
+ordinary lang program transforms that **formed guarded material**: compose the
+admitted operation relations, remove outward dependence on bound local positions,
+retain source/guard/effect correlations, and form the self-root summary type
+with its ordinary check/admit behavior. Bound local/return positions and
+parameterized region constraints are descriptions, not freshly committed future
+LifeNames, generations or cuts. Ordinary call mapping later instantiates them.
+The program may transform both alternative **descriptions** without performing
+either alternative's moves, borrows, cleanup or external effects. An unknown
+business guard remains a guard in the resulting conditional material.
+
+This fixes the source of the summary input and its availability boundary; APIs,
+representations and supported transformation algorithms remain open. It does
+not promise that every body has a computable summary. If a required selected
+description, modular guarantee, legal structural transformation or founded
+recursive-family result is missing, summary formation is Unavailable. The
+consumer cannot expose a supposedly complete automatic contract by guessing,
+using NoDelta, waiting for one future path as its only justification, executing
+future branches, or reopening selection. Only an actually established remaining
+formation continuation may be transported as such.
+
+### 10.2 Actual-exit transformation
+
+Every actual block/call/other delivery boundary that exports lifecycle material
+must remove its local-name dependencies while the internal material is still
+available. The ordinary boundary program takes:
+
+```text
+actual exit + input/result/activation mapping + local/external partition
++ formed origin/region/Color/access/source-choice material
++ all observable selected actions and fixed cleanup
+  -> available origin traversal and relation composition
+  -> outward material without local-name reads
+  -> self-root Post type and associated behavior, where successful
+```
+
+Traverse origin.origin to the first **actual unknown**; explicit None stops
+as termination. Missing material is Unavailable. A known regular cycle uses
+its finite regular representation rather than infinite unfolding, with the
+applicable recurrence obligation of §14. It cannot manufacture unknown to hide
+a cycle/failure. Contract users do not manually specify the traversal depth.
+
+Compression eliminates local references from the outward material, not the
+already committed history. It preserves required region order, Color, access
+paths, external/unknown-root identities and correlations between source choice
+and effects. All retained validity constraints still apply. Removing a local
+carrier cannot lengthen an expiring referent, restore cropped access, revive
+a dead generation or cancel Color. A true borrow of a dying local still fails
+escape. Nested boundaries perform this work at their real exits rather than
+waiting for the outermost function.
+For SCC material, the placement rule of §8.5 applies. Nonparticipating
+InPlace exits still compress dying locals, but do not collapse unrelated SCC
+name items.
+
+The actual-exit program produces Post_actual for the reached path and checks
+its correspondence to the already formed Post_summary. A more precise actual
+contract may be formed from that material, but it is not the missing source of
+an advance automatic summary. Both transformations use ordinary Pattern/material
+operations, not inference of arbitrary weakest preconditions from predicates.
+Only defined choice/result combination relations apply; there is no universal
+join. For select_one's admitted family, transform the formed descriptions of
+each legal arm, then form correlated source choice:
+
+```lang
+lifetime pre  o@..live_with(r1@ || r2@)
+lifetime post o@..from(r1@ || r2@)
+```
+
+`live_with` is a candidate spelling for depends_on. The Pre's o is the signature
+result position, not a precreated Object. The Post's source component records
+one selected origin, never two simultaneous exclusive targets. Any other branch
+effects remain in the full Post. A from check may use an interval-dependency
+operation, but its admit must also respect the actual source/transfer result;
+the two roles are not undefined synonyms. The [worked example](lifetime-algebra-walkthroughs.md#2-select_one-and-boundary-origin-compression)
+states conditions for compress-then-combine. No unconditional exchange law is
+asserted between compression and choice.
+
+Normal result delivery, actual unit fallthrough, target completion and failure
+are distinct exits. A target return crossing InPlace boundaries transforms
+only its real exiting material and history. It creates no local unit or result
+binding there; the matching target alone performs ReturnPattern delivery.
+An unfinished or failed action cannot produce a successful Post. Existing
+InvocationResult transports the actual result, Diagnostic or established
+remaining continuation. No missing implementation is called a residual.
+
+### 10.3 Summary and actual-exit fidelity
+
+Every supported summary family must preserve, under the ordinary actual call
+mapping theta_p, all exposed observations on every legal successful path p:
+
+```text
+Post_actual(p, theta_p) implies Post_summary(theta_p)
+```
+
+This is the obligation on the ordinary transformations and exposed behaviors,
+not a separate contract language, user-supplied proof Object or universal
+implication decider. It includes origin/unknown-root identity, regions, Color,
+access, all guarded effects and real target/delivery correspondence. Actual
+exit validation uses the same mapping and selected actions; failure admits no
+successful Post and never reopens. A summary formed from an unexecuted arm's
+description does not license publishing that arm's history.
+
+The [select_one witness](lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness)
+derives this relation for its two admitted ref-return arms without observing
+the runtime choose value. The actual W1 program is the second consumer, not an
+implementation of the first through available_guard. Recursive summary families
+need their own founded structural/modular result (§9.1/§14), never a future-path
+enumeration or evidence manufactured by executing recursion in advance.
+
+## 11. Regular access material and capability boundaries
+
+Actual Pattern/structure formation establishes lifecycle field companions
+synchronously (§2.1.2). `$` remains only interpretation-polarity flip: an actual
+formation/transform consumer has this duty, not every occurrence of `$`.
+ADL and registered ordinary forwarding/Pattern extraction remain the only
+field routes; Val2 presence alone grants no access edge or structural role.
+
+Access/source structure retains regular form from formation.
+Each actual name item retains its formed original paired regular descriptor
+as the target of boundary-local SCC collapse; the type value alone cannot
+supply this lifecycle value, and earlier cropping is not undone. Ordinary
+overloaded `||`, field advance/appropriate composition and `~` can represent
+choice, concatenation and repetition. This is not a new regular-expression
+DSL. A finite state descriptor denotes regular walks paired with actual
+name/generation/target parameters and terminal operation permissions. Sharing
+a descriptor state never identifies those parameters or constructs a runtime
+owned-object cycle. Runtime range endpoints may themselves be ordinary
+lifecycle names; numeric range arithmetic is not silently part of regular
+path equivalence.
+
+`access(args)` is cropping: its operable endpoints/permissions are a subset of
+the input's. Route prefixes needed to reach a retained leaf remain routes,
+not permission to operate on the whole ancestor. Cropping destroys no ordinary
+field and retracts no historical Color. It cannot reconstruct forgotten
+structure or restore a previously removed permission. Concrete selector
+packaging and normal forms remain engineering work.
+
+The [regular access program](lifetime-algebra-walkthroughs.md#a-regular-access-program-with-endpoint-only-cropping)
+combines ordinary binary choice, selected field advance, postfix repetition and
+access in a recursive family, then attempts ancestor restoration and exclusive
+access through share. Its finite descriptor computation retains actual identity
+parameters; it performs no future runtime traversal. The source registrations
+and LC8 consumer remain pending.
+
+| Capability | Admitted propagation | Excluded propagation |
+|---|---|---|
+| ref | Its actual exclusive strict tree of legal operations | No traversal through share or alias nodes |
+| share | Shared observations; crossing a ref node continues only as share | No internal mutability, alias writes or strengthening |
+| alias | Its explicitly registered root-write/default operations; initially no non-root normal access tree | No normal propagation through ref/share; no capability from type shape |
+
+Lifetime alias here is the library alias-write capability, distinct from
+[lexical Path aliases](../symbol-world/entity-alias-design.md). Normal return
+from alias requires the trusted consume-to-value or bounded-window protocol
+of §13. Distinct paths or anonymous origins alone never prove actual disjointness.
+
+## 12. Dynamic credentials and batch acquisition
+
+A trusted runtime check can establish a logical dependency for an ordinary
+value, without changing its business type or making it a borrow. For example:
+
+```lang
+let safeid = (vector ref ..try_trust(num))?;
+```
+
+The [walkthrough](lifetime-algebra-walkthroughs.md#3-dynamic-safeid-and-batch-share-partitioning)
+expands success/failure through ordinary registered Patterns. `?` remains
+one-layer extraction, with no implicit success unwrap or error propagation.
+The successful action's complete Post binds the delivered id's actual
+name/generation to resource origin, protected range/region and shared Color;
+Pre limits its valid interval. In the
+[expanded contract/body example](lifetime-algebra-walkthroughs.md#writing-the-trusted-apis-contracts-and-body),
+ordinary Post computes the authorized from/shared dependency and unsafe Post
+supplies only the otherwise underivable actual validation with its maintained
+interval. Neither a result tag nor copied rows supply that external fact or
+ordinary world-update authority. Numeric equality transfers no credential.
+Move, clone, arithmetic and view delivery need their own actual selected Post.
+Runtime-unknown values may have established names. T * omega need not preserve
+all element structural names or numeric relations in the ordinary type for
+the lifecycle material to express these range dependencies.
+
+The library's whole operation protocol must block or first end the credential
+before every action invalidating its guarantee: length/capacity, layout,
+generation, index or other relevant changes. Protecting a field called capacity
+alone proves no completeness. With the protocol valid, range access consumes
+the maintained credential without repeating the same runtime numeric check.
+Without it access is unavailable/rejected, never an implicit dynamic-check
+fallback or runner-up overload. Other Pre and machine costs remain. View
+transport preserves actual dependencies and intervals, not a global credential.
+
+The [safeid consumer](lifetime-algebra-walkthroughs.md#consuming-safeid-at-range-access)
+exposes runtime index@ in range_access's ordinary compile Pre. Its typed rows
+check the existing validation/source, actual input-generation mapping, required
+live shared Color, maintained interval and endpoint permissions. Runtime
+targeting then uses the numeric index without another bounds comparison; the
+illustrated selected Word clone returns an independent complete result.
+There is no new external admission or permission from an equal integer.
+
+A batch operation may consume shares with common provenance/current authority
+in original ref R and acquire new exclusive **child refs from R** if their
+actual operable ranges are disjoint in R's strict tree and all other Pre hold.
+R need not be another explicit argument if its real authority is legally
+retained. Shares are not strengthened/recolored into refs. It must preserve:
+
+- actual source/target/generation and source-choice correlation;
+- range disjointness, including ancestor-whole/descendant conflicts and route
+  prefixes that need not be operable endpoints;
+- other surviving shares, aliases, derived dependencies and logical credentials;
+- legal end of old share intervals and start of exclusive regions without
+  retracting their historical Color;
+- single consumption and complete atomic publication at the existing action
+  boundary, with no success permissions on failure.
+
+No particular divergence depth or explicit path prefix length is required.
+For each pair, sufficient evidence can establish that their **actual operation
+ranges** lie in separated branches of the original strict ref tree and never
+reconverge. Shared routing ancestors grant no whole-ancestor operation. In that
+case disjointness follows even when the numerical depth of separation is
+unknown. This is an actual tree/range fact, not an inference from unequal path
+strings or reused regular descriptor states; an ancestor-whole range, later
+meeting or unknown separation supplies no such evidence. Dynamic facilities
+must establish the same relation, not replace it with address arithmetic.
+
+Disjointness may be available statically or supplied by a small trusted dynamic
+validator's successful Post. For one input no pairwise partition comparison
+exists, so that additional runtime check is unnecessary; remaining Pre do not
+disappear. Language semantics does not identify addresses with integers. The
+materializer must faithfully and lightly realize the facility's actual abstract
+range test; its representation/cost model belongs to machine work. See the
+[unsafe owner](unsafe-semantic-admission.md#6-library-and-materializer-handoff).
+
+The [two-share contract skeleton](lifetime-algebra-walkthroughs.md#a-two-share-partition-contract-and-ordinary-program)
+separates preparation, trusted validation and actual child formation. The
+validator's unsafe success fact is available before the child producer's
+ordinary Pre; an outward Post cannot authorize an earlier missing Pre.
+Current original-ref authority, legal share-ending and fresh formation scopes,
+bounded exclusive regions/Color and absence of surviving conflicts remain
+independent premises. Its scoped companion stages the prescribed interval ends
+and new children for one existing complete result gate. Dynamic failure returns
+current input ownership without child permissions; a selected semantic failure
+does not invent that normal error branch or reopen the call.
+
+## 13. Alias windows and partbox library protocols
+
+An alias begins with only its own root alias-write capability; the non-root
+normal access tree is empty. Assignment, extraction and fields require actual
+registered defaults. It does not traverse normal ref/share access. A trusted
+facility can either consume it to an ordinary value under the real ownership
+and validity premises, or form a finite-lived normal ref inside a checked
+window. Window Pre must already establish exclusion and object validity.
+
+Each admitted window ref has a freshly formed anonymous origin, distinct from
+other admitted formations and **not the alias as origin**. Normal ref rules
+apply inside its valid region. Freshness is not a proof of physical non-aliasing:
+the facility maintains real exclusion, referent validity and restrictions on
+conflicting alias operations throughout the window. Escape checks reject
+return/store beyond it. Unsafe Post cannot fix a failed window Pre.
+
+Partbox is a possible safe library over these facilities. Its resource-right
+fractions are ordinary accounting material, not `T share` borrow instances.
+Here a **part** is the library value carrying resource identity and an amount;
+conservation and consumption are library protocol laws. Numerical amount alone
+confers no ref/share access. Amounts are ordinary compile/runtime values, not
+required business-type parameters. Split consumes one part and conserves its
+amount across parts of the same actual resource; merge consumes same-resource
+parts and preserves total amount. Equal amounts
+for distinct resources cannot merge. Ordinary copying cannot multiply rights.
+Full amount can be consumed to box only with every other ordinary Pre satisfied,
+including outstanding windows, Color and object validity. Non-full amount
+provides at most its restricted alias, not normal ref access.
+
+### 13.1 Legitimate initial issuance and source preservation
+
+Conservation starts with a real authority source, not the equation q=1.
+Initial formation of a legitimate full part for resource Q/current generation
+is permitted only from one of these sources:
+
+1. An actual complete **currently unallocated full-use authority** for that
+   resource, such as an admitted owned resource/box. Successful issuance consumes
+   or transfers that authority into Part(Q,1) at the ordinary commit boundary;
+   it leaves no second independently usable full owner or issuance power through
+   an alias or saved view. All normal access/validity/window/formation Pre apply.
+2. An explicit trusted resource-acquisition action that really obtains that
+   full-use authority. Its compatible successful unsafe Post may establish the
+   otherwise underivable external ownership/validity facts and issue the part
+   at its declared boundary, after ordinary Pre. A failure or a fabricated
+   success value issues nothing. It cannot describe an already allocated right
+   as another independent acquisition merely by changing its carrier name.
+
+"Unallocated" describes the **current authority disposition**, not a ban on
+ever using Q again. A later legitimate full-part-to-box conversion can return
+a complete full-use authority, which may be consumed in a new issuance under
+its current generation/Pre. Cache reuse, type/value equality or an old initial
+reference cannot reset a spent authority or erase its allocation history.
+
+The library's legitimate-part relation is ordinary contract/state material
+over actual actions and capabilities, not a new builtin resource kind or a
+user-created proof Object. Every usable part must have a source chain:
+
+| Producer | Required real source and successful result |
+|---|---|
+| Initial issue | One of the full-use sources above, transferred once to the actual new complete part |
+| split | An actual legitimate consumed part; complete outputs retain Q/generation and divide that input's amount/right under the protocol |
+| merge | Actual legitimate independently consumable input portions, each consumed once; preserve Q/generation and their summed amount/right |
+| Ordinary transport | The selected Move/borrow/clone contract and its real source; copies or multiple views are not independent allocations. Preserve Move still creates no second consumable portion |
+| Full-part conversion | An actual legitimate full part consumed under all other Pre, producing the complete normal resource/box with its own selected Post |
+
+Arithmetic conservation and matching resource fields are necessary but cannot
+replace these source premises. In particular ordinary Part-shaped construction,
+equal-value copying, ValidationOk, a resource identifier and the number 1 cannot
+mint a legitimate part. A clone is usable only with its actual permitted producer
+Post; there is no ordinary clone that duplicates allocatable rights.
+
+Even if a user can construct an ordinary value with the same apparent fields,
+classifier or Core content as (Q,1), into_box must reject its missing actual
+use authority, or report an unavailable required observation. Type mismatch
+need not be the reason: equality is insufficient even when the classifier
+matches. It cannot issue first and validate later, use unsafe Pre, or choose
+another consumer after failure. A failed issuance Pre leaves the source
+unconsumed; failures after an earlier committed acquisition/transfer retain
+that action's explicit ownership/cleanup contract, not synthetic rollback.
+
+The [W4 issuance witness](lifetime-algebra-walkthroughs.md#legal-start-of-the-partbox-protocol)
+connects this source to the existing split/merge program. Its
+[minimal production chain](lifetime-algebra-walkthroughs.md#a-minimal-production-chain-inside-the-library)
+shows one ordinary serialized representation: consume the real box into private
+State, track actual owned allocation cells, calculate and replace consumed
+allocations, then extract that same box at lawful full conversion. Neither
+fresh cells nor metadata alone assign a portion; lawful State updates and actual
+input rights remain necessary. This layout is illustrative, not a builtin
+resource type or a proof of arbitrary distributed/concurrent protocols.
+Private interfaces, accounting/locking representation and API names remain library choices; the
+source, single-allocation and no-forgery laws above do not.
+
+Option and a specific topology protocol may move parts into/out of actual
+link slots while keeping topology mutation separate from payload use. Consuming
+option extraction and complete replacement use existing atomic Object rules;
+there is no partial parent or implicit part duplication. Actual collection
+must recover all necessary rights with legitimate slot access before box/payload
+access. This asserts neither that two neighbors suffice for arbitrary graphs
+nor that conservation proves all safety, concurrency or reclamation properties.
+The [fourth walkthrough](lifetime-algebra-walkthroughs.md#4-alias-partbox-and-option)
+gives explicit transfer and failure boundaries. Container implementation,
+accounting representation, locking and reclamation remain library work.
+Its [finite relink program](lifetime-algebra-walkthroughs.md#relinking-topology-without-accessing-payload)
+makes the distinction concrete: incoming links carry Parts of their actual
+target resources; moving N between two neighbor pairs transfers those existing
+neighbor Parts and repartitions only Q_N. Registered root operations replace
+complete Options without acquiring payload refs. Its normal paused result
+owns the actual detached Parts/current roots and retains the edit protocol
+within its valid interval; it promises no rollback or completed topology.
+Every semantic action still has its own gate, including the
+[minimal authorization rules](#94-minimal-authorization-interface-and-operation-rules).
+
+## 14. Proof obligations and engineering freedom
+
+The closed responsibilities above do not assert completed metatheorems.
+Before an adopted family supplies evidence, its implementation must establish:
+
+| Obligation | Required scope and failure exit |
+|---|---|
+| Projection fidelity | Preserve selected actions, Stage-erased name/control/dependency/activation/delivery correspondence and no double projection; missing partner is Unavailable |
+| Field symmetry | Actual formed registered operations commute with their paired lifecycle observations; no fresh ADL selection to repair a missing partner |
+| Boundary soundness | Compression retains external observations, unknown roots, region/Color/path/source/effect correlations and rejects expiring-target escape |
+| Advance-summary fidelity | Formed semantic body/selected descriptions yield a conditional summary without future execution; each legal actual Post implies its mapped summary, including every effect row |
+| Nested composition | Inner-then-outer compression preserves outer observations for the specified family; no unconditional fact deletion or commute with arbitrary joins |
+| Contract behavior | check/admit represent the exposed guarantees under the four-way mapping, limited update authority and compatibility direction; unknown implication cannot accept |
+| Regular composition | For adopted finite descriptors with identity parameters, choice/advance/repetition stay in the defined regular domain and cropping is non-expansive |
+| Name-item SCC collapse | At Ordinary closure boundaries and participating InPlace exits, collapse to the original paired regular structure with current constraints; missing partners/operations remain Unavailable |
+| Recursive calculation | State the ordinary program's semantic domain, combination operations, closure and termination argument, or explicit Unavailable/rejection. A well-founded finite traversal or a proved finite family can qualify; arbitrary recursion has no default result |
+| Trusted facilities | Validator success matches external reality; credentials, partitions, windows and accounting cover all invalidating operations and surviving conflicts |
+| Rewrite/materialization | O revalidates affected projections; physical realization preserves promises, fixed cleanup and E's ABIKind |
+
+For regular descriptors, any adopted decision algorithm must terminate on its
+finite descriptor/parameter observations and justify the particular relation
+it decides. Finite representation alone does not decide arbitrary numeric
+range predicates or contract-program termination. A recursive contract family
+may use a justified recurrence/fixed-point method only after defining its order,
+domain and convergence/rejection condition; none is mandated universally here.
+The walkthroughs give conditional derivations and counterexamples, not executed
+proofs of these general obligations. Missing wiring is an unavailable diagnostic
+at the requiring boundary; only actual unfinished K supplies residual material.
+
+API spelling (including depends_on/live_with), argument order, result wrappers,
+namespaces, ordinary function decomposition, Object/regular encodings,
+normalization/caching, boundary algorithms, diagnostics and dynamic layouts may
+evolve. They cannot change failure publication, origins/choice identity,
+consumption counts, Color interval/history rules, cropping, actual exclusion,
+no-reopen, no implicit reborrow, or the single E. Bootstrap order and evidence
+tracking live in the [roadmap](../../planning/roadmap.md#9-lifetime-value-program-wiring).
+
+## 15. Scoped specification migration
+
+This design revises the baseline ac994bc semantics only at the following
+boundaries. This table records migration decisions, not alternative current laws.
+
+| Baseline restriction / incomplete handoff | Current rule and minimal distinguishing case | Affected consumers |
+|---|---|---|
+| §2.1.6 bounded a clause to an atomic conjunction | Complete ordinary compile expression. A local declaration followed by a branch/call can form the final self-root type | Clause E, associated formation, check/admit |
+| One omitted-Post convention could be read across all callable forms | Body omission forms automatic Post; handwritten Function Pattern omission remains NoDelta. select_one cannot be stored under an insufficient NoDelta interface | Body boundary, FnExtract/contract compatibility |
+| Finite NameView observations did not specify outward local elimination | Boundary traversal/compression, preserving unknown and explicit termination. Returning a borrow of a dying local still fails | Result/block/target exits |
+| Excluding Color/origin from Object could be read as excluding lifecycle content | No new business-Object coordinate; lifecycle fields have ordinary content/identity. Equal integers with different credentials stay distinct names | Value representation, names and trusted Post |
+| SCC handoff requested convergence without a computation domain | Per-name SCC collapse has fixed Ordinary/participating-InPlace boundaries and original regular companions; arbitrary program recursion and machine reuse remain separate | Companion formation, return boundaries, recursive/access consumers |
+
+U_default, omitted interface Pre, interface NoDelta, Pre_F => Pre_A and
+Post_A => Post_F, atomic complete identities, Pass/MoveEffect, self/Param,
+cleanup and same-cut order, return barriers and E-selected delivery remain.
+This revision supplies no independent lifecycle checker, SMT engine, source
+runner, container implementation or physical ABI. Existing carrier tests are
+evidence only for their implemented transaction/value slices.

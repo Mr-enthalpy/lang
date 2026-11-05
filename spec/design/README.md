@@ -31,7 +31,7 @@ that the corresponding source semantics is implemented.
 | Compile instance identity, result delivery, opening sources and current storage | [invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md) |
 | Runtime main, active dominance, readiness, E projections, delivery-selected ABIKind and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
 | Host IO and target-machine Objects | [host capabilities](static-evaluation/host-capabilities-and-machine-objects.md) |
-| Instance Killable/MoveEffect/Movable, same-K @, Region/Color and Function Pattern contract implication/defaults | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
+| Ordinary lifecycle programs, whole-K projection, rank-0 @, Region/Color, Killable/MoveEffect/Movable, contract formation/defaults, boundary compression, regular access and library protocols | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
 | Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
 | Level/main.lang anchor and PhysicalTree normalization | [physical source](build-package/build-system-design.md) |

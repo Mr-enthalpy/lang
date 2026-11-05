@@ -332,6 +332,15 @@ passing. The mechanical pass-insertion semantics are specified in
 
 ## Same-Name Candidate Lookup
 
+Lifecycle field correspondence uses these same selected `field::adl` entries.
+Actual Pattern/structure formation supplies sufficient paired material; the
+lifecycle side may use ordinary Pattern extraction or genuinely registered
+forwarders. It does not introduce another field resolver or infer registration
+from a generated occurrence. The [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#11-regular-access-material-and-capability-boundaries)
+owns regular access, cropping and the ref/share/alias boundaries. Keeping an
+ancestor as a routing prefix does not restore its whole-object operation
+permission. The corresponding pending consumers are [LC1 and LC8](../../contracts/lifetime-program-consumers.md#lc1-pattern-and-structure-companion-formation).
+
 Movement consumes the lifetime owner's predetermined MoveEffect and frontier
 Pre. Type shape, stage and layout alone grant no movement or access capability.
 Directed with cleanup constraints create no access-tree edge or borrow;

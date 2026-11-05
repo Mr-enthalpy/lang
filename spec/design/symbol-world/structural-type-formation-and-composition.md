@@ -69,6 +69,47 @@ Registered callable classifiers satisfy the complete type's /tau home
 independently of whether they also enter V_tau. The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md)
 owns applicability, role consistency and protected extraction.
 
+The same actual formation establishes lifecycle companion structure sufficient
+for selected legal field operations, as required by
+[LC1](../../contracts/lifetime-program-consumers.md#lc1-pattern-and-structure-companion-formation).
+This does not add a structural role from a signature or make `$` a lifecycle
+side effect. Missing companion producers leave that consumer unavailable.
+
+Contract programs use this ordinary formation mechanism inside their actual
+CompileInstance/OpenHere window to form a self-rooted complete type and its
+associated check/admit behavior. Intermediate ordinary values need not be
+NameExprs; the final delivery must satisfy the existing self-rooted result rule.
+Construction authority over those members does not grant authority to mutate
+the lifecycle world. See the [bootstrap responsibilities](../lifetime/lifetime-policy-and-overload-boundary.md#9-ordinary-contract-formation-and-bootstrap-responsibilities).
+
+### Current-instance initial formation handoff
+
+A current invocation I may request initial complete type formation at its
+already established InvokeName(I). This requires an actual independently
+authorized fresh formation window, the declared type target and live one-shot
+initialization authority. A compile horizon or return annotation alone supplies
+none of those facts. The source observation `self#` in that compile flow names
+I without reading an uninitialized resident; it is not the nested helper's self.
+
+The schematic ordinary call `self# |> initialize_empty_root::construction` in
+the [contract walkthrough](../lifetime/lifetime-algebra-walkthroughs.md#ordinary-self-root-contract-program)
+requests this existing formation action. Its input is the actual root NameValue;
+that value alone is not a permission. It forms a complete empty structural type
+at the authorized target I, with its real roles and immutable callspace, and
+consumes the target's initialization authority at common commit. It returns
+unit. It does not create a type at the helper's root and reparent it, copy an
+external empty type into I and infer root identity, or read incremental material
+as an Object. Its initial formation/lifecycle premises terminate in the fixed
+bootstrap basis, not the contract being constructed.
+
+Only after this commit may ordinary member formation read the complete current
+self resident and use its actual OpenHere. Every child is formed/initialized
+under its own ordinary name/Place rules; parent Writable is not a child-formation
+premise. Failed initialization publishes no partial type. Repeated initialization
+cannot use the consumed authority or reset current storage. The API spelling and
+whether its implementation can already be source-defined are open; its actual
+target/authority/atomicity contract is fixed. This source handoff is pending.
+
 ## 3. Ordinary struct helpers
 
 ```text

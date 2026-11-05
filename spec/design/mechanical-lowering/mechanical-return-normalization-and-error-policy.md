@@ -180,12 +180,14 @@ capability position, but its semantic effect is special:
 
 3. **Lifetime postcondition**: the return capability declares that the
    return-relevant mutable capability of the enclosing callable object is
-   consumed / closed on committed success. The lifetime checker checks the
-   selected call's Pre before mutation and publishes its declared Post through
-   the common commit boundary. It does **not** inspect implementation
+   consumed / closed on committed success. Ordinary lifecycle boundary
+   computation checks the selected call's Pre before mutation and publishes its
+   declared Post through the common commit boundary. It does **not** inspect implementation
    bodies to rediscover control-flow facts. This is a name-and-contract system —
-   checking happens at the call boundary, not through body-level control-flow
-   analysis.
+   caller checking consumes the exposed contract at the call boundary.
+   Automatic formation of an implemented body's Post is a distinct ordinary
+   boundary-material transformation under the lifetime owner; this future
+   error-policy sketch grants no alternative lifecycle evaluator.
 
 Thus when the Error branch calls `return_owner..return(e Error)`, the result is
 not an exception jump or a compiler intrinsic. It is an early return through

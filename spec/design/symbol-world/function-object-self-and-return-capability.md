@@ -206,12 +206,14 @@ storage; a user name Done has no special meaning.
 ### 5.3 Lifetime postcondition
 
 `self..return(d)` **declares** that the return-relevant mutable capability of
-`self` is consumed / closed on committed success. The lifetime checker checks
-the selected call's precondition before mutation, then consumes its declared
-postcondition through the common committed-action boundary. It does **not** inspect
-implementation bodies to rediscover control-flow facts. This is a
-name-and-contract lifecycle system — the capability's availability is stated,
-not inferred from body analysis.
+`self` is consumed / closed on committed success. Ordinary lifecycle boundary
+computation checks the selected call's precondition before mutation, then
+consumes its declared postcondition through the common committed-action boundary.
+It does **not** inspect implementation bodies to rediscover control-flow facts. This is a
+name-and-contract lifecycle computation: the caller consumes the exposed
+capability contract without reopening private body analysis. For implemented
+bodies, formation of automatic Post is the separate ordinary material
+transformation defined by the [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#10-internal-actions-origin-compression-and-automatic-post).
 
 ## 6. Consequence: no more code after `self..return(d)`
 
@@ -237,7 +239,7 @@ The following consumers remain pending:
 
 - `self..return(d)` as a runtime capability object;
 - the anonymous function-object type that carries `return`;
-- the lifetime checker that enforces the return-capability postcondition;
+- the ordinary lifecycle boundary consumer for the return-capability postcondition;
 - the final return accumulator;
 - the concrete representation of `Done` in later semantic IR;
 - `self` implicit borrow tracking.

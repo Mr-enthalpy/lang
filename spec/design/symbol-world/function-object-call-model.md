@@ -600,6 +600,20 @@ clone; a killed old generation cannot be reused. These obligations consume
 the existing mechanical and lifetime judgments and introduce no new transaction
 or lifecycle evaluator.
 
+The [lifetime contract protocol](../lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
+uses this same invocation correspondence: caller Pre.check, body Pre.admit,
+body Post.check, caller Post.admit. Actual parameters, result names, captures
+and activation determine the mapping; the protocol adds no second transfer or
+new self. Caller Pre must hold before body admission, and adopting Post does
+not replay the body. Implemented functions form automatic Post from already
+formed semantic guarded body/operation descriptions; actual exits separately
+validate the mapped summary under the [two-boundary lifecycle rule](../lifetime/lifetime-policy-and-overload-boundary.md#101-contract-formation-structural-transformation).
+No future branch execution supplies that advance summary. Handwritten Function Patterns still default
+omitted Post to NoDelta and cannot recover implementation structure from known
+Val1. [LC4–LC6](../../contracts/lifetime-program-consumers.md#lc4-contract-expressions-and-four-way-boundary-consumption)
+record the pending source consumers. Each generated default-forwarding body
+must summarize its own real actions under this rule.
+
 ## 7. ZST function objects
 
 A function object with no stored environment is normally zero-sized.

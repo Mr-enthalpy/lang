@@ -526,8 +526,9 @@ required access capability. Such requirements are abstract dependencies, not
 value-capture mode: a written clause excludes automatic value capture, so an
 omitted external value dependency is diagnosed by the resolved consumer.
 Automatic compile structural dependencies remain independent; runtime structural
-access is inadmissible. In-place syntax excludes explicit clauses and uses
-Automatic mode, also available to other admitted clause-free closure forms.
+access is inadmissible. In-place closures prohibit explicit capture lists,
+not ordinary lifetime head clauses, and use Automatic value-capture mode.
+Automatic mode is also available to other admitted capture-list-free forms.
 Explicit list entries retain source order as bare positional CaptureProduct
 entries across stages; automatic sequence is fixed at completed formation.
 Raw/Norm list preservation proves neither resolved exclusivity nor realization.
@@ -742,3 +743,16 @@ Product; comma holes retain Unit and available call-input exposure already
 preserves their distinct arities. The do/default handoff remains a canonical
 acceptance obligation, not an implemented Raw/Norm node inventory. Every connected grammar/recovery rule needs token,
 AST, Norm and diagnostic golden coverage before that frontier is claimed closed.
+
+## Lifecycle expression handoff
+
+`HeadClauseAst::LifetimePre/LifetimePost` and their Norm counterparts preserve
+ordinary expression children and source provenance. They must not become a
+closed atomic-fact/conjunction AST or execute `check/admit` during normalization.
+The [lifetime-program handoff](lifetime-program-consumers.md) owns the pending
+semantic consumers. Projection-complete provenance prevents double projection
+of these clauses; semantic selected-partner, activation and world authority
+belong after Norm, never in parser decisions. Complex design programs and
+`unsafe post` notation in the [surface note](../public/normalized-surface-semantics.md#16-lifetime-programs-and-contract-surface-consumer-pending)
+are not a claim of additional parser coverage. This documentation revision
+changes no parser shape, diagnostics or golden contract.

@@ -105,6 +105,15 @@ before future common E source-body completion can consume it.
 
 ## Shared action and lifecycle handoff
 
+The [lifetime-program contract](lifetime-program-consumers.md) extends this
+handoff with LC1–LC8: real structure companions, whole-continuation Stage
+forgetting, ordinary contract expressions, four-way boundary calls, origin
+compression/automatic Post, Function Pattern interfaces, trusted facilities and
+regular-access programs. It specifies future source consumers, not extra Rust
+evaluator phases. Existing supplied-fact and transaction tests cover only the
+slice below; they do not execute those ordinary source programs or certify a
+complete `@` value producer.
+
 The common continuation owns action identity and position. `LifecycleState`
 is a projection, with no private continuation or action-commit API.
 

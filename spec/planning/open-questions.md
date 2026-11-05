@@ -166,8 +166,19 @@ Persistent dependency/source encoding remains open, not the propagation law.
   generations, and cleanup placement?
 - What source/storage syntax names an open Color vocabulary?
 - What algorithm constructs the access tree and performs escape validation?
-- Which summary compression, diagnostics, and extended temporal logic are
-  useful without changing the closed lifecycle relations?
+- Which ordinary API names (including depends_on/live_with), argument packaging,
+  namespaces, regular-material encodings, caches and boundary-transform
+  algorithms implement the closed lifecycle relations?
+- Which representations/algorithms realize the fixed name-item SCC collapse
+  to original paired regular forms at Ordinary boundaries and participating
+  InPlace exits, including preserved contribution/incidence mappings after an
+  inner reduction? The [Participates relation](../design/lifetime/lifetime-policy-and-overload-boundary.md#participation-relation),
+  placement and non-restoration laws are not algorithm choices.
+- Which ordinary recursive lifecycle-program domains and evidence/rejection
+  methods should be used? Program recursion and machine slot reuse remain
+  separate from regular SCC collapse.
+- Which dynamic validation representations, alias-window facilities and
+  partbox library layouts realize the fixed trusted-facility protocols?
 - How should compile caches represent call-site Open-sensitive applicability:
   an uncached judgment or an explicit requirement summary?
 
@@ -182,6 +193,15 @@ Terminal Pass=Move, copy-derived share/rebind -> clone -> Move, and Preserve
 Move != copy are closed. No automatic move-versus-copy choice remains to design.
 Atomic construction/decomposition admits no partial Object or destruction state;
 Color relations are explicit directed rows and Color inheritance is monotone.
+
+The [lifetime value algebra](../design/lifetime/lifetime-policy-and-overload-boundary.md#14-proof-obligations-and-engineering-freedom)
+fixes whole-continuation Stage forgetting, projection-complete clauses, ordinary
+contract formation and four-way consumption, exit compression/automatic Post,
+access cropping and ref/share/alias boundaries, and post-directed external
+admission. Omitted handwritten Function Pattern Post remains NoDelta. API and
+representation choices above cannot change failure publication, source/choice
+identity, double-consumption, interval/history rules or no-reopen. This design
+does not close the unresolved representations or prove arbitrary recursion.
 
 ## Owner, namespace, and infrastructure persistence
 
@@ -234,9 +254,11 @@ Dependency observation classification, exclusive value-capture modes and fixed
 capture sequences, consumer-directed self projections, directional Function
 Pattern LHS/RHS, and omitted-contract defaults/implication are closed by the
 existing dependency/call/Pattern/lifetime owners. Their carriers and source
-consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-separate-scc-convergence-work)
-leaves convergence direction, algorithm and proof/rejection strategy to a
-separate lifecycle PR; no total convergence theorem or second resolver is assumed.
+consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-per-name-scc-collapse-at-continuation-boundaries)
+fixes regular name-item collapse points while separating ordinary lifecycle
+program recursion and machine reuse. Each chosen recursive combination still needs a justified
+domain, evidence and failure/unavailable boundary; no total convergence theorem
+or second resolver is assumed. Concrete algorithms remain open.
 
 ## Generic navigation and Product surface
 
