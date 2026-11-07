@@ -60,7 +60,8 @@ unordered same-point events use reverse declaration order before @ observation.
 Killing move adds no old-generation drop. Construction and consuming extraction
 commit complete identities atomically; destructor continuations use ordinary
 complete children, never partial parents.
-Split/D preserves residual material, while Done is internal boundary completion.
+Split/D preserves residual material; internal Done_chi/Done_Return is boundary
+completion, distinct from the ordinary effect Done(v) sum Pattern.
 Residual escape consumes current ordinary compile payload facts.
 
 Naked operator use selects operator[op], dot .op selects op::adl; OG_s retains
@@ -98,7 +99,8 @@ identity; selected `pack?` exposes available material, while runtime-only
 extraction material, independent of anonymous `_`.
 Policy value/type observations retain the same evaluation edge; public policy
 syntax uses a single carrier. Terminal demand reaches the immediate root call before
-maxima. General dependencies are realized once before layout; complete closure
+maxima. Automatic/initialized dependencies are realized once before layout;
+RequiredCapture specifications bind at the actual new call. Complete closure
 results retain the lifetime refinement handoff.
 
 
@@ -114,7 +116,8 @@ V_tau, Val2 residency, Pattern registration
 and ConstructEdge remain independent. In-place syntax forms dependencies
 automatically; its completed result supports ordinary value operations whose
 legality depends on actual dependencies, access, capabilities and lifecycle.
-Invocation does not recapture or resolve external names again by spelling.
+Automatic/initialized sources are never recaptured; declared required names
+bind within the admitted new call context and then remain sealed.
 TypeRole(Q) iff Pure(Q); complete TypeValueRole(tau) iff WellFormedTau(tau).
 SelfConstructible alone consumes the registered self-construction witness.
 AssociatedNamespace(T) is MemberScope(Core(T)), distinct from /tau(T).
@@ -122,10 +125,12 @@ Dependency realization is fixed by the source occurrence's selected ordinary
 action, uniquely up to observational equivalence, before layout is chosen.
 Closure value-capture modes are exclusive, with automatic compile structural
 dependencies independent. CaptureProduct is bare positional material; explicit
-order follows source, automatic order is fixed per formation. Source placement and dependency
+order follows source specifications, with required sources bound per invocation;
+automatic order is fixed per formation. Source placement and dependency
 formation origin supply no post-formation overload evidence. Selected callable
 dependencies retain their ordinary identity; instance keys contain parent,
-selected partner and canonical inputs without hidden caller capture.
+selected partner and canonical inputs, including observed required sources,
+without hidden caller capture.
 
 The [call owner's projections](symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
 separate contextual self's CallAnchor, Param Product and tag/activation Return.
@@ -136,7 +141,8 @@ with mandatory erasure of external structural-source authority on projected
 Function Pattern values, without an inverse theorem or recovery from compile
 Val1. Opaque implementation provenance is not external authority. The
 [lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
-consumes ordinary contract programs and implication, retaining U_default and
+consumes ordinary contract programs and implication, retaining U_default for
+genuinely new entry names, inherited preceding Post for InPlace automatic captures, and
 handwritten Function Pattern omitted-post NoDelta. Implemented bodies instead
 form automatic Post from formed guarded body/operation descriptions before
 contract use; actual exits separately validate that their mapped Post implies
@@ -157,6 +163,28 @@ program termination nor machine reuse.
 
 ## Current extraction and continuation interfaces
 
+[Effect steps](control-flow/effect-steps-and-continuation-handoff.md) project one
+E/K into actual Done(v) or Wait(y,k); k is a new concrete ordinary callable.
+The [whole-original-K CPS account](static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending)
+must cover ordinary no-wait work and all pending caller contexts, expression/
+control/delivery, cleanup and compile/reify boundaries. This fundamental common-E
+consumer is pending, separately from local cuts and O generation grain.
+Empty slices obey Post=Pre. Actual handoffs use suspending-side atomic
+Move[repair], default id, before exposing the valid successor AutoPre. Self,
+captures and explicit args share call/lifecycle rules without field ownership
+or duplicate Kill. Source-erasing Function Pattern values expose former captures
+as explicit inputs. Throw uses Wait and ordinary Drop of the delivered continuation;
+only selected forced actual Pattern failure produces PatternMiss. Targeted return
+barriers remain unchanged. [Heap protocols](lifetime/heap-stack-and-storage-responsibility.md)
+separate history, storage support and release duties: locate creates a legal
+single-linked layer; heap relocate guarantees submission under Pre, preserving
+live Places and restoring the shadowed binding. Object relocation moves real
+storage. IO/heap are ordinary capability contexts, not mandatory effects.
+Semantic cuts are not mandatory generated Objects: O chooses a proved legal
+grain from the same template, preserving observable repair/handler actions.
+Ordinary ABI1/ABI2 applies, with explicit optional Box and no async allocation
+or state-machine requirement. Yield does not create an instance NameExpr.
+
 [Joint extraction](patterns-overload/pattern-relations-observation-and-extraction.md#10-joint-extraction-across-adjacent-universe-ranks)
 observes v and Type(v) at adjacent universe ranks. External constraints enter
 through full Paths or R$; V underscore denotes universerank. HoleOverride
@@ -175,8 +203,11 @@ Region_K(n)=R(NamePosition_K(n)); current Pre/commit/Post and cleanup facts
 suffice for E, while future-path analysis belongs to O.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Its active
-closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+classifier explicit or input-inferable without reverse migration. Its outward
+input/output, regular effect, capture and lifecycle interface shape must also be
+compile-determined independently of runtime reverse flow; ordinary handlers or
+wrappers close runtime-dependent shape before exposure. Runtime choice within a
+fixed regular sum is legal. Its active closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
 reverse dependencies. Legal Policy ranks have exactly the form
 absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary

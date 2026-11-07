@@ -370,9 +370,9 @@ change the Rust implementation.
 No full effect checker.
 No full noerror checker.
 No full panic/error policy lattice implementation.
-No runtime exception mechanism.
+This return-normalization sketch defines no additional runtime exception mechanism.
 No built-in Result type.
-No catch/throw semantics.
+Wait/throw/Drop semantics belong to the canonical effect owner, not this sketch.
 No current type checker.
 No macro system.
 No eager branch lookup.
@@ -381,6 +381,9 @@ No eager branch lookup.
 ## 13. Relationship to Other Documents
 
 The canonical owners below constrain this future return-normalization sketch.
+
+- [Effect steps](../control-flow/effect-steps-and-continuation-handoff.md) — ordinary
+  Wait/throw continuation delivery and Drop, separate from targeted return.
 
 - `compile-instance-invocation-and-result-delivery.md` — the unified policy-aware
   lookup and invocation engine that `Error` branch lookup and branch guarding

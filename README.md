@@ -45,7 +45,8 @@ The semantic layer is organized around these independent coordinates:
 Stage={compile,runtime} is a single atom. P2 is horizon, Pin admits explicit stage constraints,
 and Pout follows P1. Runtime main enters one E/K; active compile dominance
 is independent of stable root history. Instance move effects and directed with
-cleanup feed the same lifecycle observations. Done is internal completion;
+cleanup feed the same lifecycle observations. Internal Done_chi/Done_Return is completion;
+effect Done(v) is a distinct ordinary matchable sum branch.
 residual escape separately consumes ordinary compile facts.
 
 Every legal completed closure expression produces full tau_C through atomic structural type formation. File implementation-layer let installs at the established package root;
@@ -79,6 +80,23 @@ Current Rust carriers do not yet implement every
 closed relation; the roadmap records those consumer gaps.
 
 ## Workspace
+
+The [heap owner](spec/design/lifetime/heap-stack-and-storage-responsibility.md)
+defines ordinary locate and guaranteed storage-duty submission by heap relocate,
+preserving live Places/history. The
+[effect owner](spec/design/control-flow/effect-steps-and-continuation-handoff.md)
+defines concrete Wait successors, atomic user repair, transparent propagation,
+throw and ordinary Drop cleanup. Effects carry no implicit runtime Stage or Box;
+global IO/heap are ordinary capability contexts. Function Pattern projection
+exposes former captures as explicit inputs. Yield cannot classify an instance
+NameExpr; reify also needs a compile-determined public regular effect interface.
+The original common semantic continuation requires a
+[complete CPS account](spec/design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending),
+including pending callers, ordinary expression/control and cleanup across stages.
+This foundational common-E consumer remains pending; splitting wait bodies alone
+does not implement it or justify async execution.
+[Migration closure and coverage](spec/planning/heap-io-effect-migration.md) records
+defined semantics separately from pending source consumers.
 
 ```text
 crates/lang_syntax   lexer, parser, Raw AST, normalization, diagnostics
@@ -138,13 +156,18 @@ V_tau, Val2 residency, Pattern registration
 and ConstructEdge remain independent. In-place syntax forms dependencies
 automatically; its completed result supports ordinary value operations whose
 legality depends on actual dependencies, access, capabilities and lifecycle.
-Invocation does not recapture or resolve external names again by spelling.
+Automatic/initialized sources are retained. RequiredCapture `[x]`, `[x:T]` and
+`[p let x]` declares necessary name-sensitive input, fulfilled in the actual new
+call context under ordinary sealed selection. No source read occurs at formation;
+`[let x=E]` initializes once there. Sealed sources never re-resolve at runtime.
 Pure Core material has TypeRole independently of self-construction; every
 well-formed complete tau is a type. Dependency realization follows the selected
 ordinary source action, uniquely up to observational equivalence.
 Each closure has one explicit or automatic value-capture mode; automatic compile
 structural dependencies remain independent. Captures form an ordered bare
-Product, fixed at formation; in-place syntax uses automatic value capture.
+Product of specifications in source order; required positions bind per new call.
+In-place syntax uses automatic value capture and inherits preceding slice Post
+for existing captures when Pre is omitted; only new input names use entry defaults.
 The [call owner](spec/design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
 separates self's call anchor, implicit parameter Product and return frame.
 The [Pattern owner](spec/design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
@@ -159,11 +182,15 @@ prospective destination world at hard applicability, not after selection.
 E selects ABIKind from result delivery; machine materialization remains pending.
 Every compile call forms a CompileInstance from parent owner, selected partner
 and canonical inputs before body entry. Ordinary callable dependencies retain
-their actual identity, with no hidden caller-environment coordinate.
+their actual identity; bound required material enters canonical inputs, with no
+hidden caller-environment coordinate.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Its active
-closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+classifier explicit or input-inferable without reverse migration. Its outward
+input/output, regular effect, capture and lifecycle interface shape must also be
+compile-determined independently of runtime reverse flow; ordinary handlers or
+wrappers close runtime-dependent shape before exposure. Runtime choice within a
+fixed regular sum is legal. Its active closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
 reverse dependencies. Legal Policy ranks have exactly the form
 absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary

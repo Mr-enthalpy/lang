@@ -50,6 +50,8 @@ Object / complete tau / Place
   -> host Objects / physical normalization
   -> runtime entry / active dominance / evaluator projections
   -> restricted residual / internal completion / escape / optimizer boundary
+  -> concrete Step/Wait / regular effect / ordinary handler and Drop
+  -> heap support/duty submission independently of Stage migration
 ```
 
 Current implementation coverage is recorded in
@@ -68,6 +70,7 @@ links canonical acceptance scenarios to owners and pending consumers.
 - [`pattern-root-identity-and-explicit-navigation.md`](contracts/pattern-root-identity-and-explicit-navigation.md)
 - [`compile-construction-boundary.md`](contracts/compile-construction-boundary.md)
 - [`policy-migration.md`](contracts/policy-migration.md)
+- [Heap/IO/effect migration closure and acceptance](planning/heap-io-effect-migration.md)
 
 ## Open questions
 

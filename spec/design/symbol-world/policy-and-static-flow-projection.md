@@ -1220,7 +1220,7 @@ source -> Project_in -> one selected Migration -> result -> Project_out
 ExistingAcceptedView(demand,source) => identity only
 Selected(m) => same Type at both endpoints
 Reverse(m) iff any observed stage coordinate changes runtime -> compile
-Reverse(m) => ActiveBoundary_K(m)=B, P2(B)=reify, ClosedReturn_K(B)
+Reverse(m) => ActiveBoundary_K(m)=B, P2(B)=reify, ClosedReturn_K(B), ClosedInterface_K(B)
 ```
 
 Endpoints include both value and classifier observations. Thus runtime:runtime
@@ -1236,7 +1236,9 @@ realization, or a restricted library type can remove either direction. Generatio
 is not capability evidence when a required declaration/realization is unavailable.
 
 A reverse request requires the current continuation's active reify boundary and
-independently closed return classifier, checked before invocation and publication.
+independently closed return classifier and compile-determined outward interface,
+checked before invocation and publication under
+[ClosedInterface](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
 It materializes only actually dependent successor work with the same E; it does
 not return runtime information to an earlier world. The current-stage and Ready
 consumers remain separate from the endpoint relation. Storage, a freely supplied
@@ -1446,7 +1448,9 @@ Whether that boundary is required follows actual runtime-to-compile dependent
 continuation work, not the spelling of a P1/P2 stage combination. A legal
 runtime-horizon callable with compile output need not perform reverse migration.
 The complete output classifier must be explicit or input-inferable without
-depending on reverse migration. Unknown closure/continuation facts are unavailable.
+depending on reverse migration. The outward input/output/regular-effect/capture/
+lifecycle shape must also satisfy ClosedInterface; ordinary wrappers/handlers
+close a runtime-dependent shape before exposure. Unknown facts are unavailable.
 Finally omitted mode still completes under open + known OpenHere, independently
 of these stage judgments. HoleOverride retains its independent replacement law.
 

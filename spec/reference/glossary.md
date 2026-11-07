@@ -169,7 +169,7 @@ and semantically observed name/subject/borrow dependencies.
 InvokeName(I) is an ordinary NameValue. Initialized resident reads observe its
 current complete storage without EnterBody. Every compile call forms I before
 body evaluation, independently of result kind and P2. Only a direct single
-instance-open self-root complete type result supplies its computed NameExpr;
+instance-open self-root complete type formal return supplies its computed NameExpr;
 external types and ordinary results preserve their own identity. Accessible
 result closure includes captures, aggregates and ref/share targets.
 
@@ -537,7 +537,8 @@ no first RHS, tau_C insertion or bulk
 V_tau import is implied. ClosureMaterial is notation, not a new Object.
 In-place syntax uses automatic dependency formation and produces an ordinary
 first-class result. Binding, transfer and outer writes depend on actual
-dependencies, access, capability and lifetime; invocation does not recapture.
+dependencies, access, capability and lifetime. Automatic/initialized sources
+are retained; RequiredCapture specifications bind at each admitted new call.
 Placement supplies no applicability, specificity or preference evidence after
 formation. Each closure uses one explicit or automatic value-capture mode;
 automatic compile structural access is independent. In-place forms use
@@ -580,14 +581,17 @@ Needs describes required observations; the source occurrence's selected ordinary
 action fixes semantic realization, uniquely up to observational equivalence.
 Distinct candidates use ordinary preference or ambiguity, never backend choice
 between snapshot and live reference. Representation selects layout afterward. Explicit [] is one
-dependency source. Initialization occurs once per formation, with common
+dependency source. InitializedCapture initializes once per formation, with common
 pre-capture name scope and ordinary effect order; projections do not recapture.
 UseKind x DemandStage classifies the requested observation: StructuralAccess
 is compile-only; Value may be compile or runtime. Written lists choose Explicit
 value mode and diagnose uncaptured external values. Otherwise admitted forms
 may choose Automatic mode. Explicit CaptureProduct entries are bare positional
 in source order across stages; automatic order is fixed per formed closure.
-Selected CompilePartner dependencies obey these same ordinary formation rules.
+RequiredCapture [x], [x:T], [p let x] has no initializer or formed source edge;
+it binds by declared name/constraints in the actual call context, without a
+second resolver or post-seal retry. Selected CompilePartner canonical inputs
+include the actual observed required sources, with no hidden context coordinate.
 Persistence and escape use the lifetime owner's refinement handoff.
 
 ### Self projections and directional Function Patterns
@@ -601,8 +605,11 @@ defines FnExtract on full LHS input/contract and FnRequest on RHS explicit
 arguments/result/Policy. RHS supplies no captures, self, lifetime clauses or
 spread. Projected Function Pattern values necessarily erase external structural-
 source authority and cannot recover it, even from compile Val1; opaque internal
-provenance is not permission to navigate/reselect source candidates.
-LHS lifetime omission preserves U_default and promises NoDelta on omitted Post;
+provenance is not permission to navigate/reselect source candidates. Former
+captures become explicit input positions of the projected Function Pattern value.
+LHS lifetime omission preserves U_default for genuinely new input names and
+promises NoDelta on omitted Post; existing InPlace automatic captures instead
+inherit preceding Post under the empty-slice law;
 compatibility checks Pre_F implies Pre_A and Post_A implies Post_F immediately.
 
 ### ABIKind
@@ -611,6 +618,59 @@ compatibility checks Pre_F implies Pre_A and Post_A implies Post_F immediately.
 FreshLet selects ABI1 input-frontier return overwrite/reinterpretation;
 ExistingTarget selects ABI2 designated-Place delivery, including uninitialized
 targets. Physical layout and RVO/NRVO do not select ABIKind.
+
+### Empty slice / Move repair
+
+Post(K_minus)=Pre(K_plus) for an empty action slice in the same world.
+InPlace existing automatic captures inherit that state, rather than generating
+new default origins. Actual handoff proves atomic Move[repair] and publishes
+only a valid successor, with legal name projection and default repair id.
+The suspending side supplies repair; ordinary new resume arguments use entry
+name rules. See the [lifecycle owner](../design/lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair).
+
+### Effect / Wait / throw
+
+Step produces ordinary matchable Done(v) or Wait(y,k), where k is the next
+concrete callable. Internal Done_chi/Done_Return remains non-value completion.
+Regular Function Patterns use || and nearest-unit postfix ~ for possible traces.
+Throw abbreviates a Wait/reentry protocol; dropping k performs ordinary cleanup,
+without dedicated exception unwind. Only selected forced actual Pattern failure
+produces PatternMiss, and compile unhandled effects diagnose at the external
+boundary. Async uses ordinary ABI1/ABI2; explicit Box and interface projection
+are independent. See the [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.md).
+
+### Whole-original-continuation CPS
+
+The [common-E obligation](../design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending)
+to give the original semantic K a complete continuation-passing account. A
+propagated Wait composes its concrete callee remainder with pending caller
+contexts through the applicable handler/delivery boundary. Ordinary no-wait
+work, every expression/control/delivery consumer, fixed cleanup, selected
+identities, active targets and compile/reify projections remain in correspondence.
+The consumer is pending; syntax/capture gates establish none of this execution.
+It creates no second evaluator, source argument, mandatory state machine or Box;
+physical generation grain is an independent proved choice.
+
+### HeapStack / locate / relocate
+
+The [heap owner](../design/lifetime/heap-stack-and-storage-responsibility.md)
+defines the protocol below.
+
+An ordinary one-way pool/next_pool context. Locate creates a shadowing local
+layer after reading old heap. Object relocate obtains new storage and moves
+owned material; pool/heap relocate guarantees transfer of existing storage support,
+release duty and descriptors under declared Pre, preserves live Places/history,
+and restores the shadowed heap. Preference is an ordinary allocation argument;
+free has no preference and uses real responsibility credentials. Submitting all
+local layers eliminates covered local storage barriers even for regular unknown
+outer depth. Stage migration is independent. See the [heap owner](../design/lifetime/heap-stack-and-storage-responsibility.md).
+
+### Global capability
+
+Global IO is available at compile/runtime across the broad host-Object boundary.
+Compile globalheap has legal runtime migration. Local names may shadow either;
+IO need not have a HeapStack shape and neither capability implies an effect.
+Individual external Objects still need their own migration evidence.
 
 ### With Path relation
 
@@ -664,7 +724,10 @@ activations remain distinct. Self is Pattern-observable without a public capture
 ### Reify
 
 A callable-head P2 annotation, outwardly runtime, with a result classifier
-determined explicitly or from inputs independently of reverse migration.
+determined explicitly or from inputs independently of reverse migration, and a
+compile-determined outward input/output/regular-effect/capture/lifecycle shape.
+Runtime-dependent public shape requires ordinary handler/wrapper closure;
+runtime branch choice within a fixed A || B shape remains legal.
 Selected runtime-to-compile migration is admitted only by its current closed
 boundary. It materializes the actual dependent E cone at runtime; independent
 compile type work proceeds normally. Runtime-policy types/runtime:runtime views

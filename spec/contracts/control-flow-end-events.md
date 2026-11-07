@@ -128,3 +128,32 @@ The following consumers remain unconnected:
 
 The implemented syntax and binding substrate do not substitute for these
 relations.
+
+## 6. Effect handoff is a separate ordinary result protocol
+
+The [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.md)
+defines wait as an expression cut, yielding Wait(y,k), and normal effect
+completion as matchable Done(v). These are ordinary effect sum branches, not
+the internal completion in §5. A repair attachment applies to the complete
+expression; the suspending side proves atomic Move[repair], default id, before
+exposing k. Resume is an ordinary new call of that concrete callable.
+
+Throw is the specified Wait/reentry/return abbreviation. Propagating its ordinary
+effect through call results does not cross the Ordinary targeted-return barrier.
+The handler may drop the delivered continuation through ordinary destruction;
+no specialized unwind is inserted. Only selected forced actual matching failure
+can produce PatternMiss, never candidate rejection or ordinary branch miss.
+
+Input/cut, selected origin, Pre/commit/Post, valid successor AutoPre, cleanup
+responsibility and resume Pattern must be preserved by the future consumer.
+Wait/throw/handler execution and their source carriers are pending; generic
+Name/operator call syntax is not evidence that these protocols execute.
+
+Their common-E prerequisite is
+[whole-original-continuation CPS conversion](../design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending).
+Pending callers, serial input/binding/result consumers, handler boundaries,
+active target-return identities and destructor/cleanup continuations must all
+have the same explicit continuation correspondence. A Wait originating inside
+a nested call cannot discard the caller suffix or turn ordinary effect
+propagation into target-return barrier crossing. This is a pending semantic
+continuation consumer, not Raw/Norm CPS lowering or special async ABI.

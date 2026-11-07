@@ -132,3 +132,27 @@ admission brings externally established behavior into ordinary projection
 facts. The latter follows the separate
 [admission boundary](../lifetime/unsafe-semantic-admission.md); neither path
 feeds private assumptions directly to an optimizer.
+
+## 6. Global IO and heap capabilities
+
+Compile and runtime each have an available global IO host-capability entrance.
+IO includes file, DLL/FFI, devices, syscalls, registers, heterogeneous compute,
+external storage and observation; file IO is not a universal interface for them.
+Compile globalheap exists with an actual legal compile-to-runtime ordinary
+migration facility. These are minimal bootstrap requirements, not a guarantee
+that every compile-acquired external Object is migratable.
+
+Local io/heap are ordinary capability Objects and shadowable names. The
+[dependency owner](../symbol-world/dependency-observation-and-realization.md#3-required-and-initialized-captures)
+defines name-sensitive `[io:T]` / `[heap:T]` required input and explicit global
+initialized capture. IO has no mandatory HeapStack representation; a library
+may choose a one-way forwarding chain. Heap submission and stage migration
+prove separate contracts under the [heap owner](../lifetime/heap-stack-and-storage-responsibility.md).
+
+Ordinary IO/allocation calls do not automatically produce an effect or async
+color. A library may optionally use Wait request protocols for control inversion.
+Trusted acquisition/verification publishes only the external facts its actual
+successful action establishes, under ordinary Pre/commit/Post and the unsafe
+owner. Missing Pre is never repaired by an unsafe assertion. Global capabilities,
+their source realization, and migration remain pending consumers; host-Object
+representation alone supplies no executable global provider.

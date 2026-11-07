@@ -877,18 +877,22 @@ An ordinary closure capture clause is a list of let-shaped bindings:
 CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
 
 CaptureItem
-  ::= PolicySpec "let" BindingCore "=" Expr
+  ::= RequiredName [":" AnnotationPattern]
+   |  [PolicySpec] "let" RequiredName [":" AnnotationPattern]
+   |  PolicySpec "let" BindingCore "=" Expr
    |  "let" BindingCore "=" Expr
    |  BindingCore "=" Expr
    |  Expr
 ```
 
-The first three forms are explicit captures. `let` may be omitted when no
+Initialized binding forms are explicit captures. `let` may be omitted when no
 policy prefix needs to be anchored. They reuse the ordinary `BindingSlot`
 surface and normalization path; form-level alias `===` is not imported into a
 capture item.
 
-The final form is shorthand. Normalization first forms the ordinary call
+Required forms take precedence: `[name]`, `[name:rank]` and `[p let name]`
+retain a required slot and no initializer or implicit source read.
+The final non-bare expression form is initialized shorthand. Normalization forms the ordinary call
 structure of `Expr`, then collects its distinct free bare names whose concrete
 occurrences are not direct callable targets. Exactly one distinct name `n`
 elaborates the item as `let n = Expr`; zero or multiple candidates produce a
@@ -896,7 +900,10 @@ retained normalization error. Call-target role is local to each call node and
 duplicate occurrences of the same text count once:
 
 ```text
-[x]                 -> [let x = x]
+[x]                 -> RequiredCapture(slot=x, initializer=None)
+[x:T]               -> RequiredCapture(slot=x:T, initializer=None)
+[runtime let x]     -> RequiredCapture(slot=runtime let x, initializer=None)
+[let x=x]           -> InitializedCapture(slot=x, initializer=Some(Name x))
 [x x]               -> [let x = x |> x]
 [x y z]             -> [let x = x y z]
 [(x, x) |> x]       -> [let x = (x, x) |> x]
@@ -915,7 +922,7 @@ After normalization every capture has one shape:
 ```text
 NormCapture {
   slot: NormBindingSlot,
-  initializer: NormExpr,
+  initializer: Option<NormExpr>, // None Required; Some Initialized
   origin: NormOrigin
 }
 ```
@@ -924,7 +931,7 @@ This is syntax-directed capture binding elaboration, not closure environment
 layout, name resolution, or materialization.
 
 These source-written captures are explicit requirements. In particular,
-`[x]` means explicit `[let x = x]` with no written policy override; inherited
+`[x]` declares required call material with no written policy override; inherited
 constraints or separate default completion determine its mode. It is not an
 automatic const capture. Later resolved semantics chooses one closure-wide
 explicit or automatic value-capture mode. With a written capture list, an omitted
@@ -992,7 +999,7 @@ structural model but are omitted from default extraction.
 
 General dependency requirements precede semantic realization and then layout.
 Snapshot versus live reference is semantic, not an ABI choice. Explicit [] is
-one source of dependencies; projections and invocation do not recapture.
+one source of dependencies; projections retain formed sources and sealed bindings.
 No mandatory public `self` field layout or hidden semantic side table follows.
 Ordinary closures use one explicit or automatic value-capture mode, alongside
 independent automatic compile structural dependencies. In-place closures prohibit
@@ -1002,7 +1009,8 @@ All occurrences feed ordinary dependency realization. Neither grants write
 authority by itself.
 An actual write-capable realization may permit outer writes under ordinary
 access/capability/lifetime checks; source placement cannot veto them. Invocation
-uses formed dependencies without recapture.
+uses formed dependencies and fulfills required specifications in the actual
+admitted new call context; a sealed source never re-resolves.
 Placement and explicit/automatic origin supply no post-formation applicability,
 specificity or overload preference. Otherwise tied distinct candidates remain
 ambiguous under ordinary uniqueness.
@@ -1010,7 +1018,7 @@ ambiguous under ordinary uniqueness.
 CompilePartner formation uses these ordinary dependency rules. Its selected
 receiver/call-entry pair and canonical inputs determine the CompileInstance,
 independent of result class. The invocation body retains its own lexical,
-Self and navigation layer and uses established dependencies without recapture.
+Self and navigation layer, formed dependencies and actual bound required inputs.
 
 For example, an exported ordinary closure's source dependency is explicit:
 
@@ -1023,10 +1031,12 @@ export let exported_fn =
     };
 ```
 
-The dependency does not export `internal_state` and does not by itself require
-an environment field. Before a callable is materialized, every resolved
-capture requirement must lower to a lifetime-checkable source/access/storage
-form. Existing lifetime and transfer checks continue to apply; closure dependency
+This required input does not export `internal_state` and does not by itself require
+an environment field. Before materialization, initialized and automatic
+realizations retain their lifetime-checkable source/access/storage forms.
+Required slots instead retain checkable name/Pattern/Policy specifications,
+with no formation source edge; their actual source is checked when fulfilled
+at a new invocation. Existing lifetime and transfer checks continue to apply; closure dependency
 persistence/escape refinement remains an explicit lifetime handoff.
 
 ### Directional Function Pattern handoff
@@ -1039,8 +1049,10 @@ constrained at that boundary and cannot be inferred from Pin. This does not
 require an output arrow on ordinary/in-place closure expressions; dedicated
 Function Pattern syntax consumers remain pending. Projected Function Pattern values necessarily erase external structural-
 source authority; opaque implementation provenance and compile-known Val1 cannot
-restore navigation/reselection of source candidates. This is not same-Type Policy
-migration: retained internal Paths there must pass prospective destination-world
+restore navigation/reselection of source candidates. Former captures become
+explicit inputs of the projected value; RHS supplies ordinary arguments, not
+implicit capture slots. An ordinary Env Object may forward its fields explicitly.
+In same-Type Policy migration, retained internal Paths must pass prospective destination-world
 hard applicability. RHS supplies no self/captures, lifetime pre/post or Pack spread; its
 head root immediate rank+1 type/Policy fully denotes, while deeper legal holes
 and LHS deduction retain ordinary rules. These are pending semantic consumers,
@@ -1402,8 +1414,11 @@ extraction followed by explicit ordered assembly. Intermediate extraction uses
 the same R_Gamma after reaching the selected layer; it does not relax Pack.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Its active
-closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+classifier explicit or input-inferable without reverse migration. Its outward
+input/output, regular effect, capture and lifecycle interface shape must also be
+compile-determined independently of runtime reverse flow; ordinary handlers or
+wrappers close runtime-dependent shape before exposure. Runtime choice within a
+fixed regular sum is legal. Its active closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
 reverse dependencies. Legal Policy ranks have exactly the form
 absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary
@@ -1583,3 +1598,28 @@ omitted Post still promise NoDelta. The four
 design data flow, including ordinary option extraction by `?` rather than new
 error propagation. Their schematic APIs do not assert executed source coverage.
 See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.
+
+## 17. Unified resource and effect surface (consumer pending)
+
+The [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.md)
+defines `(yield_val,resume_pattern) wait @{repair}` and
+`(yield_val) |> wait (resume_pattern)@{repair}` as one handoff contract. Repair
+binds to the complete preceding expression more weakly than full E; parentheses
+delimit it, and omission means id. Throw is its specified Wait/reentry/return
+abbreviation. Function Pattern effect syntax adds nearest-unit postfix `~`,
+with ordinary `||` alternatives and an explicit arrow for each step.
+
+These source consumers are pending. The exact `@{` shape is rejected as
+unsupported until the low-binding attachment carrier exists; it cannot silently
+become ordinary high-binding @ plus a closure. Ordinary @ and value-side ~ keep
+their ordinary operator roles. Generic wait/throw Name calls do not implement
+effect cutting. `expression ?` exposes concrete bare Product continuation
+material; `expression ? Box` requests explicit ordinary storage. The
+[heap owner](../design/lifetime/heap-stack-and-storage-responsibility.md) defines
+ordinary locate and consuming `heap relocate;`, with no special stack keyword.
+All source semantic execution remains pending; the roadmap names its unavailable
+frontiers separately from connected capture syntax/goldens.
+The original common semantic continuation also requires
+[complete CPS correspondence](../design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending),
+including nested caller suffixes and all ordinary expression/control consumers.
+This pending common-E work belongs after Raw/Norm, not in syntax normalization.

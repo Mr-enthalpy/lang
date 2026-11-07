@@ -109,6 +109,9 @@ B_K(x) for an ordinary user receiver x:T. CallAnchor supports `(args) |> self`;
 Return independently identifies tag plus activation. No extra universal
 environment field or public capture layout follows. Actual dependency identities
 remain in ordinary canonical invocation inputs where required.
+Required positions bind in the admitted new call context; initialized sources
+remain fixed. Self, captures and args share ordinary call/lifecycle rules with
+no premise that a capture is an owned field child of the self Object.
 
 Movement uses the call owner's one coherent passing transaction: form exact
 implicit/explicit material, normalize terminal Move, check all affected Pre,

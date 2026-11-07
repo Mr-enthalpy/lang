@@ -47,7 +47,9 @@ back to unknown-expression default mode, even with a readable Pattern or a suppl
 argument mode. Readable binding observations retain their mode; genuinely
 unknown expressions remain a separate case. Stage and horizon carriers expose
 no enum-order preference, and facet observation defines no alternate resolver.
-Candidate errors and selected-body failures remain diagnostics, with no second
+Static candidate errors and unsupported selected-body frontiers remain diagnostics.
+Selected forced actual Pattern failure uses PatternMiss handling; an unhandled
+compile effect diagnoses at the outer boundary. There is no second
 compile evaluator mode or function/world stage partition. Ordinary
 deduction, R_vis/C_sigma and E readiness/saturation still require consumer
 coverage. Carrier test success is not general source coverage of these semantics.
@@ -56,6 +58,79 @@ generation-coordinate split/merge and owner-interval termination remain
 unconnected consumers. Neither a global runtime epoch nor a compile-branch
 no-op supplies those facts. Allocation without established construction facts
 fails OpenHere, and saved authority cannot revive an explicitly closed window.
+
+## Heap, IO and effect acceptance
+
+IDs in this section are scoped HIE:C01 etc., preserving the handoff's labels
+without colliding with older matrix groups. Every row defines both positive and
+negative obligations. D = defined in current owners; P = semantic source
+consumer pending, with spanned unavailable boundary in the
+[migration plan](heap-io-effect-migration.md#dependency-order-and-unavailable-boundaries).
+S = capture syntax/golden and unavailable-gate coverage only, not successful
+capture binding, lifecycle, resource or async execution. No row claims those
+pending executions passed.
+
+S is exercised by the required/initialized/order/Hole/span and repair tests in
+[callable_tail_dot_pack.rs](../../crates/lang_syntax/tests/callable_tail_dot_pack.rs),
+the [parser](../../tests/parser_golden.rs),
+[Norm](../../tests/normalized_golden.rs) and [token](../../tests/lexer_golden.rs)
+goldens, plus unavailable capture relation preparation in
+[relational_pattern_authority.rs](../../crates/lang_build/tests/relational_pattern_authority.rs)
+and rejection before associated-entry mutation in
+[builtin_preparation_boundary.rs](../../crates/lang_build/tests/builtin_preparation_boundary.rs).
+The latter tests assert unavailable diagnostics/provenance and unchanged world;
+they do not run RequiredCapture fulfillment or an initializer.
+
+| ID | Positive required behavior | Negative / non-derivable boundary | Defined semantics | Pending consumer | Executed evidence |
+|---|---|---|---|---|---|
+| C01 | Form [heap:T] without heap; admitted new call binds local heap | Do not read a source at formation | D dependency §3 | P LC9 | S syntax only |
+| C02 | Admitted matching context fulfills requirement | Missing/wrong local heap cannot use formation global | D dependency §3 | P LC9 | S unavailable gate only |
+| C03 | [let heap=globalheap] retains initialized source | Later local shadow cannot rebind it or replay initializer | D dependency §3 | P realization | S source distinction only |
+| C04 | Raw/Norm [x] has required slot, no initializer | Never synthesize =x; malformed required annotation diagnoses | D syntax contract | P source fulfillment | S |
+| C05 | Candidate-local evidence and unique seal precede selected binding | Post-seal capture failure never selects runner-up | D overload §4 | P LC9 | S pre-install/prepare gate only |
+| C06 | Self/captures/args transfer coherently once | No duplicate Kill or field-ownership-derived source | D call §6 | P LC3/LC9 | None |
+| C07 | Fn value exposes former captures as explicit args | No implicit recovery from original context/known Val1 | D Pattern §11 | P FnExtract | None |
+| C08 | Env Object forwards heap/IO fields normally | Wrapper grants no new access/lifetime or mandatory Box | D Pattern §11.2 | P ordinary forwarding | None |
+| H01 | Locate reads old heap then installs shadowing node | No self-resolving new binding or special push | D heap §1 | P LC11 | None |
+| H02 | Subborrow next_pool, replenish outward, terminate at None protocol | No reverse prev pointer required or pool copy inferred | D heap §1 | P library | None |
+| H03 | Default starts at top; preference may skip participating layers | Top need not supply physical storage; no magical search | D heap §2 | P library | None |
+| H04 | Free follows real allocation responsibility after heap rebinding | No preference arg or forced historical pool path | D heap §2 | P credentials | None |
+| H05 | Guaranteed submit preserves live Places and reveals old heap | Name deletion/history rewrite cannot substitute for transfer | D heap §4 | P LC11 | None |
+| H06 | Admit only pool with guaranteed submit under actual Pre | No hidden metadata-allocation failure on legal submit | D heap §4 | P guarantee proof | None |
+| H07 | Post-submit free uses transferred complete duties | No orphaned or duplicate release duty | D heap §4 | P library | None |
+| H08 | Object relocation requests up(H) or permitted regular outer path | No no-action source rewrite or automatic alias repair | D heap §§4–5 | P library | None |
+| H09 | All local layers submitted eliminates covered local storage barrier | Unsubmitted/uncovered or independent ref barrier still blocks | D heap §5 | P regular proof | None |
+| L01 | Empty slice Post=Pre | Do not reset existing names/history | D lifecycle §2.1.8 | P LC10 | None |
+| L02 | InPlace captures inherit Post; new args alone default | No U_default regeneration of old captures | D lifecycle §2.1.8 | P LC10 | None |
+| L03 | Id handoff succeeds when destination relations valid | First-layer order broken without legal repair rejects | D lifecycle §2.1.8 | P LC10 | None |
+| L04 | User repair with real ref/rebind premises publishes valid successor | No invalid intermediate k, invented repair or unsafe missing Pre | D lifecycle §2.1.8 | P MoveRepair | S unsupported attachment only |
+| L05 | Concrete successor resumes/moves/returns ordinarily | No uniform Future type or reopened predecessor | D effect §§1–2 | P LC12 | None |
+| A01 | Bare Product continuation returns via ordinary ABI1 | No implicit Box inferred from return/async | D E §11 | P materializer | None |
+| A02 | Explicit Box plus valid submit discharges local storage duty | Boxing alone cannot discharge pool/independent ref obligations | D E/heap | P LC11/12 | None |
+| A03 | ExistingTarget val= uses ABI2 | Async/layout cannot choose a different ABI | D E §10 | P materializer | Existing ABI law only |
+| A04 | Generate demanded larger legal slice from template | No 2^n generation or removal of observable repair | D E §11 | P O proof | None |
+| A05 | Only actual unhandled propagation branch incurs repair | Exhaustive handler needs no extra forwarding repair; no speculative branches | D effect §3 | P handler | None |
+| A06 | Ordinary wrapper handles differing effects into fixed interface | No automatic broadening/source restoration/boxing | D effect §3 | P wrapper/FnExtract | None |
+| A07 | A \|\| B, A~ and nested arrows denote regular possible traces | No copied linear input or simultaneous alternatives | D Pattern §11.3 | P syntax/relation | None |
+| E01 | Explicitly legal value copy throw uses specified Wait/reentry | No implicit copy or return to original normal path | D effect §4 | P expansion | None |
+| E02 | Dropping k cleans held complete material once ordinarily | No special unwind, duplicate Drop or erased continuation | D effect §4 | P destructor | None |
+| E03 | Selected forced final mismatch yields handled PatternMiss | No successful extraction Post or sealed-call retry | D effect §5 | P forced execution | None |
+| E04 | Applicability/branch mismatch keeps ordinary rejection/residual relation | Never throw PatternMiss for an unselected mismatch | D effect §5 | P integration | Existing relation substrate only |
+| E05 | Compile actual check success supplies names once; handler may recover | Unhandled effect diagnoses externally; syntax errors remain static | D effect §5 | P compile handler | None |
+| S01 | Formal self-root return alone classifies instance NameExpr | Direct/hidden self-root yield rejects; ordinary prior names gain no new identity | D unified §3 | P reach/yield | None |
+| S02 | Broad global IO capability at both stages | No universal file interface or automatic external migration | D host §6 | P provider | None |
+| S03 | Compile globalheap legally migrates | Migration does not submit local pool duties | D host/heap | P provider/LC11 | None |
+| S04 | Handler closes runtime-dependent effect shape before reify exposure | Unsettled public shape cannot depend on runtime reverse flow | D unified §20 | P ClosedInterface | None |
+| S05 | Runtime chooses within compile-fixed A \|\| B | ClosedReturn/ordinary Pre still required | D unified §20 | P ClosedInterface | None |
+| S06 | Ordinary IO/heap calls need no Wait | Capability use adds no default async/effect marker | D host §6 | P library | None |
+| K01 | Nested non-tail call waits in a let initializer; resume completes callee then caller bind/suffix once | Callee-only successor, lost caller suffix, replayed committed prefix or early binding rejects | D E §7.1 Plug/Compose | P LC13/common E | None |
+| K02 | Suspend during call source/target/input, Product, assignment or result delivery | Preserve established evaluation order, held material and terminal demand; no skipped/repeated operand or unconstrained temporary | D E §7.1 | P LC13/context consumers | None |
+| K03 | Guarded branches, successive waits and admitted recursion/iteration retain actual continuation structure | No execution of unselected branch, future-path enumeration or all-partition object generation | D E §7.1/§11 | P LC13/control | None |
+| K04 | Ordinary no-wait work has a complete CPS correspondence; O can prove an equivalent direct-style machine path | Effect-marked-body-only conversion, effect-blind serial fallback or mandatory physical CPS frames rejects | D E §7.1 | P LC13 | None |
+| K05 | Composed return payload preserves root demand, actual target/activation and Ordinary/InPlace boundary evidence | No target-return barrier crossing, stale/foreign activation authority or reopened seal | D E §7.1/return | P LC13/return delivery | None |
+| K06 | Drop a successor holding both callee and caller material with fixed cleanup obligations | Exactly ordinary cleanup once; no stranded caller resource, duplicate Kill/Drop or exception unwind | D E §7.1/effect §4 | P LC13/LC12/Drop | None |
+| K07 | Compile handler and reify dependent cone share full CPS mapping with closed outward shape | No runtime-to-past flow, lost name/cut identity, projection re-selection or escaped active-boundary authority | D E §7.1/§8 | P LC13/reify | None |
+| K08 | Missing CPS context/control/delivery correspondence reports spanned unavailable at the requiring boundary | No claimed async success, invented Residual or new semantic facts from description conversion | D E §7.1 | P LC13 | None |
 
 ## Stage, Policy and two-round calls
 
@@ -386,9 +461,9 @@ executed success.
 
 | ID | Scenario | Required result | Canonical owner | Consumer status |
 |---|---|---|---|---|
-| C-DP01 | [cap] (...) :compile => B | Ordinary capture formation retains actual dependencies; selected partner identity is stable. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
+| C-DP01 | [cap] (...) :compile => B | Formation retains a required specification; the admitted new call binds cap and canonical inputs retain its observed identity. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
 | C-DP02 | P let H => E | Requested-name producer may deliver any ordinary declared result; no implicit actual or authority follows from absent head. | [declaration owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Source consumer pending |
-| C-DP03 | Callable observes an enclosing local | Form an ordinary admitted dependency at callable formation; invocation never recaptures by caller spelling. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
+| C-DP03 | Callable observes an enclosing local | Automatic/initialized dependencies form once; RequiredCapture binds its declared name in each admitted new call. Sealed sources never re-resolve. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
 | C-DP04 | Equal parent/selected partner/canonical In with different incidental caller environments | Same key and instance; no hidden caller coordinate, replay or stale authority. | [invocation owner](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md) | Source consumer pending |
 | C-DP05 | Nested ordinary or in-place closure reaches enclosing instance | Preserve lexical/Self/navigation layer and use ordinary self-name plus admitted dependency. | [dependency owner](../design/symbol-world/dependency-observation-and-realization.md) | Source consumer pending |
 
@@ -735,17 +810,17 @@ Owners: [dependency](../design/symbol-world/dependency-observation-and-realizati
 | CSF-T08 | RHS requests self, captures, ...captures or lifetime pre/post | Reject those request positions. RHS has explicit input/output/type/Policy only, with no alternate capture/lifecycle selector, constructor or spread. | Function Pattern |
 | CSF-T09 | RHS root immediate rank+1 type/Policy holes versus LHS roots or deep holes | RHS is not a complete request. LHS may deduce ordinarily; deep legal holes retain identity/availability. Preserve arbitrary-rank coherence and structural _ versus external _$. | Function Pattern |
 | CSF-T10 | LHS full input with one ...rest; two same-layer Packs; RHS ...args | Match all meaningful capture/argument positions, allowing one contiguous ordered remainder. Reject uncovered captures, two same-layer Packs and RHS spread. Nested layers keep independent rules. | Function Pattern |
-| CSF-T11 | LHS omits pre/post, actual A changes observed state | Keep U_default, exclusive distinct/shared common roots and default origins. Expected Post=NoDelta. At extraction require Pre_F implies Pre_A and Post_A implies Post_F; insufficient actual Post rejects immediately. A with no stronger Pre and a sufficient Post is compatible under mapped entry assumptions. | lifetime |
+| CSF-T11 | LHS omits pre/post, actual A changes observed state | Keep U_default for genuinely new entry names, exclusive distinct/shared common roots and default origins; existing InPlace automatic captures inherit preceding Post. Expected Post=NoDelta. At extraction require Pre_F implies Pre_A and Post_A implies Post_F; insufficient actual Post rejects immediately. A with no stronger Pre and a sufficient Post is compatible under mapped entry assumptions. | lifetime |
 | CSF-T12 | RHS has no lifetime clause; uniquely selected A fails actual Pre/commit/Post | Fail without publication or runner-up selection. Clause omission skips no actual check and supplies no new lifetime demand. | lifetime / call |
 | CSF-T13 | CallType(tau) versus CallValue(x) | Keep CallTarget=tau, ActualSelf=c* versus both x. CallableOwner, ReceiverType, Param and tag/activation ReturnFrame remain independent with one selected identity. | call |
 | CSF-T14 | Pass self observed through capture Param | One coherent transaction, all affected Pre before existing atomic commit, joint Post. No duplicate whole-self/capture Kill, implicit Copy or reuse of killed generation. Preserve invokes no clone. | call / lifetime |
 | CSF-T15 | Param contains ref/share handles | Move handles with existing target/generation/origin. No direct referent ownership transfer, promotion or region extension. | call / lifetime |
 | CSF-T16 | Recursive (args) |> self, same tag with nested activations | Enter fresh activation through CallAnchor with actual Movable/borrow facts. Complete resolves tag plus active activation, respecting barriers/cleanup; no old sealed call reopens. Continue/break-like paths need no new primitive. | call / return |
-| CSF-T17 | Mandatory source-authority-erasing Function Pattern projection, later compile-known Val1 | Keep formed implementation/dependencies/contract and opaque internal provenance; necessarily remove external structural navigation/reselection authority, with no opt-out or recovery from known Val1. O specialization stays within interface. Before/after full Type equality is not required; ordinary complete-tau transport still retains V_tau. | Function Pattern |
-| CSF-T18 | Library reify forwarder changes lowest present external compile demand to runtime | Require ordinary same-Type migration, active ClosedReturn, readiness/dependency/lifetime evidence, and independent output migration if needed. No built-in Function Pattern conversion or restored source. | Function Pattern / Policy |
+| CSF-T17 | Mandatory source-authority-erasing Function Pattern projection, later compile-known Val1 | Expose former captures as explicit interface input; retain only opaque implementation facts/contract and remove external structural navigation/reselection authority, with no opt-out or recovery from known Val1. O specialization stays within interface. Before/after full Type equality is not required; ordinary complete-tau transport still retains V_tau. | Function Pattern |
+| CSF-T18 | Library reify forwarder changes lowest present external compile demand to runtime | Require ordinary same-Type migration, active ClosedReturn/ClosedInterface, readiness/dependency/lifetime evidence, and independent output migration if needed. No built-in Function Pattern conversion or restored source. | Function Pattern / Policy |
 | CSF-T19 | Same callable/result in let v=expr versus v=expr, including uninitialized designated target | E selects ABI1 versus ABI2. Alias/initialization/replacement authority remains checked. RVO/NRVO, result-type equality and direct versus temporary construction cannot switch ABIKind. | E delivery |
 | CSF-T20 | Tail call under ABI1 versus recursion lacking cleanup/lifetime/slot proof | Consume proved frontier reuse, preserving delivery even for different input/output sizes. Missing evidence grants no unconditional tco/loop or constant stack; physical realization remains deferred. | E delivery / mechanical |
-| CSF-T21 | Copy/further pure extraction of formed Function Pattern value | Keep actual captured realizations without initialization/relookup. Without conversion, normalized full contents determine equality; changed owned content differs. NameBinding/Place identity remains separate; no fourth coordinate or hidden state. | dependency / Function Pattern |
+| CSF-T21 | Copy/further pure extraction of formed Function Pattern value | Keep exposed explicit interface positions and opaque implementation/contract without recovering former implicit sources or rerunning initialization. Without conversion, normalized full contents determine equality; changed owned content differs. NameBinding/Place identity remains separate; no fourth coordinate or hidden state. | dependency / Function Pattern |
 | CSF-T22 | Needed classifier, implicit material, rank or contract implication unknown | Keep Unavailable and pending obligations, not Mismatch, fallback suppression, unique maximum or permission. Independently proved hard rejection may still terminate its candidate. | Pattern / call |
 | CSF-T23 | Active Ordinary F, then active Ordinary G formed within F | Omitted return in G selects G, not F. F remains active but lies outside G's reachable return segment. Binding slice covered by return_target unit tests; execution pending. | return |
 | CSF-T24 | Active Ordinary F, nested InPlace I/J | InPlace adds no barrier: omitted return reaches F; explicit target I/J or F is allowed only with actual activation and ordinary legality evidence. Binding slice covered; completion pending. | return |
@@ -818,13 +893,13 @@ is a non-blocking follow-up; DS22 remains an intentional legal outcome.
 | DS11 | Public name shadowed after formation; target space includes user overloads; direct associated receiver forwarding | Closure/contribution entries call their held complete-type target, not a re-resolved public name or their own c_m. Direct associated entries call the original receiver x. All ordinary target candidates compete: the next generated entry is not privately filtered or preselected; user winners and ambiguity stand. This fresh call cannot reopen its selected outer entry. |
 | DS12 | User and generated fixed-arity candidates both applicable and otherwise tied | Ordinary ambiguity. No generated/original/default-count priority, fallback suppression from origin, or per-family preliminary winner. Distinct members do not collapse merely because outputs agree. |
 | DS13 | Selected shorter entry default fails, ordinary forwarding call fails, or return delivery fails; outer runner-up exists | No outer or already sealed inner selection reopens. Preserve reached effects and ordinary cleanup/failure transaction boundaries; publish no failed result. |
-| DS14 | Source captures have effectful initializers; defaults and body use those captures | Source initializers execute once per formation, not per member/call; defaults execute per selected invocation. Defaults participate in exclusive Explicit/Automatic dependency completeness. No invocation-time relookup or recapture. |
+| DS14 | Source captures have effectful initializers; defaults and body use those captures | Source initializers execute once per formation, not per member/call; defaults execute per selected invocation. Defaults participate in exclusive Explicit/Automatic dependency completeness. No initialized-source relookup/replay; required specifications bind per admitted new invocation. |
 | DS15 | Owned noncopy capture or local ref needed by several wrappers/escaped family | Prove ordinary realization, retention, capability, generation/lifetime and escape legality for every required use. No implicit shared environment, clone, Copy or global lifetime; no blanket ban based only on local provenance. Missing evidence remains unavailable. |
 | DS16 | Default consumes an earlier arg still needed for forwarding; ref/share or Preserve forwarding | Require actual frontier legality and one terminal Move per edge/input. Consumed prior generation is not restored; no duplicate same-frontier Kill. Ref/share retains targets; Preserve is not clone. Original associated receiver still needs its own legal call/transfer evidence. |
 | DS17 | Forwarded result is unit/non-unit; outer source frame active; direct associated entries share receiver tag x | Terminal return explicitly targets that entry's actual activation, including unit and nested activations with the same tag x. Propagate ReturnPattern/Pout before root maxima and preserve source-written return targets. No unit fallthrough, omitted-target substitution, hidden lexical temp or merging by receiver/tag identity. |
 | DS18 | Defaulted declarations in a common bucket, a local defaulted closure, and direct let () implementation material | Bucket/local formation retains complete-type homes, one snapshot and no first sibling/partial Object/repeated lexical aggregation/bulk import. Direct let () instead installs real associated entries Impl_n through Impl_(n-k), each with ActualSelf=x for invoked x:T. Its self-only entry matches unit explicit input and forwards by ordinary call to x. No anonymous receiver substitution, generated V_T registration or new authority. |
 | DS19 | Example do (self, let i = 1uint8) => { cond ? if { i } else { (i + 1) pipe self } } | The generated (self) head matches unit explicit input. Empty call may select c_0; default once, then ordinary family call with one explicit value. With only these generated entries, c_1 wins. Body self=c_1 recurses at full arity without rerunning the default. Unknown cond/type/Move/lifetime facts grant no success or tco guarantee. |
-| DS20 | Forwarders under compile/reify, output-demand competition and copying a completed family | Ordinary compile-instance keys, ClosedReturn, E-selected ABI, actual dependency identity, no recapture and immutable complete observations apply. Expansion grants no stage conversion, ABI choice, renewed construction window or SCC/slot-reuse proof. |
+| DS20 | Forwarders under compile/reify, output-demand competition and copying a completed family | Ordinary compile-instance keys, ClosedReturn/ClosedInterface, E-selected ABI and immutable complete observations apply. Initialized sources do not replay; required specifications bind per admitted new call. Expansion grants no stage conversion, ABI choice, renewed construction window or SCC/slot-reuse proof. |
 | DS21 | G={c_2,c_1,c_0}, defaults d_1,d_2; selected c_0 forwards one argument, applicable h strictly loses to c_1 | Normal inner selection chooses c_1, then d_2 executes once. No generated-member preference; the next-member outcome follows only from ordinary preference. |
 | DS22 | Same selected c_0 and input, but h strictly wins over c_1 | c_0 forwards to h. Do not force c_1/c_2 or evaluate d_2. Outer selection stays sealed; whole-target competition is intentional. |
 | DS23 | Same selected c_0 and input, h and c_1 tied distinct inner maxima | Ordinary inner ambiguity before either body/d_2 executes. Reached d_1 follows ordinary effect/failure/cleanup rules; no retry of outer candidates or private next-member filter. |

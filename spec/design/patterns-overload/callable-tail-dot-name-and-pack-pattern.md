@@ -244,13 +244,15 @@ The capture surface for an ordinary ordinary closure is:
 CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
 
 CaptureItem
-  ::= PolicySpec "let" BindingCore "=" Expr
+  ::= RequiredName [":" AnnotationPattern]
+   |  [PolicySpec] "let" RequiredName [":" AnnotationPattern]
+   |  PolicySpec "let" BindingCore "=" Expr
    |  "let" BindingCore "=" Expr
    |  BindingCore "=" Expr
    |  Expr
 ```
 
-The first three alternatives reuse the complete ordinary binding-slot shape.
+Initialized alternatives reuse the complete ordinary binding-slot shape.
 `let` may be omitted when no policy prefix needs it as an anchor:
 
 ```lang
@@ -267,7 +269,7 @@ All successful forms normalize to:
 ```text
 NormCapture {
   slot: NormBindingSlot,
-  initializer: NormExpr,
+  initializer: Option<NormExpr>, // None Required; Some Initialized
   origin: NormOrigin
 }
 ```
@@ -276,7 +278,10 @@ There is no naked normalized capture expression.
 
 ### 2.1 Strict shorthand inference
 
-For shorthand `[E]`, let `N(E)` be the ordinary non-semantic normalized
+Bare `[name]`, annotated `[name:T]` and `[p let name]` are RequiredCapture with
+no initializer/source edge. The requested name and constraints are fulfilled at
+the admitted new call, under the dependency owner's §3. They take precedence
+over inference. For other non-bare shorthand `[E]`, let N(E) be the normalized
 expression and define:
 
 ```text
@@ -292,7 +297,9 @@ exactly when `|C(E)| = 1`; if `C(E) = {n}`, `[E]` elaborates to
 `[let n = E]`. Examples:
 
 ```text
-[x]                -> [let x = x]
+[x]                -> RequiredCapture(x), no initializer
+[x:T]              -> RequiredCapture(x:T), no initializer
+[let x=x]          -> InitializedCapture(x, Name x)
 [x x]              -> [let x = x |> x]
 [x y z]            -> [let x = x y z]
 [(x, x) |> x]      -> [let x = (x, x) |> x]
@@ -329,7 +336,7 @@ rerun initializers.
 The nested case is therefore recursive but unambiguous:
 
 ```lang
-let f = [[cap] => { cap }] () => { value };
+let f = [[let cap=cap] => { cap }] () => { value };
 ```
 
 The outer shorthand elaborates to:
@@ -342,17 +349,18 @@ Each initializer's `cap` denotes its own pre-capture enclosing binding.
 
 ### 2.3 Explicit capture is not automatic capture
 
-Every source capture item is explicit, including shorthand whose binder is
+Every source capture item is explicit, including required entries and shorthand whose binder is
 inferred:
 
 ```text
 [let x = E]  -> Explicit
 [x = E]      -> Explicit
+[x], [x:T], [p let x] -> Required
 [E]          -> ExplicitInferredBinder, if shorthand inference succeeds
 ```
 
-In particular `[x]` elaborates to the explicit empty-policy binding
-`[let x = x]`. Its omitted capture mode supplies no override; ordinary contextual
+In particular `[x]` retains a required slot with no initializer. Its omitted
+capture mode supplies no override; ordinary contextual
 inheritance/completion applies, with no automatic const conversion.
 
 For an ordinary closure, a resolved free reference can impose a Needs
@@ -375,8 +383,9 @@ source order, including interleaved compile/runtime entries. Binder names do
 not make the layer unordered. Initializers use the common pre-capture environment
 and execute once per formation in ordinary order. Automatic value-capture
 ordering is fixed for each formed closure without a public cross-implementation
-ordinal guarantee. Neither sequence may be stage-sorted, rediscovered at calls
-or changed by layout; full sequencing authority remains in the dependency owner.
+ordinal guarantee. Neither sequence may be stage-sorted or changed by layout;
+required positions bind their source per new call without changing the sequence.
+Full sequencing authority remains in the dependency owner.
 
 ### 2.4 Dependency realization precedes representation
 

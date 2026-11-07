@@ -68,6 +68,16 @@ Neither installing associated functions under OpenHere nor passing a mutable
 copy of observation data opens the external-admission route. Unsafe Post still
 requires real compatible external success, with its ordinary Pre already met.
 
+Global IO/heap, actual object relocation and guaranteed pool submission follow
+this same boundary. PoolSubmit preserves live Places/history while transferring
+storage support/release duty/descriptors under the
+[heap contract](heap-stack-and-storage-responsibility.md#4-two-relocation-contracts).
+A trusted implementation must really guarantee worst-case commit resources
+within declared Pre. A runtime probe or temporary metadata-allocation failure
+cannot be hidden behind an alleged infallible capability. Failed acquisition,
+verification or repair supplies no successful Post, missing historical Pre,
+revived resource or rewritten origin/Color.
+
 Callers may consume established callee Post summaries without expanding the
 callee's body. That modular summary rule does not let an external assertion
 bypass the admission boundary or validate the preceding action's Pre.

@@ -11,7 +11,7 @@ that the corresponding source semantics is implemented.
 | --- | --- |
 | Static evaluation, compile instances, open/close, NameExpr result shape, interpretation polarity, structural type formation, file/name production, dot/ADL | [static, name, and structural semantics](unified-static-name-and-structural-semantics.md) |
 | NameValue, two-level Read, Path projection/indexing and opposite-context interpretation | [Path algebra](symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
-| General dependencies, observation kind/horizon, exclusive value-capture modes, ordered CaptureProduct and one-time realization | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
+| General dependencies, Required/Initialized capture timing, observation kind/horizon, exclusive modes and invocation-indexed ordered CaptureProduct | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
 | Product repetition wrappers, contextual expansion, Val1 identity and Policy-indexed unpacking | [Product algebra](patterns-overload/product-repetition-and-unpacking.md) |
 | Callable tails and Pack boundaries | [callable material](patterns-overload/callable-tail-dot-name-and-pack-pattern.md) |
@@ -29,8 +29,10 @@ that the corresponding source semantics is implemented.
 | Requested-name producer surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
 | Compile instance identity, result delivery, opening sources and current storage | [invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md) |
-| Runtime main, active dominance, readiness, E projections, delivery-selected ABIKind and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
+| Runtime main, active dominance, readiness, whole-original-K CPS correspondence, E projections, delivery-selected ABIKind and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
 | Host IO and target-machine Objects | [host capabilities](static-evaluation/host-capabilities-and-machine-objects.md) |
+| HeapStack, locate, object relocation, guaranteed pool submission, storage support and release responsibility | [heap protocols](lifetime/heap-stack-and-storage-responsibility.md) |
+| Step/Done/Wait, transparent propagation, handlers, throw and forced PatternMiss | [effect steps](control-flow/effect-steps-and-continuation-handoff.md) |
 | Ordinary lifecycle programs, whole-K projection, rank-0 @, Region/Color, Killable/MoveEffect/Movable, contract formation/defaults, boundary compression, regular access and library protocols | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
 | Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
@@ -77,8 +79,11 @@ keeps its own canonical judgments; the [conformance matrix](../planning/canonica
 records semantic acceptance targets separately from connected execution.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Its active
-closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+classifier explicit or input-inferable without reverse migration. Its outward
+input/output, regular effect, capture and lifecycle interface shape must also be
+compile-determined independently of runtime reverse flow; ordinary handlers or
+wrappers close runtime-dependent shape before exposure. Runtime choice within a
+fixed regular sum is legal. Its active closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
 reverse dependencies. Legal Policy ranks have exactly the form
 absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary

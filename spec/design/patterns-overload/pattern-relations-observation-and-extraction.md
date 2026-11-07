@@ -911,12 +911,14 @@ current generic closure parsing implements them.
 
 For a concrete formed callable c, let ExplicitArgProduct(c) denote its explicit
 entry material as observed by the extraction relation, not invented sample
-arguments or a common overload signature:
+arguments or a common overload signature. I below identifies the determined
+entry's matching projection and K its admitted context; pure extraction does
+not fabricate a body activation or move its input:
 
 ```text
-FunctionLHSInput(c) = CaptureProduct(c) op_plus ExplicitArgProduct(c)
+FunctionLHSInput(c,I,K) = CaptureProduct(c,I,K) op_plus ExplicitArgProduct(c)
 FnExtract_Gamma(F_L,c,rho)
-  iff R_Gamma(Head_L,FunctionLHSInput(c),rho)
+  iff R_Gamma(Head_L,FunctionLHSInput(c,I,K),rho)
   and ReturnPolicyRelation(F_L,c,rho)
   and LifetimeContractCompatibility(F_L,c,rho)
 ```
@@ -924,6 +926,8 @@ FnExtract_Gamma(F_L,c,rho)
 Here op_plus is ordinary contextual Product composition. For the ordinary
 user-value receiver case the [call owner's](../symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
 implicit material is the singleton receiver instead of a closure CaptureProduct.
+RequiredCapture is validated in the actual admitted matching/call context, not
+resolved speculatively at closure formation. Missing context is unavailable.
 Extraction covers the entire observed input, including all meaningful capture
 positions. Head_L may use ordinary explicit Pattern entries or one legal
 remainder such as ...captures. A Pack matches the contiguous remainder at an
@@ -951,8 +955,8 @@ FnRequest_K(Target,F_R,explicit_args,result_demand)
 
 F_R contains no self/capture position or lifetime pre/post clause. Callers
 neither provide nor select a capture sequence through its request head.
-Different candidates may have zero, one or many captures. Their own formed
-implicit evidence can be checked read-only under ordinary applicability, without
+Different candidates may have zero, one or many captures. Their formed material
+and required-capture availability can be checked read-only under ordinary applicability, without
 forming a common capture Pattern or capture-shape preference. Actual transfers
 and dynamic lifetime checks apply only to the selected member. Any selected
 failure is terminal; no runner-up or new lifecycle filter is permitted.
@@ -989,9 +993,19 @@ FunctionPatternProjection(C,F)
   => not ExternalAuthority(StructuralOrigin(C))
 ```
 
-The projection preserves the formed implementation, actual dependency
-realizations and internal obligations, exposed invocation contract and ordinary
-identity observations. An opaque implementation may retain source Paths and
+Projection Pre requires a determined concrete entry, successful full-input,
+return/Policy/regular-effect extraction and contract implication, with available
+required-capture context and ordinary transfer/access/lifecycle evidence where
+consumed. Its ordinary complete-value commit exposes the projected interface,
+including explicit former-capture positions. Post preserves only the admitted
+implementation/internal obligations and interface observations, with external
+source authority erased. Failed or unavailable evidence produces no successful
+projected value, hidden source restoration, interface widening or selected retry.
+
+The projection preserves the implementation, necessary internal obligations,
+exposed invocation contract and ordinary identity observations. It does not
+retain former capture sources as hidden implicit inputs: their material becomes
+explicit interface parameters below. An opaque implementation may retain source Paths and
 implementation IDs internally, but no external Function Pattern consumer may
 navigate or reselect that original structural candidate space. There is no
 optional source-preserving version of this projection. Full Type equality
@@ -1019,12 +1033,49 @@ classifier, InputAdmissible, Ready and migration premises.
 
 A library may form an ordinary P2=reify forwarding closure, replacing an
 external input's lowest non-absent compile demand by runtime, then selecting
-same-Type runtime-to-compile migration inside an active ClosedReturn boundary
+same-Type runtime-to-compile migration inside an active ClosedReturn/ClosedInterface boundary
 before calling its target. An independent compile-to-runtime output migration
-may also be needed. This conditional adaptation requires closed classifiers,
+may also be needed. This conditional adaptation requires closed classifiers
+and compile-determined public regular-effect/capture/lifecycle shape under
+[unified §20](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration),
 actual dependencies, lifetime legality and ordinary sealed choices. It is not
 a built-in Function Pattern constructor, a guaranteed conversion or restoration
 of structural origin; reify's outward horizon remains runtime.
+
+After source-erasing Function Pattern value projection, original capture material
+is part of the value's **explicit** callable input. Such a value cannot fulfill
+those positions by recovering the closure's forgotten external source or by
+implicit lookup in its old formation context. RHS still has no implicit capture
+or contract slots: it supplies those exposed ordinary argument positions.
+Opaque implementation provenance/known Val1 restores no authority. Ordinary
+structured callables retain their declared implicit captures. An ordinary Env
+Object can hold a no-capture Function Pattern value and heap/IO fields, expose
+its own call entry and forward those fields explicitly (or locally bind context
+for another structured lazy closure). This is an optional ordinary representation,
+with its own access/lifetime premises and no mandatory boxing.
+
+### 11.3 Regular effect Function Patterns
+
+```text
+EffectPattern ::= P | EffectPattern || EffectPattern | PatternUnit~
+(Pattern_with_effect) -> Pout let o:R:: lifetime pre E_pre lifetime post E_post
+```
+
+P is an ordinary admitted Pattern. Postfix `~` in this syntax domain denotes
+zero or more steps of the nearest grouped/legal Pattern unit, binding more
+tightly than `||`; parentheses delimit alternatives and each `->` boundary.
+Each arrow denotes one step. R may itself contain another Function Pattern
+with recursive regular effects. The finite regular descriptor conservatively
+describes possible traces, not simultaneous branch execution, duplication of
+linear inputs, or enumeration of future continuations.
+
+LHS observes full input/captures, regular shape and Pre/Post compatibility.
+RHS requests explicit input/output/Policy and regular shape, with no implicit
+capture or Pre/Post slots. Both keep the mandatory arrow boundary and directional
+rules of §11.1. Done(v) is a matchable normal effect-result branch and Wait(y,k)
+contains the next concrete callable under the
+[effect owner](../control-flow/effect-steps-and-continuation-handoff.md).
+Internal chain/target Done remains separate and unmatchable.
 
 ## 12. Structural type formation and registered children
 

@@ -553,7 +553,7 @@ SelfProjection(I,Return) = (CallTarget(I),Activation(I))
 ReturnFrame(I) = SelfProjection(I,Return)
 
 ordinary user-defined x:T associated () call: SelfProjection(I,Param)=B_K(x)
-formed value-capture closure C: SelfProjection(I,Param)=CaptureProduct(C)
+value-capture closure C: SelfProjection(I,Param)=CaptureProduct(C,I,K)
 InternalInput(I,explicit_args)
   = Merge_K(SelfProjection(I,Param),B_K(explicit_args))
 ```
@@ -567,8 +567,8 @@ among these positions. CallableOwner, ReceiverType, ActualSelf, CallTarget
 and ReturnFrame remain distinct; binder spelling and self type select no
 return activation.
 
-Before selection, a candidate's already formed implicit material is local,
-read-only evidence for ordinary applicability and its implementation's input
+Before selection, a candidate's formed implicit material and declared required
+capture availability are local, read-only evidence for ordinary applicability and its implementation's input
 requirements. It executes no transfer, initializer or candidate body. Candidates
 need no common capture prefix, shape or count, and capture shape adds no
 preference. Required missing evidence remains Unavailable. Only unique sealed
@@ -579,6 +579,21 @@ The callable retains its entry/source anchor, so `(args) |> self` enters an
 ordinary new call through CallAnchor. It creates a new activation and selects
 at that call's actual frontier; no old sealed invocation is reopened. Reentry,
 state transfer and borrows require the current Movable and Pre/Post facts.
+
+Self, initialized captures, required captures bound in the actual call
+context, and explicit arguments are equal-status call/lifecycle material:
+
+```text
+CallInputs(I,K) = InternalInput(I,ExplicitArgs(I))
+               = Merge_K(SelfProjection(I,Param),B_K(ExplicitArgs(I)))
+```
+
+The closure Param contains its initialized and call-bound required capture
+positions exactly once; an ordinary user receiver uses B_K(x) as above. These
+roles supply no extra self position or duplicate capture transfer.
+Semantic name origin is determined by the actual selected source operation,
+never by an environment field offset. A capture need not be a field child owned
+by the ActualSelf Object. Real Object fields retain ordinary field semantics.
 
 ### 6.3 One coherent passing transaction
 
@@ -643,8 +658,10 @@ Needs(action,source,observation,Gamma,Sigma), distinguishes requirement,
 semantic realization and physical representation, and owns projection and
 once-per-formation laws.
 
-`[let x=E]`, `[x=E]` and legal `[E]` shorthand are explicit let-shaped
-dependency formation. `[x]` implies no const, borrow or write grant. Resolved
+`[let x=E]`, `[x=E]` and non-bare expression shorthand initialize dependencies
+at formation. `[x]`, `[x:T]` and `[p let x]` declare RequiredCapture, fulfilled
+by name in the actual admitted call context under the dependency owner's §3.
+Neither kind implies const, borrow or write authority. Resolved
 free external observations may use an eligible implicit realization under
 ordinary lookup, Policy/access and lifetime checks. Capture is one surface
 consumer, not the ontology of every function/type/host/Path dependency.
@@ -659,8 +676,8 @@ semantic side tables nor mandatory public self.Val2 fields are allowed.
 Value-capture modes are mutually exclusive for one closure; automatic compile
 structural dependencies remain separate. Distinct admitted occurrences preserve
 binder, view and source obligations even when layout shares storage.
-Copy/replication preserves formed
-dependencies without rerunning initializers, relookup or extending lifetimes.
+Copy/replication preserves formed dependencies and required specifications
+without rerunning initializers, rebinding formed sources or extending lifetimes.
 Runtime formation residue is retained when not ready.
 
 ### 7.3 In-place syntax uses automatic dependency formation
@@ -699,6 +716,12 @@ After formation, invocation consumes the established dependencies. It does not
 resolve external names again by spelling or create a separate embedding
 environment. Deferred formation retains its actual obligations; deferral is
 not permission to recapture at a later invocation site.
+
+For InPlace automatic existing captures, omitted Pre inherits the formation
+slice's preceding Post, as specified by the lifecycle owner's empty-slice law.
+Only genuinely new entry parameter names use entry defaults. A real Move/repair
+boundary supplies its validated successor state; Ordinary closure boundaries
+are not empty slices.
 
 Bind, Move, Copy, Return, Store and Pass are ordinary value operations on the
 result. Source placement alone neither forbids them nor grants their concrete
@@ -831,11 +854,12 @@ Current source carriers do not implement this full consumer.
   and filters external candidates through independent capability/visibility
   eligibility rather than a universal const projection.
 - Pin inherits P2 with explicit stage/mode constraints or holes; Pout stage inherits P1.
-- Ordinary closures distinguish explicit, explicit-inferred-binder, and
-  implicit-eligible capture requirements; those requirements do not define
+- Ordinary closures distinguish RequiredCapture from InitializedCapture and
+  automatically formed dependencies; those requirements do not define
   `self` fields or physical layout.
 - In-place syntax forms dependencies automatically and returns ordinary tau.
-  Invocation uses those dependencies without recapture. Binding, transfer and
+  Automatic and initialized sources are retained; declared required entries
+  bind at new calls. Binding, transfer and
   outer writes depend on actual access/capability/lifetime, not source placement.
 - Every compile call forms a CompileInstance before body evaluation, independent
   of result kind and P2; selected call entries retain their ordinary self.

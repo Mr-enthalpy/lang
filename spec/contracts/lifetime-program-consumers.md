@@ -36,6 +36,8 @@ where required. Display paths, equal values, bare identity numbers, generic
 transaction storage and fixture imports grant none of that evidence.
 
 An available check returning false rejects its requiring action before commit.
+Selected forced actual Pattern mismatch follows the effect owner's PatternMiss
+handoff, without successful extraction Post or reopened selection.
 Unavailable required material returns the appropriate spanned Diagnostic;
 `Unavailable` below names that semantic frontier, not a new InvocationResult
 variant. Only an established remaining continuation can cross as Residual.
@@ -43,6 +45,50 @@ No failure retries a candidate, changes ABIKind, silently clones, manufactures
 an unknown root, or publishes a success permission. All affected Pre precede
 common commit; joint producer/lifecycle Post uses the same scratch publication.
 Already committed history/Color and earlier external effects are not erased.
+
+## Additional call, slice, resource and effect consumers
+
+These consumers use the shared eight-field template. LC1–LC8 remain pending;
+these handoffs supply no standalone evaluator or executable success claim.
+
+| Field | LC9 Required capture | LC10 Slice / MoveRepair | LC11 Heap submission | LC12 Effect / Drop |
+|---|---|---|---|---|
+| Input material | Required slot/name/rank/Pattern/Policy, actual context/entry/K, initialized sources | Preceding Post/cut, existing names, new args, fixed MoveEffect, destination, repair/id | Actual local layer/next_pool, allocations, descriptors, support/duty credentials, guaranteed capability | Original common K/CPS correspondence including pending caller suffixes; selected cut, yield/resume Patterns, held material, repair, actual handler and compile/reify boundary |
+| Existing action | Ordinary R_vis/hard A and selected invocation | Empty slicing or actual handoff Move | Ordinary locate, object relocate or consuming submit | Step/Wait, resume/handler/drop, forced actual Miss |
+| Ordinary program | Actual selected source read/transfer/ref | Mapped name projection, ordinary rebind/ref repair | Library routing/allocation/descriptor calls with narrowly trusted external success | Ordinary selected calls/contracts/repair/destructors; throw expansion |
+| Output lifecycle material | Bound CaptureProduct, names/origin/region and canonical observed inputs | Unchanged epsilon world or validated successor AutoPre | Real moved value, or unchanged live Places with transferred support/duty and restored old heap | Done(v) or Wait(y,k), valid successor and held cleanup responsibility |
+| Commit/delivery | One coherent Param/args transfer and four-way contract | Atomic Move[repair], no visible intermediate callable | Existing common action, all Pre then joint Post | Actual branch only; LC10 handoff, ordinary resume/Drop |
+| Failure/unavailable | Proved mismatch in ordinary A; missing consumer unavailable; post-seal failure terminal | No successful Post or partial successor on failed/unknown repair | No capability rejects; unknown credentials/guarantee unavailable; legal submit cannot hide runtime failure | Missing consumer unavailable; selected forced final mismatch uses legal PatternMiss handoff; unhandled compile effect diagnoses externally |
+| Dependencies | Source context, ordinary dependency/Pattern/Policy/E | LC1–LC5, source control/producer authority | LC3/LC4/LC7, name shadow/consumption, host globals | LC9/LC10/LC13, Function Pattern/effect syntax, common E/control/delivery |
+| Fidelity/composition | Unique declared binding, fixed sequence, eager once, one transfer, no field ownership premise | Existing InPlace captures inherit Post; only new input names default; first-layer locality and deeper history preserved | No live-byte movement for submit, orphan/duplicate duty or history rewrite; feasible metadata guarantee; regular local elimination; separate migration chain | Exact cleanup, no unwind/implicit Box/invented residual; yield no NameExpr classification; reify shape closed; O preserves observable repair/handler actions |
+
+## LC13. Whole-original-K CPS correspondence (pending)
+
+- **Input material:** Actual common K and outward delivery, pending caller
+  contexts, selected actions/frames, guards, dependencies, name/cut mapping,
+  active targets, handlers, fixed cleanup and compile/runtime/reify projections.
+- **Existing action that determines it:** Ordinary common-E continuation
+  formation/composition and actual effect handoff; no source keyword supplies it.
+- **Kind of ordinary lang program consumed:** Existing calls, control/delivery,
+  lifecycle partners and ordinary concrete successor formation. The CPS account
+  is a representation of those actions, not a second evaluator.
+- **Output lifecycle material:** Complete mapped continuation covering both
+  callee remainder and pending caller suffix, including cleanup responsibilities;
+  only actual new entry names receive entry defaults.
+- **Commit/delivery boundary:** Description conversion creates no extra action.
+  Real formation/Move[repair]/resume/Drop use the existing common transaction,
+  four-way contracts and joint valid Post with the same selected correspondence.
+- **Failure or unavailable result:** Missing context/control/target/cleanup
+  mapping is spanned unavailable. No success that loses a caller suffix, invented
+  residual, replay of earlier work or effect-blind direct-style fallback.
+- **Unconnected consumer dependencies:** Common E/control/delivery, LC2–LC5,
+  LC9/LC10 and source dependency realization; LC12 actual handoff consumes this
+  CPS correspondence. All remain pending.
+- **Fidelity/composition obligations:** Preserve the E owner's Plug/Compose
+  laws and all value/effect/lifecycle observations in every expression/control
+  context, across stages and reify. Retain target-return barriers and exact Drop
+  once. Cover ordinary no-wait work too; no mandatory Box/state machine or future
+  path/object enumeration. O generation-grain equivalence is a separate proof.
 
 ## LC1. Pattern and structure companion formation
 

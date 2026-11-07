@@ -36,6 +36,9 @@ An authorized subject update preserves that subject identity; value-sensitive
 keys still observe their actual input snapshots. Dependencies legally embodied
 in the selected callable or an input retain their ordinary identity and
 lifetime obligations. There is no hidden caller-environment coordinate.
+Actual bound RequiredCapture sources are canonical observed invocation inputs,
+not a hidden context coordinate. Required specifications are not bound early by
+instance caching; a sealed invocation retains its already fulfilled sources.
 
 Every CompileInstance is a stable semantic owner with an ordinary self-name.
 Instance formation is independent of result kind and P2. In particular, a
@@ -98,7 +101,7 @@ facts are unavailable, not evidence for an empty set. The test precedes outward
 publication: hiding an instance-open type in an aggregate or closure fails
 without installing a result. Multiple reachable instance-open types also fail.
 
-A legal single direct self-root result supplies:
+A legal single direct self-root formal normal-return result supplies:
 
 ```text
 Read_name(result) = n_I
@@ -110,6 +113,10 @@ returning it does not manufacture a NameExpr at n_I. Invocation ownership
 creates no structural child of an input and does not change input Val2 or Norm.
 A separate requested-name action may realize the delivered value at its
 requested coordinate under ordinary name rules.
+Wait yield is a distinct effect delivery. It invokes no return-specific
+NameExpr classification and cannot expose this instance's open self root,
+directly or hidden inside a sum/Product/capture/ref. Already legitimate ordinary
+name/type values retain their existing identities when yielded. See unified §3.
 
 ## 4. Opening sources and completion
 

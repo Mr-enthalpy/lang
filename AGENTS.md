@@ -144,14 +144,14 @@ alternate relation or identity.
   Witnessed anchored replication never reparents an existing value.
 - Every compile call forms a stable CompileInstance from parent owner, selected
   CompilePartner and canonical inputs. Its ordinary self-name is readable without
-  reentry. Result kind is determined by result structure: an instance-open type
+  reentry. Formal normal-return result kind is determined by result structure: an instance-open type
   may escape only as the single self-rooted complete type, which exposes the
   instance NameExpr. In-place closures retain ordinary lexical/Self/navigation
   boundaries and use admitted dependencies to reach enclosing instances.
 - Stage = {compile, runtime}. P2 is evaluation horizon; P1/Pout producer
   visibility, OpenPolicy, InputAdmissible, migration and Ready are independent.
   P2 runtime with P1 compile is legal; actual reverse-dependent work requires reify.
-- Name resolution happens once before R_vis evidence and ordinary C_sigma
+- Call-target name resolution happens once before R_vis evidence and ordinary C_sigma
   preparation. Hard A, fallback suppression and Policy/Pattern order seal
   (candidate, projection, frame); runtime preserves that origin.
 - Ordinary calls use x -> Type(x) -> associated Val2[()], with self=x.
@@ -205,7 +205,8 @@ alternate relation or identity.
   boundary evidence is unavailable. Target inference occurs after an event exists. Implicit ReturnEvent is separate: non-tail expressions require unit via
   UnitDiscard; continuation-path tail unit falls through, non-unit synthesizes return.
   Explicit unit return still returns; AST-list position is not semantic tailness.
-- Done is internal chain/target completion, never an Object or Pattern.
+- Internal Done_chi/Done_Return is chain/target completion, never an Object or Pattern.
+  Effect Done(v) is a distinct ordinary matchable normal-result sum branch.
   Split/D is restricted; residual escape separately reads ordinary compile facts.
   Return has no synthetic local unit contribution.
 - Every legal completed closure expression returns full tau_C through atomic structural formation, with tau_C/c_C/A_C/() distinct and a finite implementation leaf.
@@ -266,16 +267,21 @@ alternate relation or identity.
   source. Realization follows the source occurrence's selected ordinary action,
   uniquely up to observational equivalence; distinct candidates use ordinary
   preference or ambiguity, never backend choice. Initialization is once per formation.
-  Projections never recapture.
+  Projections retain formed sources and already sealed required bindings.
   In-place syntax forms dependencies automatically and produces an ordinary
-  first-class result. Invocation does not recapture; binding, transfer and outer
+  first-class result. Automatic/InitializedCapture sources form once;
+  RequiredCapture [x], [x:T], [p let x] has no initializer/source edge at formation
+  and binds in the actual admitted new call context, within ordinary selection.
+  No arbitrary dynamic body lookup or post-seal re-resolution is allowed.
+  Binding, transfer and outer
   writes use actual access/capability/lifetime, with no placement-based veto.
   Dependencies classify requested UseKind x DemandStage; StructuralAccess is
   compile-only and independent of Value capture mode. Each closure has exclusive
   Explicit or Automatic value capture; an explicit clause's omitted external
   value is diagnosed. InPlace uses Automatic, which is not exclusive to InPlace.
   Explicit captures form a bare positional Product in source order across stages;
-  automatic order is fixed per formed closure. Self has CallAnchor, Param and
+  automatic order is fixed per formed closure. Required positions keep their
+  specification order and bind per new invocation. Self has CallAnchor, Param and
   Return projections; Param is CaptureProduct or the ordinary singleton receiver.
   Candidate-local implicit evidence is read-only before selection; selected input
   moves once with no duplicate Kill. Function Pattern syntax always has an
@@ -295,10 +301,45 @@ alternate relation or identity.
   ABI2; O materializes it, independently of RVO/NRVO. Placement and
   explicit/automatic origin supply no applicability, specificity or preference;
   otherwise tied distinct candidates follow ordinary ambiguity.
+  Function Pattern value projection makes former captures explicit interface
+  inputs; neither known Val1 nor hidden implementation provenance restores them.
   Lifetime persistence/escape refinement retains all ordinary checks; tau status
   grants no global lifetime and local dependency grants no universal prohibition.
 
 ## Scope and Open questions
+
+Heap/IO/effect semantics are closed in the dependency/call/Pattern/lifecycle
+owners, [effect owner](spec/design/control-flow/effect-steps-and-continuation-handoff.md)
+and [heap owner](spec/design/lifetime/heap-stack-and-storage-responsibility.md).
+Empty action slices preserve Post=Pre; existing InPlace automatic captures
+inherit preceding Post, while genuinely new input names use entry defaults.
+Wait hands off a new concrete callable by atomic Move[repair], default id,
+validated by the suspending side before exposure. Self/captures/args are equal
+call/lifecycle material, with no field-ownership premise or duplicate Kill.
+Heap locate is ordinary single-linked context formation; heap relocate submits
+existing storage support/release duty with guaranteed completion under Pre,
+preserves live Places/history and restores the shadowed heap binding. Object
+relocate really obtains/moves storage. Compile globalheap has legal runtime
+migration; global IO is available at both stages without universal object migration.
+IO/heap are ordinary capabilities and need not produce effects or share shape.
+Effect Function Patterns use || and nearest-unit postfix ~ for possible steps,
+never input copying. Async uses ordinary ABI1/ABI2 with explicit optional Box.
+The original common semantic continuation K requires a complete CPS account,
+including ordinary no-wait work and pending caller suffixes across nested calls,
+all expression/control/delivery contexts, fixed cleanup and compile/reify
+boundaries. This common-E conversion/correspondence consumer remains pending;
+local wait splitting is insufficient. CPS is not Raw AST lowering, a second
+evaluator or a mandate for state-machine layout, Box or one object per edge.
+Throw delivers a resumable Wait protocol; dropping its concrete continuation
+performs ordinary cleanup, with no dedicated exception unwind. Only selected
+forced actual Pattern failure produces PatternMiss; candidate/branch mismatch
+and unavailable consumers do not. Yield cannot classify an instance NameExpr
+or escape an instance-open root; only formal normal return uses that rule.
+Reify additionally requires compile-determined outward input/output/effect/
+capture/lifecycle interface shape. Runtime may choose inside a fixed sum; a
+runtime-dependent public shape needs ordinary handler/wrapper closure first.
+Pending consumers and their spanned unavailable boundaries are in the roadmap;
+no old interpretation is a compatibility path.
 
 Do not close a question listed in `spec/planning/open-questions.md` for
 implementation convenience. Use opaque carriers and extension interfaces.
@@ -338,8 +379,11 @@ When asked to publish changes, inspect status/diff, commit intentionally, push
 with upstream tracking, and use `gh` for draft PR creation or updates.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Its active
-closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+classifier explicit or input-inferable without reverse migration. Its outward
+input/output, regular effect, capture and lifecycle interface shape must also be
+compile-determined independently of runtime reverse flow; ordinary handlers or
+wrappers close runtime-dependent shape before exposure. Runtime choice within a
+fixed regular sum is legal. Its active closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
 reverse dependencies. Legal Policy ranks have exactly the form
 absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary

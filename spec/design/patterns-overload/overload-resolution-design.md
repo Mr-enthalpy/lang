@@ -118,13 +118,19 @@ a decided rejection rather than an unavailable Pattern query.
 
 An [RHS Function Pattern request](pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 uses this same trunk with explicit arguments, output and Policy demands. Each
-candidate's formed implicit-self material may supply read-only applicability
+candidate's formed implicit-self material and declared RequiredCapture availability
+may supply read-only applicability
 evidence for that implementation's requirements. No common capture layout is
 needed, and capture shape/origin adds no preference. RHS cannot provide captures
 or lifetime clauses. After the unique seal, form only the selected implicit
 Param projection plus explicit input and perform ordinary Move/DynamicLegality.
 Selected lifecycle failure is terminal. LHS contract extraction first requires
 a determined concrete callable; it is not a lifetime-based overload selector.
+RequiredCapture fulfillment belongs to this same candidate-local pipeline and
+the sealed call. It creates no second context overload resolver, no capture
+shape preference and no fallback to formation-time same-name globals. A failure
+after seal is terminal. A projected Function Pattern value exposes its former
+captures as explicit inputs and cannot recover implicit source authority.
 
 Policy holes participate in this same joint relation:
 
